@@ -10,16 +10,18 @@ extern "C" {
 #include "common/gs_containers.h"
 #include "common/gs_util.h"
 
-#ifdef __APPLE__
+#if ( defined __APPLE__ )
+
 	#define GS_PLATFORM_MAC
-#endif
 
-#ifdef WIN32
-	#define GS_PLATFORM_WIN_32
-#endif
+#elif ( defined WIN32 || defined WIN64 )
 
-#ifdef WIN64
-	#define GS_PLATFORM_WIN_64
+	#define GS_PLATFORM_WIN
+
+#elif ( defined linux )
+
+	#define GS_PLATFORM_LINUX
+
 #endif
 
 // Forward Decl. 
@@ -29,9 +31,21 @@ struct gs_platform_window;
 
 struct gs_platform_i* 		gs_platform_construct();
 
-// /*============================================================
-// // Platform UUID
-// ============================================================*/
+/*============================================================
+// Platform Time
+============================================================*/
+
+typedef struct gs_platform_time 
+{
+	f32 max_fps;
+	f32 fps;
+	f32 delta_time;
+	f32 total_elapsed_time;
+} gs_platform_time;
+
+/*============================================================
+// Platform UUID
+============================================================*/
 
 #define gs_uuid_str_size_constant 		32
 
@@ -52,6 +66,13 @@ gs_uuid
 
 // // Forward Decl
 struct gs_platform_window;
+typedef void* gs_platform_window_ptr;
+
+// Internal handle for windows
+typedef u32 gs_platform_window_handle;
+
+// Declare slot array
+gs_slot_array_decl( gs_platform_window_ptr );
 
 typedef enum gs_platform_cursor
 {
@@ -178,13 +199,30 @@ typedef enum gs_platform_keycode
 	gs_keycode_count
 } gs_platform_keycode;
 
-typedef enum gs_platform_mousebutton_code
+typedef enum gs_platform_mouse_button_code
 {
 	gs_mouse_lbutton,
 	gs_mouse_rbutton,
 	gs_mouse_mbutton,
 	gs_mouse_button_code_count
-} gs_mouse_button_code;
+} gs_platform_mouse_button_code;
+
+typedef struct gs_platform_mouse
+{
+	b32 button_map[ gs_mouse_button_code_count ];
+	b32 prev_button_map[ gs_mouse_button_code_count ];
+	gs_vec2 position;
+	gs_vec2 prev_position;
+	gs_vec2 delta;
+	gs_vec2 wheel;
+} gs_platform_mouse;
+
+typedef struct gs_platform_input
+{
+	b32 key_map[ gs_keycode_count ];
+	b32 prev_key_map[ gs_keycode_count ];
+	gs_platform_mouse mouse;
+} gs_platform_input;
 
 /*===============================================================================================
 // Platform API Struct
@@ -239,6 +277,7 @@ typedef struct gs_platform_video_settings
 {
 	gs_graphics_api_settings 		graphics;
 	gs_platform_video_driver_type 	driver;
+	u32 							vsync_enabled;
 } gs_platform_video_settings;
 
 typedef struct gs_platform_settings
@@ -259,7 +298,8 @@ typedef struct gs_platform_i
 	// Platform Util
 	============================================================*/
 	u32 	( * ticks )();
-	void 	( * delay )( u32 ticks );
+	void 	( * sleep )( u32 ticks );
+	f64 	( * get_time )();
 
 	/*============================================================
 	// Platform UUID
@@ -271,35 +311,36 @@ typedef struct gs_platform_i
 	/*============================================================
 	// Platform Input
 	============================================================*/
-	struct gs_platform_input* ( * create_input )();
-	gs_result ( * process_input )( struct gs_platform_input* input );
+	gs_result ( * process_input )();
 
-	b32 ( * was_key_down )( struct gs_platform_input* input, gs_platform_keycode code );
-	b32 ( * key_pressed )( struct gs_platform_input* input, gs_platform_keycode code );
-	b32 ( * key_down )( struct gs_platform_input* input, gs_platform_keycode code );
-	b32 ( * key_released )( struct gs_platform_input* input, gs_platform_keycode code );
+	void ( * update_input )();
+	void ( * press_key )( gs_platform_keycode code );
+	void ( * release_key )( gs_platform_keycode code );
+	b32 ( * was_key_down )( gs_platform_keycode code );
+	b32 ( * key_pressed )( gs_platform_keycode code );
+	b32 ( * key_down )( gs_platform_keycode code );
+	b32 ( * key_released )( gs_platform_keycode code );
 
-	b32 ( * was_mouse_down )( struct gs_platform_input* input, gs_mouse_button_code code );
-	b32 ( * mouse_pressed )( struct gs_platform_input* input, gs_mouse_button_code code );
-	b32 ( * mouse_down )( struct gs_platform_input* input, gs_mouse_button_code code );
-	b32 ( * mouse_released )( struct gs_platform_input* input, gs_mouse_button_code code );
+	void ( * press_mouse_button )( gs_platform_mouse_button_code code );
+	void ( * release_mouse_button )( gs_platform_mouse_button_code code );
+	b32 ( * was_mouse_down )( gs_platform_mouse_button_code code );
+	b32 ( * mouse_pressed )( gs_platform_mouse_button_code code );
+	b32 ( * mouse_down )( gs_platform_mouse_button_code code );
+	b32 ( * mouse_released )( gs_platform_mouse_button_code code );
 
-	gs_vec2 ( * mouse_delta )( struct gs_platform_input* input );
-	gs_vec2 ( * mouse_position )( struct gs_platform_input* input );
-	void ( * mouse_position_x_y )( struct gs_platform_input* input, f32* x, f32* y );
-	void ( * mouse_wheel )( struct gs_platform_input* input, f32* x, f32* y );
-
-	void ( * press_key )( struct gs_platform_input* input, gs_platform_keycode code );
-	void ( * release_key )( struct gs_platform_input* input, gs_platform_keycode code );
+	gs_vec2 ( * mouse_delta )();
+	gs_vec2 ( * mouse_position )();
+	void ( * mouse_position_x_y )( f32* x, f32* y );
+	void ( * mouse_wheel )( f32* x, f32* y );
 
 	/*============================================================
 	// Platform Window
 	============================================================*/
-	struct gs_platform_window* 	( * create_window )( const char* title, u32 width, u32 height );
-	void 						( * window_swap_buffer )( struct gs_platform_window* win );
-	gs_vec2 					( * window_size )( struct gs_platform_window* win );
-	void 						( * window_size_w_h )( struct gs_platform_window* win, s32* width, s32* height );
-	void 						( * set_cursor )( struct gs_platform_window* win, gs_platform_cursor cursor );
+	gs_platform_window_handle 	( * create_window )( const char* title, u32 width, u32 height );
+	void 						( * window_swap_buffer )( gs_platform_window_handle handle );
+	gs_vec2 					( * window_size )( gs_platform_window_handle handle );
+	void 						( * window_size_w_h )( gs_platform_window_handle handle, s32* width, s32* height );
+	void 						( * set_cursor )( gs_platform_cursor cursor );
 
 	/*============================================================
 	// Platform File IO
@@ -312,7 +353,72 @@ typedef struct gs_platform_i
 	// Settings for platform, including video, audio
 	gs_platform_settings settings;
 
+	// Time
+	gs_platform_time time;
+
+	// Input
+	gs_platform_input input;
+
+	// For now, just keep a window here as main window...
+	gs_slot_array( gs_platform_window_ptr ) windows;
+
+	// Cursors
+	void* cursors[ gs_platform_cursor_count ];
+
 } gs_platform_i;
+
+void __gs_platform_update_input( );
+
+b32 __gs_platform_was_key_down( gs_platform_keycode code );
+
+b32 __gs_platform_key_down( gs_platform_keycode code );
+
+b32 __gs_platform_key_pressed( gs_platform_keycode code );
+
+b32 __gs_platform_key_released( gs_platform_keycode code );
+
+b32 __gs_platform_was_mouse_down( gs_platform_mouse_button_code code );
+
+void __gs_platform_press_mouse_button( gs_platform_mouse_button_code code );
+
+void __gs_platform_release_mouse_button( gs_platform_mouse_button_code code );
+
+b32 __gs_platform_mouse_down( gs_platform_mouse_button_code code );
+
+b32 __gs_platform_mouse_pressed( gs_platform_mouse_button_code code );
+
+b32 __gs_platform_mouse_released( gs_platform_mouse_button_code code );
+
+gs_vec2 __gs_platform_mouse_delta( struct gs_platform_input* input );
+
+gs_vec2 __gs_platform_mouse_position( struct gs_platform_input* input );
+
+void __gs_platform_mouse_position_x_y( f32* x, f32* y );
+
+void __gs_platform_mouse_wheel( f32* x, f32* y );
+
+void __gs_platform_press_key( gs_platform_keycode code );
+
+void __gs_platform_release_key( gs_platform_keycode code );
+
+/*============================
+// Platform File IO
+============================*/
+
+char* __gs_platform_read_file_contents_into_string_null_term( const char* file_path, const char* mode, usize* sz );
+
+gs_result __gs_platform_write_str_to_file( const char* contents, const char* mode, usize sz, const char* output_path );
+
+/*============================
+// Platform Util
+============================*/
+
+struct gs_uuid __gs_platform_generate_uuid();
+
+void __gs_platform_uuid_to_string( char* temp_buffer, const struct gs_uuid* uuid ); // Expects a temp buffer with at leat 32 bytes
+
+u32 __gs_platform_hash_uuid( const struct gs_uuid* uuid );
+
 
 #ifdef __cplusplus
 }

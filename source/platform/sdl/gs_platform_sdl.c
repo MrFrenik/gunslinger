@@ -6,18 +6,17 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
 
-// Specific implementation for platform window for SDL2
-typedef struct gs_platform_window {
-	SDL_Window* sdl_window;	
-	SDL_Cursor* cursors[ gs_platform_cursor_count ];
-} gs_platform_window;
-
 /*============================
 // Platform Initialization
 ============================*/
 
+#define __window_from_handle( platform, handle )\
+	( (SDL_Window*)( gs_slot_array_get( ( platform )->windows, ( handle ) ) ) )
+
 gs_result sdl_platform_init( struct gs_platform_i* platform  )
 {
+	gs_println( "Initializing SDL" );
+
 	// Verify platform is valid
 	gs_assert( platform );
 
@@ -47,8 +46,10 @@ gs_result sdl_platform_init( struct gs_platform_i* platform  )
 			SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 16 );
 			SDL_GL_SetAttribute( SDL_GL_BUFFER_SIZE, 32 );
 
-			// Set on vsync by default
-			SDL_GL_SetSwapInterval( 1 );
+			if ( platform->settings.video.vsync_enabled ) {
+				SDL_GL_SetSwapInterval( 1 );
+			}
+
 		} break;
 
 		default:
@@ -76,111 +77,21 @@ u32 sdl_platform_ticks()
 	return SDL_GetTicks();
 }
 
-void sdl_platform_delay( u32 ticks )
+void sdl_platform_sleep( u32 ticks )
 {
 	SDL_Delay( ticks );	
 }
 
-/*============================
-// Platform UUID
-============================*/
-
-struct gs_uuid sdl_generate_uuid()
+f64 sdl_platform_time()
 {
-	struct gs_uuid uuid;
-
-	srand( clock() );
-	char guid[40];
-	s32 t = 0;
-	char* sz_temp = "xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx";
-	char* sz_hex = "0123456789abcdef-";
-	s32 n_len = strlen( sz_temp );
-
-	for ( t=0; t < n_len + 1; t++ )
-	{
-	    s32 r = rand () % 16;
-	    char c = ' ';   
-
-	    switch ( sz_temp[t] )
-	    {
-	        case 'x' : { c = sz_hex [r]; } break;
-	        case 'y' : { c = sz_hex [( r & 0x03 ) | 0x08]; } break;
-	        case '-' : { c = '-'; } break;
-	        case '4' : { c = '4'; } break;
-	    }
-
-	    guid[t] = ( t < n_len ) ? c : 0x00;
-	}
-
-	// Convert to uuid bytes from string
-	const char* hex_string = sz_temp, *pos = hex_string;
-
-     /* WARNING: no sanitization or error-checking whatsoever */
-    for ( usize count = 0; count < 16; count++) 
-    {
-        sscanf( pos, "%2hhx", &uuid.bytes[count] );
-        pos += 2;
-    }
-
-	return uuid;
-}
-
-// Mutable temp buffer 'tmp_buffer'
-void sdl_uuid_to_string( char* tmp_buffer, const struct gs_uuid* uuid )
-{
-	gs_snprintf 
-	( 
-		tmp_buffer, 
-		32,
-		"%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
-		uuid->bytes[ 0 ],
-		uuid->bytes[ 1 ],
-		uuid->bytes[ 2 ],
-		uuid->bytes[ 3 ],
-		uuid->bytes[ 4 ],
-		uuid->bytes[ 5 ],
-		uuid->bytes[ 6 ],
-		uuid->bytes[ 7 ],
-		uuid->bytes[ 8 ],
-		uuid->bytes[ 9 ],
-		uuid->bytes[ 10 ],
-		uuid->bytes[ 11 ],
-		uuid->bytes[ 12 ],
-		uuid->bytes[ 13 ],
-		uuid->bytes[ 14 ],
-		uuid->bytes[ 15 ]
-	);
-}
-
-u32 sdl_hash_uuid( const struct gs_uuid* uuid )
-{
-	char temp_buffer[] = gs_uuid_temp_str_buffer();
-	sdl_uuid_to_string( temp_buffer, uuid );
-	return ( gs_hash_str( temp_buffer ) );
+	return (f64)SDL_GetTicks();
 }
 
 /*============================
 // Platform Input
 ============================*/
 
-typedef struct gs_platform_mouse
-{
-	b32 button_map[ gs_mouse_button_code_count ];
-	b32 prev_button_map[ gs_mouse_button_code_count ];
-	gs_vec2 position;
-	gs_vec2 prev_position;
-	gs_vec2 delta;
-	gs_vec2 wheel;
-} gs_platform_mouse;
-
-typedef struct gs_platform_input
-{
-	b32 key_map[ gs_keycode_count ];
-	b32 prev_key_map[ gs_keycode_count ];
-	gs_platform_mouse mouse;
-} gs_platform_input;
-
-gs_platform_keycode _sdl_key_to_gs_keycode( SDL_Keycode code )
+gs_platform_keycode __sdl_key_to_gs_keycode( SDL_Keycode code )
 {
 	switch ( code )
 	{
@@ -292,7 +203,7 @@ gs_platform_keycode _sdl_key_to_gs_keycode( SDL_Keycode code )
 	return gs_keycode_count;
 }
 
-gs_mouse_button_code _sdl_button_to_gs_mouse_button( SDL_Keycode code )
+gs_platform_mouse_button_code __sdl_button_to_gs_mouse_button( SDL_Keycode code )
 {
 	switch ( code )
 	{
@@ -305,151 +216,15 @@ gs_mouse_button_code _sdl_button_to_gs_mouse_button( SDL_Keycode code )
 	return gs_mouse_button_code_count;
 }
 
-struct gs_platform_input* sdl_create_input()
-{
-	gs_platform_input* input = gs_malloc_init( gs_platform_input );
-	return input;
-}
-
-b32 sdl_was_key_down( struct gs_platform_input* input, gs_platform_keycode code )
-{
-	return ( input->prev_key_map[ code ] );
-}
-
-b32 sdl_key_down( struct gs_platform_input* input, gs_platform_keycode code )
-{
-	return ( input->key_map[ code ] );
-}
-
-b32 sdl_key_pressed( struct gs_platform_input* input, gs_platform_keycode code )
-{
-	if ( sdl_key_down( input, code ) && !sdl_was_key_down( input, code ) )
-	{
-		return true;
-	}
-	return false;
-}
-
-b32 sdl_key_released( struct gs_platform_input* input, gs_platform_keycode code )
-{
-	return ( sdl_was_key_down( input, code ) && !sdl_key_down( input, code ) );
-}
-
-b32 sdl_was_mouse_down( struct gs_platform_input* input, gs_mouse_button_code code )
-{
-	return ( input->mouse.prev_button_map[ code ] );
-}
-
-void sdl_press_mouse_button( struct gs_platform_input* input, gs_mouse_button_code code )
-{
-	if ( (u32)code < (u32)gs_mouse_button_code_count ) 
-	{
-		input->mouse.button_map[ code ] = true;
-	}
-}
-
-void sdl_release_mouse_button( struct gs_platform_input* input, gs_mouse_button_code code )
-{
-	if ( (u32)code < (u32)gs_mouse_button_code_count ) 
-	{
-		input->mouse.button_map[ code ] = false;
-	}
-}
-
-b32 sdl_mouse_down( struct gs_platform_input* input, gs_mouse_button_code code )
-{
-	return ( input->mouse.button_map[ code ] );
-}
-
-b32 sdl_mouse_pressed( struct gs_platform_input* input, gs_mouse_button_code code )
-{
-	if ( sdl_mouse_down( input, code ) && !sdl_was_mouse_down( input, code ) )
-	{
-		return true;
-	}
-	return false;
-}
-
-b32 sdl_mouse_released( struct gs_platform_input* input, gs_mouse_button_code code )
-{
-	return ( sdl_was_mouse_down( input, code ) && !sdl_mouse_down( input, code ) );
-}
-
-gs_vec2 sdl_mouse_delta( struct gs_platform_input* input )
-{
-	if (input->mouse.prev_position.x < 0.0f || 
-		input->mouse.prev_position.y < 0.0f ||
-		input->mouse.position.x < 0.0f || 
-		input->mouse.position.y < 0.0f )
-	{
-		return (gs_vec2){ 0.0f, 0.0f };
-	}
-	
-	return (gs_vec2){ input->mouse.position.x - input->mouse.prev_position.x, 
-					  input->mouse.position.y - input->mouse.prev_position.y };
-}
-
-gs_vec2 sdl_mouse_position( struct gs_platform_input* input )
-{
-	return ( gs_vec2 ) 
-	{
-		.x = input->mouse.position.x, 
-		.y = input->mouse.position.y
-	};
-}
-
-void sdl_mouse_position_x_y( struct gs_platform_input* input, f32* x, f32* y )
-{
-	*x = input->mouse.position.x;
-	*y = input->mouse.position.y;
-}
-
-void sdl_mouse_wheel( struct gs_platform_input* input, f32* x, f32* y )
-{
-	*x = input->mouse.wheel.x;
-	*y = input->mouse.wheel.y;	
-}
-
-void sdl_press_key( struct gs_platform_input* input, gs_platform_keycode code )
-{
-	if ( code < gs_keycode_count ) 
-	{
-		input->key_map[ code ] = true;
-	}
-}
-
-void sdl_release_key( struct gs_platform_input* input, gs_platform_keycode code )
-{
-	if ( code < gs_keycode_count ) 
-	{
-		input->key_map[ code ] = false;
-	}
-}
-
 gs_result sdl_process_input( struct gs_platform_input* input )
 {
-	SDL_Event event;
+	// Grab platform instance from engine
+	struct gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+	gs_assert( platform );
 
 	gs_assert( input );
 
-	// Update all input and mouse keys from previous frame
-	// __gs_platform_input_update( input );
-
-	// Update all input and mouse keys from previous frame
-	// Previous key presses
-	gs_for_range_i( gs_keycode_count )
-	{
-		input->prev_key_map[ i ] = input->key_map[ i ];
-	}
-
-	// Previous mouse button presses
-	gs_for_range_i( gs_mouse_button_code_count )
-	{
-		input->mouse.prev_button_map[ i ] = input->mouse.button_map[ i ];
-	}
-
-	input->mouse.prev_position = input->mouse.position;
-	input->mouse.wheel = (gs_vec2){ 0.0f, 0.0f };
+	SDL_Event event;
 
 	// Poll for events
 	while ( SDL_PollEvent( &event ) )
@@ -463,22 +238,22 @@ gs_result sdl_process_input( struct gs_platform_input* input )
 
 			case SDL_KEYDOWN:
 			{
-				sdl_press_key( input, _sdl_key_to_gs_keycode( event.key.keysym.sym ) );
+				platform->press_key( __sdl_key_to_gs_keycode( event.key.keysym.sym ) );
 			} break;
 
 			case SDL_KEYUP:
 			{
-				sdl_release_key( input, _sdl_key_to_gs_keycode( event.key.keysym.sym ) );
+				platform->release_key( __sdl_key_to_gs_keycode( event.key.keysym.sym ) );
 			} break;
 
 			case SDL_MOUSEBUTTONDOWN:
 			{
-				sdl_press_mouse_button( input, _sdl_button_to_gs_mouse_button( event.button.button ) );
+				platform->press_mouse_button( __sdl_button_to_gs_mouse_button( event.button.button ) );
 			} break;
 
 			case SDL_MOUSEBUTTONUP:
 			{
-				sdl_release_mouse_button( input, _sdl_button_to_gs_mouse_button( event.button.button ) );
+				platform->release_mouse_button( __sdl_button_to_gs_mouse_button( event.button.button ) );
 			} break;
 
 			case SDL_MOUSEMOTION:
@@ -547,7 +322,7 @@ gs_result __sdl_init_gl_context( struct gs_platform_i* platform, SDL_Window* win
 	return gs_result_success;
 }
 
-struct gs_platform_window* sdl_create_window( const char* title, u32 width, u32 height )
+gs_platform_window_handle sdl_create_window( const char* title, u32 width, u32 height )
 {
 	// Grab instance of platform API
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
@@ -575,8 +350,9 @@ struct gs_platform_window* sdl_create_window( const char* title, u32 width, u32 
 			{
 				gs_println( "SDL_CreateWindow Error: %s", SDL_GetError() );
 				gs_assert( false );
-				return NULL;
+				return gs_slot_array_invalid_handle;
 			}
+
 
 			// For now, the the window will be an opengl window if SDL is used.
 			// Single, static opengl context
@@ -587,29 +363,18 @@ struct gs_platform_window* sdl_create_window( const char* title, u32 width, u32 
 				{
 					gs_println( "SDL_CreateWindow Error: %s", SDL_GetError() );
 					gs_assert( false );
-					return NULL;
+					return gs_slot_array_invalid_handle;
 				}
 			}
 
-			gs_platform_window* gwin = gs_malloc( sizeof( gs_platform_window ) );
-			gs_assert( gwin );
-			gwin->sdl_window = win;
-
 		    SDL_GL_MakeCurrent( win, platform->settings.video.graphics.opengl.ctx );
 
-		    // Construct cursors
-		    // NOTE(john): For now, just put in window, but should be abstracted out into a general context later on
-		    gwin->cursors[ gs_platform_cursor_arrow ] 		= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_ARROW );
-		    gwin->cursors[ gs_platform_cursor_ibeam ] 		= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_IBEAM );
-		    gwin->cursors[ gs_platform_cursor_size_nw_se ] 	= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_SIZENWSE );
-		    gwin->cursors[ gs_platform_cursor_size_ne_sw ] 	= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_SIZENESW );
-		    gwin->cursors[ gs_platform_cursor_size_ns ] 	= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_SIZENS );
-		    gwin->cursors[ gs_platform_cursor_size_we ] 	= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_SIZEWE );
-		    gwin->cursors[ gs_platform_cursor_size_all ] 	= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_SIZEALL );
-		    gwin->cursors[ gs_platform_cursor_hand ] 		= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_HAND );
-		    gwin->cursors[ gs_platform_cursor_no ] 			= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_NO );
+		    // Add to slot array
+		    gs_platform_window_handle handle = gs_slot_array_insert( platform->windows, (void*)win );
 
-			return ( gs_platform_window* )gwin;
+			gs_println( "here" );
+
+		    return handle;
 
 		} break;
 
@@ -619,66 +384,35 @@ struct gs_platform_window* sdl_create_window( const char* title, u32 width, u32 
 			gs_assert( false );
 		} break;
 	}
+
+	// Shouldn't get here
+	return gs_slot_array_invalid_handle;
 }
 
-void sdl_window_swap_buffer( struct gs_platform_window* win )
+void sdl_window_swap_buffer( gs_platform_window_handle handle )
 {
-    SDL_GL_SwapWindow( (SDL_Window* )win->sdl_window );
+	// Grab window from plaform layer slot array
+	SDL_Window* win = __window_from_handle( gs_engine_instance()->ctx.platform, handle );
+    SDL_GL_SwapWindow( win );
 }
 
-gs_vec2 sdl_window_size( struct gs_platform_window* win )
+gs_vec2 sdl_window_size( gs_platform_window_handle handle )
 {
+	SDL_Window* win = __window_from_handle( gs_engine_instance()->ctx.platform, handle );
 	s32 w, h;
-	SDL_GetWindowSize( ( SDL_Window* )win->sdl_window, &w, &h );	
+	SDL_GetWindowSize( win, &w, &h );	
 	return ( gs_vec2 ) { .x = w, .y = h };
 }
 
-void sdl_window_size_w_h( struct gs_platform_window* win, s32* w, s32* h )
+void sdl_window_size_w_h( gs_platform_window_handle handle, s32* w, s32* h )
 {
-	SDL_GetWindowSize( ( SDL_Window* )win->sdl_window, w, h );
+	SDL_Window* win = __window_from_handle( gs_engine_instance()->ctx.platform, handle );
+	SDL_GetWindowSize( win, w, h );
 }
 
-void sdl_set_cursor( struct gs_platform_window* win, gs_platform_cursor cursor )
+void sdl_set_cursor( gs_platform_cursor cursor )
 {
-	SDL_SetCursor( win->cursors[ cursor] );
-}
-
-/*============================
-// Platform File IO
-============================*/
-
-char* sdl_read_file_contents_into_string_null_term( const char* file_path, const char* mode, usize* sz )
-{
-	char* buffer = 0;
-	FILE* fp = fopen( file_path, mode );
-	if ( fp )
-	{
-		fseek( fp, 0, SEEK_END );
-		*sz = ftell( fp );
-		fseek( fp, 0, SEEK_SET );
-		buffer = ( char* )gs_malloc( *sz + 1 );
-		if ( buffer )
-		{
-			fread( buffer, 1, *sz, fp );
-		}
-		fclose( fp );
-		buffer[ *sz ] = '0';
-	}
-	return buffer;
-}
-
-gs_result sdl_write_str_to_file( const char* contents, const char* mode, usize sz, const char* output_path )
-{
-	FILE* fp = fopen( output_path, mode );
-	if ( fp ) 
-	{
-		s32 ret = fwrite( contents, sizeof( u8 ), sz, fp );
-		if ( ret == sz )
-		{
-			return gs_result_success;
-		}
-	}
-	return gs_result_failure;
+	SDL_SetCursor( gs_engine_instance()->ctx.platform->cursors[ cursor] );
 }
 
 // Method for creating platform layer for SDL
@@ -701,38 +435,13 @@ struct gs_platform_i* gs_platform_construct()
 	// Platform Util
 	============================*/
 	platform->ticks		= &sdl_platform_ticks;
-	platform->delay		= &sdl_platform_delay;
-
-	/*============================
-	// Platform UUID
-	============================*/
-	platform->generate_uuid 	= &sdl_generate_uuid;
-	platform->uuid_to_string 	= &sdl_uuid_to_string;
-	platform->hash_uuid 		= &sdl_hash_uuid;
+	platform->sleep		= &sdl_platform_sleep;
+	platform->get_time 	= &sdl_platform_time;
 
 	/*============================
 	// Platform Input
 	============================*/
-	platform->create_input 		= &sdl_create_input;
 	platform->process_input 	= &sdl_process_input;
-
-	platform->was_key_down 		= &sdl_was_key_down;
-	platform->key_pressed 		= &sdl_key_pressed;
-	platform->key_down 			= &sdl_key_down;
-	platform->key_released 	 	= &sdl_key_released;
-
-	platform->was_mouse_down 	= &sdl_was_mouse_down;
-	platform->mouse_pressed 	= &sdl_mouse_pressed;
-	platform->mouse_down 		= &sdl_mouse_down;
-	platform->mouse_released 	= &sdl_mouse_released;
-
-	platform->mouse_delta 			= &sdl_mouse_delta;
-	platform->mouse_position 		= &sdl_mouse_position;
-	platform->mouse_position_x_y 	= &sdl_mouse_position_x_y;
-	platform->mouse_wheel 			= &sdl_mouse_wheel;
-
-	platform->press_key 	= &sdl_press_key;
-	platform->release_key   = &sdl_release_key;
 
 	/*============================
 	// Platform Window
@@ -743,14 +452,19 @@ struct gs_platform_i* gs_platform_construct()
 	platform->window_size_w_h 		= &sdl_window_size_w_h;
 	platform->set_cursor 			= &sdl_set_cursor;
 
-	/*============================
-	// Platform File IO
-	============================*/
-	platform->read_file_contents_into_string_null_term 	= &sdl_read_file_contents_into_string_null_term;
-	platform->write_str_to_file 						= &sdl_write_str_to_file;
-
 	// Todo(John): Remove this from the default initialization and make it a part of a plugin or config setting
 	platform->settings.video.driver = gs_platform_video_driver_type_opengl;
+
+    // Construct cursors
+    platform->cursors[ gs_platform_cursor_arrow ] 		= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_ARROW );
+    platform->cursors[ gs_platform_cursor_ibeam ] 		= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_IBEAM );
+    platform->cursors[ gs_platform_cursor_size_nw_se ] 	= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_SIZENWSE );
+    platform->cursors[ gs_platform_cursor_size_ne_sw ] 	= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_SIZENESW );
+    platform->cursors[ gs_platform_cursor_size_ns ] 	= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_SIZENS );
+    platform->cursors[ gs_platform_cursor_size_we ] 	= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_SIZEWE );
+    platform->cursors[ gs_platform_cursor_size_all ] 	= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_SIZEALL );
+    platform->cursors[ gs_platform_cursor_hand ] 		= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_HAND );
+    platform->cursors[ gs_platform_cursor_no ] 			= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_NO );
 
 	return platform;
 }
