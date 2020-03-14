@@ -39,8 +39,10 @@ gs_result glfw_platform_init( struct gs_platform_i* platform  )
 				glfwWindowHint( GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE );
 				glfwWindowHint( GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE );
 			#else
-				glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, platform->settings.video.graphics.opengl.major_version );
-				glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, platform->settings.video.graphics.opengl.minor_version );
+				// glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, platform->settings.video.graphics.opengl.major_version );
+				// glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, platform->settings.video.graphics.opengl.minor_version );
+				glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 3 );
+				glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 2 );
 				glfwWindowHint( GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE );
 				glfwWindowHint( GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE );
 			#endif
@@ -102,7 +104,7 @@ void glfw_platform_sleep( u32 ticks )
 	#if ( defined GS_PLATFORM_WIN )
 
 			#include <windows.h>
-			Sleep((DWORD)(time));
+			_sleep(ticks);
 
 	#elif ( __APPLE__ || defined GS_PLATFORM_LINUX )
 
@@ -426,6 +428,8 @@ struct gs_platform_i* gs_platform_construct()
 
 	// Todo(John): Remove this from the default initialization and make it a part of a plugin or config setting
 	platform->settings.video.driver = gs_platform_video_driver_type_opengl;
+	platform->settings.video.graphics.opengl.major_version = 3;
+	platform->settings.video.graphics.opengl.minor_version = 3;
 
 	return platform;
 }

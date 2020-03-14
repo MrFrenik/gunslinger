@@ -28,7 +28,7 @@ src=(
 )
 
 lib_dirs=(
-	-L ../third_party/lib/osx/
+	-L ../third_party/lib/release/osx/
 )
 
 # Not sure if I want to take this route or not...or if I want to bite the bullet and write my own platform layers...
@@ -46,7 +46,7 @@ libs=(
 )
 
 # Build
-gcc -O0 ${lib_dirs[*]} ${libs[*]} ${inc[*]} ${src[*]} ${flags[*]} -o Gunslinger
+gcc -O3 ${lib_dirs[*]} ${libs[*]} ${inc[*]} ${src[*]} ${flags[*]} -o Gunslinger
 
 cd ..
 

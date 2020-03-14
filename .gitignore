@@ -1,2 +1,4 @@
 
 bin/Gunslinger
+*.exe
+*.obj

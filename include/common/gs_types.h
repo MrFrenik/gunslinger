@@ -15,7 +15,7 @@ extern "C" {
 #define _inline 			static inline
 #define _local_persist 		static
 
- #if ( defined WIN32 || defined WIN64 )
+ #if ( defined _WIN32 || defined _WIN64 )
 	#define _force_inline 		static __forceinline
 #else
 	#define _force_inline 		static __attribute__((always_inline))

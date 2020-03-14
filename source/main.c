@@ -6,7 +6,7 @@
 // gs_engine engine = {0};
 gs_platform_window_handle window;
 
-gs_result update()
+gs_result app_update()
 {
 	gs_engine* engine = gs_engine_instance();
 	gs_platform_i* platform = engine->ctx.platform;
@@ -36,7 +36,7 @@ gs_result update()
 	return gs_result_in_progress;
 }
 
-gs_result shutdown()
+gs_result app_shutdown()
 {
 	return gs_result_success;
 }
@@ -44,8 +44,8 @@ gs_result shutdown()
 int main( int argc, char** argv ) 
 {
 	struct gs_application_context app;
-	app.update = &update;
-	app.shutdown = &shutdown;
+	app.update = &app_update;
+	app.shutdown = &app_shutdown;
 
 	// Construct internal instance of our engine
 	gs_engine engine;

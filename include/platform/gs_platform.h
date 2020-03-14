@@ -14,9 +14,10 @@ extern "C" {
 
 	#define GS_PLATFORM_MAC
 
-#elif ( defined WIN32 || defined WIN64 )
+#elif ( defined _WIN32 || defined _WIN64 )
 
 	#define GS_PLATFORM_WIN
+	#include <windows.h>
 
 #elif ( defined linux )
 
@@ -395,9 +396,9 @@ b32 __gs_platform_mouse_pressed( gs_platform_mouse_button_code code );
 
 b32 __gs_platform_mouse_released( gs_platform_mouse_button_code code );
 
-gs_vec2 __gs_platform_mouse_delta( struct gs_platform_input* input );
+gs_vec2 __gs_platform_mouse_delta();
 
-gs_vec2 __gs_platform_mouse_position( struct gs_platform_input* input );
+gs_vec2 __gs_platform_mouse_position();
 
 void __gs_platform_mouse_position_x_y( f32* x, f32* y );
 

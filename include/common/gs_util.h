@@ -72,7 +72,7 @@ extern "C" {
 _force_inline void* 
 _gs_malloc_init_impl( usize sz )
 {
-	void* restrict data = malloc( sz );
+	void* data = malloc( sz );
 	memset( data, 0, sz );
 	return data;
 }
