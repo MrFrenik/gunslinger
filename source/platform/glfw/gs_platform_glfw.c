@@ -5,6 +5,12 @@
 // Forward Decls.
 void __glfw_key_callback( GLFWwindow* window, s32 key, s32 scancode, s32 action, s32 mods );
 void __glfw_mouse_button_callback( GLFWwindow* window, s32 button, s32 action, s32 mods );
+void __glfw_mouse_cursor_position_callback( GLFWwindow* window, f64 x, f64 y );
+void __glfw_mouse_scroll_wheel_callback( GLFWwindow* window, f64 xoffset, f64 yoffset );
+void __glfw_mouse_cursor_enter_callback( GLFWwindow* window, s32 entered );
+
+#define __window_from_handle( platform, handle )\
+	( (GLFWwindow*)( gs_slot_array_get( ( platform )->windows, ( handle ) ) ) )
 
 /*============================
 // Platform Initialization
@@ -49,6 +55,17 @@ gs_result glfw_platform_init( struct gs_platform_i* platform  )
 			gs_println( "Video format not supported." );
 		} break;
 	}
+
+    // Construct cursors
+    platform->cursors[ (u32)gs_platform_cursor_arrow ] 		= glfwCreateStandardCursor( GLFW_ARROW_CURSOR );
+    platform->cursors[ (u32)gs_platform_cursor_ibeam ] 		= glfwCreateStandardCursor( GLFW_IBEAM_CURSOR );
+    platform->cursors[ (u32)gs_platform_cursor_size_nw_se ] = glfwCreateStandardCursor( GLFW_CROSSHAIR_CURSOR );
+    platform->cursors[ (u32)gs_platform_cursor_size_ne_sw ] = glfwCreateStandardCursor( GLFW_CROSSHAIR_CURSOR );
+    platform->cursors[ (u32)gs_platform_cursor_size_ns ] 	= glfwCreateStandardCursor( GLFW_VRESIZE_CURSOR );
+    platform->cursors[ (u32)gs_platform_cursor_size_we ] 	= glfwCreateStandardCursor( GLFW_HRESIZE_CURSOR );
+    platform->cursors[ (u32)gs_platform_cursor_size_all ] 	= glfwCreateStandardCursor( GLFW_CROSSHAIR_CURSOR );
+    platform->cursors[ (u32)gs_platform_cursor_hand ] 		= glfwCreateStandardCursor( GLFW_HAND_CURSOR );
+    platform->cursors[ (u32)gs_platform_cursor_no ] 		= glfwCreateStandardCursor( GLFW_ARROW_CURSOR );
 
 	return gs_result_success;
 }
@@ -273,6 +290,24 @@ void __glfw_mouse_button_callback( GLFWwindow* window, s32 button, s32 action, s
 	}
 }
 
+void __glfw_mouse_cursor_position_callback( GLFWwindow* window, f64 x, f64 y )
+{
+	struct gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+	platform->input.mouse.position = (gs_vec2){ x, y };
+}
+
+void __glfw_mouse_scroll_wheel_callback( GLFWwindow* window, f64 x, f64 y )
+{
+	struct gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+	platform->input.mouse.wheel = (gs_vec2){ (f32)x, (f32)y };
+}
+
+// Gets called when mouse enters or leaves frame of window
+void __glfw_mouse_cursor_enter_callback( GLFWwindow* window, s32 entered )
+{
+	// Nothing for now, will capture state for windows later
+}
+
 gs_result glfw_process_input( struct gs_platform_input* input )
 {
 	glfwPollEvents();
@@ -280,7 +315,7 @@ gs_result glfw_process_input( struct gs_platform_input* input )
 	return gs_result_in_progress;
 }
 
-gs_platform_window_handle glfw_create_window( const char* title, u32 width, u32 height )
+void* glfw_create_window( const char* title, u32 width, u32 height )
 {
 	// Grab instance of platform layer from engine
 	struct gs_platform_i* platform = gs_engine_instance()->ctx.platform;
@@ -292,19 +327,19 @@ gs_platform_window_handle glfw_create_window( const char* title, u32 width, u32 
 
 	if (!window) {
 		glfwTerminate();
-		return gs_slot_array_invalid_handle;
+		return NULL;
 	}
 
 	glfwMakeContextCurrent(window);
 
 	// Setting up callbacks for window
 	glfwSetKeyCallback( window, &__glfw_key_callback );
-	glfwSetMouseButtonCallback(window, &__glfw_mouse_button_callback );
+	glfwSetMouseButtonCallback( window, &__glfw_mouse_button_callback );
+	glfwSetCursorPosCallback( window, &__glfw_mouse_cursor_position_callback );
+	glfwSetScrollCallback( window, &__glfw_mouse_scroll_wheel_callback );
+	glfwSetCursorEnterCallback( window, &__glfw_mouse_cursor_enter_callback );
 
-	// Insert into slot array for platform
-	gs_platform_window_handle handle = gs_slot_array_insert( platform->windows, (void*)window );
-
-	return handle;
+	return window;
 }
 
 void glfw_window_swap_buffer( gs_platform_window_handle handle )
@@ -314,10 +349,41 @@ void glfw_window_swap_buffer( gs_platform_window_handle handle )
 	gs_assert( platform );
 
 	// Grab window from handle
-	GLFWwindow* win = (GLFWwindow*)gs_slot_array_get( platform->windows, handle );
+	GLFWwindow* win = __window_from_handle( gs_engine_instance()->ctx.platform, handle );
 	gs_assert( win );
 
     glfwSwapBuffers( win );
+}
+
+void glfw_set_window_size( gs_platform_window_handle handle, s32 w, s32 h )
+{
+	GLFWwindow* win = __window_from_handle( gs_engine_instance()->ctx.platform, handle );
+	gs_assert( win );
+	glfwSetWindowSize( win, w, h );
+}
+
+gs_vec2 glfw_window_size( gs_platform_window_handle handle )
+{
+	GLFWwindow* win = __window_from_handle( gs_engine_instance()->ctx.platform, handle );
+	gs_assert( win );
+	s32 w, h;
+	glfwGetWindowSize( win, &w, &h );
+	return ( gs_vec2 ) { .x = w, .y = h };
+}
+
+void glfw_window_size_w_h( gs_platform_window_handle handle, s32* w, s32* h )
+{
+	GLFWwindow* win = __window_from_handle( gs_engine_instance()->ctx.platform, handle );
+	gs_assert( win );
+	glfwGetWindowSize( win, w, h );
+}
+
+void glfw_set_cursor( gs_platform_window_handle handle, gs_platform_cursor cursor )
+{
+	struct gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+	GLFWwindow* win = __window_from_handle( platform, handle );
+	GLFWcursor* cp = ((GLFWcursor*)platform->cursors[ (u32)cursor ]); 
+	glfwSetCursor( win, cp );
 }
 
 // Method for creating platform layer for SDL
@@ -351,25 +417,15 @@ struct gs_platform_i* gs_platform_construct()
 	/*============================
 	// Platform Window
 	============================*/
-	platform->create_window 		= &glfw_create_window;
-	platform->window_swap_buffer 	= &glfw_window_swap_buffer;
-	// platform->window_size 			= &sdl_window_size;
-	// platform->window_size_w_h 		= &sdl_window_size_w_h;
-	// platform->set_cursor 			= &sdl_set_cursor;
+	platform->create_window_internal	= &glfw_create_window;
+	platform->window_swap_buffer 		= &glfw_window_swap_buffer;
+	platform->window_size 				= &glfw_window_size;
+	platform->window_size_w_h 			= &glfw_window_size_w_h;
+	platform->set_window_size 			= &glfw_set_window_size;
+	platform->set_cursor 				= &glfw_set_cursor;
 
 	// Todo(John): Remove this from the default initialization and make it a part of a plugin or config setting
 	platform->settings.video.driver = gs_platform_video_driver_type_opengl;
-
-    // Construct cursors
-    platform->cursors[ gs_platform_cursor_arrow ] 		= glfwCreateStandardCursor( GLFW_ARROW_CURSOR );
-    platform->cursors[ gs_platform_cursor_ibeam ] 		= glfwCreateStandardCursor( GLFW_IBEAM_CURSOR );
-    platform->cursors[ gs_platform_cursor_size_nw_se ] 	= glfwCreateStandardCursor( GLFW_CROSSHAIR_CURSOR );
-    platform->cursors[ gs_platform_cursor_size_ne_sw ] 	= glfwCreateStandardCursor( GLFW_CROSSHAIR_CURSOR );
-    platform->cursors[ gs_platform_cursor_size_ns ] 	= glfwCreateStandardCursor( GLFW_VRESIZE_CURSOR );
-    platform->cursors[ gs_platform_cursor_size_we ] 	= glfwCreateStandardCursor( GLFW_HRESIZE_CURSOR );
-    platform->cursors[ gs_platform_cursor_size_all ] 	= glfwCreateStandardCursor( GLFW_CROSSHAIR_CURSOR );
-    platform->cursors[ gs_platform_cursor_hand ] 		= glfwCreateStandardCursor( GLFW_HAND_CURSOR );
-    platform->cursors[ gs_platform_cursor_no ] 			= glfwCreateStandardCursor( GLFW_ARROW_CURSOR );
 
 	return platform;
 }

@@ -2,6 +2,20 @@
 #include "base/gs_engine.h"
 
 /*============================
+// Platform Window
+============================*/
+
+gs_platform_window_handle __gs_platform_create_window( const char* title, u32 width, u32 height )
+{
+	struct gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+	void* win = platform->create_window_internal( title, width, height );
+	gs_assert( win );
+	gs_platform_window_handle handle = gs_slot_array_insert( platform->windows, win );
+	gs_dyn_array_push( platform->active_window_handles, handle );
+	return handle;
+}
+
+/*============================
 // Platform Input
 ============================*/
 
@@ -125,8 +139,8 @@ gs_vec2 __gs_platform_mouse_position()
 
 	return ( gs_vec2 ) 
 	{
-		.x = input->mouse.position.x, 
-		.y = input->mouse.position.y
+		input->mouse.position.x, 
+		input->mouse.position.y
 	};
 }
 

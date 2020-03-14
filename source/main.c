@@ -8,25 +8,29 @@ gs_platform_window_handle window;
 
 gs_result update()
 {
+	gs_engine* engine = gs_engine_instance();
+	gs_platform_i* platform = engine->ctx.platform;
+
 	// Draw shit to screen? That'd be nice, wouldn't it?
-	gs_timed_action( 100, {
-		gs_println( "Updating: FPS: %.2f", gs_engine_instance()->ctx.platform->time.fps );
+	gs_timed_action( 0, {
+		gs_println( "fps: %.2f, mp: <%.2f, %.2f>", 
+				platform->time.fps, 
+				platform->input.mouse.position.x, 
+				platform->input.mouse.position.y 
+		);
 	});
 
-	// Swap window buffer here, I guess?
-	gs_engine* engine = gs_engine_instance();
-	engine->ctx.platform->window_swap_buffer( window );
-
-	if ( engine->ctx.platform->mouse_pressed( gs_mouse_lbutton ) ) {
-		gs_println( "lmb pressed" );
+	if ( engine->ctx.platform->key_pressed( gs_keycode_w ) ) {
+		platform->set_window_size( window, 200, 500 );
 	}
-
-	if ( engine->ctx.platform->mouse_released( gs_mouse_lbutton ) ) {
-		gs_println( "lmb released" );
+	if ( engine->ctx.platform->key_pressed( gs_keycode_s ) ) {
+		platform->set_window_size( window, 100, 200 );
 	}
-
-	if ( engine->ctx.platform->mouse_down( gs_mouse_lbutton ) ) {
-		gs_println( "lmb held" );
+	if ( engine->ctx.platform->key_pressed( gs_keycode_a ) ) {
+		platform->set_window_size( window, 500, 200 );
+	}
+	if ( engine->ctx.platform->key_pressed( gs_keycode_d ) ) {
+		platform->set_window_size( window, 400, 300 );
 	}
 
 	return gs_result_in_progress;
@@ -48,8 +52,8 @@ int main( int argc, char** argv )
 	gs_engine_init( &engine );
 	engine.ctx.app = app;
 
-	// This isn't even being called...
-	window = engine.ctx.platform->create_window( "game", 800, 600 );
+	// Construct window
+	window = engine.ctx.platform->create_window( "Test", 800, 600 );
 
 	// Run the engine loop
 	gs_result res = engine.run();

@@ -13,6 +13,7 @@ gs_result gs_engine_shutdown();
 gs_result gs_default_app_update();
 gs_result gs_default_app_shutdown();
 void __gs_default_init_platform();
+void __gs_verify_platform_correctness( struct gs_platform_i* platform );
 
 void gs_engine_init( gs_engine* engine )
 {
@@ -38,32 +39,19 @@ void gs_engine_init( gs_engine* engine )
 
 		// Need to have video settings passed down from user
 		gs_engine_instance_g->ctx.platform = gs_platform_construct();
-		gs_assert( gs_engine_instance_g->ctx.platform );
 
 		// Default initialization for platform here
 		__gs_default_init_platform( gs_engine_instance_g->ctx.platform );
 
-		// Initialize plaform layer
-		gs_engine_instance_g->ctx.platform->init( gs_engine_instance_g->ctx.platform );
-
 		// Default application context
 		gs_engine_instance_g->ctx.app.update = &gs_default_app_update;
 		gs_engine_instance_g->ctx.app.shutdown = &gs_default_app_shutdown;
-
-		// Might not want to have these by default...
-		// gs_engine_instance_g->ctx.input = gs_engine_instance_g->ctx.platform->create_input();
 
 		// gs_engine_instance_g->ctx.assets = gs_construct_heap( gs_asset_subsystem );
 		// gs_asset_subsystem_init( gs_engine_instance_g->ctx.assets, "./assets/" );
 
 		// Construct graphics
 		// gs_engine_instance_g->ctx.graphics = gs_graphics_subsystem_construct();
-
-		// gs_assert( gs_engine_instance_g->ctx.input );
-
-		// Just assert these for now
-		gs_assert( gs_engine_instance_g->ctx.platform->process_input );
-		gs_assert( gs_engine_instance_g->ctx.platform->key_pressed );
 	}
 	// return gs_engine_instance_g;
 }
@@ -127,8 +115,12 @@ gs_result gs_engine_run()
 			gs_engine_instance()->ctx.platform->sleep( (u32)( 1000.f / locked_frame_rate - (f32)ticks ) );
 		}
 
-		// Swap window buffer
-		// gs_engine_instance()->ctx.platform->window_swap_buffer( gs_engine_instance()->ctx.platform->window );
+		// NOTE(John): This won't work forever. Must change eventually.
+		// Swap all platform window buffers? Sure...
+		gs_for_range_i( gs_dyn_array_size( platform->active_window_handles ) )
+		{
+			platform->window_swap_buffer( platform->active_window_handles[ i ] );
+		}
 	}
 
 	// Shouldn't hit here
@@ -159,8 +151,17 @@ gs_result gs_default_app_shutdown()
 
 void __gs_default_init_platform( struct gs_platform_i* platform )
 {
-	// Initialize slot array for window management
-	gs_engine_instance_g->ctx.platform->windows = gs_slot_array_new( gs_platform_window_ptr );
+	gs_assert( platform );
+
+	// Just assert these for now
+	__gs_verify_platform_correctness( platform );
+
+	/*============================
+	// Platform Window
+	============================*/
+	platform->windows 				= gs_slot_array_new( gs_platform_window_ptr );
+	platform->active_window_handles = gs_dyn_array_new( gs_platform_window_handle );
+	platform->create_window 		= &__gs_platform_create_window;
 
 	/*============================
 	// Platform Input
@@ -200,8 +201,39 @@ void __gs_default_init_platform( struct gs_platform_i* platform )
 	platform->write_str_to_file 						= &__gs_platform_write_str_to_file;
 
 	// Default world time initialization
-	gs_engine_instance_g->ctx.platform->time.max_fps = 60.f;
-	gs_engine_instance_g->ctx.platform->time.total_elapsed_time = 0.f;
-	gs_engine_instance_g->ctx.platform->time.delta_time = 0.f;
-	gs_engine_instance_g->ctx.platform->time.fps = 0.f;
+	platform->time.max_fps = 60.f;
+	platform->time.total_elapsed_time = 0.f;
+	platform->time.delta_time = 0.f;
+	platform->time.fps = 0.f;
+
+
+	// Custom initialize plaform layer
+	platform->init( platform );
 }
+
+void __gs_verify_platform_correctness( struct gs_platform_i* platform )
+{
+	gs_assert( platform );
+	gs_assert( platform->init );
+	gs_assert( platform->shutdown );
+	gs_assert( platform->ticks );
+	gs_assert( platform->sleep );
+	gs_assert( platform->get_time );
+	gs_assert( platform->process_input );
+	gs_assert( platform->create_window_internal );
+	gs_assert( platform->window_swap_buffer );
+	gs_assert( platform->set_window_size );
+	gs_assert( platform->window_size );
+	gs_assert( platform->window_size_w_h );
+	gs_assert( platform->set_cursor );
+}
+
+
+
+
+
+
+
+
+
+

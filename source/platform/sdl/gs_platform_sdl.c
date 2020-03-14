@@ -59,6 +59,17 @@ gs_result sdl_platform_init( struct gs_platform_i* platform  )
 		} break;
 	}
 
+    // Construct cursors
+    platform->cursors[ gs_platform_cursor_arrow ] 		= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_ARROW );
+    platform->cursors[ gs_platform_cursor_ibeam ] 		= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_IBEAM );
+    platform->cursors[ gs_platform_cursor_size_nw_se ] 	= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_SIZENWSE );
+    platform->cursors[ gs_platform_cursor_size_ne_sw ] 	= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_SIZENESW );
+    platform->cursors[ gs_platform_cursor_size_ns ] 	= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_SIZENS );
+    platform->cursors[ gs_platform_cursor_size_we ] 	= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_SIZEWE );
+    platform->cursors[ gs_platform_cursor_size_all ] 	= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_SIZEALL );
+    platform->cursors[ gs_platform_cursor_hand ] 		= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_HAND );
+    platform->cursors[ gs_platform_cursor_no ] 			= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_NO );
+
 	return gs_result_success;
 }
 
@@ -322,7 +333,7 @@ gs_result __sdl_init_gl_context( struct gs_platform_i* platform, SDL_Window* win
 	return gs_result_success;
 }
 
-gs_platform_window_handle sdl_create_window( const char* title, u32 width, u32 height )
+void* sdl_create_window( const char* title, u32 width, u32 height )
 {
 	// Grab instance of platform API
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
@@ -350,9 +361,8 @@ gs_platform_window_handle sdl_create_window( const char* title, u32 width, u32 h
 			{
 				gs_println( "SDL_CreateWindow Error: %s", SDL_GetError() );
 				gs_assert( false );
-				return gs_slot_array_invalid_handle;
+				return NULL;
 			}
-
 
 			// For now, the the window will be an opengl window if SDL is used.
 			// Single, static opengl context
@@ -363,18 +373,13 @@ gs_platform_window_handle sdl_create_window( const char* title, u32 width, u32 h
 				{
 					gs_println( "SDL_CreateWindow Error: %s", SDL_GetError() );
 					gs_assert( false );
-					return gs_slot_array_invalid_handle;
+					return NULL;
 				}
 			}
 
 		    SDL_GL_MakeCurrent( win, platform->settings.video.graphics.opengl.ctx );
 
-		    // Add to slot array
-		    gs_platform_window_handle handle = gs_slot_array_insert( platform->windows, (void*)win );
-
-			gs_println( "here" );
-
-		    return handle;
+		    return (void*)win;
 
 		} break;
 
@@ -383,10 +388,12 @@ gs_platform_window_handle sdl_create_window( const char* title, u32 width, u32 h
 			gs_println( "Error: graphics driver type not supported." );
 			gs_assert( false );
 		} break;
+
+		return NULL;
 	}
 
 	// Shouldn't get here
-	return gs_slot_array_invalid_handle;
+	return NULL;
 }
 
 void sdl_window_swap_buffer( gs_platform_window_handle handle )
@@ -410,9 +417,16 @@ void sdl_window_size_w_h( gs_platform_window_handle handle, s32* w, s32* h )
 	SDL_GetWindowSize( win, w, h );
 }
 
-void sdl_set_cursor( gs_platform_cursor cursor )
+void sdl_set_window_size( gs_platform_window_handle handle, s32 w, s32 h )
 {
-	SDL_SetCursor( gs_engine_instance()->ctx.platform->cursors[ cursor] );
+	SDL_Window* win = __window_from_handle( gs_engine_instance()->ctx.platform, handle );
+	SDL_SetWindowSize( win, w, h );
+}
+
+void sdl_set_cursor( gs_platform_window_handle handle, gs_platform_cursor cursor )
+{
+	SDL_Cursor* cp = ( SDL_Cursor* )gs_engine_instance()->ctx.platform->cursors[ cursor ];
+	SDL_SetCursor( cp );
 }
 
 // Method for creating platform layer for SDL
@@ -446,25 +460,15 @@ struct gs_platform_i* gs_platform_construct()
 	/*============================
 	// Platform Window
 	============================*/
-	platform->create_window 		= &sdl_create_window;
-	platform->window_swap_buffer 	= &sdl_window_swap_buffer;
-	platform->window_size 			= &sdl_window_size;
-	platform->window_size_w_h 		= &sdl_window_size_w_h;
-	platform->set_cursor 			= &sdl_set_cursor;
+	platform->create_window_internal 	= &sdl_create_window;
+	platform->window_swap_buffer 		= &sdl_window_swap_buffer;
+	platform->window_size 				= &sdl_window_size;
+	platform->window_size_w_h 			= &sdl_window_size_w_h;
+	platform->set_window_size 			= &sdl_set_window_size;
+	platform->set_cursor 				= &sdl_set_cursor;
 
 	// Todo(John): Remove this from the default initialization and make it a part of a plugin or config setting
 	platform->settings.video.driver = gs_platform_video_driver_type_opengl;
-
-    // Construct cursors
-    platform->cursors[ gs_platform_cursor_arrow ] 		= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_ARROW );
-    platform->cursors[ gs_platform_cursor_ibeam ] 		= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_IBEAM );
-    platform->cursors[ gs_platform_cursor_size_nw_se ] 	= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_SIZENWSE );
-    platform->cursors[ gs_platform_cursor_size_ne_sw ] 	= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_SIZENESW );
-    platform->cursors[ gs_platform_cursor_size_ns ] 	= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_SIZENS );
-    platform->cursors[ gs_platform_cursor_size_we ] 	= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_SIZEWE );
-    platform->cursors[ gs_platform_cursor_size_all ] 	= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_SIZEALL );
-    platform->cursors[ gs_platform_cursor_hand ] 		= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_HAND );
-    platform->cursors[ gs_platform_cursor_no ] 			= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_NO );
 
 	return platform;
 }

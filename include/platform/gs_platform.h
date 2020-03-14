@@ -213,7 +213,6 @@ typedef struct gs_platform_mouse
 	b32 prev_button_map[ gs_mouse_button_code_count ];
 	gs_vec2 position;
 	gs_vec2 prev_position;
-	gs_vec2 delta;
 	gs_vec2 wheel;
 } gs_platform_mouse;
 
@@ -337,10 +336,12 @@ typedef struct gs_platform_i
 	// Platform Window
 	============================================================*/
 	gs_platform_window_handle 	( * create_window )( const char* title, u32 width, u32 height );
+	void* 						( * create_window_internal )( const char* title, u32 width, u32 height );
 	void 						( * window_swap_buffer )( gs_platform_window_handle handle );
 	gs_vec2 					( * window_size )( gs_platform_window_handle handle );
+	void 						( * set_window_size )( gs_platform_window_handle handle, s32 width, s32 height );
 	void 						( * window_size_w_h )( gs_platform_window_handle handle, s32* width, s32* height );
-	void 						( * set_cursor )( gs_platform_cursor cursor );
+	void 						( * set_cursor )( gs_platform_window_handle handle, gs_platform_cursor cursor );
 
 	/*============================================================
 	// Platform File IO
@@ -361,11 +362,16 @@ typedef struct gs_platform_i
 
 	// For now, just keep a window here as main window...
 	gs_slot_array( gs_platform_window_ptr ) windows;
+	gs_dyn_array( gs_platform_window_handle ) active_window_handles;
 
 	// Cursors
 	void* cursors[ gs_platform_cursor_count ];
 
 } gs_platform_i;
+
+/*============================
+// Platform Input
+============================*/
 
 void __gs_platform_update_input( );
 
@@ -402,9 +408,13 @@ void __gs_platform_press_key( gs_platform_keycode code );
 void __gs_platform_release_key( gs_platform_keycode code );
 
 /*============================
+// Platform Window
+============================*/
+gs_platform_window_handle __gs_platform_create_window( const char* title, u32 width, u32 height );
+
+/*============================
 // Platform File IO
 ============================*/
-
 char* __gs_platform_read_file_contents_into_string_null_term( const char* file_path, const char* mode, usize* sz );
 
 gs_result __gs_platform_write_str_to_file( const char* contents, const char* mode, usize sz, const char* output_path );
