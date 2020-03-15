@@ -13,6 +13,6 @@ windows:
   - Run the executable
   
  osx: 
-  - From terminal, run `./bash proc/osx/compile_osx_gcc.sh
+  - From terminal, run `./bash proc/osx/compile_osx_gcc.sh`
   - This will build the executable and place it in `gunslinger/bin`
   - Run the executable
