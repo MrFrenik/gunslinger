@@ -15,17 +15,12 @@ gs_result gs_default_app_shutdown();
 
 gs_resource_handle window;
 
-void gs_engine_init( gs_engine* engine, gs_application_desc app_desc )
+gs_engine* gs_engine_construct( gs_application_desc app_desc )
 {
-	// Set instance
 	if ( gs_engine_instance_g == NULL )
 	{
-		// NOTE(john): malloc DOES NOT initialize any data, so cannot rely on the memory actually being null,
-		// So must explicitly zero out the memory
-		// gs_engine_instance_g = gs_malloc_init( gs_engine );
-
-		// Set instance
-		gs_engine_instance_g = engine;
+		// Construct instance
+		gs_engine_instance_g = gs_malloc_init( gs_engine );
 
 		// Initialize the meta class registry
 		// Want a way to add user meta class information as well as the engine's (haven't considered how that looks yet)
@@ -44,8 +39,7 @@ void gs_engine_init( gs_engine* engine, gs_application_desc app_desc )
 		__gs_default_init_platform( gs_engine_instance_g->ctx.platform );
 
 		// Construct window
-		gs_engine_instance()->ctx.platform->create_window( "Test", 800, 600 );
-		// window = gs_engine_instance()->ctx.platform->create_window( "Test", 800, 600 );
+		gs_engine_instance()->ctx.platform->create_window( app_desc.window_title, app_desc.window_width, app_desc.window_height );
 
 		// Construct graphics api 
 		gs_engine_instance_g->ctx.graphics = gs_graphics_construct();
@@ -68,7 +62,8 @@ void gs_engine_init( gs_engine* engine, gs_application_desc app_desc )
 		// Construct graphics
 		// gs_engine_instance_g->ctx.graphics = gs_graphics_subsystem_construct();
 	}
-	// return gs_engine_instance_g;
+
+	return gs_engine_instance_g;
 }
 
 gs_result gs_engine_run()

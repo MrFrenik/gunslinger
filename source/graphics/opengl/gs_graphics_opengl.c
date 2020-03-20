@@ -751,6 +751,11 @@ gs_resource( gs_uniform ) opengl_construct_uniform( gs_resource( gs_shader ) s_h
 	// Grab location of uniform
 	u32 location = glGetUniformLocation( s.program_id, uniform_name );
 
+	if ( location >= u32_max )
+	{
+		gs_println( "Warning: uniform not found: \"%s\"", uniform_name );
+	}
+
 	// Won't know uniform's type, unfortunately...
 	// Set uniform location
 	u.location = location;

@@ -16,27 +16,32 @@ gs_resource( gs_uniform )						g_uniform = {0};
 
 f32 vert_data[] = 
 {
-    -0.5f, -0.5f, 0.0f,
-     0.5f, -0.5f, 0.0f,
-     0.0f,  0.5f, 0.0f
+    // positions         // colors
+     0.5f, -0.5f, 0.0f,  1.0f, 0.0f, 0.0f,  // bottom right
+    -0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,  // bottom left
+     0.0f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f   // top
 };
 
 const char* vert_src = "#version 330 core\n\
 layout (location = 0) in vec3 aPos;\n\
+layout (location = 1) in vec3 aColor;\n\
+out vec3 outColor;\n\
 void main()\n\
 {\n\
     gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n\
+    outColor = aColor;\n\
 }";
 
 const char* frag_src ="#version 330 core\n\
 uniform float u_time;\n\
 out vec4 FragColor;\n\
+in vec3 outColor;\n\
 void main()\n\
 {\n\
-    FragColor = vec4(sin(u_time), cos(u_time), 1.0f, 1.0f);\n\
+    FragColor = vec4(outColor, 1.f);\n\
 }";
 
-void render()
+void render_scene()
 {
 	// Let's just clear some color, shall we?
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
@@ -77,6 +82,7 @@ gs_result app_init()
 	// Construct vertex layout decl
 	g_vdesc = gfx->construct_vertex_attribute_layout_desc();
 	gfx->add_vertex_attribute( g_vdesc, gs_vertex_attribute_float3 );
+	gfx->add_vertex_attribute( g_vdesc, gs_vertex_attribute_float3 );
 
 	// Construct vertex buffer using our layout
 	g_vb = gfx->construct_vertex_buffer( g_vdesc, (void*)vert_data, sizeof( vert_data ) );
@@ -88,22 +94,8 @@ gs_result app_init()
 
 gs_result app_update()
 {
-	gs_engine* engine = gs_engine_instance();
-	gs_platform_i* platform = engine->ctx.platform;
-
-	// Draw shit to screen? That'd be nice, wouldn't it?
-	gs_timed_action( 10, {
-		gs_println( "frame: %.2f, update: %.2f, render: %.2f, mp: <%.2f, %.2f>", 
-				platform->time.frame, 
-				platform->time.update, 
-				platform->time.render, 
-				platform->input.mouse.position.x, 
-				platform->input.mouse.position.y 
-		);
-	});
-
 	// Render scene
-	render();
+	render_scene();
 
 	return gs_result_in_progress;
 }
@@ -119,13 +111,15 @@ int main( int argc, char** argv )
 	app.update = &app_update;
 	app.shutdown = &app_shutdown;
 	app.init = &app_init;
+	app.window_title = "Test App";
+	app.window_width = 800;
+	app.window_height = 600;
 
 	// Construct internal instance of our engine
-	gs_engine engine;
-	gs_engine_init( &engine, app );
+	gs_engine* engine = gs_engine_construct( app );
 
 	// Run the engine loop
-	gs_result res = engine.run();
+	gs_result res = engine->run();
 
 	// Run engine
 	if ( res != gs_result_success ) 

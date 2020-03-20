@@ -25,6 +25,9 @@ typedef struct gs_application_desc
 	gs_result ( * init )();
 	gs_result ( * update )();
 	gs_result ( * shutdown )();
+	const char* window_title;
+	u32 window_width;
+	u32 window_height;
 } gs_application_desc;
 
 // What would the context necessarily hold? Some container of all subsystems? 
@@ -43,8 +46,7 @@ typedef struct
 	gs_result ( * shutdown )();
 } gs_engine;
 
-// gs_engine* gs_engine_construct();
-void gs_engine_init( gs_engine* engine, gs_application_desc app_desc );
+gs_engine* gs_engine_construct( gs_application_desc app_desc );
 gs_engine* gs_engine_instance();
 
 #ifdef __cplusplus

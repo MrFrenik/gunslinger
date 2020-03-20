@@ -26,15 +26,6 @@ gs_result glfw_platform_init( struct gs_platform_i* platform  )
 	// Verify platform is valid
 	gs_assert( platform );
 
-//     glfwInit();
-//     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-//     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-//     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-// #ifdef __APPLE__
-//     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // uncomment this statement to fix compilation on OS X
-// #endif
-
 	if ( !glfwInit() ) 
 	{
 		gs_println( "Failed to initialize GLFW." );
@@ -113,7 +104,7 @@ void glfw_platform_sleep( f32 ms )
 {
 	#if ( defined GS_PLATFORM_WIN )
 
-			_sleep(ticks);
+			_sleep( ms );
 
 	#elif ( defined GS_PLATFORM_APPLE )
 
