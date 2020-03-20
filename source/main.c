@@ -110,7 +110,7 @@ int main( int argc, char** argv )
 	// Run the engine loop
 	gs_result res = engine->run();
 
-	// Run engine
+	// Check result of engine after exiting loop
 	if ( res != gs_result_success ) 
 	{
 		gs_println( "Error: Engine did not successfully finish running." );
