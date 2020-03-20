@@ -13,6 +13,8 @@ gs_result gs_engine_shutdown();
 gs_result gs_default_app_update();
 gs_result gs_default_app_shutdown();
 
+gs_resource_handle window;
+
 void gs_engine_init( gs_engine* engine, gs_application_desc app_desc )
 {
 	// Set instance
@@ -43,6 +45,7 @@ void gs_engine_init( gs_engine* engine, gs_application_desc app_desc )
 
 		// Construct window
 		gs_engine_instance()->ctx.platform->create_window( "Test", 800, 600 );
+		// window = gs_engine_instance()->ctx.platform->create_window( "Test", 800, 600 );
 
 		// Construct graphics api 
 		gs_engine_instance_g->ctx.graphics = gs_graphics_construct();
@@ -117,6 +120,8 @@ gs_result gs_engine_run()
 		{
 			platform->window_swap_buffer( platform->active_window_handles[ i ] );
 		}
+
+		// platform->window_swap_buffer( window );
 
 		// Frame locking
 	    platform->time.current 	= platform->elapsed_time();

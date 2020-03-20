@@ -10,6 +10,7 @@ void __glfw_mouse_button_callback( GLFWwindow* window, s32 button, s32 action, s
 void __glfw_mouse_cursor_position_callback( GLFWwindow* window, f64 x, f64 y );
 void __glfw_mouse_scroll_wheel_callback( GLFWwindow* window, f64 xoffset, f64 yoffset );
 void __glfw_mouse_cursor_enter_callback( GLFWwindow* window, s32 entered );
+void __glfw_frame_buffer_size_callback( GLFWwindow* window, s32 width, s32 height );
 
 #define __window_from_handle( platform, handle )\
 	( (GLFWwindow*)( gs_slot_array_get( ( platform )->windows, ( handle ) ) ) )
@@ -25,6 +26,15 @@ gs_result glfw_platform_init( struct gs_platform_i* platform  )
 	// Verify platform is valid
 	gs_assert( platform );
 
+//     glfwInit();
+//     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+//     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+//     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+// #ifdef __APPLE__
+//     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // uncomment this statement to fix compilation on OS X
+// #endif
+
 	if ( !glfwInit() ) 
 	{
 		gs_println( "Failed to initialize GLFW." );
@@ -36,16 +46,15 @@ gs_result glfw_platform_init( struct gs_platform_i* platform  )
 		case gs_platform_video_driver_type_opengl: 
 		{
 			#if ( defined  GS_PLATFORM_APPLE )
-				gs_println( "yep" );
 				glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 3 );
-				glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 2 );
+				glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 3 );
 				glfwWindowHint( GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE );
 				glfwWindowHint( GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE );
 			#else
 				// glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, platform->settings.video.graphics.opengl.major_version );
 				// glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, platform->settings.video.graphics.opengl.minor_version );
 				glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 3 );
-				glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 2 );
+				glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 3 );
 				glfwWindowHint( GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE );
 				glfwWindowHint( GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE );
 			#endif
@@ -303,6 +312,16 @@ void __glfw_mouse_cursor_enter_callback( GLFWwindow* window, s32 entered )
 	// Nothing for now, will capture state for windows later
 }
 
+void __glfw_frame_buffer_size_callback( GLFWwindow* window, s32 width, s32 height )
+{
+	// gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	// if ( gfx )
+	// {
+	// 	gfx->set_viewport( width, height );
+	// }	
+	glViewport( 0, 0, width, height );
+}
+
 gs_result glfw_process_input( struct gs_platform_input* input )
 {
 	glfwPollEvents();
@@ -312,7 +331,27 @@ gs_result glfw_process_input( struct gs_platform_input* input )
 
 void* glfw_create_window( const char* title, u32 width, u32 height )
 {
+    GLFWwindow* window = glfwCreateWindow(width, height, title, NULL, NULL);
+    if (window == NULL)
+    {
+        // std::cout << "Failed to create GLFW window" << std::endl;
+        glfwTerminate();
+        return NULL;
+    }
+    glfwMakeContextCurrent(window);
+	glfwSetKeyCallback( window, &__glfw_key_callback );
+	glfwSetMouseButtonCallback( window, &__glfw_mouse_button_callback );
+	glfwSetCursorPosCallback( window, &__glfw_mouse_cursor_position_callback );
+	glfwSetScrollCallback( window, &__glfw_mouse_scroll_wheel_callback );
+	glfwSetCursorEnterCallback( window, &__glfw_mouse_cursor_enter_callback );
+	glfwSetFramebufferSizeCallback(window, &__glfw_frame_buffer_size_callback);
+
+    // glad: load all OpenGL function pointers
+    // ---------------------------------------
+    glewInit();
+
 	// Grab instance of platform layer from engine
+	/*
 	struct gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 	gs_assert( platform );
 
@@ -325,9 +364,7 @@ void* glfw_create_window( const char* title, u32 width, u32 height )
 		return NULL;
 	}
 
-	glfwMakeContextCurrent(window);
-
-	glewInit();
+	glfwMakeContextCurrent( window );
 
 	// Setting up callbacks for window
 	glfwSetKeyCallback( window, &__glfw_key_callback );
@@ -335,6 +372,10 @@ void* glfw_create_window( const char* title, u32 width, u32 height )
 	glfwSetCursorPosCallback( window, &__glfw_mouse_cursor_position_callback );
 	glfwSetScrollCallback( window, &__glfw_mouse_scroll_wheel_callback );
 	glfwSetCursorEnterCallback( window, &__glfw_mouse_cursor_enter_callback );
+	glfwSetFramebufferSizeCallback(window, &__glfw_frame_buffer_size_callback);
+
+	glewInit();
+	*/
 
 	return window;
 }

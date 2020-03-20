@@ -52,29 +52,29 @@ typedef struct texture
 {
 	u16 width;
 	u16 height;
-	u16 id;	
+	u32 id;	
 } texture;
 
 typedef struct shader
 {
-	u16 program_id;
+	u32 program_id;
 } shader;
 
 typedef struct uniform
 {
 	gs_uniform_type type;
-	u16 location;
+	u32 location;
 } uniform;
 
 typedef struct index_buffer
 {
-	u16 ibo;
+	u32 ibo;
 } index_buffer;
 
 typedef struct vertex_buffer
 {
-	u16 vbo;
-	u16 vao;		// Not sure if I need to do this as well, but we will for now...
+	u32 vbo;
+	u32 vao;		// Not sure if I need to do this as well, but we will for now...
 } vertex_buffer;
 
 typedef struct vertex_attribute_layout_desc
@@ -201,14 +201,14 @@ void opengl_bind_shader( gs_resource( gs_command_buffer ) cb_handle, gs_resource
 
 	// Construct command packet for binding shader
 	gs_byte_buffer_write( &cb->commands, u32, gs_opengl_op_bind_shader );
-	gs_byte_buffer_write( &cb->commands, u16, s.program_id );
+	gs_byte_buffer_write( &cb->commands, u32, s.program_id );
 
 	// Increase command amount
 	cb->num_commands++;
 }
 
 #define __write_uniform_val(bb, type, u_data)\
-	gs_byte_buffer_write(&bb, type, *((type*)(u_data)))
+	gs_byte_buffer_write(&bb, type, *((type*)(u_data)));
 
 void opengl_bind_set_bind_uniform( gs_resource( gs_command_buffer ) cb_handle, gs_resource( gs_uniform ) u_handle, void* u_data )
 {
@@ -224,9 +224,9 @@ void opengl_bind_set_bind_uniform( gs_resource( gs_command_buffer ) cb_handle, g
 	// Write out op code
 	gs_byte_buffer_write( &cb->commands, u32, gs_opengl_op_bind_set_uniform );
 	// Write out uniform location
-	gs_byte_buffer_write( &cb->commands, u16, u.location );
+	gs_byte_buffer_write( &cb->commands, u32, (u32)u.location );
 	// Write out uniform type
-	gs_byte_buffer_write( &cb->commands, u32, u.type );
+	gs_byte_buffer_write( &cb->commands, u32, (u32)u.type );
 
 	// Write out uniform value
 	switch ( u.type )
@@ -263,7 +263,7 @@ void opengl_bind_vertex_buffer( gs_resource( gs_command_buffer ) cb_handle, gs_r
 	// Write op code
 	gs_byte_buffer_write( &cb->commands, u32, gs_opengl_op_bind_vertex_buffer );
 	// Write out vao
-	gs_byte_buffer_write( &cb->commands, u16, vb.vao );
+	gs_byte_buffer_write( &cb->commands, u32, vb.vao );
 
 	// Increase command amount
 	cb->num_commands++;
@@ -355,32 +355,33 @@ void opengl_submit_command_buffer( gs_resource( gs_command_buffer ) cb_handle )
 				// Set clear color
 				glClearColor( col.x, col.y, col.z, col.w );
 				// Clear screen
-				glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT );
+				glClear( GL_COLOR_BUFFER_BIT );
+				// glViewport(0, 0, 800, 600);
 			} break;
 
 			case gs_opengl_op_bind_vertex_buffer:
 			{
 				// Read out vao
-				u16 vao = gs_byte_buffer_read( &cb->commands, u16 );
+				u32 vao = gs_byte_buffer_read( &cb->commands, u32 );
 
 				// Bind vao
-				glBindVertexArray( (u32)vao );
+				glBindVertexArray( vao );
 			} break;
 
 			case gs_opengl_op_bind_shader: 
 			{
 				// Read in shader id
-				u16 program_id = gs_byte_buffer_read( &cb->commands, u16 );
+				u32 program_id = gs_byte_buffer_read( &cb->commands, u32 );
 				// Bind program
-				glUseProgram( (u32)program_id );
+				glUseProgram( program_id );
 			} break;
 
 			case gs_opengl_op_bind_set_uniform:
 			{
+				// Read in uniform location
+				u32 location = gs_byte_buffer_read( &cb->commands, u32 );
 				// Read in uniform type
 				gs_uniform_type type = (gs_uniform_type)gs_byte_buffer_read( &cb->commands, u32 );
-				// Read in uniform location
-				u16 location = gs_byte_buffer_read( &cb->commands, u16 );
 
 				// Read and bind val
 				switch ( type )

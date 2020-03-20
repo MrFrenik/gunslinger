@@ -11,29 +11,29 @@ _global gs_resource_handle window;
 gs_resource( gs_command_buffer ) 				g_cb = {0};
 gs_resource( gs_vertex_buffer ) 				g_vb = {0};
 gs_resource( gs_shader ) 						g_shader = {0};
-gs_resource( gs_vertex_attribute_layout_desc)	g_vdesc = {0};
+gs_resource( gs_vertex_attribute_layout_desc )	g_vdesc = {0};
+gs_resource( gs_uniform )						g_uniform = {0};
 
-f32 vertices[] = 
+f32 vert_data[] = 
 {
     -0.5f, -0.5f, 0.0f,
      0.5f, -0.5f, 0.0f,
      0.0f,  0.5f, 0.0f
 };
 
-const char* vert_src = "\n\
-#version 410\n\
+const char* vert_src = "#version 330 core\n\
 layout (location = 0) in vec3 aPos;\n\
 void main()\n\
 {\n\
     gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n\
 }";
 
-const char* frag_src ="\n\
-#version 410\n\
+const char* frag_src ="#version 330 core\n\
+uniform float u_time;\n\
 out vec4 FragColor;\n\
 void main()\n\
 {\n\
-    FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);\n\
+    FragColor = vec4(sin(u_time), cos(u_time), 1.0f, 1.0f);\n\
 }";
 
 void render()
@@ -41,20 +41,23 @@ void render()
 	// Let's just clear some color, shall we?
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 
-	// Get platform time
+	// // Get platform time
 	f32 t = gs_engine_instance()->ctx.platform->elapsed_time() * 0.0001f;
 
-	// Clear color
-	f32 color[] = { 0.f, 0.f, 0.f, 1.f };
+	// // Clear color
+	f32 color[] = { 0.2f, 0.3f, 0.3f, 1.0f };
 	gfx->set_view_clear( g_cb, (f32*)&color );
 
-	// Bind shader
+	// // Bind shader
 	gfx->bind_shader( g_cb, g_shader );
 
-	// Bind our vertex buffer
+	f32 time = gs_engine_instance()->ctx.platform->elapsed_time() * 0.001f;
+	gfx->bind_set_uniform( g_cb, g_uniform, &time );
+
+	// // Bind our vertex buffer
 	gfx->bind_vertex_buffer( g_cb, g_vb );
 
-	// Draw
+	// // Draw
 	gfx->draw( g_cb, 0, 3 );
 
 	// Submit command buffer
@@ -76,7 +79,9 @@ gs_result app_init()
 	gfx->add_vertex_attribute( g_vdesc, gs_vertex_attribute_float3 );
 
 	// Construct vertex buffer using our layout
-	g_vb = gfx->construct_vertex_buffer( g_vdesc, (void*)vertices, sizeof( vertices ) );
+	g_vb = gfx->construct_vertex_buffer( g_vdesc, (void*)vert_data, sizeof( vert_data ) );
+
+	g_uniform = gfx->construct_uniform( g_shader, "u_time", gs_uniform_type_float );
 
 	return gs_result_success;
 }
@@ -157,10 +162,5 @@ int main( int argc, char** argv )
 		- Submit pass
 
 */
-
-
-
-
-
 
 
