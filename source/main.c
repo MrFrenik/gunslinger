@@ -1,8 +1,5 @@
 #include "gs.h"
 
-#include "GL/glew.h"
-#include "GLFW/glfw3.h"
-
 // Global scope
 _global gs_resource_handle window;
 

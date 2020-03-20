@@ -6,7 +6,7 @@
 #include "base/gs_engine.h"
 
 // Not sure if this will be available by default...
-#include <GL/glew.h>
+#include <glad/glad.h>
 
 // gs_declare_resource_type( gs_command_buffer );
 // gs_declare_resource_type( gs_uniform_buffer );

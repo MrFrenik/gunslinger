@@ -1,7 +1,7 @@
 #include "base/gs_engine.h"
 #include "platform/gs_platform.h"
 
-#include "GL/glew.h"
+#include "glad/glad.h"
 #include "GLFW/glfw3.h"
 
 // Forward Decls.
@@ -23,29 +23,25 @@ gs_result glfw_platform_init( struct gs_platform_i* platform  )
 {
 	gs_println( "Initializing GLFW" );
 
+	glfwInit();
+
 	// Verify platform is valid
 	gs_assert( platform );
-
-	if ( !glfwInit() ) 
-	{
-		gs_println( "Failed to initialize GLFW." );
-		return gs_result_failure;
-	}
 
 	switch ( platform->settings.video.driver )	
 	{
 		case gs_platform_video_driver_type_opengl: 
 		{
 			#if ( defined  GS_PLATFORM_APPLE )
-				glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 3 );
-				glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 3 );
+				glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 4 );
+				glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 1 );
 				glfwWindowHint( GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE );
 				glfwWindowHint( GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE );
 			#else
 				// glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, platform->settings.video.graphics.opengl.major_version );
 				// glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, platform->settings.video.graphics.opengl.minor_version );
-				glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 3 );
-				glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 3 );
+				glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 4 );
+				glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 1 );
 				glfwWindowHint( GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE );
 				glfwWindowHint( GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE );
 			#endif
@@ -326,6 +322,7 @@ void* glfw_create_window( const char* title, u32 width, u32 height )
     if (window == NULL)
     {
         // std::cout << "Failed to create GLFW window" << std::endl;
+        gs_println( "Failed to create window." );
         glfwTerminate();
         return NULL;
     }
@@ -337,9 +334,16 @@ void* glfw_create_window( const char* title, u32 width, u32 height )
 	glfwSetCursorEnterCallback( window, &__glfw_mouse_cursor_enter_callback );
 	glfwSetFramebufferSizeCallback(window, &__glfw_frame_buffer_size_callback);
 
+	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+	{
+		gs_println( "Failed to initialize GLFW." );
+		return NULL;
+	}
+
     // glad: load all OpenGL function pointers
     // ---------------------------------------
-    glewInit();
+    // glewInit();
+
 
 	// Grab instance of platform layer from engine
 	/*
