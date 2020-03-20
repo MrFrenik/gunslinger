@@ -340,38 +340,6 @@ void* glfw_create_window( const char* title, u32 width, u32 height )
 		return NULL;
 	}
 
-    // glad: load all OpenGL function pointers
-    // ---------------------------------------
-    // glewInit();
-
-
-	// Grab instance of platform layer from engine
-	/*
-	struct gs_platform_i* platform = gs_engine_instance()->ctx.platform;
-	gs_assert( platform );
-
-	GLFWwindow* window;
-
-	window = glfwCreateWindow( width, height, title, NULL, NULL );
-
-	if (!window) {
-		glfwTerminate();
-		return NULL;
-	}
-
-	glfwMakeContextCurrent( window );
-
-	// Setting up callbacks for window
-	glfwSetKeyCallback( window, &__glfw_key_callback );
-	glfwSetMouseButtonCallback( window, &__glfw_mouse_button_callback );
-	glfwSetCursorPosCallback( window, &__glfw_mouse_cursor_position_callback );
-	glfwSetScrollCallback( window, &__glfw_mouse_scroll_wheel_callback );
-	glfwSetCursorEnterCallback( window, &__glfw_mouse_cursor_enter_callback );
-	glfwSetFramebufferSizeCallback(window, &__glfw_frame_buffer_size_callback);
-
-	glewInit();
-	*/
-
 	return window;
 }
 

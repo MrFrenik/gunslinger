@@ -1,15 +1,10 @@
 #include "gs.h"
 
-// Global scope
-_global gs_resource_handle window;
-
-// Clear screen, that's it
-
-gs_resource( gs_command_buffer ) 				g_cb = {0};
-gs_resource( gs_vertex_buffer ) 				g_vb = {0};
-gs_resource( gs_shader ) 						g_shader = {0};
-gs_resource( gs_vertex_attribute_layout_desc )	g_vdesc = {0};
-gs_resource( gs_uniform )						g_uniform = {0};
+// Global variables
+_global gs_resource( gs_command_buffer ) 				g_cb = {0};
+_global gs_resource( gs_vertex_buffer ) 				g_vb = {0};
+_global gs_resource( gs_shader ) 						g_shader = {0};
+_global gs_resource( gs_vertex_attribute_layout_desc )	g_vdesc = {0};
 
 f32 vert_data[] = 
 {
@@ -40,29 +35,26 @@ void main()\n\
 
 void render_scene()
 {
-	// Let's just clear some color, shall we?
+	// Get instance of our graphics api from engine
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 
-	// // Get platform time
+	// Get platform time
 	f32 t = gs_engine_instance()->ctx.platform->elapsed_time() * 0.0001f;
 
-	// // Clear color
+	// Set clear color and clear screen buffer
 	f32 color[] = { 0.2f, 0.3f, 0.3f, 1.0f };
 	gfx->set_view_clear( g_cb, (f32*)&color );
 
-	// // Bind shader
+	// Bind shader
 	gfx->bind_shader( g_cb, g_shader );
 
-	f32 time = gs_engine_instance()->ctx.platform->elapsed_time() * 0.001f;
-	gfx->bind_set_uniform( g_cb, g_uniform, &time );
-
-	// // Bind our vertex buffer
+	// Bind our vertex buffer
 	gfx->bind_vertex_buffer( g_cb, g_vb );
 
-	// // Draw
+	// Draw our triangle
 	gfx->draw( g_cb, 0, 3 );
 
-	// Submit command buffer
+	// Submit command buffer to graphics api for rendering later in frame
 	gfx->submit_command_buffer( g_cb );
 }
 
@@ -84,8 +76,6 @@ gs_result app_init()
 	// Construct vertex buffer using our layout
 	g_vb = gfx->construct_vertex_buffer( g_vdesc, (void*)vert_data, sizeof( vert_data ) );
 
-	g_uniform = gfx->construct_uniform( g_shader, "u_time", gs_uniform_type_float );
-
 	return gs_result_success;
 }
 
@@ -93,7 +83,6 @@ gs_result app_update()
 {
 	// Render scene
 	render_scene();
-
 	return gs_result_in_progress;
 }
 
@@ -104,13 +93,16 @@ gs_result app_shutdown()
 
 int main( int argc, char** argv ) 
 {
-	struct gs_application_desc app;
-	app.update = &app_update;
-	app.shutdown = &app_shutdown;
-	app.init = &app_init;
-	app.window_title = "Test App";
-	app.window_width = 800;
-	app.window_height = 600;
+	// This is our app description. It gives internal hints to our engine for various things like 
+	// window size and name as well as update, initialization, and shutdown functions to be run. 
+	// Later on, it'll include descriptions about plugins as well.
+	gs_application_desc app = {0};
+	app.window_title 		= "Hello Gunslinger";
+	app.window_width 		= 800;
+	app.window_height 		= 600;
+	app.init 				= &app_init;
+	app.update 				= &app_update;
+	app.shutdown 			= &app_shutdown;
 
 	// Construct internal instance of our engine
 	gs_engine* engine = gs_engine_construct( app );
@@ -128,30 +120,4 @@ int main( int argc, char** argv )
 
 	return 0;
 }
-
-/*
-	gs_application_context ctx;
-
-	Application context could hold settings for platform, including video and audiod
-
-	// Want a way to create render tasks, submit those to a global render queue to be sorted and executed
-
-	For example, for a simple forward renderer to render a cube: 
-
-		// Use handles for all graphics resources
-		gs_resource_handle index_buffer = gfx->create_index_buffer( data );		// You can use these graphics structures directly
-		gs_resource_handle shader = gfx->load_shader( "shader" );				// Same thing here
-
-		- Set render target / framebuffer
-		- Set clear
-		- Set view matrix
-		- Set projection matrix
-		- Set depth flags / stencil flags / etc. ( if not default )
-		- Set shader
-		- Set mesh to be bound
-		- Set uniforms to be bound
-		- Submit pass
-
-*/
-
 
