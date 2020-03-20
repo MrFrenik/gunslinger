@@ -134,6 +134,7 @@ __gs_byte_buffer_read_func( u16 );
 __gs_byte_buffer_read_func( s16 );
 __gs_byte_buffer_read_func( s32 );
 __gs_byte_buffer_read_func( u32 );
+__gs_byte_buffer_read_func( b32 );
 __gs_byte_buffer_read_func( s64 );
 __gs_byte_buffer_read_func( u64 );
 __gs_byte_buffer_read_func( f32 );

@@ -11,19 +11,6 @@
 #include <stb/stb_image_write.h>
 #include <stb/stb_image.h>
 
-// gs_declare_resource_type( gs_command_buffer );
-// gs_declare_resource_type( gs_uniform_buffer );
-// gs_declare_resource_type( gs_vertex_buffer );
-// gs_declare_resource_type( gs_index_buffer );
-// gs_declare_resource_type( gs_texture );
-// gs_declare_resource_type( gs_shader );
-// gs_declare_resource_type( gs_uniform );
-// gs_declare_resource_type( gs_vertex_attribute_layout_desc );
-// gs_declare_resource_type( gs_render_target );
-// gs_declare_resource_type( gs_frame_buffer );
-
-// Need to define the above types (not sure if they should be entirely renderer specific; thinking so...)
-
 /*============================================================
 // Graphics Resource Declarations
 ============================================================*/
@@ -38,10 +25,11 @@
 typedef enum gs_opengl_op_code
 {
 	gs_opengl_op_bind_shader = 0,
-	gs_opengl_op_bind_set_uniform,
 	gs_opengl_op_set_view_clear,
+	gs_opengl_op_set_depth_enabled,
 	gs_opengl_op_bind_vertex_buffer,
 	gs_opengl_op_bind_index_buffer,
+	gs_opengl_op_bind_uniform,
 	gs_opengl_op_bind_texture,
 	gs_opengl_op_draw,
 	gs_opengl_draw_indexed
@@ -218,7 +206,7 @@ void opengl_bind_shader( gs_resource( gs_command_buffer ) cb_handle, gs_resource
 #define __write_uniform_val(bb, type, u_data)\
 	gs_byte_buffer_write(&bb, type, *((type*)(u_data)));
 
-void opengl_bind_set_bind_uniform( gs_resource( gs_command_buffer ) cb_handle, gs_resource( gs_uniform ) u_handle, void* u_data )
+void opengl_bind_uniform( gs_resource( gs_command_buffer ) cb_handle, gs_resource( gs_uniform ) u_handle, void* u_data )
 {
 	// Get data from graphics api
 	gs_opengl_render_data* data = __get_opengl_data_internal();
@@ -230,7 +218,7 @@ void opengl_bind_set_bind_uniform( gs_resource( gs_command_buffer ) cb_handle, g
 	uniform u = gs_slot_array_get( data->uniforms, u_handle.id );
 
 	// Write out op code
-	gs_byte_buffer_write( &cb->commands, u32, gs_opengl_op_bind_set_uniform );
+	gs_byte_buffer_write( &cb->commands, u32, gs_opengl_op_bind_uniform );
 	// Write out uniform location
 	gs_byte_buffer_write( &cb->commands, u32, (u32)u.location );
 	// Write out uniform type
@@ -353,6 +341,23 @@ void opengl_set_view_clear( gs_resource( gs_command_buffer ) cb_handle, f32* col
 	cb->num_commands++;
 }
 
+void opengl_set_depth_enabled( gs_resource( gs_command_buffer ) cb_handle, b32 enable )
+{
+	// Get data from graphics api
+	gs_opengl_render_data* data = __get_opengl_data_internal();
+
+	// Grab command buffer ptr from command buffer slot array
+	command_buffer* cb = __get_command_buffer_internal( data, cb_handle );
+
+	// Write op into buffer
+	gs_byte_buffer_write( &cb->commands, u32, gs_opengl_op_set_depth_enabled );
+	// Write color into buffer (as vec4)
+	gs_byte_buffer_write( &cb->commands, b32, enable );
+
+	// Increase command amount
+	cb->num_commands++;
+}
+
 void opengl_draw_indexed( gs_resource( gs_command_buffer ) cb_handle, u32 count )
 {
 	// Get data from graphics api
@@ -446,8 +451,19 @@ void opengl_submit_command_buffer( gs_resource( gs_command_buffer ) cb_handle )
 				// Set clear color
 				glClearColor( col.x, col.y, col.z, col.w );
 				// Clear screen
-				glClear( GL_COLOR_BUFFER_BIT );
-				// glViewport(0, 0, 800, 600);
+				glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+			} break;
+
+			case gs_opengl_op_set_depth_enabled: 
+			{
+				// Read color from buffer (as vec4)
+				b32 enabled = gs_byte_buffer_read( &cb->commands, b32 );
+				// Clear screen
+				if ( enabled ) {
+					glEnable( GL_DEPTH_TEST );
+				} else {
+					glDisable( GL_DEPTH_TEST );
+				}
 			} break;
 
 			case gs_opengl_op_bind_texture:
@@ -493,7 +509,7 @@ void opengl_submit_command_buffer( gs_resource( gs_command_buffer ) cb_handle )
 				glUseProgram( program_id );
 			} break;
 
-			case gs_opengl_op_bind_set_uniform:
+			case gs_opengl_op_bind_uniform:
 			{
 				// Read in uniform location
 				u32 location = gs_byte_buffer_read( &cb->commands, u32 );
@@ -536,7 +552,7 @@ void opengl_submit_command_buffer( gs_resource( gs_command_buffer ) cb_handle )
 					case gs_uniform_type_mat4:
 					{
 						gs_mat4 val = gs_byte_buffer_read( &cb->commands, gs_mat4 );
-						glUniformMatrix4fv( location, 16, false, (f32*)(val.elements) );
+						glUniformMatrix4fv( location, 1, false, (f32*)(val.elements) );
 					} break;
 
 					case gs_uniform_type_sampler2d:
@@ -942,7 +958,7 @@ gs_resource( gs_texture ) opengl_construct_texture_from_file( const char* file_p
 		case gs_texture_format_ldr:
 		{
 			// Load texture data
-			stbi_set_flip_vertically_on_load( false );
+			stbi_set_flip_vertically_on_load( true );
 
 			// For now, this data will always have 4 components, since STBI_rgb_alpha is being passed in as required components param
 			// Could optimize this later
@@ -1057,11 +1073,12 @@ struct gs_graphics_i* gs_graphics_construct()
 	gfx->bind_vertex_buffer 	= &opengl_bind_vertex_buffer;
 	gfx->bind_index_buffer 		= &opengl_bind_index_buffer;
 	gfx->bind_texture 			= &opengl_bind_texture;
+	gfx->bind_uniform 			= &opengl_bind_uniform;
 	gfx->set_view_clear 		= &opengl_set_view_clear;
+	gfx->set_depth_enabled 		= &opengl_set_depth_enabled;
 	gfx->draw 					= &opengl_draw;
 	gfx->draw_indexed 			= &opengl_draw_indexed;
 	gfx->submit_command_buffer 	= &opengl_submit_command_buffer;
-	gfx->bind_set_uniform 		= &opengl_bind_set_bind_uniform;
 
 	// void ( * set_uniform_buffer_sub_data )( gs_resource( gs_command_buffer ), gs_resource( gs_uniform_buffer ), void*, usize );
 	// void ( * set_index_buffer )( gs_resource( gs_command_buffer ), gs_resource( gs_index_buffer ) );

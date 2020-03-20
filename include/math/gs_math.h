@@ -281,13 +281,9 @@ gs_vec4_norm( gs_vec4 v )
 // Mat4x4
 ================================================================================*/
 
-typedef struct
+typedef struct gs_mat4
 {
-	union
-	{
-		f32 		elements[16];
-		gs_vec4 	columns[4];
-	};
+	f32 elements[16];
 } gs_mat4;
 
 _inline gs_mat4 
@@ -377,33 +373,26 @@ gs_mat4_perspective( f32 fov, f32 asp_ratio, f32 n, f32 f )
 }
 
 _inline gs_mat4 
-__gs_mat4_translate_impl( const gs_vec3* v )
+gs_mat4_translate( const gs_vec3 v )
 {
 	gs_mat4 m_res = gs_mat4_identity();
-	m_res.elements[ 0 + 3 * 4 ] = v->x;
-	m_res.elements[ 1 + 3 * 4 ] = v->y;
-	m_res.elements[ 2 + 3 * 4 ] = v->z;
+	m_res.elements[ 0 + 3 * 4 ] = v.x;
+	m_res.elements[ 1 + 3 * 4 ] = v.y;
+	m_res.elements[ 2 + 3 * 4 ] = v.z;
 	return m_res;
 }
 
-#define gs_mat4_translate( v )\
-	__gs_mat4_translate_impl( &( v ) )
-
 _inline gs_mat4 
-__gs_mat4_scale_impl( const gs_vec3* v )
+gs_mat4_scale( const gs_vec3 v )
 {
 	gs_mat4 m_res = gs_mat4_identity();
-	m_res.elements[ 0 + 0 * 4 ] = v->x;
-	m_res.elements[ 1 + 1 * 4 ] = v->y;
-	m_res.elements[ 2 + 2 * 4 ] = v->z;
+	m_res.elements[ 0 + 0 * 4 ] = v.x;
+	m_res.elements[ 1 + 1 * 4 ] = v.y;
+	m_res.elements[ 2 + 2 * 4 ] = v.z;
 	return m_res;
 }
 
-#define gs_mat4_scale( v )\
-	__gs_mat4_scale_impl( &( v ) )
-
-_inline gs_mat4 
-__gs_mat4_rotate_impl( f32 angle, gs_vec3 axis )
+_inline gs_mat4 gs_mat4_rotate( f32 angle, gs_vec3 axis )
 {
 	gs_mat4 m_res = gs_mat4_identity();
 
@@ -432,9 +421,6 @@ __gs_mat4_rotate_impl( f32 angle, gs_vec3 axis )
 
 	return m_res;
 }
-
-#define gs_mat4_rotate( angle, axis )\
-	__gs_mat4_rotate_impl( ( angle ), ( axis ) )
 
 _inline gs_mat4 
 gs_mat4_look_at( gs_vec3 position, gs_vec3 target, gs_vec3 up )
@@ -510,8 +496,19 @@ __gs_quat_mul_impl( gs_quat q0, gs_quat q1 )
 	);
 }
 
+_inline
+gs_quat gs_quat_mul_quat( gs_quat q0, gs_quat q1 )
+{
+	return gs_quat_ctor(
+		q0.w * q1.x + q1.w * q0.x + q0.y * q1.z - q1.y * q0.z,
+		q0.w * q1.y + q1.w * q0.y + q0.z * q1.x - q1.z * q0.x,
+		q0.w * q1.z + q1.w * q0.z + q0.x * q1.y - q1.x * q0.y,
+		q0.w * q1.w - q0.x * q1.x - q0.y * q1.y - q0.z * q1.z
+	);
+}
+
 #define gs_quat_mul( q0, q1 )\
-	( __gs_quat_mul_impl( ( q0 ), ( q1 ) ) )
+	__gs_quat_mul_impl( ( q0 ), ( q1 ) )
 
 _inline gs_quat
 __gs_quat_scale_impl( const gs_quat* q, f32 s )

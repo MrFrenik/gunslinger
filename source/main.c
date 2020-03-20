@@ -7,18 +7,53 @@ _global gs_resource( gs_shader ) 						g_shader = {0};
 _global gs_resource( gs_vertex_attribute_layout_desc )	g_vdesc = {0};
 _global gs_resource( gs_index_buffer ) 					g_ib = {0};
 _global gs_resource( gs_texture ) 						g_tex0 = {0};
-_global gs_resource( gs_texture ) 						g_tex1 = {0};
-_global gs_resource( gs_texture ) 						g_tex2 = {0};
 _global gs_resource( gs_uniform ) 						g_s_tex0 = {0};
-_global gs_resource( gs_uniform ) 						g_s_tex1 = {0};
-_global gs_resource( gs_uniform ) 						g_s_tex2 = {0};
+_global gs_resource( gs_uniform ) 						g_proj = {0};
+_global gs_resource( gs_uniform ) 						g_view = {0};
+_global gs_resource( gs_uniform ) 						g_model = {0};
 
-f32 vert_data[] = {
-    // positions          // colors           // texture coords
-     0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
-     0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
-    -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
-    -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // top left 
+float vert_data[] = {
+    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+     0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+
+    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+    -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+    -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
+    -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+    -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+
+    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
+     0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+     0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+    -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
+    -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
 };
 
 u32 indices[] = {  
@@ -26,39 +61,39 @@ u32 indices[] = {
     1, 2, 3  // second triangle
 };
 
+gs_vec3 cubePositions[] = {
+  (gs_vec3){ 0.0f,  0.0f,  0.0f}, 
+  (gs_vec3){ 2.0f,  5.0f, -15.0f}, 
+  (gs_vec3){-1.5f, -2.2f, -2.5f},  
+  (gs_vec3){-3.8f, -2.0f, -12.3f},  
+  (gs_vec3){ 2.4f, -0.4f, -3.5f},  
+  (gs_vec3){-1.7f,  3.0f, -7.5f},  
+  (gs_vec3){ 1.3f, -2.0f, -2.5f},  
+  (gs_vec3){ 1.5f,  2.0f, -2.5f}, 
+  (gs_vec3){ 1.5f,  0.2f, -1.5f}, 
+  (gs_vec3){-1.3f,  1.0f, -1.5f}  
+};
+
 const char* vert_src = "#version 330 core\n\
 layout (location = 0) in vec3 aPos;\n\
-layout (location = 1) in vec3 aColor;\n\
-layout (location = 2) in vec2 aTexCoord;\n\
-out vec3 outColor;\n\
+layout (location = 1) in vec2 aTexCoord;\n\
 out vec2 texCoord;\n\
+uniform mat4 u_model;\n\
+uniform mat4 u_view;\n\
+uniform mat4 u_proj;\n\
 void main()\n\
 {\n\
-    gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n\
-    outColor = aColor;\n\
-    texCoord = vec2(aTexCoord.x, 1.0 - aTexCoord.y);\n\
+    gl_Position = u_proj * u_view * u_model * vec4(aPos, 1.0);\n\
+    texCoord = aTexCoord;\n\
 }";
 
 const char* frag_src ="#version 330 core\n\
-uniform float u_time;\n\
 out vec4 FragColor;\n\
-in vec3 outColor;\n\
 in vec2 texCoord;\n\
 uniform sampler2D s_tex0;\n\
-uniform sampler2D s_tex1;\n\
-uniform sampler2D s_tex2;\n\
 void main()\n\
 {\n\
-    vec4 s0 = texture(s_tex0, texCoord);\n\
-    vec4 s1 = texture(s_tex1, texCoord);\n\
-    vec4 s2 = texture(s_tex2, texCoord);\n\
-    if ( texCoord.x <= 0.3 ) {\n\
-	    FragColor = s0;\n\
-    } else if ( texCoord.x <= 0.6 ) {\n\
-	    FragColor = s1;\n\
-    } else {\n\
-	    FragColor = s2;\n\
-    }\n\
+    FragColor = texture(s_tex0, texCoord);\n\
 }";
 
 void render_scene()
@@ -67,7 +102,10 @@ void render_scene()
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 
 	// Get platform time
-	f32 t = gs_engine_instance()->ctx.platform->elapsed_time() * 0.0001f;
+	f32 t = gs_engine_instance()->ctx.platform->elapsed_time();
+
+	// Test depth testing enabled
+	gfx->set_depth_enabled( g_cb, true );
 
 	// Set clear color and clear screen buffer
 	f32 color[] = { 0.2f, 0.3f, 0.3f, 1.0f };
@@ -84,11 +122,33 @@ void render_scene()
 
 	// Bind textures
 	gfx->bind_texture( g_cb, g_s_tex0, g_tex0, 0 );
-	gfx->bind_texture( g_cb, g_s_tex1, g_tex1, 1 );
-	gfx->bind_texture( g_cb, g_s_tex2, g_tex2, 2 );
 
-	// Draw our triangle
-	gfx->draw_indexed( g_cb, 6 );
+	gs_mat4 model = gs_mat4_identity();
+	gs_mat4 view = gs_mat4_identity();
+	gs_mat4 proj = gs_mat4_identity();
+	view = gs_mat4_translate((gs_vec3){0.f, 0.f, -3.f});
+	proj = gs_mat4_perspective(45.f, 800.f/600.f, 0.1f, 100.f);
+
+	gfx->bind_uniform( g_cb, g_view, &view );
+	gfx->bind_uniform( g_cb, g_proj, &proj );
+
+	// Draw a bunch of different cubies
+	gs_for_range_i( sizeof(cubePositions) / sizeof(gs_vec3))
+	{
+		gs_vqs xform = gs_vqs_default();
+		gs_quat rot = gs_quat_angle_axis( t * 0.001f, (gs_vec3){1.f, 0.f, 0.f});
+		rot = gs_quat_mul_quat( rot, gs_quat_angle_axis( t * 0.001f, (gs_vec3){0.f, 1.f, 0.f}));
+		rot = gs_quat_mul_quat( rot, gs_quat_angle_axis( t * 0.001f, (gs_vec3){0.f, 0.f, 1.f}));
+		xform.rotation = rot;
+		xform.position = cubePositions[i];
+		model = gs_vqs_to_mat4( &xform );
+
+		// Bind matrix uniform
+		gfx->bind_uniform( g_cb, g_model, &model );
+
+		// Draw our cube
+		gfx->draw( g_cb, 0, 36 );
+	}
 
 	// Submit command buffer to graphics api for rendering later in frame
 	gfx->submit_command_buffer( g_cb );
@@ -107,7 +167,6 @@ gs_result app_init()
 	// Construct vertex layout decl
 	g_vdesc = gfx->construct_vertex_attribute_layout_desc();
 	gfx->add_vertex_attribute( g_vdesc, gs_vertex_attribute_float3 );
-	gfx->add_vertex_attribute( g_vdesc, gs_vertex_attribute_float3 );
 	gfx->add_vertex_attribute( g_vdesc, gs_vertex_attribute_float2 );
 
 	// Construct vertex buffer using our layout
@@ -117,14 +176,15 @@ gs_result app_init()
 	g_ib = gfx->construct_index_buffer( (void*)indices, sizeof( indices ) );
 
 	// Construct texture from file path
-	g_tex0 = gfx->construct_texture_from_file( "test0.png" );
-	g_tex1 = gfx->construct_texture_from_file( "test1.png" );
-	g_tex2 = gfx->construct_texture_from_file( "test2.jpg" );
+	g_tex0 = gfx->construct_texture_from_file( "iu.png" );
 
 	// Construct uniform for texture unit to be bound
 	g_s_tex0 = gfx->construct_uniform( g_shader, "s_tex0", gs_uniform_type_sampler2d );
-	g_s_tex1 = gfx->construct_uniform( g_shader, "s_tex1", gs_uniform_type_sampler2d );
-	g_s_tex2 = gfx->construct_uniform( g_shader, "s_tex2", gs_uniform_type_sampler2d );
+
+	// Construct uniform for xform mat
+	g_proj = gfx->construct_uniform( g_shader, "u_proj", gs_uniform_type_mat4 );
+	g_view = gfx->construct_uniform( g_shader, "u_view", gs_uniform_type_mat4 );
+	g_model = gfx->construct_uniform( g_shader, "u_model", gs_uniform_type_mat4 );
 
 	return gs_result_success;
 }

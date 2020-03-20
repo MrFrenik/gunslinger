@@ -125,9 +125,10 @@ typedef struct gs_graphics_i
 	// Graphics Command Buffer Ops
 	============================================================*/
 	void ( * reset_command_buffer )( gs_resource( gs_command_buffer ) );
+	void ( * set_depth_enabled )( gs_resource( gs_command_buffer ), b32 );
 	void ( * bind_shader )( gs_resource( gs_command_buffer ), gs_resource( gs_shader ) );
 	// void ( * set_uniform_buffer_sub_data )( gs_resource( gs_command_buffer ), gs_resource( gs_uniform_buffer ), void*, usize );
-	void ( * bind_set_uniform )( gs_resource( gs_command_buffer ), gs_resource( gs_uniform ), void* );
+	void ( * bind_uniform )( gs_resource( gs_command_buffer ), gs_resource( gs_uniform ), void* );
 	void ( * bind_vertex_buffer )( gs_resource( gs_command_buffer ), gs_resource( gs_vertex_buffer ) );
 	void ( * bind_index_buffer )( gs_resource( gs_command_buffer ), gs_resource( gs_index_buffer ) );
 	void ( * bind_texture )( gs_resource( gs_command_buffer ), gs_resource( gs_uniform ), gs_resource( gs_texture ), u32 );
