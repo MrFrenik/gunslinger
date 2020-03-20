@@ -35,16 +35,8 @@ typedef enum gs_uniform_type
 	gs_uniform_type_vec3,
 	gs_uniform_type_vec4,
 	gs_uniform_type_mat4,
+	gs_uniform_type_sampler2d
 } gs_uniform_type;
-
-#define gs_resource( type )\
-	gs_resource_##type
-
-// Strongly typed declarations for resource handles (slot array handles)
-#define gs_declare_resource_type( type )\
-	typedef struct gs_resource( type ) {\
-		u32 id;\
-	} gs_resource( type );\
 
 // Want to give a vertex buffer layout description (to set attributes)
 typedef enum gs_vertex_attribute_type
@@ -58,6 +50,55 @@ typedef enum gs_vertex_attribute_type
 	gs_vertex_attribute_uint2,
 	gs_vertex_attribute_uint
 } gs_vertex_attribute_type;
+
+/*================
+// Texture
+=================*/
+
+typedef enum gs_texture_format
+{
+	gs_texture_format_ldr,
+	gs_texture_format_hdr
+} gs_texture_format;
+
+typedef enum gs_texture_wrapping
+{
+	gs_repeat,
+	gs_mirrored_repeat,
+	gs_clamp_to_edge,
+	gs_clamp_to_border
+} gs_texture_wrapping;
+
+typedef enum gs_texture_filtering
+{
+	gs_nearest,
+	gs_linear
+} gs_texture_filtering;
+
+typedef struct gs_texture_parameter_desc
+{
+	gs_texture_wrapping texture_wrap_s;
+	gs_texture_wrapping texture_wrap_t;
+	gs_texture_filtering min_filter;
+	gs_texture_filtering mag_filter;
+	gs_texture_filtering mipmap_filter;
+	f32 border_color[4];
+	b32 generate_mipmaps;
+	const char* path;			// We'll do a file path for now, but I'd honestly like to just pass in data...
+} gs_texture_parameter_desc;
+
+/*================
+// Resource Decls
+=================*/
+
+#define gs_resource( type )\
+	gs_resource_##type
+
+// Strongly typed declarations for resource handles (slot array handles)
+#define gs_declare_resource_type( type )\
+	typedef struct gs_resource( type ) {\
+		u32 id;\
+	} gs_resource( type );\
 
 gs_declare_resource_type( gs_command_buffer );
 gs_declare_resource_type( gs_uniform_buffer );
@@ -89,8 +130,10 @@ typedef struct gs_graphics_i
 	void ( * bind_set_uniform )( gs_resource( gs_command_buffer ), gs_resource( gs_uniform ), void* );
 	void ( * bind_vertex_buffer )( gs_resource( gs_command_buffer ), gs_resource( gs_vertex_buffer ) );
 	void ( * bind_index_buffer )( gs_resource( gs_command_buffer ), gs_resource( gs_index_buffer ) );
+	void ( * bind_texture )( gs_resource( gs_command_buffer ), gs_resource( gs_uniform ), gs_resource( gs_texture ), u32 );
 	void ( * set_view_clear )( gs_resource( gs_command_buffer ), f32* color );
 	void ( * draw )( gs_resource( gs_command_buffer ), u32 start, u32 count );
+	void ( * draw_indexed )( gs_resource( gs_command_buffer ), u32 count );
 	void ( * submit_command_buffer )( gs_resource( gs_command_buffer ) );
 
 	/*============================================================
@@ -102,6 +145,9 @@ typedef struct gs_graphics_i
 	// gs_resource( gs_uniform_buffer )( * construct_uniform_buffer )( gs_resource( gs_shader ), const char* uniform_name );
 	gs_resource( gs_uniform )( * construct_uniform )( gs_resource( gs_shader ), const char* uniform_name, gs_uniform_type );
 	gs_resource( gs_command_buffer )( * construct_command_buffer )();
+	gs_resource( gs_texture )( * construct_texture )( gs_texture_parameter_desc );
+	gs_resource( gs_texture )( * construct_texture_from_file )( const char* );
+	gs_resource( gs_index_buffer )( * construct_index_buffer )( void*, usize );
 
 	/*============================================================
 	// Graphics Resource Free Ops

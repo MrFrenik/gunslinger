@@ -5,32 +5,60 @@ _global gs_resource( gs_command_buffer ) 				g_cb = {0};
 _global gs_resource( gs_vertex_buffer ) 				g_vb = {0};
 _global gs_resource( gs_shader ) 						g_shader = {0};
 _global gs_resource( gs_vertex_attribute_layout_desc )	g_vdesc = {0};
+_global gs_resource( gs_index_buffer ) 					g_ib = {0};
+_global gs_resource( gs_texture ) 						g_tex0 = {0};
+_global gs_resource( gs_texture ) 						g_tex1 = {0};
+_global gs_resource( gs_texture ) 						g_tex2 = {0};
+_global gs_resource( gs_uniform ) 						g_s_tex0 = {0};
+_global gs_resource( gs_uniform ) 						g_s_tex1 = {0};
+_global gs_resource( gs_uniform ) 						g_s_tex2 = {0};
 
-f32 vert_data[] = 
-{
-    // positions         // colors
-     0.5f, -0.5f, 0.0f,  1.0f, 0.0f, 0.0f,  // bottom right
-    -0.5f, -0.5f, 0.0f,  0.0f, 1.0f, 0.0f,  // bottom left
-     0.0f,  0.5f, 0.0f,  0.0f, 0.0f, 1.0f   // top
+f32 vert_data[] = {
+    // positions          // colors           // texture coords
+     0.5f,  0.5f, 0.0f,   1.0f, 0.0f, 0.0f,   1.0f, 1.0f,   // top right
+     0.5f, -0.5f, 0.0f,   0.0f, 1.0f, 0.0f,   1.0f, 0.0f,   // bottom right
+    -0.5f, -0.5f, 0.0f,   0.0f, 0.0f, 1.0f,   0.0f, 0.0f,   // bottom left
+    -0.5f,  0.5f, 0.0f,   1.0f, 1.0f, 0.0f,   0.0f, 1.0f    // top left 
+};
+
+u32 indices[] = {  
+    0, 1, 3, // first triangle
+    1, 2, 3  // second triangle
 };
 
 const char* vert_src = "#version 330 core\n\
 layout (location = 0) in vec3 aPos;\n\
 layout (location = 1) in vec3 aColor;\n\
+layout (location = 2) in vec2 aTexCoord;\n\
 out vec3 outColor;\n\
+out vec2 texCoord;\n\
 void main()\n\
 {\n\
     gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);\n\
     outColor = aColor;\n\
+    texCoord = vec2(aTexCoord.x, 1.0 - aTexCoord.y);\n\
 }";
 
 const char* frag_src ="#version 330 core\n\
 uniform float u_time;\n\
 out vec4 FragColor;\n\
 in vec3 outColor;\n\
+in vec2 texCoord;\n\
+uniform sampler2D s_tex0;\n\
+uniform sampler2D s_tex1;\n\
+uniform sampler2D s_tex2;\n\
 void main()\n\
 {\n\
-    FragColor = vec4(outColor, 1.f);\n\
+    vec4 s0 = texture(s_tex0, texCoord);\n\
+    vec4 s1 = texture(s_tex1, texCoord);\n\
+    vec4 s2 = texture(s_tex2, texCoord);\n\
+    if ( texCoord.x <= 0.3 ) {\n\
+	    FragColor = s0;\n\
+    } else if ( texCoord.x <= 0.6 ) {\n\
+	    FragColor = s1;\n\
+    } else {\n\
+	    FragColor = s2;\n\
+    }\n\
 }";
 
 void render_scene()
@@ -51,8 +79,16 @@ void render_scene()
 	// Bind our vertex buffer
 	gfx->bind_vertex_buffer( g_cb, g_vb );
 
+	// Bind index buffer
+	gfx->bind_index_buffer( g_cb, g_ib );
+
+	// Bind textures
+	gfx->bind_texture( g_cb, g_s_tex0, g_tex0, 0 );
+	gfx->bind_texture( g_cb, g_s_tex1, g_tex1, 1 );
+	gfx->bind_texture( g_cb, g_s_tex2, g_tex2, 2 );
+
 	// Draw our triangle
-	gfx->draw( g_cb, 0, 3 );
+	gfx->draw_indexed( g_cb, 6 );
 
 	// Submit command buffer to graphics api for rendering later in frame
 	gfx->submit_command_buffer( g_cb );
@@ -72,9 +108,23 @@ gs_result app_init()
 	g_vdesc = gfx->construct_vertex_attribute_layout_desc();
 	gfx->add_vertex_attribute( g_vdesc, gs_vertex_attribute_float3 );
 	gfx->add_vertex_attribute( g_vdesc, gs_vertex_attribute_float3 );
+	gfx->add_vertex_attribute( g_vdesc, gs_vertex_attribute_float2 );
 
 	// Construct vertex buffer using our layout
 	g_vb = gfx->construct_vertex_buffer( g_vdesc, (void*)vert_data, sizeof( vert_data ) );
+
+	// Construct index buffer for index drawing
+	g_ib = gfx->construct_index_buffer( (void*)indices, sizeof( indices ) );
+
+	// Construct texture from file path
+	g_tex0 = gfx->construct_texture_from_file( "test0.png" );
+	g_tex1 = gfx->construct_texture_from_file( "test1.png" );
+	g_tex2 = gfx->construct_texture_from_file( "test2.jpg" );
+
+	// Construct uniform for texture unit to be bound
+	g_s_tex0 = gfx->construct_uniform( g_shader, "s_tex0", gs_uniform_type_sampler2d );
+	g_s_tex1 = gfx->construct_uniform( g_shader, "s_tex1", gs_uniform_type_sampler2d );
+	g_s_tex2 = gfx->construct_uniform( g_shader, "s_tex2", gs_uniform_type_sampler2d );
 
 	return gs_result_success;
 }

@@ -5,8 +5,11 @@
 #include "common/gs_util.h"
 #include "base/gs_engine.h"
 
-// Not sure if this will be available by default...
 #include <glad/glad.h>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb/stb_image_write.h>
+#include <stb/stb_image.h>
 
 // gs_declare_resource_type( gs_command_buffer );
 // gs_declare_resource_type( gs_uniform_buffer );
@@ -38,7 +41,10 @@ typedef enum gs_opengl_op_code
 	gs_opengl_op_bind_set_uniform,
 	gs_opengl_op_set_view_clear,
 	gs_opengl_op_bind_vertex_buffer,
-	gs_opengl_op_draw
+	gs_opengl_op_bind_index_buffer,
+	gs_opengl_op_bind_texture,
+	gs_opengl_op_draw,
+	gs_opengl_draw_indexed
 } gs_opengl_op_code;
 
 // Could make this a simple byte buffer, then read from that buffer for commands?
@@ -53,6 +59,8 @@ typedef struct texture
 	u16 width;
 	u16 height;
 	u32 id;	
+	u32 num_comps;
+	gs_texture_format texture_format;
 } texture;
 
 typedef struct shader
@@ -237,6 +245,7 @@ void opengl_bind_set_bind_uniform( gs_resource( gs_command_buffer ) cb_handle, g
 		case gs_uniform_type_vec3:  __write_uniform_val(cb->commands, gs_vec3, u_data); break;
 		case gs_uniform_type_vec4:  __write_uniform_val(cb->commands, gs_vec4, u_data); break;
 		case gs_uniform_type_mat4:  __write_uniform_val(cb->commands, gs_mat4, u_data); break;
+		case gs_uniform_type_sampler2d:  __write_uniform_val(cb->commands, u32, u_data); break;
 
 		default:
 		{
@@ -244,6 +253,41 @@ void opengl_bind_set_bind_uniform( gs_resource( gs_command_buffer ) cb_handle, g
 			gs_assert( false );
 		}
 	}
+
+	// Increase command amount
+	cb->num_commands++;
+}
+
+void opengl_bind_texture( gs_resource( gs_command_buffer ) cb_handle, gs_resource( gs_uniform ) u_handle, 
+		gs_resource( gs_texture ) tex_handle, u32 tex_unit )
+{
+	// Get data from graphics api
+	gs_opengl_render_data* data = __get_opengl_data_internal();
+
+	// Grab command buffer ptr from command buffer slot array
+	command_buffer* cb = __get_command_buffer_internal( data, cb_handle );
+
+	// Get texture
+	texture tex = gs_slot_array_get( data->textures, tex_handle.id );
+
+	// Grab uniform from handle
+	uniform u = gs_slot_array_get( data->uniforms, u_handle.id );
+
+	// Cannot pass in uniform of wrong type
+	if ( u.type != gs_uniform_type_sampler2d )
+	{
+		gs_println( "opengl_bind_texture: Must be of uniform type 'gs_uniform_type_sampler2d'" );
+		gs_assert( false );
+	}
+
+	// Write op code
+	gs_byte_buffer_write( &cb->commands, u32, gs_opengl_op_bind_texture );
+	// Write out id
+	gs_byte_buffer_write( &cb->commands, u32, tex.id );
+	// Write tex unit location
+	gs_byte_buffer_write( &cb->commands, u32, tex_unit );
+	// Write out uniform location
+	gs_byte_buffer_write( &cb->commands, u32, (u32)u.location );
 
 	// Increase command amount
 	cb->num_commands++;
@@ -269,6 +313,26 @@ void opengl_bind_vertex_buffer( gs_resource( gs_command_buffer ) cb_handle, gs_r
 	cb->num_commands++;
 }
 
+void opengl_bind_index_buffer( gs_resource( gs_command_buffer ) cb_handle, gs_resource( gs_index_buffer ) ib_handle )
+{
+	// Get data from graphics api
+	gs_opengl_render_data* data = __get_opengl_data_internal();
+
+	// Grab command buffer ptr from command buffer slot array
+	command_buffer* cb = __get_command_buffer_internal( data, cb_handle );
+
+	// Get index buffer data
+	index_buffer ib = gs_slot_array_get( data->index_buffers, ib_handle.id );
+
+	// Write op code
+	gs_byte_buffer_write( &cb->commands, u32, gs_opengl_op_bind_index_buffer );
+	// Write out ibo
+	gs_byte_buffer_write( &cb->commands, u32, ib.ibo );
+
+	// Increase command amount
+	cb->num_commands++;
+}
+
 // Want to set a bitmask for this as well to determine clear types
 void opengl_set_view_clear( gs_resource( gs_command_buffer ) cb_handle, f32* col )
 {
@@ -287,6 +351,24 @@ void opengl_set_view_clear( gs_resource( gs_command_buffer ) cb_handle, f32* col
 
 	// Increase command amount
 	cb->num_commands++;
+}
+
+void opengl_draw_indexed( gs_resource( gs_command_buffer ) cb_handle, u32 count )
+{
+	// Get data from graphics api
+	gs_opengl_render_data* data = __get_opengl_data_internal();
+
+	// Grab command buffer ptr from command buffer slot array
+	command_buffer* cb = __get_command_buffer_internal( data, cb_handle );
+
+	// Write draw command
+	gs_byte_buffer_write( &cb->commands, u32, gs_opengl_draw_indexed );	
+	// Write count
+	gs_byte_buffer_write( &cb->commands, u32, count );
+
+	// Increase command amount
+	cb->num_commands++;
+
 }
 
 void opengl_draw( gs_resource( gs_command_buffer ) cb_handle, u32 start, u32 count )
@@ -348,6 +430,15 @@ void opengl_submit_command_buffer( gs_resource( gs_command_buffer ) cb_handle )
 				glDrawArrays( GL_TRIANGLES, start, count );
 			} break;
 
+			case gs_opengl_draw_indexed:
+			{
+				// Read count
+				u32 count = gs_byte_buffer_read( &cb->commands, u32 );
+
+				// Draw ( this assumes a ibo is set, which is not correct )...for now, will assume
+				glDrawElements( GL_TRIANGLES, count, GL_UNSIGNED_INT, 0 );
+			} break;
+
 			case gs_opengl_op_set_view_clear: 
 			{
 				// Read color from buffer (as vec4)
@@ -359,6 +450,23 @@ void opengl_submit_command_buffer( gs_resource( gs_command_buffer ) cb_handle )
 				// glViewport(0, 0, 800, 600);
 			} break;
 
+			case gs_opengl_op_bind_texture:
+			{
+				// Write out id
+				u32 tex_id = gs_byte_buffer_read( &cb->commands, u32 );
+				// Write tex unit location
+				u32 tex_unit = gs_byte_buffer_read( &cb->commands, u32 );
+				// Write out uniform location
+				u32 location = gs_byte_buffer_read( &cb->commands, u32 );
+
+				// Activate texture unit
+				glActiveTexture( GL_TEXTURE0 + tex_unit );
+				// Bind texture
+				glBindTexture( GL_TEXTURE_2D, tex_id );
+				// Bind uniform
+				glUniform1i( location, tex_unit );
+			} break;
+
 			case gs_opengl_op_bind_vertex_buffer:
 			{
 				// Read out vao
@@ -366,6 +474,15 @@ void opengl_submit_command_buffer( gs_resource( gs_command_buffer ) cb_handle )
 
 				// Bind vao
 				glBindVertexArray( vao );
+			} break;
+
+			case gs_opengl_op_bind_index_buffer:
+			{
+				// Read out vao
+				u32 ibo = gs_byte_buffer_read( &cb->commands, u32 );
+
+				// Bind vao
+				glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibo );
 			} break;
 
 			case gs_opengl_op_bind_shader: 
@@ -420,6 +537,12 @@ void opengl_submit_command_buffer( gs_resource( gs_command_buffer ) cb_handle )
 					{
 						gs_mat4 val = gs_byte_buffer_read( &cb->commands, gs_mat4 );
 						glUniformMatrix4fv( location, 16, false, (f32*)(val.elements) );
+					} break;
+
+					case gs_uniform_type_sampler2d:
+					{
+						u32 val = gs_byte_buffer_read( &cb->commands, u32 );
+						glUniform1i( location, val );
 					} break;
 
 					default: 
@@ -622,7 +745,27 @@ gs_resource( gs_vertex_buffer ) opengl_construct_vertex_buffer( gs_resource( gs_
 	// Set resource handle
 	gs_resource( gs_vertex_buffer ) handle = {0};
 	handle.id = vb_handle;
+	return handle;
+}
 
+gs_resource( gs_index_buffer ) opengl_construct_index_buffer( void* indices, usize sz )
+{
+	gs_opengl_render_data* data = __get_opengl_data_internal();
+
+	// Construct new vertex buffer, then insert into slot array
+	u32 ib_handle = gs_slot_array_insert( data->index_buffers, (index_buffer){0} );
+	index_buffer* ib = gs_slot_array_get_ptr( data->index_buffers, ib_handle );
+
+	glGenBuffers( 1, &ib->ibo );
+  	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ib->ibo );
+    glBufferData( GL_ELEMENT_ARRAY_BUFFER, sz, indices, GL_STATIC_DRAW );
+
+    // Unbind buffer after setting data
+  	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
+
+  	// Create resource
+	gs_resource( gs_index_buffer ) handle = {0};
+	handle.id = ib_handle;
 	return handle;
 }
 
@@ -770,6 +913,126 @@ gs_resource( gs_uniform ) opengl_construct_uniform( gs_resource( gs_shader ) s_h
 	return handle;
 }
 
+gs_resource( gs_texture ) opengl_construct_texture_from_file( const char* file_path )
+{
+	gs_opengl_render_data* data = __get_opengl_data_internal();
+
+	// Texture to fill out
+	texture tex = {0};
+
+	// Load in texture data using stb for now
+	char temp_file_extension_buffer[ 16 ] = {}; 
+	gs_texture_format texture_format;
+	gs_util_get_file_extension( temp_file_extension_buffer, sizeof( temp_file_extension_buffer ), file_path );
+
+	if ( gs_string_compare_equal( temp_file_extension_buffer, "hdr" ) ) {
+		texture_format = gs_texture_format_hdr;
+	} else {
+		texture_format = gs_texture_format_ldr;
+	}
+
+	// Fields to load and store
+	s32 width, height, num_comps, len;
+
+	void* texture_data;
+
+		// Standard texture format
+	switch( texture_format )
+	{
+		case gs_texture_format_ldr:
+		{
+			// Load texture data
+			stbi_set_flip_vertically_on_load( false );
+
+			// For now, this data will always have 4 components, since STBI_rgb_alpha is being passed in as required components param
+			// Could optimize this later
+			texture_data = ( u8* )stbi_load( file_path, ( s32* )&width, ( s32* )&height, &num_comps, STBI_rgb_alpha );
+
+			if ( !texture_data )
+			{
+				gs_println( "Warning: could not load texture: %s", file_path );
+			}
+
+			// TODO(): For some reason, required components is not working, so just default to 4 for now
+			num_comps = 4;
+
+			glGenTextures( 1, &( tex.id ) );
+			glBindTexture( GL_TEXTURE_2D, tex.id );
+
+			// Generate texture depending on number of components in texture data
+			switch ( num_comps )
+			{
+				case 3: 
+				{
+					glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, texture_data ); 
+				} break;
+
+				default:
+				case 4: 
+				{
+					glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture_data ); 
+				} break;
+			}
+
+			s32 MAG_PARAM = GL_LINEAR;
+			s32 MIN_PARAM = GL_LINEAR_MIPMAP_LINEAR;
+			b32 genMips = true;
+
+			// Anisotropic filtering ( not supported by default, need to figure this out )
+			// f32 aniso = 0.0f; 
+			// glGetFloatv( GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &aniso );
+			// glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso );
+
+			glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT );
+			glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT );
+			glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, MAG_PARAM );
+			glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, MIN_PARAM );
+
+			if ( genMips )
+			{
+				glGenerateMipmap( GL_TEXTURE_2D );
+			}
+
+			tex.width 		= width;
+			tex.height 		= height;
+			tex.num_comps 	= num_comps;
+			tex.texture_format = texture_format;
+
+			glBindTexture( GL_TEXTURE_2D, 0 );
+
+			gs_free( texture_data );
+			texture_data = NULL;
+		} break;
+
+		// TODO(john): support this format
+		case gs_texture_format_hdr:
+		default:
+		{
+			gs_assert( false );
+		} break;
+	}
+
+	// Push back texture for handle
+	u32 t_handle = gs_slot_array_insert( data->textures, tex );
+
+	gs_resource( gs_texture ) handle = {0};
+	handle.id = t_handle;
+	return handle;
+}
+
+gs_resource( gs_texture ) opengl_construct_texture( gs_texture_parameter_desc desc )
+{
+	gs_opengl_render_data* data = __get_opengl_data_internal();
+
+	// Texture to fill out
+	texture tex = {0};
+
+	// Load in texture data using stb for now
+
+	gs_resource( gs_texture ) handle = {0};
+	return handle;
+}
+
 // Method for creating platform layer for SDL
 struct gs_graphics_i* gs_graphics_construct()
 {
@@ -792,26 +1055,29 @@ struct gs_graphics_i* gs_graphics_construct()
 	gfx->reset_command_buffer 	= &opengl_reset_command_buffer;
 	gfx->bind_shader	      	= &opengl_bind_shader;
 	gfx->bind_vertex_buffer 	= &opengl_bind_vertex_buffer;
+	gfx->bind_index_buffer 		= &opengl_bind_index_buffer;
+	gfx->bind_texture 			= &opengl_bind_texture;
 	gfx->set_view_clear 		= &opengl_set_view_clear;
 	gfx->draw 					= &opengl_draw;
+	gfx->draw_indexed 			= &opengl_draw_indexed;
 	gfx->submit_command_buffer 	= &opengl_submit_command_buffer;
 	gfx->bind_set_uniform 		= &opengl_bind_set_bind_uniform;
 
 	// void ( * set_uniform_buffer_sub_data )( gs_resource( gs_command_buffer ), gs_resource( gs_uniform_buffer ), void*, usize );
-	// void ( * set_uniform )( gs_resource( gs_command_buffer ), gs_resource( gs_uniform ), void* );
 	// void ( * set_index_buffer )( gs_resource( gs_command_buffer ), gs_resource( gs_index_buffer ) );
 
 	// ============================================================
 	// // Graphics Resource Construction
 	// ============================================================
-	// gs_resource( gs_shader )( * construct_shader )( const char* vert_src, const char* frag_src );
-	// gs_resource( gs_uniform )( * construct_uniform )( gs_resource( gs_shader ), const char* uniform_name );
-	// gs_resource( gs_uniform_buffer )( * construct_uniform_buffer )( gs_resource( gs_shader ), const char* uniform_name );
 	gfx->construct_shader 						= &opengl_construct_shader;
 	gfx->construct_uniform 						= &opengl_construct_uniform;
 	gfx->construct_command_buffer 				= &opengl_construct_command_buffer;
 	gfx->construct_vertex_attribute_layout_desc = &opengl_construct_vertex_attribute_layout_desc;
 	gfx->construct_vertex_buffer 				= &opengl_construct_vertex_buffer;
+	gfx->construct_index_buffer 				= &opengl_construct_index_buffer;
+	gfx->construct_texture 						= &opengl_construct_texture;
+	gfx->construct_texture_from_file 			= &opengl_construct_texture_from_file;
+	// gs_resource( gs_uniform_buffer )( * construct_uniform_buffer )( gs_resource( gs_shader ), const char* uniform_name );
 
 	// /*============================================================
 	// // Graphics Resource Free Ops

@@ -51,7 +51,7 @@ libs=(
 )
 
 # Build
-gcc -O3 ${lib_dirs[*]} ${libs[*]} ${inc[*]} ${src[*]} ${flags[*]} -o Gunslinger
+gcc -O0 ${lib_dirs[*]} ${libs[*]} ${inc[*]} ${src[*]} ${flags[*]} -o Gunslinger
 
 cd ..
 
