@@ -21,10 +21,15 @@ src=(
 	../source/main.c 
 	../source/base/*.c
 	../source/platform/*.c
+	../source/graphics/*.c
+	../source/serialize/*.c
 
 	# Todo(John): Remove this into a plugin
 	# ../source/platform/sdl/*.c
 	../source/platform/glfw/*.c
+
+	# Gfx plugin ( Again, remove from engine build )
+	../source/graphics/opengl/gs_graphics_opengl.c
 )
 
 lib_dirs=(

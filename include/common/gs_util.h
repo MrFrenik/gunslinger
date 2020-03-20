@@ -1,5 +1,5 @@
-#ifndef GS_UTIL_H
-#define GS_UTIL_H
+#ifndef __GS_UTIL_H__
+#define __GS_UTIL_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -461,7 +461,7 @@ gs_hash_str_64( const char* str )
 }
 #endif 	// c++
 
-#endif // GS_UTIL_H
+#endif // __GS_UTIL_H__
 
 
 

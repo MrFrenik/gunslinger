@@ -1,5 +1,5 @@
-#ifndef GS_OBJECT_H
-#define GS_OBJECT_H
+#ifndef __GS_OBJECT_H__
+#define __GS_OBJECT_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -101,4 +101,4 @@ __gs_object_print_impl( gs_object* obj );
 }
 #endif 	// c++
 
-#endif // GS_OBJECT_H
+#endif // __GS_OBJECT_H__

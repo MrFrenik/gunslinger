@@ -5,12 +5,12 @@
 // Platform Window
 ============================*/
 
-gs_platform_window_handle __gs_platform_create_window( const char* title, u32 width, u32 height )
+gs_resource_handle __gs_platform_create_window( const char* title, u32 width, u32 height )
 {
 	struct gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 	void* win = platform->create_window_internal( title, width, height );
 	gs_assert( win );
-	gs_platform_window_handle handle = gs_slot_array_insert( platform->windows, win );
+	gs_resource_handle handle = gs_slot_array_insert( platform->windows, win );
 	gs_dyn_array_push( platform->active_window_handles, handle );
 	return handle;
 }
@@ -290,5 +290,85 @@ u32 __gs_platform_hash_uuid( const struct gs_uuid* uuid )
 	char temp_buffer[] = gs_uuid_temp_str_buffer();
 	__gs_platform_uuid_to_string( temp_buffer, uuid );
 	return ( gs_hash_str( temp_buffer ) );
+}
+
+void __gs_default_init_platform( struct gs_platform_i* platform )
+{
+	gs_assert( platform );
+
+	// Just assert these for now
+	__gs_verify_platform_correctness( platform );
+
+	/*============================
+	// Platform Window
+	============================*/
+	platform->windows 				= gs_slot_array_new( gs_platform_window_ptr );
+	platform->active_window_handles = gs_dyn_array_new( gs_resource_handle );
+	platform->create_window 		= &__gs_platform_create_window;
+
+	/*============================
+	// Platform Input
+	============================*/
+	platform->update_input 		= &__gs_platform_update_input;
+	platform->press_key 		= &__gs_platform_press_key;
+	platform->release_key   	= &__gs_platform_release_key;
+	platform->was_key_down 		= &__gs_platform_was_key_down;
+	platform->key_pressed 		= &__gs_platform_key_pressed;
+	platform->key_down 			= &__gs_platform_key_down;
+	platform->key_released 	 	= &__gs_platform_key_released;
+
+	platform->press_mouse_button 	= &__gs_platform_press_mouse_button;
+	platform->release_mouse_button 	= &__gs_platform_release_mouse_button;
+	platform->was_mouse_down 		= &__gs_platform_was_mouse_down;
+	platform->mouse_pressed 		= &__gs_platform_mouse_pressed;
+	platform->mouse_down 			= &__gs_platform_mouse_down;
+	platform->mouse_released 		= &__gs_platform_mouse_released;
+
+	platform->mouse_delta 			= &__gs_platform_mouse_delta;
+	platform->mouse_position 		= &__gs_platform_mouse_position;
+	platform->mouse_position_x_y 	= &__gs_platform_mouse_position_x_y;
+	platform->mouse_wheel 			= &__gs_platform_mouse_wheel;
+
+	/*============================
+	// Platform UUID
+	============================*/
+	platform->generate_uuid 	= &__gs_platform_generate_uuid;
+	platform->uuid_to_string 	= &__gs_platform_uuid_to_string;
+	platform->hash_uuid 		= &__gs_platform_hash_uuid;
+
+	/*============================
+	// Platform File IO
+	============================*/
+
+	platform->read_file_contents_into_string_null_term 	= &__gs_platform_read_file_contents_into_string_null_term;
+	platform->write_str_to_file 						= &__gs_platform_write_str_to_file;
+
+	// Default world time initialization
+	platform->time.max_fps 		= 60.0;
+	platform->time.current 		= 0.0;
+	platform->time.delta 		= 0.0;
+	platform->time.update 		= 0.0;
+	platform->time.render 		= 0.0;
+	platform->time.previous		= 0.0;
+	platform->time.frame 		= 0.0;
+
+	// Custom initialize plaform layer
+	platform->init( platform );
+}
+
+void __gs_verify_platform_correctness( struct gs_platform_i* platform )
+{
+	gs_assert( platform );
+	gs_assert( platform->init );
+	gs_assert( platform->shutdown );
+	gs_assert( platform->sleep );
+	gs_assert( platform->elapsed_time );
+	gs_assert( platform->process_input );
+	gs_assert( platform->create_window_internal );
+	gs_assert( platform->window_swap_buffer );
+	gs_assert( platform->set_window_size );
+	gs_assert( platform->window_size );
+	gs_assert( platform->window_size_w_h );
+	gs_assert( platform->set_cursor );
 }
 

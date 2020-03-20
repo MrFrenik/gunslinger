@@ -1,5 +1,5 @@
-#ifndef GS_TYPES_H
-#define GS_TYPES_H
+#ifndef __GS_TYPES_H__
+#define __GS_TYPES_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -14,6 +14,7 @@ extern "C" {
 
 #define _inline 			static inline
 #define _local_persist 		static
+#define _global 			static
 
  #if ( defined _WIN32 || defined _WIN64 )
 	#define _force_inline 		static __forceinline
@@ -63,4 +64,4 @@ typedef const char* 	const_str;
 }
 #endif 	// c++
 
-#endif // GS_TYPES_H
+#endif // __GS_TYPES_H__

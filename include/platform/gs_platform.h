@@ -1,5 +1,5 @@
-#ifndef GS_PLATFORM_H
-#define GS_PLATFORM_H
+#ifndef __GS_PLATFORM_H__
+#define __GS_PLATFORM_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -12,7 +12,7 @@ extern "C" {
 
 #if ( defined __APPLE__ )
 
-	#define GS_PLATFORM_MAC
+	#define GS_PLATFORM_APPLE
 
 #elif ( defined _WIN32 || defined _WIN64 )
 
@@ -30,18 +30,19 @@ struct gs_uuid;
 struct gs_platform_input;
 struct gs_platform_window;
 
-struct gs_platform_i* 		gs_platform_construct();
-
 /*============================================================
 // Platform Time
 ============================================================*/
 
 typedef struct gs_platform_time 
 {
-	f32 max_fps;
-	f32 fps;
-	f32 delta_time;
-	f32 total_elapsed_time;
+	f64 max_fps;
+	f64 current;
+	f64 previous;
+	f64 update;
+	f64 render;
+	f64 delta;
+	f64 frame;
 } gs_platform_time;
 
 /*============================================================
@@ -70,7 +71,7 @@ struct gs_platform_window;
 typedef void* gs_platform_window_ptr;
 
 // Internal handle for windows
-typedef u32 gs_platform_window_handle;
+typedef u32 gs_resource_handle;
 
 // Declare slot array
 gs_slot_array_decl( gs_platform_window_ptr );
@@ -297,9 +298,8 @@ typedef struct gs_platform_i
 	/*============================================================
 	// Platform Util
 	============================================================*/
-	u32 	( * ticks )();
-	void 	( * sleep )( u32 ticks );
-	f64 	( * get_time )();
+	void 	( * sleep )( f32 ms );	// Sleeps platform for time in ms
+	f64 	( * elapsed_time )(); 	// Returns time in ms since initialization of platform
 
 	/*============================================================
 	// Platform UUID
@@ -336,13 +336,13 @@ typedef struct gs_platform_i
 	/*============================================================
 	// Platform Window
 	============================================================*/
-	gs_platform_window_handle 	( * create_window )( const char* title, u32 width, u32 height );
-	void* 						( * create_window_internal )( const char* title, u32 width, u32 height );
-	void 						( * window_swap_buffer )( gs_platform_window_handle handle );
-	gs_vec2 					( * window_size )( gs_platform_window_handle handle );
-	void 						( * set_window_size )( gs_platform_window_handle handle, s32 width, s32 height );
-	void 						( * window_size_w_h )( gs_platform_window_handle handle, s32* width, s32* height );
-	void 						( * set_cursor )( gs_platform_window_handle handle, gs_platform_cursor cursor );
+	gs_resource_handle 		( * create_window )( const char* title, u32 width, u32 height );
+	void* 					( * create_window_internal )( const char* title, u32 width, u32 height );
+	void 					( * window_swap_buffer )( gs_resource_handle handle );
+	gs_vec2 				( * window_size )( gs_resource_handle handle );
+	void 					( * set_window_size )( gs_resource_handle handle, s32 width, s32 height );
+	void 					( * window_size_w_h )( gs_resource_handle handle, s32* width, s32* height );
+	void 					( * set_cursor )( gs_resource_handle handle, gs_platform_cursor cursor );
 
 	/*============================================================
 	// Platform File IO
@@ -363,12 +363,26 @@ typedef struct gs_platform_i
 
 	// For now, just keep a window here as main window...
 	gs_slot_array( gs_platform_window_ptr ) windows;
-	gs_dyn_array( gs_platform_window_handle ) active_window_handles;
+	gs_dyn_array( gs_resource_handle ) active_window_handles;
 
 	// Cursors
 	void* cursors[ gs_platform_cursor_count ];
 
 } gs_platform_i;
+
+/*===============================
+// Platform User Provided Funcs
+===============================*/
+
+extern struct gs_platform_i* gs_platform_construct();
+
+/*============================
+// Platform Default Funcs
+============================*/
+
+void __gs_default_init_platform();
+
+void __gs_verify_platform_correctness( struct gs_platform_i* platform );
 
 /*============================
 // Platform Input
@@ -411,7 +425,7 @@ void __gs_platform_release_key( gs_platform_keycode code );
 /*============================
 // Platform Window
 ============================*/
-gs_platform_window_handle __gs_platform_create_window( const char* title, u32 width, u32 height );
+gs_resource_handle __gs_platform_create_window( const char* title, u32 width, u32 height );
 
 /*============================
 // Platform File IO
@@ -435,7 +449,7 @@ u32 __gs_platform_hash_uuid( const struct gs_uuid* uuid );
 }
 #endif 	// c++
 
-#endif // GS_PLATFORM_H
+#endif // __GS_PLATFORM_H__
 
 
 

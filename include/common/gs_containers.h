@@ -1,5 +1,5 @@
-#ifndef GS_CONTAINERS_H
-#define GS_CONTAINERS_H
+#ifndef __GS_CONTAINERS_H__
+#define __GS_CONTAINERS_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -472,6 +472,9 @@ gs_slot_array_find_next_available_index( gs_slot_array_base* sa )
 #define gs_slot_array_get_unsafe( s, handle )\
 	( &s.data[ s._base.handle_indices[ handle ] ] )
 
+#define gs_slot_array_get_ptr( s, handle )\
+	( &s.data[ s._base.handle_indices[ handle ] ] )
+
 #define gs_slot_array_handle_valid( s, handle )\
 	( handle < gs_slot_array_size( s ) )
 
@@ -482,7 +485,7 @@ gs_slot_array_find_next_available_index( gs_slot_array_base* sa )
 }
 #endif 	// c++
 
-#endif // GS_CONTAINERS_H
+#endif // __GS_CONTAINERS_H__
 
 
 

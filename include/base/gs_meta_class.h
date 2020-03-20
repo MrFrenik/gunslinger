@@ -1,5 +1,5 @@
-#ifndef GS_META_CLASS_H
-#define GS_META_CLASS_H
+#ifndef __GS_META_CLASS_H__
+#define __GS_META_CLASS_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -164,7 +164,24 @@ gs_result __gs_object_deserialization_base( struct gs_object* obj, struct gs_byt
 }
 #endif 	// c++
 
-#endif // GS_META_CLASS_H
+#endif // __GS_META_CLASS_H__
+
+
+/*
+	Meta class registry should have mechanism for registering and unregistering meta class information based on hashed key of type name
+	Will need slot_map to map from hashed name to slot index in array of meta class information
+
+	typedef struct gs_meta_class_registry {
+		gs_slot_map( gs_meta_class_ptr ) classes;	
+	} gs_meta_class_registry;
+
+	const gs_meta_class* gs_register_meta_class( u32 hash, gs_meta_class_desc cls_desc )
+	{
+		
+	}
+
+
+*/
 
 
 

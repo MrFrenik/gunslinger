@@ -1,5 +1,5 @@
-#ifndef GS_LEXER_H
-#define GS_LEXER_H
+#ifndef __GS_LEXER_H__
+#define __GS_LEXER_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -445,7 +445,7 @@ _inline gs_lexer_c gs_lexer_c_ctor( const char* contents )
 }
 #endif 	// c++
 
-#endif // GS_LEXER_H
+#endif // __GS_LEXER_H__
 
 
 

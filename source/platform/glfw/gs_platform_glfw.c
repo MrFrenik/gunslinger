@@ -1,5 +1,7 @@
 #include "base/gs_engine.h"
 #include "platform/gs_platform.h"
+
+#include "GL/glew.h"
 #include "GLFW/glfw3.h"
 
 // Forward Decls.
@@ -33,7 +35,8 @@ gs_result glfw_platform_init( struct gs_platform_i* platform  )
 	{
 		case gs_platform_video_driver_type_opengl: 
 		{
-			#ifdef __APPLE__
+			#if ( defined  GS_PLATFORM_APPLE )
+				gs_println( "yep" );
 				glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 3 );
 				glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 2 );
 				glfwWindowHint( GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE );
@@ -81,41 +84,31 @@ gs_result glfw_platform_shutdown( struct gs_platform_i* platform )
 // Platform Util
 ============================*/
 
-u32 glfw_platform_ticks() 
-{
-	f64 seconds = glfwGetTime();
-	// gs_println( "millisecs: %zu", (u32)((f32)seconds * 1000.f ));
-	return ( u32 )( (f32)seconds * 1000.f );	// return milliseconds
-}
-
+// Returns in milliseconds
 f64 glfw_platform_time()
 {
-	return glfwGetTime();
+	return (glfwGetTime() * 1000.0);
 }
 
-#if ( __APPLE__ || linux )
+#if ( defined GS_PLATFORM_APPLE || defined GS_PLATFORM_LINUX )
+
 	#include <sched.h>
 	#include <unistd.h>
+
+#elif ( defined GS_PLATFORM_WINDOWS )
+
+	#include <windows.h>
 #endif
 
-// This DOES NOT WORK correctly
-void glfw_platform_sleep( u32 ticks )
+void glfw_platform_sleep( f32 ms ) 
 {
 	#if ( defined GS_PLATFORM_WIN )
 
-			#include <windows.h>
 			_sleep(ticks);
 
-	#elif ( __APPLE__ || defined GS_PLATFORM_LINUX )
+	#elif ( defined GS_PLATFORM_APPLE )
 
-			if(ticks == 0) {
-		    	// gs_println( "sleeping: %zu", ticks );
-		        sched_yield(); // sched.h
-		    } else {
-		    	// gs_println( "sleeping: %zu", ticks );
-		        // usleep((useconds_t)(time)); // unistd.h
-		        // usleep(time);
-		    }	
+	        usleep( ms * 1000.f ); // unistd.h
 
 	#endif
 }
@@ -334,6 +327,8 @@ void* glfw_create_window( const char* title, u32 width, u32 height )
 
 	glfwMakeContextCurrent(window);
 
+	glewInit();
+
 	// Setting up callbacks for window
 	glfwSetKeyCallback( window, &__glfw_key_callback );
 	glfwSetMouseButtonCallback( window, &__glfw_mouse_button_callback );
@@ -344,7 +339,7 @@ void* glfw_create_window( const char* title, u32 width, u32 height )
 	return window;
 }
 
-void glfw_window_swap_buffer( gs_platform_window_handle handle )
+void glfw_window_swap_buffer( gs_resource_handle handle )
 {
 	// Grab instance of platform from engine
 	struct gs_platform_i* platform = gs_engine_instance()->ctx.platform;
@@ -357,14 +352,14 @@ void glfw_window_swap_buffer( gs_platform_window_handle handle )
     glfwSwapBuffers( win );
 }
 
-void glfw_set_window_size( gs_platform_window_handle handle, s32 w, s32 h )
+void glfw_set_window_size( gs_resource_handle handle, s32 w, s32 h )
 {
 	GLFWwindow* win = __window_from_handle( gs_engine_instance()->ctx.platform, handle );
 	gs_assert( win );
 	glfwSetWindowSize( win, w, h );
 }
 
-gs_vec2 glfw_window_size( gs_platform_window_handle handle )
+gs_vec2 glfw_window_size( gs_resource_handle handle )
 {
 	GLFWwindow* win = __window_from_handle( gs_engine_instance()->ctx.platform, handle );
 	gs_assert( win );
@@ -373,14 +368,14 @@ gs_vec2 glfw_window_size( gs_platform_window_handle handle )
 	return ( gs_vec2 ) { .x = w, .y = h };
 }
 
-void glfw_window_size_w_h( gs_platform_window_handle handle, s32* w, s32* h )
+void glfw_window_size_w_h( gs_resource_handle handle, s32* w, s32* h )
 {
 	GLFWwindow* win = __window_from_handle( gs_engine_instance()->ctx.platform, handle );
 	gs_assert( win );
 	glfwGetWindowSize( win, w, h );
 }
 
-void glfw_set_cursor( gs_platform_window_handle handle, gs_platform_cursor cursor )
+void glfw_set_cursor( gs_resource_handle handle, gs_platform_cursor cursor )
 {
 	struct gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 	GLFWwindow* win = __window_from_handle( platform, handle );
@@ -407,9 +402,8 @@ struct gs_platform_i* gs_platform_construct()
 	/*============================
 	// Platform Util
 	============================*/
-	platform->ticks		= &glfw_platform_ticks;
-	platform->sleep		= &glfw_platform_sleep;
-	platform->get_time 	= &glfw_platform_time;
+	platform->sleep			= &glfw_platform_sleep;
+	platform->elapsed_time 	= &glfw_platform_time;
 
 	/*============================
 	// Platform Input

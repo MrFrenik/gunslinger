@@ -83,19 +83,14 @@ gs_result sdl_platform_shutdown( struct gs_platform_i* platform )
 // Platform Util
 ============================*/
 
-u32 sdl_platform_ticks() 
+void sdl_platform_sleep( f32 ms )
 {
-	return SDL_GetTicks();
-}
-
-void sdl_platform_sleep( u32 ticks )
-{
-	SDL_Delay( ticks );	
+	SDL_Delay( (u32)ms );	
 }
 
 f64 sdl_platform_time()
 {
-	return (f64)SDL_GetTicks();
+	return (f64)(SDL_GetTicks());
 }
 
 /*============================
@@ -325,10 +320,14 @@ gs_result __sdl_init_gl_context( struct gs_platform_i* platform, SDL_Window* win
 	glewExperimental = GL_TRUE;
 
 	// Set major gl version for platform
-	SDL_GL_GetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, (s32*)&platform->settings.video.graphics.opengl.major_version );
+	// SDL_GL_GetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, (s32*)&platform->settings.video.graphics.opengl.major_version );
 
 	// Set minor gl version for platform
-	SDL_GL_GetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, (s32*)&platform->settings.video.graphics.opengl.minor_version );
+	// SDL_GL_GetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, (s32*)&platform->settings.video.graphics.opengl.minor_version );
+
+	//Check OpenGL version
+	gs_println("OpenGL Version: %s", glGetString( GL_VERSION ) );
+	printf("Supported GLSL version is %s.\n", (char *)glGetString(GL_SHADING_LANGUAGE_VERSION));
 
 	return gs_result_success;
 }
@@ -396,14 +395,14 @@ void* sdl_create_window( const char* title, u32 width, u32 height )
 	return NULL;
 }
 
-void sdl_window_swap_buffer( gs_platform_window_handle handle )
+void sdl_window_swap_buffer( gs_resource_handle handle )
 {
 	// Grab window from plaform layer slot array
 	SDL_Window* win = __window_from_handle( gs_engine_instance()->ctx.platform, handle );
     SDL_GL_SwapWindow( win );
 }
 
-gs_vec2 sdl_window_size( gs_platform_window_handle handle )
+gs_vec2 sdl_window_size( gs_resource_handle handle )
 {
 	SDL_Window* win = __window_from_handle( gs_engine_instance()->ctx.platform, handle );
 	s32 w, h;
@@ -411,19 +410,19 @@ gs_vec2 sdl_window_size( gs_platform_window_handle handle )
 	return ( gs_vec2 ) { .x = w, .y = h };
 }
 
-void sdl_window_size_w_h( gs_platform_window_handle handle, s32* w, s32* h )
+void sdl_window_size_w_h( gs_resource_handle handle, s32* w, s32* h )
 {
 	SDL_Window* win = __window_from_handle( gs_engine_instance()->ctx.platform, handle );
 	SDL_GetWindowSize( win, w, h );
 }
 
-void sdl_set_window_size( gs_platform_window_handle handle, s32 w, s32 h )
+void sdl_set_window_size( gs_resource_handle handle, s32 w, s32 h )
 {
 	SDL_Window* win = __window_from_handle( gs_engine_instance()->ctx.platform, handle );
 	SDL_SetWindowSize( win, w, h );
 }
 
-void sdl_set_cursor( gs_platform_window_handle handle, gs_platform_cursor cursor )
+void sdl_set_cursor( gs_resource_handle handle, gs_platform_cursor cursor )
 {
 	SDL_Cursor* cp = ( SDL_Cursor* )gs_engine_instance()->ctx.platform->cursors[ cursor ];
 	SDL_SetCursor( cp );
@@ -448,9 +447,8 @@ struct gs_platform_i* gs_platform_construct()
 	/*============================
 	// Platform Util
 	============================*/
-	platform->ticks		= &sdl_platform_ticks;
-	platform->sleep		= &sdl_platform_sleep;
-	platform->get_time 	= &sdl_platform_time;
+	platform->sleep			= &sdl_platform_sleep;
+	platform->elapsed_time 	= &sdl_platform_time;
 
 	/*============================
 	// Platform Input

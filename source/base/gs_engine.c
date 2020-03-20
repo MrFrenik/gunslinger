@@ -1,21 +1,19 @@
 #include "base/gs_engine.h"
 #include "common/gs_util.h"
 #include "platform/gs_platform.h"
+#include "graphics/gs_graphics.h"
 #include "math/gs_math.h"
 
 // Global instance of gunslinger engine ( ...THERE AN ONLY BE ONE )
-// Don't like this...
-gs_engine* gs_engine_instance_g = { 0 };
+_global gs_engine* gs_engine_instance_g = { 0 };
 
 // Function forward declarations
 gs_result gs_engine_run();
 gs_result gs_engine_shutdown();
 gs_result gs_default_app_update();
 gs_result gs_default_app_shutdown();
-void __gs_default_init_platform();
-void __gs_verify_platform_correctness( struct gs_platform_i* platform );
 
-void gs_engine_init( gs_engine* engine )
+void gs_engine_init( gs_engine* engine, gs_application_desc app_desc )
 {
 	// Set instance
 	if ( gs_engine_instance_g == NULL )
@@ -43,9 +41,23 @@ void gs_engine_init( gs_engine* engine )
 		// Default initialization for platform here
 		__gs_default_init_platform( gs_engine_instance_g->ctx.platform );
 
+		// Construct window
+		gs_engine_instance()->ctx.platform->create_window( "Test", 800, 600 );
+
+		// Construct graphics api 
+		gs_engine_instance_g->ctx.graphics = gs_graphics_construct();
+
+		// Initialize graphics here
+		gs_engine_instance_g->ctx.graphics->init( gs_engine_instance_g->ctx.graphics );
+
 		// Default application context
-		gs_engine_instance_g->ctx.app.update = &gs_default_app_update;
-		gs_engine_instance_g->ctx.app.shutdown = &gs_default_app_shutdown;
+		gs_engine_instance_g->ctx.app.update = app_desc.update == NULL ? &gs_default_app_update : app_desc.update;
+		gs_engine_instance_g->ctx.app.shutdown = app_desc.shutdown == NULL ? &gs_default_app_shutdown : app_desc.shutdown;
+
+		if ( app_desc.init )
+		{
+			app_desc.init();
+		}
 
 		// gs_engine_instance_g->ctx.assets = gs_construct_heap( gs_asset_subsystem );
 		// gs_asset_subsystem_init( gs_engine_instance_g->ctx.assets, "./assets/" );
@@ -64,9 +76,13 @@ gs_result gs_engine_run()
 		static u32 curr_ticks = 0; 
 		static u32 prev_ticks = 0;
 
-		f64 start_time = gs_engine_instance()->ctx.platform->get_time();
-
+		// Cache platform pointer
 		gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+
+		// Cache times at start of frame
+		platform->time.current 	= platform->elapsed_time();  
+		platform->time.update 	= platform->time.current - platform->time.previous;
+		platform->time.previous = platform->time.current;
 
 		// Update platform input from previous frame		
 		platform->update_input( &platform->input );
@@ -90,29 +106,9 @@ gs_result gs_engine_run()
 			return ( gs_engine_instance()->shutdown() );
 		}
 
-		// Update graphics system
-		// gs_graphics_subsystem_update( gs_engine_instance_g->ctx.graphics );
-
-		f64 end_time = gs_engine_instance()->ctx.platform->get_time();
-		// gs_println( "st: %.2f, et: %.2f", start_time, end_time );
-
-		// Frame rate locking
-		curr_ticks = gs_engine_instance()->ctx.platform->ticks();
-		u32 ticks = curr_ticks - prev_ticks;
-		// gs_println( "ct: %zu, prev_ticks: %zu", curr_ticks, prev_ticks );
-		f32 dt = (f32)( ticks ) / 1000.f;
-		prev_ticks = curr_ticks; 
-
-		gs_engine_instance()->ctx.platform->time.delta_time = dt;
-		gs_engine_instance()->ctx.platform->time.total_elapsed_time += dt;
-		gs_engine_instance()->ctx.platform->time.fps = 1000.f / (f32)ticks;
-
-		// Clamp frame rate to ease up on CPU usage
-		// Not sure how to handle this correctly just yet...
-		const f32 locked_frame_rate = gs_engine_instance()->ctx.platform->time.max_fps;
-		if ( (f32)ticks < 1000.0f / locked_frame_rate )
+		if ( gs_engine_instance()->ctx.graphics && gs_engine_instance()->ctx.graphics->update )
 		{
-			gs_engine_instance()->ctx.platform->sleep( (u32)( 1000.f / locked_frame_rate - (f32)ticks ) );
+			gs_engine_instance()->ctx.graphics->update();
 		}
 
 		// NOTE(John): This won't work forever. Must change eventually.
@@ -121,6 +117,24 @@ gs_result gs_engine_run()
 		{
 			platform->window_swap_buffer( platform->active_window_handles[ i ] );
 		}
+
+		// Frame locking
+	    platform->time.current 	= platform->elapsed_time();
+	    platform->time.render 	= platform->time.current - platform->time.previous;
+	    platform->time.previous = platform->time.current;
+	    platform->time.frame 	= platform->time.update + platform->time.render; 			// Total frame time
+
+	    f32 target = ( 1000.f / platform->time.max_fps );
+
+	    if ( platform->time.frame < target )
+	    {
+	    	platform->sleep( (f32)( target - platform->time.frame ) );
+
+	    	platform->time.current = platform->elapsed_time();
+	    	f64 wait_time = platform->time.current - platform->time.previous;
+	    	platform->time.previous = platform->time.current;
+	    	platform->time.frame += wait_time;
+	    }
 	}
 
 	// Shouldn't hit here
@@ -149,84 +163,6 @@ gs_result gs_default_app_shutdown()
 	return gs_result_success;
 }
 
-void __gs_default_init_platform( struct gs_platform_i* platform )
-{
-	gs_assert( platform );
-
-	// Just assert these for now
-	__gs_verify_platform_correctness( platform );
-
-	/*============================
-	// Platform Window
-	============================*/
-	platform->windows 				= gs_slot_array_new( gs_platform_window_ptr );
-	platform->active_window_handles = gs_dyn_array_new( gs_platform_window_handle );
-	platform->create_window 		= &__gs_platform_create_window;
-
-	/*============================
-	// Platform Input
-	============================*/
-	platform->update_input 		= &__gs_platform_update_input;
-	platform->press_key 		= &__gs_platform_press_key;
-	platform->release_key   	= &__gs_platform_release_key;
-	platform->was_key_down 		= &__gs_platform_was_key_down;
-	platform->key_pressed 		= &__gs_platform_key_pressed;
-	platform->key_down 			= &__gs_platform_key_down;
-	platform->key_released 	 	= &__gs_platform_key_released;
-
-	platform->press_mouse_button 	= &__gs_platform_press_mouse_button;
-	platform->release_mouse_button 	= &__gs_platform_release_mouse_button;
-	platform->was_mouse_down 		= &__gs_platform_was_mouse_down;
-	platform->mouse_pressed 		= &__gs_platform_mouse_pressed;
-	platform->mouse_down 			= &__gs_platform_mouse_down;
-	platform->mouse_released 		= &__gs_platform_mouse_released;
-
-	platform->mouse_delta 			= &__gs_platform_mouse_delta;
-	platform->mouse_position 		= &__gs_platform_mouse_position;
-	platform->mouse_position_x_y 	= &__gs_platform_mouse_position_x_y;
-	platform->mouse_wheel 			= &__gs_platform_mouse_wheel;
-
-	/*============================
-	// Platform UUID
-	============================*/
-	platform->generate_uuid 	= &__gs_platform_generate_uuid;
-	platform->uuid_to_string 	= &__gs_platform_uuid_to_string;
-	platform->hash_uuid 		= &__gs_platform_hash_uuid;
-
-	/*============================
-	// Platform File IO
-	============================*/
-
-	platform->read_file_contents_into_string_null_term 	= &__gs_platform_read_file_contents_into_string_null_term;
-	platform->write_str_to_file 						= &__gs_platform_write_str_to_file;
-
-	// Default world time initialization
-	platform->time.max_fps = 60.f;
-	platform->time.total_elapsed_time = 0.f;
-	platform->time.delta_time = 0.f;
-	platform->time.fps = 0.f;
-
-
-	// Custom initialize plaform layer
-	platform->init( platform );
-}
-
-void __gs_verify_platform_correctness( struct gs_platform_i* platform )
-{
-	gs_assert( platform );
-	gs_assert( platform->init );
-	gs_assert( platform->shutdown );
-	gs_assert( platform->ticks );
-	gs_assert( platform->sleep );
-	gs_assert( platform->get_time );
-	gs_assert( platform->process_input );
-	gs_assert( platform->create_window_internal );
-	gs_assert( platform->window_swap_buffer );
-	gs_assert( platform->set_window_size );
-	gs_assert( platform->window_size );
-	gs_assert( platform->window_size_w_h );
-	gs_assert( platform->set_cursor );
-}
 
 
 

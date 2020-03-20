@@ -9,11 +9,12 @@ set inc=/I ..\include\ /I ..\third_party\include\
 rem Source files
 set src_main=..\source\*.c
 set src_base=..\source\base\*.c
+set src_graphics=..\source\graphics\*.c
 set src_platform=..\source\platform\*.c
 set src_platform_glfw=..\source\platform\glfw\*.c
 
 rem All source together
-set src_all=%src_main% %src_base% %src_platform% %src_platform_glfw%
+set src_all=%src_main% %src_base% %src_graphics% %src_platform% %src_platform_glfw%
 
 rem Library directories
 set lib_d=/LIBPATH:"..\third_party\lib\release\win\"

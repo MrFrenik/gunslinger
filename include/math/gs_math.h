@@ -1,5 +1,5 @@
-#ifndef GS_MATH_H
-#define GS_MATH_H
+#ifndef __GS_MATH_H__
+#define __GS_MATH_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -748,7 +748,7 @@ typedef struct
 }
 #endif 	// c++
 
-#endif // GS_MATH_H
+#endif // __GS_MATH_H__
 
 
 
