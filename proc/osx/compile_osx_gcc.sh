@@ -29,7 +29,7 @@ src=(
 	../source/platform/glfw/*.c
 
 	# Gfx plugin ( Again, remove from engine build )
-	../source/graphics/opengl/gs_graphics_opengl.c
+	../source/graphics/opengl/*.c
 )
 
 lib_dirs=(
