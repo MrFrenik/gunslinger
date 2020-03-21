@@ -193,6 +193,29 @@ gs_result app_update()
 {
 	// Render scene
 	render_scene();
+
+	// typedef struct gs_platform_time 
+	// {
+	// 	f64 max_fps;
+	// 	f64 current;
+	// 	f64 previous;
+	// 	f64 update;
+	// 	f64 render;
+	// 	f64 delta;
+	// 	f64 frame;
+	// } gs_platform_time;
+
+	gs_timed_action( 10, 
+	{
+		gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+		gs_println( "frame: %.2f, render: %.2f, update: %.2f, delta: %.2f ", 
+			platform->time.frame, 
+			platform->time.render,
+			platform->time.update, 
+			platform->time.delta 
+		);
+	});
+
 	return gs_result_in_progress;
 }
 
@@ -207,9 +230,10 @@ int main( int argc, char** argv )
 	// window size and name as well as update, initialization, and shutdown functions to be run. 
 	// Later on, it'll include descriptions about plugins as well.
 	gs_application_desc app = {0};
-	app.window_title 		= "Hello Gunslinger";
+	app.window_title 		= "Hello, Gunslinger";
 	app.window_width 		= 800;
 	app.window_height 		= 600;
+	app.window_flags 		= gs_window_flags_resizable;
 	app.init 				= &app_init;
 	app.update 				= &app_update;
 	app.shutdown 			= &app_shutdown;

@@ -28,6 +28,7 @@ typedef struct gs_application_desc
 	const char* window_title;
 	u32 window_width;
 	u32 window_height;
+	u32 window_flags;
 } gs_application_desc;
 
 // What would the context necessarily hold? Some container of all subsystems? 

@@ -66,6 +66,10 @@ gs_uuid
 // // Platform Window
 // ============================================================*/
 
+#define gs_window_flags_resizable 	0x01
+#define gs_window_flags_fullscreen 	0x02
+#define gs_window_flags_default 	(gs_window_flags_resizable | gs_window_flags_resizable)
+
 // // Forward Decl
 struct gs_platform_window;
 typedef void* gs_platform_window_ptr;
