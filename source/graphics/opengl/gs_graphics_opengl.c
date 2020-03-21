@@ -937,7 +937,7 @@ gs_resource( gs_texture ) opengl_construct_texture_from_file( const char* file_p
 	texture tex = {0};
 
 	// Load in texture data using stb for now
-	char temp_file_extension_buffer[ 16 ] = {}; 
+	char temp_file_extension_buffer[ 16 ] = {0}; 
 	gs_texture_format texture_format;
 	gs_util_get_file_extension( temp_file_extension_buffer, sizeof( temp_file_extension_buffer ), file_path );
 
