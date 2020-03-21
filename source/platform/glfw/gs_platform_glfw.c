@@ -11,6 +11,7 @@ void __glfw_mouse_cursor_position_callback( GLFWwindow* window, f64 x, f64 y );
 void __glfw_mouse_scroll_wheel_callback( GLFWwindow* window, f64 xoffset, f64 yoffset );
 void __glfw_mouse_cursor_enter_callback( GLFWwindow* window, s32 entered );
 void __glfw_frame_buffer_size_callback( GLFWwindow* window, s32 width, s32 height );
+void __glfw_window_close_callback( GLFWwindow* window );
 
 #define __window_from_handle( platform, handle )\
 	( (GLFWwindow*)( gs_slot_array_get( ( platform )->windows, ( handle ) ) ) )
@@ -306,7 +307,16 @@ void __glfw_frame_buffer_size_callback( GLFWwindow* window, s32 width, s32 heigh
 	// {
 	// 	gfx->set_viewport( width, height );
 	// }	
-	glViewport( 0, 0, width, height );
+}
+
+void __glfw_window_close_callback( GLFWwindow* window )
+{
+	// Not sure how to bubble this up to the engine to signal that it should close or not...	
+	// Probably just expose a function pointer for the window itself?
+	// window->window_close_callback_func();
+	// glfwSetWindowShouldClose(window, GL_FALSE);
+	// For now, just ya know, press the escape key manually...
+	gs_engine_instance()->ctx.platform->press_key( gs_keycode_esc );
 }
 
 gs_result glfw_process_input( struct gs_platform_input* input )
@@ -333,6 +343,7 @@ void* glfw_create_window( const char* title, u32 width, u32 height )
 	glfwSetScrollCallback( window, &__glfw_mouse_scroll_wheel_callback );
 	glfwSetCursorEnterCallback( window, &__glfw_mouse_cursor_enter_callback );
 	glfwSetFramebufferSizeCallback(window, &__glfw_frame_buffer_size_callback);
+	glfwSetWindowCloseCallback(window, &__glfw_window_close_callback );
 
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
