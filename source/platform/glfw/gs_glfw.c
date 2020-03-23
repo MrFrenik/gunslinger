@@ -1,6 +1,3 @@
-//#define _GLFW_BUILD_DLL           // To build shared version
-//http://www.glfw.org/docs/latest/compile.html#compile_manual
-
 #if defined(_WIN32)
     #define _GLFW_WIN32
 #endif

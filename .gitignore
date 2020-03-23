@@ -4,3 +4,4 @@ bin/Gunslinger
 *.obj
 *.a
 examples/hello_gs/bin/HelloGS
+*.lib

@@ -35,36 +35,6 @@ src=(
 	../source/graphics/opengl/*.c
 )
 
-# ext_src=(
-# 	../third_party/source/GLFW/*.c
-# 	../third_party/source/GLFW/*.m
-# )
-
-# lib_dirs=(
-# 	-L ../third_party/lib/release/osx/
-# )
-
-# Need to compile ALL 3rd party depedency code into Gunslinger
-# By default, will include: 
-	# Platform -> GLFW
-	# Video -> OpenGL (via glad)
-	# Audio
-libs=(
-	# -lSDL2
-	# -framework OpenGL
-	# -lm -lGLEW
-	# `sdl2-config --libs`
-	# -lglfw3
-	# -framework CoreFoundation 
-	# -framework CoreVideo 
-	# -framework IOKit 
-	# -framework Cocoa 
-	# -framework Carbon
-)
-
-# Build
-# gcc -O0 ${lib_dirs[*]} ${libs[*]} ${inc[*]} ${src[*]} ${flags[*]} -o Gunslinger
-
 # Build library
 gcc -c -O3 ${flags[*]} ${inc[*]} ${src[*]} ${libs[*]}
 ar -rvs lib${proj_name}.a *o 

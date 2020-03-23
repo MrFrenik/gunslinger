@@ -4,7 +4,7 @@ mkdir bin
 pushd bin
 
 rem Include directories 
-set inc=/I ..\include\ /I ..\third_party\include\
+set inc=/I ..\include\ /I ..\third_party\include\ /I ..\
 
 rem Source files
 set src_main=..\source\*.c
@@ -19,6 +19,8 @@ set src_graphics_ogl=..\source\graphics\opengl\*.c
 rem Platform specific plugin
 set src_platform_glfw=..\source\platform\glfw\*.c
 
+rem TP Source
+
 rem All source together
 set src_all=%src_main% %src_base% %src_graphics% %src_serialize% ^
 %src_platform% %src_platform_glfw% %src_graphics_ogl%
@@ -30,9 +32,6 @@ rem OS Libraries
 set os_libs= opengl32.lib kernel32.lib user32.lib ^
 shell32.lib vcruntime.lib msvcrt.lib gdi32.lib
 
-rem User Libraries
-set libs=glfw3.lib
-
 rem Name
 set name=Gunslinger
 
@@ -42,9 +41,10 @@ set c_options=cl /MP /FS /Ox /W1 /Fe%name%.exe
 rem Link options
 set l_options=/EHsc /link /SUBSYSTEM:CONSOLE /NODEFAULTLIB:msvcrt.lib
 
-rem Compile
-cl /MP /FS /Ox /W1 /FeGunslinger.exe %src_all% %inc% ^
-/EHsc /link /SUBSYSTEM:CONSOLE /NODEFAULTLIB:msvcrt.lib /NODEFAULTLIB:LIBCMT ^
-%lib_d% %libs% %os_libs%
+rem Compile library objects
+cl /c /MP /FS /Ox /W1 %src_all% %inc% /EHsc
+
+rem Compile library
+lib *.obj /out:Gunslinger.lib
 
 popd
