@@ -6,8 +6,6 @@
 #include "base/gs_engine.h"
 
 #include <glad/glad.h>
-
-#define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image_write.h>
 #include <stb/stb_image.h>
 
@@ -929,6 +927,162 @@ gs_resource( gs_uniform ) opengl_construct_uniform( gs_resource( gs_shader ) s_h
 	return handle;
 }
 
+gs_resource( gs_texture ) opengl_construct_texture( gs_texture_parameter_desc desc )
+{
+	gs_opengl_render_data* data = __get_opengl_data_internal();
+
+	if ( desc.data == NULL )
+	{
+		gs_println( "Texture data cannot be null." );
+		gs_assert( false );
+	}
+
+	// Texture to fill out
+	texture tex = {0};
+
+	gs_texture_format texture_format = desc.texture_format;
+	u32 width = desc.width;
+	u32 height = desc.height;
+	u32 num_comps = desc.num_comps;
+
+	// Standard texture format
+	switch( texture_format )
+	{
+		case gs_texture_format_ldr:
+		{
+			void* texture_data = desc.data;
+
+			glGenTextures( 1, &( tex.id ) );
+			glBindTexture( GL_TEXTURE_2D, tex.id );
+
+			// Generate texture depending on number of components in texture data
+			switch ( num_comps )
+			{
+				case 3: 
+				{
+					glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, texture_data ); 
+				} break;
+
+				default:
+				case 4: 
+				{
+					glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture_data ); 
+				} break;
+			}
+
+			s32 mag_filter = desc.mag_filter == gs_nearest ? GL_NEAREST : GL_LINEAR;
+			s32 min_filter = desc.min_filter == gs_nearest ? GL_NEAREST : GL_LINEAR;
+
+			if ( desc.generate_mips )
+			{
+				if ( desc.min_filter == gs_nearest ) {
+					min_filter = desc.mipmap_filter == gs_nearest ? GL_NEAREST_MIPMAP_NEAREST : 
+						GL_NEAREST_MIPMAP_LINEAR;
+				} else {
+					min_filter = desc.mipmap_filter == gs_nearest ? GL_LINEAR_MIPMAP_NEAREST : 
+						GL_NEAREST_MIPMAP_LINEAR;
+				}
+			}
+
+			s32 texture_wrap_s = desc.texture_wrap_s == gs_repeat ? GL_REPEAT : 
+								 desc.texture_wrap_s == gs_mirrored_repeat ? GL_MIRRORED_REPEAT : 
+								 desc.texture_wrap_s == gs_clamp_to_edge ? GL_CLAMP_TO_EDGE : 
+								 GL_CLAMP_TO_BORDER;
+			s32 texture_wrap_t = desc.texture_wrap_t == gs_repeat ? GL_REPEAT : 
+								 desc.texture_wrap_t == gs_mirrored_repeat ? GL_MIRRORED_REPEAT : 
+								 desc.texture_wrap_t == gs_clamp_to_edge ? GL_CLAMP_TO_EDGE : 
+								 GL_CLAMP_TO_BORDER;
+
+			// Anisotropic filtering ( not supported by default, need to figure this out )
+			// f32 aniso = 0.0f; 
+			// glGetFloatv( GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &aniso );
+			// glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso );
+
+			glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, texture_wrap_s );
+			glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, texture_wrap_t );
+			glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter );
+			glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter );
+
+			if ( desc.generate_mips )
+			{
+				glGenerateMipmap( GL_TEXTURE_2D );
+			}
+
+			tex.width 			= width;
+			tex.height 			= height;
+			tex.num_comps 		= num_comps;
+			tex.texture_format 	= texture_format;
+
+			glBindTexture( GL_TEXTURE_2D, 0 );
+
+			// gs_free( texture_data );
+			// texture_data = NULL;
+
+		} break;
+
+		// TODO(john): support this format
+		case gs_texture_format_hdr:
+		default:
+		{
+			gs_assert( false );
+		} break;
+	}
+
+	// Push back texture for handle
+	u32 t_handle = gs_slot_array_insert( data->textures, tex );
+
+	gs_resource( gs_texture ) handle = {0};
+	handle.id = t_handle;
+	return handle;
+}
+
+void* opengl_load_texture_data_from_file( const char* file_path, b32 flip_vertically_on_load, 
+				u32* width, u32* height, u32* num_comps , gs_texture_format* texture_format )
+{
+	// Load texture data
+	stbi_set_flip_vertically_on_load( flip_vertically_on_load );
+
+	// Load in texture data using stb for now
+	char temp_file_extension_buffer[ 16 ] = {0}; 
+	gs_util_get_file_extension( temp_file_extension_buffer, sizeof( temp_file_extension_buffer ), file_path );
+
+	if ( gs_string_compare_equal( temp_file_extension_buffer, "hdr" ) ) {
+		*texture_format = gs_texture_format_hdr;
+	} else {
+		*texture_format = gs_texture_format_ldr;
+	}
+
+	// Texture data to fill out
+	void* texture_data = NULL;
+
+	switch ( *texture_format )
+	{
+		case gs_texture_format_ldr:
+		{
+			// Load texture data
+			stbi_set_flip_vertically_on_load( true );
+
+			// For now, this data will always have 4 components, since STBI_rgb_alpha is being passed in as required components param
+			// Could optimize this later
+			texture_data = ( u8* )stbi_load( file_path, (s32*)width, (s32*)height, (s32*)num_comps, STBI_rgb_alpha );
+
+			if ( !texture_data )
+			{
+				gs_println( "Warning: could not load texture: %s", file_path );
+			}
+		} break;
+
+		// TODO(john): support this format
+		case gs_texture_format_hdr:
+		default:
+		{
+			gs_assert( false );
+		} break;
+	}
+
+	return texture_data;
+}
+
 gs_resource( gs_texture ) opengl_construct_texture_from_file( const char* file_path )
 {
 	gs_opengl_render_data* data = __get_opengl_data_internal();
@@ -952,7 +1106,7 @@ gs_resource( gs_texture ) opengl_construct_texture_from_file( const char* file_p
 
 	void* texture_data;
 
-		// Standard texture format
+	// Standard texture format
 	switch( texture_format )
 	{
 		case gs_texture_format_ldr:
@@ -1036,19 +1190,6 @@ gs_resource( gs_texture ) opengl_construct_texture_from_file( const char* file_p
 	return handle;
 }
 
-gs_resource( gs_texture ) opengl_construct_texture( gs_texture_parameter_desc desc )
-{
-	gs_opengl_render_data* data = __get_opengl_data_internal();
-
-	// Texture to fill out
-	texture tex = {0};
-
-	// Load in texture data using stb for now
-
-	gs_resource( gs_texture ) handle = {0};
-	return handle;
-}
-
 // Method for creating platform layer for SDL
 struct gs_graphics_i* gs_graphics_construct()
 {
@@ -1094,6 +1235,7 @@ struct gs_graphics_i* gs_graphics_construct()
 	gfx->construct_index_buffer 				= &opengl_construct_index_buffer;
 	gfx->construct_texture 						= &opengl_construct_texture;
 	gfx->construct_texture_from_file 			= &opengl_construct_texture_from_file;
+	gfx->load_texture_data_from_file 			= &opengl_load_texture_data_from_file;
 	// gs_resource( gs_uniform_buffer )( * construct_uniform_buffer )( gs_resource( gs_shader ), const char* uniform_name );
 
 	// /*============================================================

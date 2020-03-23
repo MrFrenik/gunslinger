@@ -83,8 +83,12 @@ typedef struct gs_texture_parameter_desc
 	gs_texture_filtering mag_filter;
 	gs_texture_filtering mipmap_filter;
 	f32 border_color[4];
-	b32 generate_mipmaps;
-	const char* path;			// We'll do a file path for now, but I'd honestly like to just pass in data...
+	b32 generate_mips;
+	gs_texture_format texture_format;
+	void* data;
+	u32 width;
+	u32 height;
+	u32 num_comps;
 } gs_texture_parameter_desc;
 
 /*================
@@ -146,6 +150,10 @@ typedef struct gs_graphics_i
 	// gs_resource( gs_uniform_buffer )( * construct_uniform_buffer )( gs_resource( gs_shader ), const char* uniform_name );
 	gs_resource( gs_uniform )( * construct_uniform )( gs_resource( gs_shader ), const char* uniform_name, gs_uniform_type );
 	gs_resource( gs_command_buffer )( * construct_command_buffer )();
+	void* ( * load_texture_data_from_file )( const char* file_path, b32 flip_vertically_on_load, 
+					u32* width, u32* height, u32* num_comps , gs_texture_format* );
+
+	// Will construct texture resource and let user free data...for now
 	gs_resource( gs_texture )( * construct_texture )( gs_texture_parameter_desc );
 	gs_resource( gs_texture )( * construct_texture_from_file )( const char* );
 	gs_resource( gs_index_buffer )( * construct_index_buffer )( void*, usize );
@@ -168,6 +176,13 @@ typedef struct gs_graphics_i
 	void* data;
 
 } gs_graphics_i;
+
+/*===============================
+// Graphics Default Functionality
+===============================*/
+
+gs_texture_parameter_desc gs_texture_parameter_desc_default();
+void* gs_load_texture_data_from_file( const char* path, b32 flip_vertically_on_load );
 
 /*===============================
 // Graphics User Provided Funcs

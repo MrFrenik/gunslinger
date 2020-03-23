@@ -132,13 +132,15 @@ void render_scene()
 	gfx->bind_uniform( g_cb, g_view, &view );
 	gfx->bind_uniform( g_cb, g_proj, &proj );
 
+	f32 t_mod = 0.0001f;
+
 	// Draw a bunch of different cubies
 	gs_for_range_i( sizeof(cubePositions) / sizeof(gs_vec3))
 	{
 		gs_vqs xform = gs_vqs_default();
-		gs_quat rot = gs_quat_angle_axis( t * 0.001f, (gs_vec3){1.f, 0.f, 0.f});
-		rot = gs_quat_mul_quat( rot, gs_quat_angle_axis( t * 0.001f, (gs_vec3){0.f, 1.f, 0.f}));
-		rot = gs_quat_mul_quat( rot, gs_quat_angle_axis( t * 0.001f, (gs_vec3){0.f, 0.f, 1.f}));
+		gs_quat rot = gs_quat_angle_axis( t * t_mod, (gs_vec3){1.f, 0.f, 0.f});
+		rot = gs_quat_mul_quat( rot, gs_quat_angle_axis( t * t_mod, (gs_vec3){0.f, 1.f, 0.f}));
+		rot = gs_quat_mul_quat( rot, gs_quat_angle_axis( t * t_mod, (gs_vec3){0.f, 0.f, 1.f}));
 		xform.rotation = rot;
 		xform.position = cubePositions[i];
 		model = gs_vqs_to_mat4( &xform );
@@ -175,9 +177,6 @@ gs_result app_init()
 	// Construct index buffer for index drawing
 	g_ib = gfx->construct_index_buffer( (void*)indices, sizeof( indices ) );
 
-	// Construct texture from file path
-	g_tex0 = gfx->construct_texture_from_file( "iu.png" );
-
 	// Construct uniform for texture unit to be bound
 	g_s_tex0 = gfx->construct_uniform( g_shader, "s_tex0", gs_uniform_type_sampler2d );
 
@@ -186,6 +185,65 @@ gs_result app_init()
 	g_view = gfx->construct_uniform( g_shader, "u_view", gs_uniform_type_mat4 );
 	g_model = gfx->construct_uniform( g_shader, "u_model", gs_uniform_type_mat4 );
 
+	// Construct texture from file path
+	g_tex0 = gfx->construct_texture_from_file( "iu.png" );
+
+	// Try to load some texture data, mofo
+	u32 width, height, num_comps;
+	gs_texture_format texture_format;
+	void* texture_data = gfx->load_texture_data_from_file( "iu.png", true, &width, 
+		&height, &num_comps, &texture_format );
+
+	gs_texture_parameter_desc t_desc = gs_texture_parameter_desc_default();	
+	t_desc.data = texture_data;
+	t_desc.width = width;
+	t_desc.height = height;
+	t_desc.num_comps = num_comps;
+	t_desc.texture_format = texture_format;
+	g_tex0 = gfx->construct_texture( t_desc );
+
+	// Free texture data
+	gs_free( texture_data );
+	texture_data = NULL;
+
+	// Constructing texture data dynamically
+	{
+		u32 width = 16, height = 16;
+		u8* t_data = gs_malloc( width * height * 4 );
+		memset( t_data, 0, width * height * 4 );
+		for ( u32 w = 0; w < width; w++ )
+		{
+			for ( u32 h = 0; h < height; ++h )
+			{
+				u32 ci = h * width + w;
+				u32 di = ci * 4;	// stride
+				if ( w % 2 == 0 ) {
+					t_data[ di + 0 ] = h % 2 == 0 ? 255 : 0;
+					t_data[ di + 1 ] = 0;
+					t_data[ di + 2 ] = 0;
+					t_data[ di + 3 ] = 255;
+				} else {
+					t_data[ di + 0 ] = h % 2 == 0 ? 0 : 255;
+					t_data[ di + 1 ] = 0;
+					t_data[ di + 2 ] = 0;
+					t_data[ di + 3 ] = 255;
+				}
+			}
+		}
+
+		gs_texture_parameter_desc desc = gs_texture_parameter_desc_default();
+		t_desc.data = t_data;
+		t_desc.width = width;
+		t_desc.height = height;
+		t_desc.num_comps = 4;
+		t_desc.texture_format = gs_texture_format_ldr;
+		t_desc.mag_filter = gs_nearest;
+		t_desc.min_filter = gs_nearest;
+		g_tex0 = gfx->construct_texture( t_desc );
+
+		gs_free( t_data );
+	}
+
 	return gs_result_success;
 }
 
@@ -193,17 +251,6 @@ gs_result app_update()
 {
 	// Render scene
 	render_scene();
-
-	// typedef struct gs_platform_time 
-	// {
-	// 	f64 max_fps;
-	// 	f64 current;
-	// 	f64 previous;
-	// 	f64 update;
-	// 	f64 render;
-	// 	f64 delta;
-	// 	f64 frame;
-	// } gs_platform_time;
 
 	gs_timed_action( 10, 
 	{
