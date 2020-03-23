@@ -89,12 +89,6 @@ gs_result gs_engine_run()
 		if ( platform->process_input() != gs_result_in_progress )
 		{
 			return ( gs_engine_instance()->shutdown() );
-		} 
-
-		// For now, just shutdown when escape is pressed
-		if ( platform->key_pressed( gs_keycode_esc ) )
-		{
-			return ( gs_engine_instance()->shutdown() );
 		}
 
 		// Process application context
@@ -115,8 +109,6 @@ gs_result gs_engine_run()
 		{
 			platform->window_swap_buffer( platform->active_window_handles[ i ] );
 		}
-
-		// platform->window_swap_buffer( window );
 
 		// Frame locking
 	    platform->time.current 	= platform->elapsed_time();
