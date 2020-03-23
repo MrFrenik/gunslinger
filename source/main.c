@@ -189,22 +189,22 @@ gs_result app_init()
 	g_tex0 = gfx->construct_texture_from_file( "iu.png" );
 
 	// Try to load some texture data, mofo
-	u32 width, height, num_comps;
-	gs_texture_format texture_format;
-	void* texture_data = gfx->load_texture_data_from_file( "iu.png", true, &width, 
-		&height, &num_comps, &texture_format );
+	// u32 width, height, num_comps;
+	// gs_texture_format texture_format;
+	// void* texture_data = gfx->load_texture_data_from_file( "iu.png", true, &width, 
+	// 	&height, &num_comps, &texture_format );
 
-	gs_texture_parameter_desc t_desc = gs_texture_parameter_desc_default();	
-	t_desc.data = texture_data;
-	t_desc.width = width;
-	t_desc.height = height;
-	t_desc.num_comps = num_comps;
-	t_desc.texture_format = texture_format;
-	g_tex0 = gfx->construct_texture( t_desc );
+	// gs_texture_parameter_desc t_desc = gs_texture_parameter_desc_default();	
+	// t_desc.data = texture_data;
+	// t_desc.width = width;
+	// t_desc.height = height;
+	// t_desc.num_comps = num_comps;
+	// t_desc.texture_format = texture_format;
+	// g_tex0 = gfx->construct_texture( t_desc );
 
-	// Free texture data
-	gs_free( texture_data );
-	texture_data = NULL;
+	// // Free texture data
+	// gs_free( texture_data );
+	// texture_data = NULL;
 
 	// Constructing texture data dynamically
 	{
@@ -231,7 +231,7 @@ gs_result app_init()
 			}
 		}
 
-		gs_texture_parameter_desc desc = gs_texture_parameter_desc_default();
+		gs_texture_parameter_desc t_desc = gs_texture_parameter_desc_default();
 		t_desc.data = t_data;
 		t_desc.width = width;
 		t_desc.height = height;
