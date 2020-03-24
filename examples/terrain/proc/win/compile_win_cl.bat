@@ -7,10 +7,10 @@ rem Name
 set name=Terrain
 
 rem Include directories 
-set inc=/I ..\..\..\include
+set inc=/I ..\..\..\include /I ..\source\noise\src\
 
 rem Source files
-set src_main=..\source\*.c
+set src_main=..\source\*.c ..\source\noise\noise1234.c
 
 rem All source together
 set src_all=%src_main%
