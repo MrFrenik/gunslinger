@@ -24,6 +24,7 @@ typedef enum gs_opengl_op_code
 {
 	gs_opengl_op_bind_shader = 0,
 	gs_opengl_op_set_view_clear,
+	gs_opengl_op_set_viewport,
 	gs_opengl_op_set_depth_enabled,
 	gs_opengl_op_bind_vertex_buffer,
 	gs_opengl_op_bind_index_buffer,
@@ -319,6 +320,25 @@ void opengl_bind_index_buffer( gs_resource( gs_command_buffer ) cb_handle, gs_re
 	cb->num_commands++;
 }
 
+void opengl_set_viewport( gs_resource( gs_command_buffer ) cb_handle, u32 width, u32 height )
+{
+	// Get data from graphics api
+	gs_opengl_render_data* data = __get_opengl_data_internal();
+
+	// Grab command buffer ptr from command buffer slot array
+	command_buffer* cb = __get_command_buffer_internal( data, cb_handle );
+
+	// Write op into buffer
+	gs_byte_buffer_write( &cb->commands, u32, gs_opengl_op_set_viewport );
+	// Write width into buffer
+	gs_byte_buffer_write( &cb->commands, u32, width );
+	// Write height into buffer
+	gs_byte_buffer_write( &cb->commands, u32, height );
+
+	// Increase command amount
+	cb->num_commands++;
+}
+
 // Want to set a bitmask for this as well to determine clear types
 void opengl_set_view_clear( gs_resource( gs_command_buffer ) cb_handle, f32* col )
 {
@@ -450,6 +470,17 @@ void opengl_submit_command_buffer( gs_resource( gs_command_buffer ) cb_handle )
 				glClearColor( col.x, col.y, col.z, col.w );
 				// Clear screen
 				glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+			} break;
+
+			case gs_opengl_op_set_viewport: 
+			{
+				// Read width from buffer
+				u32 width = gs_byte_buffer_read( &cb->commands, u32 );
+				// Read height from buffer
+				u32 height = gs_byte_buffer_read( &cb->commands, u32 );
+				// Set viewport
+				glViewport( 0, 0, (s32)width, (s32)height );
+
 			} break;
 
 			case gs_opengl_op_set_depth_enabled: 
@@ -600,24 +631,6 @@ gs_resource( gs_command_buffer ) opengl_construct_command_buffer()
 	return handle;
 }
 
-gs_resource( gs_vertex_attribute_layout_desc ) opengl_construct_vertex_attribute_layout_desc()
-{
-	gs_opengl_render_data* data = __get_opengl_data_internal();
-
-	// Construct new command buffer, then insert into slot array
-	u32 vd_handle = gs_slot_array_insert( data->vertex_layout_descs, (vertex_attribute_layout_desc){0} );
-	vertex_attribute_layout_desc* vd = gs_slot_array_get_ptr( data->vertex_layout_descs, vd_handle );
-
-	// Set data
-	vd->attributes = gs_dyn_array_new( gs_vertex_attribute_type );
-
-	// Set resource handle
-	gs_resource( gs_vertex_attribute_layout_desc ) handle = {0};
-	handle.id = vd_handle;
-
-	return handle;
-}
-
 u32 get_byte_size_of_vertex_attribute( gs_vertex_attribute_type type )
 {
 	u32 byte_size = 0; 
@@ -636,24 +649,23 @@ u32 get_byte_size_of_vertex_attribute( gs_vertex_attribute_type type )
 	return byte_size;
 }
 
-u32 calculate_vertex_size_in_bytes( vertex_attribute_layout_desc* desc )
+u32 calculate_vertex_size_in_bytes( gs_vertex_attribute_type* layout_data, u32 count )
 {
 	// Iterate through all formats in delcarations and calculate total size
 	u32 sz = 0;
 
-	gs_for_range_i( gs_dyn_array_size( desc->attributes ) )
+	gs_for_range_i( count )
 	{
-		gs_vertex_attribute_type type = desc->attributes[ i ];
+		gs_vertex_attribute_type type = layout_data[ i ];
 		sz += get_byte_size_of_vertex_attribute( type );
 	}
 
 	return sz;
 }
 
-s32 get_byte_offest( vertex_attribute_layout_desc* desc, u32 index )
+s32 get_byte_offest( gs_vertex_attribute_type* layout_data, u32 index )
 {
-	gs_assert( desc );
-	gs_assert( index < gs_dyn_array_size( desc->attributes ) );
+	gs_assert( layout_data );
 
 	// Recursively calculate offset
 	s32 total_offset = 0;
@@ -667,7 +679,7 @@ s32 get_byte_offest( vertex_attribute_layout_desc* desc, u32 index )
 	// Calculate total offset up to this point
 	for ( u32 i = 0; i < index; ++i )
 	{ 
-		total_offset += get_byte_size_of_vertex_attribute( desc->attributes[ i ] );
+		total_offset += get_byte_size_of_vertex_attribute( layout_data[ i ] );
 	} 
 
 	return total_offset;
@@ -675,13 +687,7 @@ s32 get_byte_offest( vertex_attribute_layout_desc* desc, u32 index )
 
 #define int_2_void_p(i) (void*)(uintptr_t)(i)
 
-void opengl_add_vertex_attribute( gs_resource( gs_vertex_attribute_layout_desc ) vd_handle, gs_vertex_attribute_type type )
-{
-	gs_opengl_render_data* data = __get_opengl_data_internal();
-	gs_dyn_array_push( ( gs_slot_array_get( data->vertex_layout_descs, vd_handle.id ) ).attributes, type );
-}
-
-gs_resource( gs_vertex_buffer ) opengl_construct_vertex_buffer( gs_resource( gs_vertex_attribute_layout_desc ) v_desc_handle, 
+gs_resource( gs_vertex_buffer ) opengl_construct_vertex_buffer( gs_vertex_attribute_type* layout_data, u32 layout_size, 
 	void* v_data, usize v_data_size )
 {
 	gs_opengl_render_data* data = __get_opengl_data_internal();
@@ -689,8 +695,6 @@ gs_resource( gs_vertex_buffer ) opengl_construct_vertex_buffer( gs_resource( gs_
 	// Construct new vertex buffer, then insert into slot array
 	u32 vb_handle = gs_slot_array_insert( data->vertex_buffers, (vertex_buffer){0} );
 	vertex_buffer* vb = gs_slot_array_get_ptr( data->vertex_buffers, vb_handle );
-
-	vertex_attribute_layout_desc* v_desc = gs_slot_array_get_ptr( data->vertex_layout_descs, v_desc_handle.id );
 
 	// Create and bind vertex array
 	glGenVertexArrays( 1, (u32*)&vb->vao );
@@ -701,14 +705,13 @@ gs_resource( gs_vertex_buffer ) opengl_construct_vertex_buffer( gs_resource( gs_
 	glBindBuffer( GL_ARRAY_BUFFER, (u32)vb->vbo );
 	glBufferData( GL_ARRAY_BUFFER, v_data_size, v_data, GL_STATIC_DRAW );
 
-	u32 total_size = calculate_vertex_size_in_bytes( v_desc );
+	u32 total_size = calculate_vertex_size_in_bytes( layout_data, layout_size );
 
 	// Bind vertex attrib pointers for vao using layout descriptor
-	gs_for_range_i( gs_dyn_array_size( v_desc->attributes ) )
+	gs_for_range_i( layout_size )
 	{
-		glEnableVertexAttribArray( i );
-		gs_vertex_attribute_type type = v_desc->attributes[ i ];
-		u32 byte_offset = get_byte_offest( v_desc, i );
+		gs_vertex_attribute_type type = layout_data[ i ];
+		u32 byte_offset = get_byte_offest( layout_data, i );
 
 		switch ( type )
 		{
@@ -750,6 +753,9 @@ gs_resource( gs_vertex_buffer ) opengl_construct_vertex_buffer( gs_resource( gs_
 				gs_assert( false );
 			} break;
 		}
+
+		// Enable the vertex attribute pointer
+		glEnableVertexAttribArray( i );
 	}
 
 	// Unbind buffer and array
@@ -1216,6 +1222,7 @@ struct gs_graphics_i* gs_graphics_construct()
 	gfx->bind_texture 			= &opengl_bind_texture;
 	gfx->bind_uniform 			= &opengl_bind_uniform;
 	gfx->set_view_clear 		= &opengl_set_view_clear;
+	gfx->set_viewport 			= &opengl_set_viewport;
 	gfx->set_depth_enabled 		= &opengl_set_depth_enabled;
 	gfx->draw 					= &opengl_draw;
 	gfx->draw_indexed 			= &opengl_draw_indexed;
@@ -1230,7 +1237,6 @@ struct gs_graphics_i* gs_graphics_construct()
 	gfx->construct_shader 						= &opengl_construct_shader;
 	gfx->construct_uniform 						= &opengl_construct_uniform;
 	gfx->construct_command_buffer 				= &opengl_construct_command_buffer;
-	gfx->construct_vertex_attribute_layout_desc = &opengl_construct_vertex_attribute_layout_desc;
 	gfx->construct_vertex_buffer 				= &opengl_construct_vertex_buffer;
 	gfx->construct_index_buffer 				= &opengl_construct_index_buffer;
 	gfx->construct_texture 						= &opengl_construct_texture;
@@ -1250,7 +1256,6 @@ struct gs_graphics_i* gs_graphics_construct()
 	// /*============================================================
 	// // Graphics Update Ops
 	// ============================================================*/
-	gfx->add_vertex_attribute = &opengl_add_vertex_attribute;
 
 	return gfx;
 }

@@ -115,6 +115,7 @@ gs_result gs_engine_run()
 	    platform->time.render 	= platform->time.current - platform->time.previous;
 	    platform->time.previous = platform->time.current;
 	    platform->time.frame 	= platform->time.update + platform->time.render; 			// Total frame time
+	    platform->time.delta 	= platform->time.frame / 1000.f;
 
 	    f32 target = ( 1000.f / platform->time.max_fps );
 
@@ -126,6 +127,7 @@ gs_result gs_engine_run()
 	    	f64 wait_time = platform->time.current - platform->time.previous;
 	    	platform->time.previous = platform->time.current;
 	    	platform->time.frame += wait_time;
+		    platform->time.delta 	= platform->time.frame / 1000.f;
 	    }
 	}
 

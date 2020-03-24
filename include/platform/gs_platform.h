@@ -353,7 +353,7 @@ typedef struct gs_platform_i
 	============================================================*/
 
 	// Will return a null buffer if file does not exist or allocation fails
-	char* 		( * read_file_contents_into_string_null_term )( const char* file_path, const char* mode, usize* sz );
+	char* 		( * read_file_contents )( const char* file_path, const char* mode, usize* sz );
 	gs_result 	( * write_str_to_file )( const char* contents, const char* mode, usize sz, const char* output_path );
 
 	// Settings for platform, including video, audio

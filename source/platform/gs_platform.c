@@ -195,7 +195,7 @@ char* __gs_platform_read_file_contents_into_string_null_term( const char* file_p
 			fread( buffer, 1, *sz, fp );
 		}
 		fclose( fp );
-		buffer[ *sz ] = '0';
+		buffer[ *sz ] = '\0';
 	}
 	return buffer;
 }
@@ -340,8 +340,8 @@ void __gs_default_init_platform( struct gs_platform_i* platform )
 	// Platform File IO
 	============================*/
 
-	platform->read_file_contents_into_string_null_term 	= &__gs_platform_read_file_contents_into_string_null_term;
-	platform->write_str_to_file 						= &__gs_platform_write_str_to_file;
+	platform->read_file_contents 	= &__gs_platform_read_file_contents_into_string_null_term;
+	platform->write_str_to_file 	= &__gs_platform_write_str_to_file;
 
 	// Default world time initialization
 	platform->time.max_fps 		= 60.0;

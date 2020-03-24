@@ -5,3 +5,4 @@ bin/Gunslinger
 *.a
 examples/hello_gs/bin/HelloGS
 *.lib
+examples/terrain/bin/Terrain

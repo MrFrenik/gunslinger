@@ -65,7 +65,7 @@ _inline f32
 gs_map_range( f32 input_start, f32 input_end, f32 output_start, f32 output_end, f32 val )
 {
 	f32 slope = ( output_end - output_start ) / ( input_end - input_start );
-	return ( output_start + gs_round( slope * ( val - input_start ) ) );
+	return ( output_start + ( slope * ( val - input_start ) ) );
 }
 
 /*================================================================================
@@ -740,6 +740,7 @@ typedef struct
 	f32 c;
 	f32 d;
 } gs_plane;
+
 
 #ifdef __cplusplus
 }

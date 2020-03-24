@@ -59,6 +59,7 @@ typedef const char* 	const_str;
 #define u32_max			UINT32_MAX
 #define s32_max			INT32_MAX
 #define f32_max 		FLT_MAX
+#define f32_min 		FLT_MIN
 
 #ifdef __cplusplus
 }

@@ -1,3 +1,4 @@
+/*
 #include "gs.h"
 
 // Global variables
@@ -302,3 +303,4 @@ int main( int argc, char** argv )
 	return 0;
 }
 
+*/
