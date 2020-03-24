@@ -29,8 +29,6 @@ _global gs_resource( gs_shader ) 			shader = {0};
 _global gs_resource( gs_uniform ) 			u_noise_tex = {0};
 _global gs_resource( gs_texture ) 			noise_tex = {0};
 _global gs_resource( gs_command_buffer ) 	cb = {0};
-_global gs_resource( gs_vertex_buffer ) 	vbo = {0};
-_global gs_resource( gs_index_buffer ) 		ibo = {0};
 _global gs_resource( gs_uniform )			u_proj = {0};
 _global gs_resource( gs_uniform )			u_view = {0};
 _global gs_resource( gs_uniform )			u_model = {0};
@@ -193,34 +191,6 @@ gs_result app_init()
 
 	// Construct command buffer for rendering
 	cb = gfx->construct_command_buffer();
-
-	// Vertex buffer layout information
-	gs_vertex_attribute_type layout[] = {
-		gs_vertex_attribute_float3,
-		gs_vertex_attribute_float2	
-	};
-	u32 layout_count = sizeof(layout) / sizeof(gs_vertex_attribute_type);
-
-	f32 vertices[] = 
-	{
-	    // positions         // texture coords
-	     1.0f,  1.0f, 0.0f,  1.0f, 1.0f, // top right
-	     1.0f, -1.0f, 0.0f,  1.0f, 0.0f, // bottom right
-	    -1.0f, -1.0f, 0.0f,  0.0f, 0.0f, // bottom left
-	    -1.0f,  1.0f, 0.0f,  0.0f, 1.0f  // top left 
-	};
-
-	// Construct vertex buffer
-	vbo = gfx->construct_vertex_buffer( layout, layout_count, vertices, sizeof(vertices) );
-
-	u32 indices[] = 
-	{  
-	    0, 1, 3, // first triangle
-	    1, 2, 3  // second triangle
-	};
-
-	// Construct index buffer
-	ibo = gfx->construct_index_buffer( indices, sizeof(indices) );
 
 	// Free data
 	gs_free( noise_map );
