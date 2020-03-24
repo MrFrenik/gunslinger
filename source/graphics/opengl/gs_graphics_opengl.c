@@ -768,6 +768,25 @@ gs_resource( gs_vertex_buffer ) opengl_construct_vertex_buffer( gs_vertex_attrib
 	return handle;
 }
 
+void opengl_update_vertex_buffer_data( gs_resource( gs_vertex_buffer ) v_handle, void* v_data, usize v_sz )
+{
+	gs_assert( v_data );
+
+	gs_opengl_render_data* data = __get_opengl_data_internal();
+
+	// Construct new vertex buffer, then insert into slot array
+	vertex_buffer* vb = gs_slot_array_get_ptr( data->vertex_buffers, v_handle.id );
+
+	// Bind vao/vbo
+	glBindVertexArray( (u32)vb->vao );
+	glBindBuffer( GL_ARRAY_BUFFER, (u32)vb->vbo );
+	glBufferData( GL_ARRAY_BUFFER, v_sz, v_data, GL_STATIC_DRAW );
+
+	// Unbind buffer and array
+	glBindBuffer( GL_ARRAY_BUFFER, 0 );
+	glBindVertexArray( 0 );
+}
+
 gs_resource( gs_index_buffer ) opengl_construct_index_buffer( void* indices, usize sz )
 {
 	gs_opengl_render_data* data = __get_opengl_data_internal();
@@ -1196,6 +1215,105 @@ gs_resource( gs_texture ) opengl_construct_texture_from_file( const char* file_p
 	return handle;
 }
 
+void opengl_update_texture_data( gs_resource( gs_texture ) t_handle, gs_texture_parameter_desc t_desc )
+{
+	gs_assert( t_desc.data );
+
+	gs_opengl_render_data* data = __get_opengl_data_internal();
+
+	// Get texture from slot id
+	texture* tex = gs_slot_array_get_ptr( data->textures, t_handle.id );
+
+	gs_texture_format texture_format = t_desc.texture_format;
+	u32 width = t_desc.width;
+	u32 height = t_desc.height;
+	u32 num_comps = t_desc.num_comps;
+
+	// Standard texture format
+	switch( texture_format )
+	{
+		case gs_texture_format_ldr:
+		{
+			void* texture_data = t_desc.data;
+
+			// glGenTextures( 1, &( tex.id ) );
+			glBindTexture( GL_TEXTURE_2D, tex->id );
+
+			// Generate texture depending on number of components in texture data
+			switch ( num_comps )
+			{
+				case 3: 
+				{
+					glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, texture_data ); 
+				} break;
+
+				default:
+				case 4: 
+				{
+					glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture_data ); 
+				} break;
+			}
+
+			s32 mag_filter = t_desc.mag_filter == gs_nearest ? GL_NEAREST : GL_LINEAR;
+			s32 min_filter = t_desc.min_filter == gs_nearest ? GL_NEAREST : GL_LINEAR;
+
+			if ( t_desc.generate_mips )
+			{
+				if ( t_desc.min_filter == gs_nearest ) {
+					min_filter = t_desc.mipmap_filter == gs_nearest ? GL_NEAREST_MIPMAP_NEAREST : 
+						GL_NEAREST_MIPMAP_LINEAR;
+				} else {
+					min_filter = t_desc.mipmap_filter == gs_nearest ? GL_LINEAR_MIPMAP_NEAREST : 
+						GL_NEAREST_MIPMAP_LINEAR;
+				}
+			}
+
+			s32 texture_wrap_s = t_desc.texture_wrap_s == gs_repeat ? GL_REPEAT : 
+								 t_desc.texture_wrap_s == gs_mirrored_repeat ? GL_MIRRORED_REPEAT : 
+								 t_desc.texture_wrap_s == gs_clamp_to_edge ? GL_CLAMP_TO_EDGE : 
+								 GL_CLAMP_TO_BORDER;
+			s32 texture_wrap_t = t_desc.texture_wrap_t == gs_repeat ? GL_REPEAT : 
+								 t_desc.texture_wrap_t == gs_mirrored_repeat ? GL_MIRRORED_REPEAT : 
+								 t_desc.texture_wrap_t == gs_clamp_to_edge ? GL_CLAMP_TO_EDGE : 
+								 GL_CLAMP_TO_BORDER;
+
+			// Anisotropic filtering ( not supported by default, need to figure this out )
+			// f32 aniso = 0.0f; 
+			// glGetFloatv( GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &aniso );
+			// glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso );
+
+			glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, texture_wrap_s );
+			glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, texture_wrap_t );
+			glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter );
+			glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter );
+
+			if ( t_desc.generate_mips )
+			{
+				glGenerateMipmap( GL_TEXTURE_2D );
+			}
+
+			tex->width 			= width;
+			tex->height 		= height;
+			tex->num_comps 		= num_comps;
+			tex->texture_format = texture_format;
+
+			glBindTexture( GL_TEXTURE_2D, 0 );
+
+			// gs_free( texture_data );
+			// texture_data = NULL;
+
+		} break;
+
+		// TODO(john): support this format
+		case gs_texture_format_hdr:
+		default:
+		{
+			gs_assert( false );
+		} break;
+	}
+
+}
+
 // Method for creating platform layer for SDL
 struct gs_graphics_i* gs_graphics_construct()
 {
@@ -1238,9 +1356,11 @@ struct gs_graphics_i* gs_graphics_construct()
 	gfx->construct_uniform 						= &opengl_construct_uniform;
 	gfx->construct_command_buffer 				= &opengl_construct_command_buffer;
 	gfx->construct_vertex_buffer 				= &opengl_construct_vertex_buffer;
+	gfx->update_vertex_buffer_data 				= &opengl_update_vertex_buffer_data;
 	gfx->construct_index_buffer 				= &opengl_construct_index_buffer;
 	gfx->construct_texture 						= &opengl_construct_texture;
 	gfx->construct_texture_from_file 			= &opengl_construct_texture_from_file;
+	gfx->update_texture_data 					= &opengl_update_texture_data;
 	gfx->load_texture_data_from_file 			= &opengl_load_texture_data_from_file;
 	// gs_resource( gs_uniform_buffer )( * construct_uniform_buffer )( gs_resource( gs_shader ), const char* uniform_name );
 

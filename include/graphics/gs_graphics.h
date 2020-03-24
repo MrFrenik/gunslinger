@@ -145,8 +145,8 @@ typedef struct gs_graphics_i
 	/*============================================================
 	// Graphics Resource Construction
 	============================================================*/
-	// gs_resource( gs_vertex_attribute_layout_desc ) ( * construct_vertex_attribute_layout_desc )();
 	gs_resource( gs_vertex_buffer )( * construct_vertex_buffer )( gs_vertex_attribute_type*, u32, void*, usize );
+	void ( * update_vertex_buffer_data )( gs_resource( gs_vertex_buffer ), void*, usize );
 	gs_resource( gs_shader )( * construct_shader )( const char* vert_src, const char* frag_src );
 	// gs_resource( gs_uniform_buffer )( * construct_uniform_buffer )( gs_resource( gs_shader ), const char* uniform_name );
 	gs_resource( gs_uniform )( * construct_uniform )( gs_resource( gs_shader ), const char* uniform_name, gs_uniform_type );
@@ -157,6 +157,7 @@ typedef struct gs_graphics_i
 	// Will construct texture resource and let user free data...for now
 	gs_resource( gs_texture )( * construct_texture )( gs_texture_parameter_desc );
 	gs_resource( gs_texture )( * construct_texture_from_file )( const char* );
+	void ( * update_texture_data )( gs_resource( gs_texture ), gs_texture_parameter_desc );
 	gs_resource( gs_index_buffer )( * construct_index_buffer )( void*, usize );
 
 	/*============================================================
