@@ -13,13 +13,11 @@ flags=(
 # Include directories
 inc=(
 	-I ../../../include/		# Gunslinger includes
-	-I ../source/noise/src/		# Perlin noise libary includes
 )
 
 # Source files
 src=(
 	../source/main.c
-	../source/noise/src/sdnoise1234.c
 )
 
 lib_dirs=(
@@ -40,7 +38,7 @@ libs=(
 )
 
 # Build
-gcc -O3 ${lib_dirs[*]} ${libs[*]} ${fworks[*]} ${inc[*]} ${src[*]} ${flags[*]} -o Terrain
+gcc -O3 ${lib_dirs[*]} ${libs[*]} ${fworks[*]} ${inc[*]} ${src[*]} ${flags[*]} -o SimpleTriangle
 
 cd ..
 

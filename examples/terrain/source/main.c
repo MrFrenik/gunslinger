@@ -1,6 +1,6 @@
 #include <gs.h>
 
-#include "noise1234.h"
+#include "sdnoise1234.h"
 
 // Heightmap Terrain Demo
 // Ripped from Sebastian Lague's demo, converted/modified to C
@@ -56,6 +56,8 @@ _global gs_resource( gs_command_buffer ) 	cb = {0};
 _global gs_resource( gs_uniform )			u_proj = {0};
 _global gs_resource( gs_uniform )			u_view = {0};
 _global gs_resource( gs_uniform )			u_model = {0};
+_global gs_resource( gs_uniform )			u_view_pos = {0};
+_global gs_resource( gs_uniform )			u_time = {0};
 _global model_t 							terrain_model = {0};
 
 // Function Forward Decls.
@@ -115,7 +117,7 @@ f32* generate_noise_map( u32 width, u32 height, f32 scale, u32 octaves, f32 pers
 				f32 sample_x = ((x + x_offset) / scale) * frequency;
 				f32 sample_y = ((y + y_offset) / scale) * frequency;
 
-				f32 p_val = noise2( sample_x, sample_y );
+				f32 p_val = sdnoise2( sample_x, sample_y, NULL, NULL );
 				noise_height += p_val * amplitude;
 
 				amplitude *= persistence;
@@ -209,13 +211,11 @@ terrain_mesh_data_packet_t generate_terrain_mesh_data( f32* noise_data, u32 widt
 			gs_dyn_array_push( positions, ((gs_vec3){top_left_x + x, nd * mult, top_left_z - y }) );
 			gs_dyn_array_push( uvs, ((gs_vec2){ x / (f32)width, y / (f32)height }) );
 
-			if ( x < (width - 1) && y < height - 2 )
-			{
+			if ( x < (width - 1) && y < (height - 1) ) {
 				// Add triangle 
 				gs_dyn_array_push( tris, idx );
 				gs_dyn_array_push( tris, idx + width );
 				gs_dyn_array_push( tris, idx + width + 1 );
-
 				// Add triangle
 				gs_dyn_array_push( tris, idx + width + 1 );
 				gs_dyn_array_push( tris, idx + 1 );
@@ -226,9 +226,27 @@ terrain_mesh_data_packet_t generate_terrain_mesh_data( f32* noise_data, u32 widt
 
 	// Now that we have positions, uvs, and triangles, need to calculate normals for each triangle
 	// For now, just put normal as UP, cause normals are going to take more time to do
-	for ( u32 i = 0; i < width * height; ++i )
+	// Go through each triangle, calculate normal
+	for ( u32 i = 0; i < gs_dyn_array_size( tris ); i += 3 )
 	{
-		gs_dyn_array_push( normals, ((gs_vec3){ 0.f, 1.f, 0.f }) );
+		u32 idx_0 = tris[ i ];
+		u32 idx_1 = tris[ i + 1 ];
+		u32 idx_2 = tris[ i + 2 ];
+
+		gs_vec3 pos_0 = positions[ idx_0 ];
+		gs_vec3 pos_1 = positions[ idx_1 ];
+		gs_vec3 pos_2 = positions[ idx_2 ];
+
+		// Calculate vector a = normalize( pos_1 - pos_0 )
+		gs_vec3 a = gs_vec3_norm( gs_vec3_sub( pos_1, pos_0 ) );
+
+		// Calculate vector b = normalize( pos_2 - pos_0 )
+		gs_vec3 b = gs_vec3_norm( gs_vec3_sub( pos_2, pos_0 ) );
+
+		// Calculate normal 
+		gs_vec3 n = gs_vec3_norm( gs_vec3_cross( b, a ) );
+
+		gs_dyn_array_push( normals, n );
 	}
 
 	// Batch vertex data together
@@ -236,22 +254,26 @@ terrain_mesh_data_packet_t generate_terrain_mesh_data( f32* noise_data, u32 widt
 	f32* vertex_data = gs_malloc( vert_data_size );
 
 	// Have to interleave data
+	u32 n_idx = 0;
 	gs_for_range_i( gs_dyn_array_size( tris ) )
 	{
 		u32 base_idx = i * 8;
 		u32 idx = tris[ i ];
 		gs_vec3 pos = positions[ idx ];
-		gs_vec3 norm = normals[ idx ];
+		gs_vec3 norm = normals[ n_idx ];
 		gs_vec2 uv = uvs[ idx ];
 
 		vertex_data[ base_idx + 0 ] = pos.x;
 		vertex_data[ base_idx + 1 ] = pos.y;
 		vertex_data[ base_idx + 2 ] = pos.z;
-		vertex_data[ base_idx + 3 ] = 0.f;
-		vertex_data[ base_idx + 4 ] = 1.f;
-		vertex_data[ base_idx + 5 ] = 0.f;
+		vertex_data[ base_idx + 3 ] = norm.x;
+		vertex_data[ base_idx + 4 ] = norm.y;
+		vertex_data[ base_idx + 5 ] = norm.z;
 		vertex_data[ base_idx + 6 ] = uv.x;
 		vertex_data[ base_idx + 7 ] = uv.y;
+
+		if ( i % 3 == 0 ) 
+			n_idx++;
 	}
 
 	terrain_mesh_data_packet_t packet;
@@ -317,6 +339,8 @@ gs_result app_init()
 	u_proj = gfx->construct_uniform( shader, "u_proj", gs_uniform_type_mat4 );
 	u_view = gfx->construct_uniform( shader, "u_view", gs_uniform_type_mat4 );
 	u_model = gfx->construct_uniform( shader, "u_model", gs_uniform_type_mat4 );
+	u_view_pos = gfx->construct_uniform( shader, "u_view_pos", gs_uniform_type_vec3 );
+	u_time = gfx->construct_uniform( shader, "u_time", gs_uniform_type_float );
 
 	// Construct command buffer for rendering
 	cb = gfx->construct_command_buffer();
@@ -409,7 +433,7 @@ void render_scene()
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 
 	// Clear screen
-	f32 clear_color[4] = { 0.3f, 0.3f, 0.3f, 1.f };
+	f32 clear_color[4] = { 0.2f, 0.2f, 0.2f, 1.f };
 	gfx->set_view_clear( cb, clear_color );
 
 	// Set depth flags
@@ -428,16 +452,20 @@ void render_scene()
 	gs_quat rot = gs_quat_angle_axis( gs_deg_to_rad(30.f), (gs_vec3){1.f, 0.f, 0.f});
 	rot = gs_quat_mul_quat( rot, gs_quat_angle_axis( t, (gs_vec3){0.f, 1.f, 0.f}));
 	xform.rotation = rot;
-	// xform.scale = (gs_vec3){0.1f, 1.f, 0.1f};
 	model = gs_vqs_to_mat4( &xform );
 	gs_mat4 view = gs_mat4_identity();
 	gs_mat4 proj = gs_mat4_identity();
 	view = gs_mat4_translate((gs_vec3){0.f, -10.f, -250.f});
 	proj = gs_mat4_perspective(45.f, 800.f/600.f, 0.01f, 1000.f);
 
+	f32 t_s = t * 10.f;
+
+	gs_vec3 vp = (gs_vec3){0.f, -10.f, -250.f};
+	gfx->bind_uniform( cb, u_view_pos, &vp );
 	gfx->bind_uniform( cb, u_view, &view );
 	gfx->bind_uniform( cb, u_proj, &proj );
 	gfx->bind_uniform( cb, u_model, &model );
+	gfx->bind_uniform( cb, u_time, &t_s );
 
 	// Bind vertex buffer of terrain
 	gfx->bind_vertex_buffer( cb, terrain_model.vbo );

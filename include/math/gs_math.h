@@ -183,7 +183,8 @@ gs_vec3_scale( gs_vec3 v, f32 s )
 _inline f32 
 gs_vec3_dot( gs_vec3 v0, gs_vec3 v1 ) 
 {
-	return ( f32 )( v0.x * v1.x + v0.y + v1.y + v0.z * v1.z );
+	f32 dot = ( f32 )( (v0.x * v1.x) + (v0.y * v1.y) + v0.z * v1.z );
+	return dot;
 }
 
 _inline f32 
@@ -195,7 +196,8 @@ gs_vec3_len( gs_vec3 v )
 _inline gs_vec3 
 gs_vec3_norm( gs_vec3 v )
 {
-	return gs_vec3_scale( v, 1.0f / gs_vec3_len( v ) );
+	f32 len = gs_vec3_len( v );
+	return len == 0.f ? v : gs_vec3_scale( v, 1.f / len );
 }
 
 _inline gs_vec3 
