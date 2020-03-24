@@ -179,8 +179,8 @@ gs_result app_init()
 	noise_tex = gfx->construct_texture( t_desc );
 
 	// Construct shader
-	char* v_src = platform->read_file_contents( "assets/shaders/terrain.v.glsl", "r", NULL );
-	char* f_src = platform->read_file_contents( "assets/shaders/terrain.f.glsl", "r", NULL );
+	char* v_src = platform->read_file_contents( "../assets/shaders/terrain.v.glsl", "r", NULL );
+	char* f_src = platform->read_file_contents( "../assets/shaders/terrain.f.glsl", "r", NULL );
 	shader = gfx->construct_shader( v_src, f_src );
 
 	// Construct uniforms
