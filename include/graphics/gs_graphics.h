@@ -51,11 +51,6 @@ typedef enum gs_vertex_attribute_type
 	gs_vertex_attribute_uint
 } gs_vertex_attribute_type;
 
-typedef struct gs_vertex_layout_desc
-{
-
-} gs_vertex_layout_desc;
-
 /*================
 // Texture
 =================*/
