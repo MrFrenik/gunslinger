@@ -12,15 +12,14 @@ flags=(
 
 # Include directories
 inc=(
-	-I ../../../include/			# Gunslinger includes
-	-I ../source/perlin-noise/src/	# Perlin noise libary includes
-	-I ../../../third_party/include/
+	-I ../../../include/		# Gunslinger includes
+	-I ../source/noise/src/		# Perlin noise libary includes
 )
 
 # Source files
 src=(
 	../source/main.c
-	../source/perlin-noise/src/noise1234.c
+	../source/noise/src/noise1234.c
 )
 
 lib_dirs=(
