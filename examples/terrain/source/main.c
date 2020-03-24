@@ -7,7 +7,6 @@
 typedef struct model_t
 {
 	gs_resource( gs_vertex_buffer ) vbo;
-	gs_resource( gs_index_buffer ) ibo;
 	u32 vertex_count;
 } model_t;
 
@@ -47,8 +46,6 @@ void generate_terrain_mesh( f32* noise_data, u32 width, u32 height );
 
 int main( int argc, char** argv )
 {
-	// This is our app description. It gives internal hints to our engine for various things like 
-	// window size, title, as well as update, init, and shutdown functions to be run. 
 	gs_application_desc app = {0};
 	app.window_title 		= "Terrain Demo";
 	app.window_width 		= 800;
@@ -184,9 +181,8 @@ gs_result app_init()
 	noise_tex = gfx->construct_texture( t_desc );
 
 	// Construct shader
-	usize sz;
-	char* v_src = platform->read_file_contents( "assets/shaders/terrain.v.glsl", "r", &sz );
-	char* f_src = platform->read_file_contents( "assets/shaders/terrain.f.glsl", "r", &sz );
+	char* v_src = platform->read_file_contents( "assets/shaders/terrain.v.glsl", "r", NULL );
+	char* f_src = platform->read_file_contents( "assets/shaders/terrain.f.glsl", "r", NULL );
 	shader = gfx->construct_shader( v_src, f_src );
 
 	// Construct uniforms
