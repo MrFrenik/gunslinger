@@ -57,7 +57,6 @@ _global gs_resource( gs_uniform )			u_proj = {0};
 _global gs_resource( gs_uniform )			u_view = {0};
 _global gs_resource( gs_uniform )			u_model = {0};
 _global gs_resource( gs_uniform )			u_view_pos = {0};
-_global gs_resource( gs_uniform )			u_time = {0};
 _global model_t 							terrain_model = {0};
 
 // Function Forward Decls.
@@ -340,7 +339,6 @@ gs_result app_init()
 	u_view = gfx->construct_uniform( shader, "u_view", gs_uniform_type_mat4 );
 	u_model = gfx->construct_uniform( shader, "u_model", gs_uniform_type_mat4 );
 	u_view_pos = gfx->construct_uniform( shader, "u_view_pos", gs_uniform_type_vec3 );
-	u_time = gfx->construct_uniform( shader, "u_time", gs_uniform_type_float );
 
 	// Construct command buffer for rendering
 	cb = gfx->construct_command_buffer();
@@ -465,7 +463,6 @@ void render_scene()
 	gfx->bind_uniform( cb, u_view, &view );
 	gfx->bind_uniform( cb, u_proj, &proj );
 	gfx->bind_uniform( cb, u_model, &model );
-	gfx->bind_uniform( cb, u_time, &t_s );
 
 	// Bind vertex buffer of terrain
 	gfx->bind_vertex_buffer( cb, terrain_model.vbo );

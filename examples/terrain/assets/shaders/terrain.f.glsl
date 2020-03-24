@@ -8,7 +8,6 @@ in vec3 frag_pos;
 
 uniform sampler2D s_noise_tex;
 uniform vec3 u_view_pos;
-uniform float u_time;
 
 vec3 light_pos = vec3( -200.0, 1000.0, 200.0 ); 
 vec3 light_col = vec3( 1.0, 1.0, 1.0 );
@@ -23,17 +22,16 @@ void main()
     float ambientStrength = 0.4;
     vec3 ambient = ambientStrength * light_col;
 
-    // light_pos = vec3((sin(u_time) * 0.5 + 0.5) * 500.0, 1000.0, (cos(u_time) * 0.5 + 0.5) * 500.0);
     light_pos = vec3(-200.0, 1000.0, -200.0);
-  	
-    // diffuse 
+    
+    // // diffuse 
     float light_strength = 1.2;
     vec3 norm = normalize(normal);
     vec3 lightDir = normalize(light_pos - frag_pos);
     float diff = max(dot(norm, lightDir), 0.0);
     vec3 diffuse = diff * light_col * light_strength;
     
-    // specular
+    // // specular
     float specularStrength = 0.5;
     vec3 viewDir = normalize(u_view_pos - frag_pos);
     vec3 reflectDir = reflect(-lightDir, norm);  
@@ -42,6 +40,5 @@ void main()
         
     vec3 result = (ambient + diffuse + specular) * tex_color;
     frag_color = vec4(clamp(result, 0.0, 1.0), 1.0);
-
-    frag_color = vec4(normal, 1.0);
-}
+} 
+//

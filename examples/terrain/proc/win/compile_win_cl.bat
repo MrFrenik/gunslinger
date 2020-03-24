@@ -10,7 +10,7 @@ rem Include directories
 set inc=/I ..\..\..\include /I ..\source\noise\src\
 
 rem Source files
-set src_main=..\source\*.c ..\source\noise\src\noise1234.c
+set src_main=..\source\*.c ..\source\noise\src\sdnoise1234.c
 
 rem All source together
 set src_all=%src_main%

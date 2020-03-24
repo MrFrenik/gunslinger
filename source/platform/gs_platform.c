@@ -190,7 +190,7 @@ char* __gs_platform_read_file_contents_into_string_null_term( const char* file_p
 		fseek( fp, 0, SEEK_END );
 		_sz = ftell( fp );
 		fseek( fp, 0, SEEK_SET );
-		buffer = ( char* )gs_malloc( _sz + 1 );
+		buffer = ( char* )gs_malloc( _sz );
 		if ( buffer )
 		{
 			fread( buffer, 1, _sz, fp );
