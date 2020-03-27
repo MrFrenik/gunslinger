@@ -11,11 +11,13 @@ uniform mat4 u_proj;
 out vec2 tex_coord;
 out vec3 normal;
 out vec3 frag_pos;
+out float height;
 
 void main()
 {
     gl_Position = u_proj * u_view * u_model * vec4(a_pos, 1.0);
     normal = mat3(transpose(inverse(u_model))) * a_normal;
     tex_coord = a_texcoord;
-    frag_pos = gl_Position.xyz;
+    frag_pos = vec3(u_model * vec4(a_pos, 1.0));
+    height = a_pos.y;
 }

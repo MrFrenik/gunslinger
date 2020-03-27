@@ -189,7 +189,6 @@ terrain_mesh_data_packet_t generate_terrain_mesh_data( f32* noise_data, u32 widt
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 
 	gs_dyn_array( gs_vec3 ) positions = gs_dyn_array_new( gs_vec3 );
-	gs_dyn_array( gs_vec3 ) normals = gs_dyn_array_new( gs_vec3 );
 	gs_dyn_array( gs_vec2 ) uvs = gs_dyn_array_new( gs_vec2 );
 	gs_dyn_array( u32 ) tris = gs_dyn_array_new( u32 );
 
@@ -206,7 +205,14 @@ terrain_mesh_data_packet_t generate_terrain_mesh_data( f32* noise_data, u32 widt
 
 			// Want to define some way of being able to pass in a curve to evaluate data for this
 			f32 nd = noise_data[ idx ];
-			f32 mult = gs_map_range( 0.f, 1.f, 1.f, 30.f, nd );
+			f32 mult = 1.f;
+			f32 water_height = 0.3f;
+			f32 sand_height = 0.5f;
+			if ( nd <= water_height ) {
+				mult = gs_map_range( 0.f, water_height, 0.f, 0.9f, nd );
+			} else {
+				mult = gs_map_range( water_height + 0.1f, 1.f, 10.f, 30.f, nd );
+			}
 			gs_dyn_array_push( positions, ((gs_vec3){top_left_x + x, nd * mult, top_left_z - y }) );
 			gs_dyn_array_push( uvs, ((gs_vec2){ x / (f32)width, y / (f32)height }) );
 
@@ -222,6 +228,9 @@ terrain_mesh_data_packet_t generate_terrain_mesh_data( f32* noise_data, u32 widt
 			}
 		}
 	}
+
+	gs_vec3* vertex_normals = gs_malloc( sizeof(gs_vec3) * gs_dyn_array_size(positions) );
+	memset( vertex_normals, 0, sizeof(gs_vec3) * gs_dyn_array_size(positions));
 
 	// Now that we have positions, uvs, and triangles, need to calculate normals for each triangle
 	// For now, just put normal as UP, cause normals are going to take more time to do
@@ -245,7 +254,16 @@ terrain_mesh_data_packet_t generate_terrain_mesh_data( f32* noise_data, u32 widt
 		// Calculate normal 
 		gs_vec3 n = gs_vec3_norm( gs_vec3_cross( b, a ) );
 
-		gs_dyn_array_push( normals, n );
+		// Add normal to every position idx found up above
+		vertex_normals[ idx_0 ] = gs_vec3_add( vertex_normals[ idx_0 ], n );
+		vertex_normals[ idx_1 ] = gs_vec3_add( vertex_normals[ idx_1 ], n );
+		vertex_normals[ idx_2 ] = gs_vec3_add( vertex_normals[ idx_2 ], n );
+	}
+
+	// Loop through all vertex normals and normalize
+	gs_for_range_i( gs_dyn_array_size( positions ) )
+	{
+		vertex_normals[ i ] = gs_vec3_norm( vertex_normals[ i ] );
 	}
 
 	// Batch vertex data together
@@ -259,7 +277,7 @@ terrain_mesh_data_packet_t generate_terrain_mesh_data( f32* noise_data, u32 widt
 		u32 base_idx = i * 8;
 		u32 idx = tris[ i ];
 		gs_vec3 pos = positions[ idx ];
-		gs_vec3 norm = normals[ n_idx ];
+		gs_vec3 norm = vertex_normals[ idx ];
 		gs_vec2 uv = uvs[ idx ];
 
 		vertex_data[ base_idx + 0 ] = pos.x;
@@ -283,7 +301,7 @@ terrain_mesh_data_packet_t generate_terrain_mesh_data( f32* noise_data, u32 widt
 	// Free used memory
 	gs_dyn_array_free( positions );
 	gs_dyn_array_free( uvs );
-	gs_dyn_array_free( normals );
+	gs_free( vertex_normals );
 	gs_dyn_array_free( tris );
 
 	return packet;
@@ -358,9 +376,13 @@ void update_terrain()
 	static f32 t = 0.f;
 	const f32 speed = 10.f;
 	t += gs_engine_instance()->ctx.platform->time.delta;
-	f32 _scale = (sin(t) * 0.5f + 0.5f + 50.f) * 2.f;
-	f32 _persistence = (sin(t * 0.6f) * 0.5f + 0.5f);
-	f32 _lacunarity = (sin(t * 0.2f) * 0.5f + 0.5f + 1.f);
+	// f32 _scale = (sin(t) * 0.5f + 0.5f + 50.f) * 2.f;
+	f32 _scale = 100.f;
+	// f32 _persistence = (sin(t * 0.6f) * 0.5f + 0.5f);
+	// f32 _lacunarity = (sin(t * 0.2f) * 0.5f + 0.5f + 1.f);
+
+	f32 _persistence = (0.5f);
+	f32 _lacunarity = (2.5f);
 
 	// Create noise map
 	f32* noise_map = generate_noise_map( map_width, map_height, _scale, octaves, _persistence, _lacunarity, t * speed, t );
@@ -429,9 +451,10 @@ void render_scene()
 {
 	// Grab graphics api instance
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 
 	// Clear screen
-	f32 clear_color[4] = { 0.2f, 0.2f, 0.2f, 1.f };
+	f32 clear_color[4] = { 0.3f, 0.3f, 0.3f, 1.f };
 	gfx->set_view_clear( cb, clear_color );
 
 	// Set depth flags
@@ -453,7 +476,7 @@ void render_scene()
 	model = gs_vqs_to_mat4( &xform );
 	gs_mat4 view = gs_mat4_identity();
 	gs_mat4 proj = gs_mat4_identity();
-	view = gs_mat4_translate((gs_vec3){0.f, -10.f, -250.f});
+	view = gs_mat4_translate((gs_vec3){0.f, -10.f, -200.f});
 	proj = gs_mat4_perspective(45.f, 800.f/600.f, 0.01f, 1000.f);
 
 	f32 t_s = t * 10.f;

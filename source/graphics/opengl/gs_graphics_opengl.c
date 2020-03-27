@@ -20,6 +20,20 @@
 		- Packet
 */
 
+_inline void gs_mat4_debug_print( gs_mat4* mat )
+{
+	f32* e = mat->elements;
+	gs_println( "[%.5f, %.5f, %.5f, %.5f]\n"
+			   "[%.5f, %.5f, %.5f, %.5f]\n"
+			   "[%.5f, %.5f, %.5f, %.5f]\n"
+			   "[%.5f, %.5f, %.5f, %.5f]\n", 
+			   e[0], e[1], e[2], e[3], 
+			   e[4], e[5], e[6], e[7], 
+			   e[8], e[9], e[10], e[11], 
+			   e[12], e[13], e[14], e[15]
+			   );
+}
+
 typedef enum gs_opengl_op_code
 {
 	gs_opengl_op_bind_shader = 0,
@@ -31,6 +45,10 @@ typedef enum gs_opengl_op_code
 	gs_opengl_op_bind_uniform,
 	gs_opengl_op_bind_texture,
 	gs_opengl_op_draw,
+	gs_opengl_op_debug_draw_line,
+	gs_opengl_op_debug_draw_square,
+	gs_opengl_op_debug_draw_submit,
+	gs_opengl_op_debug_set_properties,
 	gs_opengl_draw_indexed
 } gs_opengl_op_code;
 
@@ -77,6 +95,20 @@ typedef struct vertex_attribute_layout_desc
 	gs_dyn_array( gs_vertex_attribute_type ) attributes;	
 } vertex_attribute_layout_desc;
 
+// Internally
+typedef struct debug_drawing_internal_data 
+{
+	gs_mat4 view_mat;
+	gs_mat4 proj_mat;
+	gs_resource( gs_shader ) shader;
+	gs_resource( gs_uniform ) u_proj;
+	gs_resource( gs_uniform ) u_view;
+	gs_dyn_array( f32 ) line_vertex_data; 
+	gs_dyn_array( f32 ) quad_vertex_data;
+	gs_resource( gs_vertex_buffer) quad_vbo;
+	gs_resource( gs_vertex_buffer ) line_vbo;
+} debug_drawing_internal_data;
+
 // Slot array declarations
 gs_slot_array_decl( command_buffer );
 gs_slot_array_decl( texture );
@@ -96,7 +128,28 @@ typedef struct gs_opengl_render_data
 	gs_slot_array( index_buffer )   				index_buffers;
 	gs_slot_array( vertex_buffer )  				vertex_buffers;
 	gs_slot_array( vertex_attribute_layout_desc ) 	vertex_layout_descs;
+	debug_drawing_internal_data 					debug_data;
 } gs_opengl_render_data;
+
+_global const char* debug_shader_v_src = "\n"
+"#version 330 core\n"
+"layout (location = 0) in vec3 a_position;\n"
+"layout (location = 1) in vec3 a_color;\n"
+"uniform mat4 u_proj;\n"
+"uniform mat4 u_view;\n"
+"out vec3 f_color;\n"
+"void main() {\n"
+" gl_Position = u_proj * u_view * vec4(a_position, 1.0);\n"
+" f_color = a_color;\n"
+"}";
+
+_global const char* debug_shader_f_src = "\n"
+"#version 330 core\n"
+"in vec3 f_color;\n"
+"out vec4 frag_color;\n"
+"void main() {\n"
+" frag_color = vec4(f_color, 1.0);\n"
+"}";
 
 #define __get_opengl_data_internal()\
 	(gs_opengl_render_data*)(gs_engine_instance()->ctx.graphics->data)
@@ -106,6 +159,7 @@ typedef struct gs_opengl_render_data
 
 // Forward Decls;
 void __reset_command_buffer_internal( command_buffer* cb );
+debug_drawing_internal_data construct_debug_drawing_internal_data();
 
 /*============================================================
 // Graphics Initilization / De-Initialization
@@ -113,6 +167,8 @@ void __reset_command_buffer_internal( command_buffer* cb );
 
 void opengl_init_default_state()
 {
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	// Init things...
 }
 
@@ -120,6 +176,9 @@ gs_result opengl_init( struct gs_graphics_i* gfx )
 {
 	// Construct instance of render data
 	struct gs_opengl_render_data* data = gs_malloc_init( gs_opengl_render_data );
+
+	// Set data
+	gfx->data = data;
 
 	// Initialize data
 	data->command_buffers 		= gs_slot_array_new( command_buffer );
@@ -129,13 +188,12 @@ gs_result opengl_init( struct gs_graphics_i* gfx )
 	data->index_buffers 		= gs_slot_array_new( index_buffer );
 	data->vertex_buffers 		= gs_slot_array_new( vertex_buffer );
 	data->vertex_layout_descs 	= gs_slot_array_new( vertex_attribute_layout_desc );
-
-	// Set data
-	gfx->data = data;
+	data->debug_data 			= construct_debug_drawing_internal_data();
 
 	// Init all default opengl state here before frame begins
 	opengl_init_default_state();
 
+	// Print some debug info
 	gs_println( "OpenGL::Vendor = %s", glGetString( GL_VENDOR ) ) ;
 	gs_println( "OpenGL::Renderer = %s", glGetString( GL_RENDERER ) ) ;
 	gs_println( "OpenGL::Version = %s", glGetString( GL_VERSION ) ) ;
@@ -161,6 +219,38 @@ gs_result opengl_shutdown( struct gs_graphics_i* gfx )
 {
 	// Release all data here
 	return gs_result_success;
+}
+
+debug_drawing_internal_data construct_debug_drawing_internal_data()
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+
+	debug_drawing_internal_data data = {0};
+	data.line_vertex_data = gs_dyn_array_new( f32 );
+	data.quad_vertex_data = gs_dyn_array_new( f32 );
+
+	// Construct shader
+	data.shader = gfx->construct_shader( debug_shader_v_src, debug_shader_f_src );
+
+	// Construct uniforms
+	data.u_proj = gfx->construct_uniform( data.shader, "u_proj", gs_uniform_type_mat4 );
+	data.u_view = gfx->construct_uniform( data.shader, "u_view", gs_uniform_type_mat4 );
+
+	// Vertex data layout
+	gs_vertex_attribute_type vertex_layout[] = {
+		gs_vertex_attribute_float3,	// Position
+		gs_vertex_attribute_float3  // Color
+	};
+	u32 layout_count = sizeof(vertex_layout) / sizeof(gs_vertex_attribute_type);
+
+	// Construct vertex buffer objects
+	data.line_vbo = gfx->construct_vertex_buffer( vertex_layout, layout_count, NULL, 0 );
+
+	// Construct default matrix data to be used
+	data.view_mat = gs_mat4_identity();
+	data.proj_mat = gs_mat4_identity();
+
+	return data;
 }
 
 void __reset_command_buffer_internal( command_buffer* cb )
@@ -413,6 +503,123 @@ void opengl_draw( gs_resource( gs_command_buffer ) cb_handle, u32 start, u32 cou
 	cb->num_commands++;
 }
 
+void opengl_set_debug_draw_properties( gs_resource( gs_command_buffer ) cb_handle, gs_debug_draw_properties props )
+{
+	// Get data from graphics api
+	gs_opengl_render_data* data = __get_opengl_data_internal();
+
+	// Grab command buffer ptr from command buffer slot array
+	command_buffer* cb = __get_command_buffer_internal( data, cb_handle );
+
+	// Write draw command
+	gs_byte_buffer_write( &cb->commands, u32, gs_opengl_op_debug_set_properties );	
+	// Write view
+	gs_byte_buffer_write( &cb->commands, gs_mat4, props.view_mat );
+	// Write proj
+	gs_byte_buffer_write( &cb->commands, gs_mat4, props.proj_mat );
+
+	// Increase command amount
+	cb->num_commands++;
+}
+
+/*
+#define push_command( command_buffer, command, sz, type, op )\
+do {\
+	gs_byte_buffer_write( &cb->commands, u32, op );\
+	gs_byte_buffer_write_bytes( &cb->commands, data, sz );\
+} while( 0 )
+	void opengl_add_command( gs_resource( gs_command_buffer ) cb_handle, void* command, opengl_op_code_type op )
+	{
+		// Get command buffer
+		command_buffer* cb = ...
+
+		switch ( op )
+		{
+			case gs_opengl_op_debug_draw_line: 
+			{
+				opengl_draw_debug_line_command* cmd = (opengl_draw_debug_line_command*)command;
+				gs_byte_buffer_write( &cb->commands, u32, gs_opengl_op_debug_draw_line)
+				gs_byte_buffer_write_bytes( &cb->commands, cmd, sizeof(opengl_draw_debug_line_command));
+			} break;
+		}
+	}
+*/
+
+// Yeah, don't like this...Because it takes control away from the user completely.
+// Maybe user has ability to add as much as they want into the debug buffer and then can control when to submit it? Hmm...
+void opengl_draw_line( gs_resource( gs_command_buffer ) cb_handle, gs_vec3 start, gs_vec3 end, gs_vec3 color )
+{
+	// Get data from graphics api
+	gs_opengl_render_data* data = __get_opengl_data_internal();
+
+	// Grab command buffer ptr from command buffer slot array
+	command_buffer* cb = __get_command_buffer_internal( data, cb_handle );
+
+	// Write op
+	gs_byte_buffer_write( &cb->commands, u32, gs_opengl_op_debug_draw_line );
+	// Write start position
+	gs_byte_buffer_write( &cb->commands, gs_vec3, start );
+	// Write end position
+	gs_byte_buffer_write( &cb->commands, gs_vec3, end );
+	// Write color
+	gs_byte_buffer_write( &cb->commands, gs_vec3, color );
+
+	// Increase command amount		// This is incredibly error prone...
+	// Should have a structure that I pass in instead...
+	cb->num_commands++;
+}
+
+void opengl_draw_square( gs_resource( gs_command_buffer ) cb_handle, gs_vec3 origin, f32 width, f32 height, gs_vec3 color )
+{
+	// Get data from graphics api
+	gs_opengl_render_data* data = __get_opengl_data_internal();
+
+	// Grab command buffer ptr from command buffer slot array
+	command_buffer* cb = __get_command_buffer_internal( data, cb_handle );
+
+	gs_byte_buffer_write( &cb->commands, u32, gs_opengl_op_debug_draw_square );
+	gs_byte_buffer_write( &cb->commands, gs_vec3, origin );
+	gs_byte_buffer_write( &cb->commands, f32, width );
+	gs_byte_buffer_write( &cb->commands, f32, height );
+	gs_byte_buffer_write( &cb->commands, gs_vec3, color );
+
+	// Increase command amount		// This is incredibly error prone...
+	// Should have a structure that I pass in instead...
+	cb->num_commands++;
+
+}
+
+void opengl_submit_debug_drawing( gs_resource( gs_command_buffer ) cb_handle )
+{
+	// Get data from graphics api
+	gs_opengl_render_data* data = __get_opengl_data_internal();
+
+	// Grab command buffer ptr from command buffer slot array
+	command_buffer* cb = __get_command_buffer_internal( data, cb_handle );
+
+	// Simply write back command buffer stuff and things...
+	gs_byte_buffer_write( &cb->commands, u32, gs_opengl_op_debug_draw_submit );
+
+	cb->num_commands++;
+}
+
+#define __gfx_add_debug_line_internal( data, start, end, color )\
+do {\
+gs_dyn_array_push( data, start.x );\
+gs_dyn_array_push( data, start.y );\
+gs_dyn_array_push( data, start.z );\
+gs_dyn_array_push( data, color.x );\
+gs_dyn_array_push( data, color.y );\
+gs_dyn_array_push( data, color.z );\
+gs_dyn_array_push( data, end.x );\
+gs_dyn_array_push( data, end.y );\
+gs_dyn_array_push( data, end.z );\
+gs_dyn_array_push( data, color.x );\
+gs_dyn_array_push( data, color.y );\
+gs_dyn_array_push( data, color.z );\
+} while ( 0 )	
+
+
 // For now, just rip through command buffer. Later on, will add all command buffers into a queue to be processed on rendering thread.
 void opengl_submit_command_buffer( gs_resource( gs_command_buffer ) cb_handle )
 {
@@ -597,6 +804,124 @@ void opengl_submit_command_buffer( gs_resource( gs_command_buffer ) cb_handle )
 					}
 				}
 
+			} break;
+
+			case gs_opengl_op_debug_draw_line: 
+			{
+				// Push back vertices into local debug line drawing data buffer
+
+				// Read start position
+				gs_vec3 start = gs_byte_buffer_read( &cb->commands, gs_vec3 );
+				// Read end position
+				gs_vec3 end = gs_byte_buffer_read( &cb->commands, gs_vec3 );
+				// Read color
+				gs_vec3 color = gs_byte_buffer_read( &cb->commands, gs_vec3 );
+
+				// Add line data
+				__gfx_add_debug_line_internal( data->debug_data.line_vertex_data, start, end, color );
+			} break;
+
+			case gs_opengl_op_debug_draw_square: 
+			{
+				gs_vec3 origin = gs_byte_buffer_read( &cb->commands, gs_vec3 );
+				f32 w = gs_byte_buffer_read( &cb->commands, f32 );
+				f32 h = gs_byte_buffer_read( &cb->commands, f32 );
+				gs_vec3 color = gs_byte_buffer_read( &cb->commands, gs_vec3 );
+
+				gs_vec3 tl = origin;
+				gs_vec3 tr = (gs_vec3){ origin.x + w, origin.y };
+				gs_vec3 bl = (gs_vec3){ origin.x, origin.y + h };
+				gs_vec3 br = (gs_vec3){ origin.x + w, origin.y + h };
+
+				// Four lines, don'tcha know?
+				__gfx_add_debug_line_internal( data->debug_data.line_vertex_data, tl, tr, color );	
+				__gfx_add_debug_line_internal( data->debug_data.line_vertex_data, tr, br, color );	
+				__gfx_add_debug_line_internal( data->debug_data.line_vertex_data, br, bl, color );	
+				__gfx_add_debug_line_internal( data->debug_data.line_vertex_data, bl, tl, color );
+			} break;
+
+			case gs_opengl_op_debug_set_properties: 
+			{
+				// Read view
+				gs_mat4 view = gs_byte_buffer_read( &cb->commands, gs_mat4 );
+				// Read proj
+				gs_mat4 proj = gs_byte_buffer_read( &cb->commands, gs_mat4 );
+
+				data->debug_data.view_mat = view;  
+				data->debug_data.proj_mat = proj;
+
+				gs_timed_action( 10, 
+				{
+					gs_mat4_debug_print( &data->debug_data.proj_mat );
+				});
+			}
+
+			case gs_opengl_op_debug_draw_submit: 
+			{
+				// Construct all line vertex data from debug data buffer
+				// Vertex count is line_vertex_data_array_size / size of single vertex = array_size / (sizeof(f32) * 6)
+				usize vertex_data_size = gs_dyn_array_size(data->debug_data.line_vertex_data) * sizeof(f32);
+				u32 vert_count = (vertex_data_size) / (sizeof(f32) * 6);
+
+				// Bind shader program
+				shader s = gs_slot_array_get( data->shaders, data->debug_data.shader.id );
+				glUseProgram( s.program_id );
+
+				// Bind uniforms
+				// Let's just create an ortho projection real quirk...
+			    s32 width = 800, height = 600;
+				// gs_platform_window_width_height( gs_engine_instance()->ctx.window, &width, &height );
+			    // glViewport(0, 0, width, height);
+			    f32 L = 0.0f;
+			    f32 R = 0.0f + width;
+			    f32 T = 0.0f;
+			    f32 B = 0.0f + height;
+			    const f32 ortho_mat_2[4][4] =
+			    {
+			        { 2.0f/(R-L),   0.0f,         0.0f,   0.0f },
+			        { 0.0f,         2.0f/(T-B),   0.0f,   0.0f },
+			        { 0.0f,         0.0f,        -1.0f,   0.0f },
+			        { (R+L)/(L-R),  (T+B)/(B-T),  0.0f,   1.0f },
+			    };
+
+			    gs_mat4 vm = gs_mat4_identity();
+
+				uniform proj = gs_slot_array_get( data->uniforms, data->debug_data.u_proj.id );
+				uniform view = gs_slot_array_get( data->uniforms, data->debug_data.u_view.id );
+
+				gs_timed_action( 10, 
+				{
+					gs_println( "after" );
+					gs_mat4_debug_print( &data->debug_data.proj_mat );
+				});
+
+				glUniformMatrix4fv( proj.location, 1, false, (f32*)(data->debug_data.proj_mat.elements) );
+				glUniformMatrix4fv( view.location, 1, false, (f32*)(data->debug_data.view_mat.elements) );
+
+				// glUniformMatrix4fv( proj.location, 1, false, (f32*)(ortho_mat_2) );
+				// glUniformMatrix4fv( view.location, 1, false, (f32*)(vm.elements) );
+
+				// Bind vertex data
+				vertex_buffer vb = gs_slot_array_get( data->vertex_buffers, data->debug_data.line_vbo.id );
+				glBindVertexArray( vb.vao );
+				// Upload data
+				glBindBuffer( GL_ARRAY_BUFFER, vb.vbo );
+				glBufferData( GL_ARRAY_BUFFER, vertex_data_size, data->debug_data.line_vertex_data, GL_STATIC_DRAW );
+				// glBufferSubData( GL_ARRAY_BUFFER, 0, vertex_data_size, (f32*)data->debug_data.line_vertex_data );
+
+				// Draw data
+				glDrawArrays( GL_LINES, 0, vert_count );
+
+				// Unbind data
+				glBindVertexArray(0);
+				glUseProgram(0);
+
+				// Reset all debug data
+				// data->debug_data.view_mat = gs_mat4_identity();
+				// data->debug_data.proj_mat = gs_mat4_identity();
+
+				// Flush vertex data
+				gs_dyn_array_clear( data->debug_data.line_vertex_data );
 			} break;
 
 			default:
@@ -855,7 +1180,7 @@ void opengl_link_shaders( u32 program_id, u32 vert_id, u32 frag_id )
 	glLinkProgram( program_id );
 
 	//Create info log
-	// Error shit... skip for now
+	// Error shit...
 	s32 is_linked = 0;
 	glGetProgramiv( program_id, GL_LINK_STATUS, (s32*)&is_linked );
 	if ( is_linked == GL_FALSE )
@@ -1376,6 +1701,14 @@ struct gs_graphics_i* gs_graphics_construct()
 	// /*============================================================
 	// // Graphics Update Ops
 	// ============================================================*/
+
+	/*============================================================
+	// Graphics Debug Rendering Ops
+	============================================================*/
+	gfx->set_debug_draw_properties = &opengl_set_debug_draw_properties;
+	gfx->draw_line = &opengl_draw_line;
+	gfx->draw_square = &opengl_draw_square;
+	gfx->submit_debug_drawing = &opengl_submit_debug_drawing;
 
 	return gfx;
 }

@@ -32,7 +32,7 @@ do {\
 	if ( total_write_size >= _buffer->capacity )\
 	{\
 		usize capacity = _buffer->capacity * 2;\
-		while( _buffer->capacity < total_write_size )\
+		while( capacity < total_write_size )\
 		{\
 			capacity *= 2;\
 		}\

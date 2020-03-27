@@ -342,14 +342,82 @@ gs_mat4_ortho( f32 l, f32 r, f32 b, f32 t, f32 n, f32 f )
 	gs_mat4 m_res = gs_mat4_identity();		
 
 	// Main diagonal
-	m_res.elements[ 0 + 0 * 4 ] = 2.0f / ( r - l );
-	m_res.elements[ 1 + 1 * 4 ] = 2.0f / ( b - t );
-	m_res.elements[ 2 + 2 * 4 ] = 2.0f / ( n - f );
+	// m_res.elements[ 0 + 0 * 4 ] = 2.0f / ( r - l );
+	// m_res.elements[ 1 + 1 * 4 ] = 2.0f / ( t - b );
+	// m_res.elements[ 2 + 2 * 4 ] = -2.0f / ( f - n );
 
-	// Last column
-	m_res.elements[ 0 + 3 * 4 ] = ( l + r ) / ( l - r );
-	m_res.elements[ 1 + 3 * 4 ] = ( b + t ) / ( b - t );
-	m_res.elements[ 2 + 3 * 4 ] = ( f + n ) / ( f - n );
+	// // // Last column
+	// m_res.elements[ 0 + 3 * 4 ] = -( r + l ) / ( r - l );
+	// m_res.elements[ 1 + 3 * 4 ] = -( t + b ) / ( t - b );
+	// m_res.elements[ 2 + 3 * 4 ] = -( f + n ) / ( f - n );
+
+	// m_res.elements[ 0 + 0 * 4 ] = 2.f / (r - l);
+	// m_res.elements[ 1 + 1 * 4 ] = 2.f / (t - b);
+	// m_res.elements[ 2 + 2 * 4 ] = -1.f;
+	// m_res.elements[ 0 + 3 * 4 ] = (r + l)/(l - r);
+	// m_res.elements[ 1 + 3 * 4 ] = (t + b)/(b - t);
+	// m_res.elements[ 2 + 3 * 4 ] = 0.f;
+
+    // { 2.0f/(R-L),   0.0f,         0.0f,   0.0f },
+    // { 0.0f,         2.0f/(T-B),   0.0f,   0.0f },
+    // { 0.0f,         0.0f,        -1.0f,   0.0f },
+    // { (R+L)/(L-R),  (T+B)/(B-T),  0.0f,   1.0f },
+
+    // f32 L = 0.0f;
+    // f32 R = 0.0f + 800.f;
+    // f32 T = 0.0f;
+    // f32 B = 0.0f + 600.f;
+    f32 L = l;
+    f32 R = r;
+    f32 T = t;
+    f32 B = b;
+    f32 F = f;
+    f32 N = n;
+    // const f32 ortho_mat_2[4][4] =
+    // {
+    //     { 2.0f/(R-L),   0.0f,         0.0f,   0.0f },
+    //     { 0.0f,         2.0f/(T-B),   0.0f,   0.0f },
+    //     { 0.0f,         0.0f,        -2.0f/(F-N),   0.0f },
+    //     { -(R+L)/(R-L),  -(T+B)/(T-B),  -(F+B)/(F-N),   1.0f },
+    // };
+
+    const f32 ortho_mat_2[4][4] =
+    {
+        { 2.0f/(R-L),   0.0f,         0.0f,   0.0f },
+        { 0.0f,         2.0f/(T-B),   0.0f,   0.0f },
+        { 0.0f,         0.0f,        -1.f/(F-N),   0.0f },
+        { -(R+L)/(R-L),  -(T+B)/(T-B),  -(N)/(F-N),   1.0f },
+    };
+
+    m_res.elements[ 0 + 0 * 4 ] = ortho_mat_2[0][0];
+    m_res.elements[ 1 + 1 * 4 ] = ortho_mat_2[1][1];
+    m_res.elements[ 2 + 2 * 4 ] = ortho_mat_2[2][2];
+
+    m_res.elements[ 0 + 3 * 4 ] = ortho_mat_2[3][0];
+    m_res.elements[ 1 + 3 * 4 ] = ortho_mat_2[3][1];
+    m_res.elements[ 2 + 3 * 4 ] = ortho_mat_2[3][2];
+
+    // set OpenGL perspective projection matrix
+    // m_res.elements[0 * 4 + 0] = 2 / (r - l); 
+    // m_res.elements[0 * 4 + 1] = 0; 
+    // m_res.elements[0 * 4 + 2] = 0; 
+    // m_res.elements[0 * 4 + 3] = 0; 
+ 
+    // m_res.elements[1 * 4 + 0] = 0; 
+    // m_res.elements[1 * 4 + 1] = 2 / (t - b); 
+    // m_res.elements[1 * 4 + 2] = 0; 
+    // m_res.elements[1 * 4 + 3] = 0; 
+ 
+    // m_res.elements[2 * 4 + 0] = 0; 
+    // m_res.elements[2 * 4 + 1] = 0; 
+    // m_res.elements[2 * 4 + 2] = -2 / (f - n); 
+    // m_res.elements[2 * 4 + 3] = 0; 
+ 
+    // m_res.elements[3 * 4 + 0] = -(r + l) / (r - l); 
+    // m_res.elements[3 * 4 + 1] = -(t + b) / (t - b); 
+    // m_res.elements[3 * 4 + 2] = -(f + n) / (f - n); 
+    // m_res.elements[3 * 4 + 3] = 1; 
+
 
 	return m_res;
 }

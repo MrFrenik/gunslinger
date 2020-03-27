@@ -49,16 +49,26 @@ gs_mat4 gs_camera_get_projection( gs_camera* cam, u32 view_width, u32 view_heigh
 		{
 			f32 distance = 0.5f * ( cam->far_plane - cam->near_plane );
 			const f32 ortho_scale = cam->ortho_scale;
-			const f32 aspect_ratio = cam->aspect_ratio;
+			const f32 aspect_ratio = (f32)view_width / (f32)view_height;
 			proj_mat = gs_mat4_ortho
+			// (
+			// 	-ortho_scale * aspect_ratio, 
+			// 	ortho_scale * aspect_ratio, 
+			// 	-ortho_scale, 
+			// 	ortho_scale, 
+			// 	-distance, 
+			// 	distance	
+			// );
 			(
-				-ortho_scale * aspect_ratio, 
-				ortho_scale * aspect_ratio, 
-				-ortho_scale, 
-				ortho_scale, 
-				-distance, 
-				distance	
+				0.f, 
+				view_width, 
+				view_height, 
+				0.f, 
+				cam->near_plane, 
+				cam->far_plane	
 			);
+
+// gs_mat4_ortho( f32 l, f32 r, f32 b, f32 t, f32 n, f32 f )
 
 		} break;
 	}

@@ -6,6 +6,7 @@ extern "C" {
 #endif
 
 #include "common/gs_containers.h"
+#include "math/gs_math.h"
 
 typedef enum gs_shader_program_type
 {
@@ -91,6 +92,12 @@ typedef struct gs_texture_parameter_desc
 	u32 num_comps;
 } gs_texture_parameter_desc;
 
+typedef struct gs_debug_draw_properties
+{
+	gs_mat4 view_mat;
+	gs_mat4 proj_mat;
+} gs_debug_draw_properties;
+
 /*================
 // Resource Decls
 =================*/
@@ -146,7 +153,6 @@ typedef struct gs_graphics_i
 	// Graphics Resource Construction
 	============================================================*/
 	gs_resource( gs_vertex_buffer )( * construct_vertex_buffer )( gs_vertex_attribute_type*, u32, void*, usize );
-	void ( * update_vertex_buffer_data )( gs_resource( gs_vertex_buffer ), void*, usize );
 	gs_resource( gs_shader )( * construct_shader )( const char* vert_src, const char* frag_src );
 	// gs_resource( gs_uniform_buffer )( * construct_uniform_buffer )( gs_resource( gs_shader ), const char* uniform_name );
 	gs_resource( gs_uniform )( * construct_uniform )( gs_resource( gs_shader ), const char* uniform_name, gs_uniform_type );
@@ -157,7 +163,6 @@ typedef struct gs_graphics_i
 	// Will construct texture resource and let user free data...for now
 	gs_resource( gs_texture )( * construct_texture )( gs_texture_parameter_desc );
 	gs_resource( gs_texture )( * construct_texture_from_file )( const char* );
-	void ( * update_texture_data )( gs_resource( gs_texture ), gs_texture_parameter_desc );
 	gs_resource( gs_index_buffer )( * construct_index_buffer )( void*, usize );
 
 	/*============================================================
@@ -172,7 +177,16 @@ typedef struct gs_graphics_i
 	/*============================================================
 	// Graphics Update Ops
 	============================================================*/
-	void ( * add_vertex_attribute )( gs_resource( gs_vertex_attribute_layout_desc ), gs_vertex_attribute_type );
+	void ( * update_vertex_buffer_data )( gs_resource( gs_vertex_buffer ), void*, usize );
+	void ( * update_texture_data )( gs_resource( gs_texture ), gs_texture_parameter_desc );
+
+	/*============================================================
+	// Graphics Debug Rendering Ops
+	============================================================*/
+	void ( * set_debug_draw_properties )( gs_resource( gs_command_buffer ), gs_debug_draw_properties );
+	void ( * draw_line )( gs_resource( gs_command_buffer ), gs_vec3 start, gs_vec3 end, gs_vec3 color );
+	void ( * draw_square )( gs_resource( gs_command_buffer ), gs_vec3 origin, f32 width, f32 height, gs_vec3 color );
+	void ( * submit_debug_drawing )( gs_resource( gs_command_buffer ) );
 
 	// Render Data 
 	void* data;
@@ -928,6 +942,88 @@ extern struct gs_graphics_i* gs_graphics_construct();
 		// Make engine and init...
 	}
 
+
+	// Rendering fonts
+
+	Fonts are NOT a graphics level resource - the texture for the atlas, however, is. Fonts are an asset level resource, 
+	which might specifically be a game/application layer concept.
+
+	typedef struct gs_font
+	{
+		// Glyph data for font
+		...
+
+		// Handle to internal texture atlas resource
+		gs_resource( gs_texture ) atlas;
+	} gs_font;
+
+
+	// Debug drawing ( for lines / shapes / primitives / etc. )
+
+	// Should add this into a vertex buffer. Use some internal rendering mechanism for displaying all of this data.
+	// It'll get drawn on top of all other passes? Or the user can determine when to submit? I suppose it doesn't really matter...
+	// Or, could just draw this as a single draw call? I don't like that option.
+	gfx->draw_line( start, end, color );
+
+	...
+
+	// Could this be what I want?
+	gfx->submit_debug_drawing( cb_handle );
+
+	// Want to throw all debug drawing ops into a vertex buffer for a single draw call
+	// Want the ability to do 3d rendering as well as 2d rendering for it
+	// Want the user to have ability to render these shapes into whatever they want, and then set whatever 
+	// parameters they want for debug rendering, such as view, projection
+
+	// Internally
+	struct debug_drawing_internal_data {
+		gs_mat4 view_matrix;
+		gs_mat4 proj_matrix;
+		gs_resource( gs_vertex_buffer ) vbo;
+		gs_dyn_array( f32 ) vertex_data; 
+	};
+
+	struct debug_properties props = {
+		view_matrix, 
+		proj_matrix
+	};
+
+	// I mean, what's the point of this, though? Provide simple utilities for adding vertex data into a buffer 
+	// for primitive drawing. Abstracting the bore of having to code all of that yourself. A particular shader 
+	// is needed for drawing, the vertex layout needs to be understood correctly.
+
+	gfx->set_debug_properties( cb_handle, props );
+	gfx->draw_line( cb_handle, start, end, color );
+	gfx->draw_cube( cb_handle, aabb, model_matrix, color );
+	gfx->draw_square( cb_handle, origin, extents, color );
+	gfx->submit_debug_rendering( cb_handle );
+
+	// Graphics update
+	Debug Rendering...
+
+	// Alright, so forget 3d rendering...
+	// Let's do simple 2d rendering solely...how do? I can't access a global buffer if I want this to scale...
+	// Wait, yes I can...I'm being dumb. In drawing lines, it'll add in the submit phase. This'll work.
+	// But...if I want these things to be quads, that's where the lines will be weird. Unless I keep this entire 
+	// implementation 2d. Or have two different vertex buffers - one for lines, one for quads. Then all
+	// debug drawing will come down to two separate calls. I think I'm okay with that...maybe?
+	// When would the actual drawing take place? In a command buffer submission? Or at end of frame? What if user 
+	// wants to render debug data into a particular render target? The user can't control the way the debug drawing looks, 
+	// but he can control where it is drawn into.
+
+	void graphics_update()
+	{
+		// Submit all command buffers...
+
+		// Do debug drawing
+	}
+
+	struct gs_render_pass
+	{
+		gs_resource( gs_command_buffer ) command_buffer;
+	}
+
+	What would a deferred rendering pass look like? Would be implicit, I believe...
 */
 
 
@@ -937,3 +1033,5 @@ extern struct gs_graphics_i* gs_graphics_construct();
 
 
 #endif // __GS_GRAPHICS_SUBSYSTEM_H__
+
+
