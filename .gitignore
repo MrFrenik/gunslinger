@@ -7,3 +7,12 @@ examples/hello_gs/bin/HelloGS
 *.lib
 examples/terrain/bin/Terrain
 examples/simple_triangle/bin/SimpleTriangle
+*.opendb
+*.ilk
+*.db
+*.sqlite
+*.pdb
+.vs/ProjectSettings.json
+examples/sand_sim/.vs/ProjectSettings.json
+examples/sand_sim/.vs/sand_sim/v15/.suo
+examples/sand_sim/.vs/VSWorkspaceState.json

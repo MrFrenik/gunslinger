@@ -302,6 +302,9 @@ void __gs_default_init_platform( struct gs_platform_i* platform )
 	// Just assert these for now
 	__gs_verify_platform_correctness( platform );
 
+	// Initialize random with time
+	srand(time(0));
+
 	/*============================
 	// Platform Window
 	============================*/
