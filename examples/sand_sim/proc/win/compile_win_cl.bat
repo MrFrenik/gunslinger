@@ -30,13 +30,14 @@ set l_options=/EHsc /link /SUBSYSTEM:CONSOLE /NODEFAULTLIB:msvcrt.lib
 
 rem cl /w -Zi /MP /Femain.exe ^
 
-rem Compile
-rem cl /MP /DEBUG:FULL /FS /Ox /W1 /Fe%name%.exe %src_all% %inc% ^
-rem /EHsc /link /SUBSYSTEM:CONSOLE /NODEFAULTLIB:msvcrt.lib /NODEFAULTLIB:LIBCMT ^
-rem %lib_d% %libs% %os_libs%
-
-cl /w /MP -Zi /DEBUG:FULL /Fe%name%.exe %src_all% %inc% ^
+rem Compile Release
+cl /MP /FS /Ox /W1 /Fe%name%.exe %src_all% %inc% ^
 /EHsc /link /SUBSYSTEM:CONSOLE /NODEFAULTLIB:msvcrt.lib /NODEFAULTLIB:LIBCMT ^
 %lib_d% %libs% %os_libs%
+
+rem Compile Debug
+rem cl /w /MP -Zi /DEBUG:FULL /Fe%name%.exe %src_all% %inc% ^
+rem /EHsc /link /SUBSYSTEM:CONSOLE /NODEFAULTLIB:msvcrt.lib /NODEFAULTLIB:LIBCMT ^
+rem %lib_d% %libs% %os_libs%
 
 popd

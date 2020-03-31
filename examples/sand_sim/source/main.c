@@ -378,7 +378,7 @@ void update_particle_sim()
 		f32 mp_y = gs_clamp( mp.y, 0.f, (f32)g_texture_height - 1.f );
 		u32 max_idx = (g_texture_width * g_texture_height) - 1;
 		s32 r_amt = random_val( 1, 1000 );
-		const f32 R = 20.f;
+		const f32 R = 10.f;
 
 		// Spawn in a circle around the mouse
 		for ( u32 i = 0; i < r_amt; ++i )
@@ -530,21 +530,12 @@ void update_salt( u32 x, u32 y, u32 ticks )
 	u32 write_idx = read_idx;
 	u32 fall_rate = 4;
 
-	// Chance to dissolve
-	if ( is_in_liquid( x, y ) ) {
-		if ( random_val( 0, 50 ) == 0 ) {
-			write_data( read_idx, particle_empty() );
-			return;
-		}
-	}
-
 	p->velocity.y = gs_clamp( p->velocity.y + (gravity * dt), -10.f, 10.f );
 	p->velocity.x = gs_clamp( p->velocity.x, -5.f, 5.f );
 
 	// Just check if you can move directly beneath you. If not, then reset your velocity. God, this is going to blow.
 	if ( in_bounds( x, y + 1 ) && !is_empty( x, y + 1 ) && get_particle_at( x, y + 1 ).id != mat_id_water && get_particle_at( x, y + 1 ).id != mat_id_sand ) {
 		p->velocity.y /= 2.f;
-		// p->velocity.x /= 2.f;
 	}
 
 	s32 vi_x = x + (s32)p->velocity.x; 
@@ -672,7 +663,6 @@ void update_sand( u32 x, u32 y, u32 ticks )
 	// Just check if you can move directly beneath you. If not, then reset your velocity. God, this is going to blow.
 	if ( in_bounds( x, y + 1 ) && !is_empty( x, y + 1 ) && get_particle_at( x, y + 1 ).id != mat_id_water && get_particle_at( x, y + 1 ).id != mat_id_sand ) {
 		p->velocity.y /= 2.f;
-		// p->velocity.x /= 2.f;
 	}
 
 	s32 vi_x = x + (s32)p->velocity.x; 
@@ -752,7 +742,7 @@ void update_sand( u32 x, u32 y, u32 ticks )
 		write_data( read_idx, tmp_b );
 	}
 	else if ( in_bounds( x - 1, y + 1 ) && (( is_empty( x - 1, y + 1 ) || g_world_particle_data[ bl_idx ].id == mat_id_water )) ) {
-		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.5f : 1.5f;
+		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.2f : 1.2f;
 		p->velocity.y += (gravity * dt );
 		particle_t tmp_a = g_world_particle_data[ read_idx ];
 		particle_t tmp_b = g_world_particle_data[ bl_idx ];
@@ -760,8 +750,7 @@ void update_sand( u32 x, u32 y, u32 ticks )
 		write_data( read_idx, tmp_b );
 	}
 	else if ( in_bounds( x + 1, y + 1 ) && (( is_empty( x + 1, y + 1 ) || g_world_particle_data[ br_idx ].id == mat_id_water )) ) {
-		// p->velocity.x *= 1.5f;
-		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.5f : 1.5f;
+		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.2f : 1.2f;
 		p->velocity.y += (gravity * dt );
 		particle_t tmp_a = g_world_particle_data[ read_idx ];
 		particle_t tmp_b = g_world_particle_data[ br_idx ];
@@ -783,13 +772,6 @@ void update_sand( u32 x, u32 y, u32 ticks )
 		write_data( idx, tmp_a );
 		write_data( read_idx, tmp_b );
 	}
-	// else if ( in_bounds( x, y - 1 ) && ( g_world_particle_data[ compute_idx( x, y - 1 ) ].id == mat_id_water ) ) {
-	// 	u32 idx = compute_idx( x, y - 1 );
-	// 	particle_t tmp_a = g_world_particle_data[ read_idx ];
-	// 	particle_t tmp_b = g_world_particle_data[ idx ];
-	// 	write_data( idx, tmp_a );
-	// 	write_data( read_idx, tmp_b );
-	// }
 }
 
 void update_water( u32 x, u32 y, u32 ticks )
@@ -800,14 +782,15 @@ void update_water( u32 x, u32 y, u32 ticks )
 	particle_t* p = &g_world_particle_data[ read_idx ];
 	u32 write_idx = read_idx;
 	u32 fall_rate = 2;
-	u32 spread_rate = 4;
+	u32 spread_rate = 2;
 
 	// p->has_been_updated_this_frame = false;
 
-	// p->velocity.y = gs_clamp( p->velocity.y + (gravity * dt), -10.f, 10.f );
-	p->velocity.y += (gravity * dt);
+	p->velocity.y = gs_clamp( p->velocity.y + (gravity * dt), -10.f, 10.f );
+	// p->velocity.y += (gravity * dt);
 
-	if ( !is_empty( x, y + 1 ) ) {
+	// Just check if you can move directly beneath you. If not, then reset your velocity. God, this is going to blow.
+	if ( in_bounds( x, y + 1 ) && !is_empty( x, y + 1 ) && get_particle_at( x, y + 1 ).id != mat_id_water ) {
 		p->velocity.y /= 2.f;
 	}
 
@@ -839,22 +822,28 @@ void update_water( u32 x, u32 y, u32 ticks )
 		write_data( read_idx, particle_empty() );
 	}
 	else {
+		particle_t tmp = *p;
+		b32 found = false;
 		for ( u32 i = 1; i < spread_rate; ++i )
 		{
 			if ( is_empty( x + l * i , y ) ) {
 				write_data( l_idx, *p );
 				write_data( read_idx, particle_empty() );
+				found = true;
 				break;
 			}
 			else if ( is_empty( x + r * i, y ) ) {
 				write_data( r_idx, *p );
 				write_data( read_idx, particle_empty() );
+				found = true;
 				break;
 			}
-			else {
-				write_data( read_idx, *p );
-				break;
-			}
+			// else {
+			// 	// break;
+			// }
+		}
+		if ( !found ) {
+			write_data( read_idx, tmp );
 		}
 	}
 }
