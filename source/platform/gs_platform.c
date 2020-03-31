@@ -15,6 +15,12 @@ gs_resource_handle __gs_platform_create_window( const char* title, u32 width, u3
 	return handle;
 }
 
+gs_resource_handle __gs_platform_main_window()
+{
+	// Should be the first element of the slot array...Great assumption to make.
+	return 0;
+}
+
 /*============================
 // Platform Input
 ============================*/
@@ -311,6 +317,7 @@ void __gs_default_init_platform( struct gs_platform_i* platform )
 	platform->windows 				= gs_slot_array_new( gs_platform_window_ptr );
 	platform->active_window_handles = gs_dyn_array_new( gs_resource_handle );
 	platform->create_window 		= &__gs_platform_create_window;
+	platform->main_window 			= &__gs_platform_main_window;
 
 	/*============================
 	// Platform Input

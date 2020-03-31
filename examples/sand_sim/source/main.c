@@ -8,8 +8,14 @@ _global gs_resource( gs_shader ) 			g_shader = {0};
 _global gs_resource( gs_uniform ) 			u_tex = {0}; 
 _global gs_resource( gs_texture ) 			g_tex = {0};
 
-_global const s32 g_window_width 	= 1258;
-_global const s32 g_window_height 	= 848;
+#if (defined GS_PLATFORM_APPLE)
+	_global const s32 g_window_width 	= 800;
+	_global const s32 g_window_height 	= 600;
+#else
+	_global const s32 g_window_width 	= 1258;
+	_global const s32 g_window_height 	= 848;
+#endif
+
 _global const s32 g_texture_width 	= 1258 / 2;
 _global const s32 g_texture_height 	= 848 / 2;
 
@@ -66,6 +72,9 @@ _global u32 g_frame_counter = 0;
 // World physics settings
 _global f32 gravity = 10.f;
 
+// Handle for main window
+_global gs_resource_handle g_window;
+
 const char* v_src = "\n"
 "#version 330 core\n"
 "layout (location = 0) in vec2 a_pos;\n"
@@ -108,9 +117,10 @@ void render_scene();
 
 gs_vec2 calculate_mouse_position( gs_vec2 pmp )
 {
+	gs_vec2 ws = gs_engine_instance()->ctx.platform->window_size( g_window );
 	// Need to place mouse into frame
-	f32 x_scale = pmp.x / (f32)g_window_width;
-	f32 y_scale = pmp.y / (f32)g_window_height;
+	f32 x_scale = pmp.x / (f32)ws.x;
+	f32 y_scale = pmp.y / (f32)ws.y;
 	return (gs_vec2){ x_scale * (f32)g_texture_width, y_scale * (f32)g_texture_height };
 }
 
@@ -190,6 +200,8 @@ int main( int argc, char** argv )
 	// Run the internal engine loop until completion
 	gs_result res = engine->run();
 
+	gs_println("here");
+
 	// Check result of engine after exiting loop
 	if ( res != gs_result_success ) 
 	{
@@ -268,6 +280,9 @@ gs_result app_init()
 	t_desc.data = g_texture_buffer;
 
 	g_tex = gfx->construct_texture( t_desc );
+
+	// Cache window handle from platform
+	g_window = gs_engine_instance()->ctx.platform->main_window();
 
 	return gs_result_success;
 }
@@ -406,32 +421,9 @@ void update_particle_sim()
 				write_data( idx, p );
 			}
 		}
-
-		// for ( s32 i = -20 ; i < 20; ++i )
-		// {
-		// 	for ( s32 j = -20 ; j < 20; ++j )
-		// 	{
-		// 		s32 rx = ((s32)mp_x + j); 
-		// 		s32 ry = ((s32)mp_y + i);
-		// 		gs_vec2 r = (gs_vec2){ rx, ry };
-
-		// 		if ( is_empty( rx, ry ) && in_bounds( rx, ry ) && gs_vec2_distance( mp, r ) <= R )
-		// 		{
-		// 			particle_t p = {0};
-		// 			switch ( g_material_selection ) {
-		// 				case mat_sel_sand: p = particle_sand(); break;;
-		// 				case mat_sel_water: p = particle_water(); break;;
-		// 				case mat_sel_salt: p = particle_salt(); break;;
-		// 				case mat_sel_brick: p = particle_brick(); break;;
-		// 			}
-		// 			p.velocity = (gs_vec2){ random_val( -1, 1 ), random_val( 2, 5 ) };
-		// 			write_data( compute_idx( rx, ry ), p );
-		// 		}
-		// 	}
-		// }
 	}
 
-	// Erase
+	// Solid Erase
 	if (  platform->mouse_down( gs_mouse_rbutton ) )
 	{
 		gs_vec2 mp = calculate_mouse_position( platform->mouse_position() );
@@ -477,11 +469,21 @@ void render_scene()
 	// Graphics api instance
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 
+	// Platform api instance
+	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+
 	// Set clear color and clear screen
 	f32 clear_color[4] = { 0.2f, 0.2f, 0.2f, 1.f };
 	gfx->set_view_clear( g_cb, clear_color );
 
-	gfx->set_viewport( g_cb, g_window_width, g_window_height );
+	gs_vec2 ws = platform->window_size( g_window );
+
+	// This is to handle mac's retina high dpi for now until I fix that internally.
+#if (defined GS_PLATFORM_APPLE)
+	gfx->set_viewport( g_cb, (s32)ws.x * 2, (s32)ws.y * 2 );
+#else
+	gfx->set_viewport( g_cb, (s32)ws.x, (s32)ws.y );
+#endif
 
 	// Bind shader
 	gfx->bind_shader( g_cb, g_shader );

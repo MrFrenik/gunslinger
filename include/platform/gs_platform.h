@@ -10,7 +10,7 @@ extern "C" {
 #include "common/gs_containers.h"
 #include "common/gs_util.h"
 
-#if ( defined __APPLE__ )
+#if ( defined __APPLE__ || defined _APPLE )
 
 	#define GS_PLATFORM_APPLE
 
@@ -352,6 +352,7 @@ typedef struct gs_platform_i
 	void 					( * set_window_size )( gs_resource_handle handle, s32 width, s32 height );
 	void 					( * window_size_w_h )( gs_resource_handle handle, s32* width, s32* height );
 	void 					( * set_cursor )( gs_resource_handle handle, gs_platform_cursor cursor );
+	gs_resource_handle 		( *main_window )();
 
 	/*============================================================
 	// Platform File IO
@@ -435,6 +436,7 @@ void __gs_platform_release_key( gs_platform_keycode code );
 // Platform Window
 ============================*/
 gs_resource_handle __gs_platform_create_window( const char* title, u32 width, u32 height );
+gs_resource_handle __gs_platform_main_window();
 
 /*============================
 // Platform File IO
