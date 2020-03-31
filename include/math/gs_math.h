@@ -132,6 +132,14 @@ _inline gs_vec2 gs_vec2_norm( gs_vec2 v )
 	return gs_vec2_scale( v, 1.0f / gs_vec2_len( v ) );
 }
 
+_inline 
+f32 gs_vec2_distance( gs_vec2 a, gs_vec2 b )
+{
+	f32 dx = (a.x - b.x);
+	f32 dy = (a.y - b.y);
+	return ( sqrt(dx * dx + dy * dy) );
+}
+
 /*================================================================================
 // Vec3
 ================================================================================*/

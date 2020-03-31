@@ -38,6 +38,14 @@ gs_engine* gs_engine_construct( gs_application_desc app_desc )
 		// Default initialization for platform here
 		__gs_default_init_platform( gs_engine_instance_g->ctx.platform );
 
+		// Set frame rate for application
+		if ( app_desc.frame_rate > 0.f ) {
+			gs_engine_instance_g->ctx.platform->time.max_fps = app_desc.frame_rate;
+		}
+
+		// Set vsync for video
+		gs_engine_instance_g->ctx.platform->enable_vsync( app_desc.enable_vsync );
+
 		// Construct window
 		gs_engine_instance()->ctx.platform->create_window( app_desc.window_title, app_desc.window_width, app_desc.window_height );
 
@@ -122,7 +130,7 @@ gs_result gs_engine_run()
 	    if ( platform->time.frame < target )
 	    {
 	    	platform->sleep( (f32)( target - platform->time.frame ) );
-
+	    	
 	    	platform->time.current = platform->elapsed_time();
 	    	f64 wait_time = platform->time.current - platform->time.previous;
 	    	platform->time.previous = platform->time.current;

@@ -306,6 +306,11 @@ typedef struct gs_platform_i
 	f64 	( * elapsed_time )(); 	// Returns time in ms since initialization of platform
 
 	/*============================================================
+	// Platform Video
+	============================================================*/
+	void ( * enable_vsync )( b32 enabled );
+
+	/*============================================================
 	// Platform UUID
 	============================================================*/
 	struct gs_uuid 	( * generate_uuid )();

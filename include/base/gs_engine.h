@@ -29,6 +29,8 @@ typedef struct gs_application_desc
 	u32 window_width;
 	u32 window_height;
 	u32 window_flags;
+	f32 frame_rate;
+	b32 enable_vsync;
 } gs_application_desc;
 
 // What would the context necessarily hold? Some container of all subsystems? 

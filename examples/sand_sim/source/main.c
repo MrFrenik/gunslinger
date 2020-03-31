@@ -8,8 +8,10 @@ _global gs_resource( gs_shader ) 			g_shader = {0};
 _global gs_resource( gs_uniform ) 			u_tex = {0}; 
 _global gs_resource( gs_texture ) 			g_tex = {0};
 
-_global const s32 g_texture_width = 800;
-_global const s32 g_texture_height = 600;
+_global const s32 g_window_width 	= 1258;
+_global const s32 g_window_height 	= 848;
+_global const s32 g_texture_width 	= 1258 / 2;
+_global const s32 g_texture_height 	= 848 / 2;
 
 typedef struct color_t
 {
@@ -24,19 +26,33 @@ typedef struct particle_t
 	u8 id;
 	f32 life_time;
 	gs_vec2 velocity;
+	b32 has_been_updated_this_frame;
 } particle_t;
 
 // For now, all particle information will simply be a value to determine its material id
 #define mat_id_empty (u8)0
 #define mat_id_sand  (u8)1
 #define mat_id_water (u8)2
-#define mat_id_stone (u8)3
+#define mat_id_salt (u8)3
+#define mat_id_brick (u8)4
 
 // Colors
 #define mat_col_empty (color_t){ 0, 0, 0, 0}
-#define mat_col_sand  (color_t){ 150, 100, 20, 255 }
+#define mat_col_salt  (color_t){ 150, 100, 20, 255 }
 #define mat_col_water (color_t){ 20, 100, 170, 200 }
-#define mat_col_stone (color_t){ 51, 26, 0, 255 }
+#define mat_col_stone (color_t){ 120, 110, 120, 255 }
+#define mat_col_brick (color_t){ 60, 40, 20, 255 }
+
+typedef enum material_selection
+{
+	mat_sel_sand = 0x00,
+	mat_sel_water,
+	mat_sel_salt,
+	mat_sel_brick
+} material_selection;
+
+// Material selection for "painting" / default to sand
+_global material_selection g_material_selection = mat_sel_sand;
 
 // World particle data structure
 _global particle_t* g_world_particle_data = {0};
@@ -48,7 +64,7 @@ _global color_t* g_texture_buffer = {0};
 _global u32 g_frame_counter = 0;
 
 // World physics settings
-_global f32 gravity = 3.f;
+_global f32 gravity = 10.f;
 
 const char* v_src = "\n"
 "#version 330 core\n"
@@ -79,54 +95,62 @@ gs_result app_shutdown();	// Use to shutdown your appliaction
 particle_t particle_empty();
 particle_t particle_sand();
 particle_t particle_water();
-particle_t particle_stone();
+particle_t particle_salt();
+particle_t particle_brick();
+void update_input();
 void update_particle_sim();
-void update_sand( u32 w, u32 h );
-void update_water( u32 w, u32 h );
-void update_stone( u32 w, u32 h );
+void update_sand( u32 w, u32 h, u32 ticks );
+void update_water( u32 w, u32 h, u32 ticks );
+void update_salt( u32 w, u32 h, u32 ticks );
+void update_default( u32 w, u32 h, u32 ticks );
 void write_data( u32 idx, particle_t );
 void render_scene();
+
+gs_vec2 calculate_mouse_position( gs_vec2 pmp )
+{
+	// Need to place mouse into frame
+	f32 x_scale = pmp.x / (f32)g_window_width;
+	f32 y_scale = pmp.y / (f32)g_window_height;
+	return (gs_vec2){ x_scale * (f32)g_texture_width, y_scale * (f32)g_texture_height };
+}
 
 s32 random_val( s32 lower, s32 upper )
 {
 	return ( rand() % (upper - lower + 1) + lower );
 }
 
-b32 in_bounds( u32 x, u32 y )
-{
-	if ( x < 0 || x > ( g_texture_width - 1 ) ||
-		 y < 0 || y > ( g_texture_height - 1 ) )
-	{
-		return false;
-	}
-
-	return true;
-}
-
-u32 compute_idx( u32 x, u32 y )
+s32 compute_idx( s32 x, s32 y )
 {
 	return ( y * g_texture_width + x );
 }
 
-b32 is_empty( u32 x, u32 y )
+b32 in_bounds( s32 x, s32 y )
 {
-	return ( in_bounds( x, y ) && g_world_particle_data[ y * g_texture_width + x ].id == mat_id_empty );
+	if ( x < 0 || x > g_texture_width - 1 || y < 0 || y > g_texture_height - 1 ) return false;
+	return true;
 }
 
-particle_t get_particle_at( u32 x, u32 y )
+b32 is_empty( s32 x, s32 y )
 {
-	return g_world_particle_data[ compute_idx( x, y ) ];
+	return ( in_bounds( x, y ) && g_world_particle_data[ compute_idx( x, y ) ].id == mat_id_empty );
+}
+
+particle_t get_particle_at( s32 idx )
+{
+	return g_world_particle_data[ idx ];
 }
 
 int main( int argc, char** argv )
 {
 	gs_application_desc app = {0};
 	app.window_title 		= "SandSim";
-	app.window_width 		= 800;
-	app.window_height 		= 600;
+	app.window_width 		= g_window_width;
+	app.window_height 		= g_window_height;
 	app.init 				= &app_init;
 	app.update 				= &app_update;
 	app.shutdown 			= &app_shutdown;
+	app.frame_rate 			= 60;
+	app.enable_vsync 		= false;
 
 	// Construct internal instance of our engine
 	gs_engine* engine = gs_engine_construct( app );
@@ -227,6 +251,14 @@ gs_result app_update()
 		return gs_result_success;
 	}
 
+	gs_timed_action( 10, 
+	{
+		gs_println( "frame: %.5f ms", engine->ctx.platform->time.frame );
+	});
+
+	// Handle inputs for painting
+	update_input();
+
 	// Update particle sim
 	update_particle_sim();
 
@@ -244,6 +276,24 @@ gs_result app_shutdown()
 	return gs_result_success;
 }
 
+void update_input()
+{
+	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+
+	if ( platform->key_pressed( gs_keycode_one ) ) {
+		g_material_selection = mat_sel_sand;
+	}
+	if ( platform->key_pressed( gs_keycode_two ) ) {
+		g_material_selection = mat_sel_water;
+	}
+	if ( platform->key_pressed( gs_keycode_three ) ) {
+		g_material_selection = mat_sel_salt;
+	}
+	if ( platform->key_pressed( gs_keycode_four ) ) {
+		g_material_selection = mat_sel_brick;
+	}
+}
+
 void update_particle_sim()
 {
 	// Cache engine subsystem interfaces
@@ -253,29 +303,37 @@ void update_particle_sim()
 	// Update frame counter ( loop back to 0 if we roll past u32 max )
 	b32 frame_counter_even = ((g_frame_counter % 2) == 0);
 	s32 ran = frame_counter_even ? 0 : 1;
+	// s32 ran = 1;
+	// s32 ran = random_val( 0, 1 );
+	u32 ticks = 1; // Two update ticks per frame ( to simulate higher velocities )
 
 	// Rip through read data and update write buffer
-	for ( u32 h = g_texture_height - 1; h > 0; --h )
+	for ( u32 i = 0; i < ticks; ++i )
 	{
-		for ( u32 w = ran ? 0 : g_texture_width - 1; ran ? w < g_texture_width : w > 0; ran ? ++w : --w )
+		for ( u32 h = g_texture_height - 1; h > 0; --h )
+		// for ( u32 h =0; h < g_texture_height; ++h )
 		{
-			// Current particle idx
-			u32 read_idx = h * g_texture_width + w;
+			for ( u32 w = ran ? 0 : g_texture_width - 1; ran ? w < g_texture_width : w > 0; ran ? ++w : --w )
+			{
+				// Current particle idx
+				u32 read_idx = h * g_texture_width + w;
 
-			// Get material of particle at point
-			u8 mat_id = g_world_particle_data[ read_idx ].id;
+				// Get material of particle at point
+				u8 mat_id = g_world_particle_data[ read_idx ].id;
 
-			switch ( mat_id ) {
+				switch ( mat_id ) {
 
-				case mat_id_sand: update_sand( w, h ); break;
-				case mat_id_water: update_water( w, h ); break;
-				case mat_id_stone: update_stone( w, h ); break;
+					case mat_id_sand: update_sand( w, h, i ); break;
+					case mat_id_water: update_water( w, h, i ); break;
+					case mat_id_salt: update_salt( w, h, i ); break;
 
-				// Do nothing for empty or default case
-				default:
-				case mat_id_empty: 
-				{
-				} break;
+					// Do nothing for empty or default case
+					default:
+					case mat_id_empty: 
+					{
+						// update_default( w, h, i ); 
+					} break;
+				}
 			}
 		}
 	}
@@ -283,83 +341,83 @@ void update_particle_sim()
 	// Mouse input for testing
 	if ( platform->mouse_down( gs_mouse_lbutton ) )
 	{
-		gs_vec2 mp = platform->mouse_position();
+		gs_vec2 mp = calculate_mouse_position( platform->mouse_position() );
 		f32 mp_x = gs_clamp( mp.x, 0.f, (f32)g_texture_width - 1.f );	
 		f32 mp_y = gs_clamp( mp.y, 0.f, (f32)g_texture_height - 1.f );
 		u32 max_idx = (g_texture_width * g_texture_height) - 1;
-		s32 r_amt = random_val( 1, 100 );
-		for ( u32 i = 0; i < r_amt; ++i )
+		s32 r_amt = random_val( 1, 1000 );
+		const f32 R = 20.f;
+		// Spawn in a circle around the mouse
+		// for ( u32 i = 0; i < r_amt; ++i )
+		// {
+		// 	f32 ran = (f32)random_val(0, 100) / 100.f;
+		// 	f32 r = R * sqrt(ran);
+		// 	f32 theta = (f32)random_val(0, 100)/100.f * 2.f * gs_pi;
+		// 	f32 rx = cos((f32)theta) * r;
+		// 	f32 ry = sin((f32)theta) * r;
+		// 	s32 mpx = (s32)gs_clamp( mp_x + (f32)rx, 0.f, (f32)g_texture_width - 1.f );
+		// 	s32 mpy = (s32)gs_clamp( mp_y + (f32)ry, 0.f, (f32)g_texture_height - 1.f );
+		// 	s32 idx = mpy * (s32)g_texture_width + mpx;
+		// 	idx = gs_clamp( idx, 0, max_idx );
+
+		// 	if ( is_empty( mpx, mpy ) )
+		// 	{
+		// 		particle_t p = {0};
+		// 		switch ( g_material_selection ) {
+		// 			case mat_sel_sand: p = particle_sand(); break;;
+		// 			case mat_sel_water: p = particle_water(); break;;
+		// 			case mat_sel_salt: p = particle_salt(); break;;
+		// 			case mat_sel_brick: p = particle_brick(); break;;
+		// 		}
+		// 		p.velocity = (gs_vec2){ random_val( -1, 1 ), random_val( 2, 5 ) };
+		// 		write_data( idx, p );
+		// 	}
+		// }
+
+		// Erase in a circle pattern
+		for ( s32 i = -20 ; i < 20; ++i )
 		{
-			s32 rx = random_val( -10, 20 );
-			s32 ry = random_val( 1, 100 );
-			s32 mpx = (s32)gs_clamp( mp_x + (f32)rx, 0.f, (f32)g_texture_width - 1.f );
-			s32 mpy = (s32)gs_clamp( mp_y + (f32)ry, 0.f, (f32)g_texture_height - 1.f );
-			s32 idx = mpy * (s32)g_texture_width + mpx;
-			idx = gs_clamp( idx, 0, max_idx );
-
-			if ( is_empty( mpx, mpy ) )
-			{
-				write_data( idx, particle_sand() );
-			}
-		}
-	}
-
-	if (  platform->mouse_down( gs_mouse_rbutton ) )
-	{
-		gs_vec2 mp = platform->mouse_position();
-		f32 mp_x = gs_clamp( mp.x, 0.f, (f32)g_texture_width - 1.f );	
-		f32 mp_y = gs_clamp( mp.y, 0.f, (f32)g_texture_height - 1.f );
-		u32 max_idx = (g_texture_width * g_texture_height) - 1;
-		s32 r_amt = random_val( 1, 100 );
-		for ( u32 i = 0; i < r_amt; ++i )
-		{
-			s32 rx = random_val( -10, 20 );
-			s32 ry = random_val( 1, 100 );
-			s32 mpx = (s32)gs_clamp( mp_x + (f32)rx, 0.f, (f32)g_texture_width - 1.f );
-			s32 mpy = (s32)gs_clamp( mp_y + (f32)ry, 0.f, (f32)g_texture_height - 1.f );
-			s32 idx = mpy * (s32)g_texture_width + mpx;
-			idx = gs_clamp( idx, 0, max_idx );
-
-			if ( is_empty( mpx, mpy ) )
-			{
-				write_data( idx, particle_water() );
-			}
-		}
-	}
-
-	if ( platform->mouse_down( gs_mouse_mbutton ) )
-	{
-		gs_vec2 mp = platform->mouse_position();
-		f32 mp_x = gs_clamp( mp.x, 0.f, (f32)g_texture_width - 1.f );	
-		f32 mp_y = gs_clamp( mp.y, 0.f, (f32)g_texture_height - 1.f );
-		u32 max_idx = (g_texture_width * g_texture_height) - 1;
-		for ( s32 i = -10 ; i < 10; ++i )
-		{
-			for ( s32 j = -10 ; j < 10; ++j )
+			for ( s32 j = -20 ; j < 20; ++j )
 			{
 				s32 rx = ((s32)mp_x + j); 
 				s32 ry = ((s32)mp_y + i);
-				if ( is_empty( rx, ry ) )
+				gs_vec2 r = (gs_vec2){ rx, ry };
+
+				if ( is_empty( rx, ry ) && in_bounds( rx, ry ) && gs_vec2_distance( mp, r ) <= R )
 				{
-					write_data( compute_idx( rx, ry ), particle_stone() );
+					particle_t p = {0};
+					switch ( g_material_selection ) {
+						case mat_sel_sand: p = particle_sand(); break;;
+						case mat_sel_water: p = particle_water(); break;;
+						case mat_sel_salt: p = particle_salt(); break;;
+						case mat_sel_brick: p = particle_brick(); break;;
+					}
+					p.velocity = (gs_vec2){ random_val( -1, 1 ), random_val( 2, 5 ) };
+					write_data( compute_idx( rx, ry ), p );
 				}
 			}
 		}
 	}
 
-	if ( platform->key_down( gs_keycode_c ) )
+	// Erase
+	if (  platform->mouse_down( gs_mouse_rbutton ) )
 	{
-		gs_vec2 mp = platform->mouse_position();
+		gs_vec2 mp = calculate_mouse_position( platform->mouse_position() );
 		f32 mp_x = gs_clamp( mp.x, 0.f, (f32)g_texture_width - 1.f );	
 		f32 mp_y = gs_clamp( mp.y, 0.f, (f32)g_texture_height - 1.f );
 		u32 max_idx = (g_texture_width * g_texture_height) - 1;
-		for ( s32 i = -10 ; i < 10; ++i )
+		const f32 R = 20.f;
+
+		// Erase in a circle pattern
+		for ( s32 i = -20 ; i < 20; ++i )
 		{
-			for ( s32 j = -10 ; j < 10; ++j )
+			for ( s32 j = -20 ; j < 20; ++j )
 			{
 				s32 rx = ((s32)mp_x + j); 
 				s32 ry = ((s32)mp_y + i);
-				if ( in_bounds( rx, ry ) )
+				gs_vec2 r = (gs_vec2){ rx, ry };
+
+				if ( in_bounds( rx, ry ) && gs_vec2_distance( mp, r ) <= R )
 				{
 					write_data( compute_idx( rx, ry ), particle_empty() );
 				}
@@ -391,6 +449,8 @@ void render_scene()
 	f32 clear_color[4] = { 0.2f, 0.2f, 0.2f, 1.f };
 	gfx->set_view_clear( g_cb, clear_color );
 
+	gfx->set_viewport( g_cb, g_window_width, g_window_height );
+
 	// Bind shader
 	gfx->bind_shader( g_cb, g_shader );
 
@@ -417,9 +477,10 @@ void write_data( u32 idx, particle_t p )
 
 	switch ( p.id )
 	{
-		case mat_id_sand:  g_texture_buffer[ idx ] = mat_col_sand;    break;
+		case mat_id_sand:  g_texture_buffer[ idx ] = mat_col_salt;    break;
 		case mat_id_water: g_texture_buffer[ idx ] = mat_col_water;   break;
-		case mat_id_stone: g_texture_buffer[ idx ] = mat_col_stone;   break;
+		case mat_id_salt: g_texture_buffer[ idx ] = mat_col_stone;   break;
+		case mat_id_brick: g_texture_buffer[ idx ] = mat_col_brick;   break;
 		default:
 		case mat_id_empty: {
 			g_texture_buffer[ idx ] = mat_col_empty;
@@ -427,99 +488,7 @@ void write_data( u32 idx, particle_t p )
 	}
 }
 
-void update_stone( u32 x, u32 y )
-{
-	u32 read_idx = compute_idx( x, y );
-	particle_t* p = &g_world_particle_data[ read_idx ];
-	u32 write_idx = read_idx;
-
-	// Write data into buffer
-	write_data( write_idx, *p );
-	if ( write_idx != read_idx ) {
-		write_data( read_idx, particle_empty() );
-	}
-}
-
-void update_sand( u32 x, u32 y )
-{
-	f32 dt = gs_engine_instance()->ctx.platform->time.delta * 10.f;
-
-	// For water, same as sand, but we'll check immediate left and right as well
-	u32 read_idx = compute_idx( x, y );
-	particle_t* p = &g_world_particle_data[ read_idx ];
-	u32 write_idx = read_idx;
-
-	p->velocity.y += gravity;
-
-	// Move up to bounds
-	while ( !in_bounds( x + p->velocity.x, y + p->velocity.y ) ) {
-		p->velocity.y /= 2.f;
-		p->velocity.x /= 2.f;
-	}
-
-	gs_vec2 norm = gs_vec2_norm( p->velocity );
-	f32 len = gs_vec2_len( p->velocity );
-
-	// Want to increment in discrete time steps to move towards velocity. Resolve collision if it occurs
-	// Can only increment in steps of 1
-	for ( f32 i = 1.f; i <= len; i += 1.f )
-	{
-		s32 pvx = (s32)((s32)norm.x * (s32)i);
-		s32 pvy = (s32)((s32)norm.y * (s32)i);
-		s32 new_x = x + pvx;
-		s32 new_y = y + pvy;
-		b32 p_in_b = in_bounds( new_x, new_y );
-		b32 collision = !is_empty( new_x, new_y );
-
-		if ( !collision )
-		{
-			write_idx = compute_idx( new_x, new_y );
-		}
-
-		// Otherwise, we've collided
-		else
-		{
-			// For now, just set velocities to 0
-			p->velocity.x = 0.f;
-			p->velocity.y = 0.f;
-
-			// Get particle at collision point
-			u8 collide_id = get_particle_at( new_x, new_y ).id;	
-
-			if ( collide_id == mat_id_water || collide_id == mat_id_sand || collide_id == mat_id_stone )
-			{
-				s32 ran = random_val( 0, 1 );
-				s32 r = ran ? 1 : -1;
-				s32 l = ran ? -1 : 1;
-				if ( is_empty( x + r, y + 1 ) ) {
-					write_idx = compute_idx( x + r, y + 1 );
-					break;
-				}
-				else if ( is_empty( x + l, y + 1 ) ) {
-					write_idx = compute_idx( x + l, y + 1 );
-					break;
-				}
-				else if ( is_empty( x + r, y ) ) {
-					write_idx = compute_idx( x + r, y );
-					break;
-				}
-				else if ( is_empty( x + l, y ) ) {
-					write_idx = compute_idx( x + l, y );
-					break;
-				}
-			}
-		}
-	}
-	
-	// Write data into buffer
-	write_data( write_idx, *p );
-
-	if ( write_idx != read_idx ) {
-		write_data( read_idx, particle_empty() );
-	}
-}
-
-void update_water( u32 x, u32 y )
+void update_salt( u32 x, u32 y, u32 ticks )
 {
 	f32 dt = gs_engine_instance()->ctx.platform->time.delta;
 
@@ -527,75 +496,373 @@ void update_water( u32 x, u32 y )
 	u32 read_idx = compute_idx( x, y );
 	particle_t* p = &g_world_particle_data[ read_idx ];
 	u32 write_idx = read_idx;
+	u32 fall_rate = 4;
 
-	p->velocity.y += gravity;
+	p->velocity.y = gs_clamp( p->velocity.y + (gravity * dt), -10.f, 100.f );
 
-	// Move up to bounds
-	while ( !in_bounds( x + p->velocity.x, y + p->velocity.y ) ) {
+	if ( !is_empty( x, y + 1 ) ) {
 		p->velocity.y /= 2.f;
-		p->velocity.x /= 2.f;
 	}
 
-	gs_vec2 norm = gs_vec2_norm( p->velocity );
-	f32 len = gs_vec2_len( p->velocity );
+	// Check to see if you can swap first with other element below you
+	u32 b_idx = compute_idx( x, y + 1 );
+	u32 br_idx = compute_idx( x + 1, y + 1 );
+	u32 bl_idx = compute_idx( x - 1, y + 1 );
 
-	// Want to increment in discrete time steps to move towards velocity. Resolve collision if it occurs
-	// Can only increment in steps of 1
-	for ( f32 i = 1.f; i <= len; i += 1.f )
-	{
-		s32 pvx = (s32)((s32)norm.x * (s32)i);
-		s32 pvy = (s32)((s32)norm.y * (s32)i);
-		s32 new_x = x + pvx;
-		s32 new_y = y + pvy;
-		b32 p_in_b = in_bounds( new_x, new_y );
-		b32 collision = !is_empty( new_x, new_y );
+	s32 vi_x = x + (s32)p->velocity.x; 
+	s32 vi_y = y + (s32)p->velocity.y;
 
-		if ( !collision )
-		{
-			write_idx = compute_idx( new_x, new_y );
+	particle_t tmp_a = g_world_particle_data[ read_idx ];
+
+	// Physics (using velocity)
+	if ( in_bounds( vi_x, vi_y ) && (( is_empty( vi_x, vi_y ) ||
+			((( g_world_particle_data[ compute_idx( vi_x, vi_y ) ].id == mat_id_water ) && 
+			  !g_world_particle_data[ compute_idx( vi_x, vi_y ) ].has_been_updated_this_frame && 
+			   gs_vec2_len(g_world_particle_data[compute_idx(vi_x, vi_y)].velocity) - gs_vec2_len(tmp_a.velocity) > 10.f ) ) ) ) ) {
+
+		particle_t tmp_b = g_world_particle_data[ compute_idx( vi_x, vi_y ) ];
+
+		// Try to throw water out
+		if ( tmp_b.id == mat_id_water ) {
+
+			tmp_b.has_been_updated_this_frame = true;
+
+			s32 rx = random_val( -2, 2 );
+			tmp_b.velocity = (gs_vec2){ rx, -1.f };
+
+			write_data( compute_idx( vi_x, vi_y ), tmp_a );	
+
+			for( s32 i = -10; i < 0; ++i ) {
+				for ( s32 j = -5; j < 5; ++j ) {
+					if ( is_empty( vi_x + j, vi_y + i ) ) {
+
+						// 20% chance to destroy the water particle
+						if ( random_val( 0, 20 ) == 0 ) {
+							// Couldn't write there, so, uh, destroy it.
+							write_data( compute_idx( vi_x + j, vi_y + i ), particle_empty() );
+						} else {
+							write_data( compute_idx( vi_x + j, vi_y + i ), tmp_b );
+						}
+						break;
+					}	
+				}
+			}
+
+			// Couldn't write there, so, uh, destroy it.
+			write_data( read_idx, particle_empty() );
 		}
+		else if ( is_empty( vi_x, vi_y ) ) {
+			write_data( compute_idx( vi_x, vi_y ), tmp_a );
+			write_data( read_idx, tmp_b );
+		}
+	}
+	else if ( in_bounds( vi_x, vi_y ) && (( is_empty( vi_x, vi_y ) ||
+			((( g_world_particle_data[ compute_idx( vi_x, vi_y ) ].id == mat_id_water ) && 
+			  !g_world_particle_data[ compute_idx( vi_x, vi_y ) ].has_been_updated_this_frame ) ) ) ) ) {
 
-		// Otherwise, we've collided
-		else
+		particle_t tmp_b = g_world_particle_data[ compute_idx( vi_x, vi_y ) ];
+
+		// Try to throw water out
+		if ( tmp_b.id == mat_id_water ) {
+
+			tmp_b.has_been_updated_this_frame = true;
+
+			s32 rx = random_val( -2, 2 );
+			tmp_b.velocity = (gs_vec2){ rx, -3.f };
+
+			write_data( compute_idx( vi_x, vi_y ), tmp_a );
+
+			// 20% chance to destroy the water particle
+			if ( random_val( 0, 20 ) == 0 ) {
+				// Couldn't write there, so, uh, destroy it.
+				write_data( read_idx, particle_empty() );
+			} else {
+				write_data( read_idx, tmp_b );
+			}
+
+		}
+		else if ( is_empty( vi_x, vi_y ) ) {
+			write_data( compute_idx( vi_x, vi_y ), tmp_a );
+			write_data( read_idx, tmp_b );
+		}
+	}
+	// Simple falling
+	else if ( in_bounds( x, y + 1 ) && (( is_empty( x, y + 1 ) || ( g_world_particle_data[ b_idx ].id == mat_id_water ) ) ) ) {
+		// p->velocity.x *= -1.f;
+		particle_t tmp_a = g_world_particle_data[ read_idx ];
+		particle_t tmp_b = g_world_particle_data[ b_idx ];
+		write_data( b_idx, tmp_a );
+
+		// 20% chance to destroy the water particle
+		if ( random_val( 0, 10 ) == 0 ) {
+			// Couldn't write there, so, uh, destroy it.
+			write_data( read_idx, particle_empty() );
+		} else {
+			write_data( read_idx, tmp_b );
+		}
+	}
+	else if ( in_bounds( x - 1, y + 1 ) && (( is_empty( x - 1, y + 1 ) || g_world_particle_data[ bl_idx ].id == mat_id_water )) ) {
+		// p->velocity.x *= -1.f;
+		particle_t tmp_a = g_world_particle_data[ read_idx ];
+		particle_t tmp_b = g_world_particle_data[ bl_idx ];
+		write_data( bl_idx, tmp_a );
+		write_data( read_idx, tmp_b );
+	}
+	else if ( in_bounds( x + 1, y + 1 ) && (( is_empty( x + 1, y + 1 ) || g_world_particle_data[ br_idx ].id == mat_id_water )) ) {
+		// p->velocity.x *= -1.f;
+		particle_t tmp_a = g_world_particle_data[ read_idx ];
+		particle_t tmp_b = g_world_particle_data[ br_idx ];
+		write_data( br_idx, tmp_a );
+		write_data( read_idx, tmp_b );
+	}
+	// Can move if in liquid
+	// else if ( in_bounds( x + 1, y ) && ( get_particle_at( x + 1, y ).id == mat_id_water ) ) {
+	// 	// Random chance to move
+	// 	if ( random_val( 0, 5 ) == 0 ) {
+	// 		u32 idx = compute_idx( x + 1, y );
+	// 		particle_t tmp_a = g_world_particle_data[ read_idx ];
+	// 		particle_t tmp_b = g_world_particle_data[ idx ];
+	// 		write_data( idx, tmp_a );
+	// 		write_data( read_idx, tmp_b );
+	// 	}
+	// }
+	// else if ( in_bounds( x - 1, y ) && ( get_particle_at( x - 1, y ).id == mat_id_water ) ) {
+	// 	// Random chance to move
+	// 	if ( random_val( 0, 5 ) == 0 ) {
+	// 		u32 idx = compute_idx( x - 1, y );
+	// 		particle_t tmp_a = g_world_particle_data[ read_idx ];
+	// 		particle_t tmp_b = g_world_particle_data[ idx ];
+	// 		write_data( idx, tmp_a );
+	// 		write_data( read_idx, tmp_b );
+	// 	}
+	// }
+	// else if ( in_bounds( x - 1, y ) && ( get_particle_at( x - 1, y ).id == mat_id_water ) ) {
+	// 	// Random chance to move
+	// 	if ( random_val( 0, 5 ) == 0 ) {
+	// 		u32 idx = compute_idx( x - 1, y );
+	// 		particle_t tmp_a = g_world_particle_data[ read_idx ];
+	// 		particle_t tmp_b = g_world_particle_data[ idx ];
+	// 		write_data( idx, tmp_a );
+	// 		write_data( read_idx, tmp_b );
+	// 	}
+	// }
+}
+
+void update_sand( u32 x, u32 y, u32 ticks )
+{
+	f32 dt = gs_engine_instance()->ctx.platform->time.delta;
+
+	// Need to determine if a particle is asleep. I hate that idea.
+
+	// For water, same as sand, but we'll check immediate left and right as well
+	u32 read_idx = compute_idx( x, y );
+	particle_t* p = &g_world_particle_data[ read_idx ];
+	u32 write_idx = read_idx;
+	u32 fall_rate = 4;
+
+	p->velocity.y = gs_clamp( p->velocity.y + (gravity * dt), -10.f, 10.f );
+	p->velocity.x = gs_clamp( p->velocity.x, -5.f, 5.f );
+
+	// Just check if you can move directly beneath you. If not, then reset your velocity. God, this is going to blow.
+	if ( !is_empty( x, y + 1 ) && get_particle_at( x, y + 1 ).id != mat_id_water && get_particle_at( x, y + 1 ).id != mat_id_sand ) {
+		p->velocity.y /= 2.f;
+		// p->velocity.x /= 2.f;
+	}
+
+	s32 vi_x = x + (s32)p->velocity.x; 
+	s32 vi_y = y + (s32)p->velocity.y;
+
+	// Check to see if you can swap first with other element below you
+	u32 b_idx = compute_idx( x, y + 1 );
+	u32 br_idx = compute_idx( x + 1, y + 1 );
+	u32 bl_idx = compute_idx( x - 1, y + 1 );
+
+	particle_t tmp_a = g_world_particle_data[ read_idx ];
+
+	// Physics (using velocity)
+	if ( in_bounds( vi_x, vi_y ) && (( is_empty( vi_x, vi_y ) ||
+			((( g_world_particle_data[ compute_idx( vi_x, vi_y ) ].id == mat_id_water ) && 
+			  !g_world_particle_data[ compute_idx( vi_x, vi_y ) ].has_been_updated_this_frame && 
+			   gs_vec2_len(g_world_particle_data[compute_idx(vi_x, vi_y)].velocity) - gs_vec2_len(tmp_a.velocity) > 10.f ) ) ) ) ) {
+
+		particle_t tmp_b = g_world_particle_data[ compute_idx( vi_x, vi_y ) ];
+
+		// Try to throw water out
+		if ( tmp_b.id == mat_id_water ) {
+
+			tmp_b.has_been_updated_this_frame = true;
+
+			s32 rx = random_val( -2, 2 );
+			tmp_b.velocity = (gs_vec2){ rx, -3.f };
+
+			write_data( compute_idx( vi_x, vi_y ), tmp_a );	
+
+			for( s32 i = -10; i < 0; ++i ) {
+				for ( s32 j = -5; j < 5; ++j ) {
+					if ( is_empty( vi_x + j, vi_y + i ) ) {
+						write_data( compute_idx( vi_x + j, vi_y + i ), tmp_b );
+						break;
+					}	
+				}
+			}
+
+			// Couldn't write there, so, uh, destroy it.
+			write_data( read_idx, particle_empty() );
+		}
+		else if ( is_empty( vi_x, vi_y ) ) {
+			write_data( compute_idx( vi_x, vi_y ), tmp_a );
+			write_data( read_idx, tmp_b );
+		}
+	}
+	else if ( in_bounds( vi_x, vi_y ) && (( is_empty( vi_x, vi_y ) ||
+			((( g_world_particle_data[ compute_idx( vi_x, vi_y ) ].id == mat_id_water ) && 
+			  !g_world_particle_data[ compute_idx( vi_x, vi_y ) ].has_been_updated_this_frame ) ) ) ) ) {
+
+		particle_t tmp_b = g_world_particle_data[ compute_idx( vi_x, vi_y ) ];
+
+		// Try to throw water out
+		if ( tmp_b.id == mat_id_water ) {
+
+			tmp_b.has_been_updated_this_frame = true;
+
+			s32 rx = random_val( -2, 2 );
+			tmp_b.velocity = (gs_vec2){ rx, -3.f };
+
+			write_data( compute_idx( vi_x, vi_y ), tmp_a );
+
+			// if ( random_val( 0, 20 ) == 0 ) {
+			// 	// Couldn't write there, so, uh, destroy it.
+			// 	write_data( read_idx, particle_empty() );
+			// } else {
+				write_data( read_idx, tmp_b );
+			// }
+
+		}
+		else if ( is_empty( vi_x, vi_y ) ) {
+			write_data( compute_idx( vi_x, vi_y ), tmp_a );
+			write_data( read_idx, tmp_b );
+		}
+	}
+	// Simple falling, changing the velocity here ruins everything. I need to redo this entire simulation.
+	else if ( in_bounds( x, y + 1 ) && (( is_empty( x, y + 1 ) || ( g_world_particle_data[ b_idx ].id == mat_id_water ) ) ) ) {
+		p->velocity.y += (gravity * dt );
+		particle_t tmp_a = g_world_particle_data[ read_idx ];
+		particle_t tmp_b = g_world_particle_data[ b_idx ];
+		write_data( b_idx, tmp_a );
+		write_data( read_idx, tmp_b );
+	}
+	else if ( in_bounds( x - 1, y + 1 ) && (( is_empty( x - 1, y + 1 ) || g_world_particle_data[ bl_idx ].id == mat_id_water )) ) {
+		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.f : 1.f;
+		p->velocity.y += (gravity * dt );
+		particle_t tmp_a = g_world_particle_data[ read_idx ];
+		particle_t tmp_b = g_world_particle_data[ bl_idx ];
+		write_data( bl_idx, tmp_a );
+		write_data( read_idx, tmp_b );
+	}
+	else if ( in_bounds( x + 1, y + 1 ) && (( is_empty( x + 1, y + 1 ) || g_world_particle_data[ br_idx ].id == mat_id_water )) ) {
+		// p->velocity.x *= 1.5f;
+		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.f : 1.f;
+		p->velocity.y += (gravity * dt );
+		particle_t tmp_a = g_world_particle_data[ read_idx ];
+		particle_t tmp_b = g_world_particle_data[ br_idx ];
+		write_data( br_idx, tmp_a );
+		write_data( read_idx, tmp_b );
+	}
+	// Can move if in liquid
+	else if ( random_val( 0, 100 ) == 0 && in_bounds( x + 1, y ) && ( g_world_particle_data[ compute_idx( x + 1, y ) ].id == mat_id_water ) ) {
+		u32 idx = compute_idx( x + 1, y );
+		particle_t tmp_a = g_world_particle_data[ read_idx ];
+		particle_t tmp_b = g_world_particle_data[ idx ];
+		write_data( idx, tmp_a );
+		write_data( read_idx, tmp_b );
+	}
+	else if ( random_val( 0, 100 ) == 0 && in_bounds( x - 1, y ) && ( g_world_particle_data[ compute_idx( x - 1, y ) ].id == mat_id_water ) ) {
+		u32 idx = compute_idx( x - 1, y );
+		particle_t tmp_a = g_world_particle_data[ read_idx ];
+		particle_t tmp_b = g_world_particle_data[ idx ];
+		write_data( idx, tmp_a );
+		write_data( read_idx, tmp_b );
+	}
+	else if ( random_val( 0, 1 ) == 0 && in_bounds( x, y - 1 ) && ( g_world_particle_data[ compute_idx( x, y - 1 ) ].id == mat_id_water ) ) {
+		u32 idx = compute_idx( x, y - 1 );
+		particle_t tmp_a = g_world_particle_data[ read_idx ];
+		particle_t tmp_b = g_world_particle_data[ idx ];
+		write_data( idx, tmp_a );
+		write_data( read_idx, tmp_b );
+	}
+}
+
+void update_water( u32 x, u32 y, u32 ticks )
+{
+	f32 dt = gs_engine_instance()->ctx.platform->time.delta;
+
+	u32 read_idx = compute_idx( x, y );
+	particle_t* p = &g_world_particle_data[ read_idx ];
+	u32 write_idx = read_idx;
+	u32 fall_rate = 2;
+	u32 spread_rate = 4;
+
+	// p->has_been_updated_this_frame = false;
+
+	// p->velocity.y = gs_clamp( p->velocity.y + (gravity * dt), -10.f, 10.f );
+	p->velocity.y += (gravity * dt);
+
+	if ( !is_empty( x, y + 1 ) ) {
+		p->velocity.y /= 2.f;
+	}
+
+	s32 ran = random_val( 0, 1 );
+	s32 r = ran ? spread_rate : -spread_rate;
+	s32 l = -r;
+	s32 u = fall_rate;
+	s32 v_idx = compute_idx ( x + (s32)p->velocity.x, y + (s32)p->velocity.y );
+	s32 b_idx = compute_idx( x, y + u );
+	s32 bl_idx = compute_idx( x + l, y + u );
+	s32 br_idx = compute_idx( x + r, y + u );
+	s32 l_idx = compute_idx( x + l, y );
+	s32 r_idx = compute_idx( x + r, y );
+
+	if ( is_empty( x + (s32)p->velocity.x, y + (s32)p->velocity.y ) ) {
+		write_data( v_idx, *p );
+		write_data( read_idx, particle_empty() );
+	}
+	else if ( is_empty( x, y + u ) ) {
+		write_data( b_idx, *p );
+		write_data( read_idx, particle_empty() );
+	} 
+	else if ( is_empty( x + r, y + u ) ) {
+		write_data( br_idx, *p );
+		write_data( read_idx, particle_empty() );
+	}
+	else if ( is_empty( x + l, y + u ) ) {
+		write_data( bl_idx, *p );
+		write_data( read_idx, particle_empty() );
+	}
+	else {
+		for ( u32 i = 1; i < spread_rate; ++i )
 		{
-			// Get particle at collision point
-			u8 collide_id = get_particle_at( new_x, new_y ).id;	
-
-			if ( collide_id == mat_id_water || collide_id == mat_id_sand || collide_id == mat_id_stone )
-			{
-				p->velocity.y = 0.f;
-				p->velocity.x = 0.f;
-
-				// Figure out collision resolution vector
-				// Resolve collision
-				s32 ran = random_val( 0, 1 );
-				s32 r = ran ? 1 : -1;
-				s32 l = ran ? -1 : 1;
-				if ( is_empty( x + r, y + 1 ) ) {
-					write_idx = compute_idx( x + r, y + 1 );
-					break;
-				}
-				else if ( is_empty( x + l, y + 1 ) ) {
-					write_idx = compute_idx( x + l, y + 1 );
-					break;
-				}
-				else if ( is_empty( x + r, y ) ) {
-					write_idx = compute_idx( x + r, y );
-					break;
-				}
-				else if ( is_empty( x + l, y ) ) {
-					write_idx = compute_idx( x + l, y );
-					break;
-				}
+			if ( is_empty( x + l * i , y ) ) {
+				write_data( l_idx, *p );
+				write_data( read_idx, particle_empty() );
+				break;
+			}
+			else if ( is_empty( x + r * i, y ) ) {
+				write_data( r_idx, *p );
+				write_data( read_idx, particle_empty() );
+				break;
+			}
+			else {
+				write_data( read_idx, *p );
+				break;
 			}
 		}
 	}
-	
-	// Write data into buffer
-	write_data( write_idx, *p );
-	if ( write_idx != read_idx ) {
-		write_data( read_idx, particle_empty() );
-	}
+}
+
+void update_default( u32 w, u32 h, u32 ticks )
+{
+	u32 read_idx = compute_idx( w, h );
+	write_data( read_idx, get_particle_at( w, h ) );
 }
 
 particle_t particle_empty()
@@ -619,10 +886,17 @@ particle_t particle_water()
 	return p;
 }
 
-particle_t particle_stone()
+particle_t particle_salt()
 {
 	particle_t p = {0};
-	p.id = mat_id_stone;
+	p.id = mat_id_salt;
+	return p;
+}
+
+particle_t particle_brick()
+{
+	particle_t p = {0};
+	p.id = mat_id_brick;
 	return p;
 }
 

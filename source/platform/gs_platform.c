@@ -376,5 +376,6 @@ void __gs_verify_platform_correctness( struct gs_platform_i* platform )
 	gs_assert( platform->window_size );
 	gs_assert( platform->window_size_w_h );
 	gs_assert( platform->set_cursor );
+	gs_assert( platform->enable_vsync );
 }
 

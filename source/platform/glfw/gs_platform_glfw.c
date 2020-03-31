@@ -47,7 +47,8 @@ gs_result glfw_platform_init( struct gs_platform_i* platform  )
 				glfwWindowHint( GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE );
 			#endif
 
-			glfwSwapInterval( platform->settings.video.vsync_enabled );
+			// glfwSwapInterval( platform->settings.video.vsync_enabled );
+			// glfwSwapInterval( 0 );
 
 		} break;
 
@@ -398,6 +399,11 @@ void glfw_set_cursor( gs_resource_handle handle, gs_platform_cursor cursor )
 	glfwSetCursor( win, cp );
 }
 
+void glfw_set_vsync_enabled( b32 enabled )
+{
+	glfwSwapInterval( enabled ? 1 : 0 );
+}
+
 // Method for creating platform layer for SDL
 struct gs_platform_i* gs_platform_construct()
 {
@@ -419,6 +425,11 @@ struct gs_platform_i* gs_platform_construct()
 	============================*/
 	platform->sleep			= &glfw_platform_sleep;
 	platform->elapsed_time 	= &glfw_platform_time;
+
+	/*============================
+	// Platform Video
+	============================*/
+	platform->enable_vsync = &glfw_set_vsync_enabled;
 
 	/*============================
 	// Platform Input
