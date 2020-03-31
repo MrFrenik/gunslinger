@@ -16,11 +16,8 @@ _global gs_resource( gs_texture ) 			g_tex = {0};
 	_global const s32 g_window_height 	= 848;
 #endif
 
-// _global const s32 g_texture_width 	= 1258 / 2;
-// _global const s32 g_texture_height 	= 848 / 2;
-
-_global const s32 g_texture_width 	= 512;
-_global const s32 g_texture_height 	= 512;
+_global const s32 g_texture_width 	= 1258 / 2;
+_global const s32 g_texture_height 	= 848 / 2;
 
 typedef struct color_t
 {
@@ -35,6 +32,7 @@ typedef struct particle_t
 	u8 id;
 	f32 life_time;
 	gs_vec2 velocity;
+	color_t color;
 	b32 has_been_updated_this_frame;
 } particle_t;
 
@@ -44,24 +42,36 @@ typedef struct particle_t
 #define mat_id_water (u8)2
 #define mat_id_salt (u8)3
 #define mat_id_brick (u8)4
+#define mat_id_fire (u8)5
+#define mat_id_smoke (u8)6
+#define mat_id_ember (u8)7
 
 // Colors
 #define mat_col_empty (color_t){ 0, 0, 0, 0}
-#define mat_col_salt  (color_t){ 150, 100, 20, 255 }
+#define mat_col_sand  (color_t){ 150, 100, 50, 255 }
+#define mat_col_salt  (color_t){ 200, 180, 190, 255 }
 #define mat_col_water (color_t){ 20, 100, 170, 200 }
 #define mat_col_stone (color_t){ 120, 110, 120, 255 }
 #define mat_col_brick (color_t){ 60, 40, 20, 255 }
+#define mat_col_fire  (color_t){ 150, 20, 0, 255 }
+#define mat_col_smoke (color_t){ 30, 20, 15, 255 }
+#define mat_col_ember (color_t){ 200, 120, 20, 255 }
 
 typedef enum material_selection
 {
 	mat_sel_sand = 0x00,
 	mat_sel_water,
 	mat_sel_salt,
-	mat_sel_brick
+	mat_sel_brick,
+	mat_sel_fire,
+	mat_sel_smoke
 } material_selection;
 
 // Material selection for "painting" / default to sand
 _global material_selection g_material_selection = mat_sel_sand;
+
+// World update processing structure
+_global u8* g_world_process_update_structure = {0};	// Every particle has id associated with it? Jeezuz...
 
 // World particle data structure
 _global particle_t* g_world_particle_data = {0};
@@ -109,11 +119,18 @@ particle_t particle_sand();
 particle_t particle_water();
 particle_t particle_salt();
 particle_t particle_brick();
+particle_t particle_fire();
+particle_t particle_smoke();
+particle_t particle_ember();
+
 void update_input();
 void update_particle_sim();
 void update_sand( u32 w, u32 h );
 void update_water( u32 w, u32 h );
 void update_salt( u32 w, u32 h );
+void update_fire( u32 w, u32 h );
+void update_smoke( u32 w, u32 h );
+void update_ember( u32 w, u32 h );
 void update_default( u32 w, u32 h );
 void write_data( u32 idx, particle_t );
 void render_scene();
@@ -129,6 +146,11 @@ gs_vec2 calculate_mouse_position( gs_vec2 pmp )
 
 s32 random_val( s32 lower, s32 upper )
 {
+	if ( upper < lower ) {
+		s32 tmp = lower;
+		lower = upper;
+		upper = tmp;
+	}
 	return ( rand() % (upper - lower + 1) + lower );
 }
 
@@ -139,7 +161,7 @@ s32 compute_idx( s32 x, s32 y )
 
 b32 in_bounds( s32 x, s32 y )
 {
-	if ( x < 0 || x > g_texture_width - 1 || y < 0 || y > g_texture_height - 1 ) return false;
+	if ( x < 0 || x > (g_texture_width - 1) || y < 0 || y > (g_texture_height - 1) ) return false;
 	return true;
 }
 
@@ -342,6 +364,12 @@ void update_input()
 	if ( platform->key_pressed( gs_keycode_four ) ) {
 		g_material_selection = mat_sel_brick;
 	}
+	if ( platform->key_pressed( gs_keycode_five ) ) {
+		g_material_selection = mat_sel_fire;
+	}
+	if ( platform->key_pressed( gs_keycode_six ) ) {
+		g_material_selection = mat_sel_smoke;
+	}
 }
 
 void update_particle_sim()
@@ -354,24 +382,32 @@ void update_particle_sim()
 	b32 frame_counter_even = ((g_frame_counter % 2) == 0);
 	s32 ran = frame_counter_even ? 0 : 1;
 
+	const f32 dt = platform->time.delta;
+
 	// Rip through read data and update write buffer
 	// Note(John): We update "bottom up", since all the data is edited "in place". Double buffering all data would fix this 
 	// 	issue, however it requires double all of the data.
-	for ( u32 h = g_texture_height - 1; h > 0; --h )
+	for ( u32 y = g_texture_height - 1; y > 0; --y )
 	{
-		for ( u32 w = ran ? 0 : g_texture_width - 1; ran ? w < g_texture_width : w > 0; ran ? ++w : --w )
+		for ( u32 x = ran ? 0 : g_texture_width - 1; ran ? x < g_texture_width : x > 0; ran ? ++x : --x )
 		{
 			// Current particle idx
-			u32 read_idx = h * g_texture_width + w;
+			u32 read_idx = compute_idx( x, y );
 
 			// Get material of particle at point
-			u8 mat_id = g_world_particle_data[ read_idx ].id;
+			u8 mat_id = get_particle_at( x, y ).id;
+
+			// Update particle's lifetime (I guess just use frames)? Or should I have sublife?
+			g_world_particle_data[ read_idx ].life_time += 1.f * dt;
 
 			switch ( mat_id ) {
 
-				case mat_id_sand: update_sand( w, h ); break;
-				case mat_id_water: update_water( w, h ); break;
-				case mat_id_salt: update_salt( w, h ); break;
+				case mat_id_sand:  update_sand( x, y );  break;
+				case mat_id_water: update_water( x, y ); break;
+				case mat_id_salt:  update_salt( x, y );  break;
+				case mat_id_fire:  update_fire( x, y );  break;
+				case mat_id_smoke: update_smoke( x, y ); break;
+				case mat_id_ember: update_ember( x, y ); break;
 
 				// Do nothing for empty or default case
 				default:
@@ -383,6 +419,15 @@ void update_particle_sim()
 		}
 	}
 
+	// Can remove this loop later on by keeping update structure and setting that for the particle as it moves, 
+	// then at the end of frame just memsetting the entire structure to 0.
+	for ( u32 y = g_texture_height - 1; y > 0; --y ) {
+		for ( u32 x = ran ? 0 : g_texture_width - 1; ran ? x < g_texture_width : x > 0; ran ? ++x : --x ) {
+			// Set particle's update to false for next frame
+			g_world_particle_data[ compute_idx( x, y ) ].has_been_updated_this_frame = false;
+		}
+	}
+
 	// Mouse input for testing
 	if ( platform->mouse_down( gs_mouse_lbutton ) )
 	{
@@ -390,7 +435,7 @@ void update_particle_sim()
 		f32 mp_x = gs_clamp( mp.x, 0.f, (f32)g_texture_width - 1.f );	
 		f32 mp_y = gs_clamp( mp.y, 0.f, (f32)g_texture_height - 1.f );
 		u32 max_idx = (g_texture_width * g_texture_height) - 1;
-		s32 r_amt = random_val( 1, 1000 );
+		s32 r_amt = random_val( 1, 10000 );
 		const f32 R = 10.f;
 
 		// Spawn in a circle around the mouse
@@ -414,8 +459,10 @@ void update_particle_sim()
 					case mat_sel_water: p = particle_water(); break;;
 					case mat_sel_salt: p = particle_salt(); break;;
 					case mat_sel_brick: p = particle_brick(); break;;
+					case mat_sel_fire: p = particle_fire(); break;
+					case mat_sel_smoke: p = particle_smoke(); break;
 				}
-				p.velocity = (gs_vec2){ random_val( -1, 1 ), random_val( 2, 5 ) };
+				p.velocity = (gs_vec2){ random_val( -1, 1 ), random_val( -2, 5 ) };
 				write_data( idx, p );
 			}
 		}
@@ -506,18 +553,20 @@ void write_data( u32 idx, particle_t p )
 {
 	// Write into particle data for id value
 	g_world_particle_data[ idx ] = p;
+	g_texture_buffer[ idx ] = p.color;
 
-	switch ( p.id )
-	{
-		case mat_id_sand:  g_texture_buffer[ idx ] = mat_col_salt;    break;
-		case mat_id_water: g_texture_buffer[ idx ] = mat_col_water;   break;
-		case mat_id_salt: g_texture_buffer[ idx ] = mat_col_stone;   break;
-		case mat_id_brick: g_texture_buffer[ idx ] = mat_col_brick;   break;
-		default:
-		case mat_id_empty: {
-			g_texture_buffer[ idx ] = mat_col_empty;
-		} break;
-	}
+	// switch ( p.id )
+	// {
+	// 	case mat_id_sand:  g_texture_buffer[ idx ] = mat_col_sand;    break;
+	// 	case mat_id_water: g_texture_buffer[ idx ] = mat_col_water;   break;
+	// 	case mat_id_salt: g_texture_buffer[ idx ] = mat_col_salt;   break;
+	// 	case mat_id_brick: g_texture_buffer[ idx ] = mat_col_brick;   break;
+	// 	case mat_id_fire: g_texture_buffer[ idx ] = mat_col_fire;   break;
+	// 	default:
+	// 	case mat_id_empty: {
+	// 		g_texture_buffer[ idx ] = mat_col_empty;
+	// 	} break;
+	// }
 }
 
 void update_salt( u32 x, u32 y )
@@ -534,7 +583,7 @@ void update_salt( u32 x, u32 y )
 	p->velocity.x = gs_clamp( p->velocity.x, -5.f, 5.f );
 
 	// Just check if you can move directly beneath you. If not, then reset your velocity. God, this is going to blow.
-	if ( in_bounds( x, y + 1 ) && !is_empty( x, y + 1 ) && get_particle_at( x, y + 1 ).id != mat_id_water && get_particle_at( x, y + 1 ).id != mat_id_sand ) {
+	if ( in_bounds( x, y + 1 ) && !is_empty( x, y + 1 ) && get_particle_at( x, y + 1 ).id != mat_id_water ) {
 		p->velocity.y /= 2.f;
 	}
 
@@ -774,6 +823,527 @@ void update_sand( u32 x, u32 y )
 	}
 }
 
+void update_smoke( u32 x, u32 y )
+{
+	f32 dt = gs_engine_instance()->ctx.platform->time.delta;
+
+	// For water, same as sand, but we'll check immediate left and right as well
+	u32 read_idx = compute_idx( x, y );
+	particle_t* p = &g_world_particle_data[ read_idx ];
+	u32 write_idx = read_idx;
+	u32 fall_rate = 4;
+
+	if ( p->life_time > 10.f ) {
+		write_data( read_idx, particle_empty() );
+		return;
+	}
+
+	if ( p->has_been_updated_this_frame ) {
+		return;
+	}
+
+	p->has_been_updated_this_frame = true;
+
+	// Smoke rises over time. This might cause issues, actually...
+	p->velocity.y = gs_clamp( p->velocity.y - (gravity * dt ), -2.f, 10.f );
+	p->velocity.x = gs_clamp( p->velocity.x + (f32)random_val( -100, 100 ) / 100.f, -1.f, 1.f );
+
+	// Change color based on life_time
+	p->color.r = (u8)( gs_clamp( (gs_interp_linear( 10.f, 0.f, p->life_time * 0.5f ) / 10.f) * 150.f, 0.f, 150.f ) );
+	p->color.g = (u8)( gs_clamp( (gs_interp_linear( 10.f, 0.f, p->life_time * 0.5f ) / 10.f) * 120.f, 0.f, 120.f ) );
+	p->color.b = (u8)( gs_clamp( (gs_interp_linear( 10.f, 0.f, p->life_time * 0.5f ) / 10.f) * 100.f, 0.f, 100.f ) );
+
+	// Just check if you can move directly beneath you. If not, then reset your velocity. God, this is going to blow.
+	if ( in_bounds( x, y - 1 ) && !is_empty( x, y - 1 ) && get_particle_at( x, y - 1 ).id != mat_id_water ) {
+		p->velocity.y /= 2.f;
+	}
+
+	s32 vi_x = x + (s32)p->velocity.x; 
+	s32 vi_y = y + (s32)p->velocity.y;
+
+	if ( in_bounds( vi_x, vi_y ) && ( (is_empty( vi_x, vi_y ) || get_particle_at( vi_x, vi_y ).id == mat_id_water || get_particle_at( vi_x, vi_y ).id == mat_id_fire ) ) ) {
+
+		particle_t tmp_b = g_world_particle_data[ compute_idx( vi_x, vi_y ) ];
+
+		// Try to throw water out
+		if ( tmp_b.id == mat_id_water ) {
+
+			tmp_b.has_been_updated_this_frame = true;
+
+			s32 rx = random_val( -2, 2 );
+			tmp_b.velocity = (gs_vec2){ rx, -3.f };
+
+			write_data( compute_idx( vi_x, vi_y ), *p );
+			write_data( read_idx, tmp_b );
+
+		}
+		else if ( is_empty( vi_x, vi_y ) ) {
+			write_data( compute_idx( vi_x, vi_y ), *p );
+			write_data( read_idx, tmp_b );
+		}
+	}
+	// Simple falling, changing the velocity here ruins everything. I need to redo this entire simulation.
+	else if ( in_bounds( x, y - 1 ) && (( is_empty( x, y - 1 ) || ( get_particle_at( x, y - 1 ).id == mat_id_water ) || get_particle_at(x,y-1).id == mat_id_fire ) ) ) {
+		p->velocity.y -= (gravity * dt );
+		particle_t tmp_b = get_particle_at( x, y - 1 );
+		write_data( compute_idx( x, y - 1 ), *p );
+		write_data( read_idx, tmp_b );
+	}
+	else if ( in_bounds( x - 1, y - 1 ) && (( is_empty( x - 1, y - 1 ) || get_particle_at( x - 1, y - 1 ).id == mat_id_water ) || get_particle_at(x-1, y-1).id == mat_id_fire) ) {
+		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.2f : 1.2f;
+		p->velocity.y -= (gravity * dt );
+		particle_t tmp_b = get_particle_at( x - 1, y - 1 );
+		write_data( compute_idx( x - 1, y - 1 ), *p );
+		write_data( read_idx, tmp_b );
+	}
+	else if ( in_bounds( x + 1, y - 1 ) && (( is_empty( x + 1, y - 1 ) || get_particle_at( x + 1, y - 1 ).id == mat_id_water ) || get_particle_at(x+1, y+1).id == mat_id_fire) ) {
+		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.2f : 1.2f;
+		p->velocity.y -= (gravity * dt );
+		particle_t tmp_b = get_particle_at( x + 1, y - 1 );
+		write_data( compute_idx( x + 1, y - 1 ), *p );
+		write_data( read_idx, tmp_b );
+	}
+	// Can move if in liquid
+	else if ( in_bounds( x + 1, y ) && ( get_particle_at( x + 1, y ).id == mat_id_water  ) ) {
+		u32 idx = compute_idx( x + 1, y );
+		particle_t tmp_b = g_world_particle_data[ idx ];
+		write_data( idx, *p );
+		write_data( read_idx, tmp_b );
+	}
+	else if ( in_bounds( x - 1, y ) && ( g_world_particle_data[ compute_idx( x - 1, y ) ].id == mat_id_water ) ) {
+		u32 idx = compute_idx( x - 1, y );
+		particle_t tmp_b = g_world_particle_data[ idx ];
+		write_data( idx, *p );
+		write_data( read_idx, tmp_b );
+	}
+	else {
+		write_data( read_idx, *p );
+	}
+}
+void update_ember( u32 x, u32 y )
+{
+	f32 dt = gs_engine_instance()->ctx.platform->time.delta;
+
+	// For water, same as sand, but we'll check immediate left and right as well
+	u32 read_idx = compute_idx( x, y );
+	particle_t* p = &g_world_particle_data[ read_idx ];
+	u32 write_idx = read_idx;
+	u32 fall_rate = 4;
+
+	if ( p->life_time > 0.5f ) {
+		write_data( read_idx, particle_empty() );
+		return;
+	}
+
+	if ( p->has_been_updated_this_frame ) {
+		return;
+	}
+
+	p->has_been_updated_this_frame = true;
+
+	p->velocity.y = gs_clamp( p->velocity.y - (gravity * dt ), -2.f, 10.f );
+	p->velocity.x = gs_clamp( p->velocity.x + (f32)random_val( -100, 100 ) / 100.f, -1.f, 1.f );
+
+	// If directly on top of some wall, then replace it
+	if ( in_bounds( x, y + 1 ) && get_particle_at( x, y + 1 ).id == mat_id_brick && random_val( 0, 200 ) == 0 ) {
+		write_data( compute_idx( x, y + 1 ), particle_fire() );	
+	}
+	else if ( in_bounds( x + 1, y + 1 ) && get_particle_at( x + 1, y + 1 ).id == mat_id_brick && random_val( 0, 200 ) == 0 ) {
+		write_data( compute_idx( x + 1, y + 1 ), particle_fire() );	
+	}
+	else if ( in_bounds( x - 1, y + 1 ) && get_particle_at( x - 1, y + 1 ).id == mat_id_brick && random_val( 0, 200 ) == 0 ) {
+		write_data( compute_idx( x - 1, y + 1 ), particle_fire() );	
+	}
+	else if ( in_bounds( x - 1, y ) && get_particle_at( x - 1, y ).id == mat_id_brick && random_val( 0, 200 ) == 0 ) {
+		write_data( compute_idx( x - 1, y ), particle_fire() );	
+	}
+	else if ( in_bounds( x + 1, y ) && get_particle_at( x + 1, y ).id == mat_id_brick && random_val( 0, 200 ) == 0 ) {
+		write_data( compute_idx( x + 1, y ), particle_fire() );	
+	}
+	else if ( in_bounds( x + 1, y - 1 ) && get_particle_at( x + 1, y - 1 ).id == mat_id_brick && random_val( 0, 200 ) == 0 ) {
+		write_data( compute_idx( x + 1, y - 1 ), particle_fire() );	
+	}
+	else if ( in_bounds( x - 1, y - 1 ) && get_particle_at( x - 1, y - 1 ).id == mat_id_brick && random_val( 0, 200 ) == 0 ) {
+		write_data( compute_idx( x - 1, y - 1 ), particle_fire() );	
+	}
+
+	// Just check if you can move directly beneath you. If not, then reset your velocity. God, this is going to blow.
+	if ( in_bounds( x, y - 1 ) && !is_empty( x, y - 1 ) && get_particle_at( x, y - 1 ).id != mat_id_water ) {
+		p->velocity.y /= 2.f;
+	}
+
+	s32 vi_x = x + (s32)p->velocity.x; 
+	s32 vi_y = y + (s32)p->velocity.y;
+
+	if ( in_bounds( vi_x, vi_y ) && ( is_empty( vi_x, vi_y ) || 
+			get_particle_at( vi_x, vi_y ).id == mat_id_water ||
+			get_particle_at( vi_x, vi_y ).id == mat_id_fire || 
+			get_particle_at( vi_x, vi_y ).id == mat_id_smoke || 
+			get_particle_at( vi_x, vi_y ).id == mat_id_ember ) ) {
+
+		particle_t tmp_b = g_world_particle_data[ compute_idx( vi_x, vi_y ) ];
+
+		// Try to throw water out
+		if ( tmp_b.id == mat_id_water ) {
+
+			tmp_b.has_been_updated_this_frame = true;
+
+			s32 rx = random_val( -2, 2 );
+			tmp_b.velocity = (gs_vec2){ rx, -3.f };
+
+			write_data( compute_idx( vi_x, vi_y ), *p );
+			write_data( read_idx, tmp_b );
+
+		}
+		else if ( is_empty( vi_x, vi_y ) ) {
+			write_data( compute_idx( vi_x, vi_y ), *p );
+			write_data( read_idx, tmp_b );
+		}
+	}
+	// Simple falling, changing the velocity here ruins everything. I need to redo this entire simulation.
+	else if ( in_bounds( x, y - 1 ) && (( is_empty( x, y - 1 ) || ( get_particle_at( x, y - 1 ).id == mat_id_water ) || get_particle_at(x,y-1).id == mat_id_fire ) ) ) {
+		p->velocity.y -= (gravity * dt );
+		particle_t tmp_b = get_particle_at( x, y - 1 );
+		write_data( compute_idx( x, y - 1 ), *p );
+		write_data( read_idx, tmp_b );
+	}
+	else if ( in_bounds( x - 1, y - 1 ) && (( is_empty( x - 1, y - 1 ) || get_particle_at( x - 1, y - 1 ).id == mat_id_water ) || get_particle_at(x-1, y-1).id == mat_id_fire) ) {
+		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.2f : 1.2f;
+		p->velocity.y -= (gravity * dt );
+		particle_t tmp_b = get_particle_at( x - 1, y - 1 );
+		write_data( compute_idx( x - 1, y - 1 ), *p );
+		write_data( read_idx, tmp_b );
+	}
+	else if ( in_bounds( x + 1, y - 1 ) && (( is_empty( x + 1, y - 1 ) || get_particle_at( x + 1, y - 1 ).id == mat_id_water ) || get_particle_at(x+1, y+1).id == mat_id_fire) ) {
+		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.2f : 1.2f;
+		p->velocity.y -= (gravity * dt );
+		particle_t tmp_b = get_particle_at( x + 1, y - 1 );
+		write_data( compute_idx( x + 1, y - 1 ), *p );
+		write_data( read_idx, tmp_b );
+	}
+	// Can move if in liquid
+	else if ( in_bounds( x + 1, y ) && ( is_empty( x + 1, y ) || get_particle_at( x + 1, y ).id == mat_id_fire  ) ) {
+		u32 idx = compute_idx( x + 1, y );
+		particle_t tmp_b = g_world_particle_data[ idx ];
+		write_data( idx, *p );
+		write_data( read_idx, tmp_b );
+	}
+	else if ( in_bounds( x - 1, y ) && ( is_empty( x - 1, y ) || get_particle_at( x - 1, y ).id == mat_id_fire ) ) {
+		u32 idx = compute_idx( x - 1, y );
+		particle_t tmp_b = g_world_particle_data[ idx ];
+		write_data( idx, *p );
+		write_data( read_idx, tmp_b );
+	}
+	else {
+		write_data( read_idx, *p );
+	}
+}
+
+void update_fire( u32 x, u32 y )
+{
+	f32 dt = gs_engine_instance()->ctx.platform->time.delta;
+
+	// For water, same as sand, but we'll check immediate left and right as well
+	u32 read_idx = compute_idx( x, y );
+	particle_t* p = &g_world_particle_data[ read_idx ];
+	u32 write_idx = read_idx;
+	u32 fall_rate = 4;
+
+	if ( p->life_time > 10.f ) {
+		if ( random_val( 0, 100 ) == 0 ) {
+			write_data( read_idx, particle_empty() );
+			return;
+		}
+	}
+
+	p->velocity.y = gs_clamp( p->velocity.y + (gravity * dt), -10.f, 10.f );
+	p->velocity.x = gs_clamp( p->velocity.x, -5.f, 5.f );
+
+	// Change color based on life_time
+	// p->color.r = (u8)( gs_clamp( (gs_interp_linear( 0.f, 10000.f, p->life_time ) / 10000.f) * 255.f, 0.f, 255.f ) );
+
+	if ( random_val( 0, (s32)(p->life_time * 100.f) ) % 100 == 0 ) {
+		s32 ran = random_val( 0, 3 );
+		switch ( ran ) {
+			case 0: p->color = (color_t){ 255, 80, 20, 255 }; break;
+			case 1: p->color = (color_t){ 250, 150, 10, 255 }; break;
+			case 2: p->color = (color_t){ 200, 150, 0, 255 }; break;
+			case 3: p->color = (color_t){ 100, 50, 2, 255 }; break;
+		}
+	}
+
+	// How should fire update? 
+	// It can only survive with fuel. After enough time burning, it will die unless more fire can be made by consuming fuel.
+	// It should spawn embers as well as smoke.
+
+	// Just check if you can move directly beneath you. If not, then reset your velocity. God, this is going to blow.
+	if ( in_bounds( x, y + 1 ) && !is_empty( x, y + 1 ) && ( get_particle_at( x, y + 1 ).id != mat_id_water || get_particle_at( x, y + 1 ).id != mat_id_smoke ) ) {
+		p->velocity.y /= 2.f;
+	}
+
+	if ( random_val( 0, 10 ) == 0 ) {
+		p->velocity.x = gs_clamp( p->velocity.x + (f32)random_val( -0.5f, 0.5f ), -1.f, 1.f );
+	}
+	p->velocity.x = gs_clamp( p->velocity.x, -0.5f, 0.5f );
+
+	// Kill fire underneath
+	if ( in_bounds( x, y + 3 ) && get_particle_at(x, y + 3).id == mat_id_fire && random_val(0, 100) == 0 ) {
+		write_data( compute_idx(x, y +3 ), *p);
+		write_data( read_idx, particle_empty() );
+		return;
+	}
+
+	// Chance to kick itself up
+	if ( in_bounds( x, y + 1 ) && get_particle_at( x, y + 1 ).id == mat_id_fire && 
+		in_bounds( x, y - 1 ) && get_particle_at( x, y - 1 ).id == mat_id_empty ) {
+		if ( random_val( 0, 5 ) == 0 * p->life_time < 2.f && p->life_time > 1.f ) {
+			s32 r = random_val(0, 1);
+			for ( s32 i = -4; i < 0; ++i ) {
+				for ( s32 j = r ? -2 : 2; r ? j < 2 : j > -2; r ? ++j : --j ) {
+					s32 rx = j, ry = i;
+					if ( in_bounds( x + rx, y + ry ) && is_empty( x + rx, y + ry ) ) {
+						write_data( compute_idx( x + rx, y + ry ), *p );
+						write_data( read_idx, particle_empty() );
+						break;
+					}
+				}
+			}
+		}
+		return;
+	}
+
+	s32 vi_x = x + (s32)p->velocity.x; 
+	s32 vi_y = y + (s32)p->velocity.y;
+
+	// Check to see if you can swap first with other element below you
+	u32 b_idx = compute_idx( x, y + 1 );
+	u32 br_idx = compute_idx( x + 1, y + 1 );
+	u32 bl_idx = compute_idx( x - 1, y + 1 );
+
+	// Chance to spawn smoke above
+	for ( u32 i = 0; i < random_val( 1, 10 ); ++i ) {
+		if ( random_val( 0, 500 ) == 0 ) {
+			if ( in_bounds( x, y - 1 ) && is_empty( x, y - 1 ) ) {
+				write_data( compute_idx( x, y - 1 ), particle_smoke() );
+			}
+			else if ( in_bounds( x + 1, y - 1 ) && is_empty( x + 1, y - 1 ) ) {
+				write_data( compute_idx( x + 1, y - 1 ), particle_smoke() );
+			}
+			else if ( in_bounds( x - 1, y - 1 ) && is_empty( x - 1, y - 1 ) ) {
+				write_data( compute_idx( x - 1, y - 1 ), particle_smoke() );
+			}
+		}
+	}
+
+	// Spawn embers
+	if ( random_val( 0, 250 ) == 0 && p->life_time < 3.f ) {
+		for ( u32 i = 0; i < random_val(1, 100); ++i ) {
+			if ( in_bounds( x, y - 1 ) && is_empty( x, y - 1 ) ) {
+				particle_t e = particle_ember();
+				e.velocity = (gs_vec2){ (f32)random_val(-5, 5) / 5.f, -(f32)random_val(2, 10) / 2.f };
+				write_data( compute_idx( x, y - 1 ), e );
+			}
+			else if ( in_bounds( x + 1, y - 1 ) && is_empty( x + 1, y - 1 ) ) {
+				particle_t e = particle_ember();
+				e.velocity = (gs_vec2){ (f32)random_val(-5, 5) / 5.f, -(f32)random_val(2, 10) / 2.f };
+				write_data( compute_idx( x + 1, y - 1 ), e );
+			}
+			else if ( in_bounds( x - 1, y - 1 ) && is_empty( x - 1, y - 1 ) ) {
+				particle_t e = particle_ember();
+				e.velocity = (gs_vec2){ (f32)random_val(-5, 5) / 5.f, -(f32)random_val(2, 10) / 2.f };
+				write_data( compute_idx( x - 1, y - 1 ), e );
+			}
+		}
+	}
+
+	// If directly on top of some wall, then replace it
+	if ( in_bounds( x, y + 1 ) && get_particle_at( x, y + 1 ).id == mat_id_brick && random_val( 0, 500 ) == 0 ) {
+		write_data( compute_idx( x, y + 1 ), particle_fire() );
+		if ( random_val( 0, 5 ) == 0 ) {
+			s32 r = random_val(0, 1);
+			for ( s32 i = -3; i < 2; ++i ) {
+				for ( s32 j = r ? -3 : 2; r ? j < 2 : j > -3; r ? ++j : --j ) {
+					s32 rx = j, ry = i;
+					if ( in_bounds( x + rx, y + ry ) && is_empty( x + rx, y + ry ) ) {
+						particle_t fp = particle_fire();
+						write_data( compute_idx( x + rx, y + ry ), fp );
+						break;
+					}
+				}
+			}
+		}
+	}
+	else if ( in_bounds( x + 1, y + 1 ) && get_particle_at( x + 1, y + 1 ).id == mat_id_brick && random_val( 0, 500 ) == 0 ) {
+		write_data( compute_idx( x + 1, y + 1 ), particle_fire() );	
+		if ( random_val( 0, 5 ) == 0 ) {
+			s32 r = random_val(0, 1);
+			for ( s32 i = -3; i < 2; ++i ) {
+				for ( s32 j = r ? -3 : 2; r ? j < 2 : j > -3; r ? ++j : --j ) {
+					s32 rx = j, ry = i;
+					if ( in_bounds( x + rx, y + ry ) && is_empty( x + rx, y + ry ) ) {
+						particle_t fp = particle_fire();
+						write_data( compute_idx( x + rx, y + ry ), fp );
+						break;
+					}
+				}
+			}
+		}
+	}
+	else if ( in_bounds( x - 1, y + 1 ) && get_particle_at( x - 1, y + 1 ).id == mat_id_brick && random_val( 0, 500 ) == 0 ) {
+		write_data( compute_idx( x - 1, y + 1 ), particle_fire() );	
+		if ( random_val( 0, 5 ) == 0 ) {
+			s32 r = random_val(0, 1);
+			for ( s32 i = -3; i < 2; ++i ) {
+				for ( s32 j = r ? -3 : 2; r ? j < 2 : j > -3; r ? ++j : --j ) {
+					s32 rx = j, ry = i;
+					if ( in_bounds( x + rx, y + ry ) && is_empty( x + rx, y + ry ) ) {
+						particle_t fp = particle_fire();
+						write_data( compute_idx( x + rx, y + ry ), fp );
+						break;
+					}
+				}
+			}
+		}
+	}
+	else if ( in_bounds( x - 1, y ) && get_particle_at( x - 1, y ).id == mat_id_brick && random_val( 0, 500 ) == 0 ) {
+		write_data( compute_idx( x - 1, y ), particle_fire() );	
+		if ( random_val( 0, 5 ) == 0 ) {
+			s32 r = random_val(0, 1);
+			for ( s32 i = -3; i < 2; ++i ) {
+				for ( s32 j = r ? -3 : 2; r ? j < 2 : j > -3; r ? ++j : --j ) {
+					s32 rx = j, ry = i;
+					if ( in_bounds( x + rx, y + ry ) && is_empty( x + rx, y + ry ) ) {
+						particle_t fp = particle_fire();
+						write_data( compute_idx( x + rx, y + ry ), fp );
+						break;
+					}
+				}
+			}
+		}
+	}
+	else if ( in_bounds( x + 1, y ) && get_particle_at( x + 1, y ).id == mat_id_brick && random_val( 0, 500 ) == 0 ) {
+		write_data( compute_idx( x + 1, y ), particle_fire() );	
+		if ( random_val( 0, 5 ) == 0 ) {
+			s32 r = random_val(0, 1);
+			for ( s32 i = -3; i < 2; ++i ) {
+				for ( s32 j = r ? -3 : 2; r ? j < 2 : j > -3; r ? ++j : --j ) {
+					s32 rx = j, ry = i;
+					if ( in_bounds( x + rx, y + ry ) && is_empty( x + rx, y + ry ) ) {
+						particle_t fp = particle_fire();
+						write_data( compute_idx( x + rx, y + ry ), fp );
+						break;
+					}
+				}
+			}
+		}
+	}
+	else if ( in_bounds( x + 1, y - 1 ) && get_particle_at( x + 1, y - 1 ).id == mat_id_brick && random_val( 0, 500 ) == 0 ) {
+		write_data( compute_idx( x + 1, y - 1 ), particle_fire() );	
+		if ( random_val( 0, 5 ) == 0 ) {
+			s32 r = random_val(0, 1);
+			for ( s32 i = -3; i < 2; ++i ) {
+				for ( s32 j = r ? -3 : 2; r ? j < 2 : j > -3; r ? ++j : --j ) {
+					s32 rx = j, ry = i;
+					if ( in_bounds( x + rx, y + ry ) && is_empty( x + rx, y + ry ) ) {
+						particle_t fp = particle_fire();
+						write_data( compute_idx( x + rx, y + ry ), fp );
+						break;
+					}
+				}
+			}
+		}
+	}
+	else if ( in_bounds( x - 1, y - 1 ) && get_particle_at( x - 1, y - 1 ).id == mat_id_brick && random_val( 0, 500 ) == 0 ) {
+		write_data( compute_idx( x - 1, y - 1 ), particle_fire() );	
+		if ( random_val( 0, 5 ) == 0 ) {
+			s32 r = random_val(0, 1);
+			for ( s32 i = -3; i < 2; ++i ) {
+				for ( s32 j = r ? -3 : 2; r ? j < 2 : j > -3; r ? ++j : --j ) {
+					s32 rx = j, ry = i;
+					if ( in_bounds( x + rx, y + ry ) && is_empty( x + rx, y + ry ) ) {
+						particle_t fp = particle_fire();
+						write_data( compute_idx( x + rx, y + ry ), fp );
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	if ( in_bounds( vi_x, vi_y ) && (is_empty(vi_x, vi_y) || 
+									get_particle_at(vi_x, vi_y).id == mat_id_fire ||
+									get_particle_at(vi_x, vi_y).id == mat_id_smoke))
+	{
+		p->velocity.y += (gravity * dt );
+		particle_t tmp_b = g_world_particle_data[ compute_idx(vi_x, vi_y) ];
+		write_data( compute_idx(vi_x, vi_y), *p );
+		write_data( read_idx, tmp_b );
+	}
+
+	// Simple falling, changing the velocity here ruins everything. I need to redo this entire simulation.
+	else if ( in_bounds( x, y + 1 ) && (( is_empty( x, y + 1 ) || get_particle_at(x, y +1).id == mat_id_fire || ( g_world_particle_data[ b_idx ].id == mat_id_water ) ) ) ) {
+		p->velocity.y += (gravity * dt );
+		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.f : 1.f;
+		particle_t tmp_b = g_world_particle_data[ b_idx ];
+		write_data( b_idx, *p );
+		write_data( read_idx, tmp_b );
+	}
+	else if ( in_bounds( x - 1, y + 1 ) && (( is_empty( x - 1, y + 1 ) || get_particle_at(x-1, y+1).id == mat_id_fire || g_world_particle_data[ bl_idx ].id == mat_id_water )) ) {
+		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.f : 1.f;
+		p->velocity.y += (gravity * dt );
+		particle_t tmp_b = g_world_particle_data[ bl_idx ];
+		write_data( bl_idx, *p );
+		write_data( read_idx, tmp_b );
+	}
+	else if ( in_bounds( x + 1, y + 1 ) && (( is_empty( x + 1, y + 1 ) || get_particle_at(x+1, y+1).id == mat_id_fire || g_world_particle_data[ br_idx ].id == mat_id_water )) ) {
+		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.f : 1.f;
+		p->velocity.y += (gravity * dt );
+		particle_t tmp_b = g_world_particle_data[ br_idx ];
+		write_data( br_idx, *p );
+		write_data( read_idx, tmp_b );
+	}
+	// Can move if in liquid
+	// else if ( in_bounds( x + 1, y ) && ( g_world_particle_data[ compute_idx( x + 1, y ) ].id == mat_id_water ) || get_particle_at(x-1, y).id == mat_id_fire ) {
+	// 	u32 idx = compute_idx( x + 1, y );
+	// 	p->velocity.x = random_val( 0, 1 ) == 0 ? -1.f : 1.f;
+	// 	particle_t tmp_b = g_world_particle_data[ idx ];
+	// 	write_data( idx, *p );
+	// 	write_data( read_idx, tmp_b );
+	// }
+	// else if ( in_bounds( x - 1, y ) && ( g_world_particle_data[ compute_idx( x - 1, y ) ].id == mat_id_water || get_particle_at(x-1, y).id == mat_id_fire ) ) {
+	// 	u32 idx = compute_idx( x - 1, y );
+	// 	p->velocity.x = random_val( 0, 1 ) == 0 ? -1.f : 1.f;
+	// 	particle_t tmp_b = g_world_particle_data[ idx ];
+	// 	write_data( idx, *p );
+	// 	write_data( read_idx, tmp_b );
+	// }
+	else if ( in_bounds( x - 1, y - 1 ) && ( g_world_particle_data[ compute_idx( x - 1, y - 1 ) ].id == mat_id_water || get_particle_at(x-1, y - 1).id == mat_id_fire ) ) {
+		u32 idx = compute_idx( x - 1, y - 1 );
+		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.f : 1.f;
+		particle_t tmp_b = g_world_particle_data[ idx ];
+		write_data( idx, *p );
+		write_data( read_idx, tmp_b );
+	}
+	else if ( in_bounds( x + 1, y - 1 ) && ( g_world_particle_data[ compute_idx( x + 1, y - 1 ) ].id == mat_id_water || get_particle_at(x-1, y - 1).id == mat_id_fire ) ) {
+		u32 idx = compute_idx( x + 1, y - 1 );
+		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.f : 1.f;
+		particle_t tmp_b = g_world_particle_data[ idx ];
+		write_data( idx, *p );
+		write_data( read_idx, tmp_b );
+	}
+	else if ( in_bounds( x, y - 1 ) && ( g_world_particle_data[ compute_idx( x, y - 1 ) ].id == mat_id_water || get_particle_at(x-1, y - 1).id == mat_id_fire ) ) {
+		u32 idx = compute_idx( x, y - 1 );
+		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.f : 1.f;
+		particle_t tmp_b = g_world_particle_data[ idx ];
+		write_data( idx, *p );
+		write_data( read_idx, tmp_b );
+	}
+	else {
+		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.f : 1.f;
+		write_data( read_idx, *p );
+	}
+}
+
 void update_water( u32 x, u32 y )
 {
 	f32 dt = gs_engine_instance()->ctx.platform->time.delta;
@@ -784,15 +1354,14 @@ void update_water( u32 x, u32 y )
 	u32 fall_rate = 2;
 	u32 spread_rate = 2;
 
-	// p->has_been_updated_this_frame = false;
-
 	p->velocity.y = gs_clamp( p->velocity.y + (gravity * dt), -10.f, 10.f );
-	// p->velocity.y += (gravity * dt);
 
 	// Just check if you can move directly beneath you. If not, then reset your velocity. God, this is going to blow.
 	if ( in_bounds( x, y + 1 ) && !is_empty( x, y + 1 ) && get_particle_at( x, y + 1 ).id != mat_id_water ) {
 		p->velocity.y /= 2.f;
 	}
+
+	// Change color depending on pressure? Pressure would dictate how "deep" the water is, I suppose.
 
 	s32 ran = random_val( 0, 1 );
 	s32 r = ran ? spread_rate : -spread_rate;
@@ -838,9 +1407,6 @@ void update_water( u32 x, u32 y )
 				found = true;
 				break;
 			}
-			// else {
-			// 	// break;
-			// }
 		}
 		if ( !found ) {
 			write_data( read_idx, tmp );
@@ -858,6 +1424,7 @@ particle_t particle_empty()
 {
 	particle_t p = {0};
 	p.id = mat_id_empty;
+	p.color = mat_col_empty;
 	return p;
 }
 
@@ -865,6 +1432,7 @@ particle_t particle_sand()
 {
 	particle_t p = {0};
 	p.id = mat_id_sand;
+	p.color = mat_col_sand;
 	return p;
 }
 
@@ -872,6 +1440,7 @@ particle_t particle_water()
 {
 	particle_t p = {0};
 	p.id = mat_id_water;
+	p.color = mat_col_water;
 	return p;
 }
 
@@ -879,6 +1448,7 @@ particle_t particle_salt()
 {
 	particle_t p = {0};
 	p.id = mat_id_salt;
+	p.color = mat_col_salt;
 	return p;
 }
 
@@ -886,9 +1456,33 @@ particle_t particle_brick()
 {
 	particle_t p = {0};
 	p.id = mat_id_brick;
+	p.color = mat_col_brick;
 	return p;
 }
 
+particle_t particle_fire()
+{
+	particle_t p = {0};
+	p.id = mat_id_fire;
+	p.color = mat_col_fire;
+	return p;
+}
+
+particle_t particle_ember()
+{
+	particle_t p = {0};
+	p.id = mat_id_ember;
+	p.color = mat_col_ember;
+	return p;
+}
+
+particle_t particle_smoke()
+{
+	particle_t p = {0};
+	p.id = mat_id_smoke;
+	p.color = mat_col_smoke;
+	return p;
+}
 
 /*
 	// For each particle, check against collisions from other particles
