@@ -347,56 +347,56 @@ void update_particle_sim()
 		u32 max_idx = (g_texture_width * g_texture_height) - 1;
 		s32 r_amt = random_val( 1, 1000 );
 		const f32 R = 20.f;
+
 		// Spawn in a circle around the mouse
-		// for ( u32 i = 0; i < r_amt; ++i )
-		// {
-		// 	f32 ran = (f32)random_val(0, 100) / 100.f;
-		// 	f32 r = R * sqrt(ran);
-		// 	f32 theta = (f32)random_val(0, 100)/100.f * 2.f * gs_pi;
-		// 	f32 rx = cos((f32)theta) * r;
-		// 	f32 ry = sin((f32)theta) * r;
-		// 	s32 mpx = (s32)gs_clamp( mp_x + (f32)rx, 0.f, (f32)g_texture_width - 1.f );
-		// 	s32 mpy = (s32)gs_clamp( mp_y + (f32)ry, 0.f, (f32)g_texture_height - 1.f );
-		// 	s32 idx = mpy * (s32)g_texture_width + mpx;
-		// 	idx = gs_clamp( idx, 0, max_idx );
-
-		// 	if ( is_empty( mpx, mpy ) )
-		// 	{
-		// 		particle_t p = {0};
-		// 		switch ( g_material_selection ) {
-		// 			case mat_sel_sand: p = particle_sand(); break;;
-		// 			case mat_sel_water: p = particle_water(); break;;
-		// 			case mat_sel_salt: p = particle_salt(); break;;
-		// 			case mat_sel_brick: p = particle_brick(); break;;
-		// 		}
-		// 		p.velocity = (gs_vec2){ random_val( -1, 1 ), random_val( 2, 5 ) };
-		// 		write_data( idx, p );
-		// 	}
-		// }
-
-		// Erase in a circle pattern
-		for ( s32 i = -20 ; i < 20; ++i )
+		for ( u32 i = 0; i < r_amt; ++i )
 		{
-			for ( s32 j = -20 ; j < 20; ++j )
-			{
-				s32 rx = ((s32)mp_x + j); 
-				s32 ry = ((s32)mp_y + i);
-				gs_vec2 r = (gs_vec2){ rx, ry };
+			f32 ran = (f32)random_val(0, 100) / 100.f;
+			f32 r = R * sqrt(ran);
+			f32 theta = (f32)random_val(0, 100)/100.f * 2.f * gs_pi;
+			f32 rx = cos((f32)theta) * r;
+			f32 ry = sin((f32)theta) * r;
+			s32 mpx = (s32)gs_clamp( mp_x + (f32)rx, 0.f, (f32)g_texture_width - 1.f );
+			s32 mpy = (s32)gs_clamp( mp_y + (f32)ry, 0.f, (f32)g_texture_height - 1.f );
+			s32 idx = mpy * (s32)g_texture_width + mpx;
+			idx = gs_clamp( idx, 0, max_idx );
 
-				if ( is_empty( rx, ry ) && in_bounds( rx, ry ) && gs_vec2_distance( mp, r ) <= R )
-				{
-					particle_t p = {0};
-					switch ( g_material_selection ) {
-						case mat_sel_sand: p = particle_sand(); break;;
-						case mat_sel_water: p = particle_water(); break;;
-						case mat_sel_salt: p = particle_salt(); break;;
-						case mat_sel_brick: p = particle_brick(); break;;
-					}
-					p.velocity = (gs_vec2){ random_val( -1, 1 ), random_val( 2, 5 ) };
-					write_data( compute_idx( rx, ry ), p );
+			if ( is_empty( mpx, mpy ) )
+			{
+				particle_t p = {0};
+				switch ( g_material_selection ) {
+					case mat_sel_sand: p = particle_sand(); break;;
+					case mat_sel_water: p = particle_water(); break;;
+					case mat_sel_salt: p = particle_salt(); break;;
+					case mat_sel_brick: p = particle_brick(); break;;
 				}
+				p.velocity = (gs_vec2){ random_val( -1, 1 ), random_val( 2, 5 ) };
+				write_data( idx, p );
 			}
 		}
+
+		// for ( s32 i = -20 ; i < 20; ++i )
+		// {
+		// 	for ( s32 j = -20 ; j < 20; ++j )
+		// 	{
+		// 		s32 rx = ((s32)mp_x + j); 
+		// 		s32 ry = ((s32)mp_y + i);
+		// 		gs_vec2 r = (gs_vec2){ rx, ry };
+
+		// 		if ( is_empty( rx, ry ) && in_bounds( rx, ry ) && gs_vec2_distance( mp, r ) <= R )
+		// 		{
+		// 			particle_t p = {0};
+		// 			switch ( g_material_selection ) {
+		// 				case mat_sel_sand: p = particle_sand(); break;;
+		// 				case mat_sel_water: p = particle_water(); break;;
+		// 				case mat_sel_salt: p = particle_salt(); break;;
+		// 				case mat_sel_brick: p = particle_brick(); break;;
+		// 			}
+		// 			p.velocity = (gs_vec2){ random_val( -1, 1 ), random_val( 2, 5 ) };
+		// 			write_data( compute_idx( rx, ry ), p );
+		// 		}
+		// 	}
+		// }
 	}
 
 	// Erase
@@ -498,19 +498,59 @@ void update_salt( u32 x, u32 y, u32 ticks )
 	u32 write_idx = read_idx;
 	u32 fall_rate = 4;
 
-	p->velocity.y = gs_clamp( p->velocity.y + (gravity * dt), -10.f, 100.f );
-
-	if ( !is_empty( x, y + 1 ) ) {
-		p->velocity.y /= 2.f;
+	if ( in_bounds( x, y ) && get_particle_at( x, y ).id == mat_id_water ) {
+		write_data( read_idx, particle_water() );
+		return;
 	}
+	if ( in_bounds( x, y - 1 ) && get_particle_at( x, y - 1 ).id == mat_id_water ) {
+		write_data( read_idx, particle_water() );
+		return;
+	}
+	if ( in_bounds( x, y + 1 ) && get_particle_at( x, y + 1 ).id == mat_id_water ) {
+		write_data( read_idx, particle_water() );
+		return;
+	}
+	if ( in_bounds( x - 1, y ) && get_particle_at( x - 1, y ).id == mat_id_water ) {
+		write_data( read_idx, particle_water() );
+		return;
+	}
+	if ( in_bounds( x - 1, y - 1 ) && get_particle_at( x - 1, y - 1 ).id == mat_id_water ) {
+		write_data( read_idx, particle_water() );
+		return;
+	}
+	if ( in_bounds( x - 1, y + 1 ) && get_particle_at( x - 1, y + 1 ).id == mat_id_water ) {
+		write_data( read_idx, particle_water() );
+		return;
+	}
+	if ( in_bounds( x + 1, y ) && get_particle_at( x + 1, y ).id == mat_id_water ) {
+		write_data( read_idx, particle_water() );
+		return;
+	}
+	if ( in_bounds( x + 1, y - 1 ) && get_particle_at( x + 1, y - 1 ).id == mat_id_water ) {
+		write_data( read_idx, particle_water() );
+		return;
+	}
+	if ( in_bounds( x + 1, y + 1 ) && get_particle_at( x + 1, y + 1 ).id == mat_id_water ) {
+		write_data( read_idx, particle_water() );
+		return;
+	}
+
+	p->velocity.y = gs_clamp( p->velocity.y + (gravity * dt), -10.f, 10.f );
+	p->velocity.x = gs_clamp( p->velocity.x, -5.f, 5.f );
+
+	// Just check if you can move directly beneath you. If not, then reset your velocity. God, this is going to blow.
+	if ( !is_empty( x, y + 1 ) && get_particle_at( x, y + 1 ).id != mat_id_water && get_particle_at( x, y + 1 ).id != mat_id_sand ) {
+		p->velocity.y /= 2.f;
+		// p->velocity.x /= 2.f;
+	}
+
+	s32 vi_x = x + (s32)p->velocity.x; 
+	s32 vi_y = y + (s32)p->velocity.y;
 
 	// Check to see if you can swap first with other element below you
 	u32 b_idx = compute_idx( x, y + 1 );
 	u32 br_idx = compute_idx( x + 1, y + 1 );
 	u32 bl_idx = compute_idx( x - 1, y + 1 );
-
-	s32 vi_x = x + (s32)p->velocity.x; 
-	s32 vi_y = y + (s32)p->velocity.y;
 
 	particle_t tmp_a = g_world_particle_data[ read_idx ];
 
@@ -528,21 +568,14 @@ void update_salt( u32 x, u32 y, u32 ticks )
 			tmp_b.has_been_updated_this_frame = true;
 
 			s32 rx = random_val( -2, 2 );
-			tmp_b.velocity = (gs_vec2){ rx, -1.f };
+			tmp_b.velocity = (gs_vec2){ rx, -3.f };
 
 			write_data( compute_idx( vi_x, vi_y ), tmp_a );	
 
 			for( s32 i = -10; i < 0; ++i ) {
 				for ( s32 j = -5; j < 5; ++j ) {
 					if ( is_empty( vi_x + j, vi_y + i ) ) {
-
-						// 20% chance to destroy the water particle
-						if ( random_val( 0, 20 ) == 0 ) {
-							// Couldn't write there, so, uh, destroy it.
-							write_data( compute_idx( vi_x + j, vi_y + i ), particle_empty() );
-						} else {
-							write_data( compute_idx( vi_x + j, vi_y + i ), tmp_b );
-						}
+						write_data( compute_idx( vi_x + j, vi_y + i ), tmp_b );
 						break;
 					}	
 				}
@@ -571,14 +604,7 @@ void update_salt( u32 x, u32 y, u32 ticks )
 			tmp_b.velocity = (gs_vec2){ rx, -3.f };
 
 			write_data( compute_idx( vi_x, vi_y ), tmp_a );
-
-			// 20% chance to destroy the water particle
-			if ( random_val( 0, 20 ) == 0 ) {
-				// Couldn't write there, so, uh, destroy it.
-				write_data( read_idx, particle_empty() );
-			} else {
-				write_data( read_idx, tmp_b );
-			}
+			write_data( read_idx, tmp_b );
 
 		}
 		else if ( is_empty( vi_x, vi_y ) ) {
@@ -586,73 +612,50 @@ void update_salt( u32 x, u32 y, u32 ticks )
 			write_data( read_idx, tmp_b );
 		}
 	}
-	// Simple falling
+	// Simple falling, changing the velocity here ruins everything. I need to redo this entire simulation.
 	else if ( in_bounds( x, y + 1 ) && (( is_empty( x, y + 1 ) || ( g_world_particle_data[ b_idx ].id == mat_id_water ) ) ) ) {
-		// p->velocity.x *= -1.f;
+		p->velocity.y += (gravity * dt );
 		particle_t tmp_a = g_world_particle_data[ read_idx ];
 		particle_t tmp_b = g_world_particle_data[ b_idx ];
 		write_data( b_idx, tmp_a );
-
-		// 20% chance to destroy the water particle
-		if ( random_val( 0, 10 ) == 0 ) {
-			// Couldn't write there, so, uh, destroy it.
-			write_data( read_idx, particle_empty() );
-		} else {
-			write_data( read_idx, tmp_b );
-		}
+		write_data( read_idx, tmp_b );
 	}
 	else if ( in_bounds( x - 1, y + 1 ) && (( is_empty( x - 1, y + 1 ) || g_world_particle_data[ bl_idx ].id == mat_id_water )) ) {
-		// p->velocity.x *= -1.f;
+		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.2f : 1.2f;
+		p->velocity.y += (gravity * dt );
 		particle_t tmp_a = g_world_particle_data[ read_idx ];
 		particle_t tmp_b = g_world_particle_data[ bl_idx ];
 		write_data( bl_idx, tmp_a );
 		write_data( read_idx, tmp_b );
 	}
 	else if ( in_bounds( x + 1, y + 1 ) && (( is_empty( x + 1, y + 1 ) || g_world_particle_data[ br_idx ].id == mat_id_water )) ) {
-		// p->velocity.x *= -1.f;
+		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.2f : 1.2f;
+		p->velocity.y += (gravity * dt );
 		particle_t tmp_a = g_world_particle_data[ read_idx ];
 		particle_t tmp_b = g_world_particle_data[ br_idx ];
 		write_data( br_idx, tmp_a );
 		write_data( read_idx, tmp_b );
 	}
 	// Can move if in liquid
-	// else if ( in_bounds( x + 1, y ) && ( get_particle_at( x + 1, y ).id == mat_id_water ) ) {
-	// 	// Random chance to move
-	// 	if ( random_val( 0, 5 ) == 0 ) {
-	// 		u32 idx = compute_idx( x + 1, y );
-	// 		particle_t tmp_a = g_world_particle_data[ read_idx ];
-	// 		particle_t tmp_b = g_world_particle_data[ idx ];
-	// 		write_data( idx, tmp_a );
-	// 		write_data( read_idx, tmp_b );
-	// 	}
-	// }
-	// else if ( in_bounds( x - 1, y ) && ( get_particle_at( x - 1, y ).id == mat_id_water ) ) {
-	// 	// Random chance to move
-	// 	if ( random_val( 0, 5 ) == 0 ) {
-	// 		u32 idx = compute_idx( x - 1, y );
-	// 		particle_t tmp_a = g_world_particle_data[ read_idx ];
-	// 		particle_t tmp_b = g_world_particle_data[ idx ];
-	// 		write_data( idx, tmp_a );
-	// 		write_data( read_idx, tmp_b );
-	// 	}
-	// }
-	// else if ( in_bounds( x - 1, y ) && ( get_particle_at( x - 1, y ).id == mat_id_water ) ) {
-	// 	// Random chance to move
-	// 	if ( random_val( 0, 5 ) == 0 ) {
-	// 		u32 idx = compute_idx( x - 1, y );
-	// 		particle_t tmp_a = g_world_particle_data[ read_idx ];
-	// 		particle_t tmp_b = g_world_particle_data[ idx ];
-	// 		write_data( idx, tmp_a );
-	// 		write_data( read_idx, tmp_b );
-	// 	}
-	// }
+	else if ( in_bounds( x + 1, y ) && ( g_world_particle_data[ compute_idx( x + 1, y ) ].id == mat_id_water ) ) {
+		u32 idx = compute_idx( x + 1, y );
+		particle_t tmp_a = g_world_particle_data[ read_idx ];
+		particle_t tmp_b = g_world_particle_data[ idx ];
+		write_data( idx, tmp_a );
+		write_data( read_idx, tmp_b );
+	}
+	else if ( in_bounds( x - 1, y ) && ( g_world_particle_data[ compute_idx( x - 1, y ) ].id == mat_id_water ) ) {
+		u32 idx = compute_idx( x - 1, y );
+		particle_t tmp_a = g_world_particle_data[ read_idx ];
+		particle_t tmp_b = g_world_particle_data[ idx ];
+		write_data( idx, tmp_a );
+		write_data( read_idx, tmp_b );
+	}
 }
 
 void update_sand( u32 x, u32 y, u32 ticks )
 {
 	f32 dt = gs_engine_instance()->ctx.platform->time.delta;
-
-	// Need to determine if a particle is asleep. I hate that idea.
 
 	// For water, same as sand, but we'll check immediate left and right as well
 	u32 read_idx = compute_idx( x, y );
@@ -729,13 +732,7 @@ void update_sand( u32 x, u32 y, u32 ticks )
 			tmp_b.velocity = (gs_vec2){ rx, -3.f };
 
 			write_data( compute_idx( vi_x, vi_y ), tmp_a );
-
-			// if ( random_val( 0, 20 ) == 0 ) {
-			// 	// Couldn't write there, so, uh, destroy it.
-			// 	write_data( read_idx, particle_empty() );
-			// } else {
-				write_data( read_idx, tmp_b );
-			// }
+			write_data( read_idx, tmp_b );
 
 		}
 		else if ( is_empty( vi_x, vi_y ) ) {
@@ -752,7 +749,7 @@ void update_sand( u32 x, u32 y, u32 ticks )
 		write_data( read_idx, tmp_b );
 	}
 	else if ( in_bounds( x - 1, y + 1 ) && (( is_empty( x - 1, y + 1 ) || g_world_particle_data[ bl_idx ].id == mat_id_water )) ) {
-		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.f : 1.f;
+		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.5f : 1.5f;
 		p->velocity.y += (gravity * dt );
 		particle_t tmp_a = g_world_particle_data[ read_idx ];
 		particle_t tmp_b = g_world_particle_data[ bl_idx ];
@@ -761,7 +758,7 @@ void update_sand( u32 x, u32 y, u32 ticks )
 	}
 	else if ( in_bounds( x + 1, y + 1 ) && (( is_empty( x + 1, y + 1 ) || g_world_particle_data[ br_idx ].id == mat_id_water )) ) {
 		// p->velocity.x *= 1.5f;
-		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.f : 1.f;
+		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.5f : 1.5f;
 		p->velocity.y += (gravity * dt );
 		particle_t tmp_a = g_world_particle_data[ read_idx ];
 		particle_t tmp_b = g_world_particle_data[ br_idx ];
@@ -769,27 +766,27 @@ void update_sand( u32 x, u32 y, u32 ticks )
 		write_data( read_idx, tmp_b );
 	}
 	// Can move if in liquid
-	else if ( random_val( 0, 100 ) == 0 && in_bounds( x + 1, y ) && ( g_world_particle_data[ compute_idx( x + 1, y ) ].id == mat_id_water ) ) {
+	else if ( in_bounds( x + 1, y ) && ( g_world_particle_data[ compute_idx( x + 1, y ) ].id == mat_id_water ) ) {
 		u32 idx = compute_idx( x + 1, y );
 		particle_t tmp_a = g_world_particle_data[ read_idx ];
 		particle_t tmp_b = g_world_particle_data[ idx ];
 		write_data( idx, tmp_a );
 		write_data( read_idx, tmp_b );
 	}
-	else if ( random_val( 0, 100 ) == 0 && in_bounds( x - 1, y ) && ( g_world_particle_data[ compute_idx( x - 1, y ) ].id == mat_id_water ) ) {
+	else if ( in_bounds( x - 1, y ) && ( g_world_particle_data[ compute_idx( x - 1, y ) ].id == mat_id_water ) ) {
 		u32 idx = compute_idx( x - 1, y );
 		particle_t tmp_a = g_world_particle_data[ read_idx ];
 		particle_t tmp_b = g_world_particle_data[ idx ];
 		write_data( idx, tmp_a );
 		write_data( read_idx, tmp_b );
 	}
-	else if ( random_val( 0, 1 ) == 0 && in_bounds( x, y - 1 ) && ( g_world_particle_data[ compute_idx( x, y - 1 ) ].id == mat_id_water ) ) {
-		u32 idx = compute_idx( x, y - 1 );
-		particle_t tmp_a = g_world_particle_data[ read_idx ];
-		particle_t tmp_b = g_world_particle_data[ idx ];
-		write_data( idx, tmp_a );
-		write_data( read_idx, tmp_b );
-	}
+	// else if ( in_bounds( x, y - 1 ) && ( g_world_particle_data[ compute_idx( x, y - 1 ) ].id == mat_id_water ) ) {
+	// 	u32 idx = compute_idx( x, y - 1 );
+	// 	particle_t tmp_a = g_world_particle_data[ read_idx ];
+	// 	particle_t tmp_b = g_world_particle_data[ idx ];
+	// 	write_data( idx, tmp_a );
+	// 	write_data( read_idx, tmp_b );
+	// }
 }
 
 void update_water( u32 x, u32 y, u32 ticks )
