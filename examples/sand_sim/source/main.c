@@ -16,8 +16,11 @@ _global gs_resource( gs_texture ) 			g_tex = {0};
 	_global const s32 g_window_height 	= 848;
 #endif
 
-_global const s32 g_texture_width 	= 1258 / 2;
-_global const s32 g_texture_height 	= 848 / 2;
+// _global const s32 g_texture_width 	= 1258 / 2;
+// _global const s32 g_texture_height 	= 848 / 2;
+
+_global const s32 g_texture_width 	= 512;
+_global const s32 g_texture_height 	= 512;
 
 typedef struct color_t
 {
@@ -108,10 +111,10 @@ particle_t particle_salt();
 particle_t particle_brick();
 void update_input();
 void update_particle_sim();
-void update_sand( u32 w, u32 h, u32 ticks );
-void update_water( u32 w, u32 h, u32 ticks );
-void update_salt( u32 w, u32 h, u32 ticks );
-void update_default( u32 w, u32 h, u32 ticks );
+void update_sand( u32 w, u32 h );
+void update_water( u32 w, u32 h );
+void update_salt( u32 w, u32 h );
+void update_default( u32 w, u32 h );
 void write_data( u32 idx, particle_t );
 void render_scene();
 
@@ -350,37 +353,32 @@ void update_particle_sim()
 	// Update frame counter ( loop back to 0 if we roll past u32 max )
 	b32 frame_counter_even = ((g_frame_counter % 2) == 0);
 	s32 ran = frame_counter_even ? 0 : 1;
-	// s32 ran = 1;
-	// s32 ran = random_val( 0, 1 );
-	u32 ticks = 1; // Two update ticks per frame ( to simulate higher velocities )
 
 	// Rip through read data and update write buffer
-	for ( u32 i = 0; i < ticks; ++i )
+	// Note(John): We update "bottom up", since all the data is edited "in place". Double buffering all data would fix this 
+	// 	issue, however it requires double all of the data.
+	for ( u32 h = g_texture_height - 1; h > 0; --h )
 	{
-		for ( u32 h = g_texture_height - 1; h > 0; --h )
-		// for ( u32 h =0; h < g_texture_height; ++h )
+		for ( u32 w = ran ? 0 : g_texture_width - 1; ran ? w < g_texture_width : w > 0; ran ? ++w : --w )
 		{
-			for ( u32 w = ran ? 0 : g_texture_width - 1; ran ? w < g_texture_width : w > 0; ran ? ++w : --w )
-			{
-				// Current particle idx
-				u32 read_idx = h * g_texture_width + w;
+			// Current particle idx
+			u32 read_idx = h * g_texture_width + w;
 
-				// Get material of particle at point
-				u8 mat_id = g_world_particle_data[ read_idx ].id;
+			// Get material of particle at point
+			u8 mat_id = g_world_particle_data[ read_idx ].id;
 
-				switch ( mat_id ) {
+			switch ( mat_id ) {
 
-					case mat_id_sand: update_sand( w, h, i ); break;
-					case mat_id_water: update_water( w, h, i ); break;
-					case mat_id_salt: update_salt( w, h, i ); break;
+				case mat_id_sand: update_sand( w, h ); break;
+				case mat_id_water: update_water( w, h ); break;
+				case mat_id_salt: update_salt( w, h ); break;
 
-					// Do nothing for empty or default case
-					default:
-					case mat_id_empty: 
-					{
-						// update_default( w, h, i ); 
-					} break;
-				}
+				// Do nothing for empty or default case
+				default:
+				case mat_id_empty: 
+				{
+					// update_default( w, h, i ); 
+				} break;
 			}
 		}
 	}
@@ -522,7 +520,7 @@ void write_data( u32 idx, particle_t p )
 	}
 }
 
-void update_salt( u32 x, u32 y, u32 ticks )
+void update_salt( u32 x, u32 y )
 {
 	f32 dt = gs_engine_instance()->ctx.platform->time.delta;
 
@@ -649,7 +647,7 @@ void update_salt( u32 x, u32 y, u32 ticks )
 	}
 }
 
-void update_sand( u32 x, u32 y, u32 ticks )
+void update_sand( u32 x, u32 y )
 {
 	f32 dt = gs_engine_instance()->ctx.platform->time.delta;
 
@@ -776,7 +774,7 @@ void update_sand( u32 x, u32 y, u32 ticks )
 	}
 }
 
-void update_water( u32 x, u32 y, u32 ticks )
+void update_water( u32 x, u32 y )
 {
 	f32 dt = gs_engine_instance()->ctx.platform->time.delta;
 
@@ -850,7 +848,7 @@ void update_water( u32 x, u32 y, u32 ticks )
 	}
 }
 
-void update_default( u32 w, u32 h, u32 ticks )
+void update_default( u32 w, u32 h )
 {
 	u32 read_idx = compute_idx( w, h );
 	write_data( read_idx, get_particle_at( w, h ) );
