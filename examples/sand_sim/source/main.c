@@ -135,9 +135,41 @@ b32 is_empty( s32 x, s32 y )
 	return ( in_bounds( x, y ) && g_world_particle_data[ compute_idx( x, y ) ].id == mat_id_empty );
 }
 
-particle_t get_particle_at( s32 idx )
+particle_t get_particle_at( s32 x, s32 y )
 {
-	return g_world_particle_data[ idx ];
+	return g_world_particle_data[ compute_idx( x, y ) ];
+}
+
+b32 is_in_liquid( s32 x, s32 y ) 
+{
+	if ( in_bounds( x, y ) && get_particle_at( x, y ).id == mat_id_water ) {
+		return true;
+	}
+	if ( in_bounds( x, y - 1 ) && get_particle_at( x, y - 1 ).id == mat_id_water ) {
+		return true;
+	}
+	if ( in_bounds( x, y + 1 ) && get_particle_at( x, y + 1 ).id == mat_id_water ) {
+		return true;
+	}
+	if ( in_bounds( x - 1, y ) && get_particle_at( x - 1, y ).id == mat_id_water ) {
+		return true;
+	}
+	if ( in_bounds( x - 1, y - 1 ) && get_particle_at( x - 1, y - 1 ).id == mat_id_water ) {
+		return true;
+	}
+	if ( in_bounds( x - 1, y + 1 ) && get_particle_at( x - 1, y + 1 ).id == mat_id_water ) {
+		return true;
+	}
+	if ( in_bounds( x + 1, y ) && get_particle_at( x + 1, y ).id == mat_id_water ) {
+		return true;
+	}
+	if ( in_bounds( x + 1, y - 1 ) && get_particle_at( x + 1, y - 1 ).id == mat_id_water ) {
+		return true;
+	}
+	if ( in_bounds( x + 1, y + 1 ) && get_particle_at( x + 1, y + 1 ).id == mat_id_water ) {
+		return true;
+	}
+	return false;
 }
 
 int main( int argc, char** argv )
@@ -498,48 +530,19 @@ void update_salt( u32 x, u32 y, u32 ticks )
 	u32 write_idx = read_idx;
 	u32 fall_rate = 4;
 
-	if ( in_bounds( x, y ) && get_particle_at( x, y ).id == mat_id_water ) {
-		write_data( read_idx, particle_water() );
-		return;
-	}
-	if ( in_bounds( x, y - 1 ) && get_particle_at( x, y - 1 ).id == mat_id_water ) {
-		write_data( read_idx, particle_water() );
-		return;
-	}
-	if ( in_bounds( x, y + 1 ) && get_particle_at( x, y + 1 ).id == mat_id_water ) {
-		write_data( read_idx, particle_water() );
-		return;
-	}
-	if ( in_bounds( x - 1, y ) && get_particle_at( x - 1, y ).id == mat_id_water ) {
-		write_data( read_idx, particle_water() );
-		return;
-	}
-	if ( in_bounds( x - 1, y - 1 ) && get_particle_at( x - 1, y - 1 ).id == mat_id_water ) {
-		write_data( read_idx, particle_water() );
-		return;
-	}
-	if ( in_bounds( x - 1, y + 1 ) && get_particle_at( x - 1, y + 1 ).id == mat_id_water ) {
-		write_data( read_idx, particle_water() );
-		return;
-	}
-	if ( in_bounds( x + 1, y ) && get_particle_at( x + 1, y ).id == mat_id_water ) {
-		write_data( read_idx, particle_water() );
-		return;
-	}
-	if ( in_bounds( x + 1, y - 1 ) && get_particle_at( x + 1, y - 1 ).id == mat_id_water ) {
-		write_data( read_idx, particle_water() );
-		return;
-	}
-	if ( in_bounds( x + 1, y + 1 ) && get_particle_at( x + 1, y + 1 ).id == mat_id_water ) {
-		write_data( read_idx, particle_water() );
-		return;
+	// Chance to dissolve
+	if ( is_in_liquid( x, y ) ) {
+		if ( random_val( 0, 50 ) == 0 ) {
+			write_data( read_idx, particle_empty() );
+			return;
+		}
 	}
 
 	p->velocity.y = gs_clamp( p->velocity.y + (gravity * dt), -10.f, 10.f );
 	p->velocity.x = gs_clamp( p->velocity.x, -5.f, 5.f );
 
 	// Just check if you can move directly beneath you. If not, then reset your velocity. God, this is going to blow.
-	if ( !is_empty( x, y + 1 ) && get_particle_at( x, y + 1 ).id != mat_id_water && get_particle_at( x, y + 1 ).id != mat_id_sand ) {
+	if ( in_bounds( x, y + 1 ) && !is_empty( x, y + 1 ) && get_particle_at( x, y + 1 ).id != mat_id_water && get_particle_at( x, y + 1 ).id != mat_id_sand ) {
 		p->velocity.y /= 2.f;
 		// p->velocity.x /= 2.f;
 	}
@@ -667,7 +670,7 @@ void update_sand( u32 x, u32 y, u32 ticks )
 	p->velocity.x = gs_clamp( p->velocity.x, -5.f, 5.f );
 
 	// Just check if you can move directly beneath you. If not, then reset your velocity. God, this is going to blow.
-	if ( !is_empty( x, y + 1 ) && get_particle_at( x, y + 1 ).id != mat_id_water && get_particle_at( x, y + 1 ).id != mat_id_sand ) {
+	if ( in_bounds( x, y + 1 ) && !is_empty( x, y + 1 ) && get_particle_at( x, y + 1 ).id != mat_id_water && get_particle_at( x, y + 1 ).id != mat_id_sand ) {
 		p->velocity.y /= 2.f;
 		// p->velocity.x /= 2.f;
 	}
