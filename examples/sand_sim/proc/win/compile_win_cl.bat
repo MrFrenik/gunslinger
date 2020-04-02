@@ -28,8 +28,6 @@ set libs=Gunslinger.lib
 rem Link options
 set l_options=/EHsc /link /SUBSYSTEM:CONSOLE /NODEFAULTLIB:msvcrt.lib
 
-rem cl /w -Zi /MP /Femain.exe ^
-
 rem Compile Release
 cl /MP /FS /Ox /W1 /Fe%name%.exe %src_all% %inc% ^
 /EHsc /link /SUBSYSTEM:CONSOLE /NODEFAULTLIB:msvcrt.lib /NODEFAULTLIB:LIBCMT ^

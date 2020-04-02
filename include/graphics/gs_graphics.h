@@ -58,7 +58,7 @@ typedef enum gs_vertex_attribute_type
 
 typedef enum gs_texture_format 
 {
-	gs_texture_rgba8
+	gs_texture_rgba8,
 	gs_texture_rgba16f
 } gs_texture_format;
 

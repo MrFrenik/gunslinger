@@ -185,11 +185,10 @@ gs_resource( gs_texture ) opengl_construct_texture( gs_texture_parameter_desc de
 
 void opengl_init_default_state()
 {
-	// glEnable(GL_BLEND);
-	// glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glDisable(GL_DEPTH_TEST);
-	glBlendFunc(GL_ONE, GL_ONE);
+	// glBlendFunc(GL_ONE, GL_ONE);
 	// Init things...
 }
 
@@ -1443,34 +1442,25 @@ gs_resource( gs_texture ) opengl_construct_texture( gs_texture_parameter_desc de
 	glGenTextures( 1, &( tex.id ) );
 	glBindTexture( GL_TEXTURE_2D, tex.id );
 
-	// Standard texture format
-	switch( texture_format )
+	// Construct texture based on appropriate format
+	switch( texture_format ) 
 	{
-		case gs_texture_rgba8:
-		{
-			glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GLRGBA, GL_UNSIGNED_BYTE, desc.data );
-		} break;
-
-		case gs_texture_rgba16f:
-		{
-			glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GLRGBA, GL_UNSIGNED_BYTE, desc.data );
-		} break;
-
-		default:
-		{
-			gs_assert( false );
-		} break;
+		case gs_texture_rgba8: 	 glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, desc.data ); break;
+		case gs_texture_rgba16f: glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, desc.data ); break;
 	}
 
 	s32 mag_filter = desc.mag_filter == gs_nearest ? GL_NEAREST : GL_LINEAR;
 	s32 min_filter = desc.min_filter == gs_nearest ? GL_NEAREST : GL_LINEAR;
 
-	if ( desc.generate_mips )
+	if ( desc.generate_mips ) 
 	{
-		if ( desc.min_filter == gs_nearest ) {
+		if ( desc.min_filter == gs_nearest ) 
+		{
 			min_filter = desc.mipmap_filter == gs_nearest ? GL_NEAREST_MIPMAP_NEAREST : 
 				GL_NEAREST_MIPMAP_LINEAR;
-		} else {
+		} 
+		else 
+		{
 			min_filter = desc.mipmap_filter == gs_nearest ? GL_LINEAR_MIPMAP_NEAREST : 
 				GL_NEAREST_MIPMAP_LINEAR;
 		}
@@ -1490,10 +1480,10 @@ gs_resource( gs_texture ) opengl_construct_texture( gs_texture_parameter_desc de
 	// glGetFloatv( GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &aniso );
 	// glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso );
 
-	glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, texture_wrap_s );
-	glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, texture_wrap_t );
-	glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter );
-	glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter );
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, texture_wrap_s );
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, texture_wrap_t );
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter );
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter );
 
 	if ( desc.generate_mips )
 	{
@@ -1527,9 +1517,9 @@ void* opengl_load_texture_data_from_file( const char* file_path, b32 flip_vertic
 	gs_util_get_file_extension( temp_file_extension_buffer, sizeof( temp_file_extension_buffer ), file_path );
 
 	if ( gs_string_compare_equal( temp_file_extension_buffer, "hdr" ) ) {
-		*texture_format = gs_texture_format_hdr;
+		*texture_format = gs_texture_rgba16f;
 	} else {
-		*texture_format = gs_texture_format_ldr;
+		*texture_format = gs_texture_rgba8;
 	}
 
 	// Texture data to fill out
@@ -1537,7 +1527,7 @@ void* opengl_load_texture_data_from_file( const char* file_path, b32 flip_vertic
 
 	switch ( *texture_format )
 	{
-		case gs_texture_format_ldr:
+		case gs_texture_rgba8:
 		{
 			// Load texture data
 			stbi_set_flip_vertically_on_load( true );
@@ -1553,9 +1543,8 @@ void* opengl_load_texture_data_from_file( const char* file_path, b32 flip_vertic
 		} break;
 
 		// TODO(john): support this format
-		case gs_texture_format_hdr:
-		default:
-		{
+		case gs_texture_rgba16f:
+		default: {
 			gs_assert( false );
 		} break;
 	}
@@ -1588,89 +1577,62 @@ void opengl_update_texture_data( gs_resource( gs_texture ) t_handle, gs_texture_
 	u32 height = t_desc.height;
 	u32 num_comps = t_desc.num_comps;
 
-	// Standard texture format
-	switch( texture_format )
+	glBindTexture( GL_TEXTURE_2D, tex->id );
+
+	// Construct texture based on appropriate format
+	switch( texture_format ) 
 	{
-		case gs_texture_format_ldr:
-		{
-			void* texture_data = t_desc.data;
-
-			// glGenTextures( 1, &( tex.id ) );
-			glBindTexture( GL_TEXTURE_2D, tex->id );
-
-			// Generate texture depending on number of components in texture data
-			switch ( num_comps )
-			{
-				case 3: 
-				{
-					glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, texture_data ); 
-				} break;
-
-				default:
-				case 4: 
-				{
-					glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, texture_data ); 
-				} break;
-			}
-
-			s32 mag_filter = t_desc.mag_filter == gs_nearest ? GL_NEAREST : GL_LINEAR;
-			s32 min_filter = t_desc.min_filter == gs_nearest ? GL_NEAREST : GL_LINEAR;
-
-			if ( t_desc.generate_mips )
-			{
-				if ( t_desc.min_filter == gs_nearest ) {
-					min_filter = t_desc.mipmap_filter == gs_nearest ? GL_NEAREST_MIPMAP_NEAREST : 
-						GL_NEAREST_MIPMAP_LINEAR;
-				} else {
-					min_filter = t_desc.mipmap_filter == gs_nearest ? GL_LINEAR_MIPMAP_NEAREST : 
-						GL_NEAREST_MIPMAP_LINEAR;
-				}
-			}
-
-			s32 texture_wrap_s = t_desc.texture_wrap_s == gs_repeat ? GL_REPEAT : 
-								 t_desc.texture_wrap_s == gs_mirrored_repeat ? GL_MIRRORED_REPEAT : 
-								 t_desc.texture_wrap_s == gs_clamp_to_edge ? GL_CLAMP_TO_EDGE : 
-								 GL_CLAMP_TO_BORDER;
-			s32 texture_wrap_t = t_desc.texture_wrap_t == gs_repeat ? GL_REPEAT : 
-								 t_desc.texture_wrap_t == gs_mirrored_repeat ? GL_MIRRORED_REPEAT : 
-								 t_desc.texture_wrap_t == gs_clamp_to_edge ? GL_CLAMP_TO_EDGE : 
-								 GL_CLAMP_TO_BORDER;
-
-			// Anisotropic filtering ( not supported by default, need to figure this out )
-			// f32 aniso = 0.0f; 
-			// glGetFloatv( GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &aniso );
-			// glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso );
-
-			glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, texture_wrap_s );
-			glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, texture_wrap_t );
-			glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter );
-			glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter );
-
-			if ( t_desc.generate_mips )
-			{
-				glGenerateMipmap( GL_TEXTURE_2D );
-			}
-
-			tex->width 			= width;
-			tex->height 		= height;
-			tex->num_comps 		= num_comps;
-			tex->texture_format = texture_format;
-
-			glBindTexture( GL_TEXTURE_2D, 0 );
-
-			// gs_free( texture_data );
-			// texture_data = NULL;
-
-		} break;
-
-		// TODO(john): support this format
-		case gs_texture_format_hdr:
-		default:
-		{
-			gs_assert( false );
-		} break;
+		case gs_texture_rgba8: 	 glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, t_desc.data ); break;
+		case gs_texture_rgba16f: glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, t_desc.data ); break;
 	}
 
+	s32 mag_filter = t_desc.mag_filter == gs_nearest ? GL_NEAREST : GL_LINEAR;
+	s32 min_filter = t_desc.min_filter == gs_nearest ? GL_NEAREST : GL_LINEAR;
+
+	if ( t_desc.generate_mips ) 
+	{
+		if ( t_desc.min_filter == gs_nearest ) 
+		{
+			min_filter = t_desc.mipmap_filter == gs_nearest ? GL_NEAREST_MIPMAP_NEAREST : 
+				GL_NEAREST_MIPMAP_LINEAR;
+		} 
+		else 
+		{
+			min_filter = t_desc.mipmap_filter == gs_nearest ? GL_LINEAR_MIPMAP_NEAREST : 
+				GL_NEAREST_MIPMAP_LINEAR;
+		}
+	}
+
+	s32 texture_wrap_s = t_desc.texture_wrap_s == gs_repeat ? GL_REPEAT : 
+						 t_desc.texture_wrap_s == gs_mirrored_repeat ? GL_MIRRORED_REPEAT : 
+						 t_desc.texture_wrap_s == gs_clamp_to_edge ? GL_CLAMP_TO_EDGE : 
+						 GL_CLAMP_TO_BORDER;
+	s32 texture_wrap_t = t_desc.texture_wrap_t == gs_repeat ? GL_REPEAT : 
+						 t_desc.texture_wrap_t == gs_mirrored_repeat ? GL_MIRRORED_REPEAT : 
+						 t_desc.texture_wrap_t == gs_clamp_to_edge ? GL_CLAMP_TO_EDGE : 
+						 GL_CLAMP_TO_BORDER;
+
+	// Anisotropic filtering ( not supported by default, need to figure this out )
+	// f32 aniso = 0.0f; 
+	// glGetFloatv( GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &aniso );
+	// glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso );
+
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, texture_wrap_s );
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, texture_wrap_t );
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter );
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter );
+
+	if ( t_desc.generate_mips )
+	{
+		glGenerateMipmap( GL_TEXTURE_2D );
+	}
+
+	glBindTexture( GL_TEXTURE_2D, 0 );
+
+	tex->width 			= width;
+	tex->height 		= height;
+	tex->num_comps 		= num_comps;
+	tex->texture_format = texture_format;
 }
 
 // Method for creating platform layer for SDL
@@ -1732,7 +1694,7 @@ struct gs_graphics_i* gs_graphics_construct()
 	// /*============================================================
 	// // Graphics Resource Free Ops
 	// ============================================================*/
-	// void ( * free_vertex_attribute_layout_desc )( gs_resource( gs_vertex_attribute_layout_desc ) );
+	// void ( * free_vertex_attribute_layout_t_desc )( gs_resource( gs_vertex_attribute_layout_desc ) );
 	// void ( * free_vertex_buffer )( gs_resource( gs_vertex_buffer ) );
 	// void ( * free_index_buffer )( gs_resource( gs_index_buffer ) );
 	// void ( * free_shader )( gs_resource( gs_shader ) );

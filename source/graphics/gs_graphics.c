@@ -19,11 +19,11 @@ gs_texture_parameter_desc gs_texture_parameter_desc_default()
 	desc.border_color[1]	= 0.f;
 	desc.border_color[2]	= 0.f;
 	desc.border_color[3]	= 0.f;
-	desc.data 			= NULL;
-	desc.texture_format = gs_texture_format_ldr;
-	desc.width 			= 0;
-	desc.height 		= 0;
-	desc.num_comps 		= 0;
+	desc.data 				= NULL;
+	desc.texture_format 	= gs_texture_rgba8;
+	desc.width 				= 0;
+	desc.height 			= 0;
+	desc.num_comps 			= 0;
 
 	return desc;
 }

@@ -1,6 +1,8 @@
 #include <gs.h>
 
 #include "render_pass/blur_pass.h"
+#include "render_pass/bright_filter_pass.h"
+#include "render_pass/combine_pass.h"
 
 // Globals
 _global gs_resource( gs_vertex_buffer ) 	g_vbo = {0};
@@ -9,12 +11,13 @@ _global gs_resource( gs_command_buffer ) 	g_cb = {0};
 _global gs_resource( gs_shader ) 			g_shader = {0};
 _global gs_resource( gs_uniform ) 			u_tex = {0}; 
 _global gs_resource( gs_uniform ) 			u_flip_y = {0}; 
-_global gs_resource( gs_uniform ) 			u_color = {0};
 _global gs_resource( gs_texture ) 			g_tex = {0};
 _global gs_resource( gs_texture ) 			g_tex_ui = {0};
 _global gs_resource( gs_texture ) 			g_rt = {0};
 _global gs_resource( gs_frame_buffer ) 		g_fb = {0};
 _global blur_pass_t 						g_blur_pass = {0};
+_global bright_filter_pass_t 				g_bright_pass = {0};
+_global combine_pass_t 						g_combine_pass = {0};
 
 #if (defined GS_PLATFORM_APPLE)
 	_global const s32 g_window_width 	= 800;
@@ -129,10 +132,9 @@ const char* f_src = "\n"
 "out vec4 frag_color;\n"
 "in vec2 texCoord;\n"
 "uniform sampler2D u_tex;\n"
-"uniform vec3 u_color;\n"
 "void main()\n"
 "{\n"
-"	frag_color = vec4(u_color, 1.0) * texture(u_tex, texCoord);\n"
+"	frag_color = texture(u_tex, texCoord);\n"
 "}";
 
 // Forward Decls.
@@ -334,7 +336,6 @@ gs_result app_init()
 	// Construct uniform for shader
 	u_tex = gfx->construct_uniform( g_shader, "u_tex", gs_uniform_type_sampler2d );
 	u_flip_y = gfx->construct_uniform( g_shader, "u_flip_y", gs_uniform_type_int );
-	u_color = gfx->construct_uniform( g_shader, "u_color", gs_uniform_type_vec3 );
 
 	// Vertex data layout for our mesh (for this shader, it's a single float2 attribute for position)
 	gs_vertex_attribute_type layout[] = 
@@ -415,6 +416,8 @@ gs_result app_init()
 
 	// Initialize render passes
 	g_blur_pass = blur_pass_ctor();
+	g_bright_pass = bright_filter_pass_ctor();
+	g_combine_pass = combine_pass_ctor();
 
 	return gs_result_success;
 }
@@ -709,7 +712,6 @@ void update_particle_sim()
 
 	// Update frame counter
 	g_frame_counter = (g_frame_counter + 1) % u32_max;
-
 }
 
 void render_scene()
@@ -722,7 +724,6 @@ void render_scene()
 
 	gs_vec2 ws = platform->window_size( g_window );
 	b32 flip_y = false;
-	gs_vec3 col = (gs_vec3){ 1.f, 1.f, 1.f };
 
 	// Bind our render target and render offscreen
 	gfx->bind_frame_buffer( g_cb, g_fb );
@@ -738,12 +739,9 @@ void render_scene()
 		gfx->set_view_port( g_cb, g_texture_width, g_texture_height );
 		gfx->bind_shader( g_cb, g_shader );
 		gfx->bind_uniform( g_cb, u_flip_y, &flip_y );
-		gfx->bind_uniform( g_cb, u_color, &col );
 		gfx->bind_vertex_buffer( g_cb, g_vbo );
 		gfx->bind_index_buffer( g_cb, g_ibo );
 		gfx->bind_texture( g_cb, u_tex, g_tex, 0 );
-		gfx->draw_indexed( g_cb, 6 );
-		gfx->bind_texture( g_cb, u_tex, g_tex_ui, 0 );
 		gfx->draw_indexed( g_cb, 6 );
 	}
 	// Unbind offscreen buffer
@@ -752,15 +750,28 @@ void render_scene()
 	// Bind frame buffer for post processing
 	gfx->bind_frame_buffer( g_cb, g_fb );
 	{
-		blur_pass_parameters_t bparams = (blur_pass_parameters_t){ g_rt };
-		render_pass_i* bp = gs_cast( render_pass_i, &g_blur_pass );
-		bp->pass( g_cb, bp, &bparams );
+		// Brightness pass
+		{
+			bright_filter_pass_parameters_t params = (bright_filter_pass_parameters_t){ g_rt };
+			render_pass_i* p = gs_cast( render_pass_i, &g_bright_pass );
+			p->pass( g_cb, p, &params );
+		}
+
+		// Blur pass
+		{
+			blur_pass_parameters_t params = (blur_pass_parameters_t){ g_bright_pass.data.render_target };
+			render_pass_i* p = gs_cast( render_pass_i, &g_blur_pass );
+			p->pass( g_cb, p, &params );
+		}
+
+		// Combine pass w/ gamma correction
+		{
+			combine_pass_parameters_t params = (combine_pass_parameters_t){ g_rt, g_blur_pass.data.blur_render_target_b };
+			render_pass_i* p = gs_cast( render_pass_i, &g_combine_pass );
+			p->pass( g_cb, p, &params );
+		}
 	}
 	gfx->unbind_frame_buffer( g_cb );
-
-	// Brightness filter
-	// Bloom
-	// Gamma correction
 
 	// Back buffer Presentation
 	{
@@ -777,20 +788,19 @@ void render_scene()
 
 		f32 t = gs_engine_instance()->ctx.platform->elapsed_time() * gs_engine_instance()->ctx.platform->time.delta * 0.001f;
 		flip_y = true;
-		col = (gs_vec3){ 1.f, 1.f, 1.f };
 
 		gfx->bind_shader( g_cb, g_shader );
 		gfx->bind_uniform( g_cb, u_flip_y, &flip_y );		
-		gfx->bind_uniform( g_cb, u_color, &col );
 		gfx->bind_vertex_buffer( g_cb, g_vbo );
 		gfx->bind_index_buffer( g_cb, g_ibo );
 
-		// Draw blur texture
-		gfx->bind_texture( g_cb, u_tex, g_blur_pass.data.small_blur_render_target_b, 0 );
-
-		// Bind offscreen target
+		// Draw final combined image
+		gfx->bind_texture( g_cb, u_tex, g_combine_pass.data.render_target, 0 );
 		// gfx->bind_texture( g_cb, u_tex, g_rt, 0 );
+		gfx->draw_indexed( g_cb, 6 );
 
+		// Draw UI on top
+		gfx->bind_texture( g_cb, u_tex, g_tex_ui, 0 );
 		gfx->draw_indexed( g_cb, 6 );
 	}
 
