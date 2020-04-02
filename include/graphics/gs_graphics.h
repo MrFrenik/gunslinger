@@ -56,10 +56,10 @@ typedef enum gs_vertex_attribute_type
 // Texture
 =================*/
 
-typedef enum gs_texture_format
+typedef enum gs_texture_format 
 {
-	gs_texture_format_ldr,
-	gs_texture_format_hdr
+	gs_texture_rgba8
+	gs_texture_rgba16f
 } gs_texture_format;
 
 typedef enum gs_texture_wrapping
@@ -137,9 +137,11 @@ typedef struct gs_graphics_i
 	============================================================*/
 	void ( * reset_command_buffer )( gs_resource( gs_command_buffer ) );
 	void ( * set_depth_enabled )( gs_resource( gs_command_buffer ), b32 );
-	void ( * set_viewport)( gs_resource( gs_command_buffer ), u32 width, u32 height );
+	void ( * set_view_port)( gs_resource( gs_command_buffer ), u32 width, u32 height );
+	void ( * bind_frame_buffer )( gs_resource( gs_command_buffer ), gs_resource( gs_frame_buffer ) );
+	void ( * set_frame_buffer_attachment )( gs_resource( gs_command_buffer ), gs_resource( gs_texture ), u32 idx );
+	void ( * unbind_frame_buffer )( gs_resource( gs_command_buffer ) );
 	void ( * bind_shader )( gs_resource( gs_command_buffer ), gs_resource( gs_shader ) );
-	// void ( * set_uniform_buffer_sub_data )( gs_resource( gs_command_buffer ), gs_resource( gs_uniform_buffer ), void*, usize );
 	void ( * bind_uniform )( gs_resource( gs_command_buffer ), gs_resource( gs_uniform ), void* );
 	void ( * bind_vertex_buffer )( gs_resource( gs_command_buffer ), gs_resource( gs_vertex_buffer ) );
 	void ( * bind_index_buffer )( gs_resource( gs_command_buffer ), gs_resource( gs_index_buffer ) );
@@ -148,21 +150,23 @@ typedef struct gs_graphics_i
 	void ( * draw )( gs_resource( gs_command_buffer ), u32 start, u32 count );
 	void ( * draw_indexed )( gs_resource( gs_command_buffer ), u32 count );
 	void ( * submit_command_buffer )( gs_resource( gs_command_buffer ) );
+	// void ( * set_uniform_buffer_sub_data )( gs_resource( gs_command_buffer ), gs_resource( gs_uniform_buffer ), void*, usize );
 
 	/*============================================================
 	// Graphics Resource Construction
 	============================================================*/
 	gs_resource( gs_vertex_buffer )( * construct_vertex_buffer )( gs_vertex_attribute_type*, u32, void*, usize );
 	gs_resource( gs_shader )( * construct_shader )( const char* vert_src, const char* frag_src );
-	// gs_resource( gs_uniform_buffer )( * construct_uniform_buffer )( gs_resource( gs_shader ), const char* uniform_name );
 	gs_resource( gs_uniform )( * construct_uniform )( gs_resource( gs_shader ), const char* uniform_name, gs_uniform_type );
 	gs_resource( gs_command_buffer )( * construct_command_buffer )();
+	gs_resource( gs_render_target )( * construct_render_target )( gs_texture_parameter_desc );	// Will eventually set this so you can have a number of targets for MRT (is this even necessary)?
+	gs_resource( gs_frame_buffer )( * construct_frame_buffer )( gs_resource( gs_texture ) );
 	void* ( * load_texture_data_from_file )( const char* file_path, b32 flip_vertically_on_load, 
 					u32* width, u32* height, u32* num_comps , gs_texture_format* );
 
 	// Will construct texture resource and let user free data...for now
 	gs_resource( gs_texture )( * construct_texture )( gs_texture_parameter_desc );
-	gs_resource( gs_texture )( * construct_texture_from_file )( const char* );
+	gs_resource( gs_texture )( * construct_texture_from_file )( const char* file_path, b32 flip_vertically_on_load, gs_texture_parameter_desc t_desc );
 	gs_resource( gs_index_buffer )( * construct_index_buffer )( void*, usize );
 
 	/*============================================================

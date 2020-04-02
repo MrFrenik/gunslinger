@@ -1,13 +1,20 @@
 #include <gs.h>
 
+#include "render_pass/blur_pass.h"
+
 // Globals
 _global gs_resource( gs_vertex_buffer ) 	g_vbo = {0};
 _global gs_resource( gs_index_buffer ) 		g_ibo = {0};
 _global gs_resource( gs_command_buffer ) 	g_cb = {0};
 _global gs_resource( gs_shader ) 			g_shader = {0};
 _global gs_resource( gs_uniform ) 			u_tex = {0}; 
+_global gs_resource( gs_uniform ) 			u_flip_y = {0}; 
+_global gs_resource( gs_uniform ) 			u_color = {0};
 _global gs_resource( gs_texture ) 			g_tex = {0};
 _global gs_resource( gs_texture ) 			g_tex_ui = {0};
+_global gs_resource( gs_texture ) 			g_rt = {0};
+_global gs_resource( gs_frame_buffer ) 		g_fb = {0};
+_global blur_pass_t 						g_blur_pass = {0};
 
 #if (defined GS_PLATFORM_APPLE)
 	_global const s32 g_window_width 	= 800;
@@ -109,11 +116,12 @@ const char* v_src = "\n"
 "#version 330 core\n"
 "layout (location = 0) in vec2 a_pos;\n"
 "layout (location = 1) in vec2 a_texCoord;\n"
+"uniform int u_flip_y;"
 "out vec2 texCoord;\n"
 "void main()\n"
 "{\n"
 "	gl_Position = vec4(a_pos, 0.0, 1.0);\n"
-"	texCoord = vec2(a_texCoord.x, 1.0 - a_texCoord.y);\n"
+"	texCoord = vec2(a_texCoord.x, bool(u_flip_y) ? 1.0 - a_texCoord.y : a_texCoord.y);\n"
 "}";
 
 const char* f_src = "\n"
@@ -121,9 +129,10 @@ const char* f_src = "\n"
 "out vec4 frag_color;\n"
 "in vec2 texCoord;\n"
 "uniform sampler2D u_tex;\n"
+"uniform vec3 u_color;\n"
 "void main()\n"
 "{\n"
-"	frag_color = texture(u_tex, texCoord);\n"
+"	frag_color = vec4(u_color, 1.0) * texture(u_tex, texCoord);\n"
 "}";
 
 // Forward Decls.
@@ -241,39 +250,39 @@ b32 completely_surrounded( s32 x, s32 y )
 
 b32 is_in_liquid( s32 x, s32 y, s32* lx, s32* ly ) 
 {
-	if ( in_bounds( x, y ) && get_particle_at( x, y ).id == mat_id_water ) {
+	if ( in_bounds( x, y ) && (get_particle_at( x, y ).id == mat_id_water || get_particle_at( x, y ).id == mat_id_oil) ) {
 		*lx = x; *ly = y;
 		return true;
 	}
-	if ( in_bounds( x, y - 1 ) && get_particle_at( x, y - 1 ).id == mat_id_water ) {
+	if ( in_bounds( x, y - 1 ) && (get_particle_at( x, y - 1 ).id == mat_id_water || get_particle_at( x, y - 1 ).id == mat_id_oil) ) {
 		*lx = x; *ly = y - 1;
 		return true;
 	}
-	if ( in_bounds( x, y + 1 ) && get_particle_at( x, y + 1 ).id == mat_id_water ) {
+	if ( in_bounds( x, y + 1 ) && (get_particle_at( x, y + 1 ).id == mat_id_water || get_particle_at( x, y + 1 ).id == mat_id_oil) ) {
 		*lx = x; *ly = y + 1;
 		return true;
 	}
-	if ( in_bounds( x - 1, y ) && get_particle_at( x - 1, y ).id == mat_id_water ) {
+	if ( in_bounds( x - 1, y ) && (get_particle_at( x - 1, y ).id == mat_id_water || get_particle_at( x - 1, y ).id == mat_id_oil) ) {
 		*lx = x - 1; *ly = y;
 		return true;
 	}
-	if ( in_bounds( x - 1, y - 1 ) && get_particle_at( x - 1, y - 1 ).id == mat_id_water ) {
+	if ( in_bounds( x - 1, y - 1 ) && (get_particle_at( x - 1, y - 1 ).id == mat_id_water || get_particle_at( x - 1, y - 1 ).id == mat_id_oil) ) {
 		*lx = x - 1; *ly = y - 1;
 		return true;
 	}
-	if ( in_bounds( x - 1, y + 1 ) && get_particle_at( x - 1, y + 1 ).id == mat_id_water ) {
+	if ( in_bounds( x - 1, y + 1 ) && (get_particle_at( x - 1, y + 1 ).id == mat_id_water || get_particle_at( x - 1, y + 1 ).id == mat_id_oil) ) {
 		*lx = x - 1; *ly = y + 1;
 		return true;
 	}
-	if ( in_bounds( x + 1, y ) && get_particle_at( x + 1, y ).id == mat_id_water ) {
+	if ( in_bounds( x + 1, y ) && (get_particle_at( x + 1, y ).id == mat_id_water || get_particle_at( x + 1, y ).id == mat_id_oil) ) {
 		*lx = x + 1; *ly = y;
 		return true;
 	}
-	if ( in_bounds( x + 1, y - 1 ) && get_particle_at( x + 1, y - 1 ).id == mat_id_water ) {
+	if ( in_bounds( x + 1, y - 1 ) && (get_particle_at( x + 1, y - 1 ).id == mat_id_water || get_particle_at( x + 1, y - 1 ).id == mat_id_oil) ) {
 		*lx = x + 1; *ly = y - 1;
 		return true;
 	}
-	if ( in_bounds( x + 1, y + 1 ) && get_particle_at( x + 1, y + 1 ).id == mat_id_water ) {
+	if ( in_bounds( x + 1, y + 1 ) && (get_particle_at( x + 1, y + 1 ).id == mat_id_water || get_particle_at( x + 1, y + 1 ).id == mat_id_oil) ) {
 		*lx = x + 1; *ly = y + 1;
 		return true;
 	}
@@ -297,8 +306,6 @@ int main( int argc, char** argv )
 
 	// Run the internal engine loop until completion
 	gs_result res = engine->run();
-
-	gs_println("here");
 
 	// Check result of engine after exiting loop
 	if ( res != gs_result_success ) 
@@ -326,8 +333,10 @@ gs_result app_init()
 
 	// Construct uniform for shader
 	u_tex = gfx->construct_uniform( g_shader, "u_tex", gs_uniform_type_sampler2d );
+	u_flip_y = gfx->construct_uniform( g_shader, "u_flip_y", gs_uniform_type_int );
+	u_color = gfx->construct_uniform( g_shader, "u_color", gs_uniform_type_vec3 );
 
-	// Vertex data layout for our mesh (for this shader, it's a single float3 attribute for position)
+	// Vertex data layout for our mesh (for this shader, it's a single float2 attribute for position)
 	gs_vertex_attribute_type layout[] = 
 	{
 		gs_vertex_attribute_float2,
@@ -394,8 +403,18 @@ gs_result app_init()
 
 	g_tex_ui = gfx->construct_texture( t_desc );
 
+	// Construct target for offscreen rendering
+	t_desc.data = NULL;
+	g_rt = gfx->construct_texture( t_desc );
+
+	// Construct frame buffer
+	g_fb = gfx->construct_frame_buffer( g_rt );
+
 	// Cache window handle from platform
 	g_window = gs_engine_instance()->ctx.platform->main_window();
+
+	// Initialize render passes
+	g_blur_pass = blur_pass_ctor();
 
 	return gs_result_success;
 }
@@ -501,12 +520,11 @@ void circleBres(int xc, int yc, int r)
     drawCircle(xc, yc, x, y); 
     while (y >= x) 
     { 
-        // for each pixel we will 
-        // draw all eight pixels 
-          
+        // For each pixel we will 
+        // draw all eight pixels
         x++; 
   
-        // check for decision parameter 
+        // Check for decision parameter 
         // and correspondingly  
         // update d, x, y 
         if (d > 0) 
@@ -702,39 +720,79 @@ void render_scene()
 	// Platform api instance
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 
-	// Set clear color and clear screen
-	f32 clear_color[4] = { 0.2f, 0.2f, 0.2f, 1.f };
-	gfx->set_view_clear( g_cb, clear_color );
-
 	gs_vec2 ws = platform->window_size( g_window );
+	b32 flip_y = false;
+	gs_vec3 col = (gs_vec3){ 1.f, 1.f, 1.f };
 
-	// This is to handle mac's retina high dpi for now until I fix that internally.
-#if (defined GS_PLATFORM_APPLE)
-	gfx->set_viewport( g_cb, (s32)ws.x * 2, (s32)ws.y * 2 );
-#else
-	gfx->set_viewport( g_cb, (s32)ws.x, (s32)ws.y );
-#endif
+	// Bind our render target and render offscreen
+	gfx->bind_frame_buffer( g_cb, g_fb );
+	{
+		// Bind frame buffer attachment for rendering
+		gfx->set_frame_buffer_attachment( g_cb, g_rt, 0 );
 
-	// Bind shader
-	gfx->bind_shader( g_cb, g_shader );
+		// Set clear color and clear screen
+		f32 clear_color[4] = { 0.2f, 0.2f, 0.2f, 1.f };
+		gfx->set_view_clear( g_cb, clear_color );
 
-	// Bind vertex buffer
-	gfx->bind_vertex_buffer( g_cb, g_vbo );
+		// This is to handle mac's retina high dpi for now until I fix that internally.
+		gfx->set_view_port( g_cb, g_texture_width, g_texture_height );
+		gfx->bind_shader( g_cb, g_shader );
+		gfx->bind_uniform( g_cb, u_flip_y, &flip_y );
+		gfx->bind_uniform( g_cb, u_color, &col );
+		gfx->bind_vertex_buffer( g_cb, g_vbo );
+		gfx->bind_index_buffer( g_cb, g_ibo );
+		gfx->bind_texture( g_cb, u_tex, g_tex, 0 );
+		gfx->draw_indexed( g_cb, 6 );
+		gfx->bind_texture( g_cb, u_tex, g_tex_ui, 0 );
+		gfx->draw_indexed( g_cb, 6 );
+	}
+	// Unbind offscreen buffer
+	gfx->unbind_frame_buffer( g_cb );
 
-	// Bind index buffer
-	gfx->bind_index_buffer( g_cb, g_ibo );
+	// Bind frame buffer for post processing
+	gfx->bind_frame_buffer( g_cb, g_fb );
+	{
+		blur_pass_parameters_t bparams = (blur_pass_parameters_t){ g_rt };
+		render_pass_i* bp = gs_cast( render_pass_i, &g_blur_pass );
+		bp->pass( g_cb, bp, &bparams );
+	}
+	gfx->unbind_frame_buffer( g_cb );
 
-	// Bind texture
-	gfx->bind_texture( g_cb, u_tex, g_tex, 0 );
+	// Brightness filter
+	// Bloom
+	// Gamma correction
 
-	// Draw
-	gfx->draw_indexed( g_cb, 6 );
+	// Back buffer Presentation
+	{
+		// Set clear color and clear screen
+		f32 clear_color[4] = { 0.2f, 0.2f, 0.2f, 1.f };
+		gfx->set_view_clear( g_cb, clear_color );
 
-	// Bind ui texture
-	gfx->bind_texture( g_cb, u_tex, g_tex_ui, 0 );
+		// This is to handle mac's retina high dpi for now until I fix that internally.
+	#if (defined GS_PLATFORM_APPLE)
+		gfx->set_view_port( g_cb, (s32)ws.x * 2, (s32)ws.y * 2 );
+	#else
+		gfx->set_view_port( g_cb, (s32)ws.x, (s32)ws.y );
+	#endif
 
-	// Draw
-	gfx->draw_indexed( g_cb, 6 );
+		f32 t = gs_engine_instance()->ctx.platform->elapsed_time() * gs_engine_instance()->ctx.platform->time.delta * 0.001f;
+		flip_y = true;
+		col = (gs_vec3){ 1.f, 1.f, 1.f };
+
+		gfx->bind_shader( g_cb, g_shader );
+		gfx->bind_uniform( g_cb, u_flip_y, &flip_y );		
+		gfx->bind_uniform( g_cb, u_color, &col );
+		gfx->bind_vertex_buffer( g_cb, g_vbo );
+		gfx->bind_index_buffer( g_cb, g_ibo );
+
+		// Draw blur texture
+		gfx->bind_texture( g_cb, u_tex, g_blur_pass.data.small_blur_render_target_b, 0 );
+
+		// Bind offscreen target
+		// gfx->bind_texture( g_cb, u_tex, g_rt, 0 );
+
+		gfx->draw_indexed( g_cb, 6 );
+	}
 
 	// Submit command buffer for rendering
 	gfx->submit_command_buffer( g_cb );
@@ -2063,65 +2121,6 @@ void update_lava( u32 x, u32 y )
 			write_data( read_idx, tmp );
 		}
 	}
-
-/*
-	if ( in_bounds( vi_x, vi_y ) && (is_empty(vi_x, vi_y) || 
-									get_particle_at(vi_x, vi_y).id == mat_id_smoke))
-	{
-		p->velocity.y += (gravity * dt );
-		particle_t tmp_b = g_world_particle_data[ compute_idx(vi_x, vi_y) ];
-		write_data( compute_idx(vi_x, vi_y), *p );
-		write_data( read_idx, tmp_b );
-	}
-
-	// Simple falling, changing the velocity here ruins everything. I need to redo this entire simulation.
-	else if ( in_bounds( x, y + 1 ) && (( is_empty( x, y + 1 ) || ( g_world_particle_data[ b_idx ].id == mat_id_smoke ) ) ) ) {
-		p->velocity.y += (gravity * dt );
-		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.f : 1.f;
-		particle_t tmp_b = g_world_particle_data[ b_idx ];
-		write_data( b_idx, *p );
-		write_data( read_idx, tmp_b );
-	}
-	else if ( in_bounds( x - 1, y + 1 ) && (( is_empty( x - 1, y + 1 ) || g_world_particle_data[ bl_idx ].id == mat_id_smoke )) ) {
-		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.f : 1.f;
-		p->velocity.y += (gravity * dt );
-		particle_t tmp_b = g_world_particle_data[ bl_idx ];
-		write_data( bl_idx, *p );
-		write_data( read_idx, tmp_b );
-	}
-	else if ( in_bounds( x + 1, y + 1 ) && (( is_empty( x + 1, y + 1 ) || g_world_particle_data[ br_idx ].id == mat_id_smoke )) ) {
-		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.f : 1.f;
-		p->velocity.y += (gravity * dt );
-		particle_t tmp_b = g_world_particle_data[ br_idx ];
-		write_data( br_idx, *p );
-		write_data( read_idx, tmp_b );
-	}
-	else if ( in_bounds( x - 1, y - 1 ) && ( g_world_particle_data[ compute_idx( x - 1, y - 1 ) ].id == mat_id_smoke ) ) {
-		u32 idx = compute_idx( x - 1, y - 1 );
-		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.f : 1.f;
-		particle_t tmp_b = g_world_particle_data[ idx ];
-		write_data( idx, *p );
-		write_data( read_idx, tmp_b );
-	}
-	else if ( in_bounds( x + 1, y - 1 ) && ( g_world_particle_data[ compute_idx( x + 1, y - 1 ) ].id == mat_id_smoke ) ) {
-		u32 idx = compute_idx( x + 1, y - 1 );
-		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.f : 1.f;
-		particle_t tmp_b = g_world_particle_data[ idx ];
-		write_data( idx, *p );
-		write_data( read_idx, tmp_b );
-	}
-	else if ( in_bounds( x, y - 1 ) && ( g_world_particle_data[ compute_idx( x, y - 1 ) ].id == mat_id_smoke ) ) {
-		u32 idx = compute_idx( x, y - 1 );
-		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.f : 1.f;
-		particle_t tmp_b = g_world_particle_data[ idx ];
-		write_data( idx, *p );
-		write_data( read_idx, tmp_b );
-	}
-	else {
-		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.f : 1.f;
-		write_data( read_idx, *p );
-	}
-	*/
 }
 
 void update_oil( u32 x, u32 y )
@@ -2163,6 +2162,15 @@ void update_oil( u32 x, u32 y )
 	s32 l_idx = compute_idx( x + l, y );
 	s32 r_idx = compute_idx( x + r, y );
 	s32 vx = (s32)p->velocity.x, vy = (s32)p->velocity.y;
+
+	// If in water, then need to float upwards
+	// s32 lx, ly;
+	// if ( is_in_liquid( x, y, &lx, &ly ) && in_bounds( x, y - 1 ) && get_particle_at( x, y - 1 ).id == mat_id_water ) {
+	// 	particle_t tmp = get_particle_at( x, y - 1 );
+	// 	write_data( compute_idx( x, y - 1 ), *p );
+	// 	write_data( read_idx, tmp );
+	// 	// return;
+	// }
 
 	if ( in_bounds( x + vx, y + vy ) && (is_empty( x + vx, y + vy ) ) ) {
 		write_data( v_idx, *p );
@@ -2247,6 +2255,7 @@ void update_water( u32 x, u32 y )
 	s32 l_idx = compute_idx( x + l, y );
 	s32 r_idx = compute_idx( x + r, y );
 	s32 vx = (s32)p->velocity.x, vy = (s32)p->velocity.y;
+	s32 lx, ly;
 
 	if ( in_bounds( x + vx, y + vy ) && (is_empty( x + vx, y + vy ) ) ) {
 		write_data( v_idx, *p );
@@ -2264,6 +2273,32 @@ void update_water( u32 x, u32 y )
 		write_data( bl_idx, *p );
 		write_data( read_idx, particle_empty() );
 	}
+	// Simple falling, changing the velocity here ruins everything. I need to redo this entire simulation.
+	else if ( in_bounds( x, y + u ) && (( is_empty( x, y + u ) || ( g_world_particle_data[ b_idx ].id == mat_id_oil ) ) ) ) {
+		p->velocity.y += (gravity * dt );
+		particle_t tmp_b = get_particle_at( x, y + u );
+		write_data( b_idx, *p );
+		write_data( read_idx, tmp_b );
+	}
+	else if ( in_bounds( x + l, y + u ) && (( is_empty( x + l, y + u ) || g_world_particle_data[ bl_idx ].id == mat_id_oil )) ) {
+		p->velocity.x = is_in_liquid( x, y, &lx, &ly ) ? 0.f : random_val( 0, 1 ) == 0 ? -1.f : 1.f;
+		p->velocity.y += (gravity * dt );
+		particle_t tmp_b = get_particle_at( x + l, y + u );
+		write_data( bl_idx, *p );
+		write_data( read_idx, tmp_b );
+	}
+	else if ( in_bounds( x + r, y + u ) && (( is_empty( x + r, y + u ) || g_world_particle_data[ br_idx ].id == mat_id_oil )) ) {
+		p->velocity.x = is_in_liquid( x, y, &lx, &ly ) ? 0.f : random_val( 0, 1 ) == 0 ? -1.f : 1.f;
+		p->velocity.y += (gravity * dt );
+		particle_t tmp_b = get_particle_at( x + r, y + u );
+		write_data( br_idx, *p );
+		write_data( read_idx, tmp_b );
+	}
+	else if ( is_in_liquid( x, y, &lx, &ly ) && random_val( 0, 10 ) == 0 ) {
+		particle_t tmp_b = get_particle_at( lx, ly );
+		write_data( compute_idx( lx, ly ), *p );
+		write_data( read_idx, tmp_b );
+	}
 	else {
 		particle_t tmp = *p;
 		b32 found = false;
@@ -2277,15 +2312,17 @@ void update_water( u32 x, u32 y )
 			for ( u32 i = 0; i < fall_rate; ++i ) {
 				for ( s32 j = spread_rate; j > 0; --j )
 				{
-					if ( is_empty( x - j, y + i ) ) {
+					if ( in_bounds( x - j, y + i ) && (is_empty( x - j, y + i ) || get_particle_at( x - j, y + i ).id == mat_id_oil ) ) {
+						particle_t tmp = get_particle_at( x - j, y + i );
 						write_data( compute_idx( x - j, y + i ), *p );
-						write_data( read_idx, particle_empty() );
+						write_data( read_idx, tmp );
 						found = true;
 						break;
 					}
-					else if ( is_empty( x + j, y + i ) ) {
+					if ( in_bounds( x + j, y + i ) && (is_empty( x + j, y + i ) || get_particle_at( x + j, y + i ).id == mat_id_oil ) ) {
+						particle_t tmp = get_particle_at( x + j, y + i );
 						write_data( compute_idx( x + j, y + i ), *p );
-						write_data( read_idx, particle_empty() );
+						write_data( read_idx, tmp );
 						found = true;
 						break;
 					}

@@ -38,7 +38,7 @@ extern "C" {
 #define gs_clamp( v, min, max ) ( (v) > (max) ? (max) : (v) < (min) ? (min) : (v) )
 
 // Helpful macro for casting one type to another
-#define gs_cast( a, b ) ( ( a* )b )
+#define gs_cast( a, b ) ( ( a* )(b) )
 
 // Helpful marco for calculating offset ( in bytes ) of an element from a given structure type
 #define gs_offset( type, element ) ( ( usize )( &( ( ( type* )( 0 ) )->element ) ) )

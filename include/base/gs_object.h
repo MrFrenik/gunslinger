@@ -31,13 +31,7 @@ extern "C" {
 
 #define gs_engine_check( statement ) ( statement ) ? true : false
 
-#define _base( base_type ) base_type _base;
-
-// Helpful macro for casting one type to another
-#define gs_cast( a, b ) ( ( a* )b )
-
-// Helpful marco for calculating offset ( in bytes ) of an element from a given structure type
-#define gs_offset( type, element ) ( ( usize )( &( ( ( type* )( 0 ) )->element ) ) )
+#define _base( base_type ) base_type _base
 
 /*============================================================
 // Object Definition: gs_object

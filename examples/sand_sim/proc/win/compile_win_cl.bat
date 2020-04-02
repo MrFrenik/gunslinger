@@ -7,10 +7,10 @@ rem Name
 set name=SandSim
 
 rem Include directories 
-set inc=/I ..\..\..\include
+set inc=/I ..\..\..\include /I ..\include
 
 rem Source files
-set src_main=..\source\*.c
+set src_main=..\source\*.c ..\source\render_passes\*.c
 
 rem All source together
 set src_all=%src_main%
