@@ -1,9 +1,9 @@
-#ifndef SS_COMBINE_PASS_H
-#define SS_COMBINE_PASS_H
+#ifndef SS_COMPOSITE_PASS_H
+#define SS_COMPOSITE_PASS_H
 
 #include "render_pass/render_pass_i.h"
 
-typedef struct combine_pass_data_t
+typedef struct composite_pass_data_t
 {
 	gs_resource( gs_shader ) shader;
 	gs_resource ( gs_uniform ) u_input_tex;
@@ -15,21 +15,21 @@ typedef struct combine_pass_data_t
 	gs_resource( gs_texture ) render_target;
 	gs_resource( gs_vertex_buffer ) vb;
 	gs_resource( gs_index_buffer ) ib;
-} combine_pass_data_t;
+} composite_pass_data_t;
 
-typedef struct combine_pass_t
+typedef struct composite_pass_t
 {
 	_base( render_pass_i );
-	combine_pass_data_t data;
-} combine_pass_t;
+	composite_pass_data_t data;
+} composite_pass_t;
 
 // Use this to pass in parameters for the pass ( will check for this )
-typedef struct combine_pass_parameters_t 
+typedef struct composite_pass_parameters_t 
 {
 	gs_resource( gs_texture ) input_texture;
 	gs_resource( gs_texture ) blur_texture;
-} combine_pass_parameters_t;
+} composite_pass_parameters_t;
 
-combine_pass_t combine_pass_ctor();
+composite_pass_t composite_pass_ctor();
 
 #endif#endif

@@ -1,26 +1,26 @@
 
-#include "render_pass/combine_pass.h"
+#include "render_pass/composite_pass.h"
 
-// typedef struct combine_pass_data_t
+// typedef struct composite_pass_data_t
 // {
 // 	gs_resource( gs_shader ) shader;
 // 	gs_resource ( gs_uniform ) u_input_tex;
 // 	gs_resource( gs_texture ) render_target;
 // 	gs_resource( gs_vertex_buffer ) vb;
 // 	gs_resource( gs_index_buffer ) ib;
-// } combine_pass_data_t;
+// } composite_pass_data_t;
 
-// typedef struct combine_pass_t
+// typedef struct composite_pass_t
 // {
 // 	_base( render_pass_i );
-// 	combine_pass_data_t data;
-// } combine_pass_t;
+// 	composite_pass_data_t data;
+// } composite_pass_t;
 
 // // Use this to pass in parameters for the pass ( will check for this )
-// typedef struct combine_pass_parameters_t 
+// typedef struct composite_pass_parameters_t 
 // {
 // 	gs_resource( gs_texture ) input_texture;
-// } combine_pass_parameters_t;
+// } composite_pass_parameters_t;
 
 // Forward Decl.
 void cp_pass( gs_resource( gs_command_buffer ) cb, struct render_pass_i* pass, void* paramters );
@@ -61,7 +61,7 @@ const char* cp_f_src = "\n"
 "}\n"
 "void main() {\n"
 "	vec3 hdr = max( vec3(0.0), texture(u_tex, fs_in.tex_coord).rgb );\n"
-"	vec3 bloom = texture(u_blur_tex, fs_in.tex_coord).rgb / 3.0;\n"
+"	vec3 bloom = texture(u_blur_tex, fs_in.tex_coord).rgb;\n"
 "	hdr += bloom * u_bloom_scalar;\n"
 "	vec3 result = vec3(1.0) - exp(-hdr * u_exposure);\n"
 "	result = pow(result, vec3(1.0 / u_gamma));\n"
@@ -93,12 +93,12 @@ _global u32 cp_i_data[] = {
 	3, 1, 0
 };
 
-combine_pass_t combine_pass_ctor()
+composite_pass_t composite_pass_ctor()
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 
-	combine_pass_t p = {0};
+	composite_pass_t p = {0};
 
 	// Construct shaders resources
 	p.data.vb = gfx->construct_vertex_buffer( layout, layout_count, cp_v_data, sizeof(cp_v_data) );
@@ -138,16 +138,29 @@ void cp_pass( gs_resource( gs_command_buffer ) cb, struct render_pass_i* _pass, 
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 	gs_vec2 ws = platform->window_size(platform->main_window());
 
-	combine_pass_t* p = (combine_pass_t*)_pass;
+	composite_pass_t* p = (composite_pass_t*)_pass;
 	if ( !p ) {
 		return;
 	} 
 
 	// Can only use valid params
-	combine_pass_parameters_t* params = (combine_pass_parameters_t*)_params;
+	composite_pass_parameters_t* params = (composite_pass_parameters_t*)_params;
 	if ( !params ) {
 		return;
 	}
+
+	gs_texture_parameter_desc t_desc = gs_texture_parameter_desc_default();
+	t_desc.mag_filter = gs_linear;
+	t_desc.min_filter = gs_linear;
+	t_desc.texture_format = gs_texture_rgba16f;
+	t_desc.generate_mips = false;
+	t_desc.num_comps = 4;
+	t_desc.data = NULL;
+	t_desc.width = (s32)(ws.x);
+	t_desc.height = (s32)(ws.y);
+
+	// Two render targets for double buffered separable blur ( For now, just set to window's viewport )
+	gfx->update_texture_data( p->data.render_target, t_desc );
 
 	// Set frame buffer attachment for rendering
 	gfx->set_frame_buffer_attachment( cb, p->data.render_target, 0 );
@@ -162,10 +175,10 @@ void cp_pass( gs_resource( gs_command_buffer ) cb, struct render_pass_i* _pass, 
 	// Use the program
 	gfx->bind_shader( cb, p->data.shader );
 	{
-		f32 saturation = 1.3f;
+		f32 saturation = 2.0f;
 		f32 gamma = 2.2f;
-		f32 exposure = 1.0f;
-		f32 bloom_scalar = 0.6f;
+		f32 exposure = 0.5f;
+		f32 bloom_scalar = 1.0f;
 
 		gfx->bind_texture( cb, p->data.u_input_tex, params->input_texture, 0 );
 		gfx->bind_texture( cb, p->data.u_blur_tex, params->blur_texture, 1 );

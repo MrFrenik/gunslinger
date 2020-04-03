@@ -1565,8 +1565,6 @@ gs_resource( gs_texture ) opengl_construct_texture_from_file( const char* file_p
 
 void opengl_update_texture_data( gs_resource( gs_texture ) t_handle, gs_texture_parameter_desc t_desc )
 {
-	gs_assert( t_desc.data );
-
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
 	// Get texture from slot id

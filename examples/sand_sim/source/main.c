@@ -2,7 +2,7 @@
 
 #include "render_pass/blur_pass.h"
 #include "render_pass/bright_filter_pass.h"
-#include "render_pass/combine_pass.h"
+#include "render_pass/composite_pass.h"
 
 // Globals
 _global gs_resource( gs_vertex_buffer ) 	g_vbo = {0};
@@ -17,7 +17,7 @@ _global gs_resource( gs_texture ) 			g_rt = {0};
 _global gs_resource( gs_frame_buffer ) 		g_fb = {0};
 _global blur_pass_t 						g_blur_pass = {0};
 _global bright_filter_pass_t 				g_bright_pass = {0};
-_global combine_pass_t 						g_combine_pass = {0};
+_global composite_pass_t 					g_composite_pass = {0};
 
 #if (defined GS_PLATFORM_APPLE)
 	_global const s32 g_window_width 	= 800;
@@ -60,6 +60,7 @@ typedef struct particle_t
 #define mat_id_gunpowder (u8)9
 #define mat_id_oil (u8)10
 #define mat_id_lava (u8)11
+#define mat_id_stone (u8)12
 
 // Colors
 #define mat_col_empty (color_t){ 0, 0, 0, 0}
@@ -87,6 +88,7 @@ typedef enum material_selection
 	mat_sel_gunpowder,
 	mat_sel_oil,
 	mat_sel_lava,
+	mat_sel_stone
 } material_selection;
 
 // Material selection for "painting" / default to sand
@@ -154,6 +156,7 @@ particle_t particle_ember();
 particle_t particle_steam();
 particle_t particle_gunpowder();
 particle_t particle_oil();
+particle_t particle_stone();
 
 void update_input();
 void update_particle_sim();
@@ -169,6 +172,7 @@ void update_oil( u32 x, u32 y );
 void update_lava( u32 x, u32 y );
 void update_default( u32 x, u32 y );
 void write_data( u32 idx, particle_t );
+void update_ui();
 void render_scene();
 
 gs_vec2 calculate_mouse_position()
@@ -285,6 +289,47 @@ b32 is_in_liquid( s32 x, s32 y, s32* lx, s32* ly )
 		return true;
 	}
 	if ( in_bounds( x + 1, y + 1 ) && (get_particle_at( x + 1, y + 1 ).id == mat_id_water || get_particle_at( x + 1, y + 1 ).id == mat_id_oil) ) {
+		*lx = x + 1; *ly = y + 1;
+		return true;
+	}
+	return false;
+}
+
+b32 is_in_water( s32 x, s32 y, s32* lx, s32* ly ) 
+{
+	if ( in_bounds( x, y ) && (get_particle_at( x, y ).id == mat_id_water) ) {
+		*lx = x; *ly = y;
+		return true;
+	}
+	if ( in_bounds( x, y - 1 ) && (get_particle_at( x, y - 1 ).id == mat_id_water) ) {
+		*lx = x; *ly = y - 1;
+		return true;
+	}
+	if ( in_bounds( x, y + 1 ) && (get_particle_at( x, y + 1 ).id == mat_id_water) ) {
+		*lx = x; *ly = y + 1;
+		return true;
+	}
+	if ( in_bounds( x - 1, y ) && (get_particle_at( x - 1, y ).id == mat_id_water) ) {
+		*lx = x - 1; *ly = y;
+		return true;
+	}
+	if ( in_bounds( x - 1, y - 1 ) && (get_particle_at( x - 1, y - 1 ).id == mat_id_water) ) {
+		*lx = x - 1; *ly = y - 1;
+		return true;
+	}
+	if ( in_bounds( x - 1, y + 1 ) && (get_particle_at( x - 1, y + 1 ).id == mat_id_water) ) {
+		*lx = x - 1; *ly = y + 1;
+		return true;
+	}
+	if ( in_bounds( x + 1, y ) && (get_particle_at( x + 1, y ).id == mat_id_water) ) {
+		*lx = x + 1; *ly = y;
+		return true;
+	}
+	if ( in_bounds( x + 1, y - 1 ) && (get_particle_at( x + 1, y - 1 ).id == mat_id_water) ) {
+		*lx = x + 1; *ly = y - 1;
+		return true;
+	}
+	if ( in_bounds( x + 1, y + 1 ) && (get_particle_at( x + 1, y + 1 ).id == mat_id_water) ) {
 		*lx = x + 1; *ly = y + 1;
 		return true;
 	}
@@ -417,7 +462,7 @@ gs_result app_init()
 	// Initialize render passes
 	g_blur_pass = blur_pass_ctor();
 	g_bright_pass = bright_filter_pass_ctor();
-	g_combine_pass = combine_pass_ctor();
+	g_composite_pass = composite_pass_ctor();
 
 	return gs_result_success;
 }
@@ -438,16 +483,18 @@ gs_result app_update()
 		gs_println( "frame: %.5f ms", engine->ctx.platform->time.frame );
 	});
 
-	// Handle inputs for painting
+	// All application updates
 	update_input();
-
-	// Update particle sim
 	update_particle_sim();
+	update_ui();
 
 	/*===============
 	// Render scene
 	================*/
 	render_scene();
+
+	// Update frame counter
+	g_frame_counter = (g_frame_counter + 1) % u32_max;
 
 	return gs_result_in_progress;
 }
@@ -456,42 +503,6 @@ gs_result app_shutdown()
 {
 	gs_println( "Goodbye, Gunslinger." );
 	return gs_result_success;
-}
-
-void update_input()
-{
-	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
-
-	if ( platform->key_pressed( gs_keycode_one ) ) {
-		g_material_selection = mat_sel_sand;
-	}
-	if ( platform->key_pressed( gs_keycode_two ) ) {
-		g_material_selection = mat_sel_water;
-	}
-	if ( platform->key_pressed( gs_keycode_three ) ) {
-		g_material_selection = mat_sel_salt;
-	}
-	if ( platform->key_pressed( gs_keycode_four ) ) {
-		g_material_selection = mat_sel_wood;
-	}
-	if ( platform->key_pressed( gs_keycode_five ) ) {
-		g_material_selection = mat_sel_fire;
-	}
-	if ( platform->key_pressed( gs_keycode_six ) ) {
-		g_material_selection = mat_sel_smoke;
-	}
-	if ( platform->key_pressed( gs_keycode_seven ) ) {
-		g_material_selection = mat_sel_steam;
-	}
-	if ( platform->key_pressed( gs_keycode_eight ) ) {
-		g_material_selection = mat_sel_gunpowder;
-	}
-	if ( platform->key_pressed( gs_keycode_nine ) ) {
-		g_material_selection = mat_sel_oil;
-	}
-	if ( platform->key_pressed( gs_keycode_zero ) ) {
-		g_material_selection = mat_sel_lava;
-	}
 }
 
 void putpixel( int x, int y ) {
@@ -540,6 +551,121 @@ void circleBres(int xc, int yc, int r)
         drawCircle(xc, yc, x, y); 
     } 
 } 
+
+void update_input()
+{
+	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+
+	if ( platform->key_pressed( gs_keycode_one ) ) {
+		g_material_selection = mat_sel_sand;
+	}
+	if ( platform->key_pressed( gs_keycode_two ) ) {
+		g_material_selection = mat_sel_water;
+	}
+	if ( platform->key_pressed( gs_keycode_three ) ) {
+		g_material_selection = mat_sel_salt;
+	}
+	if ( platform->key_pressed( gs_keycode_four ) ) {
+		g_material_selection = mat_sel_wood;
+	}
+	if ( platform->key_pressed( gs_keycode_five ) ) {
+		g_material_selection = mat_sel_fire;
+	}
+	if ( platform->key_pressed( gs_keycode_six ) ) {
+		g_material_selection = mat_sel_smoke;
+	}
+	if ( platform->key_pressed( gs_keycode_seven ) ) {
+		g_material_selection = mat_sel_stone;
+	}
+	if ( platform->key_pressed( gs_keycode_eight ) ) {
+		g_material_selection = mat_sel_gunpowder;
+	}
+	if ( platform->key_pressed( gs_keycode_nine ) ) {
+		g_material_selection = mat_sel_oil;
+	}
+	if ( platform->key_pressed( gs_keycode_zero ) ) {
+		g_material_selection = mat_sel_lava;
+	}
+
+	f32 wx = 0, wy = 0;
+	platform->mouse_wheel( &wx, &wy );
+	if ( platform->key_pressed( gs_keycode_lbracket ) || wy < 0.f ) {
+		g_selection_radius = gs_clamp( g_selection_radius - 1.f, 1.f, 100.f );
+	}
+	if ( platform->key_pressed( gs_keycode_rbracket ) || wy > 0.f ) {
+		g_selection_radius = gs_clamp( g_selection_radius + 1.f, 1.f, 100.f );
+	}
+
+	// Mouse input for testing
+	if ( platform->mouse_down( gs_mouse_lbutton ) )
+	{
+		gs_vec2 mp = calculate_mouse_position();
+		f32 mp_x = gs_clamp( mp.x, 0.f, (f32)g_texture_width - 1.f );	
+		f32 mp_y = gs_clamp( mp.y, 0.f, (f32)g_texture_height - 1.f );
+		u32 max_idx = (g_texture_width * g_texture_height) - 1;
+		s32 r_amt = random_val( 1, 10000 );
+		const f32 R = g_selection_radius;
+
+		// Spawn in a circle around the mouse
+		for ( u32 i = 0; i < r_amt; ++i )
+		{
+			f32 ran = (f32)random_val(0, 100) / 100.f;
+			f32 r = R * sqrt(ran);
+			f32 theta = (f32)random_val(0, 100)/100.f * 2.f * gs_pi;
+			f32 rx = cos((f32)theta) * r;
+			f32 ry = sin((f32)theta) * r;
+			s32 mpx = (s32)gs_clamp( mp_x + (f32)rx, 0.f, (f32)g_texture_width - 1.f );
+			s32 mpy = (s32)gs_clamp( mp_y + (f32)ry, 0.f, (f32)g_texture_height - 1.f );
+			s32 idx = mpy * (s32)g_texture_width + mpx;
+			idx = gs_clamp( idx, 0, max_idx );
+
+			if ( is_empty( mpx, mpy ) )
+			{
+				particle_t p = {0};
+				switch ( g_material_selection ) {
+					case mat_sel_sand: p = particle_sand(); break;;
+					case mat_sel_water: p = particle_water(); break;;
+					case mat_sel_salt: p = particle_salt(); break;;
+					case mat_sel_wood: p = particle_wood(); break;;
+					case mat_sel_fire: p = particle_fire(); break;
+					case mat_sel_smoke: p = particle_smoke(); break;
+					case mat_sel_steam: p = particle_steam(); break;
+					case mat_sel_gunpowder: p = particle_gunpowder(); break;
+					case mat_sel_oil: p = particle_oil(); break;
+					case mat_sel_lava: p = particle_lava(); break;
+					case mat_sel_stone: p = particle_stone(); break;
+				}
+				p.velocity = (gs_vec2){ random_val( -1, 1 ), random_val( -2, 5 ) };
+				write_data( idx, p );
+			}
+		}
+	}
+
+	// Solid Erase
+	if (  platform->mouse_down( gs_mouse_rbutton ) )
+	{
+		gs_vec2 mp = calculate_mouse_position( );
+		f32 mp_x = gs_clamp( mp.x, 0.f, (f32)g_texture_width - 1.f );	
+		f32 mp_y = gs_clamp( mp.y, 0.f, (f32)g_texture_height - 1.f );
+		u32 max_idx = (g_texture_width * g_texture_height) - 1;
+		const f32 R = g_selection_radius;
+
+		// Erase in a circle pattern
+		for ( s32 i = -R ; i < R; ++i )
+		{
+			for ( s32 j = -R ; j < R; ++j )
+			{
+				s32 rx = ((s32)mp_x + j); 
+				s32 ry = ((s32)mp_y + i);
+				gs_vec2 r = (gs_vec2){ rx, ry };
+
+				if ( in_bounds( rx, ry ) && gs_vec2_distance( mp, r ) <= R ) {
+					write_data( compute_idx( rx, ry ), particle_empty() );
+				}
+			}
+		}
+	}
+}
 
 void update_particle_sim()
 {
@@ -601,84 +727,12 @@ void update_particle_sim()
 			g_world_particle_data[ compute_idx( x, y ) ].has_been_updated_this_frame = false;
 		}
 	}
+}
 
-	f32 wx = 0, wy = 0;
-	platform->mouse_wheel( &wx, &wy );
-	if ( platform->key_pressed( gs_keycode_lbracket ) || wy < 0.f ) {
-		g_selection_radius = gs_clamp( g_selection_radius - 1.f, 1.f, 100.f );
-	}
-	if ( platform->key_pressed( gs_keycode_rbracket ) || wy > 0.f ) {
-		g_selection_radius = gs_clamp( g_selection_radius + 1.f, 1.f, 100.f );
-	}
-
-	// Mouse input for testing
-	if ( platform->mouse_down( gs_mouse_lbutton ) )
-	{
-		gs_vec2 mp = calculate_mouse_position();
-		f32 mp_x = gs_clamp( mp.x, 0.f, (f32)g_texture_width - 1.f );	
-		f32 mp_y = gs_clamp( mp.y, 0.f, (f32)g_texture_height - 1.f );
-		u32 max_idx = (g_texture_width * g_texture_height) - 1;
-		s32 r_amt = random_val( 1, 10000 );
-		const f32 R = g_selection_radius;
-
-		// Spawn in a circle around the mouse
-		for ( u32 i = 0; i < r_amt; ++i )
-		{
-			f32 ran = (f32)random_val(0, 100) / 100.f;
-			f32 r = R * sqrt(ran);
-			f32 theta = (f32)random_val(0, 100)/100.f * 2.f * gs_pi;
-			f32 rx = cos((f32)theta) * r;
-			f32 ry = sin((f32)theta) * r;
-			s32 mpx = (s32)gs_clamp( mp_x + (f32)rx, 0.f, (f32)g_texture_width - 1.f );
-			s32 mpy = (s32)gs_clamp( mp_y + (f32)ry, 0.f, (f32)g_texture_height - 1.f );
-			s32 idx = mpy * (s32)g_texture_width + mpx;
-			idx = gs_clamp( idx, 0, max_idx );
-
-			if ( is_empty( mpx, mpy ) )
-			{
-				particle_t p = {0};
-				switch ( g_material_selection ) {
-					case mat_sel_sand: p = particle_sand(); break;;
-					case mat_sel_water: p = particle_water(); break;;
-					case mat_sel_salt: p = particle_salt(); break;;
-					case mat_sel_wood: p = particle_wood(); break;;
-					case mat_sel_fire: p = particle_fire(); break;
-					case mat_sel_smoke: p = particle_smoke(); break;
-					case mat_sel_steam: p = particle_steam(); break;
-					case mat_sel_gunpowder: p = particle_gunpowder(); break;
-					case mat_sel_oil: p = particle_oil(); break;
-					case mat_sel_lava: p = particle_lava(); break;
-				}
-				p.velocity = (gs_vec2){ random_val( -1, 1 ), random_val( -2, 5 ) };
-				write_data( idx, p );
-			}
-		}
-	}
-
-	// Solid Erase
-	if (  platform->mouse_down( gs_mouse_rbutton ) )
-	{
-		gs_vec2 mp = calculate_mouse_position( );
-		f32 mp_x = gs_clamp( mp.x, 0.f, (f32)g_texture_width - 1.f );	
-		f32 mp_y = gs_clamp( mp.y, 0.f, (f32)g_texture_height - 1.f );
-		u32 max_idx = (g_texture_width * g_texture_height) - 1;
-		const f32 R = g_selection_radius;
-
-		// Erase in a circle pattern
-		for ( s32 i = -R ; i < R; ++i )
-		{
-			for ( s32 j = -R ; j < R; ++j )
-			{
-				s32 rx = ((s32)mp_x + j); 
-				s32 ry = ((s32)mp_y + i);
-				gs_vec2 r = (gs_vec2){ rx, ry };
-
-				if ( in_bounds( rx, ry ) && gs_vec2_distance( mp, r ) <= R ) {
-					write_data( compute_idx( rx, ry ), particle_empty() );
-				}
-			}
-		}
-	}
+void update_ui()
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 
 	// Do ui stuff
 	memset( g_ui_buffer, 0, g_texture_width * g_texture_height * sizeof(color_t) );
@@ -709,9 +763,6 @@ void update_particle_sim()
 	t_desc.num_comps = 4;
 	t_desc.data = g_ui_buffer;
 	gfx->update_texture_data( g_tex_ui, t_desc );
-
-	// Update frame counter
-	g_frame_counter = (g_frame_counter + 1) % u32_max;
 }
 
 void render_scene()
@@ -764,10 +815,10 @@ void render_scene()
 			p->pass( g_cb, p, &params );
 		}
 
-		// Combine pass w/ gamma correction
+		// composite pass w/ gamma correction
 		{
-			combine_pass_parameters_t params = (combine_pass_parameters_t){ g_rt, g_blur_pass.data.blur_render_target_b };
-			render_pass_i* p = gs_cast( render_pass_i, &g_combine_pass );
+			composite_pass_parameters_t params = (composite_pass_parameters_t){ g_rt, g_blur_pass.data.blur_render_target_b };
+			render_pass_i* p = gs_cast( render_pass_i, &g_composite_pass );
 			p->pass( g_cb, p, &params );
 		}
 	}
@@ -794,8 +845,8 @@ void render_scene()
 		gfx->bind_vertex_buffer( g_cb, g_vbo );
 		gfx->bind_index_buffer( g_cb, g_ibo );
 
-		// Draw final combined image
-		gfx->bind_texture( g_cb, u_tex, g_combine_pass.data.render_target, 0 );
+		// Draw final composited image
+		gfx->bind_texture( g_cb, u_tex, g_composite_pass.data.render_target, 0 );
 		// gfx->bind_texture( g_cb, u_tex, g_rt, 0 );
 		gfx->draw_indexed( g_cb, 6 );
 
@@ -824,6 +875,15 @@ void update_salt( u32 x, u32 y )
 	particle_t* p = &g_world_particle_data[ read_idx ];
 	u32 write_idx = read_idx;
 	u32 fall_rate = 4;
+	s32 lx, ly;
+
+	// If in liquid, chance to dissolve itself.
+	if ( is_in_liquid( x, y, &lx, &ly ) ) {
+		if ( random_val( 0, 250 ) == 0 ) {
+			write_data( read_idx, particle_empty() );
+			return;
+		}
+	}
 
 	p->velocity.y = gs_clamp( p->velocity.y + (gravity * dt), -10.f, 10.f );
 	p->velocity.x = gs_clamp( p->velocity.x, -5.f, 5.f );
@@ -1287,20 +1347,26 @@ void update_smoke( u32 x, u32 y )
 		}
 	}
 	// Simple falling, changing the velocity here ruins everything. I need to redo this entire simulation.
-	else if ( in_bounds( x, y - 1 ) && get_particle_at( x, y - 1 ).id != mat_id_smoke && get_particle_at( x, y - 1 ).id != mat_id_wood ) {
+	else if ( in_bounds( x, y - 1 ) && get_particle_at( x, y - 1 ).id != mat_id_smoke && 
+									   get_particle_at( x, y - 1 ).id != mat_id_wood &&
+									   get_particle_at( x, y - 1 ).id != mat_id_stone ) {
 		p->velocity.y -= (gravity * dt );
 		particle_t tmp_b = get_particle_at( x, y - 1 );
 		write_data( compute_idx( x, y - 1 ), *p );
 		write_data( read_idx, tmp_b );
 	}
-	else if ( in_bounds( x - 1, y - 1 ) && get_particle_at( x - 1, y - 1 ).id != mat_id_smoke && get_particle_at( x - 1, y - 1 ).id != mat_id_wood ) {
+	else if ( in_bounds( x - 1, y - 1 ) && get_particle_at( x - 1, y - 1 ).id != mat_id_smoke && 
+											get_particle_at( x - 1, y - 1 ).id != mat_id_wood && 
+											get_particle_at( x - 1, y - 1 ).id != mat_id_stone ) {
 		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.2f : 1.2f;
 		p->velocity.y -= (gravity * dt );
 		particle_t tmp_b = get_particle_at( x - 1, y - 1 );
 		write_data( compute_idx( x - 1, y - 1 ), *p );
 		write_data( read_idx, tmp_b );
 	}
-	else if ( in_bounds( x + 1, y - 1 ) && get_particle_at( x + 1, y - 1 ).id != mat_id_smoke && get_particle_at( x + 1, y - 1 ).id != mat_id_wood ) {
+	else if ( in_bounds( x + 1, y - 1 ) && get_particle_at( x + 1, y - 1 ).id != mat_id_smoke && 
+											get_particle_at( x + 1, y - 1 ).id != mat_id_wood && 
+											get_particle_at( x + 1, y - 1 ).id != mat_id_stone ) {
 		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.2f : 1.2f;
 		p->velocity.y -= (gravity * dt );
 		particle_t tmp_b = get_particle_at( x + 1, y - 1 );
@@ -1308,13 +1374,17 @@ void update_smoke( u32 x, u32 y )
 		write_data( read_idx, tmp_b );
 	}
 	// Can move if in liquid
-	else if ( in_bounds( x + 1, y ) && get_particle_at( x + 1, y ).id != mat_id_smoke && get_particle_at( x + 1, y ).id != mat_id_wood ) {
+	else if ( in_bounds( x + 1, y ) && get_particle_at( x + 1, y ).id != mat_id_smoke && 
+										get_particle_at( x + 1, y ).id != mat_id_wood && 
+										get_particle_at( x + 1, y ).id != mat_id_stone ) {
 		u32 idx = compute_idx( x + 1, y );
 		particle_t tmp_b = g_world_particle_data[ idx ];
 		write_data( idx, *p );
 		write_data( read_idx, tmp_b );
 	}
-	else if ( in_bounds( x - 1, y ) && get_particle_at( x - 1, y ).id != mat_id_smoke && get_particle_at( x - 1, y ).id != mat_id_wood ) {
+	else if ( in_bounds( x - 1, y ) && get_particle_at( x - 1, y ).id != mat_id_smoke && 
+									get_particle_at( x - 1, y ).id != mat_id_wood && 
+									get_particle_at( x - 1, y ).id != mat_id_stone ) {
 		u32 idx = compute_idx( x - 1, y );
 		particle_t tmp_b = g_world_particle_data[ idx ];
 		write_data( idx, *p );
@@ -1487,7 +1557,7 @@ void update_fire( u32 x, u32 y )
 	// In water, so create steam and DIE
 	// Should also kill the water...
 	s32 lx, ly;
-	if ( is_in_liquid( x, y, &lx, &ly ) ) {
+	if ( is_in_water( x, y, &lx, &ly ) ) {
 		if ( random_val( 0, 1 ) == 0 ) {
 			s32 ry = random_val( -5, -1 );
 			s32 rx = random_val( -5, 5 );
@@ -1825,18 +1895,9 @@ void update_lava( u32 x, u32 y )
 
 	p->has_been_updated_this_frame = true;
 
-	if ( p->life_time > 10.f ) {
-		if ( random_val( 0, 100 ) == 0 ) {
-			write_data( read_idx, particle_empty() );
-			return;
-		}
-	}
-
 	p->velocity.y = gs_clamp( p->velocity.y + ((gravity * dt)), -10.f, 10.f );
-	// p->velocity.x = gs_clamp( p->velocity.x * st * 2.f, -5.f, 5.f );
 
 	// Change color based on life_time
-
 	if ( random_val( 0, (s32)(p->life_time * 100.f) ) % 200 == 0 ) {
 		s32 ran = random_val( 0, 3 );
 		switch ( ran ) {
@@ -1850,7 +1911,7 @@ void update_lava( u32 x, u32 y )
 	// In water, so create steam and DIE
 	// Should also kill the water...
 	s32 lx, ly;
-	if ( is_in_liquid( x, y, &lx, &ly ) ) {
+	if ( is_in_water( x, y, &lx, &ly ) ) {
 		if ( random_val( 0, 1 ) == 0 ) {
 			s32 ry = random_val( -5, -1 );
 			s32 rx = random_val( -5, 5 );
@@ -1866,10 +1927,12 @@ void update_lava( u32 x, u32 y )
 			particle_t p = particle_steam();
 			write_data( read_idx, particle_empty() );
 			write_data( read_idx, p );
-			write_data( compute_idx( lx, ly ), particle_empty() );
+			write_data( compute_idx( lx, ly ), particle_stone() );
 			return;
 		}
 	}
+
+	// Otherwise destroy anything that isn't fire or lava...eventually...
 
 	// Just check if you can move directly beneath you. If not, then reset your velocity. God, this is going to blow.
 	if ( in_bounds( x, y + 1 ) && !is_empty( x, y + 1 ) && ( get_particle_at( x, y + 1 ).id != mat_id_water || get_particle_at( x, y + 1 ).id != mat_id_smoke ) ) {
@@ -1879,10 +1942,18 @@ void update_lava( u32 x, u32 y )
 	s32 vi_x = x + (s32)p->velocity.x; 
 	s32 vi_y = y + (s32)p->velocity.y;
 
-	// Check to see if you can swap first with other element below you
-	u32 b_idx = compute_idx( x, y + 1 );
-	u32 br_idx = compute_idx( x + 1, y + 1 );
-	u32 bl_idx = compute_idx( x - 1, y + 1 );
+	const s32 spread_rate = 1;
+	s32 ran = random_val( 0, 1 );
+	s32 r = spread_rate;
+	s32 l = -r;
+	s32 u = fall_rate;
+	s32 v_idx = compute_idx ( x + (s32)p->velocity.x, y + (s32)p->velocity.y );
+	s32 b_idx = compute_idx( x, y + u );
+	s32 bl_idx = compute_idx( x + l, y + u );
+	s32 br_idx = compute_idx( x + r, y + u );
+	s32 l_idx = compute_idx( x + l, y );
+	s32 r_idx = compute_idx( x + r, y );
+	s32 vx = (s32)p->velocity.x, vy = (s32)p->velocity.y;
 
 	const s32 wood_chance = 200;
 	const s32 gun_powder_chance = 0;
@@ -2074,18 +2145,14 @@ void update_lava( u32 x, u32 y )
 		}
 	}
 
-	const s32 spread_rate = 1;
-	s32 ran = random_val( 0, 1 );
-	s32 r = ran ? spread_rate : -spread_rate;
-	s32 l = -r;
-	s32 u = fall_rate;
-	s32 v_idx = compute_idx ( x + (s32)p->velocity.x, y + (s32)p->velocity.y );
-	// s32 b_idx = compute_idx( x, y + u );
-	// s32 bl_idx = compute_idx( x + l, y + u );
-	// s32 br_idx = compute_idx( x + r, y + u );
-	s32 l_idx = compute_idx( x + l, y );
-	s32 r_idx = compute_idx( x + r, y );
-	s32 vx = (s32)p->velocity.x, vy = (s32)p->velocity.y;
+	// If in water, then need to float upwards
+	// s32 lx, ly;
+	// if ( is_in_liquid( x, y, &lx, &ly ) && in_bounds( x, y - 1 ) && get_particle_at( x, y - 1 ).id == mat_id_water ) {
+	// 	particle_t tmp = get_particle_at( x, y - 1 );
+	// 	write_data( compute_idx( x, y - 1 ), *p );
+	// 	write_data( read_idx, tmp );
+	// 	// return;
+	// }
 
 	if ( in_bounds( x + vx, y + vy ) && (is_empty( x + vx, y + vy ) ) ) {
 		write_data( v_idx, *p );
@@ -2096,12 +2163,10 @@ void update_lava( u32 x, u32 y )
 		write_data( read_idx, particle_empty() );
 	} 
 	else if ( is_empty( x + r, y + u ) ) {
-		p->velocity.x = r;
 		write_data( br_idx, *p );
 		write_data( read_idx, particle_empty() );
 	}
 	else if ( is_empty( x + l, y + u ) ) {
-		p->velocity.x = l;
 		write_data( bl_idx, *p );
 		write_data( read_idx, particle_empty() );
 	}
@@ -2110,7 +2175,7 @@ void update_lava( u32 x, u32 y )
 		b32 found = false;
 
 		for ( u32 i = 0; i < fall_rate; ++i ) {
-			for ( s32 j = 1; j < spread_rate; ++j )
+			for ( s32 j = spread_rate; j > 0; --j )
 			{
 				if ( is_empty( x - j, y + i ) ) {
 					write_data( compute_idx( x - j, y + i ), *p );
@@ -2118,8 +2183,8 @@ void update_lava( u32 x, u32 y )
 					found = true;
 					break;
 				}
-				else if ( is_empty( x + r, y + i ) ) {
-					write_data( compute_idx( x + r, y + i ), *p );
+				else if ( is_empty( x + j, y + i ) ) {
+					write_data( compute_idx( x + j, y + i ), *p );
 					write_data( read_idx, particle_empty() );
 					found = true;
 					break;
@@ -2471,6 +2536,19 @@ particle_t particle_steam()
 	p.id = mat_id_steam;
 	p.color = mat_col_steam;
 	return p;
+}
+
+particle_t particle_stone()
+{
+	particle_t p = {0};
+	p.id = mat_id_stone;
+	f32 r = (f32)(random_val( 0, 1 )) / 2.f;
+	p.color.r = (u8)(gs_interp_linear(0.5f, 0.65f, r) * 255.f);
+	p.color.g = (u8)(gs_interp_linear(0.5f, 0.65f, r) * 255.f);
+	p.color.b = (u8)(gs_interp_linear(0.5f, 0.65f, r) * 255.f);
+	p.color.a = 255;
+	return p;
+
 }
 
 

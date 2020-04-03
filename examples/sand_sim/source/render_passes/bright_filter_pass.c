@@ -26,7 +26,7 @@ const char* bp_f_src = "\n"
 "	frag_color = vec4(0.0, 0.0, 0.0, 1.0);\n"
 "	vec3 tex_color = texture(u_tex, fs_in.tex_coord).rgb;\n"
 "	float brightness = dot(tex_color, vec3(0.2126, 0.7152, 0.0722));\n"
-"	if (brightness > 0.3) {\n"
+"	if (tex_color.b < 0.2 && brightness > 0.4 ) {\n"
 "		vec3 op = clamp(tex_color, vec3(0), vec3(255));\n"
 "		frag_color = vec4(op * 0.1, 1.0);\n"
 "	}\n"
@@ -103,6 +103,19 @@ bright_filter_pass_t bright_filter_pass_ctor()
 	if ( !params ) {
 		return;
 	}
+
+	gs_texture_parameter_desc t_desc = gs_texture_parameter_desc_default();
+	t_desc.mag_filter = gs_linear;
+	t_desc.min_filter = gs_linear;
+	t_desc.texture_format = gs_texture_rgba16f;
+	t_desc.generate_mips = false;
+	t_desc.num_comps = 4;
+	t_desc.data = NULL;
+	t_desc.width = (s32)(ws.x / 8);
+	t_desc.height = (s32)(ws.y / 8);
+
+	// Two render targets for double buffered separable blur ( For now, just set to window's viewport )
+	gfx->update_texture_data( bp->data.render_target, t_desc );
 
 	// Set frame buffer attachment for rendering
 	gfx->set_frame_buffer_attachment( cb, bp->data.render_target, 0 );
