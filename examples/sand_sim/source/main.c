@@ -702,10 +702,10 @@ void construct_font_data()
 
 	if ( platform->file_exists( "../assets/font.png" ) ) {
 		g_font.data = gfx->load_texture_data_from_file( "../assets/font.png", false, gs_texture_format_rgb8,
-			&g_font.width, &g_font.height, &g_font.num_comps );
+			(s32*)&g_font.width, (s32*)&g_font.height, (s32*)&g_font.num_comps );
 	} else {
 		g_font.data = gfx->load_texture_data_from_file( "assets/font.png", false, gs_texture_format_rgb8,
-			&g_font.width, &g_font.height, &g_font.num_comps );
+			(s32*)&g_font.width, (s32*)&g_font.height, (s32*)&g_font.num_comps );
 	}
 
 	// Set up metrics
@@ -1946,7 +1946,7 @@ void update_fire( u32 x, u32 y )
 	}
 
 	if ( random_val( 0, 10 ) == 0 ) {
-		p->velocity.x = gs_clamp( p->velocity.x + (f32)random_val( -0.5f, 0.5f ), -1.f, 1.f );
+		p->velocity.x = gs_clamp( p->velocity.x + (f32)random_val( -1, 1 ) / 2.f, -1.f, 1.f );
 	}
 	// p->velocity.x = gs_clamp( p->velocity.x, -0.5f, 0.5f );
 
@@ -2027,9 +2027,9 @@ void update_fire( u32 x, u32 y )
 	}
 
 	// If directly on top of some wall, then replace it
-	if ( in_bounds( x, y + 1 ) && (get_particle_at( x, y + 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0 ||
-									get_particle_at( x, y + 1 ).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0 ||
-									get_particle_at( x, y + 1 ).id == mat_id_oil && random_val(0, oil_chance) == 0
+	if ( in_bounds( x, y + 1 ) && ((get_particle_at( x, y + 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0) ||
+									(get_particle_at( x, y + 1 ).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
+									(get_particle_at( x, y + 1 ).id == mat_id_oil && random_val(0, oil_chance) == 0)
 
 		)) {
 		write_data( compute_idx( x, y + 1 ), particle_fire() );
@@ -2049,9 +2049,9 @@ void update_fire( u32 x, u32 y )
 			}
 		}
 	}
-	else if ( in_bounds( x + 1, y + 1 ) && (get_particle_at( x + 1, y + 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0 ||
-									get_particle_at( x + 1, y + 1 ).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0 ||
-									get_particle_at( x + 1, y + 1 ).id == mat_id_oil && random_val(0, oil_chance) == 0
+	else if ( in_bounds( x + 1, y + 1 ) && ((get_particle_at( x + 1, y + 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0) ||
+									(get_particle_at( x + 1, y + 1 ).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
+									(get_particle_at( x + 1, y + 1 ).id == mat_id_oil && random_val(0, oil_chance) == 0)
 
 		)) {
 		write_data( compute_idx( x + 1, y + 1 ), particle_fire() );	
@@ -2071,9 +2071,9 @@ void update_fire( u32 x, u32 y )
 			}
 		}
 	}
-	else if ( in_bounds( x - 1, y + 1 ) && (get_particle_at( x - 1, y + 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0 ||
-									get_particle_at( x - 1, y + 1 ).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0 ||
-									get_particle_at( x - 1, y + 1 ).id == mat_id_oil && random_val(0, oil_chance) == 0
+	else if ( in_bounds( x - 1, y + 1 ) && ((get_particle_at( x - 1, y + 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0) ||
+									(get_particle_at( x - 1, y + 1 ).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
+									(get_particle_at( x - 1, y + 1 ).id == mat_id_oil && random_val(0, oil_chance) == 0)
 
 		)) {
 		write_data( compute_idx( x - 1, y + 1 ), particle_fire() );	
@@ -2093,9 +2093,9 @@ void update_fire( u32 x, u32 y )
 			}
 		}
 	}
-	else if ( in_bounds( x - 1, y ) && (get_particle_at( x - 1, y ).id == mat_id_wood && random_val( 0, wood_chance ) == 0 ||
-									get_particle_at( x - 1, y ).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0 ||
-									get_particle_at( x - 1, y ).id == mat_id_oil && random_val(0, oil_chance) == 0
+	else if ( in_bounds( x - 1, y ) && ((get_particle_at( x - 1, y ).id == mat_id_wood && random_val( 0, wood_chance ) == 0) ||
+									(get_particle_at( x - 1, y ).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
+									(get_particle_at( x - 1, y ).id == mat_id_oil && random_val(0, oil_chance) == 0)
 
 		)) {
 		write_data( compute_idx( x - 1, y ), particle_fire() );	
@@ -2115,9 +2115,9 @@ void update_fire( u32 x, u32 y )
 			}
 		}
 	}
-	else if ( in_bounds( x + 1, y ) && (get_particle_at( x + 1, y ).id == mat_id_wood && random_val( 0, wood_chance ) == 0 ||
-									get_particle_at( x + 1, y ).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0 ||
-									get_particle_at( x + 1, y ).id == mat_id_oil && random_val(0, oil_chance) == 0
+	else if ( in_bounds( x + 1, y ) && ((get_particle_at( x + 1, y ).id == mat_id_wood && random_val( 0, wood_chance ) == 0) ||
+									(get_particle_at( x + 1, y ).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
+									(get_particle_at( x + 1, y ).id == mat_id_oil && random_val(0, oil_chance) == 0)
 
 		)) {
 		write_data( compute_idx( x + 1, y ), particle_fire() );	
@@ -2137,9 +2137,9 @@ void update_fire( u32 x, u32 y )
 			}
 		}
 	}
-	else if ( in_bounds( x + 1, y - 1 ) && (get_particle_at( x + 1, y - 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0 ||
-									get_particle_at( x + 1, y - 1 ).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0 ||
-									get_particle_at( x + 1, y - 1 ).id == mat_id_oil && random_val(0, oil_chance) == 0
+	else if ( in_bounds( x + 1, y - 1 ) && ((get_particle_at( x + 1, y - 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0) ||
+									(get_particle_at( x + 1, y - 1 ).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
+									(get_particle_at( x + 1, y - 1 ).id == mat_id_oil && random_val(0, oil_chance) == 0)
 
 		)) {
 		write_data( compute_idx( x + 1, y - 1 ), particle_fire() );	
@@ -2159,9 +2159,9 @@ void update_fire( u32 x, u32 y )
 			}
 		}
 	}
-	else if ( in_bounds( x - 1, y - 1 ) && (get_particle_at( x - 1, y - 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0 ||
-									get_particle_at( x - 1, y - 1 ).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0 ||
-									get_particle_at( x - 1, y - 1 ).id == mat_id_oil && random_val(0, oil_chance) == 0
+	else if ( in_bounds( x - 1, y - 1 ) && ((get_particle_at( x - 1, y - 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0) ||
+									(get_particle_at( x - 1, y - 1 ).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
+									(get_particle_at( x - 1, y - 1 ).id == mat_id_oil && random_val(0, oil_chance) == 0)
 
 		)) {
 		write_data( compute_idx( x - 1, y - 1 ), particle_fire() );	
@@ -2358,9 +2358,9 @@ void update_lava( u32 x, u32 y )
 	}
 
 	// If directly on top of some wall, then replace it
-	if ( in_bounds( x, y + 1 ) && (get_particle_at( x, y + 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0 ||
-									get_particle_at( x, y + 1 ).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0 ||
-									get_particle_at( x, y + 1 ).id == mat_id_oil && random_val(0, oil_chance) == 0
+	if ( in_bounds( x, y + 1 ) && ((get_particle_at( x, y + 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0) ||
+									(get_particle_at( x, y + 1 ).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
+									(get_particle_at( x, y + 1 ).id == mat_id_oil && random_val(0, oil_chance) == 0)
 
 		)) {
 		write_data( compute_idx( x, y + 1 ), particle_fire() );
@@ -2380,9 +2380,9 @@ void update_lava( u32 x, u32 y )
 			}
 		}
 	}
-	else if ( in_bounds( x + 1, y + 1 ) && (get_particle_at( x + 1, y + 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0 ||
-									get_particle_at( x + 1, y + 1 ).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0 ||
-									get_particle_at( x + 1, y + 1 ).id == mat_id_oil && random_val(0, oil_chance) == 0
+	else if ( in_bounds( x + 1, y + 1 ) && ((get_particle_at( x + 1, y + 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0) ||
+									(get_particle_at( x + 1, y + 1 ).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
+									(get_particle_at( x + 1, y + 1 ).id == mat_id_oil && random_val(0, oil_chance) == 0)
 
 		)) {
 		write_data( compute_idx( x + 1, y + 1 ), particle_fire() );	
@@ -2401,9 +2401,9 @@ void update_lava( u32 x, u32 y )
 			}
 		}
 	}
-	else if ( in_bounds( x - 1, y + 1 ) && (get_particle_at( x - 1, y + 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0 ||
-									get_particle_at( x - 1, y + 1 ).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0 ||
-									get_particle_at( x - 1, y + 1 ).id == mat_id_oil && random_val(0, oil_chance) == 0
+	else if ( in_bounds( x - 1, y + 1 ) && ((get_particle_at( x - 1, y + 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0) ||
+									(get_particle_at( x - 1, y + 1 ).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
+									(get_particle_at( x - 1, y + 1 ).id == mat_id_oil && random_val(0, oil_chance) == 0)
 
 		)) {
 		write_data( compute_idx( x - 1, y + 1 ), particle_fire() );	
@@ -2422,9 +2422,9 @@ void update_lava( u32 x, u32 y )
 			}
 		}
 	}
-	else if ( in_bounds( x - 1, y ) && (get_particle_at( x - 1, y ).id == mat_id_wood && random_val( 0, wood_chance ) == 0 ||
-									get_particle_at( x - 1, y ).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0 ||
-									get_particle_at( x - 1, y ).id == mat_id_oil && random_val(0, oil_chance) == 0
+	else if ( in_bounds( x - 1, y ) && ((get_particle_at( x - 1, y ).id == mat_id_wood && random_val( 0, wood_chance ) == 0) ||
+									(get_particle_at( x - 1, y ).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
+									(get_particle_at( x - 1, y ).id == mat_id_oil && random_val(0, oil_chance) == 0)
 
 		)) {
 		write_data( compute_idx( x - 1, y ), particle_fire() );	
@@ -2443,9 +2443,9 @@ void update_lava( u32 x, u32 y )
 			}
 		}
 	}
-	else if ( in_bounds( x + 1, y ) && (get_particle_at( x + 1, y ).id == mat_id_wood && random_val( 0, wood_chance ) == 0 ||
-									get_particle_at( x + 1, y ).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0 ||
-									get_particle_at( x + 1, y ).id == mat_id_oil && random_val(0, oil_chance) == 0
+	else if ( in_bounds( x + 1, y ) && ((get_particle_at( x + 1, y ).id == mat_id_wood && random_val( 0, wood_chance ) == 0) ||
+									(get_particle_at( x + 1, y ).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
+									(get_particle_at( x + 1, y ).id == mat_id_oil && random_val(0, oil_chance) == 0)
 
 		)) {
 		write_data( compute_idx( x + 1, y ), particle_fire() );	
@@ -2464,9 +2464,9 @@ void update_lava( u32 x, u32 y )
 			}
 		}
 	}
-	else if ( in_bounds( x + 1, y - 1 ) && (get_particle_at( x + 1, y - 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0 ||
-									get_particle_at( x + 1, y - 1 ).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0 ||
-									get_particle_at( x + 1, y - 1 ).id == mat_id_oil && random_val(0, oil_chance) == 0
+	else if ( in_bounds( x + 1, y - 1 ) && ((get_particle_at( x + 1, y - 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0) ||
+									(get_particle_at( x + 1, y - 1 ).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
+									(get_particle_at( x + 1, y - 1 ).id == mat_id_oil && random_val(0, oil_chance) == 0)
 
 		)) {
 		write_data( compute_idx( x + 1, y - 1 ), particle_fire() );	
@@ -2485,9 +2485,9 @@ void update_lava( u32 x, u32 y )
 			}
 		}
 	}
-	else if ( in_bounds( x - 1, y - 1 ) && (get_particle_at( x - 1, y - 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0 ||
-									get_particle_at( x - 1, y - 1 ).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0 ||
-									get_particle_at( x - 1, y - 1 ).id == mat_id_oil && random_val(0, oil_chance) == 0
+	else if ( in_bounds( x - 1, y - 1 ) && ((get_particle_at( x - 1, y - 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0) ||
+									(get_particle_at( x - 1, y - 1 ).id == mat_id_gunpowder && random_val(0, gun_powder_chance) == 0) ||
+									(get_particle_at( x - 1, y - 1 ).id == mat_id_oil && random_val(0, oil_chance) == 0)
 
 		)) {
 		write_data( compute_idx( x - 1, y - 1 ), particle_fire() );	
@@ -2694,70 +2694,70 @@ void update_acid( u32 x, u32 y )
 	}
 
 	// If directly on top of some wall, then replace it
-	if ( in_bounds( x, y + 1 ) && (get_particle_at( x, y + 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0 ||
-									get_particle_at( x, y + 1 ).id == mat_id_stone && random_val(0, stone_chance) == 0 
-									|| get_particle_at( x, y + 1 ).id == mat_id_sand && random_val(0, sand_chance) == 0
-									|| get_particle_at( x, y + 1 ).id == mat_id_salt && random_val(0, salt_chance) == 0
+	if ( in_bounds( x, y + 1 ) && ((get_particle_at( x, y + 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0) ||
+									(get_particle_at( x, y + 1 ).id == mat_id_stone && random_val(0, stone_chance) == 0)
+									|| (get_particle_at( x, y + 1 ).id == mat_id_sand && random_val(0, sand_chance) == 0)
+									|| (get_particle_at( x, y + 1 ).id == mat_id_salt && random_val(0, salt_chance) == 0)
 
 		)) 
 	{
 		write_data( compute_idx( x, y + 1 ), *p );
 		write_data( read_idx, particle_empty() );
 	}
-	else if ( in_bounds( x + 1, y + 1 ) && (get_particle_at( x + 1, y + 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0 ||
-									get_particle_at( x + 1, y + 1 ).id == mat_id_stone && random_val(0, stone_chance) == 0 
-									|| get_particle_at( x + 1, y + 1 ).id == mat_id_sand && random_val(0, sand_chance) == 0
-									|| get_particle_at( x + 1, y + 1 ).id == mat_id_salt && random_val(0, salt_chance) == 0
+	else if ( in_bounds( x + 1, y + 1 ) && ((get_particle_at( x + 1, y + 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0) ||
+									(get_particle_at( x + 1, y + 1 ).id == mat_id_stone && random_val(0, stone_chance) == 0) 
+									|| (get_particle_at( x + 1, y + 1 ).id == mat_id_sand && random_val(0, sand_chance) == 0)
+									|| (get_particle_at( x + 1, y + 1 ).id == mat_id_salt && random_val(0, salt_chance) == 0)
 
 		)) 
 	{
 		write_data( compute_idx( x + 1, y + 1 ), *p );	
 		write_data( read_idx, particle_empty() );
 	}
-	else if ( in_bounds( x - 1, y + 1 ) && (get_particle_at( x - 1, y + 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0 ||
-									get_particle_at( x - 1, y + 1 ).id == mat_id_stone && random_val(0, stone_chance) == 0 
-									|| get_particle_at( x - 1, y + 1 ).id == mat_id_sand && random_val(0, sand_chance) == 0
-									|| get_particle_at( x - 1, y + 1 ).id == mat_id_salt && random_val(0, salt_chance) == 0
+	else if ( in_bounds( x - 1, y + 1 ) && ((get_particle_at( x - 1, y + 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0) ||
+									(get_particle_at( x - 1, y + 1 ).id == mat_id_stone && random_val(0, stone_chance) == 0)
+									|| (get_particle_at( x - 1, y + 1 ).id == mat_id_sand && random_val(0, sand_chance) == 0)
+									|| (get_particle_at( x - 1, y + 1 ).id == mat_id_salt && random_val(0, salt_chance) == 0)
 
 		)) 
 	{
 		write_data( compute_idx( x - 1, y + 1 ), *p );	
 		write_data( read_idx, particle_empty() );
 	}
-	else if ( in_bounds( x - 1, y ) && (get_particle_at( x - 1, y ).id == mat_id_wood && random_val( 0, wood_chance ) == 0 ||
-									get_particle_at( x - 1, y ).id == mat_id_stone && random_val(0, stone_chance) == 0 
-									|| get_particle_at( x - 1, y ).id == mat_id_sand && random_val(0, sand_chance) == 0
-									|| get_particle_at( x - 1, y ).id == mat_id_salt && random_val(0, salt_chance) == 0
+	else if ( in_bounds( x - 1, y ) && ((get_particle_at( x - 1, y ).id == mat_id_wood && random_val( 0, wood_chance ) == 0) ||
+									(get_particle_at( x - 1, y ).id == mat_id_stone && random_val(0, stone_chance) == 0)
+									|| (get_particle_at( x - 1, y ).id == mat_id_sand && random_val(0, sand_chance) == 0)
+									|| (get_particle_at( x - 1, y ).id == mat_id_salt && random_val(0, salt_chance) == 0)
 
 		)) 
 	{
 		write_data( compute_idx( x - 1, y ), *p );	
 		write_data( read_idx, particle_empty() );
 	}
-	else if ( in_bounds( x + 1, y ) && (get_particle_at( x + 1, y ).id == mat_id_wood && random_val( 0, wood_chance ) == 0 ||
-									get_particle_at( x + 1, y ).id == mat_id_stone && random_val(0, stone_chance) == 0 
-									|| get_particle_at( x + 1, y ).id == mat_id_sand && random_val(0, sand_chance) == 0
-									|| get_particle_at( x + 1, y ).id == mat_id_salt && random_val(0, sand_chance) == 0
+	else if ( in_bounds( x + 1, y ) && ((get_particle_at( x + 1, y ).id == mat_id_wood && random_val( 0, wood_chance ) == 0) ||
+									(get_particle_at( x + 1, y ).id == mat_id_stone && random_val(0, stone_chance) == 0)
+									|| (get_particle_at( x + 1, y ).id == mat_id_sand && random_val(0, sand_chance) == 0)
+									|| (get_particle_at( x + 1, y ).id == mat_id_salt && random_val(0, sand_chance) == 0)
 
 		)) 
 	{
 		write_data( compute_idx( x + 1, y ), *p );	
 		write_data( read_idx, particle_empty() );
 	}
-	else if ( in_bounds( x + 1, y - 1 ) && (get_particle_at( x + 1, y - 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0 ||
-									get_particle_at( x + 1, y - 1 ).id == mat_id_stone && random_val(0, stone_chance) == 0 
-									|| get_particle_at( x + 1, y - 1 ).id == mat_id_sand && random_val(0, sand_chance) == 0
-									|| get_particle_at( x + 1, y - 1 ).id == mat_id_salt && random_val(0, salt_chance) == 0
+	else if ( in_bounds( x + 1, y - 1 ) && ((get_particle_at( x + 1, y - 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0) ||
+									(get_particle_at( x + 1, y - 1 ).id == mat_id_stone && random_val(0, stone_chance) == 0)
+									|| (get_particle_at( x + 1, y - 1 ).id == mat_id_sand && random_val(0, sand_chance) == 0)
+									|| (get_particle_at( x + 1, y - 1 ).id == mat_id_salt && random_val(0, salt_chance) == 0)
 
 		)) 
 	{
 		write_data( compute_idx( x + 1, y - 1 ), *p );	
 		write_data( read_idx, particle_empty() );
 	}
-	else if ( in_bounds( x - 1, y - 1 ) && (get_particle_at( x - 1, y - 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0 ||
-									get_particle_at( x - 1, y - 1 ).id == mat_id_stone && random_val(0, stone_chance) == 0 
-									|| get_particle_at( x - 1, y - 1 ).id == mat_id_sand && random_val(0, sand_chance) == 0
-									|| get_particle_at( x - 1, y - 1 ).id == mat_id_salt && random_val(0, salt_chance) == 0
+	else if ( in_bounds( x - 1, y - 1 ) && ((get_particle_at( x - 1, y - 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0) ||
+									(get_particle_at( x - 1, y - 1 ).id == mat_id_stone && random_val(0, stone_chance) == 0)
+									|| (get_particle_at( x - 1, y - 1 ).id == mat_id_sand && random_val(0, sand_chance) == 0)
+									|| (get_particle_at( x - 1, y - 1 ).id == mat_id_salt && random_val(0, salt_chance) == 0)
 
 		)) 
 	{

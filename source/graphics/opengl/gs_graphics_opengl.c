@@ -1445,6 +1445,7 @@ gs_resource( gs_texture ) opengl_construct_texture( gs_texture_parameter_desc de
 	// Construct texture based on appropriate format
 	switch( texture_format ) 
 	{
+		case gs_texture_format_rgb8: 	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, desc.data ); break;
 		case gs_texture_format_rgba8: 	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, desc.data ); break;
 		case gs_texture_format_rgba16f: glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, desc.data ); break;
 	}
@@ -1546,7 +1547,8 @@ gs_resource( gs_texture ) opengl_construct_texture_from_file( const char* file_p
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
 	// Load texture data and fill out parameters for descriptor
-	t_desc.data = opengl_load_texture_data_from_file( file_path, t_desc.texture_format, flip_vertically_on_load, &t_desc.width, &t_desc.height, &t_desc.num_comps );
+	t_desc.data = opengl_load_texture_data_from_file( file_path, t_desc.texture_format, 
+		flip_vertically_on_load, (s32*)&t_desc.width, (s32*)&t_desc.height, (s32*)&t_desc.num_comps );
 
 	// Finish constructing texture resource from descriptor and return handle
 	return ( opengl_construct_texture( t_desc ) );
@@ -1569,7 +1571,8 @@ void opengl_update_texture_data( gs_resource( gs_texture ) t_handle, gs_texture_
 	// Construct texture based on appropriate format
 	switch( texture_format ) 
 	{
-		case gs_texture_format_rgba8: 	 glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, t_desc.data ); break;
+		case gs_texture_format_rgb8: 	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, t_desc.data ); break;
+		case gs_texture_format_rgba8: 	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, t_desc.data ); break;
 		case gs_texture_format_rgba16f: glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, t_desc.data ); break;
 	}
 

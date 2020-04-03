@@ -13,11 +13,13 @@ flags=(
 # Include directories
 inc=(
 	-I ../../../include/		# Gunslinger includes
+	-I ../include/				# SandSim includes
 )
 
 # Source files
 src=(
 	../source/main.c
+	../source/render_passes/*.c
 )
 
 lib_dirs=(

@@ -32,4 +32,4 @@ typedef struct composite_pass_parameters_t
 
 composite_pass_t composite_pass_ctor();
 
-#endif#endif
+#endif

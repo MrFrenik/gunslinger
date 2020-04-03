@@ -26,4 +26,4 @@ typedef struct bright_filter_pass_parameters_t
 
 bright_filter_pass_t bright_filter_pass_ctor();
 
-#endif#endif
+#endif

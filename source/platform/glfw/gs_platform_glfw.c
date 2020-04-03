@@ -409,7 +409,7 @@ void glfw_set_dropped_files_callback( gs_resource_handle handle, dropped_files_c
 {
 	struct gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 	GLFWwindow* win = __window_from_handle( platform, handle );
-	glfwSetDropCallback( win, callback );
+	glfwSetDropCallback( win, (GLFWdropfun)callback );
 }
 
 
