@@ -41,17 +41,21 @@ typedef struct font_glyph_t
 {
 	u32 x;
 	u32 y;
+	u32 width;
+	u32 height;
 } font_glyph_t;
 
 // 6 rows of font data to use * 18 columns
 // Total num glyphs = 6 * 18 - (18 - 5)
 #define total_num_font_glyphs (6 * 18)
+
 typedef struct font_t
 {
 	void* data;
 	u32 width;
 	u32 height;
 	u32 num_comps;
+	u32 glyph_advance;
 	gs_texture_format texture_format;
 	font_glyph_t glyphs[ total_num_font_glyphs ];
 } font_t;
@@ -86,6 +90,7 @@ _global font_t								g_font = {0};
 #define mat_id_oil (u8)10
 #define mat_id_lava (u8)11
 #define mat_id_stone (u8)12
+#define mat_id_acid (u8)13
 
 // Colors
 #define mat_col_empty (color_t){ 0, 0, 0, 0}
@@ -95,11 +100,13 @@ _global font_t								g_font = {0};
 #define mat_col_stone (color_t){ 120, 110, 120, 255 }
 #define mat_col_wood (color_t){ 60, 40, 20, 255 }
 #define mat_col_fire  (color_t){ 150, 20, 0, 255 }
-#define mat_col_smoke (color_t){ 30, 20, 15, 255 }
+#define mat_col_smoke (color_t){ 50, 50, 50, 255 }
 #define mat_col_ember (color_t){ 200, 120, 20, 255 }
-#define mat_col_steam (color_t){ 220, 220, 250, 255 };
-#define mat_col_gunpowder (color_t){ 60, 60, 60, 255 };
-#define mat_col_oil (color_t){ 80, 70, 60, 255 };
+#define mat_col_steam (color_t){ 220, 220, 250, 255 }
+#define mat_col_gunpowder (color_t){ 60, 60, 60, 255 }
+#define mat_col_oil (color_t){ 80, 70, 60, 255 }
+#define mat_col_lava  (color_t){ 200, 50, 0, 255 }
+#define mat_col_acid  (color_t){ 20, 200, 30, 255 }
 
 typedef enum material_selection
 {
@@ -113,7 +120,8 @@ typedef enum material_selection
 	mat_sel_gunpowder,
 	mat_sel_oil,
 	mat_sel_lava,
-	mat_sel_stone
+	mat_sel_stone,
+	mat_sel_acid
 } material_selection;
 
 // Material selection for "painting" / default to sand
@@ -138,6 +146,8 @@ _global u32 g_frame_counter = 0;
 _global f32 gravity = 10.f;
 
 _global f32 g_selection_radius = 10.f;
+
+_global b32 g_show_material_selection_panel = true;
 
 // Handle for main window
 _global gs_resource_handle g_window;
@@ -182,8 +192,12 @@ particle_t particle_steam();
 particle_t particle_gunpowder();
 particle_t particle_oil();
 particle_t particle_stone();
+particle_t particle_acid();
 
 void update_input();
+b32 update_ui();
+
+// Particle updates
 void update_particle_sim();
 void update_sand( u32 x, u32 y );
 void update_water( u32 x, u32 y );
@@ -195,10 +209,16 @@ void update_steam( u32 x, u32 y );
 void update_gunpowder( u32 x, u32 y );
 void update_oil( u32 x, u32 y );
 void update_lava( u32 x, u32 y );
+void update_acid( u32 x, u32 y );
 void update_default( u32 x, u32 y );
+
+// Utilities for writing data into color buffer
 void write_data( u32 idx, particle_t );
-void update_ui();
+
+// Rendering
 void render_scene();
+
+// Font methods
 void construct_font_data();
 font_glyph_t get_glyph( font_t* f, char c );
 
@@ -393,6 +413,138 @@ int main( int argc, char** argv )
 	return 0;	
 }
 
+#define __check_dist_euclidean(dist, p_func)\
+	do {\
+		if (dist < min_dist) {\
+			min_dist = dist;\
+			p = p_func();\
+		}\
+	} while ( 0 )
+
+#define __check_dist( c0, c1, p_func )\
+	do\
+	{\
+		f32 rd = (f32)c0.r - (f32)c1.r;\
+		f32 gd = (f32)c0.g - (f32)c1.g;\
+		f32 bd = (f32)c0.b - (f32)c1.b;\
+		f32 sd = rd * rd + gd * gd + bd * bd;\
+		f32 d = pow(rd * 0.299, 2) + pow(gd * 0.587, 2) + pow(bd * 0.114, 2);\
+		if (d < min_dist) {\
+			min_dist = d;\
+			p = p_func();\
+		}\
+	} while ( 0 )
+
+particle_t get_closest_particle_from_color( color_t c )
+{
+	particle_t p = particle_empty();
+	f32 min_dist = f32_max;
+	gs_vec4 c_vec = (gs_vec4){ (f32)c.r, (f32)c.g, (f32)c.b, (f32)c.a };
+	u8 id = mat_id_empty;	
+
+	__check_dist( c, mat_col_sand, particle_sand );
+	__check_dist( c, mat_col_water, particle_water );
+	__check_dist( c, mat_col_salt, particle_salt );
+	__check_dist( c, mat_col_wood, particle_wood );
+	__check_dist( c, mat_col_fire, particle_fire );
+	__check_dist( c, mat_col_smoke, particle_smoke );
+	__check_dist( c, mat_col_steam, particle_steam );
+	__check_dist( c, mat_col_gunpowder, particle_gunpowder );
+	__check_dist( c, mat_col_oil, particle_oil );
+	__check_dist( c, mat_col_lava, particle_lava );
+	__check_dist( c, mat_col_stone, particle_stone );
+	__check_dist( c, mat_col_acid, particle_acid );
+
+	// f32 sand_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_sand.r, (f32)mat_col_sand.g, (f32)mat_col_sand.b, 255.f } );
+	// f32 water_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_water.r, (f32)mat_col_water.g, (f32)mat_col_water.b, 255.f } );
+	// f32 salt_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_salt.r, (f32)mat_col_salt.g, (f32)mat_col_salt.b, 255.f } );
+	// f32 wood_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_wood.r, (f32)mat_col_wood.g, (f32)mat_col_wood.b, 255.f } );
+	// f32 fire_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_fire.r, (f32)mat_col_fire.g, (f32)mat_col_fire.b, 255.f } );
+	// f32 smoke_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_smoke.r, (f32)mat_col_smoke.g, (f32)mat_col_smoke.b, 255.f } );
+	// f32 steam_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_steam.r, (f32)mat_col_steam.g, (f32)mat_col_steam.b, 255.f } );
+	// f32 gunpowder_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_gunpowder.r, (f32)mat_col_gunpowder.g, (f32)mat_col_gunpowder.b, 255.f } );
+	// f32 oil_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_oil.r, (f32)mat_col_oil.g, (f32)mat_col_oil.b, 255.f } );
+	// f32 lava_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_lava.r, (f32)mat_col_lava.g, (f32)mat_col_lava.b, 255.f } );
+	// f32 stone_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_stone.r, (f32)mat_col_stone.g, (f32)mat_col_stone.b, 255.f } );
+	// f32 acid_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_acid.r, (f32)mat_col_acid.g, (f32)mat_col_acid.b, 255.f } );
+
+	// __check_dist(sand_dist, particle_sand);
+	// __check_dist(water_dist, particle_water);
+	// __check_dist(salt_dist, particle_salt);
+	// __check_dist(wood_dist, particle_wood);
+	// __check_dist(fire_dist, particle_fire);
+	// __check_dist(smoke_dist, particle_smoke);
+	// __check_dist(steam_dist, particle_steam);
+	// __check_dist(gunpowder_dist, particle_gunpowder);
+	// __check_dist(oil_dist, particle_oil);
+	// __check_dist(lava_dist, particle_lava);
+	// __check_dist(stone_dist, particle_stone);
+	// __check_dist(acid_dist, particle_acid);
+
+	return p;
+}
+
+void drop_file_callback( void* platform_window, s32 count, const char** file_paths )
+{
+	if ( count < 1 ) return;
+
+	// Just do first one for now...
+	if ( count > 1 ) count = 1;
+
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+
+	// We'll place at the mouse position as well, for shiggles
+	gs_vec2 mp = calculate_mouse_position();
+
+	for ( s32 i = 0; i < count; ++i )
+	{
+		// Need to verify this IS an image first.
+		char temp_file_extension_buffer[ 16 ] = {0}; 
+		gs_util_get_file_extension( temp_file_extension_buffer, sizeof( temp_file_extension_buffer ), file_paths[ 0 ] );
+		if ( gs_string_compare_equal(temp_file_extension_buffer, "png" ) || 
+			 gs_string_compare_equal(temp_file_extension_buffer, "jpg" ) || 
+			 gs_string_compare_equal(temp_file_extension_buffer, "jpeg") || 
+			 gs_string_compare_equal(temp_file_extension_buffer, "bmp" ) )
+		{
+			// Load texture into memory
+			s32 _w, _h, _n;
+
+			// Not sure what the format should be, so this is ...blah. Need to find a way to determine this beforehand.
+			void* texture_data = gfx->load_texture_data_from_file( file_paths[ i ], false, gs_texture_format_rgba8, &_w, &_h, &_n );
+			u8* data = (u8*)texture_data;
+
+			// Now we need to process the data and place it into our particle/color buffers
+			for ( u32 h = 0; h < _h; ++h ) 
+			{
+				for ( u32 w = 0; w < _w; ++w ) 
+				{
+					color_t c = 
+					{
+						data[ (h * _w + w) * _n + 0 ],
+						data[ (h * _w + w) * _n + 1 ],
+						data[ (h * _w + w) * _n + 2 ],
+						255
+					};
+
+					// Get color of this pixel in the image
+					particle_t p = get_closest_particle_from_color( c );
+
+					// For now, just write some water into the buffer
+					if ( in_bounds( mp.x + w, mp.y + h ) ) {
+
+						u32 idx = compute_idx( mp.x + w, mp.y + h );
+						write_data( idx, p );
+					}
+				}
+			}
+
+			// Free texture data
+			gs_free( texture_data );
+		}
+
+	}
+}
+
 // Here, we'll initialize all of our application data, which in this case is our graphics resources
 gs_result app_init()
 {
@@ -497,6 +649,9 @@ gs_result app_init()
 	// Load UI font texture data from file
 	construct_font_data();
 
+	// Set up callback for dropping them files, yo.
+	platform->set_dropped_files_callback( platform->main_window(), &drop_file_callback );
+
 	return gs_result_success;
 }
 
@@ -511,15 +666,17 @@ gs_result app_update()
 		return gs_result_success;
 	}
 
-	gs_timed_action( 10, 
-	{
+	// Why not print this elsewhere, yo?
+	gs_timed_action( 60, {
 		gs_println( "frame: %.5f ms", engine->ctx.platform->time.frame );
 	});
 
 	// All application updates
-	update_input();
+	b32 ui_interaction = update_ui();
+	if ( !ui_interaction ) {
+		update_input();
+	}
 	update_particle_sim();
-	update_ui();
 
 	/*===============
 	// Render scene
@@ -551,6 +708,9 @@ void construct_font_data()
 			&g_font.width, &g_font.height, &g_font.num_comps );
 	}
 
+	// Set up metrics
+	g_font.glyph_advance = 1;
+
 	// Construct glyph information
 	const s32 glyph_width = 5, glyph_height = 7;
 	for ( u32 r = 0; r < 6; ++r ) 
@@ -558,7 +718,7 @@ void construct_font_data()
 		for ( u32 c = 0; c < 18; ++c ) 
 		{
 			u32 idx = r * 18 + c;
-			g_font.glyphs[ idx ] = (font_glyph_t){ c * 5, r * 7 };
+			g_font.glyphs[ idx ] = (font_glyph_t){ c * 5, r * 7, 5, 7 };
 		}
 	}
 }
@@ -575,91 +735,93 @@ font_glyph_t get_glyph( font_t* f, char c )
 		case '%': return g_font.glyphs[ 5 ];
 		case '&': return g_font.glyphs[ 6 ];
 		case '\'': return g_font.glyphs[ 7 ];
-		case '*': return g_font.glyphs[ 8 ];
-		case '+': return g_font.glyphs[ 9 ];
-		case ',': return g_font.glyphs[ 10 ];
-		case '-': return g_font.glyphs[ 11 ];
-		case '.': return g_font.glyphs[ 12 ];
-		case '/': return g_font.glyphs[ 13 ];
-		case '0': return g_font.glyphs[ 14 ];
-		case '1': return g_font.glyphs[ 15 ];
-		case '2': return g_font.glyphs[ 16 ];
-		case '3': return g_font.glyphs[ 17 ];
-		case '4': return g_font.glyphs[ 18 ];
-		case '5': return g_font.glyphs[ 19 ];
-		case '6': return g_font.glyphs[ 20 ];
-		case '7': return g_font.glyphs[ 21 ];
-		case '8': return g_font.glyphs[ 22 ];
-		case '9': return g_font.glyphs[ 23 ];
-		case ':': return g_font.glyphs[ 24 ];
-		case ';': return g_font.glyphs[ 25 ];
-		case '<': return g_font.glyphs[ 26 ];
-		case '=': return g_font.glyphs[ 27 ];
-		case '>': return g_font.glyphs[ 28 ];
-		case '?': return g_font.glyphs[ 29 ];
-		case '@': return g_font.glyphs[ 30 ];
-		case 'A': return g_font.glyphs[ 31 ];
-		case 'B': return g_font.glyphs[ 32 ];
-		case 'C': return g_font.glyphs[ 33 ];
-		case 'D': return g_font.glyphs[ 34 ];
-		case 'E': return g_font.glyphs[ 35 ];
-		case 'F': return g_font.glyphs[ 36 ];
-		case 'G': return g_font.glyphs[ 37 ];
-		case 'H': return g_font.glyphs[ 38 ];
-		case 'I': return g_font.glyphs[ 39 ];
-		case 'J': return g_font.glyphs[ 40 ];
-		case 'K': return g_font.glyphs[ 41 ];
-		case 'L': return g_font.glyphs[ 42 ];
-		case 'M': return g_font.glyphs[ 43 ];
-		case 'N': return g_font.glyphs[ 44 ];
-		case 'O': return g_font.glyphs[ 45 ];
-		case 'P': return g_font.glyphs[ 46 ];
-		case 'Q': return g_font.glyphs[ 47 ];
-		case 'R': return g_font.glyphs[ 48 ];
-		case 'S': return g_font.glyphs[ 49 ];
-		case 'T': return g_font.glyphs[ 50 ];
-		case 'U': return g_font.glyphs[ 51 ];
-		case 'V': return g_font.glyphs[ 52 ];
-		case 'W': return g_font.glyphs[ 53 ];
-		case 'X': return g_font.glyphs[ 54 ];
-		case 'Y': return g_font.glyphs[ 55 ];
-		case 'Z': return g_font.glyphs[ 56 ];
-		case '[': return g_font.glyphs[ 57 ];
-		case '\\': return g_font.glyphs[ 58 ];
-		case ']': return g_font.glyphs[ 59 ];
-		case '^': return g_font.glyphs[ 60 ];
-		case '_': return g_font.glyphs[ 61 ];
-		case '`': return g_font.glyphs[ 62 ];
-		case 'a': return g_font.glyphs[ 63 ];
-		case 'b': return g_font.glyphs[ 64 ];
-		case 'c': return g_font.glyphs[ 65 ];
-		case 'd': return g_font.glyphs[ 66 ];
-		case 'e': return g_font.glyphs[ 67 ];
-		case 'f': return g_font.glyphs[ 68 ];
-		case 'g': return g_font.glyphs[ 69 ];
-		case 'h': return g_font.glyphs[ 70 ];
-		case 'i': return g_font.glyphs[ 71 ];
-		case 'j': return g_font.glyphs[ 72 ];
-		case 'k': return g_font.glyphs[ 73 ];
-		case 'l': return g_font.glyphs[ 74 ];
-		case 'm': return g_font.glyphs[ 75 ];
-		case 'n': return g_font.glyphs[ 76 ];
-		case 'o': return g_font.glyphs[ 77 ];
-		case 'p': return g_font.glyphs[ 78 ];
-		case 'q': return g_font.glyphs[ 79 ];
-		case 'r': return g_font.glyphs[ 80 ];
-		case 's': return g_font.glyphs[ 81 ];
-		case 't': return g_font.glyphs[ 82 ];
-		case 'u': return g_font.glyphs[ 83 ];
-		case 'v': return g_font.glyphs[ 84 ];
-		case 'w': return g_font.glyphs[ 85 ];
-		case 'x': return g_font.glyphs[ 86 ];
-		case 'y': return g_font.glyphs[ 87 ];
-		case 'z': return g_font.glyphs[ 88 ];
-		case '{': return g_font.glyphs[ 89 ];
-		case '|': return g_font.glyphs[ 90 ];
-		case '}': return g_font.glyphs[ 91 ];
-		case '~': return g_font.glyphs[ 92 ];
+		case '(': return g_font.glyphs[ 8 ];
+		case ')': return g_font.glyphs[ 9 ];
+		case '*': return g_font.glyphs[ 10 ];
+		case '+': return g_font.glyphs[ 11 ];
+		case ',': return g_font.glyphs[ 12 ];
+		case '-': return g_font.glyphs[ 13 ];
+		case '.': return g_font.glyphs[ 14 ];
+		case '/': return g_font.glyphs[ 15 ];
+		case '0': return g_font.glyphs[ 16 ];
+		case '1': return g_font.glyphs[ 17 ];
+		case '2': return g_font.glyphs[ 18 ];
+		case '3': return g_font.glyphs[ 19 ];
+		case '4': return g_font.glyphs[ 20 ];
+		case '5': return g_font.glyphs[ 21 ];
+		case '6': return g_font.glyphs[ 22 ];
+		case '7': return g_font.glyphs[ 23 ];
+		case '8': return g_font.glyphs[ 24 ];
+		case '9': return g_font.glyphs[ 25 ];
+		case ':': return g_font.glyphs[ 26 ];
+		case ';': return g_font.glyphs[ 27 ];
+		case '<': return g_font.glyphs[ 28 ];
+		case '=': return g_font.glyphs[ 29 ];
+		case '>': return g_font.glyphs[ 30 ];
+		case '?': return g_font.glyphs[ 31 ];
+		case '@': return g_font.glyphs[ 32 ];
+		case 'A': return g_font.glyphs[ 33 ];
+		case 'B': return g_font.glyphs[ 34 ];
+		case 'C': return g_font.glyphs[ 35 ];
+		case 'D': return g_font.glyphs[ 36 ];
+		case 'E': return g_font.glyphs[ 37 ];
+		case 'F': return g_font.glyphs[ 38 ];
+		case 'G': return g_font.glyphs[ 39 ];
+		case 'H': return g_font.glyphs[ 40 ];
+		case 'I': return g_font.glyphs[ 41 ];
+		case 'J': return g_font.glyphs[ 42 ];
+		case 'K': return g_font.glyphs[ 43 ];
+		case 'L': return g_font.glyphs[ 44 ];
+		case 'M': return g_font.glyphs[ 45 ];
+		case 'N': return g_font.glyphs[ 46 ];
+		case 'O': return g_font.glyphs[ 47 ];
+		case 'P': return g_font.glyphs[ 48 ];
+		case 'Q': return g_font.glyphs[ 49 ];
+		case 'R': return g_font.glyphs[ 50 ];
+		case 'S': return g_font.glyphs[ 51 ];
+		case 'T': return g_font.glyphs[ 52 ];
+		case 'U': return g_font.glyphs[ 53 ];
+		case 'V': return g_font.glyphs[ 54 ];
+		case 'W': return g_font.glyphs[ 55 ];
+		case 'X': return g_font.glyphs[ 56 ];
+		case 'Y': return g_font.glyphs[ 57 ];
+		case 'Z': return g_font.glyphs[ 58 ];
+		case '[': return g_font.glyphs[ 59 ];
+		case '\\': return g_font.glyphs[ 60 ];
+		case ']': return g_font.glyphs[ 61 ];
+		case '^': return g_font.glyphs[ 62 ];
+		case '_': return g_font.glyphs[ 63 ];
+		case '`': return g_font.glyphs[ 64 ];
+		case 'a': return g_font.glyphs[ 65 ];
+		case 'b': return g_font.glyphs[ 66 ];
+		case 'c': return g_font.glyphs[ 67 ];
+		case 'd': return g_font.glyphs[ 68 ];
+		case 'e': return g_font.glyphs[ 69 ];
+		case 'f': return g_font.glyphs[ 70 ];
+		case 'g': return g_font.glyphs[ 71 ];
+		case 'h': return g_font.glyphs[ 72 ];
+		case 'i': return g_font.glyphs[ 73 ];
+		case 'j': return g_font.glyphs[ 74 ];
+		case 'k': return g_font.glyphs[ 75 ];
+		case 'l': return g_font.glyphs[ 76 ];
+		case 'm': return g_font.glyphs[ 77 ];
+		case 'n': return g_font.glyphs[ 78 ];
+		case 'o': return g_font.glyphs[ 79 ];
+		case 'p': return g_font.glyphs[ 80 ];
+		case 'q': return g_font.glyphs[ 81 ];
+		case 'r': return g_font.glyphs[ 82 ];
+		case 's': return g_font.glyphs[ 83 ];
+		case 't': return g_font.glyphs[ 84 ];
+		case 'u': return g_font.glyphs[ 85 ];
+		case 'v': return g_font.glyphs[ 86 ];
+		case 'w': return g_font.glyphs[ 87 ];
+		case 'x': return g_font.glyphs[ 88 ];
+		case 'y': return g_font.glyphs[ 89 ];
+		case 'z': return g_font.glyphs[ 90 ];
+		case '{': return g_font.glyphs[ 91 ];
+		case '|': return g_font.glyphs[ 92 ];
+		case '}': return g_font.glyphs[ 93 ];
+		case '~': return g_font.glyphs[ 94 ];
 
 		// For anything not supported, just return empty space
 		default: {
@@ -719,35 +881,8 @@ void update_input()
 {
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 
-	if ( platform->key_pressed( gs_keycode_one ) ) {
-		g_material_selection = mat_sel_sand;
-	}
-	if ( platform->key_pressed( gs_keycode_two ) ) {
-		g_material_selection = mat_sel_water;
-	}
-	if ( platform->key_pressed( gs_keycode_three ) ) {
-		g_material_selection = mat_sel_salt;
-	}
-	if ( platform->key_pressed( gs_keycode_four ) ) {
-		g_material_selection = mat_sel_wood;
-	}
-	if ( platform->key_pressed( gs_keycode_five ) ) {
-		g_material_selection = mat_sel_fire;
-	}
-	if ( platform->key_pressed( gs_keycode_six ) ) {
-		g_material_selection = mat_sel_smoke;
-	}
-	if ( platform->key_pressed( gs_keycode_seven ) ) {
-		g_material_selection = mat_sel_stone;
-	}
-	if ( platform->key_pressed( gs_keycode_eight ) ) {
-		g_material_selection = mat_sel_gunpowder;
-	}
-	if ( platform->key_pressed( gs_keycode_nine ) ) {
-		g_material_selection = mat_sel_oil;
-	}
-	if ( platform->key_pressed( gs_keycode_zero ) ) {
-		g_material_selection = mat_sel_lava;
+	if ( platform->key_pressed( gs_keycode_i ) ) {
+		g_show_material_selection_panel = !g_show_material_selection_panel;
 	}
 
 	f32 wx = 0, wy = 0;
@@ -797,6 +932,7 @@ void update_input()
 					case mat_sel_oil: p = particle_oil(); break;
 					case mat_sel_lava: p = particle_lava(); break;
 					case mat_sel_stone: p = particle_stone(); break;
+					case mat_sel_acid: p = particle_acid(); break;
 				}
 				p.velocity = (gs_vec2){ random_val( -1, 1 ), random_val( -2, 5 ) };
 				write_data( idx, p );
@@ -828,6 +964,8 @@ void update_input()
 			}
 		}
 	}
+
+	// Need to detect if mouse has entered the screen with payload...
 }
 
 void update_particle_sim()
@@ -870,7 +1008,7 @@ void update_particle_sim()
 				case mat_id_gunpowder: update_gunpowder( x, y ); break;
 				case mat_id_oil: update_oil( x, y ); break;
 				case mat_id_lava: update_lava( x, y ); break;
-
+				case mat_id_acid: update_acid( x, y ); break;
 
 				// Do nothing for empty or default case
 				default:
@@ -903,41 +1041,131 @@ void update_particle_sim()
 	gfx->update_texture_data( g_tex, t_desc );
 }
 
-void update_ui()
+void draw_glyph_at( font_t* f, color_t* buffer, s32 x, s32 y, char c, color_t col ) 
 {
+	u8* font_data = (u8*)f->data;
+	font_glyph_t g = get_glyph( f, c );
+
+	// How to accurately place? I have width and height of glyph in texture, but need to convert this to RGBA data for ui buffer
+	for ( s32 h = 0; h < g.height; ++h ) 
+	{
+		for ( s32 w = 0; w < g.width; ++w ) 
+		{
+			s32 _w = w + g.x;
+			s32 _h = h + g.y;
+			u8 a = font_data[ ( _h * f->width + _w ) * f->num_comps + 0 ] == 0 ? 0 : 255;
+			color_t c = {
+				font_data[ ( _h * f->width + _w ) * f->num_comps + 0 ],
+				font_data[ ( _h * f->width + _w ) * f->num_comps + 1 ],
+				font_data[ ( _h * f->width + _w ) * f->num_comps + 2 ],
+				a
+			};
+			if ( in_bounds( x + w, y + h ) && a ) {
+				buffer[ compute_idx( x + w, y + h ) ] = col;
+			}
+		}
+	}	
+}
+
+void draw_string_at( font_t* f, color_t* buffer, s32 x, s32 y, const char* str, usize len, color_t col ) 
+{
+	u8* font_data = (u8*)f->data;
+	for ( u32 i = 0; i < len; ++i )
+	{
+		font_glyph_t g = get_glyph( f, str[i] );
+		draw_glyph_at( f, buffer, x, y, str[i], col );
+		x += g.width + f->glyph_advance;	// Move by glyph width + advance
+	}
+}
+
+b32 in_rect ( gs_vec2 p, gs_vec2 ro, gs_vec2 rd ) 
+{
+	if ( p.x < ro.x || p.x > ro.x + rd.x || p.y < ro.y || p.y > ro.y + rd.y ) return false;
+	return true;
+}
+
+b32 gui_rect( color_t* buffer, s32 _x, s32 _y, s32 _w, s32 _h, color_t c ) 
+{
+	gs_vec2 mp = calculate_mouse_position();
+
+	for ( u32 h = 0; h < _h; ++ h ) 
+	{
+		for ( u32 w = 0; w < _w; ++w )
+		{
+			if ( in_bounds( _x + w, _y + h ) ) {
+				buffer[ compute_idx( _x + w, _y + h ) ] = c;	
+			}
+		}
+	}
+
+	b32 clicked = gs_engine_instance()->ctx.platform->mouse_pressed( gs_mouse_lbutton );
+
+	return in_rect( mp, (gs_vec2){ _x, _y }, (gs_vec2){ _w, _h } ) && clicked ; 
+}
+
+#define __gui_interaction( x, y, w, h, c, str, id )\
+do {\
+	if ( (id) == g_material_selection ) {\
+		const s32 b = 2;\
+		gui_rect( g_ui_buffer, x - b / 2, y - b / 2, w + b, h + b, (color_t){ 200, 150, 20, 255 } );\
+	}\
+	gs_vec2 mp = calculate_mouse_position();\
+	if ( in_rect( mp, (gs_vec2){ (x), (y) }, (gs_vec2){ (w), (h) })) {\
+		interaction |= true;\
+		char _str[] = (str);\
+		color_t col = (color_t){ 255, 255, 255, 255 };\
+		color_t s_col = (color_t){ 10, 10, 10, 255 };\
+		color_t r_col = (color_t){ 10, 10, 10, 100 };\
+		/*Draw rect around text as well for easier viewing*/\
+		/*gui_rect(g_ui_buffer, g_texture_width / 2 - 100, 20 + 50, 200, 100, r_col);*/\
+		draw_string_at(&g_font, g_ui_buffer, g_texture_width / 2 + 1 - (sizeof(str) * 5) / 2, 20 - 1, _str, sizeof(_str), s_col);\
+		draw_string_at(&g_font, g_ui_buffer, g_texture_width / 2 - (sizeof(str) * 5) / 2, 20, _str, sizeof(_str), col);\
+	}\
+	if ( gui_rect( g_ui_buffer, x, y, w, h, c ) ) {\
+		g_material_selection = id;\
+	}\
+} while ( 0 )
+
+b32 update_ui()
+{
+	b32 interaction = false;
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+
+	// Cache transformed mouse position
+	gs_vec2 mp = calculate_mouse_position();
 
 	// Do ui stuff
 	memset( g_ui_buffer, 0, g_texture_width * g_texture_height * sizeof(color_t) );
 
-	// Draw font right in center of screen, yosef
-	// s32 start_w = (s32)(((f32)g_texture_width - (f32)g_font.width) / 2.0);
-	// s32 start_h = (s32)(((f32)g_texture_height - (f32)g_font.height) / 2.0);
-	// u8* font_data = (u8*)g_font.data;
-	// for ( s32 h = 0; h < g_font.height; ++h ) {
-	// 	for ( s32 w = 0; w < g_font.width; ++w ) {
-	// 		u8 a = font_data[ ( h * g_font.width + w ) * g_font.num_comps + 0 ] == 0 ? 0 : 255;
-	// 		color_t c = {
-	// 			font_data[ ( h * g_font.width + w ) * g_font.num_comps + 0 ],
-	// 			font_data[ ( h * g_font.width + w ) * g_font.num_comps + 1 ],
-	// 			font_data[ ( h * g_font.width + w ) * g_font.num_comps + 2 ],
-	// 			a
-	// 		};
-	// 		g_ui_buffer[ compute_idx( start_w + w, start_h + h ) ] = c;
-	// 	}
-	// }
+	// Material selection panel gui
+	if ( g_show_material_selection_panel ) 
+	{
+		const s32 offset = 12;
+		s32 xoff = 20;
+		s32 base = 10;
 
-	// Place glyphs around
-	s32 start_w = (s32)(((f32)g_texture_width - (f32)g_font.width) / 2.0);
-	s32 start_h = (s32)(((f32)g_texture_height - (f32)g_font.height) / 2.0);
-	u8* font_data = (u8*)g_font.data;
-	font_glyph_t g = get_glyph( &g_font, 'A' );
-	
+		// Sand Selection
+		__gui_interaction(g_texture_width - xoff, base + offset * 0, 10, 10, mat_col_sand, "Sand", mat_sel_sand );
+		__gui_interaction(g_texture_width - xoff, base + offset * 1, 10, 10, mat_col_water, "Water", mat_sel_water );
+		__gui_interaction(g_texture_width - xoff, base + offset * 2, 10, 10, mat_col_smoke, "Smoke", mat_sel_smoke );
+		__gui_interaction(g_texture_width - xoff, base + offset * 3, 10, 10, mat_col_fire, "Fire", mat_sel_fire );
+		__gui_interaction(g_texture_width - xoff, base + offset * 4, 10, 10, mat_col_steam, "Steam", mat_sel_steam );
+		__gui_interaction(g_texture_width - xoff, base + offset * 5, 10, 10, mat_col_oil, "Oil", mat_sel_oil );
+		__gui_interaction(g_texture_width - xoff, base + offset * 6, 10, 10, mat_col_salt, "Salt", mat_sel_salt );
+		__gui_interaction(g_texture_width - xoff, base + offset * 7, 10, 10, mat_col_wood, "Wood", mat_sel_wood );
+		__gui_interaction(g_texture_width - xoff, base + offset * 8, 10, 10, mat_col_stone, "Stone", mat_sel_stone );
+		__gui_interaction(g_texture_width - xoff, base + offset * 9, 10, 10, mat_col_lava, "Lava", mat_sel_lava );
+		__gui_interaction(g_texture_width - xoff, base + offset * 10, 10, 10, mat_col_gunpowder, "GunPowder", mat_sel_gunpowder );
+		__gui_interaction(g_texture_width - xoff, base + offset * 11, 10, 10, mat_col_acid, "Acid", mat_sel_acid );
+	}
+
+	char frame_time_str[256];
+	gs_snprintf (frame_time_str, sizeof(frame_time_str), "frame: %.2f ms", platform->time.frame );
+	draw_string_at( &g_font, g_ui_buffer, 10, 10, frame_time_str, strlen(frame_time_str), (color_t){ 255, 255, 255, 255 } ); 
 
 	// Draw circle around mouse pointer
 	s32 R = g_selection_radius;
-	gs_vec2 mp = calculate_mouse_position();
 	circleBres((s32)mp.x, (s32)mp.y, R); 
 
 	// Upload our updated texture data to GPU
@@ -949,7 +1177,9 @@ void update_ui()
 	t_desc.height = g_texture_height;
 	t_desc.num_comps = 4;
 	t_desc.data = g_ui_buffer;
-	gfx->update_texture_data( g_tex_ui, t_desc );
+	gfx->update_texture_data( g_tex_ui, t_desc )	;
+
+	return interaction;
 }
 
 void render_scene()
@@ -970,7 +1200,7 @@ void render_scene()
 		gfx->set_frame_buffer_attachment( g_cb, g_rt, 0 );
 
 		// Set clear color and clear screen
-		f32 clear_color[4] = { 0.2f, 0.2f, 0.2f, 1.f };
+		f32 clear_color[4] = { 0.1f, 0.1f, 0.1f, 1.f };
 		gfx->set_view_clear( g_cb, clear_color );
 
 		// This is to handle mac's retina high dpi for now until I fix that internally.
@@ -1000,6 +1230,11 @@ void render_scene()
 			blur_pass_parameters_t params = (blur_pass_parameters_t){ g_bright_pass.data.render_target };
 			render_pass_i* p = gs_cast( render_pass_i, &g_blur_pass );
 			p->pass( g_cb, p, &params );
+		}
+
+		// Refraction pass
+		{
+			// Maybe...if I have time.
 		}
 
 		// composite pass w/ gamma correction
@@ -1057,131 +1292,73 @@ void update_salt( u32 x, u32 y )
 {
 	f32 dt = gs_engine_instance()->ctx.platform->time.delta;
 
-	// For water, same as sand, but we'll check immediate left and right as well
 	u32 read_idx = compute_idx( x, y );
 	particle_t* p = &g_world_particle_data[ read_idx ];
 	u32 write_idx = read_idx;
-	u32 fall_rate = 4;
+	u32 fall_rate = 2;
+	u32 spread_rate = 5;
 	s32 lx, ly;
+
+	p->velocity.y = gs_clamp( p->velocity.y + (gravity * dt), -10.f, 10.f );
+
+	p->has_been_updated_this_frame = true;
 
 	// If in liquid, chance to dissolve itself.
 	if ( is_in_liquid( x, y, &lx, &ly ) ) {
-		if ( random_val( 0, 250 ) == 0 ) {
+		if ( random_val( 0, 1000 ) == 0 ) {
 			write_data( read_idx, particle_empty() );
 			return;
 		}
 	}
 
-	p->velocity.y = gs_clamp( p->velocity.y + (gravity * dt), -10.f, 10.f );
-	p->velocity.x = gs_clamp( p->velocity.x, -5.f, 5.f );
-
 	// Just check if you can move directly beneath you. If not, then reset your velocity. God, this is going to blow.
-	if ( in_bounds( x, y + 1 ) && !is_empty( x, y + 1 ) && get_particle_at( x, y + 1 ).id != mat_id_water ) {
+	// if ( in_bounds( x, y + 1 ) && !is_empty( x, y + 1 ) && get_particle_at( x, y + 1 ).id != mat_id_water ) {
+	if ( in_bounds( x, y + 1 ) && !is_empty( x, y + 1 ) ) {
 		p->velocity.y /= 2.f;
 	}
 
-	s32 vi_x = x + (s32)p->velocity.x; 
-	s32 vi_y = y + (s32)p->velocity.y;
+	s32 r = 1;
+	s32 l = -r;
+	s32 u = fall_rate;
+	s32 v_idx = compute_idx ( x + (s32)p->velocity.x, y + (s32)p->velocity.y );
+	s32 b_idx = compute_idx( x, y + u );
+	s32 bl_idx = compute_idx( x + l, y + u );
+	s32 br_idx = compute_idx( x + r, y + u );
+	s32 l_idx = compute_idx( x + l, y );
+	s32 r_idx = compute_idx( x + r, y );
+	s32 vx = (s32)p->velocity.x, vy = (s32)p->velocity.y;
 
-	// Check to see if you can swap first with other element below you
-	u32 b_idx = compute_idx( x, y + 1 );
-	u32 br_idx = compute_idx( x + 1, y + 1 );
-	u32 bl_idx = compute_idx( x - 1, y + 1 );
-
-	particle_t tmp_a = g_world_particle_data[ read_idx ];
-
-	// Physics (using velocity)
-	if ( in_bounds( vi_x, vi_y ) && (( is_empty( vi_x, vi_y ) ||
-			((( g_world_particle_data[ compute_idx( vi_x, vi_y ) ].id == mat_id_water ) && 
-			  !g_world_particle_data[ compute_idx( vi_x, vi_y ) ].has_been_updated_this_frame && 
-			   gs_vec2_len(g_world_particle_data[compute_idx(vi_x, vi_y)].velocity) - gs_vec2_len(tmp_a.velocity) > 10.f ) ) ) ) ) {
-
-		particle_t tmp_b = g_world_particle_data[ compute_idx( vi_x, vi_y ) ];
-
-		// Try to throw water out
-		if ( tmp_b.id == mat_id_water ) {
-
-			tmp_b.has_been_updated_this_frame = true;
-
-			s32 rx = random_val( -2, 2 );
-			tmp_b.velocity = (gs_vec2){ rx, -3.f };
-
-			write_data( compute_idx( vi_x, vi_y ), tmp_a );	
-
-			for( s32 i = -10; i < 0; ++i ) {
-				for ( s32 j = -5; j < 5; ++j ) {
-					if ( is_empty( vi_x + j, vi_y + i ) ) {
-						write_data( compute_idx( vi_x + j, vi_y + i ), tmp_b );
-						break;
-					}	
-				}
-			}
-
-			// Couldn't write there, so, uh, destroy it.
-			write_data( read_idx, particle_empty() );
-		}
-		else if ( is_empty( vi_x, vi_y ) ) {
-			write_data( compute_idx( vi_x, vi_y ), tmp_a );
-			write_data( read_idx, tmp_b );
-		}
+	if ( in_bounds( x + vx, y + vy ) && (is_empty( x + vx, y + vy ) ) ) {
+		write_data( v_idx, *p );
+		write_data( read_idx, particle_empty() );
 	}
-	else if ( in_bounds( vi_x, vi_y ) && (( is_empty( vi_x, vi_y ) ||
-			((( g_world_particle_data[ compute_idx( vi_x, vi_y ) ].id == mat_id_water ) && 
-			  !g_world_particle_data[ compute_idx( vi_x, vi_y ) ].has_been_updated_this_frame ) ) ) ) ) {
-
-		particle_t tmp_b = g_world_particle_data[ compute_idx( vi_x, vi_y ) ];
-
-		// Try to throw water out
-		if ( tmp_b.id == mat_id_water ) {
-
-			tmp_b.has_been_updated_this_frame = true;
-
-			s32 rx = random_val( -2, 2 );
-			tmp_b.velocity = (gs_vec2){ rx, -3.f };
-
-			write_data( compute_idx( vi_x, vi_y ), tmp_a );
-			write_data( read_idx, tmp_b );
-
-		}
-		else if ( is_empty( vi_x, vi_y ) ) {
-			write_data( compute_idx( vi_x, vi_y ), tmp_a );
-			write_data( read_idx, tmp_b );
-		}
-	}
-	// Simple falling, changing the velocity here ruins everything. I need to redo this entire simulation.
-	else if ( in_bounds( x, y + 1 ) && (( is_empty( x, y + 1 ) || ( g_world_particle_data[ b_idx ].id == mat_id_water ) ) ) ) {
-		p->velocity.y += (gravity * dt );
-		particle_t tmp_a = g_world_particle_data[ read_idx ];
-		particle_t tmp_b = g_world_particle_data[ b_idx ];
-		write_data( b_idx, tmp_a );
+	else if ( is_in_liquid( x, y, &lx, &ly ) && random_val( 0, 10 ) == 0 ) {
+		particle_t tmp_b = get_particle_at( lx, ly );
+		write_data( compute_idx( lx, ly ), *p );
 		write_data( read_idx, tmp_b );
 	}
-	else if ( in_bounds( x - 1, y + 1 ) && (( is_empty( x - 1, y + 1 ) || g_world_particle_data[ bl_idx ].id == mat_id_water )) ) {
-		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.2f : 1.2f;
+// Simple falling, changing the velocity here ruins everything. I need to redo this entire simulation.
+	else if ( in_bounds( x, y + 1 ) && (( is_empty( x, y + 1 ) ) ) ) {
+		u32 idx = compute_idx( x, y + 1 );
 		p->velocity.y += (gravity * dt );
-		particle_t tmp_a = g_world_particle_data[ read_idx ];
-		particle_t tmp_b = g_world_particle_data[ bl_idx ];
-		write_data( bl_idx, tmp_a );
-		write_data( read_idx, tmp_b );
-	}
-	else if ( in_bounds( x + 1, y + 1 ) && (( is_empty( x + 1, y + 1 ) || g_world_particle_data[ br_idx ].id == mat_id_water )) ) {
-		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.2f : 1.2f;
-		p->velocity.y += (gravity * dt );
-		particle_t tmp_a = g_world_particle_data[ read_idx ];
-		particle_t tmp_b = g_world_particle_data[ br_idx ];
-		write_data( br_idx, tmp_a );
-		write_data( read_idx, tmp_b );
-	}
-	// Can move if in liquid
-	else if ( in_bounds( x + 1, y ) && ( g_world_particle_data[ compute_idx( x + 1, y ) ].id == mat_id_water ) ) {
-		u32 idx = compute_idx( x + 1, y );
 		particle_t tmp_a = g_world_particle_data[ read_idx ];
 		particle_t tmp_b = g_world_particle_data[ idx ];
 		write_data( idx, tmp_a );
 		write_data( read_idx, tmp_b );
 	}
-	else if ( in_bounds( x - 1, y ) && ( g_world_particle_data[ compute_idx( x - 1, y ) ].id == mat_id_water ) ) {
-		u32 idx = compute_idx( x - 1, y );
+	else if ( in_bounds( x - 1, y + 1 ) && ( is_empty( x - 1, y + 1 ) ) ) {
+		u32 idx = compute_idx( x - 1, y + 1 );
+		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.2f : 1.2f;
+		p->velocity.y += (gravity * dt );
+		particle_t tmp_a = g_world_particle_data[ read_idx ];
+		particle_t tmp_b = g_world_particle_data[ idx ];
+		write_data( idx, tmp_a );
+		write_data( read_idx, tmp_b );
+	}
+	else if ( in_bounds( x + 1, y + 1 ) && ( is_empty( x + 1, y + 1 )) ) {
+		u32 idx = compute_idx( x + 1, y + 1 );
+		p->velocity.x = random_val( 0, 1 ) == 0 ? -1.2f : 1.2f;
+		p->velocity.y += (gravity * dt );
 		particle_t tmp_a = g_world_particle_data[ read_idx ];
 		particle_t tmp_b = g_world_particle_data[ idx ];
 		write_data( idx, tmp_a );
@@ -1200,13 +1377,11 @@ void update_sand( u32 x, u32 y )
 	u32 fall_rate = 4;
 
 	p->velocity.y = gs_clamp( p->velocity.y + (gravity * dt), -10.f, 10.f );
-	// p->velocity.x = gs_clamp( p->velocity.x, -5.f, 5.f );
 
 	// Just check if you can move directly beneath you. If not, then reset your velocity. God, this is going to blow.
 	if ( in_bounds( x, y + 1 ) && !is_empty( x, y + 1 ) && get_particle_at( x, y + 1 ).id != mat_id_water ) {
 		p->velocity.y /= 2.f;
-		// p->velocity.x /= 1.2f;
-	}
+		}
 
 	s32 vi_x = x + (s32)p->velocity.x; 
 	s32 vi_y = y + (s32)p->velocity.y;
@@ -1812,7 +1987,7 @@ void update_fire( u32 x, u32 y )
 	u32 bl_idx = compute_idx( x - 1, y + 1 );
 
 	const s32 wood_chance = 200;
-	const s32 gun_powder_chance = 0;
+	const s32 gun_powder_chance = 1;
 	const s32 oil_chance = 5;
 
 	// Chance to spawn smoke above
@@ -2408,9 +2583,9 @@ void update_oil( u32 x, u32 y )
 	// Change color depending on pressure? Pressure would dictate how "deep" the water is, I suppose.
 	if ( random_val( 0, (s32)(p->life_time * 100.f) ) % 20 == 0 ) {
 		f32 r = (f32)(random_val( 0, 1 )) / 2.f;
-		p->color.r = (u8)(gs_interp_linear(0.15f, 0.2f, r) * 255.f);
-		p->color.g = (u8)(gs_interp_linear(0.15f, 0.2f, r) * 255.f);
-		p->color.b = (u8)(gs_interp_linear(0.15f, 0.2f, r) * 255.f);
+		p->color.r = (u8)(gs_interp_linear(0.2f, 0.25f, r) * 255.f);
+		p->color.g = (u8)(gs_interp_linear(0.2f, 0.25f, r) * 255.f);
+		p->color.b = (u8)(gs_interp_linear(0.2f, 0.25f, r) * 255.f);
 	}
 
 	s32 ran = random_val( 0, 1 );
@@ -2474,6 +2649,211 @@ void update_oil( u32 x, u32 y )
 
 		if ( !found ) {
 			write_data( read_idx, tmp );
+		}
+	}
+}
+
+void update_acid( u32 x, u32 y )
+{
+	f32 dt = gs_engine_instance()->ctx.platform->time.delta;
+
+	u32 read_idx = compute_idx( x, y );
+	particle_t* p = &g_world_particle_data[ read_idx ];
+	u32 write_idx = read_idx;
+	u32 fall_rate = 2;
+	u32 spread_rate = 5;
+	s32 lx, ly;
+
+	p->velocity.y = gs_clamp( p->velocity.y + (gravity * dt), -10.f, 10.f );
+
+	p->has_been_updated_this_frame = true;
+
+	// Just check if you can move directly beneath you. If not, then reset your velocity. God, this is going to blow.
+	// if ( in_bounds( x, y + 1 ) && !is_empty( x, y + 1 ) && get_particle_at( x, y + 1 ).id != mat_id_water ) {
+	if ( in_bounds( x, y + 1 ) && !is_empty( x, y + 1 ) ) {
+		p->velocity.y /= 2.f;
+	}
+
+	// Change color depending on pressure? Pressure would dictate how "deep" the water is, I suppose.
+	if ( random_val( 0, (s32)(p->life_time * 100.f) ) % 20 == 0 ) {
+		f32 r = (f32)(random_val( 0, 1 )) / 2.f;
+		p->color.r = (u8)(gs_interp_linear(0.05f, 0.06f, r) * 255.f);
+		p->color.g = (u8)(gs_interp_linear(0.8f, 0.85f, r) * 255.f);
+		p->color.b = (u8)(gs_interp_linear(0.1f, 0.12f, r) * 255.f);
+	}
+
+	const s32 wood_chance = 100;
+	const s32 stone_chance = 300;
+	const s32 sand_chance = 50;
+	const s32 salt_chance = 20;
+
+	// Random chance to die if in water
+	if ( is_in_water( x, y, &lx, &ly ) && random_val( 0, 250 ) == 0 ) {
+		write_data( read_idx, particle_empty() );
+		return;
+	}
+
+	// If directly on top of some wall, then replace it
+	if ( in_bounds( x, y + 1 ) && (get_particle_at( x, y + 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0 ||
+									get_particle_at( x, y + 1 ).id == mat_id_stone && random_val(0, stone_chance) == 0 
+									|| get_particle_at( x, y + 1 ).id == mat_id_sand && random_val(0, sand_chance) == 0
+									|| get_particle_at( x, y + 1 ).id == mat_id_salt && random_val(0, salt_chance) == 0
+
+		)) 
+	{
+		write_data( compute_idx( x, y + 1 ), *p );
+		write_data( read_idx, particle_empty() );
+	}
+	else if ( in_bounds( x + 1, y + 1 ) && (get_particle_at( x + 1, y + 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0 ||
+									get_particle_at( x + 1, y + 1 ).id == mat_id_stone && random_val(0, stone_chance) == 0 
+									|| get_particle_at( x + 1, y + 1 ).id == mat_id_sand && random_val(0, sand_chance) == 0
+									|| get_particle_at( x + 1, y + 1 ).id == mat_id_salt && random_val(0, salt_chance) == 0
+
+		)) 
+	{
+		write_data( compute_idx( x + 1, y + 1 ), *p );	
+		write_data( read_idx, particle_empty() );
+	}
+	else if ( in_bounds( x - 1, y + 1 ) && (get_particle_at( x - 1, y + 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0 ||
+									get_particle_at( x - 1, y + 1 ).id == mat_id_stone && random_val(0, stone_chance) == 0 
+									|| get_particle_at( x - 1, y + 1 ).id == mat_id_sand && random_val(0, sand_chance) == 0
+									|| get_particle_at( x - 1, y + 1 ).id == mat_id_salt && random_val(0, salt_chance) == 0
+
+		)) 
+	{
+		write_data( compute_idx( x - 1, y + 1 ), *p );	
+		write_data( read_idx, particle_empty() );
+	}
+	else if ( in_bounds( x - 1, y ) && (get_particle_at( x - 1, y ).id == mat_id_wood && random_val( 0, wood_chance ) == 0 ||
+									get_particle_at( x - 1, y ).id == mat_id_stone && random_val(0, stone_chance) == 0 
+									|| get_particle_at( x - 1, y ).id == mat_id_sand && random_val(0, sand_chance) == 0
+									|| get_particle_at( x - 1, y ).id == mat_id_salt && random_val(0, salt_chance) == 0
+
+		)) 
+	{
+		write_data( compute_idx( x - 1, y ), *p );	
+		write_data( read_idx, particle_empty() );
+	}
+	else if ( in_bounds( x + 1, y ) && (get_particle_at( x + 1, y ).id == mat_id_wood && random_val( 0, wood_chance ) == 0 ||
+									get_particle_at( x + 1, y ).id == mat_id_stone && random_val(0, stone_chance) == 0 
+									|| get_particle_at( x + 1, y ).id == mat_id_sand && random_val(0, sand_chance) == 0
+									|| get_particle_at( x + 1, y ).id == mat_id_salt && random_val(0, sand_chance) == 0
+
+		)) 
+	{
+		write_data( compute_idx( x + 1, y ), *p );	
+		write_data( read_idx, particle_empty() );
+	}
+	else if ( in_bounds( x + 1, y - 1 ) && (get_particle_at( x + 1, y - 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0 ||
+									get_particle_at( x + 1, y - 1 ).id == mat_id_stone && random_val(0, stone_chance) == 0 
+									|| get_particle_at( x + 1, y - 1 ).id == mat_id_sand && random_val(0, sand_chance) == 0
+									|| get_particle_at( x + 1, y - 1 ).id == mat_id_salt && random_val(0, salt_chance) == 0
+
+		)) 
+	{
+		write_data( compute_idx( x + 1, y - 1 ), *p );	
+		write_data( read_idx, particle_empty() );
+	}
+	else if ( in_bounds( x - 1, y - 1 ) && (get_particle_at( x - 1, y - 1 ).id == mat_id_wood && random_val( 0, wood_chance ) == 0 ||
+									get_particle_at( x - 1, y - 1 ).id == mat_id_stone && random_val(0, stone_chance) == 0 
+									|| get_particle_at( x - 1, y - 1 ).id == mat_id_sand && random_val(0, sand_chance) == 0
+									|| get_particle_at( x - 1, y - 1 ).id == mat_id_salt && random_val(0, salt_chance) == 0
+
+		)) 
+	{
+		write_data( compute_idx( x - 1, y - 1 ), *p );	
+		write_data( read_idx, particle_empty() );
+	}
+
+	s32 ran = random_val( 0, 1 );
+	s32 r = ran ? spread_rate : -spread_rate;
+	s32 l = -r;
+	s32 u = fall_rate;
+	s32 v_idx = compute_idx ( x + (s32)p->velocity.x, y + (s32)p->velocity.y );
+	s32 b_idx = compute_idx( x, y + u );
+	s32 bl_idx = compute_idx( x + l, y + u );
+	s32 br_idx = compute_idx( x + r, y + u );
+	s32 l_idx = compute_idx( x + l, y );
+	s32 r_idx = compute_idx( x + r, y );
+	s32 vx = (s32)p->velocity.x, vy = (s32)p->velocity.y;
+
+	// If touching wood or stone, destroy it
+
+	if ( in_bounds( x + vx, y + vy ) && (is_empty( x + vx, y + vy ) ) ) {
+		write_data( v_idx, *p );
+		write_data( read_idx, particle_empty() );
+	}
+	else if ( is_empty( x, y + u ) ) {
+		write_data( b_idx, *p );
+		write_data( read_idx, particle_empty() );
+	} 
+	else if ( is_empty( x + r, y + u ) ) {
+		write_data( br_idx, *p );
+		write_data( read_idx, particle_empty() );
+	}
+	else if ( is_empty( x + l, y + u ) ) {
+		write_data( bl_idx, *p );
+		write_data( read_idx, particle_empty() );
+	}
+	// Simple falling, changing the velocity here ruins everything. I need to redo this entire simulation.
+	else if ( in_bounds( x, y + u ) && (( is_empty( x, y + u ) ) ) ) {
+		p->velocity.y += (gravity * dt );
+		particle_t tmp_b = get_particle_at( x, y + u );
+		write_data( b_idx, *p );
+		write_data( read_idx, tmp_b );
+	}
+	else if ( in_bounds( x + l, y + u ) && (( is_empty( x + l, y + u ) )) ) {
+		p->velocity.x = is_in_liquid( x, y, &lx, &ly ) ? 0.f : random_val( 0, 1 ) == 0 ? -1.f : 1.f;
+		p->velocity.y += (gravity * dt );
+		particle_t tmp_b = get_particle_at( x + l, y + u );
+		write_data( bl_idx, *p );
+		write_data( read_idx, tmp_b );
+	}
+	else if ( in_bounds( x + r, y + u ) && (( is_empty( x + r, y + u ) )) ) {
+		p->velocity.x = is_in_liquid( x, y, &lx, &ly ) ? 0.f : random_val( 0, 1 ) == 0 ? -1.f : 1.f;
+		p->velocity.y += (gravity * dt );
+		particle_t tmp_b = get_particle_at( x + r, y + u );
+		write_data( br_idx, *p );
+		write_data( read_idx, tmp_b );
+	}
+	else if ( is_in_liquid( x, y, &lx, &ly ) && random_val( 0, 10 ) == 0 ) {
+		particle_t tmp_b = get_particle_at( lx, ly );
+		write_data( compute_idx( lx, ly ), *p );
+		write_data( read_idx, tmp_b );
+	}
+	else {
+		particle_t tmp = *p;
+		b32 found = false;
+
+		// Don't try to spread if something is directly above you?
+		if ( completely_surrounded( x, y ) ) {
+			write_data( read_idx, tmp );
+			return;	
+		}
+		else {
+			for ( u32 i = 0; i < fall_rate; ++i ) {
+				for ( s32 j = spread_rate; j > 0; --j )
+				{
+					if ( in_bounds( x - j, y + i ) && (is_empty( x - j, y + i ) || get_particle_at( x - j, y + i ).id == mat_id_oil ) ) {
+						particle_t tmp = get_particle_at( x - j, y + i );
+						write_data( compute_idx( x - j, y + i ), *p );
+						write_data( read_idx, tmp );
+						found = true;
+						break;
+					}
+					if ( in_bounds( x + j, y + i ) && (is_empty( x + j, y + i ) || get_particle_at( x + j, y + i ).id == mat_id_oil ) ) {
+						particle_t tmp = get_particle_at( x + j, y + i );
+						write_data( compute_idx( x + j, y + i ), *p );
+						write_data( read_idx, tmp );
+						found = true;
+						break;
+					}
+				}
+			}
+
+			if ( !found ) {
+				write_data( read_idx, tmp );
+			}
 		}
 	}
 }
@@ -2666,9 +3046,9 @@ particle_t particle_gunpowder()
 	particle_t p = {0};
 	p.id = mat_id_gunpowder;
 	f32 r = (f32)(random_val( 0, 1 )) / 2.f;
-	p.color.r = (u8)(gs_interp_linear(0.05f, 0.1f, r) * 255.f);
-	p.color.g = (u8)(gs_interp_linear(0.05f, 0.1f, r) * 255.f);
-	p.color.b = (u8)(gs_interp_linear(0.05f, 0.1f, r) * 255.f);
+	p.color.r = (u8)(gs_interp_linear(0.15f, 0.2f, r) * 255.f);
+	p.color.g = (u8)(gs_interp_linear(0.15f, 0.2f, r) * 255.f);
+	p.color.b = (u8)(gs_interp_linear(0.15f, 0.2f, r) * 255.f);
 	p.color.a = 255;
 	return p;
 }
@@ -2735,7 +3115,18 @@ particle_t particle_stone()
 	p.color.b = (u8)(gs_interp_linear(0.5f, 0.65f, r) * 255.f);
 	p.color.a = 255;
 	return p;
+}
 
+particle_t particle_acid()
+{
+	particle_t p = {0};
+	p.id = mat_id_acid;
+	f32 r = (f32)(random_val( 0, 1 )) / 2.f;
+	p.color.r = (u8)(gs_interp_linear(0.05f, 0.06f, r) * 255.f);
+	p.color.g = (u8)(gs_interp_linear(0.8f, 0.85f, r) * 255.f);
+	p.color.b = (u8)(gs_interp_linear(0.1f, 0.12f, r) * 255.f);
+	p.color.a = 200;
+	return p;
 }
 
 

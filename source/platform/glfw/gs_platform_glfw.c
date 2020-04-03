@@ -12,6 +12,7 @@ void __glfw_mouse_scroll_wheel_callback( GLFWwindow* window, f64 xoffset, f64 yo
 void __glfw_mouse_cursor_enter_callback( GLFWwindow* window, s32 entered );
 void __glfw_frame_buffer_size_callback( GLFWwindow* window, s32 width, s32 height );
 void __glfw_window_close_callback( GLFWwindow* window );
+void __glfw_drop_callback( GLFWwindow* window );
 
 #define __window_from_handle( platform, handle )\
 	( (GLFWwindow*)( gs_slot_array_get( ( platform )->windows, ( handle ) ) ) )
@@ -404,6 +405,14 @@ void glfw_set_vsync_enabled( b32 enabled )
 	glfwSwapInterval( enabled ? 1 : 0 );
 }
 
+void glfw_set_dropped_files_callback( gs_resource_handle handle, dropped_files_callback_t callback )
+{
+	struct gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+	GLFWwindow* win = __window_from_handle( platform, handle );
+	glfwSetDropCallback( win, callback );
+}
+
+
 // Method for creating platform layer for SDL
 struct gs_platform_i* gs_platform_construct()
 {
@@ -445,6 +454,7 @@ struct gs_platform_i* gs_platform_construct()
 	platform->window_size_w_h 			= &glfw_window_size_w_h;
 	platform->set_window_size 			= &glfw_set_window_size;
 	platform->set_cursor 				= &glfw_set_cursor;
+	platform->set_dropped_files_callback = &glfw_set_dropped_files_callback;
 
 	// Todo(John): Remove this from the default initialization and make it a part of a plugin or config setting
 	platform->settings.video.driver = gs_platform_video_driver_type_opengl;

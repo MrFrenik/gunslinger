@@ -72,6 +72,8 @@ bright_filter_pass_t bright_filter_pass_ctor()
 	gs_vec2 ws = platform->window_size( platform->main_window() );
 
 	gs_texture_parameter_desc t_desc = gs_texture_parameter_desc_default();
+	t_desc.texture_wrap_s = gs_clamp_to_border;
+	t_desc.texture_wrap_t = gs_clamp_to_border;
 	t_desc.mag_filter = gs_linear;
 	t_desc.min_filter = gs_linear;
 	t_desc.texture_format = gs_texture_format_rgba16f;
@@ -105,6 +107,8 @@ bright_filter_pass_t bright_filter_pass_ctor()
 	}
 
 	gs_texture_parameter_desc t_desc = gs_texture_parameter_desc_default();
+	t_desc.texture_wrap_s = gs_clamp_to_border;
+	t_desc.texture_wrap_t = gs_clamp_to_border;
 	t_desc.mag_filter = gs_linear;
 	t_desc.min_filter = gs_linear;
 	t_desc.texture_format = gs_texture_format_rgba16f;
