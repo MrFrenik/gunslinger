@@ -186,6 +186,16 @@ void __gs_platform_release_key( gs_platform_keycode code )
 // Platform File I/O
 ============================*/
 
+b32 __gs_platform_file_exists( const char* file_path )
+{
+	FILE* fp = fopen( file_path, "r" );
+	if ( fp ) {
+		fclose(fp);
+		return true;
+	}
+	return false;
+}
+
 char* __gs_platform_read_file_contents_into_string_null_term( const char* file_path, const char* mode, usize* sz )
 {
 	char* buffer = 0;
@@ -353,6 +363,7 @@ void __gs_default_init_platform( struct gs_platform_i* platform )
 	// Platform File IO
 	============================*/
 
+	platform->file_exists 			= &__gs_platform_file_exists;
 	platform->read_file_contents 	= &__gs_platform_read_file_contents_into_string_null_term;
 	platform->write_str_to_file 	= &__gs_platform_write_str_to_file;
 

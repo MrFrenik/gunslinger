@@ -1445,8 +1445,8 @@ gs_resource( gs_texture ) opengl_construct_texture( gs_texture_parameter_desc de
 	// Construct texture based on appropriate format
 	switch( texture_format ) 
 	{
-		case gs_texture_rgba8: 	 glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, desc.data ); break;
-		case gs_texture_rgba16f: glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, desc.data ); break;
+		case gs_texture_format_rgba8: 	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, desc.data ); break;
+		case gs_texture_format_rgba16f: glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, desc.data ); break;
 	}
 
 	s32 mag_filter = desc.mag_filter == gs_nearest ? GL_NEAREST : GL_LINEAR;
@@ -1505,9 +1505,8 @@ gs_resource( gs_texture ) opengl_construct_texture( gs_texture_parameter_desc de
 	return handle;
 }
 
-
 void* opengl_load_texture_data_from_file( const char* file_path, b32 flip_vertically_on_load, 
-				u32* width, u32* height, u32* num_comps , gs_texture_format* texture_format )
+				gs_texture_format texture_format, s32* width, s32* height, s32* num_comps )
 {
 	// Load texture data
 	stbi_set_flip_vertically_on_load( flip_vertically_on_load );
@@ -1516,37 +1515,27 @@ void* opengl_load_texture_data_from_file( const char* file_path, b32 flip_vertic
 	char temp_file_extension_buffer[ 16 ] = {0}; 
 	gs_util_get_file_extension( temp_file_extension_buffer, sizeof( temp_file_extension_buffer ), file_path );
 
-	if ( gs_string_compare_equal( temp_file_extension_buffer, "hdr" ) ) {
-		*texture_format = gs_texture_rgba16f;
-	} else {
-		*texture_format = gs_texture_rgba8;
-	}
+	// Load texture data
+	stbi_set_flip_vertically_on_load( flip_vertically_on_load );
 
 	// Texture data to fill out
 	void* texture_data = NULL;
 
-	switch ( *texture_format )
+	switch ( texture_format )
 	{
-		case gs_texture_rgba8:
-		{
-			// Load texture data
-			stbi_set_flip_vertically_on_load( true );
-
-			// For now, this data will always have 4 components, since STBI_rgb_alpha is being passed in as required components param
-			// Could optimize this later
-			texture_data = ( u8* )stbi_load( file_path, (s32*)width, (s32*)height, (s32*)num_comps, STBI_rgb_alpha );
-
-			if ( !texture_data )
-			{
-				gs_println( "Warning: could not load texture: %s", file_path );
-			}
-		} break;
+		case gs_texture_format_rgba8: texture_data = (u8*)stbi_load( file_path, width, height, num_comps, STBI_rgb_alpha ); break;
+		case gs_texture_format_rgb8: texture_data = (u8*)stbi_load( file_path, width, height, num_comps, STBI_rgb ); break;
 
 		// TODO(john): support this format
-		case gs_texture_rgba16f:
-		default: {
+		case gs_texture_format_rgba16f: 
+		default:
+		{
 			gs_assert( false );
 		} break;
+	}
+
+	if ( !texture_data ) {
+		gs_println( "Warning: could not load texture: %s", file_path );
 	}
 
 	return texture_data;
@@ -1557,7 +1546,7 @@ gs_resource( gs_texture ) opengl_construct_texture_from_file( const char* file_p
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
 	// Load texture data and fill out parameters for descriptor
-	t_desc.data = opengl_load_texture_data_from_file( file_path, flip_vertically_on_load, &t_desc.width, &t_desc.height, &t_desc.num_comps , &t_desc.texture_format );
+	t_desc.data = opengl_load_texture_data_from_file( file_path, t_desc.texture_format, flip_vertically_on_load, &t_desc.width, &t_desc.height, &t_desc.num_comps );
 
 	// Finish constructing texture resource from descriptor and return handle
 	return ( opengl_construct_texture( t_desc ) );
@@ -1580,8 +1569,8 @@ void opengl_update_texture_data( gs_resource( gs_texture ) t_handle, gs_texture_
 	// Construct texture based on appropriate format
 	switch( texture_format ) 
 	{
-		case gs_texture_rgba8: 	 glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, t_desc.data ); break;
-		case gs_texture_rgba16f: glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, t_desc.data ); break;
+		case gs_texture_format_rgba8: 	 glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, t_desc.data ); break;
+		case gs_texture_format_rgba16f: glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, t_desc.data ); break;
 	}
 
 	s32 mag_filter = t_desc.mag_filter == gs_nearest ? GL_NEAREST : GL_LINEAR;

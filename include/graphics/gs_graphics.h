@@ -58,8 +58,9 @@ typedef enum gs_vertex_attribute_type
 
 typedef enum gs_texture_format 
 {
-	gs_texture_rgba8,
-	gs_texture_rgba16f
+	gs_texture_format_rgba8,
+	gs_texture_format_rgb8,
+	gs_texture_format_rgba16f
 } gs_texture_format;
 
 typedef enum gs_texture_wrapping
@@ -161,8 +162,8 @@ typedef struct gs_graphics_i
 	gs_resource( gs_command_buffer )( * construct_command_buffer )();
 	gs_resource( gs_render_target )( * construct_render_target )( gs_texture_parameter_desc );	// Will eventually set this so you can have a number of targets for MRT (is this even necessary)?
 	gs_resource( gs_frame_buffer )( * construct_frame_buffer )( gs_resource( gs_texture ) );
-	void* ( * load_texture_data_from_file )( const char* file_path, b32 flip_vertically_on_load, 
-					u32* width, u32* height, u32* num_comps , gs_texture_format* );
+	void* ( * load_texture_data_from_file )( const char* file_path, b32 flip_vertically_on_load, gs_texture_format,
+					s32* width, s32* height, s32* num_comps );
 
 	// Will construct texture resource and let user free data...for now
 	gs_resource( gs_texture )( * construct_texture )( gs_texture_parameter_desc );

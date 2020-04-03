@@ -4,21 +4,6 @@
 #include "render_pass/bright_filter_pass.h"
 #include "render_pass/composite_pass.h"
 
-// Globals
-_global gs_resource( gs_vertex_buffer ) 	g_vbo = {0};
-_global gs_resource( gs_index_buffer ) 		g_ibo = {0};
-_global gs_resource( gs_command_buffer ) 	g_cb = {0};
-_global gs_resource( gs_shader ) 			g_shader = {0};
-_global gs_resource( gs_uniform ) 			u_tex = {0}; 
-_global gs_resource( gs_uniform ) 			u_flip_y = {0}; 
-_global gs_resource( gs_texture ) 			g_tex = {0};
-_global gs_resource( gs_texture ) 			g_tex_ui = {0};
-_global gs_resource( gs_texture ) 			g_rt = {0};
-_global gs_resource( gs_frame_buffer ) 		g_fb = {0};
-_global blur_pass_t 						g_blur_pass = {0};
-_global bright_filter_pass_t 				g_bright_pass = {0};
-_global composite_pass_t 					g_composite_pass = {0};
-
 #if (defined GS_PLATFORM_APPLE)
 	_global const s32 g_window_width 	= 800;
 	_global const s32 g_window_height 	= 600;
@@ -30,6 +15,7 @@ _global composite_pass_t 					g_composite_pass = {0};
 _global const s32 g_texture_width 	= 1258 / 2;
 _global const s32 g_texture_height 	= 848 / 2;
 
+// 32 bit color structure
 typedef struct color_t
 {
 	u8 r;
@@ -46,6 +32,45 @@ typedef struct particle_t
 	color_t color;
 	b32 has_been_updated_this_frame;
 } particle_t;
+
+// Should have a hash map of glyph character to glyph metric
+
+// For this font, Each glyph is monospaced, 5 x 7 pixels.
+// Total font size is 128 x 64.
+typedef struct font_glyph_t
+{
+	u32 x;
+	u32 y;
+} font_glyph_t;
+
+// 6 rows of font data to use * 18 columns
+// Total num glyphs = 6 * 18 - (18 - 5)
+#define total_num_font_glyphs (6 * 18)
+typedef struct font_t
+{
+	void* data;
+	u32 width;
+	u32 height;
+	u32 num_comps;
+	gs_texture_format texture_format;
+	font_glyph_t glyphs[ total_num_font_glyphs ];
+} font_t;
+
+// Globals
+_global gs_resource( gs_vertex_buffer ) 	g_vbo = {0};
+_global gs_resource( gs_index_buffer ) 		g_ibo = {0};
+_global gs_resource( gs_command_buffer ) 	g_cb = {0};
+_global gs_resource( gs_shader ) 			g_shader = {0};
+_global gs_resource( gs_uniform ) 			u_tex = {0}; 
+_global gs_resource( gs_uniform ) 			u_flip_y = {0}; 
+_global gs_resource( gs_texture ) 			g_tex = {0};
+_global gs_resource( gs_texture ) 			g_tex_ui = {0};
+_global gs_resource( gs_texture ) 			g_rt = {0};
+_global gs_resource( gs_frame_buffer ) 		g_fb = {0};
+_global blur_pass_t 						g_blur_pass = {0};
+_global bright_filter_pass_t 				g_bright_pass = {0};
+_global composite_pass_t 					g_composite_pass = {0};
+_global font_t								g_font = {0};
 
 // For now, all particle information will simply be a value to determine its material id
 #define mat_id_empty (u8)0
@@ -174,6 +199,8 @@ void update_default( u32 x, u32 y );
 void write_data( u32 idx, particle_t );
 void update_ui();
 void render_scene();
+void construct_font_data();
+font_glyph_t get_glyph( font_t* f, char c );
 
 gs_vec2 calculate_mouse_position()
 {
@@ -369,8 +396,9 @@ int main( int argc, char** argv )
 // Here, we'll initialize all of our application data, which in this case is our graphics resources
 gs_result app_init()
 {
-	// Cache instance of graphics api from engine
+	// Cache instance of api contexts from engine
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 
 	// Construct command buffer ( the command buffer is used to allow for immediate drawing at any point in our program )
 	g_cb = gfx->construct_command_buffer();
@@ -427,6 +455,7 @@ gs_result app_init()
 
 	// Construct texture resource from GPU
 	gs_texture_parameter_desc t_desc = gs_texture_parameter_desc_default();
+	t_desc.texture_format = gs_texture_format_rgba8;
 	t_desc.mag_filter = gs_nearest;
 	t_desc.min_filter = gs_nearest;
 	t_desc.generate_mips = false;
@@ -439,6 +468,7 @@ gs_result app_init()
 
 	// Construct texture resource from GPU
 	t_desc = gs_texture_parameter_desc_default();
+	t_desc.texture_format = gs_texture_format_rgba8;
 	t_desc.mag_filter = gs_nearest;
 	t_desc.min_filter = gs_nearest;
 	t_desc.generate_mips = false;
@@ -463,6 +493,9 @@ gs_result app_init()
 	g_blur_pass = blur_pass_ctor();
 	g_bright_pass = bright_filter_pass_ctor();
 	g_composite_pass = composite_pass_ctor();
+
+	// Load UI font texture data from file
+	construct_font_data();
 
 	return gs_result_success;
 }
@@ -503,6 +536,136 @@ gs_result app_shutdown()
 {
 	gs_println( "Goodbye, Gunslinger." );
 	return gs_result_success;
+}
+
+void construct_font_data()
+{
+	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+
+	if ( platform->file_exists( "../assets/font.png" ) ) {
+		g_font.data = gfx->load_texture_data_from_file( "../assets/font.png", false, gs_texture_format_rgb8,
+			&g_font.width, &g_font.height, &g_font.num_comps );
+	} else {
+		g_font.data = gfx->load_texture_data_from_file( "assets/font.png", false, gs_texture_format_rgb8,
+			&g_font.width, &g_font.height, &g_font.num_comps );
+	}
+
+	// Construct glyph information
+	const s32 glyph_width = 5, glyph_height = 7;
+	for ( u32 r = 0; r < 6; ++r ) 
+	{
+		for ( u32 c = 0; c < 18; ++c ) 
+		{
+			u32 idx = r * 18 + c;
+			g_font.glyphs[ idx ] = (font_glyph_t){ c * 5, r * 7 };
+		}
+	}
+}
+
+font_glyph_t get_glyph( font_t* f, char c )
+{
+	switch ( c ) 
+	{
+		case ' ': return g_font.glyphs[ 0 ];
+		case '!': return g_font.glyphs[ 1 ];
+		case '"': return g_font.glyphs[ 2 ];
+		case '#': return g_font.glyphs[ 3 ];
+		case '$': return g_font.glyphs[ 4 ];
+		case '%': return g_font.glyphs[ 5 ];
+		case '&': return g_font.glyphs[ 6 ];
+		case '\'': return g_font.glyphs[ 7 ];
+		case '*': return g_font.glyphs[ 8 ];
+		case '+': return g_font.glyphs[ 9 ];
+		case ',': return g_font.glyphs[ 10 ];
+		case '-': return g_font.glyphs[ 11 ];
+		case '.': return g_font.glyphs[ 12 ];
+		case '/': return g_font.glyphs[ 13 ];
+		case '0': return g_font.glyphs[ 14 ];
+		case '1': return g_font.glyphs[ 15 ];
+		case '2': return g_font.glyphs[ 16 ];
+		case '3': return g_font.glyphs[ 17 ];
+		case '4': return g_font.glyphs[ 18 ];
+		case '5': return g_font.glyphs[ 19 ];
+		case '6': return g_font.glyphs[ 20 ];
+		case '7': return g_font.glyphs[ 21 ];
+		case '8': return g_font.glyphs[ 22 ];
+		case '9': return g_font.glyphs[ 23 ];
+		case ':': return g_font.glyphs[ 24 ];
+		case ';': return g_font.glyphs[ 25 ];
+		case '<': return g_font.glyphs[ 26 ];
+		case '=': return g_font.glyphs[ 27 ];
+		case '>': return g_font.glyphs[ 28 ];
+		case '?': return g_font.glyphs[ 29 ];
+		case '@': return g_font.glyphs[ 30 ];
+		case 'A': return g_font.glyphs[ 31 ];
+		case 'B': return g_font.glyphs[ 32 ];
+		case 'C': return g_font.glyphs[ 33 ];
+		case 'D': return g_font.glyphs[ 34 ];
+		case 'E': return g_font.glyphs[ 35 ];
+		case 'F': return g_font.glyphs[ 36 ];
+		case 'G': return g_font.glyphs[ 37 ];
+		case 'H': return g_font.glyphs[ 38 ];
+		case 'I': return g_font.glyphs[ 39 ];
+		case 'J': return g_font.glyphs[ 40 ];
+		case 'K': return g_font.glyphs[ 41 ];
+		case 'L': return g_font.glyphs[ 42 ];
+		case 'M': return g_font.glyphs[ 43 ];
+		case 'N': return g_font.glyphs[ 44 ];
+		case 'O': return g_font.glyphs[ 45 ];
+		case 'P': return g_font.glyphs[ 46 ];
+		case 'Q': return g_font.glyphs[ 47 ];
+		case 'R': return g_font.glyphs[ 48 ];
+		case 'S': return g_font.glyphs[ 49 ];
+		case 'T': return g_font.glyphs[ 50 ];
+		case 'U': return g_font.glyphs[ 51 ];
+		case 'V': return g_font.glyphs[ 52 ];
+		case 'W': return g_font.glyphs[ 53 ];
+		case 'X': return g_font.glyphs[ 54 ];
+		case 'Y': return g_font.glyphs[ 55 ];
+		case 'Z': return g_font.glyphs[ 56 ];
+		case '[': return g_font.glyphs[ 57 ];
+		case '\\': return g_font.glyphs[ 58 ];
+		case ']': return g_font.glyphs[ 59 ];
+		case '^': return g_font.glyphs[ 60 ];
+		case '_': return g_font.glyphs[ 61 ];
+		case '`': return g_font.glyphs[ 62 ];
+		case 'a': return g_font.glyphs[ 63 ];
+		case 'b': return g_font.glyphs[ 64 ];
+		case 'c': return g_font.glyphs[ 65 ];
+		case 'd': return g_font.glyphs[ 66 ];
+		case 'e': return g_font.glyphs[ 67 ];
+		case 'f': return g_font.glyphs[ 68 ];
+		case 'g': return g_font.glyphs[ 69 ];
+		case 'h': return g_font.glyphs[ 70 ];
+		case 'i': return g_font.glyphs[ 71 ];
+		case 'j': return g_font.glyphs[ 72 ];
+		case 'k': return g_font.glyphs[ 73 ];
+		case 'l': return g_font.glyphs[ 74 ];
+		case 'm': return g_font.glyphs[ 75 ];
+		case 'n': return g_font.glyphs[ 76 ];
+		case 'o': return g_font.glyphs[ 77 ];
+		case 'p': return g_font.glyphs[ 78 ];
+		case 'q': return g_font.glyphs[ 79 ];
+		case 'r': return g_font.glyphs[ 80 ];
+		case 's': return g_font.glyphs[ 81 ];
+		case 't': return g_font.glyphs[ 82 ];
+		case 'u': return g_font.glyphs[ 83 ];
+		case 'v': return g_font.glyphs[ 84 ];
+		case 'w': return g_font.glyphs[ 85 ];
+		case 'x': return g_font.glyphs[ 86 ];
+		case 'y': return g_font.glyphs[ 87 ];
+		case 'z': return g_font.glyphs[ 88 ];
+		case '{': return g_font.glyphs[ 89 ];
+		case '|': return g_font.glyphs[ 90 ];
+		case '}': return g_font.glyphs[ 91 ];
+		case '~': return g_font.glyphs[ 92 ];
+
+		// For anything not supported, just return empty space
+		default: {
+			return (font_glyph_t){0};
+		} break;
+	}
 }
 
 void putpixel( int x, int y ) {
@@ -727,20 +890,6 @@ void update_particle_sim()
 			g_world_particle_data[ compute_idx( x, y ) ].has_been_updated_this_frame = false;
 		}
 	}
-}
-
-void update_ui()
-{
-	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
-	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
-
-	// Do ui stuff
-	memset( g_ui_buffer, 0, g_texture_width * g_texture_height * sizeof(color_t) );
-
-	// Draw circle around mouse pointer
-	s32 R = g_selection_radius;
-	gs_vec2 mp = calculate_mouse_position();
-	circleBres((s32)mp.x, (s32)mp.y, R); 
 
 	// Upload our updated texture data to GPU
 	gs_texture_parameter_desc t_desc = gs_texture_parameter_desc_default();
@@ -752,9 +901,47 @@ void update_ui()
 	t_desc.num_comps = 4;
 	t_desc.data = g_texture_buffer;
 	gfx->update_texture_data( g_tex, t_desc );
+}
+
+void update_ui()
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+
+	// Do ui stuff
+	memset( g_ui_buffer, 0, g_texture_width * g_texture_height * sizeof(color_t) );
+
+	// Draw font right in center of screen, yosef
+	// s32 start_w = (s32)(((f32)g_texture_width - (f32)g_font.width) / 2.0);
+	// s32 start_h = (s32)(((f32)g_texture_height - (f32)g_font.height) / 2.0);
+	// u8* font_data = (u8*)g_font.data;
+	// for ( s32 h = 0; h < g_font.height; ++h ) {
+	// 	for ( s32 w = 0; w < g_font.width; ++w ) {
+	// 		u8 a = font_data[ ( h * g_font.width + w ) * g_font.num_comps + 0 ] == 0 ? 0 : 255;
+	// 		color_t c = {
+	// 			font_data[ ( h * g_font.width + w ) * g_font.num_comps + 0 ],
+	// 			font_data[ ( h * g_font.width + w ) * g_font.num_comps + 1 ],
+	// 			font_data[ ( h * g_font.width + w ) * g_font.num_comps + 2 ],
+	// 			a
+	// 		};
+	// 		g_ui_buffer[ compute_idx( start_w + w, start_h + h ) ] = c;
+	// 	}
+	// }
+
+	// Place glyphs around
+	s32 start_w = (s32)(((f32)g_texture_width - (f32)g_font.width) / 2.0);
+	s32 start_h = (s32)(((f32)g_texture_height - (f32)g_font.height) / 2.0);
+	u8* font_data = (u8*)g_font.data;
+	font_glyph_t g = get_glyph( &g_font, 'A' );
+	
+
+	// Draw circle around mouse pointer
+	s32 R = g_selection_radius;
+	gs_vec2 mp = calculate_mouse_position();
+	circleBres((s32)mp.x, (s32)mp.y, R); 
 
 	// Upload our updated texture data to GPU
-	t_desc = gs_texture_parameter_desc_default();
+	gs_texture_parameter_desc t_desc = gs_texture_parameter_desc_default();
 	t_desc.mag_filter = gs_nearest;
 	t_desc.min_filter = gs_nearest;
 	t_desc.generate_mips = false;

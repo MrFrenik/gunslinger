@@ -106,10 +106,10 @@ composite_pass_t composite_pass_ctor()
 	p.data.shader = gfx->construct_shader( cp_v_src, cp_f_src );
 	p.data.u_input_tex = gfx->construct_uniform( p.data.shader, "u_tex", gs_uniform_type_sampler2d );
 	p.data.u_blur_tex = gfx->construct_uniform( p.data.shader, "u_blur_tex", gs_uniform_type_sampler2d );
-	p.data.u_exposure = gfx->construct_uniform( p.data.shader, "u_exposure", gs_uniform_type_float );
-	p.data.u_gamma = gfx->construct_uniform( p.data.shader, "u_gamma", gs_uniform_type_float );
+	// p.data.u_exposure = gfx->construct_uniform( p.data.shader, "u_exposure", gs_uniform_type_float );
+	// p.data.u_gamma = gfx->construct_uniform( p.data.shader, "u_gamma", gs_uniform_type_float );
 	p.data.u_bloom_scalar = gfx->construct_uniform( p.data.shader, "u_bloom_scalar", gs_uniform_type_float );
-	p.data.u_saturation = gfx->construct_uniform( p.data.shader, "u_saturation", gs_uniform_type_float );
+	// p.data.u_saturation = gfx->construct_uniform( p.data.shader, "u_saturation", gs_uniform_type_float );
 
 	p._base.pass = &cp_pass;
 
@@ -119,7 +119,7 @@ composite_pass_t composite_pass_ctor()
 	gs_texture_parameter_desc t_desc = gs_texture_parameter_desc_default();
 	t_desc.mag_filter = gs_linear;
 	t_desc.min_filter = gs_linear;
-	t_desc.texture_format = gs_texture_rgba16f;
+	t_desc.texture_format = gs_texture_format_rgba16f;
 	t_desc.generate_mips = false;
 	t_desc.num_comps = 4;
 	t_desc.data = NULL;
@@ -152,7 +152,7 @@ void cp_pass( gs_resource( gs_command_buffer ) cb, struct render_pass_i* _pass, 
 	gs_texture_parameter_desc t_desc = gs_texture_parameter_desc_default();
 	t_desc.mag_filter = gs_linear;
 	t_desc.min_filter = gs_linear;
-	t_desc.texture_format = gs_texture_rgba16f;
+	t_desc.texture_format = gs_texture_format_rgba16f;
 	t_desc.generate_mips = false;
 	t_desc.num_comps = 4;
 	t_desc.data = NULL;

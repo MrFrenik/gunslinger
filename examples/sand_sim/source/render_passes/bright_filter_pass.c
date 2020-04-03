@@ -74,7 +74,7 @@ bright_filter_pass_t bright_filter_pass_ctor()
 	gs_texture_parameter_desc t_desc = gs_texture_parameter_desc_default();
 	t_desc.mag_filter = gs_linear;
 	t_desc.min_filter = gs_linear;
-	t_desc.texture_format = gs_texture_rgba16f;
+	t_desc.texture_format = gs_texture_format_rgba16f;
 	t_desc.generate_mips = false;
 	t_desc.num_comps = 4;
 	t_desc.data = NULL;
@@ -107,7 +107,7 @@ bright_filter_pass_t bright_filter_pass_ctor()
 	gs_texture_parameter_desc t_desc = gs_texture_parameter_desc_default();
 	t_desc.mag_filter = gs_linear;
 	t_desc.min_filter = gs_linear;
-	t_desc.texture_format = gs_texture_rgba16f;
+	t_desc.texture_format = gs_texture_format_rgba16f;
 	t_desc.generate_mips = false;
 	t_desc.num_comps = 4;
 	t_desc.data = NULL;
