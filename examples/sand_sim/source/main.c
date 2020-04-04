@@ -861,6 +861,7 @@ _global f32 gravity = 10.f;
 _global f32 g_selection_radius = 10.f;
 
 _global b32 g_show_material_selection_panel = true;
+_global b32 g_run_simulation = true;
 
 // Handle for main window
 _global gs_resource_handle g_window;
@@ -1155,6 +1156,7 @@ particle_t get_closest_particle_from_color( color_t c )
 	gs_vec4 c_vec = (gs_vec4){ (f32)c.r, (f32)c.g, (f32)c.b, (f32)c.a };
 	u8 id = mat_id_empty;	
 
+/*
 	__check_dist( c, mat_col_sand, particle_sand );
 	__check_dist( c, mat_col_water, particle_water );
 	__check_dist( c, mat_col_salt, particle_salt );
@@ -1167,32 +1169,33 @@ particle_t get_closest_particle_from_color( color_t c )
 	__check_dist( c, mat_col_lava, particle_lava );
 	__check_dist( c, mat_col_stone, particle_stone );
 	__check_dist( c, mat_col_acid, particle_acid );
+	*/
 
-	// f32 sand_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_sand.r, (f32)mat_col_sand.g, (f32)mat_col_sand.b, 255.f } );
-	// f32 water_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_water.r, (f32)mat_col_water.g, (f32)mat_col_water.b, 255.f } );
-	// f32 salt_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_salt.r, (f32)mat_col_salt.g, (f32)mat_col_salt.b, 255.f } );
-	// f32 wood_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_wood.r, (f32)mat_col_wood.g, (f32)mat_col_wood.b, 255.f } );
-	// f32 fire_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_fire.r, (f32)mat_col_fire.g, (f32)mat_col_fire.b, 255.f } );
-	// f32 smoke_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_smoke.r, (f32)mat_col_smoke.g, (f32)mat_col_smoke.b, 255.f } );
-	// f32 steam_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_steam.r, (f32)mat_col_steam.g, (f32)mat_col_steam.b, 255.f } );
-	// f32 gunpowder_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_gunpowder.r, (f32)mat_col_gunpowder.g, (f32)mat_col_gunpowder.b, 255.f } );
-	// f32 oil_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_oil.r, (f32)mat_col_oil.g, (f32)mat_col_oil.b, 255.f } );
-	// f32 lava_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_lava.r, (f32)mat_col_lava.g, (f32)mat_col_lava.b, 255.f } );
-	// f32 stone_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_stone.r, (f32)mat_col_stone.g, (f32)mat_col_stone.b, 255.f } );
-	// f32 acid_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_acid.r, (f32)mat_col_acid.g, (f32)mat_col_acid.b, 255.f } );
+	f32 sand_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_sand.r, (f32)mat_col_sand.g, (f32)mat_col_sand.b, 255.f } );
+	f32 water_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_water.r, (f32)mat_col_water.g, (f32)mat_col_water.b, 255.f } );
+	f32 salt_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_salt.r, (f32)mat_col_salt.g, (f32)mat_col_salt.b, 255.f } );
+	f32 wood_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_wood.r, (f32)mat_col_wood.g, (f32)mat_col_wood.b, 255.f } );
+	f32 fire_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_fire.r, (f32)mat_col_fire.g, (f32)mat_col_fire.b, 255.f } );
+	f32 smoke_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_smoke.r, (f32)mat_col_smoke.g, (f32)mat_col_smoke.b, 255.f } );
+	f32 steam_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_steam.r, (f32)mat_col_steam.g, (f32)mat_col_steam.b, 255.f } );
+	f32 gunpowder_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_gunpowder.r, (f32)mat_col_gunpowder.g, (f32)mat_col_gunpowder.b, 255.f } );
+	f32 oil_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_oil.r, (f32)mat_col_oil.g, (f32)mat_col_oil.b, 255.f } );
+	f32 lava_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_lava.r, (f32)mat_col_lava.g, (f32)mat_col_lava.b, 255.f } );
+	f32 stone_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_stone.r, (f32)mat_col_stone.g, (f32)mat_col_stone.b, 255.f } );
+	f32 acid_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_acid.r, (f32)mat_col_acid.g, (f32)mat_col_acid.b, 255.f } );
 
-	// __check_dist(sand_dist, particle_sand);
-	// __check_dist(water_dist, particle_water);
-	// __check_dist(salt_dist, particle_salt);
-	// __check_dist(wood_dist, particle_wood);
-	// __check_dist(fire_dist, particle_fire);
-	// __check_dist(smoke_dist, particle_smoke);
-	// __check_dist(steam_dist, particle_steam);
-	// __check_dist(gunpowder_dist, particle_gunpowder);
-	// __check_dist(oil_dist, particle_oil);
-	// __check_dist(lava_dist, particle_lava);
-	// __check_dist(stone_dist, particle_stone);
-	// __check_dist(acid_dist, particle_acid);
+	__check_dist_euclidean(sand_dist, particle_sand);
+	__check_dist_euclidean(water_dist, particle_water);
+	__check_dist_euclidean(salt_dist, particle_salt);
+	__check_dist_euclidean(wood_dist, particle_wood);
+	__check_dist_euclidean(fire_dist, particle_fire);
+	__check_dist_euclidean(smoke_dist, particle_smoke);
+	__check_dist_euclidean(steam_dist, particle_steam);
+	__check_dist_euclidean(gunpowder_dist, particle_gunpowder);
+	__check_dist_euclidean(oil_dist, particle_oil);
+	__check_dist_euclidean(lava_dist, particle_lava);
+	__check_dist_euclidean(stone_dist, particle_stone);
+	__check_dist_euclidean(acid_dist, particle_acid);
 
 	return p;
 }
@@ -1221,10 +1224,19 @@ void drop_file_callback( void* platform_window, s32 count, const char** file_pat
 		{
 			// Load texture into memory
 			s32 _w, _h, _n;
+			void* texture_data = NULL;
+
+			if ( gs_string_compare_equal(temp_file_extension_buffer, "png") ) {
+				texture_data = gfx->load_texture_data_from_file( file_paths[ i ], false, gs_texture_format_rgba8, &_w, &_h, &_n );
+			} else {
+				texture_data = gfx->load_texture_data_from_file( file_paths[ i ], false, gs_texture_format_rgb8, &_w, &_h, &_n );
+			}
 
 			// Not sure what the format should be, so this is ...blah. Need to find a way to determine this beforehand.
-			void* texture_data = gfx->load_texture_data_from_file( file_paths[ i ], false, gs_texture_format_rgba8, &_w, &_h, &_n );
 			u8* data = (u8*)texture_data;
+
+			s32 sx = ( g_texture_width - _w ) / 2;
+			s32 sy = ( g_texture_height - _h ) / 2;
 
 			// Now we need to process the data and place it into our particle/color buffers
 			for ( u32 h = 0; h < _h; ++h ) 
@@ -1242,10 +1254,10 @@ void drop_file_callback( void* platform_window, s32 count, const char** file_pat
 					// Get color of this pixel in the image
 					particle_t p = get_closest_particle_from_color( c );
 
-					// For now, just write some water into the buffer
-					if ( in_bounds( mp.x + w, mp.y + h ) ) {
+					// Let's place this thing in the center instead...
+					if ( in_bounds( sx + w, sy + h ) ) {
 
-						u32 idx = compute_idx( mp.x + w, mp.y + h );
+						u32 idx = compute_idx( sx + w, sy + h );
 						write_data( idx, p );
 					}
 				}
@@ -1389,7 +1401,10 @@ gs_result app_update()
 	if ( !ui_interaction ) {
 		update_input();
 	}
-	update_particle_sim();
+
+	if ( g_run_simulation ) {
+		update_particle_sim();
+	}
 
 	/*===============
 	// Render scene
@@ -1604,6 +1619,16 @@ void update_input()
 		g_selection_radius = gs_clamp( g_selection_radius + 1.f, 1.f, 100.f );
 	}
 
+	if ( platform->key_pressed( gs_keycode_p ) ) {
+		g_run_simulation = !g_run_simulation;
+	}
+
+	// Clear data
+	if ( platform->key_pressed( gs_keycode_c ) ) {
+		memset( g_texture_buffer, 0, sizeof(color_t) * g_texture_width * g_texture_height );
+		memset( g_world_particle_data, 0, sizeof(particle_t) * g_texture_width * g_texture_height );
+	}
+
 	// Mouse input for testing
 	if ( platform->mouse_down( gs_mouse_lbutton ) )
 	{
@@ -1738,17 +1763,6 @@ void update_particle_sim()
 			g_world_particle_data[ compute_idx( x, y ) ].has_been_updated_this_frame = false;
 		}
 	}
-
-	// Upload our updated texture data to GPU
-	gs_texture_parameter_desc t_desc = gs_texture_parameter_desc_default();
-	t_desc.mag_filter = gs_nearest;
-	t_desc.min_filter = gs_nearest;
-	t_desc.generate_mips = false;
-	t_desc.width = g_texture_width;
-	t_desc.height = g_texture_height;
-	t_desc.num_comps = 4;
-	t_desc.data = g_texture_buffer;
-	gfx->update_texture_data( g_tex, t_desc );
 }
 
 void draw_glyph_at( font_t* f, color_t* buffer, s32 x, s32 y, char c, color_t col ) 
@@ -1874,6 +1888,10 @@ b32 update_ui()
 	gs_snprintf (frame_time_str, sizeof(frame_time_str), "frame: %.2f ms", platform->time.frame );
 	draw_string_at( &g_font, g_ui_buffer, 10, 10, frame_time_str, strlen(frame_time_str), (color_t){ 255, 255, 255, 255 } ); 
 
+	char sim_state_str[256];
+	gs_snprintf (sim_state_str, sizeof(sim_state_str), "state: %s", g_run_simulation ? "running" : "paused" );
+	draw_string_at( &g_font, g_ui_buffer, 10, 20, sim_state_str, strlen(sim_state_str), (color_t){ 255, 255, 255, 255 } ); 
+
 	// Draw circle around mouse pointer
 	s32 R = g_selection_radius;
 	circleBres((s32)mp.x, (s32)mp.y, R); 
@@ -1899,6 +1917,17 @@ void render_scene()
 
 	// Platform api instance
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+
+	// Upload our updated texture data to GPU
+	gs_texture_parameter_desc t_desc = gs_texture_parameter_desc_default();
+	t_desc.mag_filter = gs_nearest;
+	t_desc.min_filter = gs_nearest;
+	t_desc.generate_mips = false;
+	t_desc.width = g_texture_width;
+	t_desc.height = g_texture_height;
+	t_desc.num_comps = 4;
+	t_desc.data = g_texture_buffer;
+	gfx->update_texture_data( g_tex, t_desc );
 
 	gs_vec2 ws = platform->window_size( g_window );
 	b32 flip_y = false;
