@@ -288,7 +288,7 @@ gs_vec4_norm( gs_vec4 v )
 }
 
 _inline f32
-gs_vec4_distance( gs_vec4 v0, gs_vec4 v1 )
+gs_vec4_dist( gs_vec4 v0, gs_vec4 v1 )
 {
 	f32 dx = (v0.x - v1.x);
 	f32 dy = (v0.y - v1.y);

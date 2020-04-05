@@ -819,7 +819,7 @@ _global font_t								g_font = {0};
 #define mat_col_gunpowder (color_t){ 60, 60, 60, 255 }
 #define mat_col_oil (color_t){ 80, 70, 60, 255 }
 #define mat_col_lava  (color_t){ 200, 50, 0, 255 }
-#define mat_col_acid  (color_t){ 20, 200, 30, 255 }
+#define mat_col_acid  (color_t){ 90, 200, 60, 255 }
 
 typedef enum material_selection
 {
@@ -1127,10 +1127,94 @@ int main( int argc, char** argv )
 	return 0;	
 }
 
-#define __check_dist_euclidean(dist, p_func)\
+typedef struct hsv_t
+{
+	f32 h;
+	f32 s;
+	f32 v;
+} hsv_t;
+
+// From on: https://gist.github.com/fairlight1337/4935ae72bcbcc1ba5c72
+hsv_t rgb_to_hsv( color_t c ) 
+{
+	gs_vec3 cv = (gs_vec3){ (f32)c.r / 255.f, (f32)c.g / 255.f, (f32)c.b / 255.f };
+	f32 fR = cv.x, fG = cv.y, fB = cv.z;
+
+	f32 fCMax = max(max(fR, fG), fB);
+	f32 fCMin = min(min(fR, fG), fB);
+	f32 fDelta = fCMax - fCMin;
+
+	hsv_t hsv;
+
+	if(fDelta > 0) {
+		if(fCMax == fR) {
+		  hsv.h = 60 * (fmod(((fG - fB) / fDelta), 6));
+	} else if(fCMax == fG) {
+		  hsv.h = 60 * (((fB - fR) / fDelta) + 2);
+	} else if(fCMax == fB) {
+		  hsv.h = 60 * (((fR - fG) / fDelta) + 4);
+	}
+
+	if(fCMax > 0) {
+	  hsv.s = fDelta / fCMax;
+	} else {
+	  hsv.s = 0;
+	}
+
+	hsv.v = fCMax;
+	} else {
+		hsv.h = 0;
+		hsv.s = 0;
+		hsv.v = fCMax;
+	}
+
+	if(hsv.h < 0) {
+		hsv.h = 360 + hsv.h;
+	}
+
+	return hsv;
+}
+
+// Implemented from: https://stackoverflow.com/questions/27374550/how-to-compare-color-object-and-get-closest-color-in-an-color
+// distance between two hues:
+f32 hue_dist( f32 h1, f32 h2 )
+{ 
+    f32 d = abs( h1 -  h2 ); 
+    return d > 180.f ? 360.f - d : d; 
+}
+
+ // color brightness as perceived:
+f32 brightness( color_t c )
+{ 
+	return ( (f32)c.r * 0.299f + (f32)c.g * 0.587f + (f32)c.b *0.114f ) / 256.f;
+}
+
+f32 color_num( color_t c ) 
+{
+	const f32 bright_factor = 100.0f;
+	const f32 sat_factor = 0.1f;
+	hsv_t hsv = rgb_to_hsv( c );
+	return hsv.s * sat_factor + brightness( c ) * bright_factor;
+}
+
+#define __check_hsv(c0, c1, p_func)\
+do {\
+	hsv_t hsv0 = rgb_to_hsv( c0 );\
+	hsv_t hsv1 = rgb_to_hsv( c1 );\
+	f32 d = abs( color_num( c0 ) - color_num( c1 ) ) + hue_dist( hsv0.h, hsv1.h );\
+	if ( d < min_dist ) {\
+		min_dist = d;\
+		p = p_func();\
+	}\
+} while ( 0 )
+
+#define __check_dist_euclidean(c0, c1, p_func)\
 	do {\
-		if (dist < min_dist) {\
-			min_dist = dist;\
+		gs_vec4 c0_vec = (gs_vec4){ (f32)c0.r, c0.g, c0.b, 255.f };\
+		gs_vec4 c1_vec = (gs_vec4){ (f32)c1.r, c1.g, c1.b, 255.f };\
+		f32 d = gs_vec4_dist( c0_vec, c1_vec );\
+		if ( d < min_dist ) {\
+			min_dist = d;\
 			p = p_func();\
 		}\
 	} while ( 0 )
@@ -1154,48 +1238,20 @@ particle_t get_closest_particle_from_color( color_t c )
 	particle_t p = particle_empty();
 	f32 min_dist = f32_max;
 	gs_vec4 c_vec = (gs_vec4){ (f32)c.r, (f32)c.g, (f32)c.b, (f32)c.a };
-	u8 id = mat_id_empty;	
+	u8 id = mat_id_empty;
 
-/*
-	__check_dist( c, mat_col_sand, particle_sand );
-	__check_dist( c, mat_col_water, particle_water );
-	__check_dist( c, mat_col_salt, particle_salt );
-	__check_dist( c, mat_col_wood, particle_wood );
-	__check_dist( c, mat_col_fire, particle_fire );
-	__check_dist( c, mat_col_smoke, particle_smoke );
-	__check_dist( c, mat_col_steam, particle_steam );
-	__check_dist( c, mat_col_gunpowder, particle_gunpowder );
-	__check_dist( c, mat_col_oil, particle_oil );
-	__check_dist( c, mat_col_lava, particle_lava );
-	__check_dist( c, mat_col_stone, particle_stone );
-	__check_dist( c, mat_col_acid, particle_acid );
-	*/
-
-	f32 sand_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_sand.r, (f32)mat_col_sand.g, (f32)mat_col_sand.b, 255.f } );
-	f32 water_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_water.r, (f32)mat_col_water.g, (f32)mat_col_water.b, 255.f } );
-	f32 salt_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_salt.r, (f32)mat_col_salt.g, (f32)mat_col_salt.b, 255.f } );
-	f32 wood_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_wood.r, (f32)mat_col_wood.g, (f32)mat_col_wood.b, 255.f } );
-	f32 fire_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_fire.r, (f32)mat_col_fire.g, (f32)mat_col_fire.b, 255.f } );
-	f32 smoke_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_smoke.r, (f32)mat_col_smoke.g, (f32)mat_col_smoke.b, 255.f } );
-	f32 steam_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_steam.r, (f32)mat_col_steam.g, (f32)mat_col_steam.b, 255.f } );
-	f32 gunpowder_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_gunpowder.r, (f32)mat_col_gunpowder.g, (f32)mat_col_gunpowder.b, 255.f } );
-	f32 oil_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_oil.r, (f32)mat_col_oil.g, (f32)mat_col_oil.b, 255.f } );
-	f32 lava_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_lava.r, (f32)mat_col_lava.g, (f32)mat_col_lava.b, 255.f } );
-	f32 stone_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_stone.r, (f32)mat_col_stone.g, (f32)mat_col_stone.b, 255.f } );
-	f32 acid_dist = gs_vec4_distance( c_vec, (gs_vec4){ (f32)mat_col_acid.r, (f32)mat_col_acid.g, (f32)mat_col_acid.b, 255.f } );
-
-	__check_dist_euclidean(sand_dist, particle_sand);
-	__check_dist_euclidean(water_dist, particle_water);
-	__check_dist_euclidean(salt_dist, particle_salt);
-	__check_dist_euclidean(wood_dist, particle_wood);
-	__check_dist_euclidean(fire_dist, particle_fire);
-	__check_dist_euclidean(smoke_dist, particle_smoke);
-	__check_dist_euclidean(steam_dist, particle_steam);
-	__check_dist_euclidean(gunpowder_dist, particle_gunpowder);
-	__check_dist_euclidean(oil_dist, particle_oil);
-	__check_dist_euclidean(lava_dist, particle_lava);
-	__check_dist_euclidean(stone_dist, particle_stone);
-	__check_dist_euclidean(acid_dist, particle_acid);
+	__check_dist_euclidean( c, mat_col_sand, particle_sand );
+	__check_dist_euclidean( c, mat_col_water, particle_water );
+	__check_dist_euclidean( c, mat_col_salt, particle_salt );
+	__check_dist_euclidean( c, mat_col_wood, particle_wood );
+	__check_dist_euclidean( c, mat_col_fire, particle_fire );
+	__check_dist_euclidean( c, mat_col_smoke, particle_smoke );
+	__check_dist_euclidean( c, mat_col_steam, particle_steam );
+	__check_dist_euclidean( c, mat_col_gunpowder, particle_gunpowder );
+	__check_dist_euclidean( c, mat_col_oil, particle_oil );
+	__check_dist_euclidean( c, mat_col_lava, particle_lava );
+	__check_dist_euclidean( c, mat_col_stone, particle_stone );
+	__check_dist_euclidean( c, mat_col_acid, particle_acid );
 
 	return p;
 }
@@ -1226,11 +1282,9 @@ void drop_file_callback( void* platform_window, s32 count, const char** file_pat
 			s32 _w, _h, _n;
 			void* texture_data = NULL;
 
-			if ( gs_string_compare_equal(temp_file_extension_buffer, "png") ) {
-				texture_data = gfx->load_texture_data_from_file( file_paths[ i ], false, gs_texture_format_rgba8, &_w, &_h, &_n );
-			} else {
-				texture_data = gfx->load_texture_data_from_file( file_paths[ i ], false, gs_texture_format_rgb8, &_w, &_h, &_n );
-			}
+			// Force texture data to 3 components
+			texture_data = gfx->load_texture_data_from_file( file_paths[ i ], false, gs_texture_format_rgb8, &_w, &_h, &_n );
+			_n = 3;
 
 			// Not sure what the format should be, so this is ...blah. Need to find a way to determine this beforehand.
 			u8* data = (u8*)texture_data;
@@ -1839,9 +1893,9 @@ do {\
 		char _str[] = (str);\
 		color_t col = (color_t){ 255, 255, 255, 255 };\
 		color_t s_col = (color_t){ 10, 10, 10, 255 };\
-		color_t r_col = (color_t){ 10, 10, 10, 100 };\
+		color_t r_col = (color_t){ 5, 5, 5, 170 };\
 		/*Draw rect around text as well for easier viewing*/\
-		/*gui_rect(g_ui_buffer, g_texture_width / 2 - 100, 20 + 50, 200, 100, r_col);*/\
+		gui_rect(g_ui_buffer, g_texture_width / 2 - 50, 15, 100, 20, r_col);\
 		draw_string_at(&g_font, g_ui_buffer, g_texture_width / 2 + 1 - (sizeof(str) * 5) / 2, 20 - 1, _str, sizeof(_str), s_col);\
 		draw_string_at(&g_font, g_ui_buffer, g_texture_width / 2 - (sizeof(str) * 5) / 2, 20, _str, sizeof(_str), col);\
 	}\
@@ -2631,7 +2685,7 @@ void update_fire( u32 x, u32 y )
 
 	p->has_been_updated_this_frame = true;
 
-	if ( p->life_time > 2.f ) {
+	if ( p->life_time > 0.2f ) {
 		if ( random_val( 0, 100 ) == 0 ) {
 			write_data( read_idx, particle_empty() );
 			return;
@@ -2640,8 +2694,9 @@ void update_fire( u32 x, u32 y )
 
 	f32 st = sin(gs_engine_instance()->ctx.platform->elapsed_time());
 	// f32 grav_mul = random_val( 0, 10 ) == 0 ? 2.f : 1.f;
-	p->velocity.y = gs_clamp( p->velocity.y + ((gravity * dt)) , -5.f, 5.f );
-	p->velocity.x = gs_clamp( p->velocity.x * st * 2.f, -5.f, 5.f );
+	p->velocity.y = gs_clamp( p->velocity.y - ((gravity * dt)) * 0.2f , -5.0f, 0.f );
+	// p->velocity.x = gs_clamp( st, -1.f, 1.f );
+	p->velocity.x = gs_clamp( p->velocity.x + (f32)random_val( -100, 100 ) / 200.f, -0.5f, 0.5f );
 
 	// Change color based on life_time
 
@@ -2653,6 +2708,12 @@ void update_fire( u32 x, u32 y )
 			case 2: p->color = (color_t){ 200, 150, 0, 255 }; break;
 			case 3: p->color = (color_t){ 100, 50, 2, 255 }; break;
 		}
+	}
+
+	if ( p->life_time < 0.02f ) {
+		p->color.r = 200;
+	} else {
+		p->color.r = 255;
 	}
 
 	// In water, so create steam and DIE
@@ -2685,7 +2746,7 @@ void update_fire( u32 x, u32 y )
 	}
 
 	if ( random_val( 0, 10 ) == 0 ) {
-		p->velocity.x = gs_clamp( p->velocity.x + (f32)random_val( -1, 1 ) / 2.f, -1.f, 1.f );
+		// p->velocity.x = gs_clamp( p->velocity.x + (f32)random_val( -1, 1 ) / 2.f, -1.f, 1.f );
 	}
 	// p->velocity.x = gs_clamp( p->velocity.x, -0.5f, 0.5f );
 
@@ -2725,7 +2786,7 @@ void update_fire( u32 x, u32 y )
 	u32 br_idx = compute_idx( x + 1, y + 1 );
 	u32 bl_idx = compute_idx( x - 1, y + 1 );
 
-	const s32 wood_chance = 200;
+	const s32 wood_chance = 100;
 	const s32 gun_powder_chance = 1;
 	const s32 oil_chance = 5;
 
@@ -2749,17 +2810,17 @@ void update_fire( u32 x, u32 y )
 		for ( u32 i = 0; i < random_val(1, 100); ++i ) {
 			if ( in_bounds( x, y - 1 ) && is_empty( x, y - 1 ) ) {
 				particle_t e = particle_ember();
-				e.velocity = (gs_vec2){ (f32)random_val(-5, 5) / 5.f, -(f32)random_val(2, 10) / 2.f };
+				e.velocity = (gs_vec2){ (f32)random_val(-5, 5) / 5.f, -(f32)random_val(2, 10) / 10.f };
 				write_data( compute_idx( x, y - 1 ), e );
 			}
 			else if ( in_bounds( x + 1, y - 1 ) && is_empty( x + 1, y - 1 ) ) {
 				particle_t e = particle_ember();
-				e.velocity = (gs_vec2){ (f32)random_val(-5, 5) / 5.f, -(f32)random_val(2, 10) / 2.f };
+				e.velocity = (gs_vec2){ (f32)random_val(-5, 5) / 5.f, -(f32)random_val(2, 10) / 10.f };
 				write_data( compute_idx( x + 1, y - 1 ), e );
 			}
 			else if ( in_bounds( x - 1, y - 1 ) && is_empty( x - 1, y - 1 ) ) {
 				particle_t e = particle_ember();
-				e.velocity = (gs_vec2){ (f32)random_val(-5, 5) / 5.f, -(f32)random_val(2, 10) / 2.f };
+				e.velocity = (gs_vec2){ (f32)random_val(-5, 5) / 5.f, -(f32)random_val(2, 10) / 10.f };
 				write_data( compute_idx( x - 1, y - 1 ), e );
 			}
 		}
@@ -2920,6 +2981,12 @@ void update_fire( u32 x, u32 y )
 			}
 		}
 	}
+	else if ( in_bounds( x, y - 1 ) && is_empty( x, y - 1 ) ) {
+		if ( random_val( 0, 50 ) == 0 ) {
+			write_data( read_idx, particle_empty() );
+			return;
+		}
+	}
 
 	if ( in_bounds( vi_x, vi_y ) && (is_empty(vi_x, vi_y) || 
 									get_particle_at(vi_x, vi_y).id == mat_id_fire ||
@@ -2932,42 +2999,42 @@ void update_fire( u32 x, u32 y )
 	}
 
 	// Simple falling, changing the velocity here ruins everything. I need to redo this entire simulation.
-	else if ( in_bounds( x, y + 1 ) && (( is_empty( x, y + 1 ) || get_particle_at(x, y +1).id == mat_id_fire || ( g_world_particle_data[ b_idx ].id == mat_id_water ) ) ) ) {
+	else if ( in_bounds( x, y + 1 ) && (( is_empty( x, y + 1 )  || ( g_world_particle_data[ b_idx ].id == mat_id_water ) ) ) ) {
 		// p->velocity.y -= (gravity * dt );
 		// p->velocity.x = random_val( 0, 1 ) == 0 ? -1.f : 1.f;
 		particle_t tmp_b = g_world_particle_data[ b_idx ];
 		write_data( b_idx, *p );
 		write_data( read_idx, tmp_b );
 	}
-	else if ( in_bounds( x - 1, y + 1 ) && (( is_empty( x - 1, y + 1 ) || get_particle_at(x-1, y+1).id == mat_id_fire || g_world_particle_data[ bl_idx ].id == mat_id_water )) ) {
+	else if ( in_bounds( x - 1, y + 1 ) && (( is_empty( x - 1, y + 1 ) || g_world_particle_data[ bl_idx ].id == mat_id_water )) ) {
 		// p->velocity.x = random_val( 0, 1 ) == 0 ? -1.f : 1.f;
 		// p->velocity.y -= (gravity * dt );
 		particle_t tmp_b = g_world_particle_data[ bl_idx ];
 		write_data( bl_idx, *p );
 		write_data( read_idx, tmp_b );
 	}
-	else if ( in_bounds( x + 1, y + 1 ) && (( is_empty( x + 1, y + 1 ) || get_particle_at(x+1, y+1).id == mat_id_fire || g_world_particle_data[ br_idx ].id == mat_id_water )) ) {
+	else if ( in_bounds( x + 1, y + 1 ) && (( is_empty( x + 1, y + 1 ) || g_world_particle_data[ br_idx ].id == mat_id_water )) ) {
 		// p->velocity.x = random_val( 0, 1 ) == 0 ? -1.f : 1.f;
 		// p->velocity.y -= (gravity * dt );
 		particle_t tmp_b = g_world_particle_data[ br_idx ];
 		write_data( br_idx, *p );
 		write_data( read_idx, tmp_b );
 	}
-	else if ( in_bounds( x - 1, y - 1 ) && ( g_world_particle_data[ compute_idx( x - 1, y - 1 ) ].id == mat_id_water || get_particle_at(x-1, y - 1).id == mat_id_fire ) ) {
+	else if ( in_bounds( x - 1, y - 1 ) && ( g_world_particle_data[ compute_idx( x - 1, y - 1 ) ].id == mat_id_water  ) ) {
 		u32 idx = compute_idx( x - 1, y - 1 );
 		// p->velocity.x = random_val( 0, 1 ) == 0 ? -1.f : 1.f;
 		particle_t tmp_b = g_world_particle_data[ idx ];
 		write_data( idx, *p );
 		write_data( read_idx, tmp_b );
 	}
-	else if ( in_bounds( x + 1, y - 1 ) && ( g_world_particle_data[ compute_idx( x + 1, y - 1 ) ].id == mat_id_water || get_particle_at(x-1, y - 1).id == mat_id_fire ) ) {
+	else if ( in_bounds( x + 1, y - 1 ) && ( g_world_particle_data[ compute_idx( x + 1, y - 1 ) ].id == mat_id_water  ) ) {
 		u32 idx = compute_idx( x + 1, y - 1 );
 		// p->velocity.x = random_val( 0, 1 ) == 0 ? -1.f : 1.f;
 		particle_t tmp_b = g_world_particle_data[ idx ];
 		write_data( idx, *p );
 		write_data( read_idx, tmp_b );
 	}
-	else if ( in_bounds( x, y - 1 ) && ( g_world_particle_data[ compute_idx( x, y - 1 ) ].id == mat_id_water || get_particle_at(x-1, y - 1).id == mat_id_fire ) ) {
+	else if ( in_bounds( x, y - 1 ) && ( g_world_particle_data[ compute_idx( x, y - 1 ) ].id == mat_id_water  ) ) {
 		u32 idx = compute_idx( x, y - 1 );
 		// p->velocity.x = random_val( 0, 1 ) == 0 ? -1.f : 1.f;
 		particle_t tmp_b = g_world_particle_data[ idx ];
