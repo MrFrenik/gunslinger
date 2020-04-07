@@ -187,7 +187,7 @@ void opengl_init_default_state()
 {
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glDisable(GL_DEPTH_TEST);
+	// glDisable(GL_DEPTH_TEST);
 	// glBlendFunc(GL_ONE, GL_ONE);
 	// Init things...
 }
@@ -643,7 +643,7 @@ void opengl_draw_line( gs_resource( gs_command_buffer ) cb_handle, gs_vec3 start
 	cb->num_commands++;
 }
 
-void opengl_draw_square( gs_resource( gs_command_buffer ) cb_handle, gs_vec3 origin, f32 width, f32 height, gs_vec3 color )
+void opengl_draw_square( gs_resource( gs_command_buffer ) cb_handle, gs_vec3 origin, f32 width, f32 height, gs_vec3 color, gs_mat4 model )
 {
 	// Get data from graphics api
 	opengl_render_data_t* data = __get_opengl_data_internal();
@@ -656,6 +656,7 @@ void opengl_draw_square( gs_resource( gs_command_buffer ) cb_handle, gs_vec3 ori
 	gs_byte_buffer_write( &cb->commands, f32, width );
 	gs_byte_buffer_write( &cb->commands, f32, height );
 	gs_byte_buffer_write( &cb->commands, gs_vec3, color );
+	gs_byte_buffer_write( &cb->commands, gs_mat4, model );
 
 	// Increase command amount		// This is incredibly error prone...
 	// Should have a structure that I pass in instead...
@@ -919,11 +920,12 @@ void opengl_submit_command_buffer( gs_resource( gs_command_buffer ) cb_handle )
 				f32 w = gs_byte_buffer_read( &cb->commands, f32 );
 				f32 h = gs_byte_buffer_read( &cb->commands, f32 );
 				gs_vec3 color = gs_byte_buffer_read( &cb->commands, gs_vec3 );
+				gs_mat4 model = gs_byte_buffer_read( &cb->commands, gs_mat4 );
 
-				gs_vec3 tl = origin;
-				gs_vec3 tr = (gs_vec3){ origin.x + w, origin.y };
-				gs_vec3 bl = (gs_vec3){ origin.x, origin.y + h };
-				gs_vec3 br = (gs_vec3){ origin.x + w, origin.y + h };
+				gs_vec3 tl = gs_mat4_mul_vec3( model, origin );
+				gs_vec3 tr = gs_mat4_mul_vec3( model, (gs_vec3){ origin.x + w, origin.y } );
+				gs_vec3 bl = gs_mat4_mul_vec3( model, (gs_vec3){ origin.x, origin.y + h } );
+				gs_vec3 br = gs_mat4_mul_vec3( model, (gs_vec3){ origin.x + w, origin.y + h } );
 
 				// Four lines, don'tcha know?
 				__gfx_add_debug_line_internal( data->debug_data.line_vertex_data, tl, tr, color );	
@@ -981,11 +983,11 @@ void opengl_submit_command_buffer( gs_resource( gs_command_buffer ) cb_handle )
 				uniform_t proj = gs_slot_array_get( data->uniforms, data->debug_data.u_proj.id );
 				uniform_t view = gs_slot_array_get( data->uniforms, data->debug_data.u_view.id );
 
-				gs_timed_action( 10, 
-				{
-					gs_println( "after" );
-					gs_mat4_debug_print( &data->debug_data.proj_mat );
-				});
+				// gs_timed_action( 10, 
+				// {
+				// 	gs_println( "after" );
+				// 	gs_mat4_debug_print( &data->debug_data.proj_mat );
+				// });
 
 				glUniformMatrix4fv( proj.location, 1, false, (f32*)(data->debug_data.proj_mat.elements) );
 				glUniformMatrix4fv( view.location, 1, false, (f32*)(data->debug_data.view_mat.elements) );

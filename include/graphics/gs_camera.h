@@ -28,7 +28,7 @@ typedef struct gs_camera
 } gs_camera;
 
 gs_mat4 gs_camera_get_view( gs_camera* cam );
-gs_mat4 gs_camera_get_projection( gs_camera* cam, u32 view_width, u32 view_height );
+gs_mat4 gs_camera_get_projection( gs_camera* cam, s32 view_width, s32 view_height );
 gs_vec3 gs_camera_forward( gs_camera* cam );
 gs_vec3 gs_camera_up( gs_camera* cam );
 

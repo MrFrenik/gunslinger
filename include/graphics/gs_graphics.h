@@ -190,7 +190,7 @@ typedef struct gs_graphics_i
 	============================================================*/
 	void ( * set_debug_draw_properties )( gs_resource( gs_command_buffer ), gs_debug_draw_properties );
 	void ( * draw_line )( gs_resource( gs_command_buffer ), gs_vec3 start, gs_vec3 end, gs_vec3 color );
-	void ( * draw_square )( gs_resource( gs_command_buffer ), gs_vec3 origin, f32 width, f32 height, gs_vec3 color );
+	void ( * draw_square )( gs_resource( gs_command_buffer ), gs_vec3 origin, f32 width, f32 height, gs_vec3 color, gs_mat4 transform );
 	void ( * submit_debug_drawing )( gs_resource( gs_command_buffer ) );
 
 	// Render Data 

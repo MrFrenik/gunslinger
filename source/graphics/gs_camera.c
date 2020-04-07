@@ -4,7 +4,7 @@
 
 gs_vec3 gs_camera_forward( gs_camera* cam )
 {
-	return ( gs_quat_rotate( cam->transform.rotation, ( gs_vec3 ){ 0.0f, 0.0f, -1.0f } ) );
+	return ( gs_quat_rotate( cam->transform.rotation, ( gs_vec3 ){ 0.0f, 0.0f, 1.0f } ) );
 } 
 
 gs_vec3 gs_camera_up( gs_camera* cam )
@@ -18,23 +18,21 @@ gs_mat4 gs_camera_get_view( gs_camera* cam )
 	// gs_vec3 up = gs_camera_up( cam );
 	// gs_vec3 forward = gs_camera_forward( cam );
 	// gs_vec3 target = gs_vec3_add( forward, cam->transform.position );
+	// return gs_mat4_look_at( cam->transform.position, target, up );
 
-	// return gs_mat4_look_at (cam->transform.position, target, up );
+	gs_vec3 tscl = cam->transform.scale;
+	gs_vec3 tpos = cam->transform.position;
 
-	const gs_vqs* trns = &cam->transform; 
-	gs_vec3 scl_vec = gs_vec3_div( gs_vec3_ctor( 1.0f, 1.0f, 1.0f ), trns->scale );
-	gs_vec3 trans_vec = gs_vec3_scale( trns->position, -1.0f );
+	gs_mat4 scl = gs_mat4_scale((gs_vec3){1.f / tscl.x, 1.f / tscl.y, 1.f / tscl.z});	
+	gs_mat4 rot = gs_quat_to_mat4(cam->transform.rotation);
+	gs_mat4 tns = gs_mat4_translate((gs_vec3){-tpos.x, -tpos.y, -tpos.z});
 
-	gs_mat4 scl = gs_mat4_scale( scl_vec );
-	gs_mat4 rot = gs_quat_to_mat4( trns->rotation );
-	gs_mat4 pos = gs_mat4_translate( trans_vec );
-
-	gs_mat4 ret = gs_mat4_mul( scl, rot );
-	ret = gs_mat4_mul( ret, pos );
+	gs_mat4 ret = gs_mat4_mul(scl, rot);
+	ret = gs_mat4_mul(ret, tns);
 	return ret;
 }
 
-gs_mat4 gs_camera_get_projection( gs_camera* cam, u32 view_width, u32 view_height )
+gs_mat4 gs_camera_get_projection( gs_camera* cam, s32 view_width, s32 view_height )
 {
 	gs_mat4 proj_mat = gs_mat4_identity();
 
@@ -42,34 +40,31 @@ gs_mat4 gs_camera_get_projection( gs_camera* cam, u32 view_width, u32 view_heigh
 	{
 		case gs_projection_type_perspective:
 		{
-			proj_mat = gs_mat4_perspective( cam->fov, (f32)view_width / (f32)view_height, cam->near_plane, cam->far_plane );
+			proj_mat = gs_mat4_perspective( cam->fov, cam->aspect_ratio, cam->near_plane, cam->far_plane );
 		} break;
 
 		case gs_projection_type_orthographic:
 		{
 			f32 distance = 0.5f * ( cam->far_plane - cam->near_plane );
 			const f32 ortho_scale = cam->ortho_scale;
-			const f32 aspect_ratio = (f32)view_width / (f32)view_height;
+			const f32 aspect_ratio = cam->aspect_ratio;
 			proj_mat = gs_mat4_ortho
-			// (
-			// 	-ortho_scale * aspect_ratio, 
-			// 	ortho_scale * aspect_ratio, 
-			// 	-ortho_scale, 
-			// 	ortho_scale, 
-			// 	-distance, 
-			// 	distance	
-			// );
 			(
-				0.f, 
-				view_width, 
-				view_height, 
-				0.f, 
-				cam->near_plane, 
-				cam->far_plane	
+				-ortho_scale * aspect_ratio, 
+				ortho_scale * aspect_ratio, 
+				-ortho_scale, 
+				ortho_scale, 
+				-distance, 
+				distance	
 			);
-
-// gs_mat4_ortho( f32 l, f32 r, f32 b, f32 t, f32 n, f32 f )
-
+			// (
+			// 	0.f, 
+			// 	view_width, 
+			// 	view_height, 
+			// 	0.f, 
+			// 	cam->near_plane, 
+			// 	cam->far_plane	
+			// );
 		} break;
 	}
 
