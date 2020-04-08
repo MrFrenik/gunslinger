@@ -7,6 +7,8 @@ gs_result app_shutdown();	// Use to shutdown your appliaction
 
 // Ported to a c99 impl from: https://github.com/CrushedPixel/Polyline2D/
 
+// Need a collection of glyphs, each with bearing/advance/etc.
+
 // Colors
 #define white (gs_vec4){1.f, 1.f, 1.f, 1.f}
 #define red (gs_vec4){1.f, 0.f, 0.f, 1.f}
@@ -802,6 +804,20 @@ gs_result app_init()
 	return gs_result_success;
 }
 
+void draw_triangle(gs_dyn_array(vert_t)* verts, gs_vec2 a, gs_vec2 b, gs_vec2 c, f32 thickness, gs_vec4 color)
+{
+	poly_point_t points[] = 
+	{
+		poly_point_create(a, color, thickness), 
+		poly_point_create(b, color, thickness),
+		poly_point_create(c, color, thickness)
+	};
+	u32 pt_count = sizeof(points) / sizeof(poly_point_t);
+
+	// Pass in verts for creating poly line
+	poly_line_create(verts, points, pt_count, joint_style_miter, end_cap_style_joint, false);
+}
+
 void draw_line( gs_dyn_array(vert_t)* verts, gs_vec2 start, gs_vec2 end, f32 thickness, gs_vec4 color )
 {
 	poly_point_t points[] = 
@@ -812,7 +828,7 @@ void draw_line( gs_dyn_array(vert_t)* verts, gs_vec2 start, gs_vec2 end, f32 thi
 	u32 pt_count = sizeof(points) / sizeof(poly_point_t);
 
 	// Pass in verts for creating poly line
-	poly_line_create(verts, points, pt_count, joint_style_miter, end_cap_style_butt, true);
+	poly_line_create(verts, points, pt_count, joint_style_miter, end_cap_style_butt, false);
 }
 
 void draw_circle( gs_dyn_array(vert_t)* verts, gs_vec2 origin, f32 r, s32 num_segments, f32 thickness, gs_vec4 color )
@@ -820,7 +836,6 @@ void draw_circle( gs_dyn_array(vert_t)* verts, gs_vec2 origin, f32 r, s32 num_se
 	gs_dyn_array(poly_point_t) points = gs_dyn_array_new(poly_point_t);
 
 	f32 step = num_segments < 5 ? 360.f / 5.f : 360.f / (f32)num_segments;
-	num_segments = 20;
 	for ( f32 i = 0; i < 360.f; i += step ) {
 		f32 a = gs_deg_to_rad(i);
 		poly_point_t p = poly_point_create(gs_vec2_add(origin, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)), 
@@ -837,7 +852,7 @@ void draw_circle( gs_dyn_array(vert_t)* verts, gs_vec2 origin, f32 r, s32 num_se
 	u32 pt_count = gs_dyn_array_size(points);
 
 	// Pass in verts for creating poly line
-	poly_line_create(verts, points, pt_count, joint_style_round, end_cap_style_joint, true);
+	poly_line_create(verts, points, pt_count, joint_style_round, end_cap_style_joint, false);
 
 	gs_dyn_array_free(points);
 }
@@ -851,12 +866,11 @@ void draw_arc( gs_dyn_array(vert_t)* verts, gs_vec2 origin, f32 r, f32 start_ang
 		end_angle = tmp;
 	}
 	f32 diff = end_angle - start_angle;
-	if ( fabsf(diff) <= 0.01f ) {
+	if ( fabsf(diff) <= 0.001f ) {
 		return;
 	}
 
 	f32 step = num_segments < 5 ? diff / 5.f : diff / (f32)num_segments;
-	num_segments = 20;
 	for ( f32 i = start_angle; i <= end_angle; i += step ) {
 		f32 a = gs_deg_to_rad(i);
 		poly_point_t p = poly_point_create(gs_vec2_add(origin, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)), 
@@ -873,7 +887,7 @@ void draw_arc( gs_dyn_array(vert_t)* verts, gs_vec2 origin, f32 r, f32 start_ang
 	u32 pt_count = gs_dyn_array_size(points);
 
 	// Pass in verts for creating poly line
-	poly_line_create(verts, points, pt_count, joint_style_round, end_cap_style_butt, true);
+	poly_line_create(verts, points, pt_count, joint_style_round, end_cap_style_butt, false);
 
 	gs_dyn_array_free(points);
 }
@@ -890,7 +904,7 @@ void draw_square( gs_dyn_array(vert_t)* verts, gs_vec2 origin, gs_vec2 half_exte
 	u32 pt_count = sizeof(points) / sizeof(poly_point_t);
 
 	// Pass in verts for creating poly line
-	poly_line_create(verts, points, pt_count, joint_style_miter, end_cap_style_joint, true);
+	poly_line_create(verts, points, pt_count, joint_style_miter, end_cap_style_joint, false);
 }
 
 void draw_bezier_curve( gs_dyn_array(vert_t)* verts, gs_vec2 cp0, gs_vec2 cp1, gs_vec2 cp2, gs_vec2 cp3, u32 num_segments, f32 thickness, gs_vec4 color )
@@ -898,6 +912,7 @@ void draw_bezier_curve( gs_dyn_array(vert_t)* verts, gs_vec2 cp0, gs_vec2 cp1, g
 	gs_dyn_array(poly_point_t) points = gs_dyn_array_new(poly_point_t);
 	f64 xu = 0.0, yu = 0.0; 	
 	f64 step = num_segments < 3 ? 3 : 1.0 / num_segments;
+	f32 scl = 1.f;
 	for ( f64 u = 0.0; u <= 1.0; u += step )
 	{
 		xu = pow(1.0 - u, 3) * cp0.x + 3 * u * pow(1.0 - u, 2) * cp1.x + pow(u, 2) * (1.0 - u) * cp2.x + 
@@ -907,10 +922,18 @@ void draw_bezier_curve( gs_dyn_array(vert_t)* verts, gs_vec2 cp0, gs_vec2 cp1, g
 		poly_point_t p = poly_point_create((gs_vec2){xu, yu}, color, thickness);
 		gs_dyn_array_push(points, p);
 	}
+	f64 u = 1.0;
+	xu = pow(1.0 - u, 3) * cp0.x + 3 * u * pow(1.0 - u, 2) * cp1.x + pow(u, 2) * (1.0 - u) * cp2.x + 
+		pow(u, 3) * cp3.x;
+	yu = pow(1.0 - u, 3) * cp0.y + 3 * u * pow(1.0 - u, 2) * cp1.y + 3 * pow(u, 2) * (1.0 - u) * cp2.y + 
+		pow(u, 3) * cp3.y;
+	gs_dyn_array_push(points, poly_point_create((gs_vec2){xu, yu}, color, thickness));
 	u32 pt_count = gs_dyn_array_size(points);
 
+	// map 0->1 -0.5 -> 0.5
+
 	// Pass in verts for creating poly line
-	poly_line_create(verts, points, pt_count, joint_style_miter, end_cap_style_butt, true);
+	poly_line_create(verts, points, pt_count, joint_style_round, end_cap_style_square, false);
 
 	gs_dyn_array_free(points);
 }
@@ -923,7 +946,7 @@ void draw_G(gs_dyn_array(vert_t)* verts, gs_vec2 position, f32 thickness, gs_vec
 	const f32 r = 30.f;
 	const f32 start_angle = 0.f;
 	const f32 end_angle = 320.f;
-	const s32 num_segments = 20;
+	const s32 num_segments = 30;
 	f32 diff = end_angle - start_angle;
 
 	// Draw line first (from position to outside radius)
@@ -948,7 +971,7 @@ void draw_G(gs_dyn_array(vert_t)* verts, gs_vec2 position, f32 thickness, gs_vec
 	u32 pt_count = gs_dyn_array_size(points);
 
 	// Pass in verts for creating poly line
-	poly_line_create(verts, points, pt_count, joint_style_miter, end_cap_style_butt, true);
+	poly_line_create(verts, points, pt_count, joint_style_miter, end_cap_style_butt, false);
 
 	gs_dyn_array_free(points);
 }
@@ -974,7 +997,7 @@ void draw_g(gs_dyn_array(vert_t)* verts, gs_vec2 position, f32 thickness, gs_vec
 	gs_vec2 ao = (gs_vec2){position.x, position.y + r};
 
 	// Draw connecting shape
-	gs_dyn_array_push(points, poly_point_create((gs_vec2){position.x + r, position.y - r - 1.f}, color, thickness));
+	gs_dyn_array_push(points, poly_point_create((gs_vec2){position.x + r, position.y - r - 5.f}, color, thickness));
 	gs_dyn_array_push(points, poly_point_create((gs_vec2){position.x + r, ao.y - 1.f}, color, thickness));
 
 	// Create arc
@@ -995,7 +1018,7 @@ void draw_g(gs_dyn_array(vert_t)* verts, gs_vec2 position, f32 thickness, gs_vec
 	u32 pt_count = gs_dyn_array_size(points);
 
 	// Pass in verts for creating poly line
-	poly_line_create(verts, points, pt_count, joint_style_miter, end_cap_style_butt, true);
+	poly_line_create(verts, points, pt_count, joint_style_miter, end_cap_style_butt, false);
 
 	gs_dyn_array_free(points);
 }
@@ -1011,9 +1034,9 @@ void draw_e(gs_dyn_array(vert_t)* verts, gs_vec2 position, f32 thickness, gs_vec
 	gs_dyn_array(poly_point_t) points = gs_dyn_array_new(poly_point_t);
 
 	const f32 r = 20.f;
-	const f32 start_angle = 20.f;
-	const f32 end_angle = 360.f;
-	const s32 num_segments = 20;
+	const f32 start_angle = 40.f;
+	const f32 end_angle = 341.f;
+	const s32 num_segments = 30;
 	f32 diff = end_angle - start_angle;
 
 	// Create arc
@@ -1033,15 +1056,50 @@ void draw_e(gs_dyn_array(vert_t)* verts, gs_vec2 position, f32 thickness, gs_vec
 	}
 
 	// Draw line (from position to outside radius)
-	gs_dyn_array_push(points, poly_point_create((gs_vec2){position.x - r, position.y}, color, thickness));
-	gs_dyn_array_push(points, poly_point_create((gs_vec2){position.x + r, position.y}, color, thickness));
+	gs_dyn_array_push(points, poly_point_create((gs_vec2){position.x - r, position.y + sin(gs_deg_to_rad(20.f)) * r}, color, thickness));
+	gs_dyn_array_push(points, poly_point_create((gs_vec2){position.x + r, position.y - sin(gs_deg_to_rad(20.f)) * r}, color, thickness));
 
 	u32 pt_count = gs_dyn_array_size(points);
 
 	// Pass in verts for creating poly line
-	poly_line_create(verts, points, pt_count, joint_style_miter, end_cap_style_butt, true);
+	poly_line_create(verts, points, pt_count, joint_style_miter, end_cap_style_butt, false);
 
 	gs_dyn_array_free(points);
+}
+
+void draw_grid(gs_dyn_array(vert_t)* verts, f32 t)
+{
+	// Viewport
+	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+	const gs_vec2 ws = platform->window_size(platform->main_window());
+
+	f32 zoom = gs_clamp(100.f * (sin(t * 0.2f) * 0.5f + 0.5f), 20.f, 100.f);
+
+	// Based on zoom, determine cell size, number of rows, number of columns
+
+	// Need grid square size...
+
+	// Draw grid across entire screen for shiggles
+	for ( u32 r = 0; r < 40; ++r )
+	{
+		gs_vec2 sp = (gs_vec2){-10.f, r * zoom + 10.f};
+		gs_vec2 ep = (gs_vec2){ws.x + 10.f, r * zoom + 10.f};
+		draw_line(verts, sp, ep, 0.1f, (gs_vec4){1.f, 1.f, 1.f, 0.3f});
+	}
+
+	for ( u32 c = 0; c < 40; ++c )
+	{
+		gs_vec2 sp = (gs_vec2){c * zoom + 10.f, 0.f};
+		gs_vec2 ep = (gs_vec2){c * zoom + 10.f, ws.y + 10.f};
+		draw_line(verts, sp, ep, 0.1f, (gs_vec4){1.f, 1.f, 1.f, 0.3f});
+	}
+
+	// Put at idx 10, 10
+
+	// Draw a bright yellow square up in dere
+	gs_vec2 sqo = (gs_vec2){100.f, 100.f};
+	gs_vec2 sqhe = (gs_vec2){45.f, 45.f};
+	draw_square(verts, sqo, sqhe, 1.f, (gs_vec4){0.8f, 0.9f, 0.3f, 1.f});
 }
 
 gs_result app_update()
@@ -1103,9 +1161,9 @@ gs_result app_update()
 	y = sin(gs_deg_to_rad(gs_interp_smooth_step( 180.f, 360.f, tv))) * r;
 
 	gs_vec2 sp = (gs_vec2){ center.x + x, center.y + y };
-	gs_vec2 ep = (gs_vec2){ center.x, center.y }; 
+	gs_vec2 ep = (gs_vec2){ center.x, center.y };
 
-	gs_vec2 a = gs_vec2_norm(gs_vec2_sub(ep, sp));
+	gs_vec2 a = gs_vec2_norm(gs_vec2_sub(sp, ep));
 	gs_vec2 n = (gs_vec2){-a.y, a.x};
 
 	static f32 width = 10.f;
@@ -1117,21 +1175,6 @@ gs_result app_update()
 	}
 	width = gs_clamp(width, 1.0f, 1000.f);
 
-	// Add a square to be drawn
-	gs_vqs xform = gs_vqs_default();
-	f32 scl = gs_interp_smooth_step( 1.f, 2.f, sin(t * 0.7f) * 0.5f + 0.5f);
-	xform.rotation = gs_quat_angle_axis(t * 0.1f, (gs_vec3){0.f, 0.f, 1.f});
-	gs_mat4 model = gs_vqs_to_mat4(&xform);
-
-	// Pass in a descriptor to close the path for certain paths, like a square
-
-	gs_vec2 origin = (gs_vec2){ws.x / 2.f, ws.y / 2.f};
-	gs_vec2 h_ext = (gs_vec2){10.f, 10.f};
-	gs_vec3 tl = gs_mat4_mul_vec3(model, (gs_vec3){origin.x - h_ext.x, origin.y - h_ext.y, 0.f});
-	gs_vec3 tr = gs_mat4_mul_vec3(model, (gs_vec3){origin.x + h_ext.x, origin.y - h_ext.y, 0.f});
-	gs_vec3 br = gs_mat4_mul_vec3(model, (gs_vec3){origin.x + h_ext.x, origin.y + h_ext.y, 0.f});
-	gs_vec3 bl = gs_mat4_mul_vec3(model, (gs_vec3){origin.x - h_ext.x, origin.y + h_ext.y, 0.f});
-
 	static f32 thickness = 1.f;
 	if (platform->key_down(gs_keycode_e)) {
 		thickness += 1.f;
@@ -1141,24 +1184,32 @@ gs_result app_update()
 	}
 	thickness = gs_clamp(thickness, 1.f, 1000.f);
 
-	draw_line( &verts, sp, ep, thickness, red );
-	// draw_circle( &verts, sp, 150.f, 100, thickness, green );
+	gs_vec2 ta = gs_vec2_add(sp, gs_vec2_scale(n, 10.f));
+	gs_vec2 tb = gs_vec2_sub(sp, gs_vec2_scale(n, 10.f));
+	gs_vec2 tc = gs_vec2_add(sp, gs_vec2_scale(a, 20.f));
+
+	draw_grid(&verts, t);
+
+	// draw_line( &verts, sp, ep, thickness, red );
+	// draw_triangle(&verts, ta, tb, tc, thickness, red);
 	// draw_square( &verts, sp, (gs_vec2){100.f, 100.f}, thickness, blue );
-	draw_bezier_curve( &verts, (gs_vec2){100.f, 100.f}, (gs_vec2){200.f, 200.f}, 
-		(gs_vec2){300.f, 10.f}, (gs_vec2){600.f, 50.f}, 20, thickness, white );
+	// draw_bezier_curve( &verts, (gs_vec2){100.f, 100.f}, (gs_vec2){200.f, 200.f}, 
+	// 	(gs_vec2){300.f, 10.f}, (gs_vec2){600.f, 50.f}, 20, thickness, white );
 
 	f32 start_angle = gs_interp_cosine( 0.f, 180.f, tv);
 	f32 end_angle = gs_interp_cosine( 180.f, 360.f, tv);
 	gs_vec4 col = (gs_vec4){gs_interp_cosine(0.f, 1.f, tv), gs_interp_cosine(1.f, 0.f, tv), 0.1f, tv};
-	draw_arc( &verts, (gs_vec2){ws.x / 2.f, ws.y / 2.f}, r + 30.f, 180.f, end_angle, 100, 2.f, col );
+	// draw_arc( &verts, (gs_vec2){ws.x / 2.f, ws.y / 2.f}, r + 30.f, 180.f, end_angle, 30, 2.f, col );
 
-	gs_vec2 go = (gs_vec2){ws.x / 2.f - 100.f, ws.y / 2.f + 100.f};
-	draw_G(&verts, (gs_vec2){ go.x, go.y }, thickness, (gs_vec4){0.1f, 0.3f, 0.8f, 1.f});
-	draw_o(&verts, (gs_vec2){ go.x + 55.f, go.y + 10.f }, thickness, (gs_vec4){0.7f, 0.3f, 0.1f, 1.f});
-	draw_o(&verts, (gs_vec2){ go.x + 100.f, go.y + 10.f }, thickness, (gs_vec4){0.8f, 0.3f, 0.7f, 1.f});
-	draw_g(&verts, (gs_vec2){ go.x + 145.f, go.y + 10.f }, thickness, (gs_vec4){0.2f, 0.8f, 0.3f, 1.f});
-	draw_l(&verts, (gs_vec2){ go.x + 175.f, go.y }, thickness * 2.f, (gs_vec4){0.5f, 0.3f, 0.8f, 1.f});
-	draw_e(&verts, (gs_vec2){ go.x + 202.f, go.y + 10.f }, thickness, (gs_vec4){0.4f, 0.9f, 0.1f, 1.f});
+	// draw_circle( &verts, gs_vec2_add(sp, gs_vec2_scale(a, 30.f)), 5.f, 100, 0.1f, white );
+
+	gs_vec2 go = (gs_vec2){ws.x / 2.f - 115.f, ws.y / 2.f + 50.f};
+	// draw_G(&verts, (gs_vec2){ go.x, go.y }, 6.f, (gs_vec4){0.1f, 0.3f, 0.8f, 1.f});
+	// draw_o(&verts, (gs_vec2){ go.x + 65.f, go.y + 10.f }, 6.f, (gs_vec4){0.7f, 0.3f, 0.1f, 1.f});
+	// draw_o(&verts, (gs_vec2){ go.x + 120.f, go.y + 10.f }, 6.f, (gs_vec4){0.8f, 0.3f, 0.7f, 1.f});
+	// draw_g(&verts, (gs_vec2){ go.x + 175.f, go.y + 10.f }, 6.f, (gs_vec4){0.2f, 0.8f, 0.3f, 1.f});
+	// draw_l(&verts, (gs_vec2){ go.x + 215.f, go.y }, 6.f * 1.5f, (gs_vec4){0.5f, 0.3f, 0.8f, 1.f});
+	// draw_e(&verts, (gs_vec2){ go.x + 255.f, go.y + 10.f }, 6.f, (gs_vec4){0.9f, 0.9f, 0.1f, 1.f});
 
 	// Tweening square
 	{
@@ -1173,12 +1224,11 @@ gs_result app_update()
 	}
 
 	// Animating arcs
-	/*
 	{
 		// Try to animate an arc (empty -> full circle -> empty) over time
 		const f32 rad = 40.f;
 		const f32 thick = 9.f;
-		const u32 count = 1;
+		const u32 count = 100;
 		const f32 offset = 0.f;
 
 		gs_for_range_i( count )
@@ -1188,7 +1238,7 @@ gs_result app_update()
 			f32 start_angle = gs_interp_cosine( 0.f, 180.f, v);
 			f32 end_angle = gs_interp_cosine( 180.f, 360.f, v);
 			gs_vec4 col = (gs_vec4){gs_interp_cosine(0.f, 1.f, v), 0.f, gs_interp_cosine(1.f, 0.f, v), v};
-			draw_arc( &verts, (gs_vec2){i * 100.f + ws.x / 2.f - offset, y}, rad, start_angle, end_angle, 100, thick, col );
+			// draw_arc( &verts, (gs_vec2){i * 100.f + ws.x / 2.f - offset, y}, rad, start_angle, end_angle, 50, thick, col );
 		}
 
 		gs_for_range_i( count )
@@ -1199,10 +1249,9 @@ gs_result app_update()
 			// f32 end_angle = gs_interp_smooth_step( 360.f, 180.f, v);
 			f32 end_angle = gs_interp_smooth_step( 0.f, 180.f, v);
 			gs_vec4 col = (gs_vec4){gs_interp_smooth_step(0.f, 1.f, v), 0.f, 1.f, v};
-			draw_arc( &verts, (gs_vec2){i * 100.f + ws.x / 2.f - offset, ws.y / 2.f}, rad, start_angle, 180.f, 100, thick, col );
+			// draw_arc( &verts, (gs_vec2){i * 100.f + ws.x / 2.f - offset, ws.y / 2.f}, rad, start_angle, 180.f, 50, thick, col );
 		}
 	}
-	*/
 
 	// Update vertex data for frame
 	gfx->update_vertex_buffer_data( g_vb, verts, gs_dyn_array_size(verts) * sizeof(vert_t) );
@@ -1261,6 +1310,8 @@ gs_result app_shutdown()
 
 	// Just need a simple way to connect two polylines with different joint styles with single end_cap style
 	// Test is to do letters, like Google 'G'
+
+	Want a way to animate arbitrary points, whether they be allowed to shrink, fade in, grow, animate the points over time, etc.
 
 */
 
