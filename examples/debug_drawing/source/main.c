@@ -694,12 +694,52 @@ void draw_circle( gs_dyn_array(vert_t)* verts, gs_vec2 origin, f32 r, s32 num_se
 		f32 a = gs_deg_to_rad(i);
 		gs_dyn_array_push(points, gs_vec2_add(origin, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)));
 	}
+	// Push last angle on as well
+	{
+		f32 a = gs_deg_to_rad(360.f);
+		gs_dyn_array_push(points, gs_vec2_add(origin, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)));
+	}
 	u32 pt_count = gs_dyn_array_size(points);
 
 	// Pass in verts for creating poly line
 	poly_line_create( verts, points, pt_count, thickness, color,
                              joint_style_round,
                              end_cap_style_joint,
+                             true);
+
+	gs_dyn_array_free(points);
+}
+
+void draw_arc( gs_dyn_array(vert_t)* verts, gs_vec2 origin, f32 r, f32 start_angle, f32 end_angle, s32 num_segments, f32 thickness, gs_vec4 color )
+{
+
+	gs_dyn_array(gs_vec2) points = gs_dyn_array_new(gs_vec2);
+	if ( start_angle > end_angle ) {
+		f32 tmp = start_angle;
+		start_angle = end_angle;
+		end_angle = tmp;
+	}
+	f32 diff = end_angle - start_angle;
+	if ( fabsf(diff) <= 0.01f ) {
+		return;
+	}
+
+	f32 step = num_segments < 5 ? diff / 5.f : diff / (f32)num_segments;
+	for ( f32 i = start_angle; i <= end_angle; i += step ) {
+		f32 a = gs_deg_to_rad(i);
+		gs_dyn_array_push(points, gs_vec2_add(origin, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)));
+	}
+	// Push last angle on as well
+	{
+		f32 a = gs_deg_to_rad(end_angle);
+		gs_dyn_array_push(points, gs_vec2_add(origin, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)));
+	}
+	u32 pt_count = gs_dyn_array_size(points);
+
+	// Pass in verts for creating poly line
+	poly_line_create( verts, points, pt_count, thickness, color,
+                             joint_style_round,
+                             end_cap_style_butt,
                              true);
 
 	gs_dyn_array_free(points);
@@ -741,7 +781,7 @@ void draw_bezier_curve( gs_dyn_array(vert_t)* verts, gs_vec2 cp0, gs_vec2 cp1, g
 	// Pass in verts for creating poly line
 	poly_line_create( verts, points, pt_count, thickness, color,
                              joint_style_round,
-                             end_cap_style_round,
+                             end_cap_style_butt,
                              true);
 
 	gs_dyn_array_free(points);
@@ -847,14 +887,49 @@ gs_result app_update()
 	draw_circle( &verts, sp, 150.f, 100, thickness, green );
 	draw_square( &verts, sp, (gs_vec2){100.f, 100.f}, thickness, blue );
 	draw_bezier_curve( &verts, (gs_vec2){100.f, 100.f}, (gs_vec2){200.f, 200.f}, 
-		(gs_vec2){300.f, 10.f}, (gs_vec2){350.f, 50.f}, 20, thickness, white );
+		(gs_vec2){300.f, 10.f}, (gs_vec2){600.f, 50.f}, 20, thickness, white );
 
-	// Each line will be a quad, so need to update the vertex buffer with data somehow.
-	// Need that exposed to the user...
+	// Tweening square
+	{
+		// Want to be able to pass in a transform as well for rotation/scale/etc.
+		// draw_square( &verts, sp, (gs_vec2){50.f, 50.f}, thickness, white );
+	}
+
+	// Animating arcs
+	{
+		// Try to animate an arc (empty -> full circle -> empty) over time
+		const f32 rad = 40.f;
+		const f32 thick = 9.f;
+		const u32 count = 7;
+		const f32 offset = 300.f;
+
+		gs_for_range_i( count )
+		{
+			f32 v = sin(t * 0.3f + i) * 0.5f + 0.5f;
+			f32 y = gs_interp_cosine( 0.f, ws.y / 2.f, v);
+			f32 start_angle = gs_interp_cosine( 0.f, 180.f, v);
+			f32 end_angle = gs_interp_cosine( 180.f, 360.f, v);
+			gs_vec4 col = (gs_vec4){gs_interp_cosine(0.f, 1.f, v), 0.f, gs_interp_cosine(1.f, 0.f, v), v};
+			draw_arc( &verts, (gs_vec2){i * 100.f + ws.x / 2.f - offset, y}, rad, start_angle, end_angle, 100, thick, col );
+		}
+
+		gs_for_range_i( count )
+		{
+			f32 v = sin(t * 0.3f + i) * 0.5f + 0.5f;
+			f32 y = gs_interp_smooth_step( ws.y, ws.y / 2.f, v);
+			f32 start_angle = gs_clamp(gs_interp_smooth_step( 180.f, 0.f, v), 0.f, 180.f);
+			// f32 end_angle = gs_interp_smooth_step( 360.f, 180.f, v);
+			f32 end_angle = gs_interp_smooth_step( 0.f, 180.f, v);
+			gs_vec4 col = (gs_vec4){gs_interp_smooth_step(0.f, 1.f, v), 0.f, 1.f, v};
+			draw_arc( &verts, (gs_vec2){i * 100.f + ws.x / 2.f - offset, ws.y / 2.f}, rad, start_angle, 180.f, 100, thick, col );
+		}
+	}
+
+	// Update vertex data for frame
 	gfx->update_vertex_buffer_data( g_vb, verts, gs_dyn_array_size(verts) * sizeof(vert_t) );
 
 	// Set clear color and clear screen
-	f32 clear_color[4] = { 0.1f, 0.1f, 0.1f, 1.f };
+	f32 clear_color[4] = { 0.05f, 0.05f, 0.05f, 1.f };
 	gfx->set_view_clear( g_cb, clear_color );
 
 #if (defined GS_PLATFORM_APPLE)
@@ -901,58 +976,6 @@ gs_result app_shutdown()
 	gs_println( "Goodbye, Gunslinger." );
 	return gs_result_success;
 }
-
-void debug_draw()
-{
-	// Grab global instance of engine
-	gs_engine* engine = gs_engine_instance();
-
-	// Api instances
-	gs_graphics_i* gfx = engine->ctx.graphics;
-	gs_platform_i* platform = engine->ctx.platform;
-
-	// const f32 t = platform->elapsed_time() / 1000.f;
-	const f32 dt = platform->time.delta;
-	static f32 t = 0.f;
-	t += 0.1f;
-
-	// Construct orthographic camera for rendering debug drawing
-	gs_camera ortho_cam = {0};
-	ortho_cam.transform = gs_vqs_default();
-	ortho_cam.fov = 60.f;
-	ortho_cam.aspect_ratio = 800.f / 600.f;
-	ortho_cam.near_plane = 0.01f;
-	ortho_cam.far_plane = 1000.0f;
-	ortho_cam.ortho_scale = 1.f;
-	ortho_cam.proj_type = gs_projection_type_orthographic;
-
-	// Set debug drawing properties
-	gs_debug_draw_properties debug_props = (gs_debug_draw_properties) 
-	{
-		gs_camera_get_view( &ortho_cam ),
-		gs_camera_get_projection( &ortho_cam, 800, 600 )
-	};
-	gfx->set_debug_draw_properties( g_cb, debug_props );
-
-	// gfx->draw_line( g_cb, (gs_vec3){30.f, 30.f, 0.f}, (gs_vec3){30.f, 200.f, 0.f }, white );
-	// gfx->draw_line( g_cb, (gs_vec3){40.f, 30.f, 0.f}, (gs_vec3){40.f, 200.f, 0.f }, red );
-	// gfx->draw_line( g_cb, (gs_vec3){50.f, 30.f, 0.f}, (gs_vec3){50.f, 200.f, 0.f }, blue );
-	// gfx->draw_line( g_cb, (gs_vec3){60.f, 30.f, 0.f}, (gs_vec3){60.f, 200.f, 0.f }, green );
-
-	// Try and rotate square?
-	gs_vqs xform = gs_vqs_default();
-	xform.rotation = gs_quat_angle_axis( gs_deg_to_rad(t * 10.f), (gs_vec3){0.0f, 0.0f, 1.f} );
-
-	// Draw debug square
-	// gfx->draw_square( g_cb, (gs_vec3){100.f, 100.f, 0.f}, 100.f, 100.f, green, gs_vqs_to_mat4(&xform) );
-
-	// Flush debug rendering buffer
-	gfx->submit_debug_drawing( g_cb );
-
-}
-
-
-
 
 
 

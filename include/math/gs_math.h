@@ -38,7 +38,7 @@ gs_interp_smooth_step( f32 a, f32 b, f32 t )
 }
 
 _inline f32 
-gs_interp_cosine( a, b, t )
+gs_interp_cosine( f32 a, f32 b, f32 t )
 {
 	return gs_interp_linear( a, b, -cos( gs_pi * t ) * 0.5 + 0.5 );
 }
