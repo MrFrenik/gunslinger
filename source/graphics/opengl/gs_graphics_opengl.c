@@ -750,6 +750,7 @@ void opengl_submit_command_buffer( gs_resource( gs_command_buffer ) cb_handle )
 				u32 count = gs_byte_buffer_read( &cb->commands, u32 );
 
 				// Draw ( this assumes a vao is set, which is not correct )...for now, will assume
+				// glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 				glDrawArrays( GL_TRIANGLES, start, count );
 			} break;
 

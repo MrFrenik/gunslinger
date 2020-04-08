@@ -29,7 +29,12 @@ rem Link options
 set l_options=/EHsc /link /SUBSYSTEM:CONSOLE /NODEFAULTLIB:msvcrt.lib
 
 rem Compile
-cl /MP /FS /Ox /W1 /Fe%name%.exe %src_all% %inc% ^
+rem cl /MP /FS /Ox /W1 /Fe%name%.exe %src_all% %inc% ^
+rem /EHsc /link /SUBSYSTEM:CONSOLE /NODEFAULTLIB:msvcrt.lib /NODEFAULTLIB:LIBCMT ^
+rem %lib_d% %libs% %os_libs%
+
+rem Compile Debug
+cl /w /MP -Zi /DEBUG:FULL /Fe%name%.exe %src_all% %inc% ^
 /EHsc /link /SUBSYSTEM:CONSOLE /NODEFAULTLIB:msvcrt.lib /NODEFAULTLIB:LIBCMT ^
 %lib_d% %libs% %os_libs%
 

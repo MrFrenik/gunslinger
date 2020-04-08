@@ -7,18 +7,30 @@ gs_result app_shutdown();	// Use to shutdown your appliaction
 
 // Ported to a c99 impl from: https://github.com/CrushedPixel/Polyline2D/
 
+// Colors
+#define white (gs_vec4){1.f, 1.f, 1.f, 1.f}
+#define red (gs_vec4){1.f, 0.f, 0.f, 1.f}
+#define green (gs_vec4){0.f, 1.f, 0.f, 1.f}
+#define blue (gs_vec4){0.f, 0.f, 1.f, 1.f}
+#define col_empty (gs_vec4){0.f, 0.f, 0.f, 0.f}
+
+_global b32 anti_alias = true;
+
  // ~20 degrees
-#define miter_min_angle 0.349066
+#define miter_min_angle gs_deg_to_rad(20)
  // ~10 degrees
-#define round_min_angle 0.174533
+#define round_min_angle gs_deg_to_rad(20)
 
 typedef struct vert_t
 {
 	gs_vec2 position;
-	gs_vec3 normal;
-	gs_vec2 uv;
-	gs_vec3 color;
+	gs_vec4 color;
 } vert_t;
+
+vert_t vert_t_create(gs_vec2 position, gs_vec4 color)
+{
+	return (vert_t){ position, color };
+}
 
 typedef struct line_segment_t
 {
@@ -155,15 +167,15 @@ typedef struct poly_segment_t
 	line_segment_t edge2;
 } poly_segment_t;
 
-_global b32 init = false;
-_global gs_dyn_array(poly_segment_t) segments;
-
 // Forward Decl.
-void poly_line_create_joint( gs_dyn_array(gs_vec2) vertices,
+void poly_line_create_joint( gs_dyn_array(vert_t)* vertices,
 	                                  poly_segment_t seg1, poly_segment_t seg2,
 	                                  joint_style_t joint_style, gs_vec2* end1, gs_vec2* end2,
 	                                  gs_vec2* next_start1, gs_vec2* next_start2,
 	                                  b32 allow_overlap);
+
+void poly_line_create_triangle_fan( gs_dyn_array(vert_t)* vertices, gs_vec2 connect_to, gs_vec2 origin,
+                                        gs_vec2 start, gs_vec2 end, b32 clockwise );
 
 poly_segment_t poly_seg_create( line_segment_t center, f32 thickness) 
 {
@@ -174,15 +186,22 @@ poly_segment_t poly_seg_create( line_segment_t center, f32 thickness)
 	// multiplied with the thickness
 
 	// center + center.normal() * thickness
+	// This is for growing along center
 	p.edge1 = line_seg_add(center, gs_vec2_scale(line_seg_normal(center), thickness));
 	p.edge2 = line_seg_sub(center, gs_vec2_scale(line_seg_normal(center), thickness));
+
+	// This is for growing 'outwards' away from center
+	// p.edge1 = center;
+	// p.edge2 = line_seg_sub(center, gs_vec2_scale(line_seg_normal(center), thickness * 2.f));
+
+	// This is for growing 'inwards' away from center
+	// p.edge1 = center;
+	// p.edge2 = line_seg_add(center, gs_vec2_scale(line_seg_normal(center), thickness * 2.f));
 
 	return p;
 }
 
-_global u32 c = 0;
-
-void poly_line_create( gs_dyn_array(gs_vec2) vertices, gs_vec2* points, u32 count, f32 thickness,
+void poly_line_create( gs_dyn_array(vert_t)* vertices, gs_vec2* points, u32 count, f32 thickness,
                              joint_style_t joint_style,
                              end_cap_style_t end_cap_style,
                              b32 allow_overlap) 
@@ -190,16 +209,7 @@ void poly_line_create( gs_dyn_array(gs_vec2) vertices, gs_vec2* points, u32 coun
 	// operate on half the thickness to make our lives easier
 	thickness /= 2.0f;
 
-	if ( !init ) {
-		// create poly segments from the points
-		segments = gs_dyn_array_new(poly_segment_t);
-		gs_dyn_array_reserve( segments, 20 );
-		init = true;
-	} else {
-		gs_assert(segments);
-		gs_dyn_array_clear(segments);
-	}
-
+	gs_dyn_array(poly_segment_t) segments = gs_dyn_array_new(poly_segment_t);
 	for (u32 i = 0; i + 1 < count; ++i) 
 	{
 		gs_vec2 point1 = points[i];
@@ -260,10 +270,10 @@ void poly_line_create( gs_dyn_array(gs_vec2) vertices, gs_vec2* points, u32 coun
 
 	} else if (end_cap_style == end_cap_style_round) {
 		// draw half circle end caps
-		// createTriangleFan(vertices, firstSegment.center.a, firstSegment.center.a,
-		//                   firstSegment.edge1.a, firstSegment.edge2.a, false);
-		// createTriangleFan(vertices, lastSegment.center.b, lastSegment.center.b,
-		//                   lastSegment.edge1.b, lastSegment.edge2.b, true);
+		poly_line_create_triangle_fan(vertices, first_segment.center.a, first_segment.center.a,
+		                  first_segment.edge1.a, first_segment.edge2.a, false);
+		poly_line_create_triangle_fan(vertices, last_segment.center.b, last_segment.center.b,
+		                  last_segment.edge1.b, last_segment.edge2.b, true);
 
 	} else if (end_cap_style == end_cap_style_joint) {
 		// join the last (connecting) segment and the first segment
@@ -292,33 +302,73 @@ void poly_line_create( gs_dyn_array(gs_vec2) vertices, gs_vec2* points, u32 coun
 			            &end1, &end2, &next_start1, &next_start2, allow_overlap);
 		}
 
-		// emit vertices
-		// *vertices++ = start1;
-		// *vertices++ = start2;
-		// *vertices++ = end1;
+		if ( anti_alias) {
 
-		// *vertices++ = end1;
-		// *vertices++ = start2;
-		// *vertices++ = end2;
+			// Push back verts for anti-aliasing as well...somehow
+			gs_vec2 sn = gs_vec2_norm(gs_vec2_sub(start2, start1));
+			gs_vec2 en = gs_vec2_norm(gs_vec2_sub(end2, end1));
+			const f32 sl = gs_vec2_len(gs_vec2_sub(start2, start1)) / (thickness / 1.1f);
+			const f32 el = gs_vec2_len(gs_vec2_sub(end2, end1)) / (thickness / 1.1f);
+
+			gs_vec4 s1_col = (i == 0) && (end_cap_style == end_cap_style_square || end_cap_style == end_cap_style_butt) ? 
+				white : col_empty;
+			gs_vec4 s2_col = s1_col;
+
+			gs_vec2 s1 = gs_vec2_sub(start1, gs_vec2_scale(sn, sl));
+			gs_vec2 s2 = gs_vec2_add(start2, gs_vec2_scale(sn, sl));
+			gs_vec2 e1 = gs_vec2_sub(end1, gs_vec2_scale(en, el));
+			gs_vec2 e2 = gs_vec2_add(end2, gs_vec2_scale(en, el));
+
+			gs_dyn_array_push(*vertices, vert_t_create(s1, s1_col));
+			gs_dyn_array_push(*vertices, vert_t_create(start1, white));
+			gs_dyn_array_push(*vertices, vert_t_create(e1, col_empty));
+
+			gs_dyn_array_push(*vertices, vert_t_create(e1, col_empty));
+			gs_dyn_array_push(*vertices, vert_t_create(end1, white));
+			gs_dyn_array_push(*vertices, vert_t_create(start1, white));
+
+			gs_dyn_array_push(*vertices, vert_t_create(s2, s2_col));
+			gs_dyn_array_push(*vertices, vert_t_create(start2, white));
+			gs_dyn_array_push(*vertices, vert_t_create(e2, col_empty));
+
+			gs_dyn_array_push(*vertices, vert_t_create(e2, col_empty));
+			gs_dyn_array_push(*vertices, vert_t_create(end2, white));
+			gs_dyn_array_push(*vertices, vert_t_create(start2, white));
+
+			// If we're at beginning and not end_cap_joint, then we need to anti-alias edge
+			if ( i == 0 && end_cap_style == end_cap_style_square || end_cap_style == end_cap_style_butt )
+			{
+				snc = gs_vec2(-sn.y, sn.x); 
+				gs_vec2 s1c = gs_vec2_sub(s1, gs_vec2_scale(snc, sl));
+				gs_vec2 s2c = gs_vec2_sub(s2, gs_vec2_scale(snc, sl));
+
+				gs_dyn_array_push(*vertices, vert_t_create(s1c, col_empty));
+				gs_dyn_array_push(*vertices, vert_t_create(s1, s1_col));
+				gs_dyn_array_push(*vertices, vert_t_create(s2, s2_col));
+
+				gs_dyn_array_push(*vertices, vert_t_create(e2, col_empty));
+				gs_dyn_array_push(*vertices, vert_t_create(end2, white));
+				gs_dyn_array_push(*vertices, vert_t_create(start2, white));
+			}
+		}
 
 		// Push back verts
-		gs_dyn_array_push(vertices, start1);
-		gs_dyn_array_push(vertices, start2);
-		gs_dyn_array_push(vertices, end1);
+		gs_dyn_array_push(*vertices, vert_t_create(start1, white));
+		gs_dyn_array_push(*vertices, vert_t_create(start2, white));
+		gs_dyn_array_push(*vertices, vert_t_create(end1, white));
 
-		gs_dyn_array_push(vertices, end1);
-		gs_dyn_array_push(vertices, start2);
-		gs_dyn_array_push(vertices, end2);
+		gs_dyn_array_push(*vertices, vert_t_create(end1, white));
+		gs_dyn_array_push(*vertices, vert_t_create(start2, white));
+		gs_dyn_array_push(*vertices, vert_t_create(end2, white));
 
 		start1 = next_start1;
 		start2 = next_start2;
 	}
 
-	// gs_dyn_array_free(segments);
-	c++;
+	gs_dyn_array_free(segments);
 }
 
-void poly_line_create_joint( gs_dyn_array(gs_vec2) vertices,
+void poly_line_create_joint( gs_dyn_array(vert_t)* vertices,
 	                                  poly_segment_t seg1, poly_segment_t seg2,
 	                                  joint_style_t joint_style, gs_vec2* end1, gs_vec2* end2,
 	                                  gs_vec2* next_start1, gs_vec2* next_start2,
@@ -425,13 +475,9 @@ void poly_line_create_joint( gs_dyn_array(gs_vec2) vertices,
 		if (joint_style == joint_style_bevel) 
 		{
 			// simply connect the intersection points
-			// *vertices++ = outer1->b;
-			// *vertices++ = outer2->a;
-			// *vertices++ = innerSec;
-
-			gs_dyn_array_push(vertices, outer1->b);
-			gs_dyn_array_push(vertices, outer2->a);
-			gs_dyn_array_push(vertices, inner_sec);
+			gs_dyn_array_push(*vertices, vert_t_create(outer1->b, white));
+			gs_dyn_array_push(*vertices, vert_t_create(outer2->a, white));
+			gs_dyn_array_push(*vertices, vert_t_create(inner_sec, white));
 
 		} 
 		else if (joint_style == joint_style_round) 
@@ -439,7 +485,7 @@ void poly_line_create_joint( gs_dyn_array(gs_vec2) vertices,
 			// draw a circle between the ends of the outer edges,
 			// centered at the actual point
 			// with half the line thickness as the radius
-			// createTriangleFan(vertices, inner_sec, seg1.center.b, outer1->b, outer2->a, clockwise);
+			poly_line_create_triangle_fan(vertices, inner_sec, seg1.center.b, outer1->b, outer2->a, clockwise);
 		} 
 		else 
 		{
@@ -448,6 +494,64 @@ void poly_line_create_joint( gs_dyn_array(gs_vec2) vertices,
 	}
 }
 
+void poly_line_create_triangle_fan( gs_dyn_array(vert_t)* vertices, gs_vec2 connect_to, gs_vec2 origin,
+                                        gs_vec2 start, gs_vec2 end, b32 clockwise ) 
+{
+	gs_vec2 point1 = gs_vec2_sub(start, origin);
+	gs_vec2 point2 = gs_vec2_sub(end, origin);
+
+	// calculate the angle between the two points
+	f32 angle1 = atan2(point1.y, point1.x);
+	f32 angle2 = atan2(point2.y, point2.x);
+
+	// ensure the outer angle is calculated
+	if (clockwise) {
+		if (angle2 > angle1) {
+			angle2 = angle2 - 2.0 * gs_pi;
+		}
+	} else {
+		if (angle1 > angle2) {
+			angle1 = angle1 - 2.0 * gs_pi;
+		}
+	}
+
+	f32 joint_angle = angle2 - angle1;
+
+	// calculate the amount of triangles to use for the joint
+	s32 num_triangles = gs_max(1, floor(fabsf(joint_angle) / round_min_angle));
+
+	// calculate the angle of each triangle
+	f32 tri_angle = joint_angle / (f32)num_triangles;
+
+	gs_vec2 start_point = start;
+	gs_vec2 end_point;
+	for (s32 t = 0; t < num_triangles; t++) 
+	{
+		if (t + 1 == num_triangles) {
+			// it's the last triangle - ensure it perfectly
+			// connects to the next line
+			end_point = end;
+		} else {
+			f32 rot = (t + 1) * tri_angle;
+
+			// rotate the original point around the origin
+			end_point.x = cos(rot) * point1.x - sin(rot) * point1.y;
+			end_point.y = sin(rot) * point1.x + cos(rot) * point1.y;
+
+			// re-add the rotation origin to the target point
+			end_point = gs_vec2_add(end_point, origin);
+		}
+
+		// emit the triangle
+		gs_dyn_array_push( *vertices, vert_t_create(start_point, white));
+		gs_dyn_array_push( *vertices, vert_t_create(end_point, white));
+		gs_dyn_array_push( *vertices, vert_t_create(connect_to, white));
+
+		start_point = end_point;
+	}
+
+	return vertices;
+}
 
 // Command buffer global var
 _global gs_resource( gs_command_buffer ) g_cb = {0};
@@ -458,30 +562,16 @@ _global gs_resource( gs_uniform ) u_proj = {0};
 _global gs_resource( gs_uniform ) u_view = {0};
 
 _global gs_dyn_array( vert_t ) verts;
-_global gs_dyn_array( gs_vec2 ) v_data;
-
-// Colors
-_global const gs_vec3 white = (gs_vec3){1.f, 1.f, 1.f};
-_global const gs_vec3 red = (gs_vec3){1.f, 0.f, 0.f};
-_global const gs_vec3 green = (gs_vec3){0.f, 1.f, 0.f};
-_global const gs_vec3 blue = (gs_vec3){0.f, 0.f, 1.f};
 
 _global const char* debug_shader_v_src = "\n"
 "#version 330 core\n"
 "layout (location = 0) in vec2 a_position;\n"
-// "layout (location = 1) in vec3 a_normal;\n"		// Line width is packed into this normal (z channel)
-// "layout (location = 2) in vec2 a_uv;\n"	
-// "layout (location = 3) in vec3 a_color;\n"
+"layout (location = 1) in vec4 a_color;\n"
 "out DATA {\n"
-"	vec2 normal;\n"
-"	float width;\n"
-"	vec3 color;\n"
-"	float edge;\n"
-"	vec2 uv;\n"
+"	vec4 color;\n"
 "} fs_out;\n"
 "uniform mat4 u_proj;\n"
 "uniform mat4 u_view;\n"
-"out vec3 f_color;\n"
 "void main() {\n"
 // " float miter = sign(a_normal.x) * sign(a_normal.y);\n"
 // " vec2 pp = a_position.xy + vec2(normalize(a_normal.xy) * a_normal.z);\n"
@@ -493,16 +583,13 @@ _global const char* debug_shader_v_src = "\n"
 // " fs_out.edge = sign(miter);\n"
 // " fs_out.uv = a_uv;\n"
 " 	gl_Position = u_proj * u_view * vec4(a_position.xy, 0.0, 1.0);\n"
+" 	fs_out.color = a_color;\n"
 "}";
 
 _global const char* debug_shader_f_src = "\n"
 "#version 330 core\n"
 "in DATA {\n"
-"	vec2 normal;\n"
-"	float width;\n"
-"	vec3 color;\n"
-"	float edge;\n"
-"	vec2 uv;\n"
+"	vec4 color;\n"
 "} fs_in;\n"
 "out vec4 frag_color;\n"
 "void main() {\n"
@@ -522,7 +609,7 @@ _global const char* debug_shader_f_src = "\n"
 // "	vec4 col_x = mix(vec4(fs_in.color, 1.0), vec4(0.0), v_x);\n"
 // "	vec4 col_y = mix(vec4(fs_in.color, 1.0), vec4(0.0), v_y);\n"
 // "	frag_color = mix(col_x, col_y, v_y);\n"
-	"	frag_color = vec4(1.0, 1.0, 1.0, 1.0);\n"
+	"	frag_color = fs_in.color;\n"
 // "	frag_color = vec4(uv, 1.0, 1.0);\n"
 "}";
 
@@ -531,160 +618,6 @@ typedef struct point_t
 	gs_vec2 position;
 	gs_vec3 color;
 } point_t;
-
-void path_closed( point_t* points, u32 count )
-{
-	const f32 thickness = 20.f;
-
-	// Compute ALL edge normals
-	// Iterate through all vertices, apply averaged normals
-
-	if ( count < 3 ) {
-		return;
-	}
-
-	gs_dyn_array(gs_vec2) edge_normals = gs_dyn_array_new(gs_vec2);
-
-	for ( s32 i = 0; i < count; ++i )
-	{
-		point_t p0 = points[i];
-		point_t p1 = points[(i + 1) % count];
-
-		gs_vec2 a = gs_vec2_norm(gs_vec2_sub(p1.position, p0.position));
-		gs_vec2 n = (gs_vec2){-a.y, a.x};
-
-		gs_dyn_array_push(edge_normals, n);
-	}
-
-	for ( s32 i = 2; i < 4; ++i ) {
-
-		point_t p0 = points[(i - 1) % count];
-		point_t p1 = points[i];
-		point_t p2 = points[(i + 1) % count];
-
-		gs_vec2 n0 = edge_normals[(i - 1) % count];
-		gs_vec2 n1 = edge_normals[i];
-		gs_vec2 n2 = edge_normals[(i + 1) % count];
-
-		// First, I calculate the tangent (t) as follows:
-		// gs_vec2 tangent = ( (p2-p1).normalized() + (p1-p0).normalized() ).normalized()
-
-		// Next, I find the miter line (m), which is the normal of the tangent:
-		// Vec2f miter = Vec2f( -tangent.y, tangent.x )
-
-		// The correct length (d) of the miter can then be found by projecting it on one of the normals (shown in red) using the dotproduct. This gives us a value that is the inverse of the desired length, so:
-		// float length = thickness / miter.dot( normal )
-
-		gs_vec2 na0 = gs_vec2_norm(gs_vec2_add(n0, n1));
-		gs_vec2 na1 = gs_vec2_norm(gs_vec2_add(n1, n2));
-
-		gs_vec2 miter0 = (gs_vec2){-na0.y, na0.x};
-		gs_vec2 miter1 = (gs_vec2){-na1.y, na1.x};
-		f32 len0 = thickness / gs_vec2_dot(n1, miter0);
-		f32 len1 = thickness / gs_vec2_dot(n2, miter1);
-
-		vert_t v0;
-		v0.position = p0.position;
-		v0.normal = (gs_vec3){-miter0.x, -miter0.y, len0 / 2.f};
-		v0.uv = (gs_vec2){ 0.f, 1.f };
-		v0.color = white;
-
-		vert_t v1;
-		v1.position = p0.position;
-		v1.normal = (gs_vec3){miter0.x, miter0.y, len0 / 2.f};
-		v1.uv = (gs_vec2){ 1.f, 1.f };
-		v1.color = white;
-
-		vert_t v2;
-		v2.position = p1.position;
-		v2.normal = (gs_vec3){miter1.x, miter1.y, len1 / 2.f};
-		v2.uv = (gs_vec2){ 1.f, 0.f };
-		v2.color = white;
-
-		vert_t v3;
-		v3.position = p1.position;
-		v3.normal = (gs_vec3){-miter1.x, -miter1.y, len1 / 2.f};
-		v3.uv = (gs_vec2){ 0.f, 0.f };
-		v3.color = white;
-
-		gs_dyn_array_push( verts, v0 );
-		gs_dyn_array_push( verts, v3 );
-		gs_dyn_array_push( verts, v2 );
-		gs_dyn_array_push( verts, v0 );
-		gs_dyn_array_push( verts, v2 );
-		gs_dyn_array_push( verts, v1 );
-	}
-
-	gs_dyn_array_free(edge_normals);
-}
-
-void draw_line( gs_vec2 sp, gs_vec2 ep, gs_vec3 color, f32 thickness )
-{
-	gs_vec2 a = gs_vec2_norm(gs_vec2_sub(ep, sp));
-	gs_vec2 n = (gs_vec2){-a.y, a.x};
-
-	vert_t v0;
-	v0.position = sp;
-	v0.normal = (gs_vec3){-n.x, -n.y, thickness};
-	v0.uv = (gs_vec2){ 0.f, 1.f };
-	v0.color = color;
-
-	vert_t v1;
-	v1.position = sp;
-	v1.normal = (gs_vec3){n.x, n.y, thickness};
-	v1.uv = (gs_vec2){ 1.f, 1.f };
-	v1.color = color;
-
-	vert_t v2;
-	v2.position = ep;
-	v2.normal = (gs_vec3){n.x, n.y, thickness};
-	v2.uv = (gs_vec2){ 1.f, 0.f };
-	v2.color = color;
-
-	vert_t v3;
-	v3.position = ep;
-	v3.normal = (gs_vec3){-n.x, -n.y, thickness};
-	v3.uv = (gs_vec2){ 0.f, 0.f };
-	v3.color = color;
-
-	// Add verts as triangles
-	// Order: 
-	// 		v0, v3, v2,
-	// 		v0, v2, v1
-
-	gs_dyn_array_push( verts, v0 );
-	gs_dyn_array_push( verts, v3 );
-	gs_dyn_array_push( verts, v2 );
-	gs_dyn_array_push( verts, v0 );
-	gs_dyn_array_push( verts, v2 );
-	gs_dyn_array_push( verts, v1 );
-}
-
-void draw_square_xform( gs_vec2 origin, gs_vec2 half_extents, gs_vqs transform, gs_vec3 color, f32 thickness )
-{
-	// Square will be four lines based around origin, transformed with matrix
-	gs_vec3 tl, tr, bl, br;
-	gs_mat4 xform = gs_vqs_to_mat4(&transform);
-	const f32 t = thickness;
-	const f32 t2 = t / 2.f;
-
-	gs_vec3 tltr_s = gs_mat4_mul_vec3(xform, (gs_vec3){origin.x - half_extents.x - t2, origin.y - half_extents.y - t2, 0.0f});
-	gs_vec3 tltr_e = gs_mat4_mul_vec3(xform, (gs_vec3){origin.x + half_extents.x, origin.y - half_extents.y - t2, 0.0f});
-
-	gs_vec3 trbr_s = gs_mat4_mul_vec3(xform, (gs_vec3){origin.x + half_extents.x + t2, origin.y - half_extents.y, 0.0f});
-	gs_vec3 trbr_e = gs_mat4_mul_vec3(xform, (gs_vec3){origin.x + half_extents.x + t2, origin.y + half_extents.y, 0.0f});
-
-	gs_vec3 brbl_s = gs_mat4_mul_vec3(xform, (gs_vec3){origin.x + half_extents.x, origin.y - half_extents.y + t2, 0.0f});
-	gs_vec3 brbl_e = gs_mat4_mul_vec3(xform, (gs_vec3){origin.x - half_extents.x, origin.y - half_extents.y + t2, 0.0f});
-
-	gs_vec3 bltl_s = gs_mat4_mul_vec3(xform, (gs_vec3){origin.x - half_extents.x - t2, origin.y + half_extents.y, 0.0f});
-	gs_vec3 bltl_e = gs_mat4_mul_vec3(xform, (gs_vec3){origin.x - half_extents.x - t2, origin.y - half_extents.y - t, 0.0f});
-
-	draw_line( (gs_vec2){tltr_s.x, tltr_s.y}, (gs_vec2){tltr_e.x, tltr_e.y}, color, thickness );
-	// draw_line( (gs_vec2){trbr_s.x, trbr_s.y}, (gs_vec2){trbr_e.x, trbr_e.y}, color, thickness );
-	// draw_line( (gs_vec2){brbl_s.x, brbl_s.y}, (gs_vec2){brbl_e.x, brbl_e.y}, color, thickness );
-	draw_line( (gs_vec2){bltl_s.x, bltl_s.y}, (gs_vec2){bltl_e.x, bltl_e.y}, color, thickness );
-}
 
 int main( int argc, char** argv )
 {
@@ -733,10 +666,8 @@ gs_result app_init()
 
 	// Vertex data layout
 	gs_vertex_attribute_type vertex_layout[] = {
-		gs_vertex_attribute_float2	// Position
-		// gs_vertex_attribute_float3,	// Normal
-		// gs_vertex_attribute_float2,	// UV
-		// gs_vertex_attribute_float3  // Color
+		gs_vertex_attribute_float2,	// Position
+		gs_vertex_attribute_float4  // Color
 	};
 	u32 layout_count = sizeof(vertex_layout) / sizeof(gs_vertex_attribute_type);
 
@@ -744,7 +675,6 @@ gs_result app_init()
 	g_vb = gfx->construct_vertex_buffer( vertex_layout, layout_count, NULL, 0 );
 
 	verts = gs_dyn_array_new( vert_t );
-	v_data = gs_dyn_array_new( gs_vec2 );
 
 	return gs_result_success;
 }
@@ -772,6 +702,10 @@ gs_result app_update()
 		return gs_result_success;
 	}
 
+	if ( platform->key_pressed( gs_keycode_a ) ) {
+		anti_alias = !anti_alias;
+	}
+
 	/*===============
 	// Render scene
 	================*/
@@ -788,7 +722,6 @@ gs_result app_update()
 	// shape desc - describes properties about the shape being created, like stroke, fill, color, etc.
 
 	// Need to determine normal of line at given point.
-	/*
 	static f32 x = 0.f;
 	static f32 y = 0.f;
 
@@ -813,9 +746,6 @@ gs_result app_update()
 	}
 	width = gs_clamp(width, 1.0f, 1000.f);
 
-	gs_vec3 white = (gs_vec3){1.f, 1.f, 1.f};
-	gs_vec3 red = (gs_vec3){1.f, 0.f, 0.f};
-
 	// Add a square to be drawn
 	gs_vqs xform = gs_vqs_default();
 	f32 scl = gs_interp_smooth_step( 1.f, 2.f, sin(t * 0.7f) * 0.5f + 0.5f);
@@ -825,38 +755,33 @@ gs_result app_update()
 
 	// Pass in a descriptor to close the path for certain paths, like a square
 
-	// point_t points_sqaure[] = {
-	// 	(point_t){ (gs_vec2){ 100.f, 100.f }, (gs_vec3){ 1.f, 1.f, 1.f } },
-	// 	(point_t){ (gs_vec2){ 200.f, 100.f }, (gs_vec3){ 1.f, 1.f, 1.f } },
-	// 	(point_t){ (gs_vec2){ 200.f, 200.f }, (gs_vec3){ 1.f, 1.f, 1.f } },
-	// 	(point_t){ (gs_vec2){ 100.f, 200.f }, (gs_vec3){ 1.f, 1.f, 1.f } }
-	// };
-	// path_closed( points_sqaure, sizeof(points_sqaure) / sizeof(point_t) );
-
-	point_t points_tri[] = {
-		(point_t){ (gs_vec2){ 300.f, 100.f }, (gs_vec3){ 1.f, 1.f, 1.f } },
-		(point_t){ (gs_vec2){ 400.f, 100.f }, (gs_vec3){ 1.f, 1.f, 1.f } },
-		(point_t){ (gs_vec2){ 400.f, 200.f }, (gs_vec3){ 1.f, 1.f, 1.f } },
-		(point_t){ (gs_vec2){ 200.f, 200.f }, (gs_vec3){ 1.f, 1.f, 1.f } }
-	};
-	path_closed( points_tri, sizeof(points_tri) / sizeof(point_t) );
-	*/
 	gs_vec2 points[] = {
-		(gs_vec2){100.f, 100.f},
-		(gs_vec2){300.f, 300.f},
-		(gs_vec2){50.f, 300.f}
+		sp, ep
 	};
 	u32 pt_count = sizeof(points) / sizeof(gs_vec2);
 
+	static f32 thickness = 1.f;
+	if (platform->key_down(gs_keycode_e)) {
+		thickness += 1.f;
+	}
+	if (platform->key_down(gs_keycode_q)) {
+		thickness -= 1.f;
+	}
+	thickness = gs_clamp(thickness, 1.f, 1000.f);
+
 	// Pass in verts for creating poly line
-	poly_line_create( v_data, points, pt_count, 2.f,
+	poly_line_create( &verts, points, pt_count, thickness,
                              joint_style_miter,
-                             end_cap_style_butt,
+                             end_cap_style_square,
                              true);
+
+	// Want to create "feather" data for anti-aliasing
+
+	// Iterate through all v_data, then format it into vertex data for uvs, or normals instead?
 
 	// Each line will be a quad, so need to update the vertex buffer with data somehow.
 	// Need that exposed to the user...
-	gfx->update_vertex_buffer_data( g_vb, v_data, gs_dyn_array_size(v_data) * sizeof(gs_vec2) );
+	gfx->update_vertex_buffer_data( g_vb, verts, gs_dyn_array_size(verts) * sizeof(vert_t) );
 
 	// Set clear color and clear screen
 	f32 clear_color[4] = { 0.1f, 0.1f, 0.1f, 1.f };
@@ -882,13 +807,13 @@ gs_result app_update()
 	gfx->bind_vertex_buffer( g_cb, g_vb );
 
 	// Draw vertices
-	gfx->draw( g_cb, 0, gs_dyn_array_size( v_data ) );
+	gfx->draw( g_cb, 0, gs_dyn_array_size( verts ) );
 
 	// Submit command buffer for rendering
 	gfx->submit_command_buffer( g_cb ); 	// I suppose this COULD flush the command buffer altogether? ...
 
 	 // Clear line data from array
-	gs_dyn_array_clear( v_data );
+	gs_dyn_array_clear( verts );
 
 	return gs_result_in_progress;
 }
@@ -939,17 +864,17 @@ void debug_draw()
 	};
 	gfx->set_debug_draw_properties( g_cb, debug_props );
 
-	gfx->draw_line( g_cb, (gs_vec3){30.f, 30.f, 0.f}, (gs_vec3){30.f, 200.f, 0.f }, white );
-	gfx->draw_line( g_cb, (gs_vec3){40.f, 30.f, 0.f}, (gs_vec3){40.f, 200.f, 0.f }, red );
-	gfx->draw_line( g_cb, (gs_vec3){50.f, 30.f, 0.f}, (gs_vec3){50.f, 200.f, 0.f }, blue );
-	gfx->draw_line( g_cb, (gs_vec3){60.f, 30.f, 0.f}, (gs_vec3){60.f, 200.f, 0.f }, green );
+	// gfx->draw_line( g_cb, (gs_vec3){30.f, 30.f, 0.f}, (gs_vec3){30.f, 200.f, 0.f }, white );
+	// gfx->draw_line( g_cb, (gs_vec3){40.f, 30.f, 0.f}, (gs_vec3){40.f, 200.f, 0.f }, red );
+	// gfx->draw_line( g_cb, (gs_vec3){50.f, 30.f, 0.f}, (gs_vec3){50.f, 200.f, 0.f }, blue );
+	// gfx->draw_line( g_cb, (gs_vec3){60.f, 30.f, 0.f}, (gs_vec3){60.f, 200.f, 0.f }, green );
 
 	// Try and rotate square?
 	gs_vqs xform = gs_vqs_default();
 	xform.rotation = gs_quat_angle_axis( gs_deg_to_rad(t * 10.f), (gs_vec3){0.0f, 0.0f, 1.f} );
 
 	// Draw debug square
-	gfx->draw_square( g_cb, (gs_vec3){100.f, 100.f, 0.f}, 100.f, 100.f, green, gs_vqs_to_mat4(&xform) );
+	// gfx->draw_square( g_cb, (gs_vec3){100.f, 100.f, 0.f}, 100.f, 100.f, green, gs_vqs_to_mat4(&xform) );
 
 	// Flush debug rendering buffer
 	gfx->submit_debug_drawing( g_cb );
