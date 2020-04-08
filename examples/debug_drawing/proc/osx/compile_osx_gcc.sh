@@ -38,7 +38,7 @@ libs=(
 )
 
 # Build
-gcc -O0 ${lib_dirs[*]} ${libs[*]} ${fworks[*]} ${inc[*]} ${src[*]} ${flags[*]} -o DebugDrawing
+gcc -O3 ${lib_dirs[*]} ${libs[*]} ${fworks[*]} ${inc[*]} ${src[*]} ${flags[*]} -o DebugDrawing
 
 cd ..
 
