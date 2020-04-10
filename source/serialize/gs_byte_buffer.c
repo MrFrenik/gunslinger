@@ -16,7 +16,7 @@ gs_byte_buffer gs_byte_buffer_new()
 	return buffer;
 }
 
-void gs_byte_buffer_destroy( gs_byte_buffer* buffer )
+void gs_byte_buffer_free( gs_byte_buffer* buffer )
 {
 	if ( buffer && buffer->buffer ) {
 		gs_free( buffer->buffer );

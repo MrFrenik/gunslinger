@@ -45,7 +45,7 @@ do {\
 
 void gs_byte_buffer_init( gs_byte_buffer* buffer );
 gs_byte_buffer gs_byte_buffer_new();
-void gs_byte_buffer_destroy( gs_byte_buffer* buffer );
+void gs_byte_buffer_free( gs_byte_buffer* buffer );
 void gs_byte_buffer_clear( gs_byte_buffer* buffer );
 void gs_byte_buffer_resize( gs_byte_buffer* buffer, usize sz );
 void gs_byte_buffer_seek_to_beg( gs_byte_buffer* buffer );

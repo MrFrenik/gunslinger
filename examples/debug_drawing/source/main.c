@@ -1,5 +1,8 @@
 #include <gs.h>
 
+#define NANOSVG_IMPLEMENTATION
+#include "nanosvg.h"
+
 // Forward Decls.
 gs_result app_init();		// Use to init your application
 gs_result app_update();		// Use to update your application
@@ -18,6 +21,9 @@ gs_result app_shutdown();	// Use to shutdown your appliaction
 
 _global b32 anti_alias = true;
 _global f32 anti_alias_scl = 2.f;
+_global b32 is_playing = true;
+
+_global NSVGimage *image = NULL;
 
 typedef struct vg_ctx_t
 {
@@ -710,6 +716,806 @@ void poly_line_create_triangle_fan( gs_dyn_array(vert_t)* vertices, poly_point_t
 	}
 }
 
+// Does a shape contain paths? Or does a path contain a shape?
+
+typedef struct path_t
+{
+	gs_dyn_array(poly_point_t) points;
+	end_cap_style_t end_cap_style;
+	joint_style_t joint_style;
+} path_t;
+
+path_t path_create_new()
+{
+	path_t p = {0};
+	p.points = gs_dyn_array_new(poly_point_t);
+	p.end_cap_style = end_cap_style_butt;
+	return p;
+}
+
+void path_free( path_t* p )
+{
+	gs_dyn_array_free(p->points);
+}
+
+void path_begin( path_t* p )
+{
+	// Clear all previous points
+	gs_dyn_array_clear(p->points);
+}
+
+void path_clear(path_t* p)
+{
+	path_begin(p);
+}
+
+path_t path_deep_copy(path_t* p)
+{
+	path_t path = path_create_new();
+	path.end_cap_style = p->end_cap_style;
+	path.joint_style = p->joint_style;
+	for ( u32 i = 0; i < gs_dyn_array_size(p->points); ++i )
+	{
+		gs_dyn_array_push(path.points, p->points[i]);
+	}
+	return path;
+}
+
+void path_submit( path_t* p, gs_dyn_array(vert_t)* verts )
+{
+	// Submit all points to renderer
+	poly_line_create(verts, p->points, gs_dyn_array_size(p->points), p->joint_style, p->end_cap_style, false);
+}
+
+void path_draw_line( path_t* p, gs_vec2 start, gs_vec2 end, f32 thickness, gs_vec4 color )
+{
+	gs_dyn_array_push(p->points, poly_point_create(start, color, thickness));
+	gs_dyn_array_push(p->points, poly_point_create(end, color, thickness));
+}
+
+void path_draw_triangle( path_t* p, gs_vec2 a, gs_vec2 b, gs_vec2 c, f32 thickness, gs_vec4 color )
+{
+	gs_dyn_array_push(p->points, poly_point_create(a, color, thickness)); 
+	gs_dyn_array_push(p->points, poly_point_create(b, color, thickness)); 
+	gs_dyn_array_push(p->points, poly_point_create(c, color, thickness)); 
+}
+
+void path_draw_circle( path_t* p, gs_vec2 origin, f32 r, s32 num_segments, f32 thickness, gs_vec4 color )
+{
+	f32 step = num_segments < 5 ? 360.f / 5.f : 360.f / (f32)num_segments;
+	for ( f32 i = 0; i < 360.f; i += step ) {
+		f32 a = gs_deg_to_rad(i);
+		poly_point_t pt = poly_point_create(gs_vec2_add(origin, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)), 
+								color, thickness);
+		gs_dyn_array_push(p->points, pt);
+	}
+	// Push last angle on as well
+	{
+		f32 a = gs_deg_to_rad(360.f);
+		poly_point_t pt = poly_point_create(gs_vec2_add(origin, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)), 
+								color, thickness);
+		gs_dyn_array_push(p->points, pt);
+	}
+}
+
+void path_draw_arc( path_t* p, gs_vec2 origin, f32 r, f32 start_angle, f32 end_angle, s32 num_segments, f32 thickness, gs_vec4 color )
+{
+	if ( start_angle > end_angle ) {
+		f32 tmp = start_angle;
+		start_angle = end_angle;
+		end_angle = tmp;
+	}
+	f32 diff = end_angle - start_angle;
+	if ( fabsf(diff) <= 0.001f ) {
+		return;
+	}
+
+	f32 step = num_segments < 5 ? diff / 5.f : diff / (f32)num_segments;
+	for ( f32 i = start_angle; i <= end_angle; i += step ) {
+		f32 a = gs_deg_to_rad(i);
+		poly_point_t pt = poly_point_create(gs_vec2_add(origin, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)), 
+								color, thickness);
+		gs_dyn_array_push(p->points, pt);
+	}
+	// Push last angle on as well
+	{
+		f32 a = gs_deg_to_rad(end_angle);
+		poly_point_t pt = poly_point_create(gs_vec2_add(origin, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)), 
+								color, thickness);
+		gs_dyn_array_push(p->points, pt);
+	}
+}
+
+void path_draw_square( path_t* p, gs_vec2 origin, gs_vec2 half_extents, f32 thickness, gs_vec4 color )
+{
+
+	gs_dyn_array_push(p->points, poly_point_create((gs_vec2){origin.x - half_extents.x, origin.y - half_extents.y}, color, thickness));
+	gs_dyn_array_push(p->points, poly_point_create((gs_vec2){origin.x + half_extents.x, origin.y - half_extents.y}, color, thickness));
+	gs_dyn_array_push(p->points, poly_point_create((gs_vec2){origin.x + half_extents.x, origin.y + half_extents.y}, color, thickness));
+	gs_dyn_array_push(p->points, poly_point_create((gs_vec2){origin.x - half_extents.x, origin.y + half_extents.y}, color, thickness));
+}
+
+void path_draw_G(path_t* p, gs_vec2 position, f32 thickness, gs_vec4 color)
+{
+	const f32 r = 30.f;
+	const f32 start_angle = 0.f;
+	const f32 end_angle = 320.f;
+	const s32 num_segments = 40;
+	f32 diff = end_angle - start_angle;
+
+	// Draw line first (from position to outside radius)
+	gs_dyn_array_push(p->points, poly_point_create((gs_vec2){position.x, position.y}, color, thickness));
+	gs_dyn_array_push(p->points, poly_point_create((gs_vec2){position.x + r, position.y}, color, thickness));
+
+	// Create arc
+	f32 step = diff / (f32)num_segments;
+	for ( f32 i = start_angle; i <= end_angle; i += step ) {
+		f32 a = gs_deg_to_rad(i);
+		poly_point_t pt = poly_point_create(gs_vec2_add(position, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)), 
+								color, thickness);
+		gs_dyn_array_push(p->points, pt);
+	}
+	// Push last angle on as well
+	{
+		f32 a = gs_deg_to_rad(end_angle);
+		poly_point_t pt = poly_point_create(gs_vec2_add(position, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)), 
+								color, thickness);
+		gs_dyn_array_push(p->points, pt);
+	}
+}
+
+typedef struct shape_t
+{
+	gs_dyn_array(path_t) paths;
+	u32 current_path_idx;
+	gs_vqs xform;
+} shape_t;
+
+shape_t shape_create_new()
+{
+	shape_t s = {0};
+	s.paths = gs_dyn_array_new(path_t);
+	s.current_path_idx = 0;
+	s.xform = gs_vqs_default();
+	return s;
+}
+
+void shape_begin(shape_t* s)
+{
+	// Clear all path memory
+	gs_for_range_i(gs_dyn_array_size(s->paths)) {
+		path_free(&s->paths[i]);
+	}
+	gs_dyn_array_clear(s->paths);
+}
+
+path_t* shape_begin_path(shape_t* s)
+{
+	gs_dyn_array_push(s->paths, path_create_new());
+	return &s->paths[gs_dyn_array_size(s->paths) - 1];
+}
+
+void shape_free(shape_t* s)
+{
+	gs_for_range_i(gs_dyn_array_size(s->paths)) {
+		gs_dyn_array_clear(&s->paths[i]);
+		path_free(&s->paths[i]);
+	}
+	gs_dyn_array_clear(s->paths);
+	gs_dyn_array_free(s->paths);
+}
+
+void shape_submit(shape_t *s, gs_dyn_array(vert_t)* verts)
+{
+	gs_for_range_i(gs_dyn_array_size(s->paths))
+	{
+		path_submit(&s->paths[i], verts);
+	}
+}
+
+shape_t shape_deep_copy(shape_t* s)
+{
+	shape_t shape = shape_create_new();
+
+	for ( u32 i = 0; i < gs_dyn_array_size(s->paths); ++i ) {
+		gs_dyn_array_push(shape.paths, path_deep_copy(&s->paths[i]));
+	}
+
+	shape.xform = s->xform;
+
+	return shape;
+}
+
+void shape_draw_line( shape_t* s, gs_vec2 start, gs_vec2 end, f32 thickness, gs_vec4 color )
+{
+	path_t* p = shape_begin_path(s);
+	path_draw_line(p, start, end, thickness, color);
+}
+
+void shape_draw_square( shape_t* s, gs_vec2 origin, gs_vec2 half_extents, f32 thickness, gs_vec4 color, b32 fill )
+{
+	if ( fill ) 
+	{
+		// Calculate thickness needed to fill square
+		gs_vec2 sp = (gs_vec2){origin.x, origin.y - half_extents.y - 2.f * thickness};
+		gs_vec2 ep = (gs_vec2){origin.x, origin.y + half_extents.y + 2.f * thickness};
+		shape_draw_line(s, sp, ep, half_extents.x / 2.f + 2.f * thickness, color);	
+	}
+
+	path_t* p = shape_begin_path(s);
+	path_draw_square(p, origin, half_extents, thickness, color);
+	p->end_cap_style = end_cap_style_joint;
+}
+
+void shape_draw_grid(shape_t* s, gs_vec2 origin, f32 width, f32 height, u32 num_cols, u32 num_rows, f32 thickness, gs_vec4 color )
+{
+	f32 cell_width = width / (f32)num_cols;
+	f32 cell_height = height / (f32)num_rows;
+
+	gs_vec2 tl = (gs_vec2){ origin.x - width / 2.f, origin.y - height / 2.f };
+
+	// Draw grid across entire screen for shiggles
+	for ( u32 r = 0; r <= num_rows; ++r )
+	{
+		path_t* p = shape_begin_path(s);
+		gs_vec2 sp = (gs_vec2){tl.x, tl.y + r * cell_height};
+		gs_vec2 ep = (gs_vec2){tl.x + width, tl.y + r * cell_height};
+		path_draw_line(p, sp, ep, thickness, color);
+	}
+
+	for ( u32 c = 0; c <= num_cols; ++c )
+	{
+		path_t* p = shape_begin_path(s);
+		gs_vec2 sp = (gs_vec2){tl.x + c * cell_width, tl.y};
+		gs_vec2 ep = (gs_vec2){tl.x + c * cell_width, tl.y + height};
+		path_draw_line(p, sp, ep, thickness, color);
+	}
+}
+
+
+typedef enum animation_action_type_t
+{
+	animation_action_type_walk_path = 0,
+	animation_action_type_transform,		// Takes in vqs transform and will 
+	animation_action_type_wait,
+	animation_action_type_disable_shape,
+	animation_action_percentage_alpha
+} animation_action_type_t;
+
+typedef enum animation_ease_type_t
+{
+	animation_ease_type_lerp = 0,
+	animation_ease_type_smooth_step,
+	animation_ease_type_ease_in,
+	animation_ease_type_ease_out,
+	animation_ease_type_cosine
+} animation_ease_type_t;
+
+typedef struct animation_path_desc_t {
+	u32 start;
+	u32 end;
+	joint_style_t joint_style;
+	end_cap_style_t end_cap_style;
+} animation_path_desc_t;
+
+typedef struct animation_action_desc_t
+{
+	u32 read_position;
+	f32 total_time;
+	f32 current_time;
+	animation_action_type_t action_type;
+	animation_ease_type_t ease_type;
+} animation_action_desc_t;
+
+typedef struct animation_t
+{
+	shape_t shape;
+	shape_t shape_mod;
+	gs_byte_buffer action_data_buffer;
+	gs_dyn_array(animation_action_desc_t) actions;
+	u32 current_action_idx;
+	f32 total_play_time;
+	f32 time;
+	f32 animation_speed;
+	b32 playing;
+} animation_t;
+
+animation_t animation_create_new( f32 total_play_time, f32 speed )
+{
+	animation_t a = {0};
+	a.total_play_time = total_play_time;
+	a.animation_speed = speed;
+	a.time = 0.f;
+	a.action_data_buffer = gs_byte_buffer_new();
+	a.actions = gs_dyn_array_new(animation_action_desc_t);
+	a.current_action_idx = 0;
+	a.shape = shape_create_new();
+	a.shape_mod = shape_create_new();
+	a.playing = true;
+	return a;
+}
+
+void animation_free(animation_t* a)
+{
+	gs_byte_buffer_free(&a->action_data_buffer);
+	gs_dyn_array_free(a->actions);
+}
+
+void animation_clear(animation_t* a)
+{
+	gs_byte_buffer_clear(&a->action_data_buffer);
+	shape_free(&a->shape);
+	shape_free(&a->shape_mod);
+	a->current_action_idx = 0;
+	a->total_play_time = 0.f;
+}
+
+void animation_reset(animation_t* a)
+{
+	a->time = 0.f;
+	a->playing = true;
+	animation_clear(a);
+}
+
+void animation_tick(animation_t* a, f32 dt)
+{
+	if ( a->playing ) 
+	{
+		animation_action_desc_t* action = &a->actions[a->current_action_idx];
+		if (action->current_time > action->total_time) 
+		{
+			a->current_action_idx++;
+
+			// Resetting shape state in animation (this will not scale...)
+			shape_free(&a->shape);
+			a->shape = shape_deep_copy(&a->shape_mod);
+		}
+		if (a->current_action_idx >= gs_dyn_array_size(a->actions)) {
+			a->playing = false;
+		}
+
+		// Increment animation times
+		a->time = gs_clamp(a->time + dt * a->animation_speed, 0.f, a->total_play_time);
+		action->current_time += dt * a->animation_speed;
+	}
+}
+
+void animation_set_shape(animation_t* a, shape_t* s)
+{
+	animation_clear(a);
+	a->shape = shape_deep_copy(s);
+	a->shape_mod = shape_deep_copy(s);
+}
+
+void animation_shape(animation_t* a, shape_t* s, f32 dt)
+{
+	if ( !a->playing ) {
+		return;
+	}
+
+	animation_action_desc_t* action = &a->actions[a->current_action_idx];
+
+	// Set action data buffer to be back to position
+	a->action_data_buffer.position = action->read_position;
+	animation_action_type_t action_type = action->action_type;
+	animation_ease_type_t ease_type = action->ease_type;
+	f32 t = 0.f;
+
+	switch ( ease_type )
+	{
+		default:
+		case animation_ease_type_lerp: {
+			t = gs_interp_linear(0.f, 1.f, gs_clamp(action->current_time / action->total_time, 0.f, 1.f));
+		} break;
+
+		case animation_ease_type_smooth_step: {
+			t = gs_interp_smooth_step(0.f, 1.f, gs_clamp(action->current_time / action->total_time, 0.f, 1.f));
+		} break;
+	}
+
+	switch ( action_type )
+	{
+		case animation_action_type_transform: 
+		{
+			// Grab transform from buffer
+			gs_vqs xform = gs_byte_buffer_read(&a->action_data_buffer, gs_vqs);
+			gs_vqs* sxform = &s->xform;
+
+			switch ( ease_type )
+			{
+				case animation_ease_type_smooth_step: 
+				{
+					// Translate position over time
+					sxform->position.x = gs_interp_smooth_step(a->shape.xform.position.x, xform.position.x, t);
+					sxform->position.y = gs_interp_smooth_step(a->shape.xform.position.y, xform.position.y, t);
+					sxform->position.z = gs_interp_smooth_step(a->shape.xform.position.z, xform.position.z, t);
+
+					// Scale over time
+					sxform->scale.x = gs_interp_smooth_step(a->shape.xform.scale.x, xform.scale.x, t);
+					sxform->scale.y = gs_interp_smooth_step(a->shape.xform.scale.y, xform.scale.y, t);
+					sxform->scale.z = gs_interp_smooth_step(a->shape.xform.scale.z, xform.scale.z, t);
+
+					// Rotate over time
+					// sxform->rotation = gs_quat_slerp(a->shape.xform.rotation, xform.rotation, t);
+					sxform->rotation.x = gs_interp_smooth_step(a->shape.xform.rotation.x, xform.rotation.x, t);
+					sxform->rotation.y = gs_interp_smooth_step(a->shape.xform.rotation.y, xform.rotation.y, t);
+					sxform->rotation.z = gs_interp_smooth_step(a->shape.xform.rotation.z, xform.rotation.z, t);
+					sxform->rotation.w = gs_interp_smooth_step(a->shape.xform.rotation.w, xform.rotation.w, t);
+
+				} break;
+
+				default:
+				case animation_ease_type_lerp: 
+				{
+					// Translate position over time
+					sxform->position.x = gs_interp_linear(a->shape.xform.position.x, xform.position.x, t);
+					sxform->position.y = gs_interp_linear(a->shape.xform.position.y, xform.position.y, t);
+					sxform->position.z = gs_interp_linear(a->shape.xform.position.z, xform.position.z, t);
+
+					// Scale over time
+					sxform->scale.x = gs_interp_linear(a->shape.xform.scale.x, xform.scale.x, t);
+					sxform->scale.y = gs_interp_linear(a->shape.xform.scale.y, xform.scale.y, t);
+					sxform->scale.z = gs_interp_linear(a->shape.xform.scale.z, xform.scale.z, t);
+
+					sxform->rotation.x = gs_interp_linear(a->shape.xform.rotation.x, xform.rotation.x, t);
+					sxform->rotation.y = gs_interp_linear(a->shape.xform.rotation.y, xform.rotation.y, t);
+					sxform->rotation.z = gs_interp_linear(a->shape.xform.rotation.z, xform.rotation.z, t);
+					sxform->rotation.w = gs_interp_linear(a->shape.xform.rotation.w, xform.rotation.w, t);
+				} break;
+			}
+
+		} break;	
+
+		case animation_action_type_walk_path:
+		{
+			// Free our shape mod, then reset here
+			shape_free(&a->shape_mod);
+			a->shape_mod = shape_deep_copy(&a->shape);
+
+			// Will modify mod shape point data here
+			// For each point in path, calculate total length of path
+			for (u32 pi = 0; pi < gs_dyn_array_size(a->shape.paths); ++pi)
+			{
+				path_t* pm = &a->shape_mod.paths[pi];
+				path_t* p = &a->shape.paths[pi];
+
+				end_cap_style_t end_cap_style = p->end_cap_style;
+				joint_style_t joint_style = p->joint_style;
+				u32 pt_count = gs_dyn_array_size(p->points);
+
+				f32 total_length = 0.f;
+
+				// Have to walk each path.
+				for ( u32 i = 0; i + 1 < gs_dyn_array_size(p->points); ++i )
+				{
+					// Calculate length from this vert to the next
+					poly_point_t p0 = p->points[i];
+					poly_point_t p1 = p->points[i + 1];
+					total_length += gs_vec2_dist(p0.position, p1.position);
+				}
+
+				// If the end cap is joined, then need to also check against the last and first point
+				if (pt_count > 2 && end_cap_style == end_cap_style_joint)
+				{
+					poly_point_t p0 = p->points[gs_dyn_array_size(p->points) - 1];
+					poly_point_t p1 = p->points[0];
+					total_length += gs_vec2_dist(p0.position, p1.position);
+				}
+
+				// Total animation length of path will be based on anim.time / anim.total_time;
+				f32 anim_len = total_length * t;
+
+				f32 cur_len = 0.f;
+				s32 push_idx = -1;
+				poly_point_t* push_point = NULL;
+				gs_vec2 push_pos;
+
+				for ( u32 i = 1; i < gs_dyn_array_size(p->points) + (end_cap_style == end_cap_style_joint ? 1 : 0); ++i ) {
+
+					// Calculate length from this vert to the next
+					poly_point_t* p0 = &p->points[i - 1];
+					poly_point_t* p1 = &p->points[i % gs_dyn_array_size(p->points)];
+					cur_len += gs_vec2_dist(p0->position, p1->position);
+
+					if ( cur_len > anim_len) {
+						// Calculate closest point we can, and submit that instead
+						f32 diff = cur_len - anim_len;
+						gs_vec2 n = gs_vec2_norm(gs_vec2_sub(p1->position, p0->position));
+						push_pos = gs_vec2_sub(p1->position, gs_vec2_scale(n, diff));
+
+						// We've wrapped back around
+						if ( (i % gs_dyn_array_size(p->points)) == 0 ) 
+						{
+							// Push new point to end
+							push_point = &p->points[gs_dyn_array_size(p->points) - 1];
+						} 
+						else 
+						{
+							// Set our current point to this position
+							pm->points[i % gs_dyn_array_size(pm->points)].position = push_pos;
+							pt_count = i + 1;
+						}
+
+						pm->end_cap_style = end_cap_style_butt;
+
+						break;
+					}
+				}
+				if ( push_point != NULL ) {
+					gs_dyn_array_push(pm->points, poly_point_create(push_pos, push_point->color, push_point->thickness));
+				}
+				else {
+					// Need to limit the amount of points drawn
+					gs_dyn_array_size(pm->points) = pt_count;
+				}
+			}
+
+		} break;
+
+		case animation_action_percentage_alpha:
+		{
+			// Grab transform from buffer
+			f32 fade_amt = gs_byte_buffer_read(&a->action_data_buffer, f32);
+
+			// For each path
+			for (u32 pi = 0; pi < gs_dyn_array_size(a->shape.paths); ++pi)
+			{
+				path_t* pm = &a->shape_mod.paths[pi];
+				path_t* p = &a->shape.paths[pi];
+
+				// For each point
+				for ( u32 i = 0; i < gs_dyn_array_size(p->points); ++i ) 
+				{
+					// Each pixel's opacity gets faded by a certain amount over time
+					poly_point_t* pt = &p->points[i];
+					poly_point_t* pt_m = &pm->points[i];
+
+					switch ( ease_type )
+					{
+						case animation_ease_type_smooth_step:
+						{
+							pt_m->color.w = gs_interp_smooth_step(pt->color.w, pt->color.w * fade_amt, t);
+						} break;	
+
+						default:
+						case animation_ease_type_lerp:
+						{
+							pt_m->color.w = gs_interp_linear(pt->color.w, pt->color.w * fade_amt, t);
+						} break;
+					}
+				}
+			}
+		} break;
+
+		default: {
+			// Do nothing...
+		} break;
+	}
+
+}
+
+poly_point_t transform_point(poly_point_t p, gs_vqs* xform)
+{
+	// Transform point position by model matrix
+	poly_point_t pt = p;
+	gs_mat4 model = gs_vqs_to_mat4(xform);
+	gs_vec4 np = gs_mat4_mul_vec4(model, (gs_vec4){pt.position.x, pt.position.y, 0.f, 1.f});
+	pt.position = (gs_vec2){np.x, np.y};
+	pt.thickness *= gs_vec3_len(xform->scale);
+
+	return pt;
+}
+
+// Do I actually ned to store any data then? Why couldn't I just animation a shape based on the animation actions?...
+void animation_play(gs_dyn_array(vert_t)* verts, animation_t* a, f32 dt)
+{
+	if ( is_playing ) {
+		animation_tick(a, dt);
+	}
+
+	// We dont' show if we've disabled the shape
+	animation_action_desc_t* action = &a->actions[a->current_action_idx];
+	animation_action_type_t action_type = action->action_type;
+	if ( action_type == animation_action_type_disable_shape ) {
+		return;
+	}
+
+	// Animate shape by current action
+	animation_shape(a, &a->shape_mod, dt);
+
+	gs_dyn_array(poly_point_t) points = gs_dyn_array_new(poly_point_t);
+
+	// Transform all points via shape's model matrix
+	for (u32 i = 0; i < gs_dyn_array_size(a->shape_mod.paths); ++i)
+	{
+		path_t* p = &a->shape_mod.paths[i];
+
+		for (u32 j = 0; j < gs_dyn_array_size(p->points); ++j) {
+			// Transform point
+			poly_point_t pt = p->points[j];
+			gs_dyn_array_push(points, transform_point(pt, &a->shape_mod.xform));
+		}
+
+		// Apply transform to points (this shouldn't be destructive, of course)
+		// Treat points as if they are an object of read-only verts 
+		poly_line_create(verts, points, gs_dyn_array_size(points), p->joint_style, p->end_cap_style, false);
+
+		gs_dyn_array_clear(points);
+	}
+
+	gs_dyn_array_free(points);
+}
+
+/*
+	f32 time: total time that this animation will run
+*/
+void animation_add_action(animation_t* a, animation_action_type_t action_type, 
+	animation_ease_type_t ease_type, f32 time, void* data)
+{
+	animation_action_desc_t desc = {0};
+	desc.read_position = a->action_data_buffer.position;
+	desc.total_time = time;
+	desc.current_time = 0.f;
+	desc.action_type = action_type;
+	desc.ease_type = ease_type;
+
+	// Write beginning index for this action into action list
+	gs_dyn_array_push(a->actions, desc);
+
+	// Add to total run time
+	a->total_play_time += time;
+
+	// Then write data
+	switch ( action_type )
+	{
+		case animation_action_type_transform: 
+		{
+			gs_vqs* xform = (gs_vqs*)data;
+			gs_byte_buffer_write(&a->action_data_buffer, gs_vqs, *xform);
+		} break;
+
+		case animation_action_percentage_alpha: 
+		{
+			f32* amt = (f32*)data;
+			gs_byte_buffer_write(&a->action_data_buffer, f32, *amt);
+		} break;
+
+		// No information yet for this or don't write anything by default
+		default:
+		{
+		} break;
+	}
+}
+
+void animation_begin_shape(animation_t* a, shape_t* s)
+{
+	/*
+	animation_clear(a);
+
+	u32 start_idx = 0;
+
+	// Copy all point data over from shape in this call into points buffer
+	for ( u32 i = 0; i < gs_dyn_array_size(s->paths); ++i )
+	{
+		animation_path_desc_t p_desc = { 0 };
+		path_t* p 				= &s->paths[i];
+		p_desc.start 			= start_idx;
+		p_desc.end 				= start_idx + gs_dyn_array_size(p->points);
+		p_desc.joint_style 		= p->joint_style;
+		p_desc.end_cap_style 	= p->end_cap_style;
+
+		for ( u32 pt = 0; pt < gs_dyn_array_size(p->points); ++pt ) {
+			// gs_dyn_array_push(a->points, p->points[pt]);	
+		}
+
+		start_idx = p_desc.end;
+
+		gs_dyn_array_push(a->path_descs, p_desc);
+	}
+	*/
+}
+
+// Animate path will submit to verts to be rendered
+/*
+void animation_path(gs_dyn_array(vert_t)* verts, animation_t* a, path_t* p)
+{
+	// For each point in path, calculate total length of path
+	f32 total_length = 0.f;
+	for ( u32 i = 0; i + 1 < gs_dyn_array_size(p->points); ++i )
+	{
+		// Calculate length from this vert to the next
+		poly_point_t* p0 = &p->points[i];
+		poly_point_t* p1 = &p->points[i + 1];
+		total_length += gs_vec2_dist(p0->position, p1->position);
+	}
+
+	// If the end cap is joined, then need to also check against the last and first point
+	if (gs_dyn_array_size(p->points) > 2 && p->end_cap_style == end_cap_style_joint)
+	{
+		poly_point_t* p0 = &p->points[gs_dyn_array_size(p->points) - 1];
+		poly_point_t* p1 = &p->points[0];
+		total_length += gs_vec2_dist(p0->position, p1->position);
+	}
+
+	// Total animation length of path will be based on anim.time / anim.total_time;
+	f32 anim_len = total_length * (a->time / a->total_play_time);
+
+	// Push on first point
+	gs_dyn_array_push(a->points, p->points[0]);
+
+	f32 cur_len = 0.f;
+	for ( u32 i = 1; i < gs_dyn_array_size(p->points) + (p->end_cap_style == end_cap_style_joint ? 1 : 0); ++i ) {
+
+		// Calculate length from this vert to the next
+		poly_point_t* p0 = &p->points[i - 1];
+		poly_point_t* p1 = &p->points[i % gs_dyn_array_size(p->points)];
+		cur_len += gs_vec2_dist(p0->position, p1->position);
+		if ( cur_len <= anim_len ) {
+			// Add our point
+			gs_dyn_array_push(a->points, *p1);
+		}
+		// Otherwise, we're done
+		else {
+			// Calculate closest point we can, and submit that instead
+			f32 diff = cur_len - anim_len;	 // This value isn't correct...
+			gs_vec2 n = gs_vec2_norm(gs_vec2_sub(p1->position, p0->position));
+			gs_vec2 pos = gs_vec2_sub(p1->position, gs_vec2_scale(n, diff));
+			gs_dyn_array_push(a->points, poly_point_create(pos, p1->color, p1->thickness));
+			break;
+		}
+	}
+
+	// Submit path to render
+	poly_line_create(verts, a->points, gs_dyn_array_size(a->points), p->joint_style, 
+		anim_len >= total_length ? p->end_cap_style : end_cap_style_butt, false);
+}
+*/
+
+// void animation_shape(gs_dyn_array(vert_t)* verts, animation_t* a, shape_t* s)
+// {
+// 	// Loop through all paths in shape and submit for animation
+// 	gs_for_range_i(gs_dyn_array_size(s->paths)) {
+// 		animation_path(verts, a, &s->paths[i]);
+// 	}
+// }
+
+// Does this submit points? Or just map the path's points to whatever the time is? Think that makes more sense.
+// void animate_shape(animation_t* a, shape_t* s, f32 dt)
+// {
+// 	// For each path in shape, we're going to animate separately...
+
+// 	// Incrememnt animation time
+// 	a->time = gs_clamp(a->time + dt * a->animation_speed, 0.f, a->total_play_time);
+
+// 	// For animating shapes, just iterate through path?
+// 	// u32 pt_sz = (u32)gs_dyn_array_size(p->points);
+
+// 	// Map this number from 0 -> pt_size based on time -> total_play_time;
+// 	f32 scl = gs_interp_smooth_step(0.f, 1.f, a->time / a->total_play_time);
+
+// 	// This doesn't work correctly...
+
+// 	// Need to chop up path into animation steps, depending on animation.
+// 	// Then need to 
+
+// 	gs_mat4 scl_mtx = gs_mat4_scale((gs_vec3){scl, scl, 1.f});
+// 	gs_for_range_i(gs_dyn_array_size(a->path.points)) {
+// 		poly_point_t* pt = &a->path.points[i];
+// 		gs_vec3 new_pt = gs_mat4_mul_vec3(scl_mtx, (gs_vec3){pt->position.x, pt->position.y, 0.f});
+// 		pt->position.x = new_pt.x;
+// 		pt->position.y = new_pt.y;
+// 	}
+
+// 	// This is destructive, of course, so I'm not entirely thrilled with this. Would be nice to be 
+// 	// able to just animate them non-destructively.
+
+// 	// So, obviously this won't work...Need to introduce new points to "grow" the path over time. yeesh.
+// 	// Not sure how to translate this to work with paths, actually...
+
+// 	// Set the path's point count to this value
+// 	// gs_dyn_array_size(p->points) = ct;
+// }
+
 // Command buffer global var
 _global gs_resource( gs_command_buffer ) g_cb = {0};
 _global gs_resource( gs_shader ) g_shader = {0};
@@ -718,7 +1524,9 @@ _global gs_resource( gs_index_buffer ) g_ib = {0};
 _global gs_resource( gs_uniform ) u_proj = {0};
 _global gs_resource( gs_uniform ) u_view = {0};
 
-_global gs_dyn_array( vert_t ) verts;
+_global gs_dyn_array( vert_t ) g_verts;
+_global gs_dyn_array(animation_t) g_animations;
+_global shape_t g_shape = {0};
 
 _global const char* debug_shader_v_src = "\n"
 "#version 330 core\n"
@@ -778,6 +1586,10 @@ gs_result app_init()
 {
 	// Cache instance of graphics api from engine
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+
+	// Viewport
+	const gs_vec2 ws = platform->window_size(platform->main_window());
 
 	// Construct command buffer ( the command buffer is used to allow for immediate drawing at any point in our program )
 	g_cb = gfx->construct_command_buffer();
@@ -799,145 +1611,106 @@ gs_result app_init()
 	// Construct vertex buffer objects
 	g_vb = gfx->construct_vertex_buffer( vertex_layout, layout_count, NULL, 0 );
 
-	verts = gs_dyn_array_new( vert_t );
+	g_verts = gs_dyn_array_new( vert_t );
+	g_animations = gs_dyn_array_new(animation_t);
+	g_shape = shape_create_new();
+
+	// Let's get two animations for now
+	gs_for_range_i(10) {
+		gs_dyn_array_push(g_animations, animation_create_new(1.f, 0.5f));
+	}
+
+	animation_t* anim = NULL;
+	shape_t* shape = &g_shape;
+
+	const u32 num_cols = 10;
+	const u32 num_rows = 10;
+	const f32 grid_size = 500.f;
+	const f32 ct = 1.0f;
+	f32 cw = grid_size / (f32)num_cols;
+	f32 ch = grid_size / (f32)num_rows;
+	gs_vec2 chext = (gs_vec2){cw / 2.f - ct * 2.f, ch / 2.f - ct * 2.f};
+	gs_vec2 ocp = (gs_vec2){cw / 2.f, ch / 2.f};
+
+	gs_vqs trans = gs_vqs_default();
+
+	gs_vec4 grid_col = (gs_vec4){0.7f, 0.5f, 0.2f, 1.f};
+	gs_vec4 highlight_col = (gs_vec4){0.9f, 0.8f, 0.1f, 0.1f};
+
+	f32 w = (cw - ct);
+	f32 h = (ch - ct);
+
+
+	// Initialize shape and animation for grid
+	// Want each of these squares to animate in as well...
+	shape_begin(shape);
+	shape->xform.position = (gs_vec3){ws.x / 2.f, ws.y / 2.f, 0.f};
+	shape_draw_square(shape, (gs_vec2){ocp.x - cw, ocp.y + ch}, chext, ct, grid_col, true);
+	shape_draw_square(shape, (gs_vec2){ocp.x, ocp.y + ch}, chext, ct, grid_col, true);
+	shape_draw_square(shape, (gs_vec2){ocp.x, ocp.y + ch}, chext, ct, grid_col, true);
+	shape_draw_square(shape, (gs_vec2){ocp.x - cw * 2, ocp.y + ch}, chext, ct, grid_col, true);
+	shape_draw_square(shape, (gs_vec2){ocp.x + cw * 2, ocp.y + ch * 2}, chext, ct, grid_col, true);
+	shape_draw_grid(shape, (gs_vec2){0.f, 0.f}, grid_size, grid_size, num_rows, num_cols, 0.5f, (gs_vec4){1.f, 1.f, 1.f, 1.f});
+
+	// Total play time should be determined by total number of tracks...
+	// Animate one of the paths
+	trans.scale = (gs_vec3){0.4f, 0.4f, 0.f};
+	trans.position = (gs_vec3){grid_size * trans.scale.x + 20.f, grid_size * trans.scale.y + 20.f, 0.f};
+	f32 fade_amt = 0.2f;
+	anim = &g_animations[1];
+	animation_set_shape(anim, shape);
+	animation_add_action(anim, animation_action_type_walk_path, animation_ease_type_smooth_step, 5.f, NULL);
+	animation_add_action(anim, animation_action_type_wait, animation_ease_type_lerp, 7.f, NULL);
+	animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 2.f, &fade_amt);
+	animation_add_action(anim, animation_action_type_wait, animation_ease_type_lerp, 4.f, NULL);
+	fade_amt = 0.0f;
+	animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 1.f, &fade_amt);
+	animation_add_action(anim, animation_action_type_wait, animation_ease_type_lerp, 10.f, NULL);
+
+	/*
+		Center Cell Animation
+	*/
+	// Set up shape
+	shape_begin(shape);
+	shape->xform.position = (gs_vec3){ws.x / 2.f, ws.y / 2.f, 0.f};
+	shape_draw_square(shape, ocp, chext, ct, (gs_vec4){grid_col.x, grid_col.y, grid_col.z, 0.1f}, true);
+
+	fade_amt = 10.f;
+	anim = &g_animations[0];
+	animation_set_shape(anim, shape);
+	animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_lerp, 5.f, NULL);
+	animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 3.f, &fade_amt);
+	animation_add_action(anim, animation_action_type_wait, animation_ease_type_smooth_step, 10.f, NULL);
+
+	trans = shape->xform;
+	trans.scale = (gs_vec3){ 1.5f, 1.5f, 1.f };
+	trans.position = (gs_vec3){ ws.x * 0.25f / trans.scale.x, (ws.y * 0.5f - ch) / trans.scale.y, 0.f };
+	animation_add_action(anim, animation_action_type_transform, animation_ease_type_smooth_step, 3.f, &trans);
+
+	/*
+		// Highlight center cell animation
+	*/
+	shape_begin(shape);
+	shape->xform.position = (gs_vec3){ws.x / 2.f, ws.y / 2.f, 0.f};
+	shape_draw_square(shape, ocp, chext, 2.f, highlight_col, false);
+
+	anim = &g_animations[2];
+	fade_amt = 10.0f;
+	animation_set_shape(anim, shape);
+	animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_lerp, 15.f, NULL);
+	animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 0.5f, &fade_amt);
+	fade_amt = 0.1f;
+	animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 0.5f, &fade_amt);
+	fade_amt = 10.0f;
+	animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 0.5f, &fade_amt);
+	fade_amt = 0.0f;
+	animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 3.0f, &fade_amt);
+
 
 	return gs_result_success;
 }
 
-void draw_triangle(gs_dyn_array(vert_t)* verts, gs_vec2 a, gs_vec2 b, gs_vec2 c, f32 thickness, gs_vec4 color)
-{
-	poly_point_t points[] = 
-	{
-		poly_point_create(a, color, thickness), 
-		poly_point_create(b, color, thickness),
-		poly_point_create(c, color, thickness)
-	};
-	u32 pt_count = sizeof(points) / sizeof(poly_point_t);
-
-	// Pass in verts for creating poly line
-	poly_line_create(verts, points, pt_count, joint_style_miter, end_cap_style_joint, false);
-}
-
-void draw_line( gs_dyn_array(vert_t)* verts, gs_vec2 start, gs_vec2 end, f32 thickness, gs_vec4 color )
-{
-	poly_point_t points[] = 
-	{
-		poly_point_create(start, color, thickness), 
-		poly_point_create(end, color, thickness)
-	};
-	u32 pt_count = sizeof(points) / sizeof(poly_point_t);
-
-	// Pass in verts for creating poly line
-	poly_line_create(verts, points, pt_count, joint_style_miter, end_cap_style_butt, false);
-}
-
-void draw_circle( gs_dyn_array(vert_t)* verts, gs_vec2 origin, f32 r, s32 num_segments, f32 thickness, gs_vec4 color )
-{
-	gs_dyn_array(poly_point_t) points = gs_dyn_array_new(poly_point_t);
-
-	f32 step = num_segments < 5 ? 360.f / 5.f : 360.f / (f32)num_segments;
-	for ( f32 i = 0; i < 360.f; i += step ) {
-		f32 a = gs_deg_to_rad(i);
-		poly_point_t p = poly_point_create(gs_vec2_add(origin, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)), 
-								color, thickness);
-		gs_dyn_array_push(points, p);
-	}
-	// Push last angle on as well
-	{
-		f32 a = gs_deg_to_rad(360.f);
-		poly_point_t p = poly_point_create(gs_vec2_add(origin, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)), 
-								color, thickness);
-		gs_dyn_array_push(points, p);
-	}
-	u32 pt_count = gs_dyn_array_size(points);
-
-	// Pass in verts for creating poly line
-	poly_line_create(verts, points, pt_count, joint_style_round, end_cap_style_joint, false);
-
-	gs_dyn_array_free(points);
-}
-
-void draw_arc( gs_dyn_array(vert_t)* verts, gs_vec2 origin, f32 r, f32 start_angle, f32 end_angle, s32 num_segments, f32 thickness, gs_vec4 color )
-{
-	gs_dyn_array(poly_point_t) points = gs_dyn_array_new(poly_point_t);
-	if ( start_angle > end_angle ) {
-		f32 tmp = start_angle;
-		start_angle = end_angle;
-		end_angle = tmp;
-	}
-	f32 diff = end_angle - start_angle;
-	if ( fabsf(diff) <= 0.001f ) {
-		return;
-	}
-
-	f32 step = num_segments < 5 ? diff / 5.f : diff / (f32)num_segments;
-	for ( f32 i = start_angle; i <= end_angle; i += step ) {
-		f32 a = gs_deg_to_rad(i);
-		poly_point_t p = poly_point_create(gs_vec2_add(origin, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)), 
-								color, thickness);
-		gs_dyn_array_push(points, p);
-	}
-	// Push last angle on as well
-	{
-		f32 a = gs_deg_to_rad(end_angle);
-		poly_point_t p = poly_point_create(gs_vec2_add(origin, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)), 
-								color, thickness);
-		gs_dyn_array_push(points, p);
-	}
-	u32 pt_count = gs_dyn_array_size(points);
-
-	// Pass in verts for creating poly line
-	poly_line_create(verts, points, pt_count, joint_style_round, end_cap_style_butt, false);
-
-	gs_dyn_array_free(points);
-}
-
-void draw_square( gs_dyn_array(vert_t)* verts, gs_vec2 origin, gs_vec2 half_extents, f32 thickness, gs_vec4 color )
-{
-	poly_point_t points[] = 
-	{
-		poly_point_create((gs_vec2){origin.x - half_extents.x, origin.y - half_extents.y}, color, thickness),
-		poly_point_create((gs_vec2){origin.x + half_extents.x, origin.y - half_extents.y}, color, thickness),
-		poly_point_create((gs_vec2){origin.x + half_extents.x, origin.y + half_extents.y}, color, thickness),
-		poly_point_create((gs_vec2){origin.x - half_extents.x, origin.y + half_extents.y}, color, thickness)
-	};
-	u32 pt_count = sizeof(points) / sizeof(poly_point_t);
-
-	// Pass in verts for creating poly line
-	poly_line_create(verts, points, pt_count, joint_style_miter, end_cap_style_joint, false);
-}
-
-void draw_bezier_curve( gs_dyn_array(vert_t)* verts, gs_vec2 cp0, gs_vec2 cp1, gs_vec2 cp2, gs_vec2 cp3, u32 num_segments, f32 thickness, gs_vec4 color )
-{
-	gs_dyn_array(poly_point_t) points = gs_dyn_array_new(poly_point_t);
-	f64 xu = 0.0, yu = 0.0; 	
-	f64 step = num_segments < 3 ? 3 : 1.0 / num_segments;
-	f32 scl = 1.f;
-	for ( f64 u = 0.0; u <= 1.0; u += step )
-	{
-		xu = pow(1.0 - u, 3) * cp0.x + 3 * u * pow(1.0 - u, 2) * cp1.x + pow(u, 2) * (1.0 - u) * cp2.x + 
-			pow(u, 3) * cp3.x;
-		yu = pow(1.0 - u, 3) * cp0.y + 3 * u * pow(1.0 - u, 2) * cp1.y + 3 * pow(u, 2) * (1.0 - u) * cp2.y + 
-			pow(u, 3) * cp3.y;
-		poly_point_t p = poly_point_create((gs_vec2){xu, yu}, color, thickness);
-		gs_dyn_array_push(points, p);
-	}
-	f64 u = 1.0;
-	xu = pow(1.0 - u, 3) * cp0.x + 3 * u * pow(1.0 - u, 2) * cp1.x + pow(u, 2) * (1.0 - u) * cp2.x + 
-		pow(u, 3) * cp3.x;
-	yu = pow(1.0 - u, 3) * cp0.y + 3 * u * pow(1.0 - u, 2) * cp1.y + 3 * pow(u, 2) * (1.0 - u) * cp2.y + 
-		pow(u, 3) * cp3.y;
-	gs_dyn_array_push(points, poly_point_create((gs_vec2){xu, yu}, color, thickness));
-	u32 pt_count = gs_dyn_array_size(points);
-
-	// map 0->1 -0.5 -> 0.5
-
-	// Pass in verts for creating poly line
-	poly_line_create(verts, points, pt_count, joint_style_round, end_cap_style_square, false);
-
-	gs_dyn_array_free(points);
-}
-
+/*
 void draw_G(gs_dyn_array(vert_t)* verts, gs_vec2 position, f32 thickness, gs_vec4 color)
 {
 	// Arc for G
@@ -1101,6 +1874,7 @@ void draw_grid(gs_dyn_array(vert_t)* verts, f32 t)
 	gs_vec2 sqhe = (gs_vec2){45.f, 45.f};
 	draw_square(verts, sqo, sqhe, 1.f, (gs_vec4){0.8f, 0.9f, 0.3f, 1.f});
 }
+*/
 
 gs_result app_update()
 {
@@ -1134,127 +1908,20 @@ gs_result app_update()
 		anti_alias = !anti_alias;
 	}
 
+	if ( platform->key_pressed(gs_keycode_p)) {
+		is_playing = !is_playing;
+	}
+
 	/*===============
 	// Render scene
 	================*/
 
-	/*
-	Note: 
-		You'll notice that 'g_cb', our command buffer handle, is the first argument for every one of these api calls.
-		All graphics api functions for immediate rendering will require a command buffer. 
-		Every call you make adds these commands into this buffer and then will be processed later on in the frame
-		for drawing. This allows you to make these calls at ANY point in your code before the final rendering submission occurs.
-	*/
-
-	// poly line - hand the drawing api a context and then a list of path points.
-	// shape desc - describes properties about the shape being created, like stroke, fill, color, etc.
-
-	// Need to determine normal of line at given point.
-	static f32 x = 0.f;
-	static f32 y = 0.f;
-
-	gs_vec2 center = (gs_vec2){ ws.x / 2.f, ws.y / 2.f };
-	f32 r = 200.f;
-	f32 tv = sin(t * 0.3f) * 0.5f + 0.5f;
-
-	x = cos(gs_deg_to_rad(gs_interp_smooth_step( 180.f, 360.f, tv))) * r;
-	y = sin(gs_deg_to_rad(gs_interp_smooth_step( 180.f, 360.f, tv))) * r;
-
-	gs_vec2 sp = (gs_vec2){ center.x + x, center.y + y };
-	gs_vec2 ep = (gs_vec2){ center.x, center.y };
-
-	gs_vec2 a = gs_vec2_norm(gs_vec2_sub(sp, ep));
-	gs_vec2 n = (gs_vec2){-a.y, a.x};
-
-	static f32 width = 10.f;
-	if ( platform->key_down( gs_keycode_q ) ) {
-		width -= 1.f;
-	}
-	if ( platform->key_down( gs_keycode_e ) ) {
-		width += 1.f;
-	}
-	width = gs_clamp(width, 1.0f, 1000.f);
-
-	static f32 thickness = 1.f;
-	if (platform->key_down(gs_keycode_e)) {
-		thickness += 1.f;
-	}
-	if (platform->key_down(gs_keycode_q)) {
-		thickness -= 1.f;
-	}
-	thickness = gs_clamp(thickness, 1.f, 1000.f);
-
-	gs_vec2 ta = gs_vec2_add(sp, gs_vec2_scale(n, 10.f));
-	gs_vec2 tb = gs_vec2_sub(sp, gs_vec2_scale(n, 10.f));
-	gs_vec2 tc = gs_vec2_add(sp, gs_vec2_scale(a, 20.f));
-
-	draw_grid(&verts, t);
-
-	// draw_line( &verts, sp, ep, thickness, red );
-	// draw_triangle(&verts, ta, tb, tc, thickness, red);
-	// draw_square( &verts, sp, (gs_vec2){100.f, 100.f}, thickness, blue );
-	// draw_bezier_curve( &verts, (gs_vec2){100.f, 100.f}, (gs_vec2){200.f, 200.f}, 
-	// 	(gs_vec2){300.f, 10.f}, (gs_vec2){600.f, 50.f}, 20, thickness, white );
-
-	f32 start_angle = gs_interp_cosine( 0.f, 180.f, tv);
-	f32 end_angle = gs_interp_cosine( 180.f, 360.f, tv);
-	gs_vec4 col = (gs_vec4){gs_interp_cosine(0.f, 1.f, tv), gs_interp_cosine(1.f, 0.f, tv), 0.1f, tv};
-	// draw_arc( &verts, (gs_vec2){ws.x / 2.f, ws.y / 2.f}, r + 30.f, 180.f, end_angle, 30, 2.f, col );
-
-	// draw_circle( &verts, gs_vec2_add(sp, gs_vec2_scale(a, 30.f)), 5.f, 100, 0.1f, white );
-
-	gs_vec2 go = (gs_vec2){ws.x / 2.f - 115.f, ws.y / 2.f + 50.f};
-	// draw_G(&verts, (gs_vec2){ go.x, go.y }, 6.f, (gs_vec4){0.1f, 0.3f, 0.8f, 1.f});
-	// draw_o(&verts, (gs_vec2){ go.x + 65.f, go.y + 10.f }, 6.f, (gs_vec4){0.7f, 0.3f, 0.1f, 1.f});
-	// draw_o(&verts, (gs_vec2){ go.x + 120.f, go.y + 10.f }, 6.f, (gs_vec4){0.8f, 0.3f, 0.7f, 1.f});
-	// draw_g(&verts, (gs_vec2){ go.x + 175.f, go.y + 10.f }, 6.f, (gs_vec4){0.2f, 0.8f, 0.3f, 1.f});
-	// draw_l(&verts, (gs_vec2){ go.x + 215.f, go.y }, 6.f * 1.5f, (gs_vec4){0.5f, 0.3f, 0.8f, 1.f});
-	// draw_e(&verts, (gs_vec2){ go.x + 255.f, go.y + 10.f }, 6.f, (gs_vec4){0.9f, 0.9f, 0.1f, 1.f});
-
-	// Tweening square
-	{
-		// Want to be able to pass in a transform as well for rotation/scale/etc.
-		// draw_square( &verts, sp, (gs_vec2){50.f, 50.f}, thickness, white );
-		// Need to get complex poly lines working, so I can have connected multiple lines.
-
-		gs_vec2 bcsp = (gs_vec2){100.f, 100.f};
-		// draw_line( &verts, (gs_vec2){100.f, 10.f}, bcsp, thickness, red );
-		// draw_bezier_curve( &verts, bcsp, (gs_vec2){200.f, 200.f}, 
-		// 	(gs_vec2){300.f, 10.f}, (gs_vec2){600.f, 50.f}, 20, thickness, white );
-	}
-
-	// Animating arcs
-	{
-		// Try to animate an arc (empty -> full circle -> empty) over time
-		const f32 rad = 40.f;
-		const f32 thick = 9.f;
-		const u32 count = 100;
-		const f32 offset = 0.f;
-
-		gs_for_range_i( count )
-		{
-			f32 v = sin(t * 0.3f + i) * 0.5f + 0.5f;
-			f32 y = gs_interp_cosine( 0.f, ws.y / 2.f, v);
-			f32 start_angle = gs_interp_cosine( 0.f, 180.f, v);
-			f32 end_angle = gs_interp_cosine( 180.f, 360.f, v);
-			gs_vec4 col = (gs_vec4){gs_interp_cosine(0.f, 1.f, v), 0.f, gs_interp_cosine(1.f, 0.f, v), v};
-			// draw_arc( &verts, (gs_vec2){i * 100.f + ws.x / 2.f - offset, y}, rad, start_angle, end_angle, 50, thick, col );
-		}
-
-		gs_for_range_i( count )
-		{
-			f32 v = sin(t * 0.3f + i) * 0.5f + 0.5f;
-			f32 y = gs_interp_smooth_step( ws.y, ws.y / 2.f, v);
-			f32 start_angle = gs_clamp(gs_interp_smooth_step( 180.f, 0.f, v), 0.f, 180.f);
-			// f32 end_angle = gs_interp_smooth_step( 360.f, 180.f, v);
-			f32 end_angle = gs_interp_smooth_step( 0.f, 180.f, v);
-			gs_vec4 col = (gs_vec4){gs_interp_smooth_step(0.f, 1.f, v), 0.f, 1.f, v};
-			// draw_arc( &verts, (gs_vec2){i * 100.f + ws.x / 2.f - offset, ws.y / 2.f}, rad, start_angle, 180.f, 50, thick, col );
-		}
+	gs_for_range_i(gs_dyn_array_size(g_animations)) {
+		animation_play(&g_verts, &g_animations[i], 0.1f);
 	}
 
 	// Update vertex data for frame
-	gfx->update_vertex_buffer_data( g_vb, verts, gs_dyn_array_size(verts) * sizeof(vert_t) );
+	gfx->update_vertex_buffer_data( g_vb, g_verts, gs_dyn_array_size(g_verts) * sizeof(vert_t) );
 
 	// Set clear color and clear screen
 	f32 clear_color[4] = { 0.05f, 0.05f, 0.05f, 1.f };
@@ -1280,13 +1947,13 @@ gs_result app_update()
 	gfx->bind_vertex_buffer( g_cb, g_vb );
 
 	// Draw vertices
-	gfx->draw( g_cb, 0, gs_dyn_array_size( verts ) );
+	gfx->draw( g_cb, 0, gs_dyn_array_size( g_verts ) );
 
 	// Submit command buffer for rendering
 	gfx->submit_command_buffer( g_cb ); 	// I suppose this COULD flush the command buffer altogether? ...
 
 	 // Clear line data from array
-	gs_dyn_array_clear( verts );
+	gs_dyn_array_clear( g_verts );
 
 	return gs_result_in_progress;
 }
@@ -1294,7 +1961,7 @@ gs_result app_update()
 gs_result app_shutdown()
 {
 	// Free all da things
-	gs_dyn_array_free( verts );
+	gs_dyn_array_free( g_verts );
 
 	gs_println( "Goodbye, Gunslinger." );
 	return gs_result_success;
@@ -1313,5 +1980,36 @@ gs_result app_shutdown()
 
 	Want a way to animate arbitrary points, whether they be allowed to shrink, fade in, grow, animate the points over time, etc.
 
+	// Animate a path
+
+	typedef struct path
+	{
+		gs_dyn_array(point_t) points;
+		end_cap_style_t end_cap_style;
+	} path;
+
+	path_begin(path);
+		path_draw_line(path, start, end, thickness, color);
+	path_end(path);
+
+	animate_path(animation_type);
+
+	animation_t anim0;
+
+	// Does this mean a timeline will only operate on a single shape?
+	// Want them to operate on shared data but transfer?
+
+	// Animation can maintain its own timeline
+	animation_set_shape(animation0, shape);
+		animation_add_action(animation0, action_type0, start_time0);
+		animation_add_action(animation0, action_type1, start_time1);
+	animation_play(animation0);
+
+	time_line_set_shape(timeline, shape);
+	time_line_add_animation(timeline, anim0, start_time);
+	time_line_add_animation(timeline, anim1, start_time);
+	time_line_play(timeline);
+
+	pts = time_line_get_data(timeline);
 */
 
