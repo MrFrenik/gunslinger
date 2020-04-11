@@ -7,10 +7,9 @@
 gs_result app_init();		// Use to init your application
 gs_result app_update();		// Use to update your application
 gs_result app_shutdown();	// Use to shutdown your appliaction
+void init_font();
 
 // Ported to a c99 impl from: https://github.com/CrushedPixel/Polyline2D/
-
-// Need a collection of glyphs, each with bearing/advance/etc.
 
 // Colors
 #define white (gs_vec4){1.f, 1.f, 1.f, 1.f}
@@ -21,7 +20,7 @@ gs_result app_shutdown();	// Use to shutdown your appliaction
 
 _global b32 anti_alias = true;
 _global f32 anti_alias_scl = 2.f;
-_global b32 is_playing = true;
+_global b32 is_playing = false;
 
 _global NSVGimage *image = NULL;
 
@@ -44,8 +43,6 @@ void vg_ctx_reset( vg_ctx_t* ctx )
 	gs_dyn_array_clear(ctx->points);
 	ctx->anti_alias = true;
 }
-
-// Don't know how to keep track of state for connecting joint style...
 
  // ~20 degrees
 #define miter_min_angle gs_deg_to_rad(20)
@@ -79,9 +76,6 @@ poly_point_t poly_point_sub(poly_point_t p, gs_vec2 os)
 {
 	return poly_point_add(p, gs_vec2_scale(os, -1.f));
 }
-
-
-// Need a way to do complex poly shapes
 
 typedef struct vert_t
 {
@@ -178,8 +172,6 @@ line_segment_intersection_t line_seg_intersection( line_segment_t a, line_segmen
 
 	// calculate the intersection point
 	// a.a + r * t;
-	// return (line_segment_intersection_t){ true, gs_vec2_add(a.a, gs_vec2_scale(r, t)) };
-	// return (line_segment_intersection_t){ true, gs_vec2_add(a.a.position, gs_vec2_scale(r, t)) };
 	return (line_segment_intersection_t){ true, poly_point_add(a.a, gs_vec2_scale(r, t)) };
 }
 
@@ -250,24 +242,9 @@ poly_segment_t poly_seg_create( line_segment_t center )
 {
 	poly_segment_t p = {0};
 	p.center = center;
-	// calculate the segment's outer edges by offsetting
-	// the central line by the normal vector
-	// multiplied with the thickness
-
-	// center + center.normal() * thickness
-	// This is for growing along center
-	// p.edge1 = line_seg_add(center, gs_vec2_scale(line_seg_normal(center), thickness));
-	// p.edge2 = line_seg_sub(center, gs_vec2_scale(line_seg_normal(center), thickness));
 
 	// Need to create these manually
 	gs_vec2 n = line_seg_normal(center);
-
-	// typedef struct poly_segment_t 
-	// {
-	// 	line_segment_t center; 
-	// 	line_segment_t edge1; 
-	// 	line_segment_t edge2;
-	// } poly_segment_t;
 
 	// Edge1.a will be a line segment from center + norm * a;
 	p.edge1.a = poly_point_add(center.a, gs_vec2_scale(n, center.a.thickness));
@@ -275,16 +252,6 @@ poly_segment_t poly_seg_create( line_segment_t center )
 	// Edge1.b will be a line segment from center - norm * a;
 	p.edge2.a = poly_point_sub(center.a, gs_vec2_scale(n, center.a.thickness));
 	p.edge2.b = poly_point_sub(center.b, gs_vec2_scale(n, center.b.thickness));
-
-
-
-	// This is for growing 'outwards' away from center
-	// p.edge1 = center;
-	// p.edge2 = line_seg_sub(center, gs_vec2_scale(line_seg_normal(center), thickness * 2.f));
-
-	// This is for growing 'inwards' away from center
-	// p.edge1 = center;
-	// p.edge2 = line_seg_add(center, gs_vec2_scale(line_seg_normal(center), thickness * 2.f));
 
 	return p;
 }
@@ -346,12 +313,6 @@ void poly_line_create( gs_dyn_array(vert_t)* vertices, poly_point_t* points, u32
 
 	// handle different end cap styles
 	if (end_cap_style == end_cap_style_square) {
-		// extend the start/end points by half the thickness
-		// path_start1 = gs_vec2_sub(path_start1, gs_vec2_scale(line_seg_dir(first_segment.edge1, true), thickness));
-		// path_start2 = gs_vec2_sub(path_start2, gs_vec2_scale( line_seg_dir(first_segment.edge2, true), thickness));
-		// path_end1 = gs_vec2_add(path_end1, gs_vec2_scale( line_seg_dir(last_segment.edge1, true), thickness));
-		// path_end2 = gs_vec2_add(path_end2, gs_vec2_scale( line_seg_dir(last_segment.edge2, true), thickness));
-
 		path_start1 = poly_point_sub(path_start1, gs_vec2_scale(line_seg_dir(first_segment.edge1, true), first_segment.edge1.a.thickness));
 		path_start2 = poly_point_sub(path_start2, gs_vec2_scale( line_seg_dir(first_segment.edge2, true), first_segment.edge1.a.thickness));
 		path_end1 = poly_point_add(path_end1, gs_vec2_scale( line_seg_dir(last_segment.edge1, true), last_segment.edge1.b.thickness));
@@ -435,14 +396,6 @@ void poly_line_create( gs_dyn_array(vert_t)* vertices, poly_point_t* points, u32
 				gs_vec2 snc = (gs_vec2){-sn.y, sn.x}; 
 				poly_point_t s1c = poly_point_sub(s1, gs_vec2_scale(snc, sl));
 				poly_point_t s2c = poly_point_sub(s2, gs_vec2_scale(snc, sl));
-
-				// gs_dyn_array_push(*vertices, vert_t_create(s1c.position, s1_col));
-				// gs_dyn_array_push(*vertices, vert_t_create(s1.position, s1_col));
-				// gs_dyn_array_push(*vertices, vert_t_create(s2.position, s2_col));
-
-				// gs_dyn_array_push(*vertices, vert_t_create(s2.position, s2_col));
-				// gs_dyn_array_push(*vertices, vert_t_create(s2c.position, s2_col));
-				// gs_dyn_array_push(*vertices, vert_t_create(s1c.position, s1_col));
 			}
 
 			if ( (i + 1) == gs_dyn_array_size(segments) 
@@ -452,14 +405,6 @@ void poly_line_create( gs_dyn_array(vert_t)* vertices, poly_point_t* points, u32
 				gs_vec2 enc = (gs_vec2){-en.y, en.x}; 
 				poly_point_t e1c = poly_point_add(e1, gs_vec2_scale(enc, el));
 				poly_point_t e2c = poly_point_add(e2, gs_vec2_scale(enc, el));
-
-				// gs_dyn_array_push(*vertices, vert_t_create(e1c.position, e1_col));
-				// gs_dyn_array_push(*vertices, vert_t_create(e1.position, e1_col));
-				// gs_dyn_array_push(*vertices, vert_t_create(e2.position, e2_col));
-
-				// gs_dyn_array_push(*vertices, vert_t_create(e2.position, e2_col));
-				// gs_dyn_array_push(*vertices, vert_t_create(e2c.position, e2_col));
-				// gs_dyn_array_push(*vertices, vert_t_create(e1c.position, e1_col));
 			}
 		}
 
@@ -585,15 +530,6 @@ void poly_line_create_joint( gs_dyn_array(vert_t)* vertices,
 
 		if (joint_style == joint_style_bevel) 
 		{
-			// simply connect the intersection points
-			// gs_dyn_array_push(*vertices, vert_t_create(outer1->b.position, outer1->a.color));
-			// gs_dyn_array_push(*vertices, vert_t_create(outer2->a.position, outer2->b.color));
-			// gs_dyn_array_push(*vertices, vert_t_create(inner_sec.position, inner_sec.color));
-
-			// gs_dyn_array_push(*vertices, vert_t_create(outer1->b.position, red));
-			// gs_dyn_array_push(*vertices, vert_t_create(outer2->a.position, red));
-			// gs_dyn_array_push(*vertices, vert_t_create(inner_sec.position, red));
-
 			gs_dyn_array_push(*vertices, vert_t_create(outer1->b.position, outer1->b.color)); // right
 			gs_dyn_array_push(*vertices, vert_t_create(outer2->a.position, outer2->a.color));	// left
 			gs_dyn_array_push(*vertices, vert_t_create(inner_sec.position, inner_sec.color));	// center
@@ -709,14 +645,9 @@ void poly_line_create_triangle_fan( gs_dyn_array(vert_t)* vertices, poly_point_t
 			gs_dyn_array_push(*vertices, vert_t_create(start_point.position, start_point.color));
 		}
 
-		// Need to emit information for anti-alising as well
-
-
 		start_point = end_point;
 	}
 }
-
-// Does a shape contain paths? Or does a path contain a shape?
 
 typedef struct path_t
 {
@@ -783,7 +714,7 @@ void path_draw_triangle( path_t* p, gs_vec2 a, gs_vec2 b, gs_vec2 c, f32 thickne
 void path_draw_circle( path_t* p, gs_vec2 origin, f32 r, s32 num_segments, f32 thickness, gs_vec4 color )
 {
 	f32 step = num_segments < 5 ? 360.f / 5.f : 360.f / (f32)num_segments;
-	for ( f32 i = 0; i < 360.f; i += step ) {
+	for ( f32 i = 0; i <= 360.f; i += step ) {
 		f32 a = gs_deg_to_rad(i);
 		poly_point_t pt = poly_point_create(gs_vec2_add(origin, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)), 
 								color, thickness);
@@ -798,7 +729,21 @@ void path_draw_circle( path_t* p, gs_vec2 origin, f32 r, s32 num_segments, f32 t
 	}
 }
 
-void path_draw_arc( path_t* p, gs_vec2 origin, f32 r, f32 start_angle, f32 end_angle, s32 num_segments, f32 thickness, gs_vec4 color )
+void path_draw_bezier_curve(path_t* p, gs_vec2 cp0, gs_vec2 cp1, gs_vec2 cp2, gs_vec2 cp3, u32 num_segments, f32 thickness, gs_vec4 color)
+{
+	f64 xu = 0.0, yu = 0.0; 	
+	f64 step = num_segments < 3 ? 3 : 1.0 / num_segments;
+	for ( f64 u = 0.0; u <= 1.0; u += step )
+	{
+		xu = pow(1.0 - u, 3) * cp0.x + 3 * u * pow(1.0 - u, 2) * cp1.x + pow(u, 2) * (1.0 - u) * cp2.x + 
+			pow(u, 3) * cp3.x;
+		yu = pow(1.0 - u, 3) * cp0.y + 3 * u * pow(1.0 - u, 2) * cp1.y + 3 * pow(u, 2) * (1.0 - u) * cp2.y + 
+			pow(u, 3) * cp3.y;
+		gs_dyn_array_push(p->points, poly_point_create(((gs_vec2){xu, yu}), color, thickness));
+	}
+}
+
+void path_draw_arc(path_t* p, gs_vec2 origin, f32 r, f32 start_angle, f32 end_angle, s32 num_segments, f32 thickness, gs_vec4 color)
 {
 	if ( start_angle > end_angle ) {
 		f32 tmp = start_angle;
@@ -835,34 +780,24 @@ void path_draw_square( path_t* p, gs_vec2 origin, gs_vec2 half_extents, f32 thic
 	gs_dyn_array_push(p->points, poly_point_create((gs_vec2){origin.x - half_extents.x, origin.y + half_extents.y}, color, thickness));
 }
 
-void path_draw_G(path_t* p, gs_vec2 position, f32 thickness, gs_vec4 color)
+typedef struct vg_glyph_t
 {
-	const f32 r = 30.f;
-	const f32 start_angle = 0.f;
-	const f32 end_angle = 320.f;
-	const s32 num_segments = 40;
-	f32 diff = end_angle - start_angle;
+	gs_dyn_array(path_t) paths;
+	f32 bearing_x;
+	f32 advance_x;
+	f32 bearing_y;
+	f32 advance_y;
+} vg_glyph_t;
 
-	// Draw line first (from position to outside radius)
-	gs_dyn_array_push(p->points, poly_point_create((gs_vec2){position.x, position.y}, color, thickness));
-	gs_dyn_array_push(p->points, poly_point_create((gs_vec2){position.x + r, position.y}, color, thickness));
+typedef vg_glyph_t* vg_glyph_ptr;
 
-	// Create arc
-	f32 step = diff / (f32)num_segments;
-	for ( f32 i = start_angle; i <= end_angle; i += step ) {
-		f32 a = gs_deg_to_rad(i);
-		poly_point_t pt = poly_point_create(gs_vec2_add(position, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)), 
-								color, thickness);
-		gs_dyn_array_push(p->points, pt);
-	}
-	// Push last angle on as well
-	{
-		f32 a = gs_deg_to_rad(end_angle);
-		poly_point_t pt = poly_point_create(gs_vec2_add(position, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)), 
-								color, thickness);
-		gs_dyn_array_push(p->points, pt);
-	}
-}
+// Hash table := key: u32, val: u32
+gs_hash_table_decl( u32, vg_glyph_ptr, gs_hash_u32, gs_hash_key_comp_std_type );
+
+typedef struct vg_font_t
+{
+	gs_hash_table(u32, vg_glyph_ptr) glyphs;
+} vg_font_t;
 
 typedef struct shape_t
 {
@@ -926,6 +861,45 @@ shape_t shape_deep_copy(shape_t* s)
 	return shape;
 }
 
+void shape_draw_glyph(shape_t* s, gs_vec2 position, vg_glyph_t* glyph)
+{
+	for ( u32 i = 0; i < gs_dyn_array_size(glyph->paths); ++i )
+	{
+		path_t* gp = &glyph->paths[i];
+		path_t* p = shape_begin_path(s);
+
+		// For each point in glyph path, need to add to da ting
+		for ( u32 k = 0; k < gs_dyn_array_size(gp->points); ++k )
+		{
+			poly_point_t pt = gp->points[k];
+			pt.position = gs_vec2_add(pt.position, position);
+			pt.position = gs_vec2_add(pt.position, (gs_vec2){0.f, glyph->bearing_y});
+			pt.position = gs_vec2_add(pt.position, (gs_vec2){glyph->bearing_x, glyph->bearing_y});
+			gs_dyn_array_push(p->points, pt);
+		}
+
+		p->end_cap_style = gp->end_cap_style;
+		p->joint_style = gp->joint_style;
+	}
+}
+
+void shape_draw_text( shape_t* s, gs_vec2 origin, vg_font_t* font, char* txt )
+{
+	u32 len = gs_string_length( txt );
+
+	for ( u32 i = 0; i < len; ++i )
+	{
+		vg_glyph_t* glyph = gs_hash_table_get(font->glyphs, txt[i]);
+		if ( glyph )
+		{
+			shape_draw_glyph(s, origin, glyph);
+
+			// Move x forward
+			origin.x += glyph->advance_x;
+		}
+	}
+}
+
 void shape_draw_line( shape_t* s, gs_vec2 start, gs_vec2 end, f32 thickness, gs_vec4 color )
 {
 	path_t* p = shape_begin_path(s);
@@ -937,9 +911,9 @@ void shape_draw_square( shape_t* s, gs_vec2 origin, gs_vec2 half_extents, f32 th
 	if ( fill ) 
 	{
 		// Calculate thickness needed to fill square
-		gs_vec2 sp = (gs_vec2){origin.x, origin.y - half_extents.y - 2.f * thickness};
-		gs_vec2 ep = (gs_vec2){origin.x, origin.y + half_extents.y + 2.f * thickness};
-		shape_draw_line(s, sp, ep, half_extents.x / 2.f + 2.f * thickness, color);	
+		gs_vec2 sp = (gs_vec2){origin.x, origin.y - half_extents.y - thickness};
+		gs_vec2 ep = (gs_vec2){origin.x, origin.y + half_extents.y + thickness};
+		shape_draw_line(s, sp, ep, half_extents.x / 2.f + 3.f * thickness, color);	
 	}
 
 	path_t* p = shape_begin_path(s);
@@ -954,23 +928,43 @@ void shape_draw_grid(shape_t* s, gs_vec2 origin, f32 width, f32 height, u32 num_
 
 	gs_vec2 tl = (gs_vec2){ origin.x - width / 2.f, origin.y - height / 2.f };
 
+	// For outside border, draw square
+	shape_draw_square( s, origin, (gs_vec2){width/2.f, height/2.f}, thickness, color, false );
+
+	const f32 t2 = thickness;
+
 	// Draw grid across entire screen for shiggles
-	for ( u32 r = 0; r <= num_rows; ++r )
+	for ( u32 r = 1; r < num_rows; ++r )
 	{
 		path_t* p = shape_begin_path(s);
-		gs_vec2 sp = (gs_vec2){tl.x, tl.y + r * cell_height};
-		gs_vec2 ep = (gs_vec2){tl.x + width, tl.y + r * cell_height};
+		gs_vec2 sp = (gs_vec2){tl.x + t2, tl.y + r * cell_height + t2};
+		gs_vec2 ep = (gs_vec2){tl.x + width - t2, tl.y + r * cell_height - t2};
 		path_draw_line(p, sp, ep, thickness, color);
 	}
 
-	for ( u32 c = 0; c <= num_cols; ++c )
+	for ( u32 c = 1; c < num_cols; ++c )
 	{
 		path_t* p = shape_begin_path(s);
-		gs_vec2 sp = (gs_vec2){tl.x + c * cell_width, tl.y};
-		gs_vec2 ep = (gs_vec2){tl.x + c * cell_width, tl.y + height};
+		gs_vec2 sp = (gs_vec2){tl.x + c * cell_width + t2, tl.y + t2};
+		gs_vec2 ep = (gs_vec2){tl.x + c * cell_width - t2, tl.y + height - t2};
 		path_draw_line(p, sp, ep, thickness, color);
 	}
 }
+
+// Need a collection of glyphs, each with bearing/advance/etc.
+
+// A vgFont will be a collection of shapes...I think?
+/*
+	shape_draw_text(shape_t* shape, vg_font_t*, const char* txt)
+	{
+		for (characters in txt) 
+		{
+			glyph_t g = vg_font_get_glyph(c);
+
+			shape_draw_glyph(shape_t* shape, glyph_t* glyph);
+		}
+	}
+*/
 
 
 typedef enum animation_action_type_t
@@ -1387,135 +1381,6 @@ void animation_add_action(animation_t* a, animation_action_type_t action_type,
 	}
 }
 
-void animation_begin_shape(animation_t* a, shape_t* s)
-{
-	/*
-	animation_clear(a);
-
-	u32 start_idx = 0;
-
-	// Copy all point data over from shape in this call into points buffer
-	for ( u32 i = 0; i < gs_dyn_array_size(s->paths); ++i )
-	{
-		animation_path_desc_t p_desc = { 0 };
-		path_t* p 				= &s->paths[i];
-		p_desc.start 			= start_idx;
-		p_desc.end 				= start_idx + gs_dyn_array_size(p->points);
-		p_desc.joint_style 		= p->joint_style;
-		p_desc.end_cap_style 	= p->end_cap_style;
-
-		for ( u32 pt = 0; pt < gs_dyn_array_size(p->points); ++pt ) {
-			// gs_dyn_array_push(a->points, p->points[pt]);	
-		}
-
-		start_idx = p_desc.end;
-
-		gs_dyn_array_push(a->path_descs, p_desc);
-	}
-	*/
-}
-
-// Animate path will submit to verts to be rendered
-/*
-void animation_path(gs_dyn_array(vert_t)* verts, animation_t* a, path_t* p)
-{
-	// For each point in path, calculate total length of path
-	f32 total_length = 0.f;
-	for ( u32 i = 0; i + 1 < gs_dyn_array_size(p->points); ++i )
-	{
-		// Calculate length from this vert to the next
-		poly_point_t* p0 = &p->points[i];
-		poly_point_t* p1 = &p->points[i + 1];
-		total_length += gs_vec2_dist(p0->position, p1->position);
-	}
-
-	// If the end cap is joined, then need to also check against the last and first point
-	if (gs_dyn_array_size(p->points) > 2 && p->end_cap_style == end_cap_style_joint)
-	{
-		poly_point_t* p0 = &p->points[gs_dyn_array_size(p->points) - 1];
-		poly_point_t* p1 = &p->points[0];
-		total_length += gs_vec2_dist(p0->position, p1->position);
-	}
-
-	// Total animation length of path will be based on anim.time / anim.total_time;
-	f32 anim_len = total_length * (a->time / a->total_play_time);
-
-	// Push on first point
-	gs_dyn_array_push(a->points, p->points[0]);
-
-	f32 cur_len = 0.f;
-	for ( u32 i = 1; i < gs_dyn_array_size(p->points) + (p->end_cap_style == end_cap_style_joint ? 1 : 0); ++i ) {
-
-		// Calculate length from this vert to the next
-		poly_point_t* p0 = &p->points[i - 1];
-		poly_point_t* p1 = &p->points[i % gs_dyn_array_size(p->points)];
-		cur_len += gs_vec2_dist(p0->position, p1->position);
-		if ( cur_len <= anim_len ) {
-			// Add our point
-			gs_dyn_array_push(a->points, *p1);
-		}
-		// Otherwise, we're done
-		else {
-			// Calculate closest point we can, and submit that instead
-			f32 diff = cur_len - anim_len;	 // This value isn't correct...
-			gs_vec2 n = gs_vec2_norm(gs_vec2_sub(p1->position, p0->position));
-			gs_vec2 pos = gs_vec2_sub(p1->position, gs_vec2_scale(n, diff));
-			gs_dyn_array_push(a->points, poly_point_create(pos, p1->color, p1->thickness));
-			break;
-		}
-	}
-
-	// Submit path to render
-	poly_line_create(verts, a->points, gs_dyn_array_size(a->points), p->joint_style, 
-		anim_len >= total_length ? p->end_cap_style : end_cap_style_butt, false);
-}
-*/
-
-// void animation_shape(gs_dyn_array(vert_t)* verts, animation_t* a, shape_t* s)
-// {
-// 	// Loop through all paths in shape and submit for animation
-// 	gs_for_range_i(gs_dyn_array_size(s->paths)) {
-// 		animation_path(verts, a, &s->paths[i]);
-// 	}
-// }
-
-// Does this submit points? Or just map the path's points to whatever the time is? Think that makes more sense.
-// void animate_shape(animation_t* a, shape_t* s, f32 dt)
-// {
-// 	// For each path in shape, we're going to animate separately...
-
-// 	// Incrememnt animation time
-// 	a->time = gs_clamp(a->time + dt * a->animation_speed, 0.f, a->total_play_time);
-
-// 	// For animating shapes, just iterate through path?
-// 	// u32 pt_sz = (u32)gs_dyn_array_size(p->points);
-
-// 	// Map this number from 0 -> pt_size based on time -> total_play_time;
-// 	f32 scl = gs_interp_smooth_step(0.f, 1.f, a->time / a->total_play_time);
-
-// 	// This doesn't work correctly...
-
-// 	// Need to chop up path into animation steps, depending on animation.
-// 	// Then need to 
-
-// 	gs_mat4 scl_mtx = gs_mat4_scale((gs_vec3){scl, scl, 1.f});
-// 	gs_for_range_i(gs_dyn_array_size(a->path.points)) {
-// 		poly_point_t* pt = &a->path.points[i];
-// 		gs_vec3 new_pt = gs_mat4_mul_vec3(scl_mtx, (gs_vec3){pt->position.x, pt->position.y, 0.f});
-// 		pt->position.x = new_pt.x;
-// 		pt->position.y = new_pt.y;
-// 	}
-
-// 	// This is destructive, of course, so I'm not entirely thrilled with this. Would be nice to be 
-// 	// able to just animate them non-destructively.
-
-// 	// So, obviously this won't work...Need to introduce new points to "grow" the path over time. yeesh.
-// 	// Not sure how to translate this to work with paths, actually...
-
-// 	// Set the path's point count to this value
-// 	// gs_dyn_array_size(p->points) = ct;
-// }
-
 // Command buffer global var
 _global gs_resource( gs_command_buffer ) g_cb = {0};
 _global gs_resource( gs_shader ) g_shader = {0};
@@ -1527,6 +1392,7 @@ _global gs_resource( gs_uniform ) u_view = {0};
 _global gs_dyn_array( vert_t ) g_verts;
 _global gs_dyn_array(animation_t) g_animations;
 _global shape_t g_shape = {0};
+_global vg_font_t g_font = {0};
 
 _global const char* debug_shader_v_src = "\n"
 "#version 330 core\n"
@@ -1615,9 +1481,11 @@ gs_result app_init()
 	g_animations = gs_dyn_array_new(animation_t);
 	g_shape = shape_create_new();
 
+	init_font();
+
 	// Let's get two animations for now
 	gs_for_range_i(10) {
-		gs_dyn_array_push(g_animations, animation_create_new(1.f, 0.5f));
+		gs_dyn_array_push(g_animations, animation_create_new(1.f, 1.f));
 	}
 
 	animation_t* anim = NULL;
@@ -1640,7 +1508,6 @@ gs_result app_init()
 	f32 w = (cw - ct);
 	f32 h = (ch - ct);
 
-
 	// Initialize shape and animation for grid
 	// Want each of these squares to animate in as well...
 	shape_begin(shape);
@@ -1656,7 +1523,7 @@ gs_result app_init()
 	// Animate one of the paths
 	trans.scale = (gs_vec3){0.4f, 0.4f, 0.f};
 	trans.position = (gs_vec3){grid_size * trans.scale.x + 20.f, grid_size * trans.scale.y + 20.f, 0.f};
-	f32 fade_amt = 0.2f;
+	f32 fade_amt = 0.1f;
 	anim = &g_animations[1];
 	animation_set_shape(anim, shape);
 	animation_add_action(anim, animation_action_type_walk_path, animation_ease_type_smooth_step, 5.f, NULL);
@@ -1683,7 +1550,7 @@ gs_result app_init()
 	animation_add_action(anim, animation_action_type_wait, animation_ease_type_smooth_step, 10.f, NULL);
 
 	trans = shape->xform;
-	trans.scale = (gs_vec3){ 1.5f, 1.5f, 1.f };
+	trans.scale = (gs_vec3){ 2.5, 2.5, 1.f };
 	trans.position = (gs_vec3){ ws.x * 0.25f / trans.scale.x, (ws.y * 0.5f - ch) / trans.scale.y, 0.f };
 	animation_add_action(anim, animation_action_type_transform, animation_ease_type_smooth_step, 3.f, &trans);
 
@@ -1706,175 +1573,29 @@ gs_result app_init()
 	fade_amt = 0.0f;
 	animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 3.0f, &fade_amt);
 
+	/*
+		// Code
+	*/
+	shape_begin(shape);
+	shape->xform.position = (gs_vec3){ws.x / 2.f - 250.f, ws.y / 2.f + 100.f, 0.f};
+	shape->xform.scale = (gs_vec3){0.5f, 0.5f, 1.f};
+	// shape_draw_text(shape, (gs_vec2){0.f, 0.f}, &g_font, "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+	// shape_draw_text(shape, (gs_vec2){0.f, 65.f}, &g_font, "abcdefghijklmnopqrstuvwxyz");
+	shape_draw_text(shape, (gs_vec2){0.f, 0.f}, &g_font, "CoDE");
+	shape_draw_text(shape, (gs_vec2){0.f, 55.f}, &g_font, "go");
+
+	anim = &g_animations[3];
+	animation_set_shape(anim, shape);
+	animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_lerp, 20.f, NULL);
+	animation_add_action(anim, animation_action_type_walk_path, animation_ease_type_smooth_step, 10.0f, NULL);
+
+	trans = shape->xform;
+	trans.scale = (gs_vec3){ 1.f, 1.f, 1.f };
+	trans.position = (gs_vec3){ ws.x * 0.6f / trans.scale.x, (ws.y * 0.2f) / trans.scale.y, 0.f };
+	animation_add_action(anim, animation_action_type_transform, animation_ease_type_smooth_step, 5.f, &trans);
 
 	return gs_result_success;
 }
-
-/*
-void draw_G(gs_dyn_array(vert_t)* verts, gs_vec2 position, f32 thickness, gs_vec4 color)
-{
-	// Arc for G
-	gs_dyn_array(poly_point_t) points = gs_dyn_array_new(poly_point_t);
-
-	const f32 r = 30.f;
-	const f32 start_angle = 0.f;
-	const f32 end_angle = 320.f;
-	const s32 num_segments = 30;
-	f32 diff = end_angle - start_angle;
-
-	// Draw line first (from position to outside radius)
-	gs_dyn_array_push(points, poly_point_create((gs_vec2){position.x, position.y}, color, thickness));
-	gs_dyn_array_push(points, poly_point_create((gs_vec2){position.x + r, position.y}, color, thickness));
-
-	// Create arc
-	f32 step = diff / (f32)num_segments;
-	for ( f32 i = start_angle; i <= end_angle; i += step ) {
-		f32 a = gs_deg_to_rad(i);
-		poly_point_t p = poly_point_create(gs_vec2_add(position, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)), 
-								color, thickness);
-		gs_dyn_array_push(points, p);
-	}
-	// Push last angle on as well
-	{
-		f32 a = gs_deg_to_rad(end_angle);
-		poly_point_t p = poly_point_create(gs_vec2_add(position, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)), 
-								color, thickness);
-		gs_dyn_array_push(points, p);
-	}
-	u32 pt_count = gs_dyn_array_size(points);
-
-	// Pass in verts for creating poly line
-	poly_line_create(verts, points, pt_count, joint_style_miter, end_cap_style_butt, false);
-
-	gs_dyn_array_free(points);
-}
-
-void draw_o(gs_dyn_array(vert_t)* verts, gs_vec2 position, f32 thickness, gs_vec4 color)
-{
-	const f32 r = 20.f;
-	draw_circle(verts, position, r, 30, thickness, color);
-}
-
-void draw_g(gs_dyn_array(vert_t)* verts, gs_vec2 position, f32 thickness, gs_vec4 color)
-{
-	const f32 start_angle = 0.f;
-	const f32 end_angle = 170.f;
-	const s32 num_segments = 20;
-	const f32 r = 20.f;
-	f32 diff = end_angle - start_angle;
-
-	draw_circle(verts, position, r, num_segments, thickness, color);
-
-	gs_dyn_array(poly_point_t) points = gs_dyn_array_new(poly_point_t);
-
-	gs_vec2 ao = (gs_vec2){position.x, position.y + r};
-
-	// Draw connecting shape
-	gs_dyn_array_push(points, poly_point_create((gs_vec2){position.x + r, position.y - r - 5.f}, color, thickness));
-	gs_dyn_array_push(points, poly_point_create((gs_vec2){position.x + r, ao.y - 1.f}, color, thickness));
-
-	// Create arc
-	f32 step = diff / (f32)num_segments;
-	for ( f32 i = start_angle; i <= end_angle; i += step ) {
-		f32 a = gs_deg_to_rad(i);
-		poly_point_t p = poly_point_create(gs_vec2_add(ao, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)), 
-								color, thickness);
-		gs_dyn_array_push(points, p);
-	}
-	// Push last angle on as well
-	{
-		f32 a = gs_deg_to_rad(end_angle);
-		poly_point_t p = poly_point_create(gs_vec2_add(ao, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)), 
-								color, thickness);
-		gs_dyn_array_push(points, p);
-	}
-	u32 pt_count = gs_dyn_array_size(points);
-
-	// Pass in verts for creating poly line
-	poly_line_create(verts, points, pt_count, joint_style_miter, end_cap_style_butt, false);
-
-	gs_dyn_array_free(points);
-}
-
-void draw_l(gs_dyn_array(vert_t)* verts, gs_vec2 position, f32 thickness, gs_vec4 color)
-{
-	draw_line(verts, (gs_vec2){position.x, position.y - 30.f}, (gs_vec2){position.x, position.y + 30.f}, thickness, color);
-}
-
-void draw_e(gs_dyn_array(vert_t)* verts, gs_vec2 position, f32 thickness, gs_vec4 color)
-{
-	// Arc for e
-	gs_dyn_array(poly_point_t) points = gs_dyn_array_new(poly_point_t);
-
-	const f32 r = 20.f;
-	const f32 start_angle = 40.f;
-	const f32 end_angle = 341.f;
-	const s32 num_segments = 30;
-	f32 diff = end_angle - start_angle;
-
-	// Create arc
-	f32 step = diff / (f32)num_segments;
-	for ( f32 i = start_angle; i <= end_angle; i += step ) {
-		f32 a = gs_deg_to_rad(i);
-		poly_point_t p = poly_point_create(gs_vec2_add(position, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)), 
-								color, thickness);
-		gs_dyn_array_push(points, p);
-	}
-	// Push last angle on as well
-	{
-		f32 a = gs_deg_to_rad(end_angle);
-		poly_point_t p = poly_point_create(gs_vec2_add(position, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)), 
-								color, thickness);
-		gs_dyn_array_push(points, p);
-	}
-
-	// Draw line (from position to outside radius)
-	gs_dyn_array_push(points, poly_point_create((gs_vec2){position.x - r, position.y + sin(gs_deg_to_rad(20.f)) * r}, color, thickness));
-	gs_dyn_array_push(points, poly_point_create((gs_vec2){position.x + r, position.y - sin(gs_deg_to_rad(20.f)) * r}, color, thickness));
-
-	u32 pt_count = gs_dyn_array_size(points);
-
-	// Pass in verts for creating poly line
-	poly_line_create(verts, points, pt_count, joint_style_miter, end_cap_style_butt, false);
-
-	gs_dyn_array_free(points);
-}
-
-void draw_grid(gs_dyn_array(vert_t)* verts, f32 t)
-{
-	// Viewport
-	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
-	const gs_vec2 ws = platform->window_size(platform->main_window());
-
-	f32 zoom = gs_clamp(100.f * (sin(t * 0.2f) * 0.5f + 0.5f), 20.f, 100.f);
-
-	// Based on zoom, determine cell size, number of rows, number of columns
-
-	// Need grid square size...
-
-	// Draw grid across entire screen for shiggles
-	for ( u32 r = 0; r < 40; ++r )
-	{
-		gs_vec2 sp = (gs_vec2){-10.f, r * zoom + 10.f};
-		gs_vec2 ep = (gs_vec2){ws.x + 10.f, r * zoom + 10.f};
-		draw_line(verts, sp, ep, 0.1f, (gs_vec4){1.f, 1.f, 1.f, 0.3f});
-	}
-
-	for ( u32 c = 0; c < 40; ++c )
-	{
-		gs_vec2 sp = (gs_vec2){c * zoom + 10.f, 0.f};
-		gs_vec2 ep = (gs_vec2){c * zoom + 10.f, ws.y + 10.f};
-		draw_line(verts, sp, ep, 0.1f, (gs_vec4){1.f, 1.f, 1.f, 0.3f});
-	}
-
-	// Put at idx 10, 10
-
-	// Draw a bright yellow square up in dere
-	gs_vec2 sqo = (gs_vec2){100.f, 100.f};
-	gs_vec2 sqhe = (gs_vec2){45.f, 45.f};
-	draw_square(verts, sqo, sqhe, 1.f, (gs_vec4){0.8f, 0.9f, 0.3f, 1.f});
-}
-*/
 
 gs_result app_update()
 {
@@ -1967,49 +1688,519 @@ gs_result app_shutdown()
 	return gs_result_success;
 }
 
-/*
-	path_start(ctx);
-		path_set_end_cap_style(ctx, end_cap_style);
-		path_add_points(ctx, line_pts, joint_style);
-		path_set_connecting_joint_style(ctx, joint_style)
-		path_add_points(ctx, bezier_curve_pts, joint_style);
-	path_end(ctx);
+vg_glyph_t* glyph_create_new_ptr()
+{
+	vg_glyph_t* glyph = gs_malloc(sizeof(vg_glyph_t));
+	memset(glyph, 0, sizeof(vg_glyph_t));
+	glyph->paths = gs_dyn_array_new(path_t);
+	glyph->advance_x = 50.f;						// This is determined based on code point...so...
+	return glyph;
+}
 
-	// Just need a simple way to connect two polylines with different joint styles with single end_cap style
-	// Test is to do letters, like Google 'G'
+#define glyph_thickness 0.1f
 
-	Want a way to animate arbitrary points, whether they be allowed to shrink, fade in, grow, animate the points over time, etc.
+vg_glyph_t* __glyph_create_A()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->advance_x = 53.f;
+	glyph->bearing_y = 15.f;
+	glyph->bearing_x = -5.f;
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	p->joint_style = joint_style_miter;
+	path_draw_line(p, (gs_vec2){-25.f, 0.f}, (gs_vec2){0.f, -55.f}, glyph_thickness, white);
+	path_draw_line(p, (gs_vec2){0.f, -55.f}, (gs_vec2){25.f, 0.f}, glyph_thickness, white);
 
-	// Animate a path
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	path_draw_line(p, (gs_vec2){-15.f, -15.f}, (gs_vec2){15.f, -15.f}, glyph_thickness, white);
 
-	typedef struct path
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_B()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->advance_x = 55.f;
+	glyph->bearing_y = -15.f;
+	glyph->bearing_x = -18.f;
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	p->joint_style = joint_style_miter;
+	p->end_cap_style = end_cap_style_joint;
+	f32 scl = 5.f;
+
+	path_draw_line(p, (gs_vec2){0.f, 0.f}, gs_vec2_scale((gs_vec2){0.f, 6.f}, scl), glyph_thickness, white);
+
+	path_draw_bezier_curve(p, gs_vec2_scale((gs_vec2){0.f, 0.f}, scl), gs_vec2_scale((gs_vec2){7.f, 0.f}, scl), 
+		gs_vec2_scale((gs_vec2){22.f, 6.f}, scl), gs_vec2_scale((gs_vec2){0.f, 6.f}, scl), 30, glyph_thickness, white);
+
+	gs_vec2 offset = (gs_vec2){0.f, 6.f * scl};
+
+	path_draw_bezier_curve(p, 
+		gs_vec2_add(gs_vec2_scale((gs_vec2){0.f, 0.f}, scl), offset), 
+		gs_vec2_add(gs_vec2_scale((gs_vec2){10.5f, -1.f}, scl), offset), 
+		gs_vec2_add(gs_vec2_scale((gs_vec2){22.5f, 8.f}, scl), offset), 
+		gs_vec2_add(gs_vec2_scale((gs_vec2){0.f, 6.f}, scl), offset), 
+		30, glyph_thickness, white);
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_C()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->advance_x = 60.f;
+	glyph->bearing_y = 0.f;
+	glyph->bearing_x = 10.f;
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	const f32 thickness = glyph_thickness;
+	const gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	p->joint_style = joint_style_miter;
+	p->end_cap_style = end_cap_style_butt;
+	f32 scl = 40.f;
+	f32 r = 0.8f;
+
+	path_draw_arc(p, position, r * scl, 40.f, 320.f, 50, thickness, color);
+
+	// path_draw_bezier_curve(p, gs_vec2_scale((gs_vec2){1.f, 0.f}, scl), gs_vec2_scale((gs_vec2){-6.f, 0.f}, scl), 
+	// 	gs_vec2_scale((gs_vec2){-15.f, 6.f}, scl), gs_vec2_scale((gs_vec2){1.f, 6.f}, scl), 30, 2.f, white);
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_D()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->advance_x = 70.f;
+	glyph->bearing_y = -15.f;
+	glyph->bearing_x = -20.f;
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	p->joint_style = joint_style_miter;
+	p->end_cap_style = end_cap_style_joint;
+	f32 scl = 10.f;
+
+	path_draw_line(p, (gs_vec2){0.f, 0.f}, gs_vec2_scale((gs_vec2){0.f, 6.f}, scl), glyph_thickness, white);
+
+	path_draw_bezier_curve(p, gs_vec2_scale((gs_vec2){0.f, 0.f}, scl), gs_vec2_scale((gs_vec2){7.f, 0.f}, scl), 
+		gs_vec2_scale((gs_vec2){20.f, 6.f}, scl), gs_vec2_scale((gs_vec2){0.f, 6.f}, scl), 30, glyph_thickness, white);
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_E()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->advance_x = 60.f;
+	glyph->bearing_y = -13.f;
+	glyph->bearing_x = -24.f;
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	f32 scl = 55.f;
+
+	path_draw_line(p, gs_vec2_scale((gs_vec2){0.7f, 0.f}, scl), 
+					  gs_vec2_scale((gs_vec2){0.0f, 0.f}, scl), glyph_thickness, white);
+
+	path_draw_line(p, gs_vec2_scale((gs_vec2){0.0f, 0.f}, scl), 
+					  gs_vec2_scale((gs_vec2){0.0f, 1.f}, scl), glyph_thickness, white);
+
+	path_draw_line(p, gs_vec2_scale((gs_vec2){0.0f, 1.f}, scl), 
+					  gs_vec2_scale((gs_vec2){0.7f, 1.f}, scl), glyph_thickness, white);
+
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	path_draw_line(p, gs_vec2_scale((gs_vec2){0.0f, 0.4f}, scl), 
+					  gs_vec2_scale((gs_vec2){0.6f, 0.4f}, scl), glyph_thickness, white);
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_F()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->advance_x = 60.f;
+	glyph->bearing_y = 16.5f;
+	glyph->bearing_x = -24.f;
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	f32 scl = 60.f;
+
+	path_draw_line(p, gs_vec2_scale((gs_vec2){0.0f, 0.f}, scl), 
+					  gs_vec2_scale((gs_vec2){0.0f, -1.f}, scl), glyph_thickness, white);
+
+	path_draw_line(p, gs_vec2_scale((gs_vec2){0.0f, -1.f}, scl), 
+					  gs_vec2_scale((gs_vec2){0.7f, -1.f}, scl), glyph_thickness, white);
+
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	path_draw_line(p, gs_vec2_scale((gs_vec2){0.0f, -0.6f}, scl), 
+					  gs_vec2_scale((gs_vec2){0.6f, -0.6f}, scl), glyph_thickness, white);
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_G()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->advance_x = 65.f;
+
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	const f32 r = 30.f;
+	const f32 start_angle = 0.f;
+	const f32 end_angle = 320.f;
+	const s32 num_segments = 40;
+	f32 diff = end_angle - start_angle;
+
+	gs_vec2 position = {0.f, 0.f};
+	f32 thickness = glyph_thickness;
+
+	// Draw line first (from position to outside radius)
+	gs_dyn_array_push(p->points, poly_point_create((gs_vec2){position.x, position.y}, white, thickness));
+	gs_dyn_array_push(p->points, poly_point_create((gs_vec2){position.x + r, position.y}, white, thickness));
+
+	// Create arc
+	f32 step = diff / (f32)num_segments;
+	for ( f32 i = start_angle; i <= end_angle; i += step ) {
+		f32 a = gs_deg_to_rad(i);
+		poly_point_t pt = poly_point_create(gs_vec2_add(position, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)), 
+								white, thickness);
+		gs_dyn_array_push(p->points, pt);
+	}
+	// Push last angle on as well
 	{
-		gs_dyn_array(point_t) points;
-		end_cap_style_t end_cap_style;
-	} path;
+		f32 a = gs_deg_to_rad(end_angle);
+		poly_point_t pt = poly_point_create(gs_vec2_add(position, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)), 
+								white, thickness);
+		gs_dyn_array_push(p->points, pt);
+	}
 
-	path_begin(path);
-		path_draw_line(path, start, end, thickness, color);
-	path_end(path);
+	return glyph;
+}
 
-	animate_path(animation_type);
+vg_glyph_t* __glyph_create_H()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->advance_x = 60.f;
+	glyph->bearing_y = 16.5f;
+	glyph->bearing_x = -24.f;
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	f32 scl = 60.f;
 
-	animation_t anim0;
+	path_draw_line(p, gs_vec2_scale((gs_vec2){0.0f, 0.f}, scl), 
+					  gs_vec2_scale((gs_vec2){0.0f, -1.f}, scl), glyph_thickness, white);
 
-	// Does this mean a timeline will only operate on a single shape?
-	// Want them to operate on shared data but transfer?
+	path_draw_line(p, gs_vec2_scale((gs_vec2){0.0f, -1.f}, scl), 
+					  gs_vec2_scale((gs_vec2){0.7f, -1.f}, scl), glyph_thickness, white);
 
-	// Animation can maintain its own timeline
-	animation_set_shape(animation0, shape);
-		animation_add_action(animation0, action_type0, start_time0);
-		animation_add_action(animation0, action_type1, start_time1);
-	animation_play(animation0);
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
 
-	time_line_set_shape(timeline, shape);
-	time_line_add_animation(timeline, anim0, start_time);
-	time_line_add_animation(timeline, anim1, start_time);
-	time_line_play(timeline);
+	path_draw_line(p, gs_vec2_scale((gs_vec2){0.0f, -0.6f}, scl), 
+					  gs_vec2_scale((gs_vec2){0.6f, -0.6f}, scl), glyph_thickness, white);
 
-	pts = time_line_get_data(timeline);
-*/
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_P()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->advance_x = 30.f;
+	glyph->bearing_y = -14.f;
+	glyph->bearing_x = -20.f;
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	p->joint_style = joint_style_miter;
+	p->end_cap_style = end_cap_style_joint;
+	f32 scl = 5.f;
+
+	path_draw_line(p, (gs_vec2){0.f, 0.f}, gs_vec2_scale((gs_vec2){0.f, 12.f}, scl), glyph_thickness, white);
+
+	path_draw_bezier_curve(p, gs_vec2_scale((gs_vec2){0.f, 0.f}, scl), gs_vec2_scale((gs_vec2){10.f, 0.f}, scl), 
+		gs_vec2_scale((gs_vec2){22.f, 6.f}, scl), gs_vec2_scale((gs_vec2){0.f, 6.f}, scl), 30, glyph_thickness, white);
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_a()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	glyph->bearing_y = 2.f;
+	glyph->bearing_x = -5.f;
+	glyph->advance_x = 52.f;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const gs_vec4 color = white;
+	const f32 thickness = glyph_thickness;
+	const f32 scl = 28.f;
+	const f32 r = 0.6f;
+
+	path_draw_arc(p, position, r * scl, 
+		220.f, 360.f, 40, thickness, white);
+
+	gs_vec2 slp = gs_vec2_add(position, (gs_vec2){r * scl, 0.f});
+	gs_vec2 elp = gs_vec2_add(slp, (gs_vec2){0.f, 1.f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+	// ae
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	gs_vec2 n1 = gs_vec2_norm((gs_vec2){-150.7f, 600.5f});
+	gs_vec2 n2 = gs_vec2_norm((gs_vec2){-150.1f, -250.9f});
+
+	slp = gs_vec2_sub(elp, (gs_vec2){0.f, 0.28f * scl});
+	elp = gs_vec2_sub(slp, (gs_vec2){0.f, 0.4f * scl});
+	path_draw_bezier_curve(p, 
+		slp, 
+		(gs_vec2){n1.x * scl * 5.f * 1.2f, n1.y * scl * 1.2f * 1.2f},
+		gs_vec2_scale(n2, scl * 1.2f),
+		elp, 
+		30, glyph_thickness, white);
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_b()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	glyph->bearing_y = 1.f;
+	glyph->bearing_x = -22.f;
+	glyph->advance_x = 52.f;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const gs_vec4 color = white;
+	const f32 thickness = glyph_thickness;
+	const f32 scl = 30.f;
+	const f32 r = 0.6f;
+
+	// b
+
+	gs_vec2 slp = gs_vec2_sub(position, (gs_vec2){0.f, 0.81f * scl});
+	gs_vec2 elp = gs_vec2_add(position, (gs_vec2){0.f, 1.f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+	// ae
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	gs_vec2 n1 = gs_vec2_norm((gs_vec2){150.7f, 400.5f});
+	gs_vec2 n2 = gs_vec2_norm((gs_vec2){200.1f, -400.9f});
+
+	slp = gs_vec2_sub(elp, (gs_vec2){0.f, 0.65f * scl});
+	elp = gs_vec2_sub(slp, (gs_vec2){0.f, 0.4f * scl});
+	path_draw_circle(p, gs_vec2_add(slp, (gs_vec2){r * scl, 0.f}), r * scl, 75, thickness, color);
+
+	// path_draw_bezier_curve(p, 
+	// 	slp, 
+	// 	(gs_vec2){n1.x * scl * 5.f * 1.2f, n1.y * scl * 1.2f * 1.2f},
+	// 	gs_vec2_scale(n2, scl * 1.4f),
+	// 	elp, 
+	// 	30, 2.f, white);
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_c()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	glyph->bearing_y = 6.f;
+	glyph->bearing_x = -3.f;
+	glyph->advance_x = 56.f;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const gs_vec4 color = white;
+	const f32 thickness = glyph_thickness;
+	const f32 scl = 30.f;
+	const f32 r = 0.65f;
+
+	// c
+	path_draw_arc(p, position, r * scl, 40.f, 320.f, 50, thickness, color);
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_e()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	glyph->bearing_y = 6.f;
+	glyph->bearing_x = -5.f;
+	glyph->advance_x = 50.f;
+
+	const f32 r = 20.f;
+	const f32 start_angle = 40.f;
+	const f32 end_angle = 360.f;
+	const s32 num_segments = 30;
+	const f32 thickness = glyph_thickness;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	gs_vec4 color = white;
+	f32 diff = end_angle - start_angle;
+
+	// Create arc
+	f32 step = diff / (f32)num_segments;
+	for ( f32 i = start_angle; i <= end_angle; i += step ) {
+		f32 a = gs_deg_to_rad(i);
+		poly_point_t pt = poly_point_create(gs_vec2_add(position, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)), 
+								color, thickness);
+		gs_dyn_array_push(p->points, pt);
+	}
+	// Push last angle on as well
+	{
+		f32 a = gs_deg_to_rad(end_angle);
+		poly_point_t pt = poly_point_create(gs_vec2_add(position, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)), 
+								color, thickness);
+		gs_dyn_array_push(p->points, pt);
+	}
+
+	// Draw line (from position to outside radius)
+	gs_dyn_array_push(p->points, poly_point_create((gs_vec2){position.x - r, position.y}, color, thickness));
+	gs_dyn_array_push(p->points, poly_point_create((gs_vec2){position.x + r, position.y}, color, thickness));
+
+	p->joint_style = joint_style_miter;
+	p->end_cap_style = end_cap_style_butt;
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_g()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->advance_x = 50.f;
+	glyph->bearing_y = 5.f;
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	const f32 start_angle = 0.f;
+	const f32 end_angle = 170.f;
+	const s32 num_segments = 20;
+	const f32 r = 20.f;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	f32 diff = end_angle - start_angle;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+
+	path_draw_circle(p, position, r, num_segments, thickness, color);
+
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	gs_vec2 ao = (gs_vec2){position.x, position.y + r};
+
+	// Draw connecting shape
+	gs_dyn_array_push(p->points, poly_point_create((gs_vec2){position.x + r, position.y - r - 5.f}, color, thickness));
+	gs_dyn_array_push(p->points, poly_point_create((gs_vec2){position.x + r, ao.y - 1.f}, color, thickness));
+
+	// Create arc
+	f32 step = diff / (f32)num_segments;
+	for ( f32 i = start_angle; i <= end_angle; i += step ) {
+		f32 a = gs_deg_to_rad(i);
+		poly_point_t pt = poly_point_create(gs_vec2_add(ao, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)), 
+								color, thickness);
+		gs_dyn_array_push(p->points, pt);
+	}
+	// Push last angle on as well
+	{
+		f32 a = gs_deg_to_rad(end_angle);
+		poly_point_t pt = poly_point_create(gs_vec2_add(ao, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)), 
+								color, thickness);
+		gs_dyn_array_push(p->points, pt);
+	}
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_l()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->advance_x = 30.f;
+	glyph->bearing_y = 2.f;
+	glyph->bearing_x = -10.f;
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	path_draw_line(p, (gs_vec2){0.f, -30.f}, (gs_vec2){0.f, 30.f}, glyph_thickness, white);
+	return glyph;
+}
+
+
+vg_glyph_t* __glyph_create_o()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	const f32 r = 20.f;
+	glyph->bearing_y = 5.f;
+	glyph->advance_x = 55.f;
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	path_draw_circle(p, (gs_vec2){0.f, 0.f}, r, 70, glyph_thickness, white);
+	return glyph;
+}
+
+
+
+void init_font()
+{
+	// Allocate data for glyphs
+	g_font.glyphs = gs_hash_table_new(u32, vg_glyph_ptr);
+
+	// Add glyph into font table
+	gs_hash_table_insert(g_font.glyphs, 'A', __glyph_create_A());
+	gs_hash_table_insert(g_font.glyphs, 'B', __glyph_create_B());
+	gs_hash_table_insert(g_font.glyphs, 'C', __glyph_create_C());
+	gs_hash_table_insert(g_font.glyphs, 'D', __glyph_create_D());
+	gs_hash_table_insert(g_font.glyphs, 'E', __glyph_create_E());
+	gs_hash_table_insert(g_font.glyphs, 'F', __glyph_create_F());
+	gs_hash_table_insert(g_font.glyphs, 'G', __glyph_create_G());
+	gs_hash_table_insert(g_font.glyphs, 'P', __glyph_create_P());
+	gs_hash_table_insert(g_font.glyphs, 'a', __glyph_create_a());
+	gs_hash_table_insert(g_font.glyphs, 'b', __glyph_create_b());
+	gs_hash_table_insert(g_font.glyphs, 'c', __glyph_create_c());
+	gs_hash_table_insert(g_font.glyphs, 'e', __glyph_create_e());
+	gs_hash_table_insert(g_font.glyphs, 'g', __glyph_create_g());
+	gs_hash_table_insert(g_font.glyphs, 'l', __glyph_create_l());
+	gs_hash_table_insert(g_font.glyphs, 'o', __glyph_create_o());
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
