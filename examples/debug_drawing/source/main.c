@@ -20,7 +20,7 @@ void init_font();
 
 _global b32 anti_alias = true;
 _global f32 anti_alias_scl = 2.f;
-_global b32 is_playing = false;
+_global b32 is_playing = true;
 
 _global NSVGimage *image = NULL;
 
@@ -895,7 +895,9 @@ void shape_draw_text( shape_t* s, gs_vec2 origin, vg_font_t* font, char* txt )
 			shape_draw_glyph(s, origin, glyph);
 
 			// Move x forward
-			origin.x += glyph->advance_x;
+			// origin.x += glyph->advance_x;
+			// Monospaced glyph width
+			origin.x += 45.f;
 		}
 	}
 }
@@ -1485,7 +1487,7 @@ gs_result app_init()
 
 	// Let's get two animations for now
 	gs_for_range_i(10) {
-		gs_dyn_array_push(g_animations, animation_create_new(1.f, 1.f));
+		gs_dyn_array_push(g_animations, animation_create_new(1.f, 5.f));
 	}
 
 	animation_t* anim = NULL;
@@ -1576,13 +1578,27 @@ gs_result app_init()
 	/*
 		// Code
 	*/
+	const f32 glyph_height = 45.f;
+	const f32 glyph_width = 45.f;
 	shape_begin(shape);
 	shape->xform.position = (gs_vec3){ws.x / 2.f - 250.f, ws.y / 2.f + 100.f, 0.f};
 	shape->xform.scale = (gs_vec3){0.5f, 0.5f, 1.f};
+	shape_draw_line(shape, (gs_vec2){0.f, 0.f}, (gs_vec2){ws.x * 2.f, 0}, 0.2f, (gs_vec4){1.f, 1.f, 1.f, 0.2f});
+	shape_draw_line(shape, (gs_vec2){0.f, glyph_height}, (gs_vec2){ws.x * 2.f, glyph_height}, 0.2f, (gs_vec4){1.f, 1.f, 1.f, 0.2f});
+	
+	for ( u32 i = 0; i < 26; ++i ) {
+		shape_draw_line(shape, (gs_vec2){i * glyph_width - glyph_width / 2.f, glyph_height}, 
+			(gs_vec2){i * glyph_width - glyph_width / 2.f, 0.f}, 
+			0.2f, (gs_vec4){1.f, 1.f, 1.f, 0.2f});
+	}
+	
 	// shape_draw_text(shape, (gs_vec2){0.f, 0.f}, &g_font, "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
-	// shape_draw_text(shape, (gs_vec2){0.f, 65.f}, &g_font, "abcdefghijklmnopqrstuvwxyz");
-	shape_draw_text(shape, (gs_vec2){0.f, 0.f}, &g_font, "CoDE");
-	shape_draw_text(shape, (gs_vec2){0.f, 55.f}, &g_font, "go");
+	shape_draw_text(shape, (gs_vec2){0.f, glyph_height}, &g_font, "abcdefghijklmnopqrstuvwxyz");	// Making them all monospaced. Fuck it.
+	// shape_draw_text(shape, (gs_vec2){0.f, glyph_height}, &g_font, "typedef particle t");
+	// shape_draw_text(shape, (gs_vec2){0.f, 65.f}, &g_font, "coded some codes");
+	// shape_draw_text(shape, (gs_vec2){0.f, 65.f}, &g_font, "width height");
+	// shape_draw_text(shape, (gs_vec2){0.f, 0.f}, &g_font, "CoDE");
+	// shape_draw_text(shape, (gs_vec2){0.f, 55.f}, &g_font, "go");
 
 	anim = &g_animations[3];
 	animation_set_shape(anim, shape);
@@ -1590,8 +1606,8 @@ gs_result app_init()
 	animation_add_action(anim, animation_action_type_walk_path, animation_ease_type_smooth_step, 10.0f, NULL);
 
 	trans = shape->xform;
-	trans.scale = (gs_vec3){ 1.f, 1.f, 1.f };
-	trans.position = (gs_vec3){ ws.x * 0.6f / trans.scale.x, (ws.y * 0.2f) / trans.scale.y, 0.f };
+	trans.scale = (gs_vec3){ 0.5f, 0.5f, 1.f };
+	trans.position = (gs_vec3){ ws.x * 0.1f / trans.scale.x, (ws.y * 0.2f) / trans.scale.y, 0.f };
 	animation_add_action(anim, animation_action_type_transform, animation_ease_type_smooth_step, 5.f, &trans);
 
 	return gs_result_success;
@@ -1752,7 +1768,7 @@ vg_glyph_t* __glyph_create_B()
 vg_glyph_t* __glyph_create_C()
 {
 	vg_glyph_t* glyph = glyph_create_new_ptr();
-	glyph->advance_x = 60.f;
+	glyph->advance_x = 59.f;
 	glyph->bearing_y = 0.f;
 	glyph->bearing_x = 10.f;
 	// Construct a new path for the glyph
@@ -1779,7 +1795,7 @@ vg_glyph_t* __glyph_create_D()
 	vg_glyph_t* glyph = glyph_create_new_ptr();
 	glyph->advance_x = 70.f;
 	glyph->bearing_y = -15.f;
-	glyph->bearing_x = -20.f;
+	glyph->bearing_x = -15.f;
 	// Construct a new path for the glyph
 	gs_dyn_array_push(glyph->paths, path_create_new());
 	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
@@ -1944,20 +1960,20 @@ vg_glyph_t* __glyph_create_a()
 	// Construct a new path for the glyph
 	gs_dyn_array_push(glyph->paths, path_create_new());
 	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
-	glyph->bearing_y = 2.f;
-	glyph->bearing_x = -5.f;
-	glyph->advance_x = 52.f;
+	glyph->bearing_y = -12.f;
+	glyph->bearing_x = 0.f;
+	glyph->advance_x = 25.f;
 	gs_vec2 position = (gs_vec2){0.f, 0.f};
 	const gs_vec4 color = white;
 	const f32 thickness = glyph_thickness;
-	const f32 scl = 28.f;
-	const f32 r = 0.6f;
+	const f32 scl = 23.f;
+	const f32 r = 0.5f;
 
-	path_draw_arc(p, position, r * scl, 
+	path_draw_arc(p, gs_vec2_add(position, (gs_vec2){0.05f * scl, 0.05f * scl}), r * 0.9f * scl, 
 		220.f, 360.f, 40, thickness, white);
 
-	gs_vec2 slp = gs_vec2_add(position, (gs_vec2){r * scl, 0.f});
-	gs_vec2 elp = gs_vec2_add(slp, (gs_vec2){0.f, 1.f * scl});
+	gs_vec2 slp = gs_vec2_add(position, (gs_vec2){r * scl, 0.05f * scl});
+	gs_vec2 elp = gs_vec2_add(slp, (gs_vec2){0.f, 0.9f * scl});
 	path_draw_line(p, slp, elp, thickness, color);
 	// ae
 	gs_dyn_array_push(glyph->paths, path_create_new());
@@ -1968,12 +1984,14 @@ vg_glyph_t* __glyph_create_a()
 
 	slp = gs_vec2_sub(elp, (gs_vec2){0.f, 0.28f * scl});
 	elp = gs_vec2_sub(slp, (gs_vec2){0.f, 0.4f * scl});
-	path_draw_bezier_curve(p, 
-		slp, 
-		(gs_vec2){n1.x * scl * 5.f * 1.2f, n1.y * scl * 1.2f * 1.2f},
-		gs_vec2_scale(n2, scl * 1.2f),
-		elp, 
-		30, glyph_thickness, white);
+	// path_draw_bezier_curve(p, 
+	// 	slp, 
+	// 	(gs_vec2){n1.x * scl * 5.f * 1.2f, n1.y * scl * 1.2f * 1.2f},
+	// 	gs_vec2_scale(n2, scl * 1.2f),
+	// 	elp, 
+	// 	30, glyph_thickness, white);
+	 path_draw_arc(p, gs_vec2_add(position, (gs_vec2){0.f, 0.5f * scl}), r  * scl,
+		0.f, 360.f, 40, thickness, white);
 
 	return glyph;
 }
@@ -1984,18 +2002,18 @@ vg_glyph_t* __glyph_create_b()
 	// Construct a new path for the glyph
 	gs_dyn_array_push(glyph->paths, path_create_new());
 	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
-	glyph->bearing_y = 1.f;
-	glyph->bearing_x = -22.f;
-	glyph->advance_x = 52.f;
+	glyph->bearing_y = -15.f;
+	glyph->bearing_x = -14.f;
+	glyph->advance_x = 50.f;
 	gs_vec2 position = (gs_vec2){0.f, 0.f};
 	const gs_vec4 color = white;
 	const f32 thickness = glyph_thickness;
 	const f32 scl = 30.f;
-	const f32 r = 0.6f;
+	const f32 r = 0.5f;
 
 	// b
 
-	gs_vec2 slp = gs_vec2_sub(position, (gs_vec2){0.f, 0.81f * scl});
+	gs_vec2 slp = gs_vec2_sub(position, (gs_vec2){0.f, 0.7f * scl});
 	gs_vec2 elp = gs_vec2_add(position, (gs_vec2){0.f, 1.f * scl});
 	path_draw_line(p, slp, elp, thickness, color);
 	// ae
@@ -2005,7 +2023,7 @@ vg_glyph_t* __glyph_create_b()
 	gs_vec2 n1 = gs_vec2_norm((gs_vec2){150.7f, 400.5f});
 	gs_vec2 n2 = gs_vec2_norm((gs_vec2){200.1f, -400.9f});
 
-	slp = gs_vec2_sub(elp, (gs_vec2){0.f, 0.65f * scl});
+	slp = gs_vec2_sub(elp, (gs_vec2){0.f, 0.5f * scl});
 	elp = gs_vec2_sub(slp, (gs_vec2){0.f, 0.4f * scl});
 	path_draw_circle(p, gs_vec2_add(slp, (gs_vec2){r * scl, 0.f}), r * scl, 75, thickness, color);
 
@@ -2025,17 +2043,67 @@ vg_glyph_t* __glyph_create_c()
 	// Construct a new path for the glyph
 	gs_dyn_array_push(glyph->paths, path_create_new());
 	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
-	glyph->bearing_y = 6.f;
-	glyph->bearing_x = -3.f;
-	glyph->advance_x = 56.f;
+	glyph->bearing_y = -8.f;
+	glyph->bearing_x = 0.f;
+	glyph->advance_x = 35.f;
 	gs_vec2 position = (gs_vec2){0.f, 0.f};
 	const gs_vec4 color = white;
 	const f32 thickness = glyph_thickness;
 	const f32 scl = 30.f;
-	const f32 r = 0.65f;
+	const f32 r = 0.5f;
 
 	// c
 	path_draw_arc(p, position, r * scl, 40.f, 320.f, 50, thickness, color);
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_d()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	glyph->bearing_y = -15.f;
+	glyph->bearing_x = 14.f;
+	glyph->advance_x = 35.f;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const gs_vec4 color = white;
+	const f32 thickness = glyph_thickness;
+	const f32 scl = 30.f;
+	const f32 r = 0.5f;
+
+	// b
+
+	gs_vec2 slp = gs_vec2_sub(position, (gs_vec2){0.f, 0.81f * scl});
+	gs_vec2 elp = gs_vec2_add(position, (gs_vec2){0.f, 1.f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+	// ae
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	gs_vec2 n1 = gs_vec2_norm((gs_vec2){-200.7f, 500.5f});
+	gs_vec2 n2 = gs_vec2_norm((gs_vec2){-200.1f, -600.9f});
+
+	slp = gs_vec2_sub(elp, (gs_vec2){0.f, 0.5f * scl});
+	elp = gs_vec2_sub(slp, (gs_vec2){0.f, 0.4f * scl});
+	path_draw_circle(p, gs_vec2_sub(slp, (gs_vec2){r * scl, 0.f}), r * scl, 75, thickness, color);
+
+	// slp = gs_vec2_sub(elp, (gs_vec2){0.f, 0.2f * scl});
+	// elp = gs_vec2_sub(slp, (gs_vec2){0.f, 0.6f * scl});
+	// path_draw_bezier_curve(p, 
+	// 	slp, 
+	// 	(gs_vec2){n1.x * scl * 5.f * 1.2f, n1.y * scl * 1.2f * 1.2f},
+	// 	gs_vec2_scale(n2, scl * 1.2f),
+	// 	elp, 
+	// 	30, glyph_thickness, white);
+
+	// path_draw_bezier_curve(p, 
+	// 	slp, 
+	// 	(gs_vec2){n1.x * scl * 5.f * 1.2f, n1.y * scl * 1.2f * 1.2f},
+	// 	gs_vec2_scale(n2, scl * 1.4f),
+	// 	elp, 
+	// 	30, 2.f, white);
 
 	return glyph;
 }
@@ -2046,11 +2114,12 @@ vg_glyph_t* __glyph_create_e()
 	// Construct a new path for the glyph
 	gs_dyn_array_push(glyph->paths, path_create_new());
 	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
-	glyph->bearing_y = 6.f;
-	glyph->bearing_x = -5.f;
-	glyph->advance_x = 50.f;
+	glyph->bearing_y = -8.f;
+	glyph->bearing_x = 0.f;
+	glyph->advance_x = 40.f;
 
-	const f32 r = 20.f;
+	const f32 scl = 30.f;
+	const f32 r = 0.5f;
 	const f32 start_angle = 40.f;
 	const f32 end_angle = 360.f;
 	const s32 num_segments = 30;
@@ -2063,21 +2132,21 @@ vg_glyph_t* __glyph_create_e()
 	f32 step = diff / (f32)num_segments;
 	for ( f32 i = start_angle; i <= end_angle; i += step ) {
 		f32 a = gs_deg_to_rad(i);
-		poly_point_t pt = poly_point_create(gs_vec2_add(position, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)), 
+		poly_point_t pt = poly_point_create(gs_vec2_add(position, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r * scl)), 
 								color, thickness);
 		gs_dyn_array_push(p->points, pt);
 	}
 	// Push last angle on as well
 	{
 		f32 a = gs_deg_to_rad(end_angle);
-		poly_point_t pt = poly_point_create(gs_vec2_add(position, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)), 
+		poly_point_t pt = poly_point_create(gs_vec2_add(position, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r * scl)), 
 								color, thickness);
 		gs_dyn_array_push(p->points, pt);
 	}
 
 	// Draw line (from position to outside radius)
-	gs_dyn_array_push(p->points, poly_point_create((gs_vec2){position.x - r, position.y}, color, thickness));
-	gs_dyn_array_push(p->points, poly_point_create((gs_vec2){position.x + r, position.y}, color, thickness));
+	gs_dyn_array_push(p->points, poly_point_create((gs_vec2){position.x - r * scl, position.y}, color, thickness));
+	gs_dyn_array_push(p->points, poly_point_create((gs_vec2){position.x + r * scl, position.y}, color, thickness));
 
 	p->joint_style = joint_style_miter;
 	p->end_cap_style = end_cap_style_butt;
@@ -2085,11 +2154,64 @@ vg_glyph_t* __glyph_create_e()
 	return glyph;
 }
 
+vg_glyph_t* __glyph_create_f()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	glyph->bearing_y = 0.f;
+	glyph->bearing_x = -2.f;
+	glyph->advance_x = 35.f;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const gs_vec4 color = white;
+	const f32 thickness = glyph_thickness;
+	const f32 scl = 30.f;
+	const f32 r = 0.5f;
+
+	// f
+
+	gs_vec2 slp = position;
+	gs_vec2 elp = gs_vec2_sub(position, (gs_vec2){0.f, 1.f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+
+	// Draw arc at top
+	path_draw_arc(p, gs_vec2_add(elp, (gs_vec2){r * scl, 0.f}), r * scl, 
+		180.f, 270.f, 40, thickness, white);
+
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	// slp = gs_vec2_sub(elp, (gs_vec2){0.2f * scl, 0.65f * scl});
+	slp = gs_vec2_sub(position, (gs_vec2){0.3f * scl, 0.95f * scl});
+	elp = gs_vec2_add(slp, (gs_vec2){0.6f * scl, 0.0f * scl});
+	// path_draw_circle(p, gs_vec2_sub(slp, (gs_vec2){r * scl, 0.f}), r * scl, 75, thickness, color);
+	path_draw_line(p, slp, elp, thickness, color);
+
+	// slp = gs_vec2_sub(elp, (gs_vec2){0.f, 0.2f * scl});
+	// elp = gs_vec2_sub(slp, (gs_vec2){0.f, 0.6f * scl});
+	// path_draw_bezier_curve(p, 
+	// 	slp, 
+	// 	(gs_vec2){n1.x * scl * 5.f * 1.2f, n1.y * scl * 1.2f * 1.2f},
+	// 	gs_vec2_scale(n2, scl * 1.2f),
+	// 	elp, 
+	// 	30, glyph_thickness, white);
+
+	// path_draw_bezier_curve(p, 
+	// 	slp, 
+	// 	(gs_vec2){n1.x * scl * 5.f * 1.2f, n1.y * scl * 1.2f * 1.2f},
+	// 	gs_vec2_scale(n2, scl * 1.4f),
+	// 	elp, 
+	// 	30, 2.f, white);
+
+	return glyph;
+}
+
 vg_glyph_t* __glyph_create_g()
 {
 	vg_glyph_t* glyph = glyph_create_new_ptr();
-	glyph->advance_x = 50.f;
-	glyph->bearing_y = 5.f;
+	glyph->advance_x = 45.f;
+	glyph->bearing_y = -8.f;
 	// Construct a new path for the glyph
 	gs_dyn_array_push(glyph->paths, path_create_new());
 	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
@@ -2097,35 +2219,36 @@ vg_glyph_t* __glyph_create_g()
 	const f32 start_angle = 0.f;
 	const f32 end_angle = 170.f;
 	const s32 num_segments = 20;
-	const f32 r = 20.f;
+	const f32 scl = 30.f;
+	const f32 r = 0.5f;
 	const f32 thickness = glyph_thickness;
 	gs_vec4 color = white;
 	f32 diff = end_angle - start_angle;
 	gs_vec2 position = (gs_vec2){0.f, 0.f};
 
-	path_draw_circle(p, position, r, num_segments, thickness, color);
+	path_draw_circle(p, position, r * scl, num_segments, thickness, color);
 
 	gs_dyn_array_push(glyph->paths, path_create_new());
 	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
 
-	gs_vec2 ao = (gs_vec2){position.x, position.y + r};
+	gs_vec2 ao = (gs_vec2){position.x, position.y + r * scl};
 
 	// Draw connecting shape
-	gs_dyn_array_push(p->points, poly_point_create((gs_vec2){position.x + r, position.y - r - 5.f}, color, thickness));
-	gs_dyn_array_push(p->points, poly_point_create((gs_vec2){position.x + r, ao.y - 1.f}, color, thickness));
+	gs_dyn_array_push(p->points, poly_point_create((gs_vec2){position.x + r * scl, position.y - r * scl + 3.f}, color, thickness));
+	gs_dyn_array_push(p->points, poly_point_create((gs_vec2){position.x + r * scl, ao.y - 1.f}, color, thickness));
 
 	// Create arc
 	f32 step = diff / (f32)num_segments;
 	for ( f32 i = start_angle; i <= end_angle; i += step ) {
 		f32 a = gs_deg_to_rad(i);
-		poly_point_t pt = poly_point_create(gs_vec2_add(ao, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)), 
+		poly_point_t pt = poly_point_create(gs_vec2_add(ao, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r * scl)), 
 								color, thickness);
 		gs_dyn_array_push(p->points, pt);
 	}
 	// Push last angle on as well
 	{
 		f32 a = gs_deg_to_rad(end_angle);
-		poly_point_t pt = poly_point_create(gs_vec2_add(ao, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r)), 
+		poly_point_t pt = poly_point_create(gs_vec2_add(ao, gs_vec2_scale((gs_vec2){cos(a), sin(a)}, r * scl)), 
 								color, thickness);
 		gs_dyn_array_push(p->points, pt);
 	}
@@ -2133,34 +2256,662 @@ vg_glyph_t* __glyph_create_g()
 	return glyph;
 }
 
-vg_glyph_t* __glyph_create_l()
+vg_glyph_t* __glyph_create_h()
 {
 	vg_glyph_t* glyph = glyph_create_new_ptr();
-	glyph->advance_x = 30.f;
-	glyph->bearing_y = 2.f;
+	glyph->advance_x = 35.f;
+	glyph->bearing_y = 0.f;
 	glyph->bearing_x = -10.f;
 	// Construct a new path for the glyph
 	gs_dyn_array_push(glyph->paths, path_create_new());
 	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
-	path_draw_line(p, (gs_vec2){0.f, -30.f}, (gs_vec2){0.f, 30.f}, glyph_thickness, white);
+
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 40.f;
+	const f32 r = 0.3f;
+
+	// h
+
+	// Draw line
+	gs_vec2 slp = position;
+	gs_vec2 elp = gs_vec2_sub(position, (gs_vec2){0.f, 1.2f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	slp = gs_vec2_add(position, (gs_vec2){2.f * r * scl, 0.f});
+	elp = gs_vec2_sub(slp, (gs_vec2){0.f, 0.5f * scl});
+
+	// // Draw arc at top
+	path_draw_arc(p, gs_vec2_sub(elp, (gs_vec2){r * scl, 0.f }), r * scl, 180.f, 360.f, 50, thickness, white);
+
+	// // Draw separate line from bottom
+	path_draw_line(p, slp, elp, thickness, color);
+
+
 	return glyph;
 }
 
+vg_glyph_t* __glyph_create_i()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->advance_x = 35.f;
+	glyph->bearing_y = -1.f;
+	glyph->bearing_x = 0.f;
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 70.f;
+	const f32 r = 0.2f;
+
+	// ih
+
+	// Draw line
+	gs_vec2 slp = gs_vec2_sub(position, (gs_vec2){0.1f * scl, 0.4f * scl});
+	gs_vec2 elp = gs_vec2_sub(position, (gs_vec2){0.f, 0.4f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+
+	slp = elp;
+	elp = position;
+	path_draw_line(p, slp, elp, thickness, color);
+
+	p->joint_style = joint_style_miter;
+
+	slp = gs_vec2_sub(position, (gs_vec2){0.12f * scl, 0.f});
+	elp = gs_vec2_add(position, (gs_vec2){0.12f * scl, 0.f});
+	path_draw_line(p, slp, elp, thickness, color);
+
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	slp = gs_vec2_sub(position, (gs_vec2){0.f * scl, 0.55f * scl});
+	elp = gs_vec2_sub(position, (gs_vec2){0.f, 0.45f * scl});
+
+	// Draw dot
+	slp = gs_vec2_sub(position, (gs_vec2){0.f * scl, 0.55f * scl});
+	elp = gs_vec2_sub(position, (gs_vec2){0.f, 0.45f * scl});
+	path_draw_line(p, slp, elp, thickness * 3.f, color);
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_j()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->advance_x = 15.f;
+	glyph->bearing_y = 0.f;
+	glyph->bearing_x = 2.f;
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 70.f;
+	const f32 r = 0.1f;
+
+	// hij
+
+	gs_vec2 slp = gs_vec2_sub(position, (gs_vec2){0.1f * scl, 0.4f * scl});
+	gs_vec2 elp = gs_vec2_sub(position, (gs_vec2){0.f, 0.4f * scl});
+	// Draw line
+	path_draw_line(p, slp, elp, thickness, color);
+
+	slp = elp;
+	elp = gs_vec2_add(position, (gs_vec2){0.f, 0.05f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+
+	// Draw arc at bottom
+	path_draw_arc(p, gs_vec2_sub(elp, (gs_vec2){r * scl, 0.f }), r * scl, 0.f, 180.f, 50, thickness, white);
+
+	p->joint_style = joint_style_miter;
+
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	// Draw dot
+	slp = gs_vec2_sub(position, (gs_vec2){0.f * scl, 0.55f * scl});
+	elp = gs_vec2_sub(position, (gs_vec2){0.f, 0.45f * scl});
+	path_draw_line(p, slp, elp, thickness * 3.f, color);
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_k()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->advance_x = 35.f;
+	glyph->bearing_y = 0.f;
+	glyph->bearing_x = -5.f;
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 55.f;
+	const f32 r = 0.1f;
+
+	// hijk
+
+	gs_vec2 slp = position;
+	gs_vec2 elp = gs_vec2_sub(position, (gs_vec2){0.f, 0.8f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	// Draw connect
+	slp = gs_vec2_sub(position, (gs_vec2){-0.25f * scl, 0.6f * scl});
+	elp = gs_vec2_sub(position, (gs_vec2){-0.02f * scl, 0.4f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+
+	slp = elp;
+	elp = gs_vec2_add(position, (gs_vec2){0.3f * scl, 0.f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+
+	p->joint_style = joint_style_bevel;
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_l()
+{
+	// jl
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->advance_x = 30.f;
+	glyph->bearing_y = 0.f;
+	glyph->bearing_x = -5.f;
+
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 90.f;
+	const f32 r = 0.1f;
+
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	gs_vec2 slp = gs_vec2_sub(position, (gs_vec2){0.1f * scl, 0.4f * scl});
+	gs_vec2 elp = gs_vec2_sub(position, (gs_vec2){0.f, 0.4f * scl});
+	// Draw line
+	path_draw_line(p, slp, elp, thickness, color);
+
+	slp = elp;
+	elp = gs_vec2_sub(position, (gs_vec2){0.f, 0.1f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+
+	p->joint_style = joint_style_miter;
+
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	slp = elp;
+	elp = position;
+	path_draw_line(p, slp, elp, thickness, color);
+
+	// Draw arc at bottom
+	slp = elp;
+	elp = gs_vec2_add(slp, (gs_vec2){0.1f * scl, 0.f});
+	path_draw_line(p, slp, elp, thickness, color);
+
+	p->joint_style = joint_style_round;
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_m()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->advance_x = 35.f;
+	glyph->bearing_y = 0.f;
+	glyph->bearing_x = -20.f;
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 65.f;
+	const f32 r = 0.15f;
+
+	// hijm
+
+	gs_vec2 slp = gs_vec2_sub(position, (gs_vec2){0.f, 0.5f * scl});
+	gs_vec2 elp = position;
+	// Draw line
+	path_draw_line(p, slp, elp, thickness, color);
+
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	slp = gs_vec2_add(slp, (gs_vec2){r * scl, 0.2f * scl});
+	path_draw_arc(p, slp, r * scl, 180.f, 360.f, 50, thickness, white);
+
+	slp = gs_vec2_add(slp, (gs_vec2){r * scl, 0.f});
+	elp = (gs_vec2){slp.x, position.y};
+	path_draw_line(p, slp, elp, thickness, color);
+
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	slp = gs_vec2_add(slp, (gs_vec2){r * scl, 0.f});
+	path_draw_arc(p, slp, r * scl, 180.f, 360.f, 50, thickness, white);
+
+	slp = gs_vec2_add(slp, (gs_vec2){r * scl, 0.f});
+	elp = (gs_vec2){slp.x, position.y};
+	path_draw_line(p, slp, elp, thickness, color);
+
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_n()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->advance_x = 28.f;
+	glyph->bearing_y = 0.f;
+	glyph->bearing_x = -10.f;
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 65.f;
+	const f32 r = 0.15f;
+
+	// hijm
+
+	gs_vec2 slp = gs_vec2_sub(position, (gs_vec2){0.f, 0.5f * scl});
+	gs_vec2 elp = position;
+	// Draw line
+	path_draw_line(p, slp, elp, thickness, color);
+
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	slp = gs_vec2_add(slp, (gs_vec2){r * scl, 0.2f * scl});
+	path_draw_arc(p, slp, r * scl, 180.f, 360.f, 50, thickness, white);
+
+	slp = gs_vec2_add(slp, (gs_vec2){r * scl, 0.f});
+	elp = (gs_vec2){slp.x, position.y};
+	path_draw_line(p, slp, elp, thickness, color);
+
+	return glyph;
+}
 
 vg_glyph_t* __glyph_create_o()
 {
 	vg_glyph_t* glyph = glyph_create_new_ptr();
-	const f32 r = 20.f;
-	glyph->bearing_y = 5.f;
-	glyph->advance_x = 55.f;
+	glyph->bearing_y = -8.f;
+	glyph->advance_x = 40.f;
+	glyph->bearing_x = 0.f;
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 90.f;
+	const f32 r = 0.18f;
+
 	// Construct a new path for the glyph
 	gs_dyn_array_push(glyph->paths, path_create_new());
 	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
-	path_draw_circle(p, (gs_vec2){0.f, 0.f}, r, 70, glyph_thickness, white);
+	path_draw_circle(p, position, r * scl, num_segments, glyph_thickness, white);
 	return glyph;
 }
 
+vg_glyph_t* __glyph_create_p()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->bearing_y = -8.f;
+	glyph->bearing_x = 1.f;
+	glyph->advance_x = 35.f;
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 30.f;
+	const f32 r = 0.5f;
 
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	path_draw_circle(p, position, r * scl, num_segments, glyph_thickness, white);
+
+	// p 
+
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	gs_vec2 slp = gs_vec2_sub(position, (gs_vec2){r * scl, 0.4f * scl});
+	gs_vec2 elp = gs_vec2_add(slp, (gs_vec2){0.f, 1.2f * scl});
+
+	path_draw_line(p, slp, elp, glyph_thickness, white);
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_q()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->bearing_y = -8.f;
+	glyph->bearing_x = -1.f;
+	glyph->advance_x = 30.f;
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 30.f;
+	const f32 r = 0.5f;
+
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	path_draw_circle(p, position, r * scl, num_segments, glyph_thickness, white);
+
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	gs_vec2 slp = gs_vec2_add(position, (gs_vec2){r * scl, -0.4f * scl});
+	gs_vec2 elp = gs_vec2_add(slp, (gs_vec2){0.f, 1.2f * scl});
+
+	path_draw_line(p, slp, elp, glyph_thickness, white);
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_r()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->bearing_y = 0.f;
+	glyph->bearing_x = -9.f;
+	glyph->advance_x = 30.f;
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 30.f;
+	const f32 r = 0.4f;
+
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	gs_vec2 slp = gs_vec2_add(position, (gs_vec2){r * scl, -0.65f * scl});
+
+	path_draw_arc(p, slp, r * scl, 180.f, 340.f, num_segments, glyph_thickness, white);
+
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	slp = gs_vec2_add(position, (gs_vec2){0.f, -1.f * scl});
+	gs_vec2 elp = position;
+
+	path_draw_line(p, slp, elp, glyph_thickness, white);
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_s()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->bearing_y = -8.f;
+	glyph->bearing_x = -0.f;
+	glyph->advance_x = 35.f;
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 30.f;
+	const f32 r = 0.25f;
+
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	gs_vec2 slp = gs_vec2_add(position, (gs_vec2){0.1f * scl, -0.5f * scl});
+	gs_vec2 elp = gs_vec2_add(position, (gs_vec2){0.f, -0.4f * scl});
+
+	gs_vec2 n1 = gs_vec2_norm((gs_vec2){-1.66f, -4.38f});
+	gs_vec2 n2 = gs_vec2_norm((gs_vec2){-3.64f, -9.52f});
+
+	// path_draw_bezier_curve(p, 
+	// 	slp,
+	// 	gs_vec2_scale(n1, scl), 
+	// 	gs_vec2_scale(n2, scl), 
+	// 	elp,
+	// 	30, glyph_thickness, white);
+
+	path_draw_arc(p, gs_vec2_add(position, (gs_vec2){0.f, -r * scl}), r * scl, -30.f, -270.f, 70, glyph_thickness, white );
+
+	// slp = elp;
+	// elp = gs_vec2_add(position, (gs_vec2){-0.2f * scl, -0.3f * scl});
+	// n1 = gs_vec2_norm((gs_vec2){20.66f, -40.38f});
+	// n2 = gs_vec2_norm((gs_vec2){20.64f, -2.52f});
+
+	// path_draw_bezier_curve(p, 
+	// 	slp,
+	// 	gs_vec2_scale(n1, scl * 0.5f), 
+	// 	gs_vec2_scale(n2, scl * 0.5f), 
+	// 	elp,
+	// 	30, glyph_thickness, white);
+
+
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	path_draw_arc(p, gs_vec2_add(position, (gs_vec2){0.f, r * scl}), r * scl, -95.f, 160.f, 70, glyph_thickness, white );
+
+	p->joint_style = joint_style_round;
+
+	// // s
+	// path_draw_arc(p, slp, r * scl, 180.f, 340.f, num_segments, glyph_thickness, white);
+	// path_draw_arc(p, slp, r * scl, 180.f, 340.f, num_segments, glyph_thickness, white);
+
+	// gs_dyn_array_push(glyph->paths, path_create_new());
+	// p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	// slp = gs_vec2_add(position, (gs_vec2){0.f, -0.24f * scl});
+	// gs_vec2 elp = position;
+
+	// path_draw_line(p, slp, elp, glyph_thickness, white);
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_t()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->advance_x = 32.f;
+	glyph->bearing_y = -1.f;
+	glyph->bearing_x = -1.f;
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 70.f;
+	const f32 r = 0.1f;
+
+	gs_vec2 slp = gs_vec2_sub(position, (gs_vec2){0.f, 0.6f * scl});
+	gs_vec2 elp = gs_vec2_sub(position, (gs_vec2){0.f, 0.1f * scl});
+	path_draw_arc(p, gs_vec2_add(elp, (gs_vec2){r * scl, 0.f }), r * scl, 0.f, 180.f, 50, thickness, white);
+	path_draw_line(p, slp, elp, thickness, color);
+	p->joint_style = joint_style_round;
+
+	// st
+
+	// Draw cross
+	slp = gs_vec2_sub(position, (gs_vec2){0.1f * scl, 0.35f * scl});
+	elp = gs_vec2_sub(position, (gs_vec2){-0.1f * scl, 0.35f * scl});
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	path_draw_line(p, slp, elp, thickness, color);
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_u()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->advance_x = 38.f;
+	glyph->bearing_y = 0.f;
+	glyph->bearing_x = -10.f;
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 70.f;
+	const f32 r = 0.15f;
+
+	gs_vec2 slp = gs_vec2_sub(position, (gs_vec2){0.f, 0.35f * scl});
+	gs_vec2 elp = gs_vec2_sub(position, (gs_vec2){0.f, 0.15f * scl});
+	path_draw_arc(p, gs_vec2_add(elp, (gs_vec2){r * scl, 0.f }), r * scl, 0.f, 180.f, 50, thickness, white);
+	path_draw_line(p, slp, elp, thickness, color);
+	p->joint_style = joint_style_round;
+
+	// stu
+
+	slp = gs_vec2_sub(position, (gs_vec2){-r * scl * 2.f, 0.f * scl});
+	elp = gs_vec2_sub(position, (gs_vec2){-r * scl * 2.f, 0.35f * scl});
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	path_draw_line(p, slp, elp, thickness, color);
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_y()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->advance_x = 35.f;
+	glyph->bearing_y = 0.f;
+	glyph->bearing_x = 0.f;
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 35.f;
+	const f32 r = 0.5f;
+
+	gs_vec2 slp = gs_vec2_add(position, (gs_vec2){0.35f * scl, -0.8f * scl});
+	gs_vec2 elp = gs_vec2_sub(position, (gs_vec2){0.0f * scl, -0.0f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+	slp = elp;
+	elp = gs_vec2_sub(position, (gs_vec2){0.2f * scl, -0.2f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+	path_draw_line(p, elp, gs_vec2_sub(elp, (gs_vec2){0.1f * scl, 0.f}), thickness, color);
+	p->joint_style = joint_style_round;
+
+	// stuy
+
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	slp = gs_vec2_add(position, (gs_vec2){-0.35f * scl, -0.8f * scl});
+	elp = gs_vec2_sub(position, (gs_vec2){0.0f * scl, -0.0f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+	p->joint_style = joint_style_round;
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_v()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->advance_x = 35.f;
+	glyph->bearing_y = 0.f;
+	glyph->bearing_x = 0.f;
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 35.f;
+	const f32 r = 0.5f;
+
+	gs_vec2 slp = gs_vec2_add(position, (gs_vec2){0.35f * scl, -0.8f * scl});
+	gs_vec2 elp = gs_vec2_sub(position, (gs_vec2){0.0f * scl, -0.0f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+	p->joint_style = joint_style_round;
+
+	slp = gs_vec2_add(position, (gs_vec2){-0.35f * scl, -0.8f * scl});
+	elp = gs_vec2_sub(position, (gs_vec2){0.0f * scl, -0.0f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+	p->joint_style = joint_style_round;
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_w()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->advance_x = 35.f;
+	glyph->bearing_y = 0.f;
+	glyph->bearing_x = 0.f;
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 35.f;
+	const f32 r = 0.5f;
+
+	p->joint_style = joint_style_miter;
+
+	gs_vec2 slp = gs_vec2_add(position, (gs_vec2){-0.35f * scl, -0.8f * scl});
+	gs_vec2 elp = gs_vec2_sub(position, (gs_vec2){-0.1f * scl, -0.0f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+
+	slp = gs_vec2_sub(position, (gs_vec2){-0.1f * scl, 0.0f * scl});
+	elp = gs_vec2_add(position, (gs_vec2){0.0f * scl, -0.4f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+
+	slp = gs_vec2_add(position, (gs_vec2){0.0f * scl, -0.4f * scl});
+	elp = gs_vec2_sub(position, (gs_vec2){0.15f * scl, 0.0f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+
+	slp = gs_vec2_sub(position, (gs_vec2){0.0f * scl, -0.0f * scl});
+	elp = gs_vec2_add(position, (gs_vec2){0.35f * scl, -0.8f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_space()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->bearing_y = 0.f;
+	glyph->bearing_x = 0.f;
+	glyph->advance_x = 25.f;
+	return glyph;
+}
 
 void init_font()
 {
@@ -2179,10 +2930,28 @@ void init_font()
 	gs_hash_table_insert(g_font.glyphs, 'a', __glyph_create_a());
 	gs_hash_table_insert(g_font.glyphs, 'b', __glyph_create_b());
 	gs_hash_table_insert(g_font.glyphs, 'c', __glyph_create_c());
+	gs_hash_table_insert(g_font.glyphs, 'd', __glyph_create_d());
 	gs_hash_table_insert(g_font.glyphs, 'e', __glyph_create_e());
+	gs_hash_table_insert(g_font.glyphs, 'f', __glyph_create_f());
 	gs_hash_table_insert(g_font.glyphs, 'g', __glyph_create_g());
+	gs_hash_table_insert(g_font.glyphs, 'h', __glyph_create_h());
+	gs_hash_table_insert(g_font.glyphs, 'i', __glyph_create_i());
+	gs_hash_table_insert(g_font.glyphs, 'j', __glyph_create_j());
+	gs_hash_table_insert(g_font.glyphs, 'k', __glyph_create_k());
 	gs_hash_table_insert(g_font.glyphs, 'l', __glyph_create_l());
+	gs_hash_table_insert(g_font.glyphs, 'm', __glyph_create_m());
+	gs_hash_table_insert(g_font.glyphs, 'n', __glyph_create_n());
 	gs_hash_table_insert(g_font.glyphs, 'o', __glyph_create_o());
+	gs_hash_table_insert(g_font.glyphs, 'p', __glyph_create_p());
+	gs_hash_table_insert(g_font.glyphs, 'q', __glyph_create_q());
+	gs_hash_table_insert(g_font.glyphs, 'r', __glyph_create_r());
+	gs_hash_table_insert(g_font.glyphs, 's', __glyph_create_s());
+	gs_hash_table_insert(g_font.glyphs, 't', __glyph_create_t());
+	gs_hash_table_insert(g_font.glyphs, 'u', __glyph_create_u());
+	gs_hash_table_insert(g_font.glyphs, 'y', __glyph_create_y());
+	gs_hash_table_insert(g_font.glyphs, 'v', __glyph_create_v());
+	gs_hash_table_insert(g_font.glyphs, 'w', __glyph_create_w());
+	gs_hash_table_insert(g_font.glyphs, ' ', __glyph_create_space());
 }
 
 
