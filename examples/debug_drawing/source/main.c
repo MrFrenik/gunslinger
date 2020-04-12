@@ -1407,7 +1407,7 @@ void animation_add_action(animation_t* a, animation_action_type_t action_type,
 			if (!data) {
 				gs_assert(false);
 			}
-			
+
 			f32* amt = (f32*)data;
 			gs_byte_buffer_write(&a->action_data_buffer, f32, *amt);
 		} break;
@@ -3623,10 +3623,6 @@ void play_scene_two()
 	shape_t* shape = &g_shape;
 	u32 anim_ct = 0;
 
-	// gs_for_range_i(gs_dyn_array_size(g_animations)) {
-	// 	animation_set_shape(&g_animations[i], &g_shape);
-	// }
-
 	const u32 num_cols = 10;
 	const u32 num_rows = 10;
 	const f32 grid_size = 400.f;
@@ -3664,24 +3660,37 @@ void play_scene_two()
 	animation_set_shape(anim, shape);
 	animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 5.f, &fade_amt);
 
+	// Want an "animated" cell, to look as though it's iterating through the grid
 	/*
 		// Highlight center cell animation
 	*/
+	// What's top grid position?
+	gs_vec2 tl = (gs_vec2){ocp.x - grid_size / 2.f, ocp.y - grid_size / 2.f};
+	gs_vec2 pos = gs_vec2_add(tl, (gs_vec2){0.f, 0.f});
+
 	shape_begin(shape);
-	shape->xform.position = (gs_vec3){ws.x / 2.f, ws.y / 2.f, 0.f};
-	shape_draw_square(shape, ocp, chext, 2.f, highlight_col, false);
+	shape->xform.position = (gs_vec3){0.f, 0.f, 0.f};
+	shape->xform.scale = (gs_vec3){1.f, 1.f, 1.f};
+	shape_draw_square(shape, (gs_vec2){0.f, 0.f}, chext, 2.f, highlight_col, false);
 
 	anim = &g_animations[anim_ct++];
 	fade_amt = 10.0f;
 	animation_set_shape(anim, shape);
 	animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_lerp, 15.f, NULL);
-	animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 0.5f, &fade_amt);
-	fade_amt = 0.1f;
-	animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 0.5f, &fade_amt);
-	fade_amt = 10.0f;
-	animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 0.5f, &fade_amt);
-	fade_amt = 0.0f;
-	animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 3.0f, &fade_amt);
+
+	gs_for_range_i( num_cols ) {
+		fade_amt = 10.0f;
+		animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 1.0f, &fade_amt);
+
+		animation_add_action(anim, animation_action_type_wait, animation_ease_type_smooth_step, 2.0f, NULL);
+
+		fade_amt = 0.1f;
+		animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 1.0f, &fade_amt);
+
+		trans.position = (gs_vec3){tl.x + i * cw, tl.y, 0.f};
+		trans.scale = (gs_vec3){1.f, 1.f, 1.f};
+		animation_add_action(anim, animation_action_type_transform, animation_ease_type_smooth_step, 3.f, &trans);
+	}	
 }
 
 
