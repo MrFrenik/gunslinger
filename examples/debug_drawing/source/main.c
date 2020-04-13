@@ -1498,8 +1498,8 @@ int main( int argc, char** argv )
 {
 	gs_application_desc app = {0};
 	app.window_title 		= "Debug Drawing";
-	app.window_width 		= 1920;
-	app.window_height 		= 1080;
+	app.window_width 		= 1920 / 2;
+	app.window_height 		= 1080 / 2;
 	app.init 				= &app_init;
 	app.update 				= &app_update;
 	app.shutdown 			= &app_shutdown;
@@ -3040,6 +3040,50 @@ vg_glyph_t* __glyph_create_backward_slash()
 	return glyph;
 }
 
+vg_glyph_t* __glyph_create_asterisk()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->bearing_y = -15.f;
+	glyph->bearing_x = 0.f;
+	glyph->advance_x = 25.f;
+
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 35.f;
+	const f32 r = 0.5f;
+
+	const f32 deg0 = gs_deg_to_rad(45.f); 
+	const f32 deg1 = gs_deg_to_rad(45.f * 2.f);
+	const f32 deg2 = gs_deg_to_rad(45.f * 3.f);
+	const f32 deg3 = gs_deg_to_rad(45.f * 4.f);
+	const f32 deg4 = gs_deg_to_rad(45.f * 5.f);
+	const f32 deg5 = gs_deg_to_rad(45.f * 6.f);
+	const f32 deg6 = gs_deg_to_rad(45.f * 7.f);
+
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	gs_vec2 slp = gs_vec2_add(position, (gs_vec2){cos(deg0) * r * scl, sin(deg0) * r * scl});
+	gs_vec2 elp = gs_vec2_add(position, (gs_vec2){cos(deg4) * r * scl, sin(deg4) * r * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	slp = gs_vec2_add(position, (gs_vec2){cos(deg2) * r * scl, sin(deg2) * r * scl});
+	elp = gs_vec2_add(position, (gs_vec2){cos(deg6) * r * scl, sin(deg6) * r * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	slp = gs_vec2_add(position, (gs_vec2){cos(deg1) * r * scl, sin(deg1) * r * scl});
+	elp = gs_vec2_add(position, (gs_vec2){cos(deg5) * r * scl, sin(deg5) * r * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+
+	return glyph;
+}
+
 vg_glyph_t* __glyph_create_underscore()
 {
 	vg_glyph_t* glyph = glyph_create_new_ptr();
@@ -3127,7 +3171,7 @@ vg_glyph_t* __glyph_create_minus()
 {
 	vg_glyph_t* glyph = glyph_create_new_ptr();
 	glyph->bearing_y = -15.f;
-	glyph->bearing_x = 0.f;
+	glyph->bearing_x = 5.f;
 	glyph->advance_x = 25.f;
 
 	const s32 num_segments = 20;
@@ -3995,6 +4039,7 @@ void init_font()
 	gs_hash_table_insert(g_font.glyphs, '9', __glyph_create_nine());
 	gs_hash_table_insert(g_font.glyphs, ' ', __glyph_create_space());
 	gs_hash_table_insert(g_font.glyphs, '_', __glyph_create_underscore());
+	gs_hash_table_insert(g_font.glyphs, '*', __glyph_create_asterisk());
 	gs_hash_table_insert(g_font.glyphs, ';', __glyph_create_semi_colon());
 	gs_hash_table_insert(g_font.glyphs, '}', __glyph_create_right_brace());
 	gs_hash_table_insert(g_font.glyphs, '{', __glyph_create_left_brace());
@@ -4015,6 +4060,7 @@ void init_font()
 }
 
 #define func_col 		(gs_vec4){0.2f, 0.6f, 0.8f, 1.f}
+#define member_var_col 	(gs_vec4){0.8f, 0.3f, 0.3f, 1.f}
 #define default_col  	(gs_vec4){1.f, 1.f, 1.f, 1.f}
 #define primitive_col  	(gs_vec4){0.9f, 0.7f, 0.2f, 1.f}
 #define keyword_col  	(gs_vec4){0.7f, 0.6f, 0.9f, 1.f}
@@ -4296,7 +4342,7 @@ void play_scene_one()
 
 void play_scene_two()
 {
-	anim_mult = 2.f;
+	anim_mult = 5.f;
 
 	gs_for_range_i(gs_dyn_array_size(g_animations)) {
 		animation_clear(&g_animations[i]);
@@ -4517,16 +4563,16 @@ void play_scene_two()
 		shape_begin(shape);
 		shape->xform.position = (gs_vec3){ws.x / 2.f, ws.y / 2.f, 0.f};
 		shape->xform.scale = (gs_vec3){1.f, 1.f, 1.f};
-		gs_vec2 slp = (gs_vec2){-245.f, -325.f};
-		gs_vec2 elp = gs_vec2_add(slp, (gs_vec2){100.f, 0.f});
+		gs_vec2 slp = (gs_vec2){-200.f, -275.f};
+		gs_vec2 elp = gs_vec2_add(slp, (gs_vec2){90.f, 0.f});
 		path_t* p = shape_begin_path(shape);
 		p->joint_style = joint_style_miter;
 		path_draw_line(p, slp, elp, thickness, white);
 		slp = elp;
-		elp = gs_vec2_add(slp, (gs_vec2){0.f, 335.f});
+		elp = gs_vec2_add(slp, (gs_vec2){0.f, 285.f});
 		path_draw_line(p, slp, elp, thickness, white);
 		slp = elp;
-		elp = gs_vec2_add(slp, (gs_vec2){200.f, 0.f});
+		elp = gs_vec2_add(slp, (gs_vec2){180.f, 0.f});
 		path_draw_line(p, slp, elp, thickness, white);
 		// path_draw_line(p, elp, (gs_vec2){elp.x, elp.y - 15.f}, thickness, white);
 
@@ -4562,16 +4608,16 @@ void play_scene_two()
 		shape_begin(shape);
 		shape->xform.position = (gs_vec3){ws.x / 2.f, ws.y / 2.f, 0.f};
 		shape->xform.scale = (gs_vec3){1.f, 1.f, 1.f};
-		gs_vec2 slp = (gs_vec2){-245.f, -325.f};
-		gs_vec2 elp = gs_vec2_add(slp, (gs_vec2){100.f, 0.f});
+		gs_vec2 slp = (gs_vec2){-200.f, -275.f};
+		gs_vec2 elp = gs_vec2_add(slp, (gs_vec2){90.f, 0.f});
 		path_t* p = shape_begin_path(shape);
 		p->joint_style = joint_style_miter;
 		path_draw_line(p, slp, elp, thickness, white);
 		slp = elp;
-		elp = gs_vec2_add(slp, (gs_vec2){0.f, 460.f});
+		elp = gs_vec2_add(slp, (gs_vec2){0.f, 410.f});
 		path_draw_line(p, slp, elp, thickness, white);
 		slp = elp;
-		elp = gs_vec2_add(slp, (gs_vec2){245.f, 0.f});
+		elp = gs_vec2_add(slp, (gs_vec2){208.f, 0.f});
 		path_draw_line(p, slp, elp, thickness, white);
 
 		gs_dyn_array_push(g_animations, animation_create_new());
@@ -4609,23 +4655,54 @@ void play_scene_two()
 		const f32 bt2 = 22.f;
 		const f32 wt = _bt * bt2;
 		const f32 tt = 3.f;
-		gs_vec3 trans = (gs_vec3){-120.f, -grid_size + 180.f, 0.f}; 
+		gs_vec3 trans = (gs_vec3){-120.f, -grid_size + 290.f, 0.f}; 
 		xpos = 315.f;
 		yoff = cached_ypos;
 		animate_txt("update_sand", xpos, yoff, txt_size, func_col, wt, 1.f, translate_anim(0.f, tt, trans));
 
 		// Need to animate these separately, since they're going to show up AFTER the 'update sand' goes up top
 		xpos = 315.f - 120.f + 45.f * 7 + 30.f;
-		yoff = -grid_size - 65.f;
+		yoff = trans.y - 90.f;
 		const f32 wt2 = wt + 5.f;
 		const f32 ft2 = 3.f;
 		animate_txt(	"(", xpos, yoff, txt_size, default_col, wt2, ft2);
 		animate_txt("u32", xpos, yoff, txt_size, primitive_col, wt2, ft2);
 		animate_txt(" x, ", xpos, yoff, txt_size, default_col, wt2, ft2);
 		animate_txt("u32", xpos, yoff, txt_size, primitive_col, wt2, ft2);
-		animate_txt(" y) {\n", xpos, yoff, txt_size, default_col, wt2, ft2);
-		animate_txt(" // update sand...\n", xpos, yoff, txt_size, default_col, wt2, ft2);
+		animate_txt(" y)\n", xpos, yoff, txt_size, default_col, wt2, ft2);
+		animate_txt("{\n", xpos, yoff, txt_size, default_col, wt2, ft2);
+
+		animate_txt("  f32 ", xpos, yoff, txt_size, primitive_col, wt2, ft2);
+		animate_txt("dt = ", xpos, yoff, txt_size, default_col, wt2, ft2);
+		animate_txt("gs_engine_instance", xpos, yoff, txt_size, func_col, wt2, ft2);
+		animate_txt("()", xpos, yoff, txt_size, default_col, wt2, ft2);
+		animate_txt("->\n", xpos, yoff, txt_size, default_col, wt2, ft2);
+		animate_txt("    ctx", xpos, yoff, txt_size, member_var_col, wt2, ft2);
+		animate_txt(".", xpos, yoff, txt_size, default_col, wt2, ft2);
+		animate_txt("platform", xpos, yoff, txt_size, member_var_col, wt2, ft2);
+		animate_txt("->", xpos, yoff, txt_size, default_col, wt2, ft2);
+		animate_txt("time", xpos, yoff, txt_size, member_var_col, wt2, ft2);
+		animate_txt(".", xpos, yoff, txt_size, default_col, wt2, ft2);
+		animate_txt("delta", xpos, yoff, txt_size, member_var_col, wt2, ft2);
+		animate_txt(";\n\n", xpos, yoff, txt_size, default_col, wt2, ft2);
+
+		animate_txt("  u32 ", xpos, yoff, txt_size, primitive_col, wt2, ft2);
+		animate_txt("read_idx = ", xpos, yoff, txt_size, default_col, wt2, ft2);
+		animate_txt("compute_idx ", xpos, yoff, txt_size, func_col, wt2, ft2);
+		animate_txt("(x,y);\n\n", xpos, yoff, txt_size, default_col, wt2, ft2);
+
+		animate_txt("  particle_t* ", xpos, yoff, txt_size, primitive_col, wt2, ft2);
+		animate_txt("p =\n", xpos, yoff, txt_size, default_col, wt2, ft2);
+		animate_txt("    get_particle_at ", xpos, yoff, txt_size, func_col, wt2, ft2);
+		animate_txt("(read_idx);\n\n", xpos, yoff, txt_size, default_col, wt2, ft2);
+
+		animate_txt("  // update particle as sand...\n", xpos, yoff, txt_size, comment_col, wt2, ft2);
+
 		animate_txt("}", xpos, yoff, txt_size, default_col, wt2, ft2);
+
+	// // For water, same as sand, but we'll check immediate left and right as well
+	// u32 read_idx = compute_idx( x, y );
+	// particle_t* p = &g_world_particle_data[ read_idx ];
 	}
 
 
