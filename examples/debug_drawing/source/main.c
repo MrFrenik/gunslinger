@@ -21,7 +21,7 @@ _global b32 anti_alias = true;
 _global f32 anti_alias_scl = 2.f;
 _global b32 is_playing = true;
 
-_global f32 anim_mult = 5.f;
+_global f32 anim_mult = 1.f;
 
 typedef struct vg_ctx_t
 {
@@ -3824,6 +3824,84 @@ vg_glyph_t* __glyph_create_right_brace()
 	return glyph;
 }
 
+vg_glyph_t* __glyph_create_left_bracket()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->advance_x = 30.f;
+	glyph->bearing_y = -0.f;
+	glyph->bearing_x = 0.f;
+
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 75.f;
+	const f32 r = 0.1f;
+
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	gs_vec2 slp = gs_vec2_add(position, (gs_vec2){0.2f * scl, -0.6f * scl});
+	gs_vec2 elp = gs_vec2_add(position, (gs_vec2){0.f, -0.6f * scl});
+	// Draw line
+	path_draw_line(p, slp, elp, thickness, color);
+
+	slp = elp;
+	elp = position;
+	// Draw line
+	path_draw_line(p, slp, elp, thickness, color);
+
+	slp = elp;
+	elp = gs_vec2_add(slp, (gs_vec2){0.2f * scl, 0.f});;
+	// Draw line
+	path_draw_line(p, slp, elp, thickness, color);
+
+	p->joint_style = joint_style_miter;
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_right_bracket()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->advance_x = 30.f;
+	glyph->bearing_y = -0.f;
+	glyph->bearing_x = 0.f;
+
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 75.f;
+	const f32 r = 0.1f;
+
+	// ]
+
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	gs_vec2 slp = gs_vec2_add(position, (gs_vec2){-0.2f * scl, -0.6f * scl});
+	gs_vec2 elp = gs_vec2_add(position, (gs_vec2){0.f, -0.6f * scl});
+	// Draw line
+	path_draw_line(p, slp, elp, thickness, color);
+
+	slp = elp;
+	elp = position;
+	// Draw line
+	path_draw_line(p, slp, elp, thickness, color);
+
+	slp = elp;
+	elp = gs_vec2_add(slp, (gs_vec2){-0.2f * scl, 0.f});;
+	// Draw line
+	path_draw_line(p, slp, elp, thickness, color);
+
+	p->joint_style = joint_style_miter;
+
+	return glyph;
+}
+
 vg_glyph_t* __glyph_create_left_brace()
 {
 	vg_glyph_t* glyph = glyph_create_new_ptr();
@@ -3945,10 +4023,71 @@ void init_font()
 	gs_hash_table_insert(g_font.glyphs, '<', __glyph_create_less_than());
 	gs_hash_table_insert(g_font.glyphs, '>', __glyph_create_greater_than());
 	gs_hash_table_insert(g_font.glyphs, ':', __glyph_create_colon());
+	gs_hash_table_insert(g_font.glyphs, '[', __glyph_create_left_bracket());
+	gs_hash_table_insert(g_font.glyphs, ']', __glyph_create_right_bracket());
 }
+
+#define func_col 		(gs_vec4){0.2f, 0.6f, 0.8f, 1.f}
+#define default_col  	(gs_vec4){1.f, 1.f, 1.f, 1.f}
+#define primitive_col  	(gs_vec4){0.9f, 0.7f, 0.2f, 1.f}
+#define keyword_col  	(gs_vec4){0.7f, 0.6f, 0.9f, 1.f}
+#define comment_col 	(gs_vec4){0.4f, 0.4f, 0.4f, 1.f}
+
+#define animate_txt(_txt, _x, _y, _size, _col, _wait_time, _fade_time, ...)\
+do\
+{\
+	shape_begin(shape);\
+	shape->xform.position = (gs_vec3){ws.x / 2.f, ws.y / 2.f, 0.f};\
+	shape->xform.scale = (gs_vec3){1.f, 1.f, 1.f};\
+	gs_dyn_array_push(g_animations, animation_create_new());\
+	anim = gs_dyn_array_back(g_animations);\
+	anim->animation_speed = 1.0f;\
+	(_x) += shape_draw_text(shape, (gs_vec2){(_x), (_y)}, &g_font, (_txt), (_size), (_col));\
+	for (u32 i = 0; i < gs_string_length((_txt)); ++i) {\
+		if ((_txt)[i] == '\n') {\
+			(_x) = 0.f;\
+			(_y) += 75.f;\
+		}\
+	}\
+	animation_set_shape(anim, shape);\
+	animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_lerp, (_wait_time), NULL);\
+	animation_add_action(anim, animation_action_type_walk_path, animation_ease_type_smooth_step, (_fade_time), NULL);\
+	__VA_ARGS__;\
+	\
+} while(0)
+
+#define fade_out_forever(_wt, _fat)\
+do {\
+	f32 _fade = 0.0f;\
+	animation_add_action(anim, animation_action_type_wait, animation_ease_type_smooth_step, (_wt), NULL);\
+	animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, (_fat), &_fade);\
+} while ( 0 )
+
+#define blink_anim(_start_fade, _end_fade, _iterations, _ft)\
+do {\
+	f32 _sf = (_start_fade);\
+	f32 _ef = (_end_fade);\
+	for ( u32 i = 0; i < (_iterations); ++i ) {\
+		animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, (_ft), &_sf);\
+		animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, (_ft), &_ef);\
+	}\
+} while ( 0 )
+
+#define translate_anim(_wt, _tt, translation)\
+do {\
+	gs_vqs __trans = gs_vqs_default();\
+	__trans.position = gs_vec3_add(anim->shape.xform.position, translation);\
+	animation_add_action(anim, animation_action_type_wait, animation_ease_type_smooth_step, (_wt), NULL);\
+	animation_add_action(anim, animation_action_type_transform, animation_ease_type_smooth_step, (_tt), &__trans);\
+} while ( 0 )
+
+#define color_alpha(_c, _a)\
+	(gs_vec4){(_c).x, (_c).y, (_c).z, (_a)}
 
 void play_scene_one()
 {
+	anim_mult = 1.f;
+
 	gs_for_range_i(gs_dyn_array_size(g_animations)) {
 		animation_clear(&g_animations[i]);
 	}
@@ -4080,6 +4219,12 @@ void play_scene_one()
 	shape->xform.scale = (gs_vec3){1.f, 1.f, 1.f};
 
 	shape_draw_square(shape, (gs_vec2){0.f, 0.f}, (gs_vec2){ws.x * 0.3f, ws.y * 0.2f}, 1.f, white, false);
+
+	gs_dyn_array_push(g_animations, animation_create_new());
+	anim = gs_dyn_array_back(g_animations);
+	animation_set_shape(anim, shape);
+	animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_lerp, 20.f, NULL);
+	animation_add_action(anim, animation_action_type_walk_path, animation_ease_type_smooth_step, 10.f, NULL);
 	
 	const char* txt = "typedef struct particle_t\n"\
 	"{\n"\
@@ -4090,13 +4235,44 @@ void play_scene_one()
 	"   b32 has_been_updated;\n"\
 	"   uint8_t[3] padding;\n"\
 	"} particle_t;";
-	shape_draw_text(shape, (gs_vec2){-ws.x * 0.2f, glyph_height - 350.f}, &g_font, txt, txt_size, white);	// Making them all monospaced. Fuck it.
+	// shape_draw_text(shape, (gs_vec2){-ws.x * 0.2f, glyph_height - 350.f}, &g_font, txt, txt_size, white);	// Making them all monospaced. Fuck it.
 
-	gs_dyn_array_push(g_animations, animation_create_new());
-	anim = gs_dyn_array_back(g_animations);
-	animation_set_shape(anim, shape);
-	animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_lerp, 20.f, NULL);
-	animation_add_action(anim, animation_action_type_walk_path, animation_ease_type_smooth_step, 10.f, NULL);
+	f32 xpos = -ws.x * 0.2f;
+	f32 ypos = glyph_height - 350.f;
+	animate_txt("typedef ", xpos, ypos, txt_size, keyword_col, 20.f, 1.f);
+	animate_txt("struct ", xpos, ypos, txt_size, keyword_col, 20.f, 1.f);
+	animate_txt("particle_t\n", xpos, ypos, txt_size, default_col, 20.f, 1.f);
+
+	xpos = -ws.x * 0.2f;
+	animate_txt("{\n", xpos, ypos, txt_size, default_col, 20.f, 1.f);
+
+	xpos = -ws.x * 0.2f;
+	animate_txt("  uint8_t", xpos, ypos, txt_size, primitive_col, 20.f, 1.f);
+	animate_txt(" id;\n", xpos, ypos, txt_size, default_col, 20.f, 1.f);
+
+	xpos = -ws.x * 0.2f;
+	animate_txt("  f32", xpos, ypos, txt_size, primitive_col, 20.f, 1.f);
+	animate_txt(" life_time;\n", xpos, ypos, txt_size, default_col, 20.f, 1.f);
+
+	xpos = -ws.x * 0.2f;
+	animate_txt("  gs_vec2", xpos, ypos, txt_size, primitive_col, 20.f, 1.f);
+	animate_txt(" velocity;\n", xpos, ypos, txt_size, default_col, 20.f, 1.f);
+
+	xpos = -ws.x * 0.2f;
+	animate_txt("  color_t", xpos, ypos, txt_size, primitive_col, 20.f, 1.f);
+	animate_txt(" color;\n", xpos, ypos, txt_size, default_col, 20.f, 1.f);
+
+	xpos = -ws.x * 0.2f;
+	animate_txt("  b32", xpos, ypos, txt_size, primitive_col, 20.f, 1.f);
+	animate_txt(" has_been_updated;\n", xpos, ypos, txt_size, default_col, 20.f, 1.f);
+
+	xpos = -ws.x * 0.2f;
+	animate_txt("  uint8_t", xpos, ypos, txt_size, primitive_col, 20.f, 1.f);
+	animate_txt("[3] padding;\n", xpos, ypos, txt_size, default_col, 20.f, 1.f);
+
+	xpos = -ws.x * 0.2f;
+	animate_txt("}", xpos, ypos, txt_size, default_col, 20.f, 1.f);
+
 
 	shape_begin(shape);
 	shape->xform.position = (gs_vec3){ws.x * 0.5f, ws.y * 0.5f, 0.f};
@@ -4109,7 +4285,7 @@ void play_scene_one()
 	"32 bytes\n"\
 	"3 bytes\n"\
 	"total: 136";
-	shape_draw_text(shape, (gs_vec2){ws.x * 0.45f, glyph_height - 450.f + 80.f * 3 + 20.f }, &g_font, txt, txt_size, (gs_vec4){1.f, 1.f, 1.f, 0.1f});	// Making them all monospaced. Fuck it.
+	shape_draw_text(shape, (gs_vec2){ws.x * 0.4f, glyph_height - 450.f + 80.f * 3 + 10.f }, &g_font, txt, txt_size, (gs_vec4){1.f, 1.f, 1.f, 0.1f});	// Making them all monospaced. Fuck it.
 
 	gs_dyn_array_push(g_animations, animation_create_new());
 	anim = gs_dyn_array_back(g_animations);
@@ -4128,86 +4304,12 @@ void play_scene_one()
 	slp = gs_vec2_add(slp, (gs_vec2){0.f, 10.f});
 	elp = gs_vec2_add(slp, (gs_vec2){70.f, 0.f});
 	shape_draw_line(shape, slp, elp, 0.1f, white);
-
-	// txt = "{";
-	// shape_draw_text(shape, slp, &g_font, txt, 350.f, (gs_vec4){1.f, 1.f, 1.f, 1.f});	// Making them all monospaced. Fuck it.
-
-	gs_dyn_array_push(g_animations, animation_create_new());
-	anim = gs_dyn_array_back(g_animations);
-	animation_set_shape(anim, shape);
-	animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_lerp, 20.f, NULL);
-	animation_add_action(anim, animation_action_type_walk_path, animation_ease_type_smooth_step, 10.f, NULL);
-
-	shape_begin(shape);
-	shape->xform.position = (gs_vec3){ws.x / 2.f, ws.y / 2.f, 0.f};
-	shape->xform.scale = (gs_vec3){1.f, 1.f, 1.f};
-	gs_vec2 ta = gs_vec2_add(elp, (gs_vec2){2.f, 5.f});
-	gs_vec2 tb = gs_vec2_add(ta, (gs_vec2){0.f, -20.f});
-	gs_vec2 tc = gs_vec2_add(tb, (gs_vec2){20.f, 10.f});
-	shape_draw_triangle(shape, ta, tb, tc, 0.1f, white);
-
-	gs_dyn_array_push(g_animations, animation_create_new());
-	anim = gs_dyn_array_back(g_animations);
-	animation_set_shape(anim, shape);
-	animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_lerp, 28.f, NULL);
-	animation_add_action(anim, animation_action_type_walk_path, animation_ease_type_smooth_step, 5.f, NULL);
 }
-
-#define animate_txt(_txt, _x, _y, _size, _col, _wait_time, _fade_time, ...)\
-do\
-{\
-	shape_begin(shape);\
-	shape->xform.position = (gs_vec3){ws.x / 2.f, ws.y / 2.f, 0.f};\
-	shape->xform.scale = (gs_vec3){1.f, 1.f, 1.f};\
-	gs_dyn_array_push(g_animations, animation_create_new());\
-	anim = gs_dyn_array_back(g_animations);\
-	anim->animation_speed = 1.0f;\
-	xpos += shape_draw_text(shape, (gs_vec2){(_x), (_y)}, &g_font, (_txt), (_size), (_col));\
-	for (u32 i = 0; i < gs_string_length((_txt)); ++i) {\
-		if ((_txt)[i] == '\n') {\
-			xpos = 0.f;\
-			yoff += 75.f;\
-		}\
-	}\
-	animation_set_shape(anim, shape);\
-	animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_lerp, (_wait_time), NULL);\
-	fade_amt = 10.f;\
-	/*animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, (_base_time) + 15.f, &fade_amt);*/\
-	animation_add_action(anim, animation_action_type_walk_path, animation_ease_type_smooth_step, (_fade_time), NULL);\
-	__VA_ARGS__;\
-	\
-} while(0)
-
-#define fade_out_forever(_wt, _fat)\
-do {\
-	f32 _fade = 0.0f;\
-	animation_add_action(anim, animation_action_type_wait, animation_ease_type_smooth_step, (_wt), NULL);\
-	animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, (_fat), &_fade);\
-} while ( 0 )
-
-#define blink_anim(_start_fade, _end_fade, _iterations, _ft)\
-do {\
-	f32 _sf = (_start_fade);\
-	f32 _ef = (_end_fade);\
-	for ( u32 i = 0; i < (_iterations); ++i ) {\
-		animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, (_ft), &_sf);\
-		animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, (_ft), &_ef);\
-	}\
-} while ( 0 )
-
-#define translate_anim(_wt, _tt, translation)\
-do {\
-	gs_vqs __trans = gs_vqs_default();\
-	__trans.position = gs_vec3_add(anim->shape.xform.position, translation);\
-	animation_add_action(anim, animation_action_type_wait, animation_ease_type_smooth_step, (_wt), NULL);\
-	animation_add_action(anim, animation_action_type_transform, animation_ease_type_smooth_step, (_tt), &__trans);\
-} while ( 0 )
-
-#define color_alpha(_c, _a)\
-	(gs_vec4){(_c).x, (_c).y, (_c).z, (_a)}
 
 void play_scene_two()
 {
+	anim_mult = 2.f;
+
 	gs_for_range_i(gs_dyn_array_size(g_animations)) {
 		animation_clear(&g_animations[i]);
 	}
@@ -4271,11 +4373,6 @@ void play_scene_two()
 	gs_vec2 bl = (gs_vec2){ocp.x - grid_size / 2.f, ocp.y + grid_size / 2.f};
 
 	const f32 alpha = 1.0f;
-	const gs_vec4 func_col = (gs_vec4){0.2f, 0.6f, 0.8f, alpha};
-	const gs_vec4 default_col = (gs_vec4){1.f, 1.f, 1.f, alpha};
-	const gs_vec4 primitive_col = (gs_vec4){0.9f, 0.7f, 0.2f, alpha};
-	const gs_vec4 keyword_col = (gs_vec4){0.7f, 0.6f, 0.9f, alpha};
-	const gs_vec4 comment_col = (gs_vec4){0.4f, 0.4f, 0.4f, alpha};
 
 	b32 done = false;
 	u32 count = 0;
@@ -4376,74 +4473,55 @@ void play_scene_two()
 	f32 fat = 1.0f;
 	f32 cached_xpos = 0.f;
 	f32 cached_ypos = 0.f;
+	yoff = yoff + 150.f;
 
 	// Need to clear all of this text
-	animate_txt("for ", xpos, yoff + 150.f, txt_size, keyword_col, _bt * 2.f, _bt * 2.f, fade_out_forever(wt, fat));
-	animate_txt("(", xpos, yoff + 150.f, txt_size, default_col, _bt * 2.f, _bt * 2.f, fade_out_forever(wt, fat));
-	animate_txt("u32", xpos, yoff + 150.f, txt_size, primitive_col, _bt * 2.f, _bt * 2.f, fade_out_forever(wt, fat));
-	animate_txt(" y = height - 1; y > 0; --y)\n", xpos, yoff + 150.f, txt_size, default_col, _bt * 2.f, _bt * 2.f, fade_out_forever(wt, fat));
-	animate_txt("{\n", xpos, yoff + 150.f, txt_size, default_col, _bt * 2.f, _bt * 2.f, fade_out_forever(wt, fat));
+	animate_txt("for ", xpos, yoff, txt_size, keyword_col, _bt * 2.f, _bt * 2.f, fade_out_forever(wt, fat));
+	animate_txt("(", xpos, yoff, txt_size, default_col, _bt * 2.f, _bt * 2.f, fade_out_forever(wt, fat));
+	animate_txt("u32", xpos, yoff, txt_size, primitive_col, _bt * 2.f, _bt * 2.f, fade_out_forever(wt, fat));
+	animate_txt(" y = height - 1; y > 0; --y)\n", xpos, yoff, txt_size, default_col, _bt * 2.f, _bt * 2.f, fade_out_forever(wt, fat));
+	animate_txt("{\n", xpos, yoff, txt_size, default_col, _bt * 2.f, _bt * 2.f, fade_out_forever(wt, fat));
 
 	xpos += 45.f;
-	animate_txt("for ", xpos, yoff + 150.f, txt_size, keyword_col, _bt * 3.f, _bt * 3.f, fade_out_forever(wt2, fat));
-	animate_txt("(", xpos, yoff + 150.f, txt_size, default_col, _bt * 3.f, _bt * 3.f, fade_out_forever(wt2, fat));
-	animate_txt("u32", xpos, yoff + 150.f, txt_size, primitive_col, _bt * 3.f, _bt * 3.f, fade_out_forever(wt2, fat));
-	animate_txt(" x = 0; x < width; ++x)\n", xpos, yoff + 150.f, txt_size, default_col, _bt * 3.f, _bt * 3.f, fade_out_forever(wt2, fat));
-	animate_txt(" {\n", xpos, yoff + 150.f, txt_size, default_col, _bt * 3.f, _bt * 3.f, fade_out_forever(wt2, fat));
+	animate_txt("for ", xpos, yoff, txt_size, keyword_col, _bt * 3.f, _bt * 3.f, fade_out_forever(wt2, fat));
+	animate_txt("(", xpos, yoff, txt_size, default_col, _bt * 3.f, _bt * 3.f, fade_out_forever(wt2, fat));
+	animate_txt("u32", xpos, yoff, txt_size, primitive_col, _bt * 3.f, _bt * 3.f, fade_out_forever(wt2, fat));
+	animate_txt(" x = 0; x < width; ++x)\n", xpos, yoff, txt_size, default_col, _bt * 3.f, _bt * 3.f, fade_out_forever(wt2, fat));
+	animate_txt(" {\n", xpos, yoff, txt_size, default_col, _bt * 3.f, _bt * 3.f, fade_out_forever(wt2, fat));
 
-	animate_txt("   u32 ", xpos, yoff + 150.f, txt_size, primitive_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
-	animate_txt("read_idx = ", xpos, yoff + 150.f, txt_size, default_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
-	animate_txt("compute_idx", xpos, yoff + 150.f, txt_size, func_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
-	animate_txt("(x,y);\n", xpos, yoff + 150.f, txt_size, default_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
+	animate_txt("   u32 ", xpos, yoff, txt_size, primitive_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
+	animate_txt("read_idx = ", xpos, yoff, txt_size, default_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
+	animate_txt("compute_idx", xpos, yoff, txt_size, func_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
+	animate_txt("(x,y);\n", xpos, yoff, txt_size, default_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
 
-	animate_txt("   u8 ", xpos, yoff + 150.f, txt_size, primitive_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
-	animate_txt(" mat_id = ", xpos, yoff + 150.f, txt_size, default_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
-	animate_txt("get_particle", xpos, yoff + 150.f, txt_size, func_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
-	animate_txt("(x,y).id;\n", xpos, yoff + 150.f, txt_size, default_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
+	animate_txt("   u8 ", xpos, yoff, txt_size, primitive_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
+	animate_txt(" mat_id = ", xpos, yoff, txt_size, default_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
+	animate_txt("get_particle", xpos, yoff, txt_size, func_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
+	animate_txt("(x,y).id;\n", xpos, yoff, txt_size, default_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
 
-	animate_txt("   switch", xpos, yoff + 150.f, txt_size, keyword_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
-	animate_txt(" (mat_id)\n", xpos, yoff + 150.f, txt_size, default_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
-	animate_txt("   {\n", xpos, yoff + 150.f, txt_size, default_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
+	animate_txt("   switch", xpos, yoff, txt_size, keyword_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
+	animate_txt(" (mat_id)\n", xpos, yoff, txt_size, default_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
+	animate_txt("   {\n", xpos, yoff, txt_size, default_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
 
-	animate_txt("     // do nothing\n", xpos, yoff + 150.f, txt_size, comment_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
+	animate_txt("     // do nothing\n", xpos, yoff, txt_size, comment_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
 
-	animate_txt("     case ", xpos, yoff + 150.f, txt_size, keyword_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
-	animate_txt("mat_id_empty:\n", xpos, yoff + 150.f, txt_size, default_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
-	animate_txt("       break;\n", xpos, yoff + 150.f, txt_size, keyword_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
+	animate_txt("     case ", xpos, yoff, txt_size, keyword_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
+	animate_txt("mat_id_empty:\n", xpos, yoff, txt_size, default_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
+	animate_txt("       break;\n", xpos, yoff, txt_size, keyword_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
 
-	animate_txt("     // do something\n", xpos, yoff + 150.f, txt_size, comment_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
-	animate_txt("     case ", xpos, yoff + 150.f, txt_size, keyword_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
-	animate_txt("mat_id_sand:\n", xpos, yoff + 150.f, txt_size, default_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
+	animate_txt("     // do something\n", xpos, yoff, txt_size, comment_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
+	animate_txt("     case ", xpos, yoff, txt_size, keyword_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
+	animate_txt("mat_id_sand:\n", xpos, yoff, txt_size, default_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
 	cached_xpos = xpos;
 	cached_ypos = yoff;
-	animate_txt("       update_sand", xpos, yoff + 150.f, txt_size, func_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
-	animate_txt("(x,y);\n", xpos, yoff + 150.f, txt_size, default_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
-	animate_txt("       break;\n", xpos, yoff + 150.f, txt_size, keyword_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
+	animate_txt("       update_sand", xpos, yoff, txt_size, func_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
+	animate_txt("(x,y);\n", xpos, yoff, txt_size, default_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
+	animate_txt("       break;\n", xpos, yoff, txt_size, keyword_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
 
-	animate_txt("   }\n", xpos, yoff + 150.f, txt_size, default_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
+	animate_txt("   }\n", xpos, yoff, txt_size, default_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
 
-	animate_txt(" }\n", xpos, yoff + 150.f, txt_size, default_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
-	animate_txt("}", xpos, yoff + 150.f, txt_size, default_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
-
-	// Want to animate a box around the 
-	{
-		shape_begin(shape);
-		shape->xform.position = (gs_vec3){ws.x / 2.f, ws.y / 2.f, 0.f};
-		shape->xform.scale = (gs_vec3){1.f, 1.f, 1.f};
-		shape_draw_square(shape, (gs_vec2){280.f, 135.f}, 
-			(gs_vec2){grid_size * 0.3f, grid_size * 0.03f}, 
-			0.1f, color_alpha(white, 0.1f), false);
-
-		gs_dyn_array_push(g_animations, animation_create_new());
-		anim = gs_dyn_array_back(g_animations);
-		anim->animation_speed = 1.0f;
-		animation_set_shape(anim, shape);
-
-		fade_amt = 10.0f;
-		animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_lerp, 45.5f, NULL);
-		blink_anim(10.f, 0.1f, 2, 1.f);
-		fade_out_forever(0.f, 0.5f);
-	}
+	animate_txt(" }\n", xpos, yoff, txt_size, default_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
+	animate_txt("}", xpos, yoff, txt_size, default_col, _bt * 4.f, _bt * 4.f, fade_out_forever(wt3, fat));
 
 	// Line to empty 
 	{
@@ -4462,7 +4540,7 @@ void play_scene_two()
 		slp = elp;
 		elp = gs_vec2_add(slp, (gs_vec2){200.f, 0.f});
 		path_draw_line(p, slp, elp, thickness, white);
-		path_draw_line(p, elp, (gs_vec2){elp.x, elp.y - 15.f}, thickness, white);
+		// path_draw_line(p, elp, (gs_vec2){elp.x, elp.y - 15.f}, thickness, white);
 
 		gs_dyn_array_push(g_animations, animation_create_new());
 		anim = gs_dyn_array_back(g_animations);
@@ -4470,7 +4548,7 @@ void play_scene_two()
 		animation_set_shape(anim, shape);
 		animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_smooth_step, 10.5f, NULL);
 		animation_add_action(anim, animation_action_type_walk_path, animation_ease_type_smooth_step, 10.f, NULL);
-		animation_add_action(anim, animation_action_type_wait, animation_ease_type_smooth_step, 16.5f, NULL);
+		animation_add_action(anim, animation_action_type_wait, animation_ease_type_smooth_step, 17.5f, NULL);
 		fade_out_forever(3.f, 8.f);
 
 
@@ -4485,9 +4563,9 @@ void play_scene_two()
 		anim->animation_speed = 1.0f;
 		animation_set_shape(anim, shape);
 		animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_smooth_step, 18.5f, NULL);
-		animation_add_action(anim, animation_action_type_walk_path, animation_ease_type_smooth_step, 10.f, NULL);
-		animation_add_action(anim, animation_action_type_wait, animation_ease_type_smooth_step, 8.5f, NULL);
-		fade_out_forever(3.f, 8.f);
+		animation_add_action(anim, animation_action_type_walk_path, animation_ease_type_smooth_step, 5.f, NULL);
+		blink_anim(0.1f, 10.0f, 3, 3.f);
+		fade_out_forever(3.f, 2.5f);
 	}
 
 	// Line to sand update
@@ -4517,6 +4595,27 @@ void play_scene_two()
 		fade_out_forever(3.f, 8.f);
 	}
 
+	// Blinking selection box around sand 
+	{
+		shape_begin(shape);
+		shape->xform.position = (gs_vec3){ws.x / 2.f, ws.y / 2.f, 0.f};
+		shape->xform.scale = (gs_vec3){1.f, 1.f, 1.f};
+		shape_draw_square(shape, (gs_vec2){280.f, 135.f}, 
+			(gs_vec2){grid_size * 0.3f, grid_size * 0.03f}, 
+			0.1f, color_alpha(white, 0.1f), false);
+
+		gs_dyn_array_push(g_animations, animation_create_new());
+		anim = gs_dyn_array_back(g_animations);
+		anim->animation_speed = 1.0f;
+		animation_set_shape(anim, shape);
+
+		fade_amt = 10.0f;
+		animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_lerp, 45.5f, NULL);
+		blink_anim(10.f, 0.1f, 2, 1.f);
+		fade_out_forever(0.f, 0.5f);
+	}
+
+
 	// Eventually, can just have a function to lex over text and set up the animations automatically
 	{
 		const f32 bt2 = 22.f;
@@ -4525,12 +4624,12 @@ void play_scene_two()
 		gs_vec3 trans = (gs_vec3){-120.f, -grid_size + 180.f, 0.f}; 
 		xpos = 315.f;
 		yoff = cached_ypos;
-		animate_txt("update_sand", xpos, yoff + 150.f, txt_size, func_col, wt, 1.f, translate_anim(0.f, tt, trans));
+		animate_txt("update_sand", xpos, yoff, txt_size, func_col, wt, 1.f, translate_anim(0.f, tt, trans));
 
 		// Need to animate these separately, since they're going to show up AFTER the 'update sand' goes up top
 		xpos = 315.f - 120.f + 45.f * 7 + 30.f;
 		yoff = -grid_size - 65.f;
-		const f32 wt2 = wt + 10.f;
+		const f32 wt2 = wt + 5.f;
 		const f32 ft2 = 3.f;
 		animate_txt(	"(", xpos, yoff, txt_size, default_col, wt2, ft2);
 		animate_txt("u32", xpos, yoff, txt_size, primitive_col, wt2, ft2);
