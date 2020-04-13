@@ -7,7 +7,7 @@ in vec3 normal;
 in vec3 frag_pos;
 in float height;
 
-uniform sampler2D s_noise_tex;
+uniform sampler2D u_noise_tex;
 uniform vec3 u_view_pos;
 
 float _HeightblendFactor = 10.0;

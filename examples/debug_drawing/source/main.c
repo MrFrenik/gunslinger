@@ -925,6 +925,8 @@ f32 shape_draw_text( shape_t* s, gs_vec2 origin, vg_font_t* font, const char* tx
 			total_advance += 45.f;
 		}
 	}
+
+	return total_advance;
 }
 
 void shape_draw_triangle( shape_t* s, gs_vec2 a, gs_vec2 b, gs_vec2 c, f32 thickness, gs_vec4 color )
@@ -1474,10 +1476,8 @@ _global const char* bb_v_src = "\n"
 "out DATA {\n"
 "	vec2 uv;\n"
 "} fs_out;\n"
-"uniform mat4 u_proj;\n"
-"uniform mat4 u_view;\n"
 "void main() {\n"
-" 	gl_Position = u_proj * u_view * vec4(a_position.xy, 0.0, 1.0);\n"
+" 	gl_Position = vec4(a_position.xy, 0.0, 1.0);\n"
 " 	fs_out.uv = a_uv;\n"
 "}";
 
@@ -1490,15 +1490,14 @@ _global const char* bb_f_src = "\n"
 "out vec4 frag_color;\n"
 "void main() {\n"
 "	frag_color = texture(u_tex, fs_in.uv);\n"
-"	frag_color = vec4(1.0, 0.0, 0.0, 1.0);\n"
 "}";
 
 int main( int argc, char** argv )
 {
 	gs_application_desc app = {0};
 	app.window_title 		= "Debug Drawing";
-	app.window_width 		= 1920;
-	app.window_height 		= 1080;
+	app.window_width 		= 800;
+	app.window_height 		= 600;
 	app.init 				= &app_init;
 	app.update 				= &app_update;
 	app.shutdown 			= &app_shutdown;
@@ -1673,7 +1672,7 @@ gs_result app_update()
 
 	// 
 	// Bind our render target and render offscreen
-	// gfx->bind_frame_buffer( g_cb, g_fb );
+	gfx->bind_frame_buffer( g_cb, g_fb );
 	{
 		// Bind frame buffer attachment for rendering
 		gfx->set_frame_buffer_attachment( g_cb, g_rt, 0 );
@@ -1684,13 +1683,7 @@ gs_result app_update()
 		// Set clear color and clear screen
 		f32 clear_color[4] = { 0.05f, 0.05f, 0.05f, 1.f };
 		gfx->set_view_clear( g_cb, clear_color );
-		// gfx->set_view_port( g_cb, 1920, 1080 );
-
-		#if (defined GS_PLATFORM_APPLE)
-			gfx->set_view_port( g_cb, (s32)ws.x * 2, (s32)ws.y * 2 );
-		#else
-			gfx->set_view_port( g_cb, (s32)ws.x, (s32)ws.y );
-		#endif
+		gfx->set_view_port( g_cb, 1920, 1080 );
 
 		// Bind shader
 		gfx->bind_shader( g_cb, g_shader );
@@ -1708,41 +1701,33 @@ gs_result app_update()
 		// Draw vertices
 		gfx->draw( g_cb, 0, gs_dyn_array_size( g_verts ) );
 	}
-	// gfx->unbind_frame_buffer( g_cb );
+	gfx->unbind_frame_buffer( g_cb );
 
 	// Backbuffer pres.
-	// {
-	// 	// Set clear color and clear screen
-	// 		f32 clear_color[4] = { 0.2f, 0.2f, 0.2f, 1.f };
-	// 		gfx->set_view_clear( g_cb, clear_color );
+	{
+		// Set clear color and clear screen
+		f32 clear_color[4] = { 0.2f, 0.2f, 0.2f, 1.f };
+		gfx->set_view_clear( g_cb, clear_color );
 
-	// 		// This is to handle mac's retina high dpi for now until I fix that internally.
-	// 	#if (defined GS_PLATFORM_APPLE)
-	// 		gfx->set_view_port( g_cb, (s32)ws.x * 2, (s32)ws.y * 2 );
-	// 	#else
-	// 		gfx->set_view_port( g_cb, (s32)ws.x, (s32)ws.y );
-	// 	#endif
+			// This is to handle mac's retina high dpi for now until I fix that internally.
+		#if (defined GS_PLATFORM_APPLE)
+			gfx->set_view_port( g_cb, (s32)ws.x * 2.f, (s32)ws.y * 2.f );
+		#else
+			gfx->set_view_port( g_cb, (s32)ws.x, (s32)ws.y );
+		#endif
 
-	// 	// Bind shader
-	// 	gfx->bind_shader( g_cb, g_bb_shader );
+		// Bind shader
+		gfx->bind_shader( g_cb, g_bb_shader );
+		gfx->bind_texture( g_cb, u_tex, g_rt, 0 );
 
-	// 	// Bind uniforms
-	// 	gs_mat4 view_mtx = gs_mat4_translate((gs_vec3){0.f, 0.f, -3.f});
-	// 	gs_mat4 proj_mtx = gs_mat4_ortho(0.f, ws.x, ws.y, 0, 0.01f, 1000.f);
+		// Bind vertex buffer
+		gfx->bind_vertex_buffer( g_cb, g_vbo );
+		gfx->bind_index_buffer( g_cb, g_ibo );
 
-	// 	gfx->bind_uniform( g_cb, u_view, &view_mtx );
-	// 	gfx->bind_uniform( g_cb, u_proj, &proj_mtx );
-	// 	gfx->bind_texture( g_cb, u_tex, g_rt, 0 );
-
-	// 	// Bind vertex buffer
-	// 	gfx->bind_vertex_buffer( g_cb, g_vbo );
-	// 	gfx->bind_index_buffer( g_cb, g_ibo );
-
-	// 	// Draw vertices
-	// 	// gfx->draw( g_cb, 0, gs_dyn_array_size( g_verts ) );
-	// 	gfx->draw_indexed( g_cb, 6 );
-
-	// }
+		// Draw vertices
+		// gfx->draw( g_cb, 0, gs_dyn_array_size( g_verts ) );
+		gfx->draw_indexed( g_cb, 6 );
+	}
 
 	// Submit command buffer for rendering
 	gfx->submit_command_buffer( g_cb ); 	// I suppose this COULD flush the command buffer altogether? ...

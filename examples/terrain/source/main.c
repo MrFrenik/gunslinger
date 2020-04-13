@@ -352,7 +352,7 @@ gs_result app_init()
 	shader = gfx->construct_shader( v_src, f_src );
 
 	// Construct uniforms
-	u_noise_tex = gfx->construct_uniform( shader, "s_noise_tex", gs_uniform_type_sampler2d );
+	u_noise_tex = gfx->construct_uniform( shader, "u_noise_tex", gs_uniform_type_sampler2d );
 	u_proj = gfx->construct_uniform( shader, "u_proj", gs_uniform_type_mat4 );
 	u_view = gfx->construct_uniform( shader, "u_view", gs_uniform_type_mat4 );
 	u_model = gfx->construct_uniform( shader, "u_model", gs_uniform_type_mat4 );
@@ -476,15 +476,22 @@ void render_scene()
 	model = gs_vqs_to_mat4( &xform );
 	gs_mat4 view = gs_mat4_identity();
 	gs_mat4 proj = gs_mat4_identity();
-	view = gs_mat4_translate((gs_vec3){0.f, -10.f, -200.f});
-	proj = gs_mat4_perspective(45.f, 800.f/600.f, 0.01f, 1000.f);
+	// view = gs_mat4_translate((gs_vec3){0.f, -10.f, -200.f});
+	// proj = gs_mat4_perspective(45.f, 800.f/600.f, 0.01f, 1000.f);
+
+	gs_vec2 ws = gs_engine_instance()->ctx.platform->window_size(gs_engine_instance()->ctx.platform->main_window());
+
+	const f32 scl = 100.f;
+	gs_mat4 view_mtx = gs_mat4_translate((gs_vec3){0.f, -10.f, -200.f});
+	gs_mat4 proj_mtx = gs_mat4_perspective(60.f, ws.x / ws.y, 0.01f, 1000.f);
+	// gs_mat4 proj_mtx = gs_mat4_ortho(0.f, ws.x, 0.f, ws.y, 0.01f, 1000.f);
 
 	f32 t_s = t * 10.f;
 
 	gs_vec3 vp = (gs_vec3){0.f, -10.f, -250.f};
 	gfx->bind_uniform( cb, u_view_pos, &vp );
-	gfx->bind_uniform( cb, u_view, &view );
-	gfx->bind_uniform( cb, u_proj, &proj );
+	gfx->bind_uniform( cb, u_view, &view_mtx );
+	gfx->bind_uniform( cb, u_proj, &proj_mtx );
 	gfx->bind_uniform( cb, u_model, &model );
 
 	// Bind vertex buffer of terrain
