@@ -21,6 +21,8 @@ _global b32 anti_alias = true;
 _global f32 anti_alias_scl = 2.f;
 _global b32 is_playing = true;
 
+#define frame_buffer_size (gs_vec2){1920, 1080}
+
 _global f32 anim_mult = 1.f;
 
 typedef struct vg_ctx_t
@@ -1529,7 +1531,7 @@ gs_result app_init()
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 
 	// Viewport
-	const gs_vec2 ws = platform->window_size(platform->main_window());
+	const gs_vec2 ws = frame_buffer_size;
 
 	// Construct command buffer ( the command buffer is used to allow for immediate drawing at any point in our program )
 	g_cb = gfx->construct_command_buffer();
@@ -1603,8 +1605,8 @@ gs_result app_init()
 	t_desc.mag_filter = gs_nearest;
 	t_desc.min_filter = gs_nearest;
 	t_desc.generate_mips = false;
-	t_desc.width = 1920;
-	t_desc.height = 1080;
+	t_desc.width = frame_buffer_size.x;
+	t_desc.height = frame_buffer_size.y;
 	t_desc.num_comps = 4;
 	t_desc.data = NULL;
 
@@ -1683,14 +1685,14 @@ gs_result app_update()
 		// Set clear color and clear screen
 		f32 clear_color[4] = { 0.05f, 0.05f, 0.05f, 1.f };
 		gfx->set_view_clear( g_cb, clear_color );
-		gfx->set_view_port( g_cb, 1920, 1080 );
+		gfx->set_view_port( g_cb, frame_buffer_size.x, frame_buffer_size.y );
 
 		// Bind shader
 		gfx->bind_shader( g_cb, g_shader );
 
 		// Bind uniforms
 		gs_mat4 view_mtx = gs_mat4_translate((gs_vec3){0.f, 0.f, -3.f});
-		gs_mat4 proj_mtx = gs_mat4_ortho(0.f, ws.x, ws.y, 0, 0.01f, 1000.f);
+		gs_mat4 proj_mtx = gs_mat4_ortho(0.f, ws.x * 0.5f, ws.y * 0.5f, 0, 0.01f, 1000.f);
 
 		gfx->bind_uniform( g_cb, u_view, &view_mtx );
 		gfx->bind_uniform( g_cb, u_proj, &proj_mtx );
@@ -4083,7 +4085,7 @@ void play_scene_one()
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 
 	// Viewport
-	const gs_vec2 ws = platform->window_size(platform->main_window());
+	const gs_vec2 ws = frame_buffer_size;
 
 	animation_t* anim = NULL;
 	shape_t* shape = &g_shape;
@@ -4305,7 +4307,7 @@ void play_scene_two()
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 
 	// Viewport
-	const gs_vec2 ws = platform->window_size(platform->main_window());
+	const gs_vec2 ws = frame_buffer_size;
 
 	animation_t* anim = NULL;
 	shape_t* shape = &g_shape;
