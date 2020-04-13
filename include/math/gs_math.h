@@ -328,6 +328,10 @@ gs_vec4_dist( gs_vec4 v0, gs_vec4 v1 )
 // Mat4x4
 ================================================================================*/
 
+/*
+	Matrices are stored in linear, contiguous memory and assume a column-major ordering.
+*/
+
 typedef struct gs_mat4
 {
 	f32 elements[16];
@@ -370,6 +374,38 @@ __gs_mat4_mul_impl( const gs_mat4* m0, const gs_mat4* m1 )
 	return m_res;
 }
 
+_inline
+gs_mat4 gs_mat4_transpose( gs_mat4 m )
+{
+	gs_mat4 t = gs_mat4_identity();
+
+	// First row
+	t.elements[ 0 * 4 + 0 ] = m.elements[ 0 * 4 + 0 ];
+	t.elements[ 1 * 4 + 0 ] = m.elements[ 0 * 4 + 1 ];
+	t.elements[ 2 * 4 + 0 ] = m.elements[ 0 * 4 + 2 ];
+	t.elements[ 3 * 4 + 0 ] = m.elements[ 0 * 4 + 3 ];
+
+	// Second row
+	t.elements[ 0 * 4 + 1 ] = m.elements[ 1 * 4 + 0 ];
+	t.elements[ 1 * 4 + 1 ] = m.elements[ 1 * 4 + 1 ];
+	t.elements[ 2 * 4 + 1 ] = m.elements[ 1 * 4 + 2 ];
+	t.elements[ 3 * 4 + 1 ] = m.elements[ 1 * 4 + 3 ];
+
+	// Third row
+	t.elements[ 0 * 4 + 2 ] = m.elements[ 2 * 4 + 0 ];
+	t.elements[ 1 * 4 + 2 ] = m.elements[ 2 * 4 + 1 ];
+	t.elements[ 2 * 4 + 2 ] = m.elements[ 2 * 4 + 2 ];
+	t.elements[ 3 * 4 + 2 ] = m.elements[ 2 * 4 + 3 ];
+
+	// Fourth row
+	t.elements[ 0 * 4 + 3 ] = m.elements[ 3 * 4 + 0 ];
+	t.elements[ 1 * 4 + 3 ] = m.elements[ 3 * 4 + 1 ];
+	t.elements[ 2 * 4 + 3 ] = m.elements[ 3 * 4 + 2 ];
+	t.elements[ 3 * 4 + 3 ] = m.elements[ 3 * 4 + 3 ];
+
+	return t;
+}
+
 #define gs_mat4_mul( m0, m1 )\
 	__gs_mat4_mul_impl( &( m0 ), &( m1 ) )
 
@@ -391,78 +427,10 @@ gs_mat4_ortho( f32 l, f32 r, f32 b, f32 t, f32 n, f32 f )
 	m_res.elements[ 1 + 1 * 4 ] = 2.0f / ( t - b );
 	m_res.elements[ 2 + 2 * 4 ] = -2.0f / ( f - n );
 
-	// // // // Last column
+	// Last column
 	m_res.elements[ 0 + 3 * 4 ] = -( r + l ) / ( r - l );
 	m_res.elements[ 1 + 3 * 4 ] = -( t + b ) / ( t - b );
 	m_res.elements[ 2 + 3 * 4 ] = -( f + n ) / ( f - n );
-
-	m_res.elements[ 0 + 0 * 4 ] = 2.f / (r - l);
-	m_res.elements[ 1 + 1 * 4 ] = 2.f / (t - b);
-	m_res.elements[ 2 + 2 * 4 ] = -1.f;
-	m_res.elements[ 0 + 3 * 4 ] = (r + l)/(l - r);
-	m_res.elements[ 1 + 3 * 4 ] = (t + b)/(b - t);
-	m_res.elements[ 2 + 3 * 4 ] = 0.f;
-
-    // { 2.0f/(R-L),   0.0f,         0.0f,   0.0f },
-    // { 0.0f,         2.0f/(T-B),   0.0f,   0.0f },
-    // { 0.0f,         0.0f,        -1.0f,   0.0f },
-    // { (R+L)/(L-R),  (T+B)/(B-T),  0.0f,   1.0f },
-
-    // f32 L = 0.0f;
-    // f32 R = 0.0f + 800.f;
-    // f32 T = 0.0f;
-    // f32 B = 0.0f + 600.f;
-    // f32 L = l;
-    // f32 R = r;
-    // f32 T = t;
-    // f32 B = b;
-    // f32 F = f;
-    // f32 N = n;
-    // const f32 ortho_mat_2[4][4] =
-    // {
-    //     { 2.0f/(R-L),   0.0f,         0.0f,   0.0f },
-    //     { 0.0f,         2.0f/(T-B),   0.0f,   0.0f },
-    //     { 0.0f,         0.0f,        -2.0f/(F-N),   0.0f },
-    //     { -(R+L)/(R-L),  -(T+B)/(T-B),  -(F+B)/(F-N),   1.0f },
-    // };
-
-    // const f32 ortho_mat_2[4][4] =
-    // {
-    //     { 2.0f/(R-L),   0.0f,         0.0f,   0.0f },
-    //     { 0.0f,         2.0f/(T-B),   0.0f,   0.0f },
-    //     { 0.0f,         0.0f,        -1.f/(F-N),   0.0f },
-    //     { -(R+L)/(R-L),  -(T+B)/(T-B),  -(N)/(F-N),   1.0f },
-    // };
-
-    // m_res.elements[ 0 + 0 * 4 ] = ortho_mat_2[0][0];
-    // m_res.elements[ 1 + 1 * 4 ] = ortho_mat_2[1][1];
-    // m_res.elements[ 2 + 2 * 4 ] = ortho_mat_2[2][2];
-
-    // m_res.elements[ 0 + 3 * 4 ] = ortho_mat_2[3][0];
-    // m_res.elements[ 1 + 3 * 4 ] = ortho_mat_2[3][1];
-    // m_res.elements[ 2 + 3 * 4 ] = ortho_mat_2[3][2];
-
-    // set OpenGL perspective projection matrix
-    // m_res.elements[0 * 4 + 0] = 2 / (r - l); 
-    // m_res.elements[0 * 4 + 1] = 0; 
-    // m_res.elements[0 * 4 + 2] = 0; 
-    // m_res.elements[0 * 4 + 3] = 0; 
- 
-    // m_res.elements[1 * 4 + 0] = 0; 
-    // m_res.elements[1 * 4 + 1] = 2 / (t - b); 
-    // m_res.elements[1 * 4 + 2] = 0; 
-    // m_res.elements[1 * 4 + 3] = 0; 
- 
-    // m_res.elements[2 * 4 + 0] = 0; 
-    // m_res.elements[2 * 4 + 1] = 0; 
-    // m_res.elements[2 * 4 + 2] = -2 / (f - n); 
-    // m_res.elements[2 * 4 + 3] = 0; 
- 
-    // m_res.elements[3 * 4 + 0] = -(r + l) / (r - l); 
-    // m_res.elements[3 * 4 + 1] = -(t + b) / (t - b); 
-    // m_res.elements[3 * 4 + 2] = -(f + n) / (f - n); 
-    // m_res.elements[3 * 4 + 3] = 1; 
-
 
 	return m_res;
 }
@@ -492,9 +460,10 @@ gs_mat4_translate( const gs_vec3 v )
 {
 	gs_mat4 m_res = gs_mat4_identity();
 
-	m_res.elements[ 0 * 4 + 3 ] = v.x;
-	m_res.elements[ 1 * 4 + 3 ] = v.y;
-	m_res.elements[ 2 * 4 + 3 ] = v.z;
+	m_res.elements[ 0 + 4 * 3 ] = v.x;
+	m_res.elements[ 1 + 4 * 3 ] = v.y;
+	m_res.elements[ 2 + 4 * 3 ] = v.z;
+
 	return m_res;
 }
 
@@ -545,29 +514,30 @@ gs_mat4_look_at( gs_vec3 position, gs_vec3 target, gs_vec3 up )
 	gs_vec3 s = gs_vec3_norm( gs_vec3_cross( f, up ) );
 	gs_vec3 u = gs_vec3_cross( s, f );
 
-	gs_mat4 m_la = gs_mat4_identity();
-	m_la.elements[ 0 * 4 + 0 ] = s.x;
-	m_la.elements[ 1 * 4 + 0 ] = s.y;
-	m_la.elements[ 2 * 4 + 0 ] = s.z;
+	gs_mat4 m_res = gs_mat4_identity();
+	m_res.elements[ 0 * 4 + 0 ] = s.x;
+	m_res.elements[ 1 * 4 + 0 ] = s.y;
+	m_res.elements[ 2 * 4 + 0 ] = s.z;
 
-	m_la.elements[ 0 * 4 + 1 ] = u.x;
-	m_la.elements[ 1 * 4 + 1 ] = u.y;
-	m_la.elements[ 2 * 4 + 1 ] = u.z;
+	m_res.elements[ 0 * 4 + 1 ] = u.x;
+	m_res.elements[ 1 * 4 + 1 ] = u.y;
+	m_res.elements[ 2 * 4 + 1 ] = u.z;
 
-	m_la.elements[ 0 * 4 + 2 ] = -f.x;
-	m_la.elements[ 1 * 4 + 2 ] = -f.y;
-	m_la.elements[ 2 * 4 + 2 ] = -f.z;
+	m_res.elements[ 0 * 4 + 2 ] = -f.x;
+	m_res.elements[ 1 * 4 + 2 ] = -f.y;
+	m_res.elements[ 2 * 4 + 2 ] = -f.z;
 
-	m_la.elements[ 3 * 4 + 0 ] = -gs_vec3_dot( s, position );;
-	m_la.elements[ 3 * 4 + 1 ] = -gs_vec3_dot( u, position );
-	m_la.elements[ 3 * 4 + 2 ] = gs_vec3_dot( f, position ); 
+	m_res.elements[ 3 * 4 + 0 ] = -gs_vec3_dot( s, position );;
+	m_res.elements[ 3 * 4 + 1 ] = -gs_vec3_dot( u, position );
+	m_res.elements[ 3 * 4 + 2 ] = gs_vec3_dot( f, position ); 
 
-	return m_la;
+	return m_res;
 }
 
 _inline
 gs_vec3 gs_mat4_mul_vec3( gs_mat4 m, gs_vec3 v )
 {
+	// m = gs_mat4_transpose(m);
 	return (gs_vec3)
 	{
 		m.elements[0 * 4 + 0] * v.x + m.elements[0 * 4 + 1] * v.y + m.elements[0 * 4 + 2] * v.z,  

@@ -1140,8 +1140,8 @@ hsv_t rgb_to_hsv( color_t c )
 	gs_vec3 cv = (gs_vec3){ (f32)c.r / 255.f, (f32)c.g / 255.f, (f32)c.b / 255.f };
 	f32 fR = cv.x, fG = cv.y, fB = cv.z;
 
-	f32 fCMax = max(max(fR, fG), fB);
-	f32 fCMin = min(min(fR, fG), fB);
+	f32 fCMax = gs_max(gs_max(fR, fG), fB);
+	f32 fCMin = gs_min(gs_min(fR, fG), fB);
 	f32 fDelta = fCMax - fCMin;
 
 	hsv_t hsv;
@@ -1179,7 +1179,7 @@ hsv_t rgb_to_hsv( color_t c )
 // distance between two hues:
 f32 hue_dist( f32 h1, f32 h2 )
 { 
-    f32 d = abs( h1 -  h2 ); 
+    f32 d = fabsf( h1 -  h2 ); 
     return d > 180.f ? 360.f - d : d; 
 }
 

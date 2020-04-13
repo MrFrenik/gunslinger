@@ -1692,7 +1692,7 @@ gs_result app_update()
 
 		// Bind uniforms
 		gs_mat4 view_mtx = gs_mat4_translate((gs_vec3){0.f, 0.f, -3.f});
-		gs_mat4 proj_mtx = gs_mat4_ortho(0.f, ws.x * 0.5f, ws.y * 0.5f, 0, 0.01f, 1000.f);
+		gs_mat4 proj_mtx = gs_mat4_ortho(-ws.x / 2.f, ws.x / 2.f, ws.y / 2.f, -ws.y / 2.f, 0.01f, 1000.f);
 
 		gfx->bind_uniform( g_cb, u_view, &view_mtx );
 		gfx->bind_uniform( g_cb, u_proj, &proj_mtx );

@@ -346,10 +346,24 @@ gs_result app_init()
 	// Construct texture
 	noise_tex = gfx->construct_texture( t_desc );
 
+	char* v_src = NULL;
+	char* f_src = NULL;
+
 	// Construct shader
-	char* v_src = platform->read_file_contents( "../assets/shaders/terrain.v.glsl", "r", NULL );
-	char* f_src = platform->read_file_contents( "../assets/shaders/terrain.f.glsl", "r", NULL );
-	shader = gfx->construct_shader( v_src, f_src );
+	if (platform->file_exists("../assets/shaders/terrain.v.glsl")) {
+		v_src = platform->read_file_contents( "../assets/shaders/terrain.v.glsl", "r", NULL );
+		f_src = platform->read_file_contents( "../assets/shaders/terrain.f.glsl", "r", NULL );
+		shader = gfx->construct_shader( v_src, f_src );
+	}
+	else if (platform->file_exists("./assets/shaders/terrain.v.glsl")) {
+		v_src = platform->read_file_contents( "./assets/shaders/terrain.v.glsl", "r", NULL );
+		f_src = platform->read_file_contents( "./assets/shaders/terrain.f.glsl", "r", NULL );
+		shader = gfx->construct_shader( v_src, f_src );
+	}
+	else {
+		gs_println("Can't find shaders!");
+		gs_assert( false );
+	}
 
 	// Construct uniforms
 	u_noise_tex = gfx->construct_uniform( shader, "u_noise_tex", gs_uniform_type_sampler2d );
@@ -481,10 +495,10 @@ void render_scene()
 
 	gs_vec2 ws = gs_engine_instance()->ctx.platform->window_size(gs_engine_instance()->ctx.platform->main_window());
 
-	const f32 scl = 100.f;
+	const f32 scl = 0.5f;
 	gs_mat4 view_mtx = gs_mat4_translate((gs_vec3){0.f, -10.f, -200.f});
 	gs_mat4 proj_mtx = gs_mat4_perspective(60.f, ws.x / ws.y, 0.01f, 1000.f);
-	// gs_mat4 proj_mtx = gs_mat4_ortho(0.f, ws.x, 0.f, ws.y, 0.01f, 1000.f);
+	// gs_mat4 proj_mtx = gs_mat4_ortho(-ws.x / 2.f * scl, ws.x / 2.f * scl, ws.y / 2.f * scl, -ws.y / 2.f * scl, 0.01f, 1000.f);
 
 	f32 t_s = t * 10.f;
 
