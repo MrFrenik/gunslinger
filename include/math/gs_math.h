@@ -537,7 +537,7 @@ gs_mat4_look_at( gs_vec3 position, gs_vec3 target, gs_vec3 up )
 _inline
 gs_vec3 gs_mat4_mul_vec3( gs_mat4 m, gs_vec3 v )
 {
-	// m = gs_mat4_transpose(m);
+	m = gs_mat4_transpose(m);
 	return (gs_vec3)
 	{
 		m.elements[0 * 4 + 0] * v.x + m.elements[0 * 4 + 1] * v.y + m.elements[0 * 4 + 2] * v.z,  
@@ -549,6 +549,7 @@ gs_vec3 gs_mat4_mul_vec3( gs_mat4 m, gs_vec3 v )
 _inline
 gs_vec4 gs_mat4_mul_vec4( gs_mat4 m, gs_vec4 v )
 {
+	m = gs_mat4_transpose(m);
 	return (gs_vec4)
 	{
 		m.elements[0 * 4 + 0] * v.x + m.elements[0 * 4 + 1] * v.y + m.elements[0 * 4 + 2] * v.z + m.elements[0 * 4 + 3] * v.w,  

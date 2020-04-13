@@ -1498,8 +1498,8 @@ int main( int argc, char** argv )
 {
 	gs_application_desc app = {0};
 	app.window_title 		= "Debug Drawing";
-	app.window_width 		= 800;
-	app.window_height 		= 600;
+	app.window_width 		= 1920;
+	app.window_height 		= 1080;
 	app.init 				= &app_init;
 	app.update 				= &app_update;
 	app.shutdown 			= &app_shutdown;
@@ -1602,9 +1602,9 @@ gs_result app_init()
 	// Construct texture resource from GPU
 	gs_texture_parameter_desc t_desc = gs_texture_parameter_desc_default();
 	t_desc.texture_format = gs_texture_format_rgba8;
-	t_desc.mag_filter = gs_nearest;
-	t_desc.min_filter = gs_nearest;
-	t_desc.generate_mips = false;
+	t_desc.mag_filter = gs_linear;
+	t_desc.min_filter = gs_linear;
+	t_desc.generate_mips = true;
 	t_desc.width = frame_buffer_size.x;
 	t_desc.height = frame_buffer_size.y;
 	t_desc.num_comps = 4;
@@ -1692,7 +1692,7 @@ gs_result app_update()
 
 		// Bind uniforms
 		gs_mat4 view_mtx = gs_mat4_translate((gs_vec3){0.f, 0.f, -3.f});
-		gs_mat4 proj_mtx = gs_mat4_ortho(-ws.x / 2.f, ws.x / 2.f, ws.y / 2.f, -ws.y / 2.f, 0.01f, 1000.f);
+		gs_mat4 proj_mtx = gs_mat4_ortho(0.f, frame_buffer_size.x, frame_buffer_size.y, 0.f, 0.01f, 1000.f);
 
 		gfx->bind_uniform( g_cb, u_view, &view_mtx );
 		gfx->bind_uniform( g_cb, u_proj, &proj_mtx );
@@ -1707,16 +1707,16 @@ gs_result app_update()
 
 	// Backbuffer pres.
 	{
-		// Set clear color and clear screen
-		f32 clear_color[4] = { 0.2f, 0.2f, 0.2f, 1.f };
-		gfx->set_view_clear( g_cb, clear_color );
-
 			// This is to handle mac's retina high dpi for now until I fix that internally.
 		#if (defined GS_PLATFORM_APPLE)
 			gfx->set_view_port( g_cb, (s32)ws.x * 2.f, (s32)ws.y * 2.f );
 		#else
 			gfx->set_view_port( g_cb, (s32)ws.x, (s32)ws.y );
 		#endif
+
+		// Set clear color and clear screen
+		f32 clear_color[4] = { 0.2f, 0.2f, 0.2f, 1.f };
+		gfx->set_view_clear( g_cb, clear_color );
 
 		// Bind shader
 		gfx->bind_shader( g_cb, g_bb_shader );
@@ -4128,7 +4128,7 @@ void play_scene_one()
 
 	trans = shape->xform;
 	trans.scale = (gs_vec3){ 2.5, 2.5, 1.f };
-	trans.position = (gs_vec3){ ws.x * 0.28f / trans.scale.x, (ws.y * 0.5f - ch) / trans.scale.y, 0.f };
+	trans.position = (gs_vec3){ ws.x * 0.28f, ws.y * 0.5f - 1.3f * ch, 0.f };
 	animation_add_action(anim, animation_action_type_transform, animation_ease_type_smooth_step, 3.f, &trans);
 
 	// Initialize shape and animation for grid
@@ -4259,6 +4259,7 @@ void play_scene_one()
 
 	xpos = -ws.x * 0.2f;
 	animate_txt("}", xpos, ypos, txt_size, default_col, 20.f, 1.f);
+	animate_txt(" particle_t;\n", xpos, ypos, txt_size, default_col, 20.f, 1.f);
 
 
 	shape_begin(shape);
