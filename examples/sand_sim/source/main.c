@@ -1747,7 +1747,7 @@ void update_input()
 				s32 ry = ((s32)mp_y + i);
 				gs_vec2 r = (gs_vec2){ rx, ry };
 
-				if ( in_bounds( rx, ry ) && gs_vec2_distance( mp, r ) <= R ) {
+				if ( in_bounds( rx, ry ) && gs_vec2_dist( mp, r ) <= R ) {
 					write_data( compute_idx( rx, ry ), particle_empty() );
 				}
 			}

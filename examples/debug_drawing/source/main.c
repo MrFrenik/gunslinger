@@ -1,8 +1,5 @@
 #include <gs.h>
 
-#define NANOSVG_IMPLEMENTATION
-#include "nanosvg.h"
-
 // Forward Decls.
 gs_result app_init();		// Use to init your application
 gs_result app_update();		// Use to update your application
@@ -24,7 +21,7 @@ _global b32 anti_alias = true;
 _global f32 anti_alias_scl = 2.f;
 _global b32 is_playing = true;
 
-_global NSVGimage *image = NULL;
+_global f32 anim_mult = 1.f;
 
 typedef struct vg_ctx_t
 {
@@ -835,10 +832,8 @@ path_t* shape_begin_path(shape_t* s)
 void shape_free(shape_t* s)
 {
 	gs_for_range_i(gs_dyn_array_size(s->paths)) {
-		gs_dyn_array_clear(&s->paths[i]);
 		path_free(&s->paths[i]);
 	}
-	gs_dyn_array_clear(s->paths);
 	gs_dyn_array_free(s->paths);
 }
 
@@ -894,13 +889,14 @@ void shape_draw_glyph(shape_t* s, gs_vec2 position, vg_glyph_t* glyph, f32 font_
 	}
 }
 
-void shape_draw_text( shape_t* s, gs_vec2 origin, vg_font_t* font, const char* txt, f32 font_point, gs_vec4 color )
+f32 shape_draw_text( shape_t* s, gs_vec2 origin, vg_font_t* font, const char* txt, f32 font_point, gs_vec4 color )
 {
 	gs_vec2 og = origin;
 
 	u32 len = gs_string_length( txt );
 
 	const f32 glyph_height = 80.f;
+	f32 total_advance = 0.f;
 
 	for ( u32 i = 0; i < len; ++i )
 	{
@@ -912,6 +908,7 @@ void shape_draw_text( shape_t* s, gs_vec2 origin, vg_font_t* font, const char* t
 			vg_glyph_t* glyph = gs_hash_table_get(font->glyphs, ' ');
 			if (glyph) {
 				origin.x += glyph->advance_x * 2;
+				total_advance += 45.f;
 			}
 		}
 
@@ -925,8 +922,17 @@ void shape_draw_text( shape_t* s, gs_vec2 origin, vg_font_t* font, const char* t
 
 			// Monospaced glyph width
 			origin.x += 45.f;
+			total_advance += 45.f;
 		}
 	}
+}
+
+void shape_draw_triangle( shape_t* s, gs_vec2 a, gs_vec2 b, gs_vec2 c, f32 thickness, gs_vec4 color )
+{
+	path_t* p = shape_begin_path(s);
+	path_draw_triangle(p, a, b, c, thickness, color);
+	p->joint_style = joint_style_miter;
+	p->end_cap_style = end_cap_style_joint;
 }
 
 void shape_draw_line( shape_t* s, gs_vec2 start, gs_vec2 end, f32 thickness, gs_vec4 color )
@@ -942,7 +948,7 @@ void shape_draw_square( shape_t* s, gs_vec2 origin, gs_vec2 half_extents, f32 th
 		// Calculate thickness needed to fill square
 		gs_vec2 sp = (gs_vec2){origin.x, origin.y - half_extents.y - thickness};
 		gs_vec2 ep = (gs_vec2){origin.x, origin.y + half_extents.y + thickness};
-		shape_draw_line(s, sp, ep, half_extents.x / 2.f + 3.f * thickness, color);	
+		shape_draw_line(s, sp, ep, half_extents.x / 2.f + 4.f * thickness, color);	
 	}
 
 	path_t* p = shape_begin_path(s);
@@ -1043,11 +1049,10 @@ typedef struct animation_t
 	b32 playing;
 } animation_t;
 
-animation_t animation_create_new( f32 total_play_time, f32 speed )
+animation_t animation_create_new()
 {
 	animation_t a = {0};
-	a.total_play_time = total_play_time;
-	a.animation_speed = speed;
+	a.animation_speed = 1.f;
 	a.time = 0.f;
 	a.action_data_buffer = gs_byte_buffer_new();
 	a.actions = gs_dyn_array_new(animation_action_desc_t);
@@ -1099,8 +1104,8 @@ void animation_tick(animation_t* a, f32 dt)
 		}
 
 		// Increment animation times
-		a->time = gs_clamp(a->time + dt * a->animation_speed, 0.f, a->total_play_time);
-		action->current_time += dt * a->animation_speed;
+		a->time = gs_clamp(a->time + dt * a->animation_speed * anim_mult, 0.f, a->total_play_time);
+		action->current_time += dt * a->animation_speed * anim_mult;
 	}
 }
 
@@ -1492,8 +1497,8 @@ int main( int argc, char** argv )
 {
 	gs_application_desc app = {0};
 	app.window_title 		= "Debug Drawing";
-	app.window_width 		= 800;
-	app.window_height 		= 600;
+	app.window_width 		= 1920;
+	app.window_height 		= 1080;
 	app.init 				= &app_init;
 	app.update 				= &app_update;
 	app.shutdown 			= &app_shutdown;
@@ -1590,11 +1595,8 @@ gs_result app_init()
 	init_font();
 
 	// Let's get two animations for now
-	gs_for_range_i(10) {
-		gs_dyn_array_push(g_animations, animation_create_new(1.f, 1.f));
-	}
 
-	play_scene_two();
+	play_scene_one();
 
 	// Construct texture resource from GPU
 	gs_texture_parameter_desc t_desc = gs_texture_parameter_desc_default();
@@ -2853,6 +2855,38 @@ vg_glyph_t* __glyph_create_u()
 	return glyph;
 }
 
+vg_glyph_t* __glyph_create_x()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->advance_x = 35.f;
+	glyph->bearing_y = -3.f;
+	glyph->bearing_x = 0.f;
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 35.f;
+	const f32 r = 0.5f;
+
+	gs_vec2 slp = gs_vec2_add(position, (gs_vec2){0.35f * scl, -0.8f * scl});
+	gs_vec2 elp = gs_vec2_add(position, (gs_vec2){-0.35f * scl, 0.2f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+	p->joint_style = joint_style_round;
+
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+	slp = gs_vec2_add(position, (gs_vec2){-0.35f * scl, -0.8f * scl});
+	elp = gs_vec2_add(position, (gs_vec2){0.35f * scl, 0.2f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+	p->joint_style = joint_style_round;
+
+	return glyph;
+}
+
 vg_glyph_t* __glyph_create_y()
 {
 	vg_glyph_t* glyph = glyph_create_new_ptr();
@@ -2870,13 +2904,13 @@ vg_glyph_t* __glyph_create_y()
 	const f32 scl = 35.f;
 	const f32 r = 0.5f;
 
-	gs_vec2 slp = gs_vec2_add(position, (gs_vec2){0.35f * scl, -0.8f * scl});
+	gs_vec2 slp = gs_vec2_add(position, (gs_vec2){0.35f * scl, -0.9f * scl});
 	gs_vec2 elp = gs_vec2_sub(position, (gs_vec2){0.0f * scl, -0.0f * scl});
 	path_draw_line(p, slp, elp, thickness, color);
 	slp = elp;
 	elp = gs_vec2_sub(position, (gs_vec2){0.2f * scl, -0.2f * scl});
 	path_draw_line(p, slp, elp, thickness, color);
-	path_draw_line(p, elp, gs_vec2_sub(elp, (gs_vec2){0.1f * scl, 0.f}), thickness, color);
+	path_draw_line(p, elp, gs_vec2_sub(elp, (gs_vec2){0.2f * scl, 0.f}), thickness, color);
 	p->joint_style = joint_style_round;
 
 	// stuy
@@ -2884,7 +2918,7 @@ vg_glyph_t* __glyph_create_y()
 	gs_dyn_array_push(glyph->paths, path_create_new());
 	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
 
-	slp = gs_vec2_add(position, (gs_vec2){-0.35f * scl, -0.8f * scl});
+	slp = gs_vec2_add(position, (gs_vec2){-0.35f * scl, -0.9f * scl});
 	elp = gs_vec2_sub(position, (gs_vec2){0.0f * scl, -0.0f * scl});
 	path_draw_line(p, slp, elp, thickness, color);
 	p->joint_style = joint_style_round;
@@ -2969,6 +3003,56 @@ vg_glyph_t* __glyph_create_space()
 	return glyph;
 }
 
+vg_glyph_t* __glyph_create_forward_slash()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->advance_x = 35.f;
+	glyph->bearing_y = -3.f;
+	glyph->bearing_x = 0.f;
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 35.f;
+	const f32 r = 0.5f;
+
+	gs_vec2 slp = gs_vec2_add(position, (gs_vec2){0.35f * scl, -0.8f * scl});
+	gs_vec2 elp = gs_vec2_add(position, (gs_vec2){-0.35f * scl, 0.2f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+	p->joint_style = joint_style_round;
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_backward_slash()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->advance_x = 35.f;
+	glyph->bearing_y = -3.f;
+	glyph->bearing_x = 0.f;
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 35.f;
+	const f32 r = 0.5f;
+
+	gs_vec2 slp = gs_vec2_add(position, (gs_vec2){-0.35f * scl, -0.8f * scl});
+	gs_vec2 elp = gs_vec2_add(position, (gs_vec2){0.35f * scl, 0.2f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+	p->joint_style = joint_style_round;
+
+	return glyph;
+}
+
 vg_glyph_t* __glyph_create_underscore()
 {
 	vg_glyph_t* glyph = glyph_create_new_ptr();
@@ -2990,6 +3074,170 @@ vg_glyph_t* __glyph_create_underscore()
 	gs_vec2 slp = gs_vec2_add(position, (gs_vec2){-0.5f * scl, 0.0f * scl});
 	gs_vec2 elp = gs_vec2_add(position, (gs_vec2){0.5f * scl, 0.f * scl});
 	path_draw_line(p, slp, elp, thickness, color);
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_minus()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->bearing_y = 0.f;
+	glyph->bearing_x = 0.f;
+	glyph->advance_x = 25.f;
+
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 35.f;
+	const f32 r = 0.5f;
+
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	gs_vec2 slp = gs_vec2_add(position, (gs_vec2){-0.5f * scl, 0.5f * scl});
+	gs_vec2 elp = gs_vec2_add(position, (gs_vec2){0.5f * scl, 0.5f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_plus()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->bearing_y = 0.f;
+	glyph->bearing_x = 0.f;
+	glyph->advance_x = 25.f;
+
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 35.f;
+	const f32 r = 0.5f;
+
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	gs_vec2 slp = gs_vec2_add(position, (gs_vec2){-0.5f * scl, 0.5f * scl});
+	gs_vec2 elp = gs_vec2_add(position, (gs_vec2){0.5f * scl, 0.5f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+
+	slp = gs_vec2_add(position, (gs_vec2){0.5f * scl, -0.5f * scl});
+	elp = gs_vec2_add(position, (gs_vec2){0.5f * scl, 0.5f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_left_paren()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->bearing_y = -10.f;
+	glyph->bearing_x = 5.f;
+	glyph->advance_x = 25.f;
+
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 40.f;
+	const f32 r = 0.5f;
+
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	gs_vec2 slp = gs_vec2_add(position, (gs_vec2){-0.5f * scl, 0.0f * scl});
+	gs_vec2 elp = gs_vec2_add(position, (gs_vec2){0.5f * scl, 0.f * scl});
+	path_draw_arc(p, position, r * scl, 90.f, 270.f, num_segments, thickness, color);
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_right_paren()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->bearing_y = -10.f;
+	glyph->bearing_x = 5.f;
+	glyph->advance_x = 25.f;
+
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 40.f;
+	const f32 r = 0.5f;
+
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	gs_vec2 slp = gs_vec2_add(position, (gs_vec2){-0.5f * scl, 0.0f * scl});
+	gs_vec2 elp = gs_vec2_add(position, (gs_vec2){0.5f * scl, 0.f * scl});
+	path_draw_arc(p, position, r * scl, 270.f, 360.f + 90.f, num_segments, thickness, color);
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_comma()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->bearing_y = 0.f;
+	glyph->bearing_x = 0.f;
+	glyph->advance_x = 25.f;
+
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 35.f;
+	const f32 r = 0.5f;
+
+	// ,
+
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	gs_vec2 slp = gs_vec2_add(position, (gs_vec2){0.f, -0.2f * scl});
+	gs_vec2 elp = position;
+	path_draw_line(p, slp, elp, thickness * 2.f, color);
+	slp = gs_vec2_add(elp, (gs_vec2){-r * scl, 0.f});
+	path_draw_arc(p, slp, r * scl, 0.f, 100.f, num_segments, thickness, color);
+
+	p->joint_style = joint_style_round;
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_dot()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->bearing_y = 0.f;
+	glyph->bearing_x = 0.f;
+	glyph->advance_x = 25.f;
+
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 35.f;
+	const f32 r = 0.5f;
+
+	// .
+
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	gs_vec2 slp = gs_vec2_add(position, (gs_vec2){0.f, -0.1f * scl});
+	gs_vec2 elp = position;
+	path_draw_line(p, slp, elp, thickness * 2.f, color);
+	
+	p->joint_style = joint_style_round;
 
 	return glyph;
 }
@@ -3132,7 +3380,7 @@ vg_glyph_t* __glyph_create_three()
 
 	// 3
 
-	const s32 num_segments = 20;
+	const s32 num_segments = 70;
 	const f32 thickness = glyph_thickness;
 	gs_vec4 color = white;
 	gs_vec2 position = (gs_vec2){0.f, 0.f};
@@ -3188,6 +3436,45 @@ vg_glyph_t* __glyph_create_four()
 	return glyph;
 }
 
+vg_glyph_t* __glyph_create_five()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->advance_x = 35.f;
+	glyph->bearing_y = -17.f;
+	glyph->bearing_x = 0.f;
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	// 5
+
+	const s32 num_segments = 70;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 60.f;
+	const f32 r = 0.18f;
+
+	// Draw two circles
+	gs_vec2 slp = gs_vec2_add(position, (gs_vec2){r * scl, 0.f});
+	gs_vec2 elp = gs_vec2_add(slp, (gs_vec2){2.f * -r * scl, 0.0f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+
+	slp = elp;
+	elp = gs_vec2_add(slp, (gs_vec2){0.f, 0.2f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+
+
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	path_draw_arc(p, gs_vec2_add(elp, (gs_vec2){r * scl, r * scl}), r * scl, 180.f, 360.f + 150.f, num_segments, thickness, color);
+
+	p->joint_style = joint_style_miter;
+
+	return glyph;
+}
+
 vg_glyph_t* __glyph_create_six()
 {
 	vg_glyph_t* glyph = glyph_create_new_ptr();
@@ -3200,7 +3487,7 @@ vg_glyph_t* __glyph_create_six()
 
 	// 6
 
-	const s32 num_segments = 20;
+	const s32 num_segments = 70;
 	const f32 thickness = glyph_thickness;
 	gs_vec4 color = white;
 	gs_vec2 position = (gs_vec2){0.f, 0.f};
@@ -3217,6 +3504,39 @@ vg_glyph_t* __glyph_create_six()
 	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
 
 	path_draw_circle(p, gs_vec2_add(position, (gs_vec2){0.f, 2.f * r * scl - 1.f}), r * scl, num_segments, thickness, color);
+
+	p->joint_style = joint_style_miter;
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_seven()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->advance_x = 35.f;
+	glyph->bearing_y = 0.f;
+	glyph->bearing_x = 6.f;
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	// 7
+
+	const s32 num_segments = 70;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 60.f;
+	const f32 r = 0.18f;
+
+	// Draw two circles
+	gs_vec2 slp = gs_vec2_add(position, (gs_vec2){2.f * -r * scl, -0.6f * scl});
+	gs_vec2 elp = gs_vec2_add(position, (gs_vec2){0.f, -0.6f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+
+	slp = elp;
+	elp = gs_vec2_add(slp, (gs_vec2){2.f * -r * scl, 0.6f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
 
 	p->joint_style = joint_style_miter;
 
@@ -3255,6 +3575,40 @@ vg_glyph_t* __glyph_create_eight()
 	return glyph;
 }
 
+vg_glyph_t* __glyph_create_nine()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->advance_x = 35.f;
+	glyph->bearing_y = -15.f;
+	glyph->bearing_x = 0.f;
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	// 9
+
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 55.f;
+	const f32 r = 0.18f;
+
+	// Draw two circles
+	path_draw_circle(p, position, r * scl, num_segments, thickness, color);
+
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	gs_vec2 slp = gs_vec2_add(position, (gs_vec2){r * scl, 0.f});
+	gs_vec2 elp = gs_vec2_add(slp, (gs_vec2){-r * scl, 0.55f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+
+	p->joint_style = joint_style_miter;
+
+	return glyph;
+}
+
 vg_glyph_t* __glyph_create_semi_colon()
 {
 	vg_glyph_t* glyph = glyph_create_new_ptr();
@@ -3286,6 +3640,38 @@ vg_glyph_t* __glyph_create_semi_colon()
 		gs_vec2_add(position, (gs_vec2){0.0f, -0.1f * scl}), thickness * 2.f, color);
 
 	p->joint_style = joint_style_miter;
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_equal()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->bearing_y = -10.f;
+	glyph->bearing_x = 0.f;
+	glyph->advance_x = 25.f;
+
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 35.f;
+	const f32 r = 0.5f;
+
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	gs_vec2 slp = gs_vec2_add(position, (gs_vec2){-0.5f * scl, 0.0f * scl});
+	gs_vec2 elp = gs_vec2_add(position, (gs_vec2){0.5f * scl, 0.f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
+
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	slp = gs_vec2_add(position, (gs_vec2){-0.5f * scl, -0.3f * scl});
+		elp = gs_vec2_add(position, (gs_vec2){0.5f * scl, -0.3f * scl});
+	path_draw_line(p, slp, elp, thickness, color);
 
 	return glyph;
 }
@@ -3435,25 +3821,43 @@ void init_font()
 	gs_hash_table_insert(g_font.glyphs, 's', __glyph_create_s());
 	gs_hash_table_insert(g_font.glyphs, 't', __glyph_create_t());
 	gs_hash_table_insert(g_font.glyphs, 'u', __glyph_create_u());
-	gs_hash_table_insert(g_font.glyphs, 'y', __glyph_create_y());
 	gs_hash_table_insert(g_font.glyphs, 'v', __glyph_create_v());
 	gs_hash_table_insert(g_font.glyphs, 'w', __glyph_create_w());
+	gs_hash_table_insert(g_font.glyphs, 'x', __glyph_create_x());
+	gs_hash_table_insert(g_font.glyphs, 'y', __glyph_create_y());
 	gs_hash_table_insert(g_font.glyphs, '0', __glyph_create_zero());
 	gs_hash_table_insert(g_font.glyphs, '1', __glyph_create_one());
 	gs_hash_table_insert(g_font.glyphs, '2', __glyph_create_two());
 	gs_hash_table_insert(g_font.glyphs, '3', __glyph_create_three());
 	gs_hash_table_insert(g_font.glyphs, '4', __glyph_create_four());
+	gs_hash_table_insert(g_font.glyphs, '5', __glyph_create_five());
 	gs_hash_table_insert(g_font.glyphs, '6', __glyph_create_six());
+	gs_hash_table_insert(g_font.glyphs, '7', __glyph_create_seven());
 	gs_hash_table_insert(g_font.glyphs, '8', __glyph_create_eight());
+	gs_hash_table_insert(g_font.glyphs, '9', __glyph_create_nine());
 	gs_hash_table_insert(g_font.glyphs, ' ', __glyph_create_space());
 	gs_hash_table_insert(g_font.glyphs, '_', __glyph_create_underscore());
 	gs_hash_table_insert(g_font.glyphs, ';', __glyph_create_semi_colon());
 	gs_hash_table_insert(g_font.glyphs, '}', __glyph_create_right_brace());
 	gs_hash_table_insert(g_font.glyphs, '{', __glyph_create_left_brace());
+	gs_hash_table_insert(g_font.glyphs, '=', __glyph_create_equal());
+	gs_hash_table_insert(g_font.glyphs, '(', __glyph_create_left_paren());
+	gs_hash_table_insert(g_font.glyphs, ')', __glyph_create_right_paren());
+	gs_hash_table_insert(g_font.glyphs, ',', __glyph_create_comma());
+	gs_hash_table_insert(g_font.glyphs, '.', __glyph_create_dot());
+	gs_hash_table_insert(g_font.glyphs, '/', __glyph_create_forward_slash());
+	gs_hash_table_insert(g_font.glyphs, '\\', __glyph_create_backward_slash());
+	gs_hash_table_insert(g_font.glyphs, '-', __glyph_create_minus());
+	gs_hash_table_insert(g_font.glyphs, '+', __glyph_create_plus());
 }
 
 void play_scene_one()
 {
+	gs_for_range_i(gs_dyn_array_size(g_animations)) {
+		animation_clear(&g_animations[i]);
+	}
+
+	gs_dyn_array_clear(g_animations);
 	// Cache instance of graphics api from engine
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
@@ -3463,11 +3867,10 @@ void play_scene_one()
 
 	animation_t* anim = NULL;
 	shape_t* shape = &g_shape;
-	u32 anim_ct = 0;
 
 	const u32 num_cols = 10;
 	const u32 num_rows = 10;
-	const f32 grid_size = 400.f;
+	const f32 grid_size = 600.f;
 	const f32 ct = 1.0f;
 	f32 cw = grid_size / (f32)num_cols;
 	f32 ch = grid_size / (f32)num_rows;
@@ -3481,6 +3884,30 @@ void play_scene_one()
 
 	f32 w = (cw - ct);
 	f32 h = (ch - ct);
+
+	f32 fade_amt = 0.1f;
+	f32 txt_size = 40.f;
+
+	/*
+		Center Cell Animation
+	*/
+	// Set up shape
+	shape_begin(shape);
+	shape->xform.position = (gs_vec3){ws.x / 2.f, ws.y / 2.f, 0.f};
+	shape_draw_square(shape, ocp, chext, ct, (gs_vec4){grid_col.x, grid_col.y, grid_col.z, 0.1f}, true);
+
+	fade_amt = 10.f;
+	gs_dyn_array_push(g_animations, animation_create_new());
+	anim = gs_dyn_array_back(g_animations);
+	animation_set_shape(anim, shape);
+	animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_lerp, 5.f, NULL);
+	animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 3.f, &fade_amt);
+	animation_add_action(anim, animation_action_type_wait, animation_ease_type_smooth_step, 10.f, NULL);
+
+	trans = shape->xform;
+	trans.scale = (gs_vec3){ 2.5, 2.5, 1.f };
+	trans.position = (gs_vec3){ ws.x * 0.28f / trans.scale.x, (ws.y * 0.5f - ch) / trans.scale.y, 0.f };
+	animation_add_action(anim, animation_action_type_transform, animation_ease_type_smooth_step, 3.f, &trans);
 
 	// Initialize shape and animation for grid
 	// Want each of these squares to animate in as well...
@@ -3497,8 +3924,9 @@ void play_scene_one()
 	// Animate one of the paths
 	trans.scale = (gs_vec3){0.4f, 0.4f, 0.f};
 	trans.position = (gs_vec3){grid_size * trans.scale.x + 20.f, grid_size * trans.scale.y + 20.f, 0.f};
-	f32 fade_amt = 0.1f;
-	anim = &g_animations[anim_ct++];
+	fade_amt = 0.1f;
+	gs_dyn_array_push(g_animations, animation_create_new());
+	anim = gs_dyn_array_back(g_animations);
 	animation_set_shape(anim, shape);
 	animation_add_action(anim, animation_action_type_walk_path, animation_ease_type_smooth_step, 5.f, NULL);
 	animation_add_action(anim, animation_action_type_wait, animation_ease_type_lerp, 7.f, NULL);
@@ -3510,10 +3938,11 @@ void play_scene_one()
 
 	shape_begin(shape);
 	shape->xform.position = (gs_vec3){ws.x / 2.f, ws.y / 2.f, 0.f};
-	shape_draw_text(shape, (gs_vec2){-45.f * 4.f / 2.f, grid_size * 1.8f }, &g_font, "width", 32.f, white);
-	shape_draw_text(shape, (gs_vec2){-grid_size * 1.7f - 6.f * 45.f, 0.f}, &g_font, "height", 32.f, white);
+	shape_draw_text(shape, (gs_vec2){(-45.f * 4.f) / 2.f + 45.f, grid_size * 1.4f }, &g_font, "width", txt_size, white);
+	shape_draw_text(shape, (gs_vec2){-grid_size * 1.3f - 6.f * 45.f, 0.f}, &g_font, "height", txt_size, white);
 
-	anim = &g_animations[anim_ct++];
+	gs_dyn_array_push(g_animations, animation_create_new());
+	anim = gs_dyn_array_back(g_animations);
 	animation_set_shape(anim, shape);
 	animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_lerp, 3.f, NULL);
 	animation_add_action(anim, animation_action_type_walk_path, animation_ease_type_smooth_step, 5.f, NULL);
@@ -3526,33 +3955,14 @@ void play_scene_one()
 	animation_add_action(anim, animation_action_type_wait, animation_ease_type_lerp, 4.f, NULL);
 
 	/*
-		Center Cell Animation
-	*/
-	// Set up shape
-	shape_begin(shape);
-	shape->xform.position = (gs_vec3){ws.x / 2.f, ws.y / 2.f, 0.f};
-	shape_draw_square(shape, ocp, chext, ct, (gs_vec4){grid_col.x, grid_col.y, grid_col.z, 0.1f}, true);
-
-	fade_amt = 10.f;
-	anim = &g_animations[anim_ct++];
-	animation_set_shape(anim, shape);
-	animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_lerp, 5.f, NULL);
-	animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 3.f, &fade_amt);
-	animation_add_action(anim, animation_action_type_wait, animation_ease_type_smooth_step, 10.f, NULL);
-
-	trans = shape->xform;
-	trans.scale = (gs_vec3){ 2.5, 2.5, 1.f };
-	trans.position = (gs_vec3){ ws.x * 0.12f / trans.scale.x, (ws.y * 0.5f - ch) / trans.scale.y, 0.f };
-	animation_add_action(anim, animation_action_type_transform, animation_ease_type_smooth_step, 3.f, &trans);
-
-	/*
 		// Highlight center cell animation
 	*/
 	shape_begin(shape);
 	shape->xform.position = (gs_vec3){ws.x / 2.f, ws.y / 2.f, 0.f};
 	shape_draw_square(shape, ocp, chext, 2.f, highlight_col, false);
 
-	anim = &g_animations[anim_ct++];
+	gs_dyn_array_push(g_animations, animation_create_new());
+	anim = gs_dyn_array_back(g_animations);
 	fade_amt = 10.0f;
 	animation_set_shape(anim, shape);
 	animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_lerp, 15.f, NULL);
@@ -3573,7 +3983,7 @@ void play_scene_one()
 	shape->xform.position = (gs_vec3){ws.x / 2.f, ws.y / 2.f, 0.f};
 	shape->xform.scale = (gs_vec3){1.f, 1.f, 1.f};
 
-	shape_draw_square(shape, (gs_vec2){0.f, 0.f}, (gs_vec2){350.f, 150.f}, 1.f, white, false);
+	shape_draw_square(shape, (gs_vec2){0.f, 0.f}, (gs_vec2){ws.x * 0.3f, ws.y * 0.2f}, 1.f, white, false);
 	
 	const char* txt = "typedef struct particle_t\n"\
 	"{\n"\
@@ -3584,15 +3994,16 @@ void play_scene_one()
 	"   b32 has_been_updated;\n"\
 	"   uint8_t[3] padding;\n"\
 	"} particle_t;";
-	shape_draw_text(shape, (gs_vec2){-500.f, glyph_height - 350.f}, &g_font, txt, 30.f, white);	// Making them all monospaced. Fuck it.
+	shape_draw_text(shape, (gs_vec2){-ws.x * 0.2f, glyph_height - 350.f}, &g_font, txt, txt_size, white);	// Making them all monospaced. Fuck it.
 
-	anim = &g_animations[anim_ct++];
+	gs_dyn_array_push(g_animations, animation_create_new());
+	anim = gs_dyn_array_back(g_animations);
 	animation_set_shape(anim, shape);
 	animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_lerp, 20.f, NULL);
 	animation_add_action(anim, animation_action_type_walk_path, animation_ease_type_smooth_step, 10.f, NULL);
 
 	shape_begin(shape);
-	shape->xform.position = (gs_vec3){ws.x / 2.f, ws.y / 2.f, 0.f};
+	shape->xform.position = (gs_vec3){ws.x * 0.5f, ws.y * 0.5f, 0.f};
 	shape->xform.scale = (gs_vec3){1.f, 1.f, 1.f};
 
 	txt = "1 byte\n"\
@@ -3602,16 +4013,84 @@ void play_scene_one()
 	"32 bytes\n"\
 	"3 bytes\n"\
 	"total: 136";
-	shape_draw_text(shape, (gs_vec2){600.f, glyph_height - 450.f + 80.f * 3 + 20.f }, &g_font, txt, 30.f, (gs_vec4){1.f, 1.f, 1.f, 0.1f});	// Making them all monospaced. Fuck it.
-	anim = &g_animations[anim_ct++];
+	shape_draw_text(shape, (gs_vec2){ws.x * 0.45f, glyph_height - 450.f + 80.f * 3 + 20.f }, &g_font, txt, txt_size, (gs_vec4){1.f, 1.f, 1.f, 0.1f});	// Making them all monospaced. Fuck it.
+
+	gs_dyn_array_push(g_animations, animation_create_new());
+	anim = gs_dyn_array_back(g_animations);
 	animation_set_shape(anim, shape);
 	animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_lerp, 30.f, NULL);
 	fade_amt = 10.0f;
 	animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 4.0f, &fade_amt);
+
+	// Arrow
+	shape_begin(shape);
+	shape->xform.position = (gs_vec3){ws.x / 2.f, ws.y / 2.f, 0.f};
+	shape->xform.scale = (gs_vec3){1.f, 1.f, 1.f};
+	gs_vec2 slp = (gs_vec2){-ws.x * 0.13f, 0.f};
+	gs_vec2 elp = gs_vec2_add(slp, (gs_vec2){70.f, 0.f});
+	shape_draw_line(shape, slp, elp, 0.1f, white);
+	slp = gs_vec2_add(slp, (gs_vec2){0.f, 10.f});
+	elp = gs_vec2_add(slp, (gs_vec2){70.f, 0.f});
+	shape_draw_line(shape, slp, elp, 0.1f, white);
+
+	// txt = "{";
+	// shape_draw_text(shape, slp, &g_font, txt, 350.f, (gs_vec4){1.f, 1.f, 1.f, 1.f});	// Making them all monospaced. Fuck it.
+
+	gs_dyn_array_push(g_animations, animation_create_new());
+	anim = gs_dyn_array_back(g_animations);
+	animation_set_shape(anim, shape);
+	animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_lerp, 20.f, NULL);
+	animation_add_action(anim, animation_action_type_walk_path, animation_ease_type_smooth_step, 10.f, NULL);
+
+	shape_begin(shape);
+	shape->xform.position = (gs_vec3){ws.x / 2.f, ws.y / 2.f, 0.f};
+	shape->xform.scale = (gs_vec3){1.f, 1.f, 1.f};
+	gs_vec2 ta = gs_vec2_add(elp, (gs_vec2){2.f, 5.f});
+	gs_vec2 tb = gs_vec2_add(ta, (gs_vec2){0.f, -20.f});
+	gs_vec2 tc = gs_vec2_add(tb, (gs_vec2){20.f, 10.f});
+	shape_draw_triangle(shape, ta, tb, tc, 0.1f, white);
+
+	gs_dyn_array_push(g_animations, animation_create_new());
+	anim = gs_dyn_array_back(g_animations);
+	animation_set_shape(anim, shape);
+	animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_lerp, 28.f, NULL);
+	animation_add_action(anim, animation_action_type_walk_path, animation_ease_type_smooth_step, 5.f, NULL);
 }
+
+#define animate_txt(_txt, _x, _y, _size, _col, _base_time)\
+do\
+{\
+	shape_begin(shape);\
+	shape->xform.position = (gs_vec3){ws.x / 2.f, ws.y / 2.f, 0.f};\
+	shape->xform.scale = (gs_vec3){1.f, 1.f, 1.f};\
+	gs_dyn_array_push(g_animations, animation_create_new());\
+	anim = gs_dyn_array_back(g_animations);\
+	anim->animation_speed = 1.0f;\
+	xpos += shape_draw_text(shape, (gs_vec2){(_x), (_y)}, &g_font, (_txt), (_size), (_col));\
+	for (u32 i = 0; i < gs_string_length((_txt)); ++i) {\
+		if ((_txt)[i] == '\n') {\
+			xpos = 0.f;\
+			yoff += 60.f;\
+		}\
+	}\
+	animation_set_shape(anim, shape);\
+	animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_lerp, (_base_time) + 45.f, NULL);\
+	fade_amt = 10.f;\
+	/*animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, (_base_time) + 15.f, &fade_amt);*/\
+	animation_add_action(anim, animation_action_type_walk_path, animation_ease_type_smooth_step, (_base_time) + 5.0f, NULL);\
+	\
+} while(0)
+
+#define color_alpha(_c, _a)\
+	(gs_vec4){(_c).x, (_c).y, (_c).z, (_a)}
 
 void play_scene_two()
 {
+	gs_for_range_i(gs_dyn_array_size(g_animations)) {
+		animation_clear(&g_animations[i]);
+	}
+	gs_dyn_array_clear(g_animations);
+
 	// Cache instance of graphics api from engine
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
@@ -3625,7 +4104,7 @@ void play_scene_two()
 
 	const u32 num_cols = 10;
 	const u32 num_rows = 10;
-	const f32 grid_size = 400.f;
+	const f32 grid_size = 600.f;
 	const f32 ct = 1.0f;
 	f32 cw = grid_size / (f32)num_cols;
 	f32 ch = grid_size / (f32)num_rows;
@@ -3653,44 +4132,171 @@ void play_scene_two()
 
 	// Total play time should be determined by total number of tracks...
 	// Animate one of the paths
-	trans.scale = (gs_vec3){0.4f, 0.4f, 0.f};
+	trans.scale = (gs_vec3){0.9f, 0.9f, 0.f};
 	trans.position = (gs_vec3){grid_size * trans.scale.x + 20.f, grid_size * trans.scale.y + 20.f, 0.f};
 	f32 fade_amt = 10.0f;
-	anim = &g_animations[anim_ct++];
+	gs_dyn_array_push(g_animations, animation_create_new());
+	anim = gs_dyn_array_back(g_animations);
 	animation_set_shape(anim, shape);
-	animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 5.f, &fade_amt);
+	animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 6.f, &fade_amt);
+	animation_add_action(anim, animation_action_type_transform, animation_ease_type_smooth_step, 3.5f, &trans);	
 
 	// Want an "animated" cell, to look as though it's iterating through the grid
 	/*
 		// Highlight center cell animation
 	*/
 	// What's top grid position?
-	gs_vec2 tl = (gs_vec2){ocp.x - grid_size / 2.f, ocp.y - grid_size / 2.f};
-	gs_vec2 pos = gs_vec2_add(tl, (gs_vec2){0.f, 0.f});
+	gs_vec2 bl = (gs_vec2){ocp.x - grid_size / 2.f, ocp.y + grid_size / 2.f};
 
-	shape_begin(shape);
-	shape->xform.position = (gs_vec3){0.f, 0.f, 0.f};
-	shape->xform.scale = (gs_vec3){1.f, 1.f, 1.f};
-	shape_draw_square(shape, (gs_vec2){0.f, 0.f}, chext, 2.f, highlight_col, false);
+	const f32 alpha = 1.0f;
+	const gs_vec4 func_col = (gs_vec4){0.2f, 0.6f, 0.8f, alpha};
+	const gs_vec4 default_col = (gs_vec4){1.f, 1.f, 1.f, alpha};
+	const gs_vec4 primitive_col = (gs_vec4){0.8f, 0.6f, 0.1f, alpha};
 
-	anim = &g_animations[anim_ct++];
-	fade_amt = 10.0f;
-	animation_set_shape(anim, shape);
-	animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_lerp, 15.f, NULL);
+	b32 done = false;
+	u32 count = 0;
+	u32 max_count = 2 * num_cols + 8;
+	f32 yoff = -grid_size * 1.3f;
+	const f32 txt_size = 40.f;
+	for ( u32 r = 1; r < num_cols; ++r )
+	{
+		if ( done ) {
+			break;
+		}
 
-	gs_for_range_i( num_cols ) {
-		fade_amt = 10.0f;
-		animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 1.0f, &fade_amt);
+		for ( u32 c = 0; c < num_cols; ++c ) 
+		{
+			u32 i = r * num_cols + c;
 
-		animation_add_action(anim, animation_action_type_wait, animation_ease_type_smooth_step, 2.0f, NULL);
+			if (count > max_count - 1) {
+				done = true;
+				break;
+			}
 
-		fade_amt = 0.1f;
-		animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 1.0f, &fade_amt);
+			count++;
 
-		trans.position = (gs_vec3){tl.x + i * cw, tl.y, 0.f};
-		trans.scale = (gs_vec3){1.f, 1.f, 1.f};
-		animation_add_action(anim, animation_action_type_transform, animation_ease_type_smooth_step, 3.f, &trans);
+			shape_begin(shape);
+			// shape->xform.position = (gs_vec3){ws.x / 2.f, ws.y / 2.f, 0.f};
+			shape->xform.scale = (gs_vec3){0.9f, 0.9f, 1.f};
+			shape->xform.position = (gs_vec3){grid_size * shape->xform.scale.x + 20.f, grid_size * shape->xform.scale.y + 20.f, 0.f};
+			shape_draw_square(shape, gs_vec2_add(bl, (gs_vec2){cw * c, -ch * r}), chext, 2.f, highlight_col, false);
+
+			if ( count <= max_count - 1 ) {
+				const char* txt = "cell_id";
+				f32 xoff = shape_draw_text(shape, (gs_vec2){-ws.x * 0.25f, yoff }, 
+					&g_font, txt, txt_size, color_alpha(primitive_col, 0.1f));
+				txt = " = mat_id_empty;";
+				shape_draw_text(shape, (gs_vec2){-ws.x * 0.25f + xoff, yoff }, 
+					&g_font, txt, txt_size, color_alpha(default_col, 0.1f));
+			} else {
+				const char* txt = "cell_id";
+				f32 xoff = shape_draw_text(shape, (gs_vec2){-ws.x * 0.25f, yoff }, 
+					&g_font, txt, txt_size, color_alpha(primitive_col, 0.1f));
+				txt = " = mat_id_sand;";
+				shape_draw_text(shape, (gs_vec2){-ws.x * 0.25f + xoff, yoff }, 
+					&g_font, txt, txt_size, color_alpha(default_col, 0.1f));
+			}
+
+			char tmp[256];
+			gs_snprintf(tmp, sizeof(tmp), "col = %zu", c);
+			shape_draw_text(shape, (gs_vec2){-ws.x * 0.25f, yoff - 60.f }, 
+				&g_font, tmp, txt_size, (gs_vec4){1.f, 1.f, 1.f, 0.1f});
+			gs_snprintf(tmp, sizeof(tmp), "row = %zu", num_rows - r);
+			shape_draw_text(shape, (gs_vec2){-ws.x * 0.25f, yoff - 2.f * 60.f }, 
+				&g_font, tmp, txt_size, (gs_vec4){1.f, 1.f, 1.f, 0.1f});
+
+			gs_dyn_array_push(g_animations, animation_create_new());
+			anim = gs_dyn_array_back(g_animations);
+			anim->animation_speed = 0.7f;
+			animation_set_shape(anim, shape);
+
+			fade_amt = 10.0f;
+			animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_lerp, i * 0.8f, NULL);
+			animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 1.0f, &fade_amt);
+
+			if ( count <= max_count - 1 ) {
+				fade_amt = 0.0f;
+				animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 0.4f, &fade_amt);
+				animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_smooth_step, 100.0f, &fade_amt);
+			}
+		}
 	}	
+
+
+	// trans.scale = (gs_vec3){0.9f, 0.9f, 0.f};
+	// trans.position = (gs_vec3){grid_size * trans.scale.x + 20.f, grid_size * trans.scale.y + 20.f, 0.f};
+	// animation_add_action(anim, animation_action_type_transform, animation_ease_type_smooth_step, 1.f, &trans);	
+
+	// Update function text
+	shape_begin(shape);
+	shape->xform.position = (gs_vec3){ws.x / 2.f, ws.y / 2.f, 0.f};
+	shape->xform.scale = (gs_vec3){1.f, 1.f, 1.f};
+
+	f32 xpos = 0.f;
+	f32 _bt = 1.f;
+
+	animate_txt("for", xpos, yoff + 150.f, txt_size, func_col, _bt);
+	animate_txt("(", xpos, yoff + 150.f, txt_size, default_col, _bt * 2.f);
+	animate_txt("u32", xpos, yoff + 150.f, txt_size, primitive_col, _bt * 3.f);
+	animate_txt(" y = height - 1; y > 0; --y) {\n, ", xpos, yoff + 150.f, txt_size, default_col, _bt * 4.f);
+
+	xpos += 45.f;
+	animate_txt("for", xpos, yoff + 150.f, txt_size, func_col, _bt);
+	animate_txt("(", xpos, yoff + 150.f, txt_size, default_col, _bt * 2.f);
+	animate_txt("u32", xpos, yoff + 150.f, txt_size, primitive_col, _bt * 3.f);
+	animate_txt("x = 0; x < width; ++x) {\n", xpos, yoff + 150.f, txt_size, default_col, _bt * 5.f);
+	animate_txt(" }", xpos, yoff + 150.f, txt_size, default_col, _bt * 8.f);
+	animate_txt("}", xpos, yoff + 150.f, txt_size, default_col, _bt * 8.f);
+
+	// for ( u32 y = g_texture_height - 1; y > 0; --y )
+	// {
+	// 	for ( u32 x = ran ? 0 : g_texture_width - 1; ran ? x < g_texture_width : x > 0; ran ? ++x : --x )
+	// 	{
+	// 		// Current particle idx
+	// 		u32 read_idx = compute_idx( x, y );
+
+	// 		// Get material of particle at point
+	// 		u8 mat_id = get_particle_at( x, y ).id;
+
+	// 		// Update particle's lifetime (I guess just use frames)? Or should I have sublife?
+	// 		g_world_particle_data[ read_idx ].life_time += 1.f * dt;
+
+	// 		switch ( mat_id ) {
+
+	// 			case mat_id_sand:  update_sand( x, y );  break;
+	// 			case mat_id_water: update_water( x, y ); break;
+	// 			case mat_id_salt:  update_salt( x, y );  break;
+	// 			case mat_id_fire:  update_fire( x, y );  break;
+	// 			case mat_id_smoke: update_smoke( x, y ); break;
+	// 			case mat_id_ember: update_ember( x, y ); break;
+	// 			case mat_id_steam: update_steam( x, y ); break;
+	// 			case mat_id_gunpowder: update_gunpowder( x, y ); break;
+	// 			case mat_id_oil: update_oil( x, y ); break;
+	// 			case mat_id_lava: update_lava( x, y ); break;
+	// 			case mat_id_acid: update_acid( x, y ); break;
+
+	// 			// Do nothing for empty or default case
+	// 			default:
+	// 			case mat_id_empty: 
+	// 			{
+	// 				// update_default( w, h, i ); 
+	// 			} break;
+	// 		}
+	// 	}
+	// }
+
+	// Eventually, can just have a function to lex over text and set up the animations automatically
+	animate_txt("update_sand", xpos, yoff + 150.f, txt_size, func_col, _bt);
+	animate_txt("(", xpos, yoff + 150.f, txt_size, default_col, _bt * 2.f);
+	animate_txt("u32", xpos, yoff + 150.f, txt_size, primitive_col, _bt * 3.f);
+	animate_txt(" x, ", xpos, yoff + 150.f, txt_size, default_col, _bt * 4.f);
+	animate_txt("u32", xpos, yoff + 150.f, txt_size, primitive_col, _bt * 5.f);
+	animate_txt(" y) {\n", xpos, yoff + 150.f, txt_size, default_col, _bt * 6.f);
+	animate_txt(" // update sand...\n", xpos, yoff + 150.f, txt_size, default_col, _bt * 7.f);
+	animate_txt("}", xpos, yoff + 150.f, txt_size, default_col, _bt * 8.f);
+
+
+
 }
 
 
