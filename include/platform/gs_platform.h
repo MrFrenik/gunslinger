@@ -291,6 +291,7 @@ typedef struct gs_platform_settings
 } gs_platform_settings;
 
 typedef void ( * dropped_files_callback_t )( void*, s32 count, const char** file_paths );
+typedef void ( * window_close_callback_t )( void* );
 
 // General API for platform
 typedef struct gs_platform_i
@@ -356,6 +357,7 @@ typedef struct gs_platform_i
 	void 					( * set_cursor )( gs_resource_handle handle, gs_platform_cursor cursor );
 	gs_resource_handle 		( *main_window )();
 	void 					( * set_dropped_files_callback )( gs_resource_handle, dropped_files_callback_t );
+	void 					( * set_window_close_callback )( gs_resource_handle, window_close_callback_t );
 
 	/*============================================================
 	// Platform File IO

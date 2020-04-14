@@ -1554,12 +1554,19 @@ _global const char* bb_f_src = "\n"
 "	frag_color = texture(u_tex, fs_in.uv);\n"
 "}";
 
+_global b32 app_running = true;
+
+void window_close_callback( void* win )
+{
+	app_running = false;
+}
+
 int main( int argc, char** argv )
 {
 	gs_application_desc app = {0};
 	app.window_title 		= "Debug Drawing";
-	app.window_width 		= 1920 / 2;
-	app.window_height 		= 1080 / 2;
+	app.window_width 		= 1920;
+	app.window_height 		= 1080;
 	app.init 				= &app_init;
 	app.update 				= &app_update;
 	app.shutdown 			= &app_shutdown;
@@ -1589,6 +1596,9 @@ gs_result app_init()
 	// Cache instance of graphics api from engine
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+
+	// Set callback for window closing
+	platform->set_window_close_callback(platform->main_window(), &window_close_callback);
 
 	// Viewport
 	const gs_vec2 ws = frame_buffer_size;
@@ -1682,6 +1692,10 @@ gs_result app_init()
 
 gs_result app_update()
 {
+	if (!app_running) {
+		return gs_result_success;
+	}
+	
 	// Grab global instance of engine
 	gs_engine* engine = gs_engine_instance();
 

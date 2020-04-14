@@ -11,7 +11,6 @@ void __glfw_mouse_cursor_position_callback( GLFWwindow* window, f64 x, f64 y );
 void __glfw_mouse_scroll_wheel_callback( GLFWwindow* window, f64 xoffset, f64 yoffset );
 void __glfw_mouse_cursor_enter_callback( GLFWwindow* window, s32 entered );
 void __glfw_frame_buffer_size_callback( GLFWwindow* window, s32 width, s32 height );
-void __glfw_window_close_callback( GLFWwindow* window );
 void __glfw_drop_callback( GLFWwindow* window );
 
 #define __window_from_handle( platform, handle )\
@@ -311,16 +310,6 @@ void __glfw_frame_buffer_size_callback( GLFWwindow* window, s32 width, s32 heigh
 	// }	
 }
 
-void __glfw_window_close_callback( GLFWwindow* window )
-{
-	// Not sure how to bubble this up to the engine to signal that it should close or not...	
-	// Probably just expose a function pointer for the window itself?
-	// window->window_close_callback_func();
-	// glfwSetWindowShouldClose(window, GL_FALSE);
-	// For now, just ya know, press the escape key manually...
-	gs_engine_instance()->ctx.platform->press_key( gs_keycode_esc );
-}
-
 gs_result glfw_process_input( struct gs_platform_input* input )
 {
 	glfwPollEvents();
@@ -345,7 +334,6 @@ void* glfw_create_window( const char* title, u32 width, u32 height )
 	glfwSetScrollCallback( window, &__glfw_mouse_scroll_wheel_callback );
 	glfwSetCursorEnterCallback( window, &__glfw_mouse_cursor_enter_callback );
 	glfwSetFramebufferSizeCallback(window, &__glfw_frame_buffer_size_callback);
-	glfwSetWindowCloseCallback(window, &__glfw_window_close_callback );
 
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
@@ -412,6 +400,12 @@ void glfw_set_dropped_files_callback( gs_resource_handle handle, dropped_files_c
 	glfwSetDropCallback( win, (GLFWdropfun)callback );
 }
 
+void  glfw_set_window_close_callback( gs_resource_handle handle, window_close_callback_t callback )
+{
+	struct gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+	GLFWwindow* win = __window_from_handle( platform, handle );
+	glfwSetWindowCloseCallback( win, callback );
+}
 
 // Method for creating platform layer for SDL
 struct gs_platform_i* gs_platform_construct()
@@ -448,13 +442,14 @@ struct gs_platform_i* gs_platform_construct()
 	/*============================
 	// Platform Window
 	============================*/
-	platform->create_window_internal	= &glfw_create_window;
-	platform->window_swap_buffer 		= &glfw_window_swap_buffer;
-	platform->window_size 				= &glfw_window_size;
-	platform->window_size_w_h 			= &glfw_window_size_w_h;
-	platform->set_window_size 			= &glfw_set_window_size;
-	platform->set_cursor 				= &glfw_set_cursor;
-	platform->set_dropped_files_callback = &glfw_set_dropped_files_callback;
+	platform->create_window_internal		= &glfw_create_window;
+	platform->window_swap_buffer 			= &glfw_window_swap_buffer;
+	platform->window_size 					= &glfw_window_size;
+	platform->window_size_w_h 				= &glfw_window_size_w_h;
+	platform->set_window_size 				= &glfw_set_window_size;
+	platform->set_cursor 					= &glfw_set_cursor;
+	platform->set_dropped_files_callback 	= &glfw_set_dropped_files_callback;
+	platform->set_window_close_callback 	= &glfw_set_window_close_callback;
 
 	// Todo(John): Remove this from the default initialization and make it a part of a plugin or config setting
 	platform->settings.video.driver = gs_platform_video_driver_type_opengl;
