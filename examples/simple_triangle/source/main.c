@@ -140,8 +140,6 @@ gs_result app_update()
 	// Submit command buffer for rendering
 	gfx->submit_command_buffer( g_cb );
 
-	// This is me writing some code
-
 	return gs_result_in_progress;
 }
 
