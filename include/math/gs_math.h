@@ -355,7 +355,7 @@ gs_mat4_diag( f32 val )
 	( gs_mat4 ){ 0 }
 
 _inline gs_mat4 
-__gs_mat4_mul_impl( const gs_mat4* m0, const gs_mat4* m1 )
+gs_mat4_mul( gs_mat4 m0, gs_mat4 m1 )
 {
 	gs_mat4 m_res = gs_mat4_ctor(); 
 	for ( u32 y = 0; y < 4; ++y )
@@ -365,7 +365,7 @@ __gs_mat4_mul_impl( const gs_mat4* m0, const gs_mat4* m1 )
 			f32 sum = 0.0f;
 			for ( u32 e = 0; e < 4; ++e )
 			{
-				sum += m0->elements[ x + e * 4 ] * m1->elements[ e + y * 4 ];
+				sum += m0.elements[ x + e * 4 ] * m1.elements[ e + y * 4 ];
 			}
 			m_res.elements[ x + y * 4 ] = sum;
 		}
@@ -405,9 +405,6 @@ gs_mat4 gs_mat4_transpose( gs_mat4 m )
 
 	return t;
 }
-
-#define gs_mat4_mul( m0, m1 )\
-	__gs_mat4_mul_impl( &( m0 ), &( m1 ) )
 
 /*
 	f32 l : left

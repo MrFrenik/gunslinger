@@ -20,3 +20,6 @@ examples/sand_sim/bin/.vs/SandSim/v15/.suo
 .vs/VSWorkspaceState.json
 .vs/VSWorkspaceState.json
 .vs/VSWorkspaceState.json
+examples/debug_drawing/bin/DebugDrawing
+examples/simple_cube/bin/SimpleCube
+examples/sand_sim/bin/SandSim

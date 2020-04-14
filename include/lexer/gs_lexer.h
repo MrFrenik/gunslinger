@@ -164,7 +164,7 @@ _inline void gs_lexer_eat_whitespace( gs_lexer* lex )
 _inline gs_token gs_lexer_c_next_token( gs_lexer* lex )
 {
 	// Eat all white space
-	gs_lexer_eat_whitespace( lex );
+	// gs_lexer_eat_whitespace( lex );
 
 	gs_token t = gs_token_invalid_token();
 	t.text = lex->at;
@@ -196,6 +196,42 @@ _inline gs_token gs_lexer_c_next_token( gs_lexer* lex )
 			case '*': { t.type = "asterisk"; lex->at++; } 		break;
 			case '\\': { t.type = "bslash"; lex->at++; } 		break;
 			case '?': { t.type = "qmark"; lex->at++; } 			break;
+			case ' ': { t.type = "space"; lex->at++; }			break;
+			case '\n': { t.type = "newline"; lex->at++; }		break;
+			case '\r': { t.type = "newline"; lex->at++; }		break;
+			case '\t': { t.type = "tab"; lex->at++; } 			break;
+
+			case '/': 
+			{
+				// Single line comment
+				if ( ( lex->at[ 0 ] == '/' ) && ( lex->at[ 1 ] ) && ( lex->at[ 1 ] == '/' ) )
+				{
+					lex->at += 2;
+					while ( lex->at[ 0 ] && !gs_token_is_end_of_line( lex->at[ 0 ] ) )
+					{
+						lex->at++;
+					}
+					t.len = lex->at - t.text;
+					t.type = "single_line_comment";
+				}
+
+				// Multi line comment
+				else if ( ( lex->at[ 0 ] == '/' ) && ( lex->at[ 1 ] ) && ( lex->at[ 1 ] == '*' ) )
+				{
+					lex->at += 2;
+					while ( lex->at[ 0 ] && lex->at[ 1 ] && !( lex->at[ 0 ] == '*' && lex->at[ 1 ] == '/' ) )
+					{
+						lex->at++;
+					}
+					if ( lex->at[ 0 ] == '*' )
+					{
+						lex->at++;
+					}
+					t.len = lex->at - t.text;
+					t.type = "multi_line_comment";
+				}
+
+			} break;
 
 			case '"':
 			{
