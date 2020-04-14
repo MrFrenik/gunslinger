@@ -2228,7 +2228,7 @@ vg_glyph_t* __glyph_create_e()
 	gs_dyn_array_push(glyph->paths, path_create_new());
 	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
 	glyph->bearing_y = -8.f;
-	glyph->bearing_x = 0.f;
+	glyph->bearing_x = 5.f;
 	glyph->advance_x = 40.f;
 
 	const f32 scl = 30.f;
@@ -2593,7 +2593,7 @@ vg_glyph_t* __glyph_create_m()
 	vg_glyph_t* glyph = glyph_create_new_ptr();
 	glyph->advance_x = 35.f;
 	glyph->bearing_y = 0.f;
-	glyph->bearing_x = -20.f;
+	glyph->bearing_x = -12.f;
 	// Construct a new path for the glyph
 	gs_dyn_array_push(glyph->paths, path_create_new());
 	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
@@ -2641,7 +2641,7 @@ vg_glyph_t* __glyph_create_n()
 	vg_glyph_t* glyph = glyph_create_new_ptr();
 	glyph->advance_x = 28.f;
 	glyph->bearing_y = 0.f;
-	glyph->bearing_x = -10.f;
+	glyph->bearing_x = -3.f;
 	// Construct a new path for the glyph
 	gs_dyn_array_push(glyph->paths, path_create_new());
 	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
@@ -3337,6 +3337,37 @@ vg_glyph_t* __glyph_create_right_paren()
 	gs_vec2 slp = gs_vec2_add(position, (gs_vec2){-0.5f * scl, 0.0f * scl});
 	gs_vec2 elp = gs_vec2_add(position, (gs_vec2){0.5f * scl, 0.f * scl});
 	path_draw_arc(p, position, r * scl, 270.f, 360.f + 90.f, num_segments, thickness, color);
+
+	return glyph;
+}
+
+vg_glyph_t* __glyph_create_apostrophe()
+{
+	vg_glyph_t* glyph = glyph_create_new_ptr();
+	glyph->bearing_y = -20.f;
+	glyph->bearing_x = 0.f;
+	glyph->advance_x = 25.f;
+
+	const s32 num_segments = 20;
+	const f32 thickness = glyph_thickness;
+	gs_vec4 color = white;
+	gs_vec2 position = (gs_vec2){0.f, 0.f};
+	const f32 scl = 35.f;
+	const f32 r = 0.5f;
+
+	// '
+
+	// Construct a new path for the glyph
+	gs_dyn_array_push(glyph->paths, path_create_new());
+	path_t* p = &glyph->paths[gs_dyn_array_size(glyph->paths) - 1];
+
+	gs_vec2 slp = gs_vec2_add(position, (gs_vec2){0.f, -0.2f * scl});
+	gs_vec2 elp = position;
+	path_draw_line(p, slp, elp, thickness * 2.f, color);
+	slp = gs_vec2_add(elp, (gs_vec2){-r * scl, 0.f});
+	path_draw_arc(p, slp, r * scl, 0.f, 20.f, num_segments, thickness, color);
+
+	p->joint_style = joint_style_round;
 
 	return glyph;
 }
@@ -4125,6 +4156,7 @@ void init_font()
 	gs_hash_table_insert(g_font.glyphs, ':', __glyph_create_colon());
 	gs_hash_table_insert(g_font.glyphs, '[', __glyph_create_left_bracket());
 	gs_hash_table_insert(g_font.glyphs, ']', __glyph_create_right_bracket());
+	gs_hash_table_insert(g_font.glyphs, '\'', __glyph_create_apostrophe());
 }
 
 #define v4(_x, _y, _z, _w)\
@@ -4652,7 +4684,6 @@ void play_scene_two()
 			count++;
 
 			shape_begin(shape);
-			// shape->xform.position = (gs_vec3){ws.x / 2.f, ws.y / 2.f, 0.f};
 			shape->xform.scale = (gs_vec3){0.9f, 0.9f, 1.f};
 			shape->xform.position = (gs_vec3){grid_size * shape->xform.scale.x + 20.f, grid_size * shape->xform.scale.y + 20.f, 0.f};
 			shape_draw_square(shape, gs_vec2_add(bl, (gs_vec2){cw * c, -ch * r}), chext, 2.f, highlight_col, false);
@@ -4746,7 +4777,7 @@ void play_scene_two()
 	"    }\n"
 	"  }\n"
 	"}";
-	animate_code(code, v2(xpos, yoff), txt_size, 0.1f, 5.f, 50.f);
+	animate_code(code, v2(xpos, yoff), txt_size, 0.12f, 5.f, 50.f);
 
 	// Line to empty 
 	{
@@ -4754,13 +4785,13 @@ void play_scene_two()
 		shape_begin(shape);
 		shape->xform.position = (gs_vec3){ws.x / 2.f, ws.y / 2.f, 0.f};
 		shape->xform.scale = (gs_vec3){1.f, 1.f, 1.f};
-		gs_vec2 slp = (gs_vec2){-240.f, -275.f};
-		gs_vec2 elp = gs_vec2_add(slp, (gs_vec2){80.f, 0.f});
+		gs_vec2 slp = (gs_vec2){-225.f, -295.f};
+		gs_vec2 elp = gs_vec2_add(slp, (gs_vec2){60.f, 0.f});
 		path_t* p = shape_begin_path(shape);
 		p->joint_style = joint_style_miter;
 		path_draw_line(p, slp, elp, thickness, primitive_col);
 		slp = elp;
-		elp = gs_vec2_add(slp, (gs_vec2){0.f, 305.f});
+		elp = gs_vec2_add(slp, (gs_vec2){0.f, 325.f});
 		path_draw_line(p, slp, elp, thickness, primitive_col);
 		slp = elp;
 		elp = gs_vec2_add(slp, (gs_vec2){250.f, 0.f});
@@ -4799,13 +4830,13 @@ void play_scene_two()
 		shape_begin(shape);
 		shape->xform.position = (gs_vec3){ws.x / 2.f, ws.y / 2.f, 0.f};
 		shape->xform.scale = (gs_vec3){1.f, 1.f, 1.f};
-		gs_vec2 slp = (gs_vec2){-240.f, -275.f};
-		gs_vec2 elp = gs_vec2_add(slp, (gs_vec2){80.f, 0.f});
+		gs_vec2 slp = (gs_vec2){-225.f, -295.f};
+		gs_vec2 elp = gs_vec2_add(slp, (gs_vec2){60.f, 0.f});
 		path_t* p = shape_begin_path(shape);
 		p->joint_style = joint_style_miter;
 		path_draw_line(p, slp, elp, thickness, color_alpha(primitive_col, 1.f));
 		slp = elp;
-		elp = gs_vec2_add(slp, (gs_vec2){0.f, 460.f});
+		elp = gs_vec2_add(slp, (gs_vec2){0.f, 480.f});
 		path_draw_line(p, slp, elp, thickness, color_alpha(primitive_col, 1.f));
 		slp = elp;
 		elp = gs_vec2_add(slp, (gs_vec2){250.f, 0.f});
@@ -4871,7 +4902,7 @@ void play_scene_two()
 
 void play_scene_three()
 {
-	anim_mult = 2.f;
+	anim_mult = 1.5f;
 
 	gs_for_range_i(gs_dyn_array_size(g_animations)) {
 		animation_clear(&g_animations[i]);
@@ -5120,7 +5151,7 @@ void play_scene_three()
 	f32 ypos = -400.f;
 
 	f32 _xpos = 20.f;
-	animate_txt("falling sand algorithm\n", _xpos, ypos, txt_size + 10.f, primitive_col, 20.f, 1.f);
+	animate_txt("falling sand algorithm\n", _xpos, ypos, txt_size + 10.f, primitive_col, 10.f, 1.f);
 	shape_begin(shape);
 	shape->xform = code_trans;
 	shape->xform.position = gs_vec3_add(shape->xform.position, v3(-50.f, 0.f, 0.f));
@@ -5163,21 +5194,166 @@ void play_scene_four()
 
 	animation_t* anim = NULL;
 	shape_t* shape = &g_shape;
+	shape->xform = gs_vqs_default();
 	u32 anim_ct = 0;
 
 	gs_vec2 slp = {0};
 	gs_vec2 elp = {0};
 	const u32 num_cols = 10;
 	const u32 num_rows = 10;
-	const f32 grid_size = 750.f;
+	const f32 grid_size = 800.f;
 	const f32 ct = 2.4f;
 	f32 cw = grid_size / (f32)num_cols;
 	f32 ch = grid_size / (f32)num_rows;
 	gs_vec2 chext = (gs_vec2){cw / 2.f - ct * 2.f, ch / 2.f - ct * 2.f};
 	gs_vec2 ocp = (gs_vec2){cw / 2.f, ch / 2.f};
 
-	const char* txt = "// here's a comment";
-	animate_code(txt, v2(-ws.x * 0.3f, -ws.y * 0.1f ), 96.f, 2.f, 0.f, 100.f);
+	gs_vqs grid_trans = gs_vqs_default();
+	grid_trans.scale = v3(1.f, 1.f, 0.f);
+	grid_trans.position = v3(ws.x / 2.f, ws.y / 2.f, 0.f);
+
+	gs_vqs code_trans = gs_vqs_default();
+	code_trans.position = v3(ws.x / 2.f + grid_size * 0.55f, ws.y / 2.f, 0.f);
+	code_trans.scale = v3(0.9f, 0.9f, 1.f);
+
+	gs_vec4 grid_col = v4(0.7f, 0.5f, 0.2f, 1.f);
+	gs_vec4 highlight_col = v4(0.9f, 0.8f, 0.1f, 0.1f);
+
+	const f32 glyph_height = 80.f;
+	const f32 txt_size = 60.f;
+
+	f32 fade_amt = 10.0f;
+
+	f32 w = (cw - ct);
+	f32 h = (ch - ct);
+
+	const f32 cto = 3.f * ct;
+	const f32 fall_speed = 5.f;
+	const f32 bw = fall_speed * 4.f;
+	const f32 wo = 10.f;
+
+	// Fall to bottom
+	shape_begin(shape);
+	shape->xform = grid_trans;
+	shape_draw_square(shape, v2(ocp.x, ocp.y - ch * 5.f), chext, ct, grid_col, true);
+	anim = new_anim(shape, 1.f);
+	anim_disable((bw * 0.f) / fall_speed + wo);
+	for (u32 i = 0; i < num_rows; ++i) {
+		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(0.f, i * (ch), 0.f)));
+		anim_wait(2.f / fall_speed);
+	}
+
+	shape_begin(shape);
+	shape->xform = grid_trans;
+	shape_draw_square(shape, v2(ocp.x, ocp.y - ch * 5.f), chext, ct, grid_col, true);
+	anim = new_anim(shape, 1.f);
+	anim_disable((bw * 1.f) / fall_speed + wo);
+	for (u32 i = 0; i < num_rows - 1; ++i) {
+		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(0.f, i * (ch), 0.f)));
+		anim_wait(2.f / fall_speed);
+	}
+	for (u32 i = num_rows - 1; i < num_rows; ++i) {
+		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(-cw, i * (ch), 0.f)));
+		anim_wait(2.f / fall_speed);
+	}
+
+	shape_begin(shape);
+	shape->xform = grid_trans;
+	shape_draw_square(shape, v2(ocp.x, ocp.y - ch * 5.f), chext, ct, grid_col, true);
+	anim = new_anim(shape, 1.f);
+	anim_disable((bw * 2.f) / fall_speed + wo);
+	for (u32 i = 0; i < num_rows - 1; ++i) {
+		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(0.f, i * (ch), 0.f)));
+		anim_wait(2.f / fall_speed);
+	}
+	for (u32 i = num_rows - 1; i < num_rows; ++i) {
+		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(cw, i * (ch), 0.f)));
+		anim_wait(2.f / fall_speed);
+	}
+
+	shape_begin(shape);
+	shape->xform = grid_trans;
+	shape_draw_square(shape, v2(ocp.x, ocp.y - ch * 5.f), chext, ct, grid_col, true);
+	anim = new_anim(shape, 1.f);
+	anim_disable((bw * 3.f) / fall_speed + wo);
+	for (u32 i = 0; i < num_rows - 1; ++i) {
+		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(0.f, i * (ch), 0.f)));
+		anim_wait(2.f / fall_speed);
+	}
+
+	shape_begin(shape);
+	shape->xform = grid_trans;
+	shape_draw_square(shape, v2(ocp.x, ocp.y - ch * 5.f), chext, ct, grid_col, true);
+	anim = new_anim(shape, 1.f);
+	anim_disable((bw * 4.f) / fall_speed + wo);
+	for (u32 i = 0; i < num_rows - 2; ++i) {
+		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(0.f, i * (ch), 0.f)));
+		anim_wait(2.f / fall_speed);
+	}
+	for (u32 i = num_rows - 2, j = 1; i < num_rows; ++i, ++j) {
+		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(-cw * j, i * ch, 0.f)));
+		anim_wait(2.f / fall_speed);
+	}
+
+	shape_begin(shape);
+	shape->xform = grid_trans;
+	shape_draw_square(shape, v2(ocp.x, ocp.y - ch * 5.f), chext, ct, grid_col, true);
+	anim = new_anim(shape, 1.f);
+	anim_disable((bw * 5.f) / fall_speed + wo);
+	for (u32 i = 0; i < num_rows - 2; ++i) {
+		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(0.f, i * (ch), 0.f)));
+		anim_wait(2.f / fall_speed);
+	}
+	for (u32 i = num_rows - 2, j = 1; i < num_rows - 1; ++i, ++j) {
+		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(-cw, i * ch, 0.f)));
+		anim_wait(2.f / fall_speed);
+	}
+
+	shape_begin(shape);
+	shape->xform = grid_trans;
+	shape_draw_square(shape, v2(ocp.x, ocp.y - ch * 5.f), chext, ct, grid_col, true);
+	anim = new_anim(shape, 1.f);
+	anim_disable((bw * 6.f) / fall_speed + wo);
+	for (u32 i = 0; i < num_rows - 2; ++i) {
+		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(0.f, i * (ch), 0.f)));
+		anim_wait(2.f / fall_speed);
+	}
+	for (u32 i = num_rows - 2, j = 1; i < num_rows; ++i, ++j) {
+		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(cw * j , i * ch, 0.f)));
+		anim_wait(2.f / fall_speed);
+	}
+
+	shape_begin(shape);
+	shape->xform = grid_trans;
+	shape_draw_square(shape, v2(ocp.x, ocp.y - ch * 5.f), chext, ct, grid_col, true);
+	anim = new_anim(shape, 1.f);
+	anim_disable((bw * 7.f) / fall_speed + wo);
+	for (u32 i = 0; i < num_rows - 2; ++i) {
+		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(0.f, i * (ch), 0.f)));
+		anim_wait(2.f / fall_speed);
+	}
+	for (u32 i = num_rows - 2, j = 1; i < num_rows - 1; ++i, ++j) {
+		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(cw * j , i * ch, 0.f)));
+		anim_wait(2.f / fall_speed);
+	}
+
+	shape_begin(shape);
+	shape->xform = grid_trans;
+	shape_draw_square(shape, v2(ocp.x, ocp.y - ch * 5.f), chext, ct, grid_col, true);
+	anim = new_anim(shape, 1.f);
+	anim_disable((bw * 8.f) / fall_speed + wo);
+	for (u32 i = 0; i < num_rows - 2; ++i) {
+		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(0.f, i * (ch), 0.f)));
+		anim_wait(2.f / fall_speed);
+	}
+
+	// Grid
+	shape_begin(shape);
+	shape->xform.position = v3(ws.x / 2.f, ws.y / 2.f, 0.f);
+	shape_draw_grid(shape, v2(0.f, 0.f), grid_size, grid_size, num_rows, num_cols, 0.5f, white);
+	anim = new_anim(shape, 1.f);
+	anim_fade_to(0.f, 0.f);
+	anim_fade_to(20.f, 10.f);
 }
 
 
