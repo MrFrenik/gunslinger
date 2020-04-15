@@ -1,5 +1,8 @@
 #include <gs.h>
 
+#include "glad/glad.h"
+#include "GLFW/glfw3.h"
+
 // Forward Decls.
 gs_result app_init();		// Use to init your application
 gs_result app_update();		// Use to update your application
@@ -1561,6 +1564,13 @@ void window_close_callback( void* win )
 	app_running = false;
 }
 
+typedef struct color_t
+{
+	u8 rgba[4];
+} color_t;
+
+_global color_t* g_pixel_data = NULL;
+
 int main( int argc, char** argv )
 {
 	gs_application_desc app = {0};
@@ -1599,6 +1609,8 @@ gs_result app_init()
 
 	// Set callback for window closing
 	platform->set_window_close_callback(platform->main_window(), &window_close_callback);
+
+	g_pixel_data = gs_malloc(frame_buffer_size.x * frame_buffer_size.y * sizeof(color_t));
 
 	// Viewport
 	const gs_vec2 ws = frame_buffer_size;
@@ -1695,7 +1707,7 @@ gs_result app_update()
 	if (!app_running) {
 		return gs_result_success;
 	}
-	
+
 	// Grab global instance of engine
 	gs_engine* engine = gs_engine_instance();
 
@@ -1815,6 +1827,21 @@ gs_result app_update()
 
 	// Submit command buffer for rendering
 	gfx->submit_command_buffer( g_cb ); 	// I suppose this COULD flush the command buffer altogether? ...
+
+	gs_texture_parameter_desc t_desc = gs_texture_parameter_desc_default();
+	t_desc.texture_format = gs_texture_format_rgba8;
+	t_desc.mag_filter = gs_linear;
+	t_desc.min_filter = gs_linear;
+	t_desc.generate_mips = true;
+	t_desc.width = frame_buffer_size.x;
+	t_desc.height = frame_buffer_size.y;
+	t_desc.num_comps = 4;
+	t_desc.data = NULL;
+
+	glReadPixels(0, 0, frame_buffer_size.x, frame_buffer_size.y, GL_RGBA, GL_UNSIGNED_BYTE, g_pixel_data);
+
+	// Write pixel data to file
+	
 
 	 // Clear line data from array
 	gs_dyn_array_clear( g_verts );

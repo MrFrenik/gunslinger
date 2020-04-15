@@ -7,7 +7,7 @@ rem Name
 set name=DebugDrawing
 
 rem Include directories 
-set inc=/I ..\..\..\include
+set inc=/I ..\..\..\include /I ..\..\..\third_party\include
 
 rem Source files
 set src_main=..\source\*.c
