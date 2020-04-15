@@ -12,8 +12,8 @@ flags=(
 
 # Include directories
 inc=(
-	-I ../../../include/		# Gunslinger includes
-	-I ../include/				# SandSim includes
+	-I ../../../include/				# Gunslinger includes
+	-I ../include/						# SandSim includes
 )
 
 # Source files

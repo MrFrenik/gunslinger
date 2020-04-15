@@ -12,7 +12,8 @@ flags=(
 
 # Include directories
 inc=(
-	-I ../../../include/		# Gunslinger includes
+	-I ../../../include/				# Gunslinger includes
+	-I ../../../third_party/include/	# ThirdParty includes
 )
 
 # Source files

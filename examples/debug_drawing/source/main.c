@@ -1,7 +1,11 @@
 #include <gs.h>
 
-#include "glad/glad.h"
-#include "GLFW/glfw3.h"
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb/stb_image_write.h>
+#include <stb/stb_image.h>
 
 // Forward Decls.
 gs_result app_init();		// Use to init your application
@@ -1803,7 +1807,7 @@ gs_result app_update()
 	{
 			// This is to handle mac's retina high dpi for now until I fix that internally.
 		#if (defined GS_PLATFORM_APPLE)
-			gfx->set_view_port( g_cb, (s32)ws.x * 2.f, (s32)ws.y * 2.f );
+			gfx->set_view_port( g_cb, (s32)ws.x, (s32)ws.y );
 		#else
 			gfx->set_view_port( g_cb, (s32)ws.x, (s32)ws.y );
 		#endif
@@ -1838,10 +1842,22 @@ gs_result app_update()
 	t_desc.num_comps = 4;
 	t_desc.data = NULL;
 
-	glReadPixels(0, 0, frame_buffer_size.x, frame_buffer_size.y, GL_RGBA, GL_UNSIGNED_BYTE, g_pixel_data);
+	glReadPixels(0, 0, frame_buffer_size.x, frame_buffer_size.y, GL_RGBA, GL_UNSIGNED_BYTE, (u8*)g_pixel_data);
 
-	// Write pixel data to file
-	
+	static u32 i = 0;
+	char buffer[1024];
+	const char* fmt = i < 10 ? "./output/000%d.png" : i < 100 ? "./output/00%d.png" : "./output/0%d.png";
+	gs_snprintf(buffer, sizeof(buffer), fmt, i++);
+
+    stbi_flip_vertically_on_write(true); // flag is non-zero to flip data vertically
+
+	// Aftering creating directory, then 
+	s32 success = stbi_write_png(buffer, 
+								frame_buffer_size.x, 
+								frame_buffer_size.y, 
+								4, 
+								(u8*)g_pixel_data, 
+								frame_buffer_size.x * 4);
 
 	 // Clear line data from array
 	gs_dyn_array_clear( g_verts );
@@ -4484,27 +4500,6 @@ void play_scene_one()
 
 	const char* code = NULL;
 
-	/*
-		Center Cell Animation
-	*/
-	// Set up shape
-	shape_begin(shape);
-	shape->xform.position = (gs_vec3){ws.x / 2.f, ws.y / 2.f, 0.f};
-	shape_draw_square(shape, ocp, chext, ct, (gs_vec4){grid_col.x, grid_col.y, grid_col.z, 0.1f}, true);
-
-	fade_amt = 10.f;
-	gs_dyn_array_push(g_animations, animation_create_new());
-	anim = gs_dyn_array_back(g_animations);
-	animation_set_shape(anim, shape);
-	animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_lerp, 5.f, NULL);
-	animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 3.f, &fade_amt);
-	animation_add_action(anim, animation_action_type_wait, animation_ease_type_smooth_step, 10.f, NULL);
-
-	trans = shape->xform;
-	trans.scale = (gs_vec3){ 2.5, 2.5, 1.f };
-	trans.position = (gs_vec3){ ws.x * 0.12f, ws.y * 0.5f - 1.3f * ch, 0.f };
-	animation_add_action(anim, animation_action_type_transform, animation_ease_type_smooth_step, 3.f, &trans);
-
 	// Initialize shape and animation for grid
 	// Want each of these squares to animate in as well...
 	shape_begin(shape);
@@ -4549,26 +4544,6 @@ void play_scene_one()
 	animation_add_action(anim, animation_action_type_transform, animation_ease_type_smooth_step, 2.f, &trans);
 	animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 1.5f, &fade_amt);
 	animation_add_action(anim, animation_action_type_wait, animation_ease_type_lerp, 4.f, NULL);
-
-	/*
-		// Highlight center cell animation
-	*/
-	shape_begin(shape);
-	shape->xform.position = (gs_vec3){ws.x / 2.f, ws.y / 2.f, 0.f};
-	shape_draw_square(shape, ocp, chext, 2.f, highlight_col, false);
-
-	gs_dyn_array_push(g_animations, animation_create_new());
-	anim = gs_dyn_array_back(g_animations);
-	fade_amt = 10.0f;
-	animation_set_shape(anim, shape);
-	animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_lerp, 15.f, NULL);
-	animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 0.5f, &fade_amt);
-	fade_amt = 0.1f;
-	animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 0.5f, &fade_amt);
-	fade_amt = 10.0f;
-	animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 0.5f, &fade_amt);
-	fade_amt = 0.0f;
-	animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 3.0f, &fade_amt);
 
 	/*
 		// Code
@@ -4623,6 +4598,49 @@ void play_scene_one()
 	slp = gs_vec2_add(slp, (gs_vec2){0.f, 10.f});
 	elp = gs_vec2_add(slp, (gs_vec2){70.f, 0.f});
 	shape_draw_line(shape, slp, elp, 0.1f, white);
+
+	/*
+		Center Cell Animation
+	*/
+	// Set up shape
+	shape_begin(shape);
+	shape->xform.position = (gs_vec3){ws.x / 2.f, ws.y / 2.f, 0.f};
+	shape_draw_square(shape, ocp, chext, ct, (gs_vec4){grid_col.x, grid_col.y, grid_col.z, 0.1f}, true);
+
+	fade_amt = 10.f;
+	gs_dyn_array_push(g_animations, animation_create_new());
+	anim = gs_dyn_array_back(g_animations);
+	animation_set_shape(anim, shape);
+	animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_lerp, 5.f, NULL);
+	animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 3.f, &fade_amt);
+	animation_add_action(anim, animation_action_type_wait, animation_ease_type_smooth_step, 10.f, NULL);
+
+	trans = shape->xform;
+	trans.scale = (gs_vec3){ 2.5, 2.5, 1.f };
+	trans.position = (gs_vec3){ ws.x * 0.12f, ws.y * 0.5f - 1.3f * ch, 0.f };
+	animation_add_action(anim, animation_action_type_transform, animation_ease_type_smooth_step, 3.f, &trans);
+	
+	/*
+		// Highlight center cell animation
+	*/
+	shape_begin(shape);
+	shape->xform.position = (gs_vec3){ws.x / 2.f, ws.y / 2.f, 0.f};
+	shape_draw_square(shape, ocp, chext, 2.f, highlight_col, false);
+
+	gs_dyn_array_push(g_animations, animation_create_new());
+	anim = gs_dyn_array_back(g_animations);
+	fade_amt = 10.0f;
+	animation_set_shape(anim, shape);
+	animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_lerp, 15.f, NULL);
+	animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 0.5f, &fade_amt);
+	fade_amt = 0.1f;
+	animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 0.5f, &fade_amt);
+	fade_amt = 10.0f;
+	animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 0.5f, &fade_amt);
+	fade_amt = 0.0f;
+	animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 3.0f, &fade_amt);
+
+
 }
 
 #define anim_wait_fade_out(_wt, _ft)\

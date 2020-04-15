@@ -319,7 +319,7 @@ gs_result glfw_process_input( struct gs_platform_input* input )
 
 void* glfw_create_window( const char* title, u32 width, u32 height )
 {
-    GLFWwindow* window = glfwCreateWindow(width, height, title, NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(width, height, title, glfwGetPrimaryMonitor(), NULL);
     if (window == NULL)
     {
         // std::cout << "Failed to create GLFW window" << std::endl;
@@ -404,7 +404,7 @@ void  glfw_set_window_close_callback( gs_resource_handle handle, window_close_ca
 {
 	struct gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 	GLFWwindow* win = __window_from_handle( platform, handle );
-	glfwSetWindowCloseCallback( win, callback );
+	glfwSetWindowCloseCallback( win, (GLFWwindowclosefun)callback );
 }
 
 // Method for creating platform layer for SDL
