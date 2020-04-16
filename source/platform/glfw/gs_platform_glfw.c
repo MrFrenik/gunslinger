@@ -319,7 +319,8 @@ gs_result glfw_process_input( struct gs_platform_input* input )
 
 void* glfw_create_window( const char* title, u32 width, u32 height )
 {
-    GLFWwindow* window = glfwCreateWindow(width, height, title, glfwGetPrimaryMonitor(), NULL);
+    // GLFWwindow* window = glfwCreateWindow(width, height, title, glfwGetPrimaryMonitor(), NULL);
+    GLFWwindow* window = glfwCreateWindow(width, height, title, NULL, NULL);
     if (window == NULL)
     {
         // std::cout << "Failed to create GLFW window" << std::endl;
