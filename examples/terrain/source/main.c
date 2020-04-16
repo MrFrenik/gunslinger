@@ -467,9 +467,13 @@ void render_scene()
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 
+	const gs_vec2 ws = platform->window_size(platform->main_window());
+
 	// Clear screen
 	f32 clear_color[4] = { 0.3f, 0.3f, 0.3f, 1.f };
 	gfx->set_view_clear( cb, clear_color );
+
+	gfx->set_view_port( cb, ws.x, ws.y );
 
 	// Set depth flags
 	gfx->set_depth_enabled( cb, true );
@@ -492,8 +496,6 @@ void render_scene()
 	gs_mat4 proj = gs_mat4_identity();
 	// view = gs_mat4_translate((gs_vec3){0.f, -10.f, -200.f});
 	// proj = gs_mat4_perspective(45.f, 800.f/600.f, 0.01f, 1000.f);
-
-	gs_vec2 ws = gs_engine_instance()->ctx.platform->window_size(gs_engine_instance()->ctx.platform->main_window());
 
 	const f32 scl = 0.5f;
 	gs_mat4 view_mtx = gs_mat4_translate((gs_vec3){0.f, -10.f, -200.f});

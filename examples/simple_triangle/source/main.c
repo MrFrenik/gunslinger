@@ -119,10 +119,14 @@ gs_result app_update()
 
 	// Graphics api instance
 	gs_graphics_i* gfx = engine->ctx.graphics;
+	gs_platform_i* platform = engine->ctx.platform;
+	const gs_vec2 ws = platform->window_size(platform->main_window());
 
 	// Set clear color and clear screen
 	f32 clear_color[4] = { 0.2f, 0.2f, 0.2f, 1.f };
 	gfx->set_view_clear( g_cb, clear_color );
+
+	gfx->set_view_port( g_cb, ws.x, ws.y );
 
 	// Bind shader
 	gfx->bind_shader( g_cb, g_shader );
