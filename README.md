@@ -18,6 +18,7 @@ windows:
 # Examples
 
 There are multiple examples provided to show how to get up and running. For each of these examples: 
+  - First, build the `gunslinger` library following the above instructions for your platform.
   - 'cd' into the directory for your example
   - windows: 
     - run `proc\win\compile_win_cl.bat`
