@@ -1582,8 +1582,8 @@ int main( int argc, char** argv )
 {
 	gs_application_desc app = {0};
 	app.window_title 		= "Debug Drawing";
-	app.window_width 		= 1920;
-	app.window_height 		= 1080;
+	app.window_width 		= 1920 / 2;
+	app.window_height 		= 1080 / 2;
 	app.init 				= &app_init;
 	app.update 				= &app_update;
 	app.shutdown 			= &app_shutdown;
@@ -1814,7 +1814,7 @@ gs_result app_update()
 	{
 			// This is to handle mac's retina high dpi for now until I fix that internally.
 		#if (defined GS_PLATFORM_APPLE)
-			gfx->set_view_port( g_cb, (s32)ws.x, (s32)ws.y );
+			gfx->set_view_port( g_cb, (s32)ws.x * 2.f, (s32)ws.y * 2.f );
 		#else
 			gfx->set_view_port( g_cb, (s32)ws.x, (s32)ws.y );
 		#endif
@@ -1849,14 +1849,14 @@ gs_result app_update()
 	t_desc.num_comps = 4;
 	t_desc.data = NULL;
 
-	glReadPixels(0, 0, frame_buffer_size.x, frame_buffer_size.y, GL_RGBA, GL_UNSIGNED_BYTE, (u8*)g_pixel_data);
+	// glReadPixels(0, 0, frame_buffer_size.x, frame_buffer_size.y, GL_RGBA, GL_UNSIGNED_BYTE, (u8*)g_pixel_data);
 
-	static u32 i = 0;
-	char buffer[1024];
-	const char* fmt = i < 10 ? "./output/0000%d.png" : i < 100 ? "./output/000%d.png" : i < 1000 ? "./output/00%d.png" : "./output/0%d.png";
-	gs_snprintf(buffer, sizeof(buffer), fmt, i++);
+	// static u32 i = 0;
+	// char buffer[1024];
+	// const char* fmt = i < 10 ? "./output/0000%d.png" : i < 100 ? "./output/000%d.png" : i < 1000 ? "./output/00%d.png" : "./output/0%d.png";
+	// gs_snprintf(buffer, sizeof(buffer), fmt, i++);
 
-    stbi_flip_vertically_on_write(true); // flag is non-zero to flip data vertically
+ //    stbi_flip_vertically_on_write(true); // flag is non-zero to flip data vertically
 
 	// Aftering creating directory, then 
 	// s32 success = stbi_write_png(buffer, 
@@ -4741,7 +4741,7 @@ void play_scene_two()
 			shape->xform.position = (gs_vec3){grid_size * shape->xform.scale.x + 20.f, grid_size * shape->xform.scale.y + 20.f, 0.f};
 			shape_draw_square(shape, gs_vec2_add(bl, (gs_vec2){cw * c, -ch * r}), chext, 2.f, highlight_col, false);
 
-			f32 xval = 0.35f;
+			f32 xval = 0.3f;
 			if ( count <= max_count - 1 ) {
 				const char* txt = "cell_id";
 				f32 xoff = shape_draw_text(shape, (gs_vec2){-ws.x * xval, yoff }, 
@@ -4791,10 +4791,10 @@ void play_scene_two()
 	shape_begin(shape);
 	shape->xform.position = (gs_vec3){ws.x / 2.f + grid_size * 0.55f, ws.y / 2.f, 0.f};
 	shape->xform.scale = (gs_vec3){1.f, 1.f, 1.f};
-	shape_draw_line(shape, v2(60.f, -grid_size * 0.66f), 
-		v2(60.f, grid_size * 0.66f), grid_size * 0.49f, color_alpha(code_bg_col, 0.1f));
-	shape_draw_square(shape, v2(60.f, 0.f), 
-		v2(grid_size * 0.88f, grid_size * 0.68f), 2.5f, color_alpha(white, 0.05f), false);
+	shape_draw_line(shape, v2(-10.f, -grid_size * 0.66f), 
+		v2(-10.f, grid_size * 0.66f), grid_size * 0.42f, color_alpha(code_bg_col, 0.1f));
+	shape_draw_square(shape, v2(-10.f, 0.f), 
+		v2(grid_size * 0.75f, grid_size * 0.68f), 2.5f, color_alpha(white, 0.05f), false);
 
 	gs_dyn_array_push(g_animations, animation_create_new());
 	anim = gs_dyn_array_back(g_animations);
@@ -4847,7 +4847,7 @@ void play_scene_two()
 		elp = gs_vec2_add(slp, (gs_vec2){0.f, 325.f});
 		path_draw_line(p, slp, elp, thickness, primitive_col);
 		slp = elp;
-		elp = gs_vec2_add(slp, (gs_vec2){250.f, 0.f});
+		elp = gs_vec2_add(slp, (gs_vec2){200.f, 0.f});
 		path_draw_line(p, slp, elp, thickness, primitive_col);
 		// path_draw_line(p, elp, (gs_vec2){elp.x, elp.y - 15.f}, thickness, white);
 
@@ -4932,8 +4932,8 @@ void play_scene_two()
 		const f32 wt = _bt * bt2;
 		const f32 tt = 3.f;
 		gs_vec3 trans = (gs_vec3){-37.f + _xoff, -grid_size + _yoff + 120.f, 0.f}; 
-		xpos = cached_xpos + 270.f;
-		yoff = cached_ypos + 300.f;	
+		xpos = cached_xpos + 229.f;
+		yoff = cached_ypos + 301.f;	
 		animate_txt("update_sand", xpos, yoff, txt_size, func_col, wt, 1.f, anim_translate(tt, trans));
 		anim_wait(3.5f);
 		anim_fade_out_forever(1.f);
@@ -5229,6 +5229,56 @@ void play_scene_three()
 
 }
 
+
+#define do_it(num)\
+do {\
+	for ( s32 k = num; k > 0; --k ) {\
+		shape_begin(shape);\
+		shape->xform = grid_trans;\
+		shape_draw_square(shape, v2(ocp.x, ocp.y - ch * 5.f), chext, ct, grid_col, true);\
+		anim = new_anim(shape, 1.f);\
+		anim_disable((bw * cnt++) / fall_speed + wo);\
+		for (u32 i = 0; i < num_rows - num; ++i) {\
+			anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(0.f, i * (ch), 0.f)));\
+			anim_wait(2.f / fall_speed);\
+		}\
+		u32 diff = num - k;\
+		for (u32 i = num_rows - num, j = 1; i < num_rows - diff; ++i, ++j) {\
+			anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(-cw * j, i * ch, 0.f)));\
+			anim_wait(2.f / fall_speed);\
+		}\
+	}\
+	for ( s32 k = num; k > 0; --k ) {\
+		shape_begin(shape);\
+		shape->xform = grid_trans;\
+		shape_draw_square(shape, v2(ocp.x, ocp.y - ch * 5.f), chext, ct, grid_col, true);\
+		anim = new_anim(shape, 1.f);\
+		anim_disable((bw * cnt++) / fall_speed + wo);\
+		for (u32 i = 0; i < num_rows - num; ++i) {\
+			anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(0.f, i * (ch), 0.f)));\
+			anim_wait(2.f / fall_speed);\
+		}\
+		u32 diff = num - k;\
+		for (u32 i = num_rows - num, j = 1; i < num_rows - diff; ++i, ++j) {\
+			anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(cw * j, i * ch, 0.f)));\
+			anim_wait(2.f / fall_speed);\
+		}\
+	}\
+	shape_begin(shape);\
+	shape->xform = grid_trans;\
+	shape_draw_square(shape, v2(ocp.x, ocp.y - ch * 5.f), chext, ct, grid_col, true);\
+	anim = new_anim(shape, 1.f);\
+	anim_disable((bw * cnt++) / fall_speed + wo);\
+	for (u32 i = 0; i < num_rows - num; ++i) {\
+		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(0.f, i * (ch), 0.f)));\
+		anim_wait(2.f / fall_speed);\
+	}\
+	for (u32 i = num_rows - num, j = 1; i < num_rows - num; ++i, ++j) {\
+		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(cw * j, i * ch, 0.f)));\
+		anim_wait(2.f / fall_speed);\
+	}\
+} while (0)
+
 void play_scene_four()
 {
 	anim_mult = 2.f;
@@ -5252,14 +5302,14 @@ void play_scene_four()
 
 	gs_vec2 slp = {0};
 	gs_vec2 elp = {0};
-	const u32 num_cols = 10;
-	const u32 num_rows = 10;
+	const u32 num_cols = 13;
+	const u32 num_rows = 13;
 	const f32 grid_size = 800.f;
 	const f32 ct = 2.4f;
 	f32 cw = grid_size / (f32)num_cols;
 	f32 ch = grid_size / (f32)num_rows;
 	gs_vec2 chext = (gs_vec2){cw / 2.f - ct * 2.f, ch / 2.f - ct * 2.f};
-	gs_vec2 ocp = (gs_vec2){cw / 2.f, ch / 2.f};
+	gs_vec2 ocp = (gs_vec2){0.f, 0.f - ch};
 
 	gs_vqs grid_trans = gs_vqs_default();
 	grid_trans.scale = v3(1.f, 1.f, 0.f);
@@ -5281,124 +5331,18 @@ void play_scene_four()
 	f32 h = (ch - ct);
 
 	const f32 cto = 3.f * ct;
-	const f32 fall_speed = 5.f;
+	const f32 fall_speed = 8.f;
 	const f32 bw = fall_speed * 4.f;
 	const f32 wo = 10.f;
+	u32 cnt = 0;
 
-	// Fall to bottom
-	shape_begin(shape);
-	shape->xform = grid_trans;
-	shape_draw_square(shape, v2(ocp.x, ocp.y - ch * 5.f), chext, ct, grid_col, true);
-	anim = new_anim(shape, 1.f);
-	anim_disable((bw * 0.f) / fall_speed + wo);
-	for (u32 i = 0; i < num_rows; ++i) {
-		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(0.f, i * (ch), 0.f)));
-		anim_wait(2.f / fall_speed);
-	}
-
-	shape_begin(shape);
-	shape->xform = grid_trans;
-	shape_draw_square(shape, v2(ocp.x, ocp.y - ch * 5.f), chext, ct, grid_col, true);
-	anim = new_anim(shape, 1.f);
-	anim_disable((bw * 1.f) / fall_speed + wo);
-	for (u32 i = 0; i < num_rows - 1; ++i) {
-		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(0.f, i * (ch), 0.f)));
-		anim_wait(2.f / fall_speed);
-	}
-	for (u32 i = num_rows - 1; i < num_rows; ++i) {
-		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(-cw, i * (ch), 0.f)));
-		anim_wait(2.f / fall_speed);
-	}
-
-	shape_begin(shape);
-	shape->xform = grid_trans;
-	shape_draw_square(shape, v2(ocp.x, ocp.y - ch * 5.f), chext, ct, grid_col, true);
-	anim = new_anim(shape, 1.f);
-	anim_disable((bw * 2.f) / fall_speed + wo);
-	for (u32 i = 0; i < num_rows - 1; ++i) {
-		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(0.f, i * (ch), 0.f)));
-		anim_wait(2.f / fall_speed);
-	}
-	for (u32 i = num_rows - 1; i < num_rows; ++i) {
-		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(cw, i * (ch), 0.f)));
-		anim_wait(2.f / fall_speed);
-	}
-
-	shape_begin(shape);
-	shape->xform = grid_trans;
-	shape_draw_square(shape, v2(ocp.x, ocp.y - ch * 5.f), chext, ct, grid_col, true);
-	anim = new_anim(shape, 1.f);
-	anim_disable((bw * 3.f) / fall_speed + wo);
-	for (u32 i = 0; i < num_rows - 1; ++i) {
-		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(0.f, i * (ch), 0.f)));
-		anim_wait(2.f / fall_speed);
-	}
-
-	shape_begin(shape);
-	shape->xform = grid_trans;
-	shape_draw_square(shape, v2(ocp.x, ocp.y - ch * 5.f), chext, ct, grid_col, true);
-	anim = new_anim(shape, 1.f);
-	anim_disable((bw * 4.f) / fall_speed + wo);
-	for (u32 i = 0; i < num_rows - 2; ++i) {
-		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(0.f, i * (ch), 0.f)));
-		anim_wait(2.f / fall_speed);
-	}
-	for (u32 i = num_rows - 2, j = 1; i < num_rows; ++i, ++j) {
-		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(-cw * j, i * ch, 0.f)));
-		anim_wait(2.f / fall_speed);
-	}
-
-	shape_begin(shape);
-	shape->xform = grid_trans;
-	shape_draw_square(shape, v2(ocp.x, ocp.y - ch * 5.f), chext, ct, grid_col, true);
-	anim = new_anim(shape, 1.f);
-	anim_disable((bw * 5.f) / fall_speed + wo);
-	for (u32 i = 0; i < num_rows - 2; ++i) {
-		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(0.f, i * (ch), 0.f)));
-		anim_wait(2.f / fall_speed);
-	}
-	for (u32 i = num_rows - 2, j = 1; i < num_rows - 1; ++i, ++j) {
-		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(-cw, i * ch, 0.f)));
-		anim_wait(2.f / fall_speed);
-	}
-
-	shape_begin(shape);
-	shape->xform = grid_trans;
-	shape_draw_square(shape, v2(ocp.x, ocp.y - ch * 5.f), chext, ct, grid_col, true);
-	anim = new_anim(shape, 1.f);
-	anim_disable((bw * 6.f) / fall_speed + wo);
-	for (u32 i = 0; i < num_rows - 2; ++i) {
-		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(0.f, i * (ch), 0.f)));
-		anim_wait(2.f / fall_speed);
-	}
-	for (u32 i = num_rows - 2, j = 1; i < num_rows; ++i, ++j) {
-		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(cw * j , i * ch, 0.f)));
-		anim_wait(2.f / fall_speed);
-	}
-
-	shape_begin(shape);
-	shape->xform = grid_trans;
-	shape_draw_square(shape, v2(ocp.x, ocp.y - ch * 5.f), chext, ct, grid_col, true);
-	anim = new_anim(shape, 1.f);
-	anim_disable((bw * 7.f) / fall_speed + wo);
-	for (u32 i = 0; i < num_rows - 2; ++i) {
-		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(0.f, i * (ch), 0.f)));
-		anim_wait(2.f / fall_speed);
-	}
-	for (u32 i = num_rows - 2, j = 1; i < num_rows - 1; ++i, ++j) {
-		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(cw * j , i * ch, 0.f)));
-		anim_wait(2.f / fall_speed);
-	}
-
-	shape_begin(shape);
-	shape->xform = grid_trans;
-	shape_draw_square(shape, v2(ocp.x, ocp.y - ch * 5.f), chext, ct, grid_col, true);
-	anim = new_anim(shape, 1.f);
-	anim_disable((bw * 8.f) / fall_speed + wo);
-	for (u32 i = 0; i < num_rows - 2; ++i) {
-		anim_transform(1.f / fall_speed, xform_translate(shape->xform, v3(0.f, i * (ch), 0.f)));
-		anim_wait(2.f / fall_speed);
-	}
+	do_it(0);
+	do_it(1);
+	do_it(2);
+	do_it(3);
+	do_it(4);
+	do_it(5);
+	do_it(6);
 
 	// Grid
 	shape_begin(shape);
