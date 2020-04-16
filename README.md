@@ -1,6 +1,6 @@
 # gunslinger
 
-A lightweight, c99 framework for multimedia applications
+A simple c99 framework for multimedia applications
 
 # Building
 
