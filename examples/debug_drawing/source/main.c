@@ -1582,8 +1582,8 @@ int main( int argc, char** argv )
 {
 	gs_application_desc app = {0};
 	app.window_title 		= "Debug Drawing";
-	app.window_width 		= 1920 / 2;
-	app.window_height 		= 1080 / 2;
+	app.window_width 		= 1920;
+	app.window_height 		= 1080;
 	app.init 				= &app_init;
 	app.update 				= &app_update;
 	app.shutdown 			= &app_shutdown;
@@ -1686,7 +1686,7 @@ gs_result app_init()
 
 	// Let's get two animations for now
 
-	play_scene_one();
+	play_scene_four();
 
 	// Construct texture resource from GPU
 	gs_texture_parameter_desc t_desc = gs_texture_parameter_desc_default();
@@ -1849,22 +1849,24 @@ gs_result app_update()
 	t_desc.num_comps = 4;
 	t_desc.data = NULL;
 
-	// glReadPixels(0, 0, frame_buffer_size.x, frame_buffer_size.y, GL_RGBA, GL_UNSIGNED_BYTE, (u8*)g_pixel_data);
+	glReadPixels(0, 0, frame_buffer_size.x, frame_buffer_size.y, GL_RGBA, GL_UNSIGNED_BYTE, (u8*)g_pixel_data);
 
-	// static u32 i = 0;
-	// char buffer[1024];
-	// const char* fmt = i < 10 ? "./output/0000%d.png" : i < 100 ? "./output/000%d.png" : i < 1000 ? "./output/00%d.png" : "./output/0%d.png";
-	// gs_snprintf(buffer, sizeof(buffer), fmt, i++);
+	static u32 i = 0;
+	char buffer[1024];
+	const char* fmt = i < 10 ? "./output/0000%d.png" : i < 100 ? "./output/000%d.png" : i < 1000 ? "./output/00%d.png" : "./output/0%d.png";
+	gs_snprintf(buffer, sizeof(buffer), fmt, i++);
 
- //    stbi_flip_vertically_on_write(true); // flag is non-zero to flip data vertically
+    stbi_flip_vertically_on_write(true); // flag is non-zero to flip data vertically
 
 	// Aftering creating directory, then 
-	// s32 success = stbi_write_png(buffer, 
-	// 							frame_buffer_size.x, 
-	// 							frame_buffer_size.y, 
-	// 							4, 
-	// 							(u8*)g_pixel_data, 
-	// 							frame_buffer_size.x * 4);
+	#if 1
+	s32 success = stbi_write_png(buffer, 
+								frame_buffer_size.x, 
+								frame_buffer_size.y, 
+								4, 
+								(u8*)g_pixel_data, 
+								frame_buffer_size.x * 4);
+	#endif
 
 	 // Clear line data from array
 	gs_dyn_array_clear( g_verts );
@@ -4773,11 +4775,13 @@ void play_scene_two()
 
 			fade_amt = 10.0f;
 			animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_lerp, i * 0.8f + 5.f, NULL);
-			animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 1.0f, &fade_amt);
+			anim_fade_to(1.f, 1.f);
+			// animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 1.0f, &fade_amt);
 
 			if ( count <= max_count - 1 ) {
 				fade_amt = 0.0f;
-				animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 0.4f, &fade_amt);
+				anim_fade_to(0.4f, 0.f);
+				// animation_add_action(anim, animation_action_percentage_alpha, animation_ease_type_smooth_step, 0.4f, &fade_amt);
 				animation_add_action(anim, animation_action_type_disable_shape, animation_ease_type_smooth_step, 100.0f, &fade_amt);
 			}
 		}
@@ -4907,7 +4911,7 @@ void play_scene_two()
 		shape_begin(shape);
 		shape->xform.position = (gs_vec3){ws.x / 2.f, ws.y / 2.f, 0.f};
 		shape->xform.scale = (gs_vec3){1.f, 1.f, 1.f};
-		const f32 sq_half_width = 250.f;
+		const f32 sq_half_width = 190.f;
 		elp = gs_vec2_add(elp, (gs_vec2){sq_half_width, 0.f});
 		shape_draw_square(shape, elp, 
 			(gs_vec2){sq_half_width, grid_size * 0.032f}, 
