@@ -28,3 +28,8 @@ There are multiple examples provided to show how to get up and running. For each
     - run `proc/osx/compile_osx_gcc.sh`
     - The exectuable will be placed in `bin/{example_name}`
     - Run the executable
+  - linux: 
+    - run `proc/linux/compile_linux_gcc.sh`
+    - The exectuable will be placed in `bin/{example_name}`
+    - Run the executable
+

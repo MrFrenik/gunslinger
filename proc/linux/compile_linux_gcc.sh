@@ -5,7 +5,7 @@ mkdir bin
 cd bin
 
 proj_name=Gunslinger
-proj_root_dir=$(pwd)/../../..
+proj_root_dir=$(pwd)/..
 
 flags=(
 	-std=c99
