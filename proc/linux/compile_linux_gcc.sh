@@ -9,7 +9,7 @@ proj_root_dir=$(pwd)/../../..
 
 flags=(
 	-std=c99
-	-x objective-c
+	# -x objective-c
 )
 
 # Include directories
