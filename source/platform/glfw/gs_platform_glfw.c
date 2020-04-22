@@ -41,10 +41,10 @@ gs_result glfw_platform_init( struct gs_platform_i* platform  )
 			#else
 				// glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, platform->settings.video.graphics.opengl.major_version );
 				// glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, platform->settings.video.graphics.opengl.minor_version );
-				glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 4 );
-				glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 1 );
-				glfwWindowHint( GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE );
-				glfwWindowHint( GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE );
+				// glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, 4 );
+				// glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 1 );
+				// glfwWindowHint( GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE );
+				// glfwWindowHint( GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE );
 			#endif
 
 			// glfwSwapInterval( platform->settings.video.vsync_enabled );
@@ -107,7 +107,8 @@ void glfw_platform_sleep( f32 ms )
 	#elif ( defined GS_PLATFORM_APPLE )
 
 	        usleep( ms * 1000.f ); // unistd.h
-
+	#else
+	        usleep( ms * 1000.f ); // unistd.h
 	#endif
 }
 

@@ -18,8 +18,10 @@ extern "C" {
 
  #if ( defined _WIN32 || defined _WIN64 )
 	#define _force_inline 		static __forceinline
-#else
+#elif ( defined __APPLE__ || defined _APPLE )
 	#define _force_inline 		static __attribute__((always_inline))
+#else
+	#define _force_inline 		_inline
 #endif
 
 typedef enum

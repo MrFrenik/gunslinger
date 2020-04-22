@@ -416,7 +416,7 @@ gs_slot_array_base
 		return free_idx;\
 	}\
 \
-	_force_inline\
+	_inline\
 	gs_sa_##T __gs_sa_##T##_new()\
 	{\
 		gs_sa_##T sa = {\
