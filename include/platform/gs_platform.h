@@ -19,7 +19,7 @@ extern "C" {
 	#define GS_PLATFORM_WIN
 	#include <windows.h>
 
-#elif ( defined linux )
+#elif ( defined linux || defined _linux || defined __linux__ )
 
 	#define GS_PLATFORM_LINUX
 

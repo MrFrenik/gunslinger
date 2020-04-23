@@ -39,7 +39,7 @@
     #include "third_party/source/GLFW/osmesa_context.c"
 #endif
 
-#if defined(__linux__)
+#if ( defined __linux__ || defined _linux || defined __linux )
     #if defined(_GLFW_WAYLAND)
         #include "third_party/source/GLFW/wl_init.c"
         #include "third_party/source/GLFW/wl_monitor.c"

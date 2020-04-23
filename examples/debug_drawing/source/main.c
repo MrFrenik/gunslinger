@@ -21,6 +21,7 @@ void play_scene_six();
 void play_scene_seven();
 void play_scene_eight();
 void play_scene_nine();
+void play_scene_zero();
 
 // Ported to a c99 impl from: https://github.com/CrushedPixel/Polyline2D/
 
@@ -1690,7 +1691,7 @@ gs_result app_init()
 
 	// Let's get two animations for now
 
-	play_scene_seven();
+	play_scene_zero();
 
 	// Construct texture resource from GPU
 	gs_texture_parameter_desc t_desc = gs_texture_parameter_desc_default();
@@ -1789,6 +1790,10 @@ gs_result app_update()
 		play_scene_nine();
 	}
 
+	if ( platform->key_pressed(gs_keycode_zero)) {
+		play_scene_zero();
+	}
+
 	/*===============
 	// Render scene
 	================*/
@@ -1879,7 +1884,7 @@ gs_result app_update()
     stbi_flip_vertically_on_write(true); // flag is non-zero to flip data vertically
 
 	// Aftering creating directory, then 
-	#if 0
+	#if 1
 	s32 success = stbi_write_png(buffer, 
 								frame_buffer_size.x, 
 								frame_buffer_size.y, 
@@ -6358,6 +6363,164 @@ void play_scene_nine()
 		anim_fade_to(10.f, 1.f);
 		anim_fade_to(20.f, 0.f);
 	}
+}
+
+void play_scene_zero()
+{
+	anim_mult = 2.f;
+
+	gs_for_range_i(gs_dyn_array_size(g_animations)) {
+		animation_clear(&g_animations[i]);
+	}
+	gs_dyn_array_clear(g_animations);
+
+	// Cache instance of graphics api from engine
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+
+	// Viewport
+	const gs_vec2 ws = frame_buffer_size;
+
+	animation_t* anim = NULL;
+	shape_t* shape = &g_shape;
+	shape->xform = gs_vqs_default();
+	u32 anim_ct = 0;
+
+	gs_vec2 slp = {0};
+	gs_vec2 elp = {0};
+	const u32 num_cols = 7;
+	const u32 num_rows = 7;
+	const f32 grid_size = 800.f;
+	const f32 ct = 2.4f;
+	f32 cw = grid_size / (f32)num_cols;
+	f32 ch = grid_size / (f32)num_rows;
+	gs_vec2 chext = (gs_vec2){cw / 2.f - ct * 2.f, ch / 2.f - ct * 2.f};
+	gs_vec2 ocp = (gs_vec2){0.f, 0.f};
+
+	gs_vqs grid_trans = gs_vqs_default();
+	grid_trans.scale = v3(1.f, 1.f, 0.f);
+	grid_trans.position = v3(ws.x / 2.f, ws.y / 2.f, 0.f);
+
+	gs_vqs code_trans = gs_vqs_default();
+	code_trans.position = v3(ws.x / 2.f + grid_size * 0.55f, ws.y / 2.f, 0.f);
+	code_trans.scale = v3(0.9f, 0.9f, 1.f);
+
+	gs_vec4 grid_col = v4(0.7f, 0.5f, 0.2f, 1.f);
+	gs_vec4 highlight_col = v4(0.9f, 0.8f, 0.1f, 0.1f);
+
+	const f32 glyph_height = 80.f;
+	const f32 txt_size = 60.f;
+
+	f32 fade_amt = 10.0f;
+
+	f32 w = (cw - ct);
+	f32 h = (ch - ct);
+
+	const f32 cto = 3.f * ct;
+	const f32 fall_speed = 8.f;
+	const f32 bw = fall_speed * 4.f;
+	const f32 wo = 10.f;
+	u32 cnt = 0;
+
+	gs_vec2 n = gs_vec2_norm(v2(-1, -1));
+
+	const f32 ft = 10.f;
+
+	// Center cell
+	shape_begin(shape);
+	shape->xform = grid_trans;
+	shape_draw_square(shape, v2(ocp.x, ocp.y), chext, ct, grid_col, true);
+	anim = new_anim(shape, 1.f);
+	anim_wait(30.f);
+	anim_fade_to(ft, 0.f);
+	anim_wait(30.f);
+	anim_fade_to(ft, 1.f);
+
+	// top left cell
+	shape_begin(shape);
+	shape->xform = grid_trans;
+	shape_draw_square(shape, v2(ocp.x - cw, ocp.y - ch), chext, ct, grid_col, true);
+	anim = new_anim(shape, 1.f);
+	anim_wait(30.f);
+	anim_fade_to(ft, 0.f);
+
+	// bottom left
+	shape_begin(shape);
+	shape->xform = grid_trans;
+	shape_draw_square(shape, v2(ocp.x - cw, ocp.y + ch), chext, ct, grid_col, true);
+	anim = new_anim(shape, 1.f);
+	anim_wait(60.f + ft);
+	anim_fade_to(ft, 0.f);
+
+	// bottom
+	shape_begin(shape);
+	shape_begin(shape);
+	shape->xform = grid_trans;
+	shape_draw_square(shape, v2(ocp.x, ocp.y + ch), chext, ct, grid_col, true);
+	anim = new_anim(shape, 1.f);
+
+	// right
+	shape_begin(shape);
+	shape_begin(shape);
+	shape->xform = grid_trans;
+	shape_draw_square(shape, v2(ocp.x + cw, ocp.y), chext, ct, grid_col, true);
+	anim = new_anim(shape, 1.f);
+
+	// top
+	shape_begin(shape);
+	shape_begin(shape);
+	shape->xform = grid_trans;
+	shape_draw_square(shape, v2(ocp.x, ocp.y - ch), chext, ct, color_alpha(grid_col, 0.f), true);
+	anim = new_anim(shape, 1.f);
+	anim_disable(30.f);
+	anim_fade_to(ft, 1.f);
+	anim_wait(30.f);
+	anim_fade_to(ft, 0.f);
+
+	// bottom right
+	shape_begin(shape);
+	shape_begin(shape);
+	shape->xform = grid_trans;
+	shape_draw_square(shape, v2(ocp.x + cw, ocp.y + ch), chext, ct, color_alpha(grid_col, 0.f), true);
+	anim = new_anim(shape, 1.f);
+	anim_disable(30.f);
+	anim_fade_to(ft, 1.f);
+
+	// Grid
+	shape_begin(shape);
+	shape->xform.position = v3(ws.x / 2.f, ws.y / 2.f, 0.f);
+	shape_draw_grid(shape, v2(0.f, 0.f), grid_size, grid_size, num_rows, num_cols, 0.01f, white);
+	anim = new_anim(shape, 1.f);
+	anim_fade_to(0.f, 0.f);
+	anim_fade_to(20.f, 0.3f);
+	
+	// Grid numbers
+	slp = v2(ocp.x + -cw * 7.7f, ocp.y + -ch * 6.f);
+	for ( u32 i = 0; i < num_rows; ++i )
+	{
+		shape_begin(shape);
+		shape->xform = grid_trans;
+		elp = gs_vec2_add(slp, v2(0.f, ch * (i * 2)));
+		char buf[3];
+		gs_snprintf(buf, sizeof(buf), "%zu", i);
+		shape_draw_text(shape, elp, &g_font, buf, 48.f, white);
+		anim = new_anim(shape, 1.f);
+		anim_walk(2.f);
+	}
+
+	slp = gs_vec2_add(v2(ocp.x, ocp.y), v2(-cw * 6.5f, -ch * 7.5f));
+	for (u32 i = 0; i < num_cols; ++i) 
+	{
+		shape_begin(shape);
+		shape->xform = grid_trans;
+		elp = gs_vec2_add(slp, v2(cw * (i * 2), 0.f));
+		char buf[3];
+		gs_snprintf(buf, sizeof(buf), "%zu", i);
+		shape_draw_text(shape, elp, &g_font, buf, 48.f, white);
+		anim = new_anim(shape, 1.f);
+		anim_walk(2.f);
+	}
+
 }
 
 
