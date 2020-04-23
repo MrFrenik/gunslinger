@@ -35,7 +35,10 @@ libs=(
 
 # Build
 gcc -O3 ${fworks[*]} ${inc[*]} ${src[*]} ${flags[*]} ${lib_dirs[*]} ${libs[*]} -lm -o Terrain
+<<<<<<< HEAD
 
+=======
+>>>>>>> fec05c4df52a8c83e2366740543fb6fc00868ae4
 cd ..
 
 
