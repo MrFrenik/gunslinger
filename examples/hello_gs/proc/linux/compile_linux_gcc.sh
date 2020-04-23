@@ -7,7 +7,7 @@ cd bin
 proj_root_dir=$(pwd)/../
 
 flags=(
-	-std=gnu99 -Wl,--no-as-needed -ldl -lGL -lGLU -lX11 -pthread -lXi
+	-std=gnu99 -Wl,--no-as-needed -ldl -lGL -lX11 -pthread -lXi
 )
 
 # Include directories
