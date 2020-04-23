@@ -149,25 +149,25 @@ typedef struct opengl_render_data_t
 	debug_drawing_internal_data 					debug_data;
 } opengl_render_data_t;
 
-_global const char* debug_shader_v_src = "\n"
-"#version 330 core\n"
-"layout (location = 0) in vec3 a_position;\n"
-"layout (location = 1) in vec3 a_color;\n"
-"uniform mat4 u_proj;\n"
-"uniform mat4 u_view;\n"
-"out vec3 f_color;\n"
-"void main() {\n"
-" gl_Position = u_proj * u_view * vec4(a_position, 1.0);\n"
-" f_color = a_color;\n"
-"}";
+// _global const char* debug_shader_v_src = "\n"
+// "#version 330 core\n"
+// "layout (location = 0) in vec3 a_position;\n"
+// "layout (location = 1) in vec3 a_color;\n"
+// "uniform mat4 u_proj;\n"
+// "uniform mat4 u_view;\n"
+// "out vec3 f_color;\n"
+// "void main() {\n"
+// " gl_Position = u_proj * u_view * vec4(a_position, 1.0);\n"
+// " f_color = a_color;\n"
+// "}";
 
-_global const char* debug_shader_f_src = "\n"
-"#version 330 core\n"
-"in vec3 f_color;\n"
-"out vec4 frag_color;\n"
-"void main() {\n"
-" frag_color = vec4(f_color, 1.0);\n"
-"}";
+// _global const char* debug_shader_f_src = "\n"
+// "#version 330 core\n"
+// "in vec3 f_color;\n"
+// "out vec4 frag_color;\n"
+// "void main() {\n"
+// " frag_color = vec4(f_color, 1.0);\n"
+// "}";
 
 #define __get_opengl_data_internal()\
 	(opengl_render_data_t*)(gs_engine_instance()->ctx.graphics->data)
@@ -253,7 +253,7 @@ debug_drawing_internal_data construct_debug_drawing_internal_data()
 	data.quad_vertex_data = gs_dyn_array_new( f32 );
 
 	// Construct shader
-	data.shader = gfx->construct_shader( debug_shader_v_src, debug_shader_f_src );
+	// data.shader = gfx->construct_shader( debug_shader_v_src, debug_shader_f_src );
 
 	// Construct uniforms
 	data.u_proj = gfx->construct_uniform( data.shader, "u_proj", gs_uniform_type_mat4 );
@@ -956,6 +956,7 @@ void opengl_submit_command_buffer( gs_resource( gs_command_buffer ) cb_handle )
 			{
 				// Construct all line vertex data from debug data buffer
 				// Vertex count is line_vertex_data_array_size / size of single vertex = array_size / (sizeof(f32) * 6)
+				/*
 				usize vertex_data_size = gs_dyn_array_size(data->debug_data.line_vertex_data) * sizeof(f32);
 				u32 vert_count = (vertex_data_size) / (sizeof(f32) * 6);
 
@@ -1011,6 +1012,7 @@ void opengl_submit_command_buffer( gs_resource( gs_command_buffer ) cb_handle )
 				// Unbind data
 				glBindVertexArray(0);
 				glUseProgram(0);
+				*/
 
 				// Reset all debug data
 				// data->debug_data.view_mat = gs_mat4_identity();

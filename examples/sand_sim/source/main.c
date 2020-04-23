@@ -126,6 +126,8 @@ _global f32 g_selection_radius = 10.f;
 
 _global b32 g_show_material_selection_panel = true;
 _global b32 g_run_simulation = true;
+_global b32 g_show_frame_count = true;
+_global b32 g_use_post_processing = true;
 
 // Handle for main window
 _global gs_resource_handle g_window;
@@ -928,6 +930,14 @@ void update_input()
 		g_show_material_selection_panel = !g_show_material_selection_panel;
 	}
 
+	if ( platform->key_pressed( gs_keycode_f ) ) {
+		g_show_frame_count = !g_show_frame_count;
+	}
+
+	if ( platform->key_pressed( gs_keycode_b ) ) {
+		g_use_post_processing = !g_use_post_processing;
+	}
+
 	f32 wx = 0, wy = 0;
 	platform->mouse_wheel( &wx, &wy );
 	if ( platform->key_pressed( gs_keycode_lbracket ) || wy < 0.f ) {
@@ -1202,13 +1212,16 @@ b32 update_ui()
 		__gui_interaction(g_texture_width - xoff, base + offset * 11, 10, 10, mat_col_acid, "Acid", mat_sel_acid );
 	}
 
-	char frame_time_str[256];
-	gs_snprintf (frame_time_str, sizeof(frame_time_str), "frame: %.2f ms", platform->time.frame );
-	draw_string_at( &g_font, g_ui_buffer, 10, 10, frame_time_str, strlen(frame_time_str), (color_t){ 255, 255, 255, 255 } ); 
+	if ( g_show_frame_count ) {
 
-	char sim_state_str[256];
-	gs_snprintf (sim_state_str, sizeof(sim_state_str), "state: %s", g_run_simulation ? "running" : "paused" );
-	draw_string_at( &g_font, g_ui_buffer, 10, 20, sim_state_str, strlen(sim_state_str), (color_t){ 255, 255, 255, 255 } ); 
+		char frame_time_str[256];
+		gs_snprintf (frame_time_str, sizeof(frame_time_str), "frame: %.2f ms", platform->time.frame );
+		draw_string_at( &g_font, g_ui_buffer, 10, 10, frame_time_str, strlen(frame_time_str), (color_t){ 255, 255, 255, 255 } ); 
+
+		char sim_state_str[256];
+		gs_snprintf (sim_state_str, sizeof(sim_state_str), "state: %s", g_run_simulation ? "running" : "paused" );
+		draw_string_at( &g_font, g_ui_buffer, 10, 20, sim_state_str, strlen(sim_state_str), (color_t){ 255, 255, 255, 255 } );
+	}
 
 	// Draw circle around mouse pointer
 	s32 R = g_selection_radius;
@@ -1320,8 +1333,13 @@ void render_scene()
 		gfx->bind_index_buffer( g_cb, g_ibo );
 
 		// Draw final composited image
-		gfx->bind_texture( g_cb, u_tex, g_composite_pass.data.render_target, 0 );
-		// gfx->bind_texture( g_cb, u_tex, g_rt, 0 );
+		if (g_use_post_processing) {
+
+			gfx->bind_texture( g_cb, u_tex, g_composite_pass.data.render_target, 0 );
+		} else {
+
+			gfx->bind_texture( g_cb, u_tex, g_rt, 0 );
+		}
 		gfx->draw_indexed( g_cb, 6 );
 
 		// Draw UI on top
