@@ -14,6 +14,10 @@ windows:
  osx: 
   - From terminal, run `./bash proc/osx/compile_osx_gcc.sh`
   - This will build the library and place it in `gunslinger/bin`
+  
+ linux: 
+  - From terminal, run `./bash proc/osx/compile_linux_gcc.sh`
+  - This will build the library and place it in `gunslinger/bin`
 
 # Examples
 
