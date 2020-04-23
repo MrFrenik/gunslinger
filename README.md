@@ -21,6 +21,8 @@ windows:
 
 # Examples
 
+NOTE(): Currently all examples require at least OpenGL v3.3 to run.
+
 There are multiple examples provided to show how to get up and running. For each of these examples: 
   - First, build the `gunslinger` library following the above instructions for your platform.
   - 'cd' into the directory for your example
@@ -30,5 +32,9 @@ There are multiple examples provided to show how to get up and running. For each
     - Run the executable
   - mac: 
     - run `proc/osx/compile_osx_gcc.sh`
+    - The exectuable will be placed in `bin/{example_name}`
+    - Run the executable
+  - linux: 
+    - run `proc/osx/compile_linux_gcc.sh`
     - The exectuable will be placed in `bin/{example_name}`
     - Run the executable
