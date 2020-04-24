@@ -172,5 +172,4 @@ void main()
         
     vec3 result = (ambient + diffuse + specular) * tex_color;
     frag_color = vec4(clamp(result, 0.0, 1.0), alpha);
-    // frag_color = vec4(normal, 1.0);
 }
