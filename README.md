@@ -21,7 +21,8 @@ windows:
 
 # Examples
 
-NOTE(): Currently all examples require at least OpenGL v3.3 to run.
+NOTE(): Currently all examples require at least OpenGL v3.3 to run. This will be addressed in the future to allow for 
+          previous opengl versions. 
 
 There are multiple examples provided to show how to get up and running. For each of these examples: 
   - First, build the `gunslinger` library following the above instructions for your platform.
