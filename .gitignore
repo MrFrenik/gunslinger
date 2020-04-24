@@ -25,3 +25,4 @@ examples/simple_cube/bin/SimpleCube
 examples/sand_sim/bin/SandSim
 *.mp4
 *.lvix
+*.ipch

@@ -255,9 +255,11 @@ debug_drawing_internal_data construct_debug_drawing_internal_data()
 	// Construct shader
 	// data.shader = gfx->construct_shader( debug_shader_v_src, debug_shader_f_src );
 
+	/*
 	// Construct uniforms
 	data.u_proj = gfx->construct_uniform( data.shader, "u_proj", gs_uniform_type_mat4 );
 	data.u_view = gfx->construct_uniform( data.shader, "u_view", gs_uniform_type_mat4 );
+	*/
 
 	// Vertex data layout
 	gs_vertex_attribute_type vertex_layout[] = {
