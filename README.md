@@ -36,6 +36,6 @@ There are multiple examples provided to show how to get up and running. For each
     - The exectuable will be placed in `bin/{example_name}`
     - Run the executable
   - linux: 
-    - run `bash ./proc/osx/compile_linux_gcc.sh`
+    - run `bash ./proc/linux/compile_linux_gcc.sh`
     - The exectuable will be placed in `bin/{example_name}`
     - Run the executable
