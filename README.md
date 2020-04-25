@@ -12,11 +12,11 @@ windows:
   - This will build the library and place it in `gunslinger\bin`
   
  osx: 
-  - From terminal, run `./bash proc/osx/compile_osx_gcc.sh`
+  - From terminal, run `bash ./proc/osx/compile_osx_gcc.sh`
   - This will build the library and place it in `gunslinger/bin`
   
  linux: 
-  - From terminal, run `./bash proc/osx/compile_linux_gcc.sh`
+  - From terminal, run `bash ./proc/osx/compile_linux_gcc.sh`
   - This will build the library and place it in `gunslinger/bin`
 
 # Examples
@@ -32,10 +32,10 @@ There are multiple examples provided to show how to get up and running. For each
     - The executable will be placed in `bin\{example_name}`
     - Run the executable
   - mac: 
-    - run `proc/osx/compile_osx_gcc.sh`
+    - run `bash ./proc/osx/compile_osx_gcc.sh`
     - The exectuable will be placed in `bin/{example_name}`
     - Run the executable
   - linux: 
-    - run `proc/osx/compile_linux_gcc.sh`
+    - run `bash ./proc/osx/compile_linux_gcc.sh`
     - The exectuable will be placed in `bin/{example_name}`
     - Run the executable
