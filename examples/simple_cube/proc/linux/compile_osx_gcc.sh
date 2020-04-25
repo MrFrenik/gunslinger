@@ -32,7 +32,7 @@ libs=(
 )
 
 # Build
-gcc -O3 ${fworks[*]} ${inc[*]} ${src[*]} ${flags[*]} ${lib_dirs[*]} ${libs[*]} -lm -o HelloGS
+gcc -O3 ${fworks[*]} ${inc[*]} ${src[*]} ${flags[*]} ${lib_dirs[*]} ${libs[*]} -lm -o SimpleCube
 
 cd ..
 
