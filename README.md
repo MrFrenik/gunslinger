@@ -33,7 +33,7 @@ There are multiple examples provided to show how to get up and running. For each
     - The executable will be placed in `bin\{example_name}`
     - Run the executable
     
-**mac**: 
+**mac**:
     - run `bash ./proc/osx/compile_osx_gcc.sh`
     - The exectuable will be placed in `bin/{example_name}`
     - Run the executable
