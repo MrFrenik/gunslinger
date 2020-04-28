@@ -1691,7 +1691,7 @@ gs_result app_init()
 
 	// Let's get two animations for now
 
-	play_scene_zero();
+	play_scene_seven();
 
 	// Construct texture resource from GPU
 	gs_texture_parameter_desc t_desc = gs_texture_parameter_desc_default();
@@ -5959,7 +5959,7 @@ void play_scene_seven()
 	shape->xform = grid_trans;
 	slp = v2(ocp.x + cw * 3.f, ocp.y + ch * 7);
 	elp = gs_vec2_add(slp, v2(0.f, 0.f));
-	shape_draw_text(shape, elp, &g_font, "p_0 = v2(6,5)", ts, white);
+	shape_draw_text(shape, elp, &g_font, "p_0 = v2(4,7)", ts, white);
 	anim = new_anim(shape, 1.f);
 	anim_disable(30.f);
 	anim_walk(2.f);
@@ -5983,7 +5983,7 @@ void play_scene_seven()
 	shape->xform = grid_trans;
 	slp = v2(ocp.x, ocp.y);
 	elp = gs_vec2_add(slp, v2(-cw * 10.5f, ch * 7.f));
-	shape_draw_text(shape, elp, &g_font, "p_1 = (3,8)", ts, white);
+	shape_draw_text(shape, elp, &g_font, "p_1 = (1,7)", ts, white);
 	anim = new_anim(shape, 1.f);
 	anim_disable(60.f);
 	anim_walk(2.f);
