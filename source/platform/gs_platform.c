@@ -47,6 +47,7 @@ void __gs_platform_update_input()
 
 	input->mouse.prev_position = input->mouse.position;
 	input->mouse.wheel = (gs_vec2){ 0.0f, 0.0f };
+	input->mouse.moved_this_frame = false;
 }
 
 b32 __gs_platform_was_key_down( gs_platform_keycode code )

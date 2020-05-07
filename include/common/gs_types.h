@@ -58,6 +58,7 @@ typedef float 	 		f32;
 typedef double			f64;
 typedef const char* 	const_str;
 
+#define u16_max 		UINT16_MAX
 #define u32_max			UINT32_MAX
 #define s32_max			INT32_MAX
 #define f32_max 		FLT_MAX

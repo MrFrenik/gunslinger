@@ -220,6 +220,7 @@ typedef struct gs_platform_mouse
 	gs_vec2 position;
 	gs_vec2 prev_position;
 	gs_vec2 wheel;
+	b32 moved_this_frame;
 } gs_platform_mouse;
 
 typedef struct gs_platform_input
@@ -339,11 +340,13 @@ typedef struct gs_platform_i
 	b32 ( * mouse_pressed )( gs_platform_mouse_button_code code );
 	b32 ( * mouse_down )( gs_platform_mouse_button_code code );
 	b32 ( * mouse_released )( gs_platform_mouse_button_code code );
+	void ( * set_mouse_position )( gs_resource_handle, f64, f64 );	
 
 	gs_vec2 ( * mouse_delta )();
 	gs_vec2 ( * mouse_position )();
 	void ( * mouse_position_x_y )( f32* x, f32* y );
 	void ( * mouse_wheel )( f32* x, f32* y );
+	b32 (* mouse_moved )();
 
 	/*============================================================
 	// Platform Window

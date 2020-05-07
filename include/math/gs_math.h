@@ -593,7 +593,7 @@ __gs_quat_sub_impl( const gs_quat* q0, const gs_quat* q1 )
 	( __gs_quat_sub_impl( &( q0 ), &( q1 ) ) )
 
 _inline gs_quat
-__gs_quat_mul_impl( gs_quat q0, gs_quat q1 )
+gs_quat_mul( gs_quat q0, gs_quat q1 )
 {
 	return gs_quat_ctor(
 		q0.w * q1.x + q1.w * q0.x + q0.y * q1.z - q1.y * q0.z,
@@ -613,9 +613,6 @@ gs_quat gs_quat_mul_quat( gs_quat q0, gs_quat q1 )
 		q0.w * q1.w - q0.x * q1.x - q0.y * q1.y - q0.z * q1.z
 	);
 }
-
-#define gs_quat_mul( q0, q1 )\
-	__gs_quat_mul_impl( ( q0 ), ( q1 ) )
 
 _inline gs_quat
 __gs_quat_scale_impl( const gs_quat* q, f32 s )
@@ -677,8 +674,8 @@ _inline gs_vec3 gs_quat_rotate( gs_quat q, gs_vec3 v )
 	gs_vec3 qvec = { q.x, q.y, q.z };
 	gs_vec3 uv = gs_vec3_cross( qvec, v );
 	gs_vec3 uuv = gs_vec3_cross( qvec, uv );
-	gs_vec3_scale_ip( &uv, 2.0f * q.w );
-	gs_vec3_scale_ip( &uuv, 2.0f );
+	uv = gs_vec3_scale(uv, 2.f * q.w);
+	uuv = gs_vec3_scale(uuv, 2.f);
 	return ( gs_vec3_add( v, gs_vec3_add( uv, uuv ) ) );
 }
 
@@ -770,6 +767,52 @@ _inline gs_mat4 gs_quat_to_mat4( gs_quat _q )
 
 	return mat;
 }
+
+/*
+_inline gs_quat gs_quat_from_euler( f32 yaw_deg, f32 pitch_deg, f32 roll_deg )
+{
+	f32 yaw = gs_deg_to_rad(yaw_deg);
+	f32 pitch = gs_deg_to_rad(pitch_deg);
+	f32 roll = gs_deg_to_rad(roll_deg);
+
+	gs_quat q;
+	f32 cy = cos( yaw * 0.5f );
+	f32 sy = sin( yaw * 0.5f );
+	f32 cr = cos( roll * 0.5f );
+	f32 sr = sin( roll * 0.5f );
+	f32 cp = cos( pitch * 0.5f );
+	f32 sp = sin( pitch * 0.5f );
+
+	// q.x = cy * sr * cp - sy * cr * sp;
+	// q.y = cy * cr * sp + sy * sr * cp;
+	// q.z = sy * cr * cp - cy * sr * sp;
+	// q.w = cy * cr * cp + sy * sr * sp;
+
+	q.x = sin(roll * 0.5f) * cos(pitch * 0.5f) * cos(yaw * 0.5f) - cos(roll * 0.5f) * sin(pitch * 0.5f) * sin(yaw * 0.5f);
+	q.y = cos(roll * 0.5f) * sin(pitch * 0.5f) * cos(yaw * 0.5f) + sin(roll * 0.5f) * cos(pitch * 0.5f) * sin(yaw * 0.5f);
+	q.z = cos(roll * 0.5f) * cos(pitch * 0.5f) * sin(yaw * 0.5f) - sin(roll * 0.5f) * sin(pitch * 0.5f) * cos(yaw * 0.5f);
+	q.w = cos(roll * 0.5f) * cos(pitch * 0.5f) * cos(yaw * 0.5f) + sin(roll * 0.5f) * sin(pitch * 0.5f) * sin(yaw * 0.5f);
+
+	return q;
+}
+*/
+
+_inline gs_quat gs_quat_from_euler(f32 yaw, f32 pitch, f32 roll)
+{
+	gs_quat q;
+	gs_quat r = gs_quat_angle_axis(gs_deg_to_rad(roll), (gs_vec3){0.f, 0.f, 1.f});
+	gs_quat p = gs_quat_angle_axis(gs_deg_to_rad(pitch), (gs_vec3){1.f, 0.f, 0.f});
+	gs_quat y = gs_quat_angle_axis(gs_deg_to_rad(yaw), (gs_vec3){0.f, 1.f, 0.f});
+	q = gs_quat_mul(gs_quat_mul(r, p), y);
+	return q;
+}
+
+// qx = np.sin(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) - np.cos(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
+// qy = np.cos(roll/2) * np.sin(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.cos(pitch/2) * np.sin(yaw/2)
+// qz = np.cos(roll/2) * np.cos(pitch/2) * np.sin(yaw/2) - np.sin(roll/2) * np.sin(pitch/2) * np.cos(yaw/2)
+// qw = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
+
+//         return [qx, qy, qz, qw]
 
 /*================================================================================
 // Transform ( Non-Uniform Scalar VQS )

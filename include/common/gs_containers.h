@@ -65,12 +65,15 @@ _inline void* gs_dyn_array_resize_impl( void* arr, usize sz, usize amount )
 	return NULL;
 }
 
+#define gs_dyn_array_need_grow(arr, n)\
+	((arr) == 0 || gs_dyn_array_size(arr) + n >= gs_dyn_array_capacity(arr))
+
 #define gs_dyn_array_grow( arr )\
 	gs_dyn_array_resize_impl( arr, sizeof( *( arr ) ), gs_dyn_array_capacity( arr ) ? gs_dyn_array_capacity( arr ) * 2 : 1 )
 
 #define gs_dyn_array_push( arr, val )\
 	do {\
-		if ( !( arr ) || ( ( arr ) && gs_dyn_array_full( arr ) ) ) {\
+		if ( !( arr ) || ( ( arr ) && gs_dyn_array_need_grow(arr, 1) ) ) {\
 			*( ( void ** )&( arr ) ) = gs_dyn_array_grow( arr ); \
 		}\
 		( arr )[ gs_dyn_array_size( arr ) ] = ( val );\
@@ -294,7 +297,6 @@ typedef enum
 		val =  UINT_MAX - 1;\
 		for ( u32 i = idx, c = 0; c < capacity; ++c, i = ( ( i + 1 ) % capacity ) )\
 		{\
-			gs_println( "i: %d, capacity: %d", i, capacity );\
 			if ( _hash_comp_key_func( tbl->data[ i ].key, key ) )\
 			{\
 				val = i;\

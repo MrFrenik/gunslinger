@@ -288,6 +288,8 @@ void __glfw_mouse_cursor_position_callback( GLFWwindow* window, f64 x, f64 y )
 {
 	struct gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 	platform->input.mouse.position = (gs_vec2){ x, y };
+	platform->input.mouse.moved_this_frame = true;
+	glfwSetCursorPos(window, x, y);
 }
 
 void __glfw_mouse_scroll_wheel_callback( GLFWwindow* window, f64 x, f64 y )
@@ -409,6 +411,13 @@ void  glfw_set_window_close_callback( gs_resource_handle handle, window_close_ca
 	glfwSetWindowCloseCallback( win, (GLFWwindowclosefun)callback );
 }
 
+void glfw_set_cursor_position( gs_resource_handle handle, f64 x, f64 y )
+{
+	struct gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+	GLFWwindow* win = __window_from_handle( platform, handle );
+	glfwSetCursorPos( win, x, y );
+}
+
 // Method for creating platform layer for SDL
 struct gs_platform_i* gs_platform_construct()
 {
@@ -440,6 +449,7 @@ struct gs_platform_i* gs_platform_construct()
 	// Platform Input
 	============================*/
 	platform->process_input 	= &glfw_process_input;
+	platform->set_mouse_position = &glfw_set_cursor_position;
 
 	/*============================
 	// Platform Window

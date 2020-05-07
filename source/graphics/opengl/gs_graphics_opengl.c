@@ -186,11 +186,10 @@ gs_resource( gs_texture ) opengl_construct_texture( gs_texture_parameter_desc de
 
 void opengl_init_default_state()
 {
+	// Need to add blend states
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	// glDisable(GL_DEPTH_TEST);
-	// glBlendFunc(GL_ONE, GL_ONE);
-	// Init things...
+	glEnable(GL_DEPTH_TEST);
 }
 
 gs_result opengl_init( struct gs_graphics_i* gfx )
@@ -1035,6 +1034,9 @@ void opengl_submit_command_buffer( gs_resource( gs_command_buffer ) cb_handle )
 
 	// Reset command buffer
 	__reset_command_buffer_internal( cb );
+
+	// Reset default opengl state
+	opengl_init_default_state();
 }
 
 gs_resource( gs_command_buffer ) opengl_construct_command_buffer()
