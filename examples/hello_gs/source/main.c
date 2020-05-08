@@ -5,6 +5,8 @@ gs_result app_init();		// Use to init your application
 gs_result app_update();		// Use to update your application
 gs_result app_shutdown();	// Use to shutdown your appliaction
 
+_global b32 g_app_running = true;
+
 int main( int argc, char** argv )
 {
 	// This is our app description. It gives internal hints to our engine for various things like 
@@ -35,8 +37,19 @@ int main( int argc, char** argv )
 	return 0;	
 }
 
+void app_close_window_callback( void* window )
+{
+	g_app_running = false;
+}
+
 gs_result app_init()
 {
+	// Cache platform api
+	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+
+	// Set callback for when window close button is pressed
+	platform->set_window_close_callback( platform->main_window(), &app_close_window_callback );
+
 	gs_println( "Hello, Gunslinger." );
 	return gs_result_success;
 }
@@ -47,7 +60,7 @@ gs_result app_update()
 	gs_engine* engine = gs_engine_instance();
 
 	// If we press the escape key, exit the application
-	if ( engine->ctx.platform->key_pressed( gs_keycode_esc ) )
+	if ( engine->ctx.platform->key_pressed( gs_keycode_esc ) || !g_app_running )
 	{
 		return gs_result_success;
 	}
