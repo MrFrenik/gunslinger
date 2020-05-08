@@ -16,6 +16,26 @@ typedef enum gs_shader_program_type
 	gs_compute_program
 } gs_shader_program_type;
 
+typedef enum gs_blend_mode
+{
+	gs_blend_mode_disabled,
+	gs_blend_mode_zero,
+	gs_blend_mode_one,
+	gs_blend_mode_src_color,
+	gs_blend_mode_one_minus_src_color,
+	gs_blend_mode_dst_color,
+	gs_blend_mode_one_minus_dst_color,
+	gs_blend_mode_src_alpha,
+	gs_blend_mode_one_minus_src_alpha,
+	gs_blend_mode_dst_alpha,
+	gs_blend_mode_one_minus_dst_alpha,
+	gs_blend_mode_constant_color,
+	gs_blend_mode_one_minus_constant_color,
+	gs_blend_mode_constant_alpha,
+	gs_blend_mode_one_minus_constant_alpha,
+	gs_blend_mode_src_alpha_saturate
+} gs_blend_mode;
+
 typedef enum gs_shader_language_type
 {
 	gs_glsl = 0
@@ -138,6 +158,7 @@ typedef struct gs_graphics_i
 	============================================================*/
 	void ( * reset_command_buffer )( gs_resource( gs_command_buffer ) );
 	void ( * set_depth_enabled )( gs_resource( gs_command_buffer ), b32 );
+	void ( * set_blend_mode )( gs_resource( gs_command_buffer ), gs_blend_mode, gs_blend_mode );
 	void ( * set_view_port)( gs_resource( gs_command_buffer ), u32 width, u32 height );
 	void ( * bind_frame_buffer )( gs_resource( gs_command_buffer ), gs_resource( gs_frame_buffer ) );
 	void ( * set_frame_buffer_attachment )( gs_resource( gs_command_buffer ), gs_resource( gs_texture ), u32 idx );

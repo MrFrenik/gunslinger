@@ -1316,6 +1316,7 @@ void render_scene()
 		// Set clear color and clear screen
 		f32 clear_color[4] = { 0.2f, 0.2f, 0.2f, 1.f };
 		gfx->set_view_clear( g_cb, clear_color );
+		gfx->set_depth_enabled( g_cb, false );
 
 		// This is to handle mac's retina high dpi for now until I fix that internally.
 	#if (defined GS_PLATFORM_APPLE)

@@ -14,7 +14,6 @@ gs_texture_parameter_desc gs_texture_parameter_desc_default()
 	desc.mag_filter 		= gs_linear;
 	desc.mipmap_filter 		= gs_linear;
 	desc.generate_mips 		= true;
-	desc.generate_mips 		= true;
 	desc.border_color[0]	= 0.f;
 	desc.border_color[1]	= 0.f;
 	desc.border_color[2]	= 0.f;
