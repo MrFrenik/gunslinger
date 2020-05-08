@@ -768,8 +768,8 @@ _inline gs_mat4 gs_quat_to_mat4( gs_quat _q )
 	return mat;
 }
 
-/*
-_inline gs_quat gs_quat_from_euler( f32 yaw_deg, f32 pitch_deg, f32 roll_deg )
+_inline 
+gs_quat gs_quat_from_euler( f32 yaw_deg, f32 pitch_deg, f32 roll_deg )
 {
 	f32 yaw = gs_deg_to_rad(yaw_deg);
 	f32 pitch = gs_deg_to_rad(pitch_deg);
@@ -783,36 +783,13 @@ _inline gs_quat gs_quat_from_euler( f32 yaw_deg, f32 pitch_deg, f32 roll_deg )
 	f32 cp = cos( pitch * 0.5f );
 	f32 sp = sin( pitch * 0.5f );
 
-	// q.x = cy * sr * cp - sy * cr * sp;
-	// q.y = cy * cr * sp + sy * sr * cp;
-	// q.z = sy * cr * cp - cy * sr * sp;
-	// q.w = cy * cr * cp + sy * sr * sp;
-
-	q.x = sin(roll * 0.5f) * cos(pitch * 0.5f) * cos(yaw * 0.5f) - cos(roll * 0.5f) * sin(pitch * 0.5f) * sin(yaw * 0.5f);
-	q.y = cos(roll * 0.5f) * sin(pitch * 0.5f) * cos(yaw * 0.5f) + sin(roll * 0.5f) * cos(pitch * 0.5f) * sin(yaw * 0.5f);
-	q.z = cos(roll * 0.5f) * cos(pitch * 0.5f) * sin(yaw * 0.5f) - sin(roll * 0.5f) * sin(pitch * 0.5f) * cos(yaw * 0.5f);
-	q.w = cos(roll * 0.5f) * cos(pitch * 0.5f) * cos(yaw * 0.5f) + sin(roll * 0.5f) * sin(pitch * 0.5f) * sin(yaw * 0.5f);
+	q.x = cy * sr * cp - sy * cr * sp;
+	q.y = cy * cr * sp + sy * sr * cp;
+	q.z = sy * cr * cp - cy * sr * sp;
+	q.w = cy * cr * cp + sy * sr * sp;
 
 	return q;
 }
-*/
-
-_inline gs_quat gs_quat_from_euler(f32 yaw, f32 pitch, f32 roll)
-{
-	gs_quat q;
-	gs_quat r = gs_quat_angle_axis(gs_deg_to_rad(roll), (gs_vec3){0.f, 0.f, 1.f});
-	gs_quat p = gs_quat_angle_axis(gs_deg_to_rad(pitch), (gs_vec3){1.f, 0.f, 0.f});
-	gs_quat y = gs_quat_angle_axis(gs_deg_to_rad(yaw), (gs_vec3){0.f, 1.f, 0.f});
-	q = gs_quat_mul(gs_quat_mul(r, p), y);
-	return q;
-}
-
-// qx = np.sin(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) - np.cos(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
-// qy = np.cos(roll/2) * np.sin(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.cos(pitch/2) * np.sin(yaw/2)
-// qz = np.cos(roll/2) * np.cos(pitch/2) * np.sin(yaw/2) - np.sin(roll/2) * np.sin(pitch/2) * np.cos(yaw/2)
-// qw = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
-
-//         return [qx, qy, qz, qw]
 
 /*================================================================================
 // Transform ( Non-Uniform Scalar VQS )
