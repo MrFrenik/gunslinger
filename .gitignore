@@ -26,3 +26,17 @@ examples/sand_sim/bin/SandSim
 *.mp4
 *.lvix
 *.ipch
+examples/voxel/bin/.vs/Voxel/v15/.suo
+examples/voxel/proc/linux/compile_linux_gcc.sh
+examples/voxel/proc/osx/compile_osx_gcc.sh
+examples/voxel/proc/win/compile_win_cl.bat
+examples/voxel/source/main.c
+examples/voxel/source/noise/LICENSE.md
+examples/voxel/source/noise/src/noise1234.c
+examples/voxel/source/noise/src/noise1234.h
+examples/voxel/source/noise/src/sdnoise1234.c
+examples/voxel/source/noise/src/sdnoise1234.h
+examples/voxel/source/noise/src/simplexnoise1234.c
+examples/voxel/source/noise/src/simplexnoise1234.h
+examples/voxel/source/noise/src/srdnoise23.c
+examples/voxel/source/noise/src/srdnoise23.h
