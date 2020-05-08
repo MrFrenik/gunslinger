@@ -40,3 +40,7 @@ examples/voxel/source/noise/src/simplexnoise1234.c
 examples/voxel/source/noise/src/simplexnoise1234.h
 examples/voxel/source/noise/src/srdnoise23.c
 examples/voxel/source/noise/src/srdnoise23.h
+examples/rewind/source/main.c
+examples/rewind/proc/win/compile_win_cl.bat
+examples/rewind/proc/osx/compile_osx_gcc.sh
+examples/rewind/proc/linux/compile_linux_gcc.sh

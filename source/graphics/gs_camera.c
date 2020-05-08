@@ -53,9 +53,10 @@ gs_mat4 gs_camera_get_projection( gs_camera* cam, s32 view_width, s32 view_heigh
 
 		case gs_projection_type_orthographic:
 		{
+			f32 _ar = (f32)view_width / (f32)view_height;
 			f32 distance = 0.5f * ( cam->far_plane - cam->near_plane );
 			const f32 ortho_scale = cam->ortho_scale;
-			const f32 aspect_ratio = cam->aspect_ratio;
+			const f32 aspect_ratio = _ar;
 			proj_mat = gs_mat4_ortho
 			(
 				-ortho_scale * aspect_ratio, 
