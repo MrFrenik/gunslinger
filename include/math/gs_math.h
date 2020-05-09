@@ -81,7 +81,9 @@ typedef struct
 _inline gs_vec2 
 gs_vec2_ctor( f32 _x, f32 _y ) 
 {
-	gs_vec2 v = { _x, _y };
+	gs_vec2 v;
+	v.x = _x;
+	v.y = _y;
 	return v;
 }
 
@@ -172,7 +174,10 @@ typedef struct
 _inline gs_vec3 
 gs_vec3_ctor( f32 _x, f32 _y, f32 _z )
 {
-	gs_vec3 v = { _x, _y, _z };
+	gs_vec3 v;
+	v.x = _x;
+	v.y = _y;
+	v.z = _z;
 	return v;
 }
 
@@ -268,7 +273,11 @@ typedef struct
 _inline gs_vec4 
 gs_vec4_ctor( f32 _x, f32 _y, f32 _z, f32 _w )
 {
-	gs_vec4 v = { _x, _y, _z, _w };
+	gs_vec4 v; 
+	v.x = _x;
+	v.y = _y; 
+	v.z = _z; 
+	v.w = _w;
 	return v;
 } 
 
@@ -340,7 +349,8 @@ typedef struct gs_mat4
 _inline gs_mat4 
 gs_mat4_diag( f32 val )
 {
-	gs_mat4 m = { 0 };
+	gs_mat4 m;
+	memset(m.elements, 0, sizeof(m.elements));
 	m.elements[ 0 + 0 * 4 ] = val;
 	m.elements[ 1 + 1 * 4 ] = val;
 	m.elements[ 2 + 2 * 4 ] = val;
@@ -535,25 +545,25 @@ _inline
 gs_vec3 gs_mat4_mul_vec3( gs_mat4 m, gs_vec3 v )
 {
 	m = gs_mat4_transpose(m);
-	return (gs_vec3)
-	{
+	return gs_vec3_ctor
+	(
 		m.elements[0 * 4 + 0] * v.x + m.elements[0 * 4 + 1] * v.y + m.elements[0 * 4 + 2] * v.z,  
 		m.elements[1 * 4 + 0] * v.x + m.elements[1 * 4 + 1] * v.y + m.elements[1 * 4 + 2] * v.z,  
-		m.elements[2 * 4 + 0] * v.x + m.elements[2 * 4 + 1] * v.y + m.elements[2 * 4 + 2] * v.z,  
-	};
+		m.elements[2 * 4 + 0] * v.x + m.elements[2 * 4 + 1] * v.y + m.elements[2 * 4 + 2] * v.z
+	);
 }
 	
 _inline
 gs_vec4 gs_mat4_mul_vec4( gs_mat4 m, gs_vec4 v )
 {
 	m = gs_mat4_transpose(m);
-	return (gs_vec4)
-	{
+	return gs_vec4_ctor
+	(
 		m.elements[0 * 4 + 0] * v.x + m.elements[0 * 4 + 1] * v.y + m.elements[0 * 4 + 2] * v.z + m.elements[0 * 4 + 3] * v.w,  
 		m.elements[1 * 4 + 0] * v.x + m.elements[1 * 4 + 1] * v.y + m.elements[1 * 4 + 2] * v.z + m.elements[1 * 4 + 3] * v.w,  
 		m.elements[2 * 4 + 0] * v.x + m.elements[2 * 4 + 1] * v.y + m.elements[2 * 4 + 2] * v.z + m.elements[2 * 4 + 3] * v.w,  
 		m.elements[3 * 4 + 0] * v.x + m.elements[3 * 4 + 1] * v.y + m.elements[3 * 4 + 2] * v.z + m.elements[3 * 4 + 3] * v.w
-	};
+	);
 }
 
 /*================================================================================
@@ -568,29 +578,39 @@ typedef struct
 	f32 w;
 } gs_quat;
 
-#define gs_quat_default()\
-	( ( gs_quat ){ .x = 0.0f, .y = 0.0f, .z = 0.0f, .w = 1.0f } )
-
-#define gs_quat_ctor( _x, _y, _z, _w )\
-	( ( gs_quat ){ .x = ( _x ), .y = ( _y ), .z = ( _z ), .w = ( _w ) } )
-
-_inline gs_quat 
-__gs_quat_add_impl( const gs_quat* q0, const gs_quat* q1 ) 
+_inline
+gs_quat gs_quat_default()
 {
-	return gs_quat_ctor( q0->x + q1->x, q0->y + q1->y, q0->z + q1->z, q0->w + q1->w );
+	gs_quat q;
+	q.x = 0.f;	
+	q.y = 0.f;	
+	q.z = 0.f;	
+	q.w = 0.f;	
+	return q;
 }
 
-#define gs_quat_add( q0, q1 )\
-	( __gs_quat_add_impl( &( q0 ), &( q1 ) ) )
-
-_inline gs_quat 
-__gs_quat_sub_impl( const gs_quat* q0, const gs_quat* q1 ) 
+_inline
+gs_quat gs_quat_ctor( f32 _x, f32 _y, f32 _z, f32 _w )
 {
-	return gs_quat_ctor( q0->x - q1->x, q0->y - q1->y, q0->z - q1->z, q0->w - q1->w );
+	gs_quat q;
+	q.x = _x;
+	q.y = _y;
+	q.z = _z;
+	q.w = _w;
+	return q;
 }
 
-#define gs_quat_sub( q0, q1 )\
-	( __gs_quat_sub_impl( &( q0 ), &( q1 ) ) )
+_inline gs_quat 
+gs_quat_add( gs_quat q0, gs_quat q1 ) 
+{
+	return gs_quat_ctor( q0.x + q1.x, q0.y + q1.y, q0.z + q1.z, q0.w + q1.w );
+}
+
+_inline gs_quat 
+gs_quat_sub( gs_quat q0, gs_quat q1 )
+{
+	return gs_quat_ctor( q0.x - q1.x, q0.y - q1.y, q0.z - q1.z, q0.w - q1.w );
+}
 
 _inline gs_quat
 gs_quat_mul( gs_quat q0, gs_quat q1 )
@@ -603,8 +623,8 @@ gs_quat_mul( gs_quat q0, gs_quat q1 )
 	);
 }
 
-_inline
-gs_quat gs_quat_mul_quat( gs_quat q0, gs_quat q1 )
+_inline gs_quat 
+gs_quat_mul_quat( gs_quat q0, gs_quat q1 )
 {
 	return gs_quat_ctor(
 		q0.w * q1.x + q1.w * q0.x + q0.y * q1.z - q1.y * q0.z,
@@ -614,35 +634,29 @@ gs_quat gs_quat_mul_quat( gs_quat q0, gs_quat q1 )
 	);
 }
 
-_inline gs_quat
-__gs_quat_scale_impl( const gs_quat* q, f32 s )
+_inline 
+gs_quat gs_quat_scale( gs_quat q, f32 s )
 {
-	return gs_quat_ctor( q->x * s, q->y * s, q->z * s, q->w * s );
+	return gs_quat_ctor( q.x * s, q.y * s, q.z * s, q.w * s );
 }
-
-#define gs_quat_scale( q, s )\
-	( __gs_quat_scale_impl( &( q ), s ) )
 
 _inline f32 
-__gs_quat_dot_impl( const gs_quat* q0, const gs_quat* q1 )
+gs_quat_dot( gs_quat q0, gs_quat q1 )
 {
-	return ( f32 )( q0->x * q1->x + q0->y * q1->y + q0->z * q1->z + q0->w * q1->w );
+	return ( f32 )( q0.x * q1.x + q0.y * q1.y + q0.z * q1.z + q0.w * q1.w );
 }
 
-#define gs_quat_dot( q0, q1 )\
-	( __gs_quat_dot_impl( &( q0 ), &( q1 ) ) )
-
-#define gs_quat_conjugate( q )\
-	( gs_quat_ctor( -q.x, -q.y, -q.z, q.w ) )
+_inline 
+gs_quat gs_quat_conjugate( gs_quat q )
+{
+	return ( gs_quat_ctor( -q.x, -q.y, -q.z, q.w ) );
+}
 
 _inline f32
-_gs_quat_len_impl( const gs_quat* q )
+gs_quat_len( gs_quat q )
 {
-	return ( f32 )sqrt( gs_quat_dot( *q, *q ) );
+	return ( f32 )sqrt( gs_quat_dot( q, q ) );
 }
-
-#define gs_quat_len( q )\
-	( _gs_quat_len_impl( &( q ) ) )
 
 _inline gs_quat
 gs_quat_norm( gs_quat q ) 
@@ -651,7 +665,7 @@ gs_quat_norm( gs_quat q )
 }
 
 _inline gs_quat
-__gs_quat_cross_impl( gs_quat q0, gs_quat q1 )
+gs_quat_cross( gs_quat q0, gs_quat q1 )
 {
 	return gs_quat_ctor (											
 		q0.x * q1.x + q0.x * q1.w + q0.y * q1.z - q0.z * q1.y,	
@@ -661,17 +675,17 @@ __gs_quat_cross_impl( gs_quat q0, gs_quat q1 )
 	);
 }
 
-#define gs_quat_cross( q0, q1 )\
-	( __gs_quat_cross_impl( q0, q1 ) )
-
 // Inverse := Conjugate / Dot;
-#define gs_quat_inverse( q )\
-	( gs_quat_scale( gs_quat_conjugate( q ), 1.0f / gs_quat_dot( q, q ) ) )
+_inline
+gs_quat gs_quat_inverse( gs_quat q )
+{
+	return ( gs_quat_scale( gs_quat_conjugate( q ), 1.0f / gs_quat_dot( q, q ) ) );
+}
 
 _inline gs_vec3 gs_quat_rotate( gs_quat q, gs_vec3 v )
 {
 	// nVidia SDK implementation
-	gs_vec3 qvec = { q.x, q.y, q.z };
+	gs_vec3 qvec = gs_vec3_ctor( q.x, q.y, q.z );
 	gs_vec3 uv = gs_vec3_cross( qvec, v );
 	gs_vec3 uuv = gs_vec3_cross( qvec, uv );
 	uv = gs_vec3_scale(uv, 2.f * q.w);
@@ -809,17 +823,6 @@ typedef struct
 	gs_vec3 	scale;		
 } gs_vqs;
 
-_inline gs_vqs gs_vqs_default()
-{
-	gs_vqs t = ( gs_vqs )
-	{
-		(gs_vec3){ 0.0f, 0.0f, 0.0f },
-		 (gs_quat){ 0.0f, 0.0f, 0.0f, 1.0f },
-		(gs_vec3){ 1.0f, 1.0f, 1.0f }
-	};
-	return t;
-}
-
 _inline gs_vqs gs_vqs_ctor( gs_vec3 tns, gs_quat rot, gs_vec3 scl )
 {
 	gs_vqs t;	
@@ -828,6 +831,19 @@ _inline gs_vqs gs_vqs_ctor( gs_vec3 tns, gs_quat rot, gs_vec3 scl )
 	t.scale = scl;
 	return t;
 }
+
+_inline 
+gs_vqs gs_vqs_default()
+{
+	gs_vqs t = gs_vqs_ctor
+	(
+		gs_vec3_ctor( 0.0f, 0.0f, 0.0f ),
+		gs_quat_ctor( 0.0f, 0.0f, 0.0f, 1.0f ),
+		gs_vec3_ctor( 1.0f, 1.0f, 1.0f )
+	);
+	return t;
+}
+
 
 // AbsScale	= ParentScale * LocalScale
 // AbsRot	= LocalRot * ParentRot
@@ -892,7 +908,9 @@ typedef struct
 
 _inline gs_ray gs_ray_ctor( gs_vec3 pt, gs_vec3 dir )
 {
-	gs_ray r = { pt, dir };
+	gs_ray r;
+	r.point = pt;
+	r.direction = dir;
 	return r;
 }
 

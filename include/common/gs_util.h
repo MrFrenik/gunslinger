@@ -282,6 +282,58 @@ gs_util_get_file_name
 }
 
 _force_inline void
+gs_util_string_substring
+(
+	const char* src,
+	char* dst,
+	usize sz,
+	u32 start,
+	u32 end
+)
+{
+	u32 str_len = gs_string_length( src );
+	if ( end > str_len ) {
+		end = str_len;
+	}
+	if (start > str_len ) {
+		start = str_len;
+	}
+
+	const char* at = src + start;
+	const char* e = src + end;
+	u32 ct = 0;
+	while ( at && *at != '\0' && at != e )
+	{
+		dst[ ct ] = *at;
+		at++;
+		ct++;
+	}
+}
+
+_force_inline void
+gs_util_string_remove_character
+(
+	const char* src,
+	char* buffer, 
+	u32 buffer_size,
+	char delimiter
+)
+{
+	u32 ct = 0;
+	u32 str_len = gs_string_length( src );
+	const char* at = src;
+	while ( at && *at != '\0' && ct < buffer_size )
+	{
+		char c = *at; 
+		if ( c != delimiter ) {
+			buffer[ ct ] = c;
+			ct++;
+		}
+		at++;
+	}
+}
+
+_force_inline void
 gs_util_string_replace
 ( 
 	const char* source_str, 
