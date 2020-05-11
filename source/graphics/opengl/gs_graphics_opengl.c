@@ -48,6 +48,7 @@ typedef enum gs_opengl_op_code
 	gs_opengl_op_bind_texture,
 	gs_opengl_op_bind_frame_buffer,
 	gs_opengl_op_unbind_frame_buffer,
+	gs_opengl_op_update_vertex_data,
 	gs_opengl_op_set_frame_buffer_attachment,
 	gs_opengl_op_draw,
 	gs_opengl_op_debug_draw_line,
@@ -298,12 +299,14 @@ void opengl_reset_command_buffer( gs_resource( gs_command_buffer ) cb_handle )
 	__reset_command_buffer_internal( cb );
 }
 
-#define __push_command( cbh, ... )\
+#define __push_command( cbh, op_code, ... )\
 do {\
 	/* Get data from graphics api */\
-	opengl_render_data_t* data = __get_opengl_data_internal();\
+	opengl_render_data_t* __data = __get_opengl_data_internal();\
 	/* Grab command buffer ptr from command buffer slot array */\
-	command_buffer_t* cb = __get_command_buffer_internal( data, cbh );\
+	command_buffer_t* cb = __get_command_buffer_internal( __data, cbh );\
+	/* Write op code */\
+	gs_byte_buffer_write( &cb->commands, u32, op_code );\
 	/* Push back all data required */\
 	__VA_ARGS__\
 	/* Increase command count for command buffer */\
@@ -312,13 +315,12 @@ do {\
 
 void opengl_set_frame_buffer_attachment( gs_resource( gs_command_buffer ) cb_handle, gs_resource( gs_texture ) t_handle, u32 idx )
 {
-	__push_command( cb_handle, {
+	__push_command( cb_handle, gs_opengl_op_set_frame_buffer_attachment, {
 
 		// Grab texture from handle
-		texture_t t = gs_slot_array_get( data->textures, t_handle.id );
+		texture_t t = gs_slot_array_get( __data->textures, t_handle.id );
 
 		// Push back commands
-		gs_byte_buffer_write( &cb->commands, u32, gs_opengl_op_set_frame_buffer_attachment );
 		gs_byte_buffer_write( &cb->commands, u32, t.id );
 		gs_byte_buffer_write( &cb->commands, u32, idx );
 	});
@@ -326,35 +328,31 @@ void opengl_set_frame_buffer_attachment( gs_resource( gs_command_buffer ) cb_han
 
 void opengl_bind_frame_buffer( gs_resource( gs_command_buffer ) cb_handle, gs_resource( gs_frame_buffer ) fb_handle )
 {
-	__push_command( cb_handle, {
+	__push_command( cb_handle, gs_opengl_op_bind_frame_buffer, {
 
 		// Grab shader from handle
-		frame_buffer_t fb = gs_slot_array_get( data->frame_buffers, fb_handle.id );
+		frame_buffer_t fb = gs_slot_array_get( __data->frame_buffers, fb_handle.id );
 
 		// Push back commands
-		gs_byte_buffer_write( &cb->commands, u32, gs_opengl_op_bind_frame_buffer );
 		gs_byte_buffer_write( &cb->commands, u32, fb.fbo );
 	});
 }
 
 void opengl_unbind_frame_buffer( gs_resource( gs_command_buffer ) cb_handle )
 {
-	__push_command( cb_handle, {
+	__push_command( cb_handle, gs_opengl_op_unbind_frame_buffer, {
 
-		// Push back commands
-		gs_byte_buffer_write( &cb->commands, u32, gs_opengl_op_unbind_frame_buffer );
 	});
 }
 
 void opengl_bind_shader( gs_resource( gs_command_buffer ) cb_handle, gs_resource( gs_shader ) s_handle )
 {
-	__push_command( cb_handle, {
+	__push_command( cb_handle, gs_opengl_op_bind_shader, {
 
 		// Grab shader from handle
-		shader_t s = gs_slot_array_get( data->shaders, s_handle.id );
+		shader_t s = gs_slot_array_get( __data->shaders, s_handle.id );
 
 		// Construct command packet for binding shader
-		gs_byte_buffer_write( &cb->commands, u32, gs_opengl_op_bind_shader );
 		gs_byte_buffer_write( &cb->commands, u32, s.program_id );
 	});
 }
@@ -364,13 +362,11 @@ void opengl_bind_shader( gs_resource( gs_command_buffer ) cb_handle, gs_resource
 
 void opengl_bind_uniform( gs_resource( gs_command_buffer ) cb_handle, gs_resource( gs_uniform ) u_handle, void* u_data )
 {
-	__push_command( cb_handle, {
+	__push_command( cb_handle, gs_opengl_op_bind_uniform, {
 
 		// Grab uniform from handle
-		uniform_t u = gs_slot_array_get( data->uniforms, u_handle.id );
+		uniform_t u = gs_slot_array_get( __data->uniforms, u_handle.id );
 
-		// Write out op code
-		gs_byte_buffer_write( &cb->commands, u32, gs_opengl_op_bind_uniform );
 		// Write out uniform location
 		gs_byte_buffer_write( &cb->commands, u32, (u32)u.location );
 		// Write out uniform type
@@ -399,13 +395,13 @@ void opengl_bind_uniform( gs_resource( gs_command_buffer ) cb_handle, gs_resourc
 void opengl_bind_texture( gs_resource( gs_command_buffer ) cb_handle, gs_resource( gs_uniform ) u_handle, 
 		gs_resource( gs_texture ) tex_handle, u32 tex_unit )
 {
-	__push_command( cb_handle, {
+	__push_command( cb_handle, gs_opengl_op_bind_texture, {
 
 		// Get texture
-		texture_t tex = gs_slot_array_get( data->textures, tex_handle.id );
+		texture_t tex = gs_slot_array_get( __data->textures, tex_handle.id );
 
 		// Grab uniform from handle
-		uniform_t u = gs_slot_array_get( data->uniforms, u_handle.id );
+		uniform_t u = gs_slot_array_get( __data->uniforms, u_handle.id );
 
 		// Cannot pass in uniform of wrong type
 		if ( u.type != gs_uniform_type_sampler2d )
@@ -414,8 +410,6 @@ void opengl_bind_texture( gs_resource( gs_command_buffer ) cb_handle, gs_resourc
 			gs_assert( false );
 		}
 
-		// Write op code
-		gs_byte_buffer_write( &cb->commands, u32, gs_opengl_op_bind_texture );
 		// Write out id
 		gs_byte_buffer_write( &cb->commands, u32, tex.id );
 		// Write tex unit location
@@ -427,13 +421,11 @@ void opengl_bind_texture( gs_resource( gs_command_buffer ) cb_handle, gs_resourc
 
 void opengl_bind_vertex_buffer( gs_resource( gs_command_buffer ) cb_handle, gs_resource( gs_vertex_buffer ) vb_handle )
 {
-	__push_command( cb_handle, {
+	__push_command( cb_handle, gs_opengl_op_bind_vertex_buffer, {
 
 		// Get vertex buffer data
-		vertex_buffer_t vb = gs_slot_array_get( data->vertex_buffers, vb_handle.id );
+		vertex_buffer_t vb = gs_slot_array_get( __data->vertex_buffers, vb_handle.id );
 
-		// Write op code
-		gs_byte_buffer_write( &cb->commands, u32, gs_opengl_op_bind_vertex_buffer );
 		// Write out vao
 		gs_byte_buffer_write( &cb->commands, u32, vb.vao );
 	});
@@ -441,13 +433,11 @@ void opengl_bind_vertex_buffer( gs_resource( gs_command_buffer ) cb_handle, gs_r
 
 void opengl_bind_index_buffer( gs_resource( gs_command_buffer ) cb_handle, gs_resource( gs_index_buffer ) ib_handle )
 {
-	__push_command( cb_handle, {
+	__push_command( cb_handle, gs_opengl_op_bind_index_buffer, {
 
 		// Get index buffer data
-		index_buffer_t ib = gs_slot_array_get( data->index_buffers, ib_handle.id );
+		index_buffer_t ib = gs_slot_array_get( __data->index_buffers, ib_handle.id );
 
-		// Write op code
-		gs_byte_buffer_write( &cb->commands, u32, gs_opengl_op_bind_index_buffer );
 		// Write out ibo
 		gs_byte_buffer_write( &cb->commands, u32, ib.ibo );
 	});
@@ -455,10 +445,8 @@ void opengl_bind_index_buffer( gs_resource( gs_command_buffer ) cb_handle, gs_re
 
 void opengl_set_view_port( gs_resource( gs_command_buffer ) cb_handle, u32 width, u32 height )
 {
-	__push_command( cb_handle, {
+	__push_command( cb_handle, gs_opengl_op_set_view_port, {
 
-		// Write op into buffer
-		gs_byte_buffer_write( &cb->commands, u32, gs_opengl_op_set_view_port );
 		// Write width into buffer
 		gs_byte_buffer_write( &cb->commands, u32, width );
 		// Write height into buffer
@@ -469,12 +457,10 @@ void opengl_set_view_port( gs_resource( gs_command_buffer ) cb_handle, u32 width
 // Want to set a bitmask for this as well to determine clear types
 void opengl_set_view_clear( gs_resource( gs_command_buffer ) cb_handle, f32* col )
 {
-	__push_command( cb_handle, {
+	__push_command( cb_handle, gs_opengl_op_set_view_clear, {
 
 		gs_vec4 c = (gs_vec4){col[0], col[1], col[2], col[3]};
 
-		// Write op into buffer
-		gs_byte_buffer_write( &cb->commands, u32, gs_opengl_op_set_view_clear );
 		// Write color into buffer (as vec4)
 		gs_byte_buffer_write( &cb->commands, gs_vec4, c );
 	});
@@ -482,10 +468,8 @@ void opengl_set_view_clear( gs_resource( gs_command_buffer ) cb_handle, f32* col
 
 void opengl_set_blend_mode( gs_resource( gs_command_buffer ) cb_handle, gs_blend_mode src, gs_blend_mode dst )
 {
-	__push_command( cb_handle, {
+	__push_command( cb_handle, gs_opengl_op_set_blend_mode, {
 
-		// Write op into buffer
-		gs_byte_buffer_write( &cb->commands, u32, gs_opengl_op_set_blend_mode );
 		// Write blend mode for source
 		gs_byte_buffer_write( &cb->commands, u32, (u32)src );
 		// Write blend mode for destination
@@ -495,10 +479,8 @@ void opengl_set_blend_mode( gs_resource( gs_command_buffer ) cb_handle, gs_blend
 
 void opengl_set_depth_enabled( gs_resource( gs_command_buffer ) cb_handle, b32 enable )
 {
-	__push_command( cb_handle, {
+	__push_command( cb_handle, gs_opengl_op_set_depth_enabled, {
 
-		// Write op into buffer
-		gs_byte_buffer_write( &cb->commands, u32, gs_opengl_op_set_depth_enabled );
 		// Write color into buffer (as vec4)
 		gs_byte_buffer_write( &cb->commands, b32, enable );
 	});
@@ -506,10 +488,8 @@ void opengl_set_depth_enabled( gs_resource( gs_command_buffer ) cb_handle, b32 e
 
 void opengl_draw_indexed( gs_resource( gs_command_buffer ) cb_handle, u32 count )
 {
-	__push_command( cb_handle, {
+	__push_command( cb_handle, gs_opengl_draw_indexed, {
 
-		// Write draw command
-		gs_byte_buffer_write( &cb->commands, u32, gs_opengl_draw_indexed );	
 		// Write count
 		gs_byte_buffer_write( &cb->commands, u32, count );
 	});
@@ -517,10 +497,8 @@ void opengl_draw_indexed( gs_resource( gs_command_buffer ) cb_handle, u32 count 
 
 void opengl_draw( gs_resource( gs_command_buffer ) cb_handle, u32 start, u32 count )
 {
-	__push_command( cb_handle, {
+	__push_command( cb_handle, gs_opengl_op_draw, {
 
-		// Write draw command
-		gs_byte_buffer_write( &cb->commands, u32, gs_opengl_op_draw );	
 		// Write start
 		gs_byte_buffer_write( &cb->commands, u32, start );
 		// Write count
@@ -530,10 +508,8 @@ void opengl_draw( gs_resource( gs_command_buffer ) cb_handle, u32 start, u32 cou
 
 void opengl_set_debug_draw_properties( gs_resource( gs_command_buffer ) cb_handle, gs_debug_draw_properties props )
 {
-	__push_command( cb_handle, {
+	__push_command( cb_handle, gs_opengl_op_debug_set_properties, {
 
-		// Write draw command
-		gs_byte_buffer_write( &cb->commands, u32, gs_opengl_op_debug_set_properties );	
 		// Write view
 		gs_byte_buffer_write( &cb->commands, gs_mat4, props.view_mat );
 		// Write proj
@@ -545,10 +521,8 @@ void opengl_set_debug_draw_properties( gs_resource( gs_command_buffer ) cb_handl
 // Maybe user has ability to add as much as they want into the debug buffer and then can control when to submit it? Hmm...
 void opengl_draw_line( gs_resource( gs_command_buffer ) cb_handle, gs_vec3 start, gs_vec3 end, gs_vec3 color )
 {
-	__push_command( cb_handle, {
+	__push_command( cb_handle, gs_opengl_op_debug_draw_line, {
 
-		// Write op
-		gs_byte_buffer_write( &cb->commands, u32, gs_opengl_op_debug_draw_line );
 		// Write start position
 		gs_byte_buffer_write( &cb->commands, gs_vec3, start );
 		// Write end position
@@ -560,9 +534,8 @@ void opengl_draw_line( gs_resource( gs_command_buffer ) cb_handle, gs_vec3 start
 
 void opengl_draw_square( gs_resource( gs_command_buffer ) cb_handle, gs_vec3 origin, f32 width, f32 height, gs_vec3 color, gs_mat4 model )
 {
-	__push_command( cb_handle, {
+	__push_command( cb_handle, gs_opengl_op_debug_draw_square, {
 
-		gs_byte_buffer_write( &cb->commands, u32, gs_opengl_op_debug_draw_square );
 		gs_byte_buffer_write( &cb->commands, gs_vec3, origin );
 		gs_byte_buffer_write( &cb->commands, f32, width );
 		gs_byte_buffer_write( &cb->commands, f32, height );
@@ -573,12 +546,27 @@ void opengl_draw_square( gs_resource( gs_command_buffer ) cb_handle, gs_vec3 ori
 
 void opengl_submit_debug_drawing( gs_resource( gs_command_buffer ) cb_handle )
 {
-	__push_command( cb_handle, {
+	__push_command( cb_handle, gs_opengl_op_debug_draw_submit, {
 
-		// Simply write back command buffer stuff and things...
-		gs_byte_buffer_write( &cb->commands, u32, gs_opengl_op_debug_draw_submit );
+		// Nothing...
 	});
 }
+
+void opengl_update_vertex_data_command( gs_resource( gs_command_buffer ) cb_handle, gs_resource( gs_vertex_buffer ) vb_handle, void* v_data, usize v_size )
+{
+	// Need to memcpy the data over to the command buffer	
+	__push_command( cb_handle, gs_opengl_op_update_vertex_data, {
+
+		// Get vertex buffer data
+		vertex_buffer_t vb = gs_slot_array_get( __data->vertex_buffers, vb_handle.id );
+
+		// Write out vao/vbo
+		gs_byte_buffer_write( &cb->commands, u32, vb.vao );
+		gs_byte_buffer_write( &cb->commands, u32, vb.vbo );
+		gs_byte_buffer_write( &cb->commands, u32, v_size );
+		gs_byte_buffer_bulk_write( &cb->commands, v_data, v_size );
+	});
+} 
 
 #define __gfx_add_debug_line_internal( data, start, end, color )\
 do {\
@@ -625,6 +613,18 @@ GLenum __get_opengl_blend_mode( gs_blend_mode mode )
 	// Shouldn't ever hit here
 	return GL_ZERO;
 }
+
+typedef struct color_t
+{
+	f32 r, g, b, a;
+} color_t;
+
+typedef struct vert_t
+{
+	gs_vec2 position;
+	gs_vec2 uv;
+	color_t color;
+} vert_t;
 
 // For now, just rip through command buffer. Later on, will add all command buffers into a queue to be processed on rendering thread.
 void opengl_submit_command_buffer( gs_resource( gs_command_buffer ) cb_handle )
@@ -847,6 +847,33 @@ void opengl_submit_command_buffer( gs_resource( gs_command_buffer ) cb_handle )
 						gs_assert( false );
 					}
 				}
+
+			} break;
+
+			case gs_opengl_op_update_vertex_data: 
+			{
+				// Read in vao
+				u32 vao = gs_byte_buffer_read( &cb->commands, u32 );
+				u32 vbo = gs_byte_buffer_read( &cb->commands, u32 );
+				u32 data_size = gs_byte_buffer_read( &cb->commands, u32 );
+
+				// Read in data for vertices
+				void* tmp_data = gs_malloc( data_size );
+				memset(tmp_data, 0, data_size );
+				gs_byte_buffer_bulk_read( &cb->commands, tmp_data, data_size );
+
+				// Update vertex data
+				// Bind vao/vbo
+				glBindVertexArray( (u32)vao );
+				glBindBuffer( GL_ARRAY_BUFFER, (u32)vbo );
+				glBufferData( GL_ARRAY_BUFFER, data_size, tmp_data, GL_STATIC_DRAW );
+
+				// Unbind buffer and array
+				glBindBuffer( GL_ARRAY_BUFFER, 0 );
+				glBindVertexArray( 0 );
+
+				gs_free( tmp_data );
+				tmp_data = NULL;
 
 			} break;
 
@@ -1618,7 +1645,7 @@ struct gs_graphics_i* gs_graphics_construct()
 	gfx->draw 							= &opengl_draw;
 	gfx->draw_indexed 					= &opengl_draw_indexed;
 	gfx->submit_command_buffer 			= &opengl_submit_command_buffer;
-
+	gfx->update_vertex_data 			= &opengl_update_vertex_data_command;
 
 	// void ( * set_uniform_buffer_sub_data )( gs_resource( gs_command_buffer ), gs_resource( gs_uniform_buffer ), void*, usize );
 	// void ( * set_index_buffer )( gs_resource( gs_command_buffer ), gs_resource( gs_index_buffer ) );

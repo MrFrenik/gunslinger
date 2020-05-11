@@ -53,6 +53,8 @@ void gs_byte_buffer_seek_to_end( gs_byte_buffer* buffer );
 void gs_byte_buffer_advance_position( gs_byte_buffer* buffer, usize sz );
 void gs_byte_buffer_write_str( gs_byte_buffer* buffer, const char* str );		// Expects a null terminated string
 void gs_byte_buffer_read_str( gs_byte_buffer* buffer, char* str );				// Expects an allocated string
+void gs_byte_buffer_bulk_write( gs_byte_buffer* buffer, void* src, u32 sz );
+void gs_byte_buffer_bulk_read( gs_byte_buffer* buffer, void* dst, u32 sz );
 gs_result gs_byte_buffer_write_to_file( gs_byte_buffer* buffer, const char* output_path ); 	// Assumes that the output directory exists
 gs_result gs_byte_buffer_read_from_file( gs_byte_buffer* buffer, const char* file_path );	// Assumes an allocated byte buffer
 

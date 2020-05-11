@@ -168,6 +168,7 @@ typedef struct gs_graphics_i
 	void ( * bind_vertex_buffer )( gs_resource( gs_command_buffer ), gs_resource( gs_vertex_buffer ) );
 	void ( * bind_index_buffer )( gs_resource( gs_command_buffer ), gs_resource( gs_index_buffer ) );
 	void ( * bind_texture )( gs_resource( gs_command_buffer ), gs_resource( gs_uniform ), gs_resource( gs_texture ), u32 );
+	void ( * update_vertex_data )( gs_resource( gs_command_buffer ), gs_resource( gs_vertex_buffer ), void*, usize );
 	void ( * set_view_clear )( gs_resource( gs_command_buffer ), f32* color );
 	void ( * draw )( gs_resource( gs_command_buffer ), u32 start, u32 count );
 	void ( * draw_indexed )( gs_resource( gs_command_buffer ), u32 count );

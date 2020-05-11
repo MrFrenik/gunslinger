@@ -32,10 +32,11 @@ void gs_byte_buffer_clear( gs_byte_buffer* buffer )
 void gs_byte_buffer_resize( gs_byte_buffer* buffer, usize sz )
 {
 	u8* data = gs_realloc( buffer->buffer, sz );
-	if ( data == NULL )
-	{
+
+	if ( data == NULL ) {
 		return;
 	}
+
 	buffer->buffer = data;	
 	buffer->capacity = sz;
 }
@@ -53,6 +54,34 @@ void gs_byte_buffer_seek_to_end( gs_byte_buffer* buffer )
 void gs_byte_buffer_advance_position( gs_byte_buffer* buffer, usize sz )
 {
 	buffer->position += sz;	
+}
+
+void gs_byte_buffer_bulk_write( gs_byte_buffer* buffer, void* src, u32 size )
+{
+	// Check for necessary resize
+	u32 total_write_size = buffer->position + size;
+	if ( total_write_size >= buffer->capacity )
+	{
+		usize capacity = buffer->capacity * 2;
+		while( capacity <= total_write_size )
+		{
+			capacity *= 2;
+		}
+
+		gs_byte_buffer_resize( buffer, capacity );
+	}
+
+	// memcpy data
+	memcpy( ( buffer->buffer + buffer->position ), src, size );
+
+	buffer->size += size;
+	buffer->position += size;
+}
+
+void gs_byte_buffer_bulk_read( gs_byte_buffer* buffer, void* dst, u32 size )
+{
+	memcpy( dst, ( buffer->buffer + buffer->position ), size );
+	buffer->position += size;
 }
 
 void gs_byte_buffer_write_str( gs_byte_buffer* buffer, const char* str )
