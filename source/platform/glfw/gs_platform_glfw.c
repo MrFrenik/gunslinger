@@ -289,7 +289,7 @@ void __glfw_mouse_cursor_position_callback( GLFWwindow* window, f64 x, f64 y )
 	struct gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 	platform->input.mouse.position = (gs_vec2){ x, y };
 	platform->input.mouse.moved_this_frame = true;
-	glfwSetCursorPos(window, x, y);
+	// glfwSetCursorPos(window, x, y);
 }
 
 void __glfw_mouse_scroll_wheel_callback( GLFWwindow* window, f64 x, f64 y )
