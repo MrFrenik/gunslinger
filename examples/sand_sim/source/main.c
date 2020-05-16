@@ -1263,6 +1263,10 @@ void render_scene()
 	gs_vec2 ws = platform->window_size( g_window );
 	b32 flip_y = false;
 
+	// Default state set up
+	gfx->set_depth_enabled( g_cb, false );
+	gfx->set_face_culling( g_cb, gs_face_culling_disabled );
+
 	// Bind our render target and render offscreen
 	gfx->bind_frame_buffer( g_cb, g_fb );
 	{

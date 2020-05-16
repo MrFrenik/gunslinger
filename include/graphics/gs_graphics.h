@@ -16,7 +16,30 @@ typedef enum gs_shader_program_type
 	gs_compute_program
 } gs_shader_program_type;
 
-typedef enum gs_blend_mode
+typedef enum gs_blend_equation_type
+{
+	gs_blend_equation_add,
+	gs_blend_equation_subtract,
+	gs_blend_equation_reverse_subtract,
+	gs_blend_equation_min,
+	gs_blend_equation_max
+} gs_blend_equation_type;
+
+typedef enum gs_winding_order_type
+{
+	gs_winding_order_cw,
+	gs_winding_order_ccw
+} gs_winding_order_type;
+
+typedef enum gs_face_culling_type
+{
+	gs_face_culling_disabled,
+	gs_face_culling_front,
+	gs_face_culling_back,
+	gs_face_culling_front_and_back	
+} gs_face_culling_type;
+
+typedef enum gs_blend_mode_type
 {
 	gs_blend_mode_disabled,
 	gs_blend_mode_zero,
@@ -34,7 +57,7 @@ typedef enum gs_blend_mode
 	gs_blend_mode_constant_alpha,
 	gs_blend_mode_one_minus_constant_alpha,
 	gs_blend_mode_src_alpha_saturate
-} gs_blend_mode;
+} gs_blend_mode_type;
 
 typedef enum gs_shader_language_type
 {
@@ -69,7 +92,11 @@ typedef enum gs_vertex_attribute_type
 	gs_vertex_attribute_uint4,
 	gs_vertex_attribute_uint3,
 	gs_vertex_attribute_uint2,
-	gs_vertex_attribute_uint
+	gs_vertex_attribute_uint,
+	gs_vertex_attribute_byte4,
+	gs_vertex_attribute_byte3,
+	gs_vertex_attribute_byte2,
+	gs_vertex_attribute_byte,
 } gs_vertex_attribute_type;
 
 /*================
@@ -123,15 +150,6 @@ typedef struct gs_debug_draw_properties
 // Resource Decls
 =================*/
 
-#define gs_resource( type )\
-	gs_resource_##type
-
-// Strongly typed declarations for resource handles (slot array handles)
-#define gs_declare_resource_type( type )\
-	typedef struct gs_resource( type ) {\
-		u32 id;\
-	} gs_resource( type );\
-
 gs_declare_resource_type( gs_command_buffer );
 gs_declare_resource_type( gs_uniform_buffer );
 gs_declare_resource_type( gs_vertex_buffer );
@@ -158,8 +176,12 @@ typedef struct gs_graphics_i
 	============================================================*/
 	void ( * reset_command_buffer )( gs_resource( gs_command_buffer ) );
 	void ( * set_depth_enabled )( gs_resource( gs_command_buffer ), b32 );
-	void ( * set_blend_mode )( gs_resource( gs_command_buffer ), gs_blend_mode, gs_blend_mode );
+	void ( * set_winding_order )( gs_resource( gs_command_buffer ), gs_winding_order_type );
+	void ( * set_face_culling )( gs_resource( gs_command_buffer ), gs_face_culling_type );
+	void ( * set_blend_mode )( gs_resource( gs_command_buffer ), gs_blend_mode_type, gs_blend_mode_type );
+	void ( * set_blend_equation )( gs_resource( gs_command_buffer ), gs_blend_equation_type );
 	void ( * set_view_port)( gs_resource( gs_command_buffer ), u32 width, u32 height );
+	void ( * set_view_scissor )( gs_resource( gs_command_buffer ), u32 x, u32 y, u32 width, u32 height );
 	void ( * bind_frame_buffer )( gs_resource( gs_command_buffer ), gs_resource( gs_frame_buffer ) );
 	void ( * set_frame_buffer_attachment )( gs_resource( gs_command_buffer ), gs_resource( gs_texture ), u32 idx );
 	void ( * unbind_frame_buffer )( gs_resource( gs_command_buffer ) );

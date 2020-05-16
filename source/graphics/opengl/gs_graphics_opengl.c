@@ -40,8 +40,12 @@ typedef enum gs_opengl_op_code
 	gs_opengl_op_bind_shader = 0,
 	gs_opengl_op_set_view_clear,
 	gs_opengl_op_set_view_port,
+	gs_opengl_op_set_view_scissor,
 	gs_opengl_op_set_depth_enabled,
+	gs_opengl_op_set_face_culling,
+	gs_opengl_op_set_winding_order,
 	gs_opengl_op_set_blend_mode,
+	gs_opengl_op_set_blend_equation,
 	gs_opengl_op_bind_vertex_buffer,
 	gs_opengl_op_bind_index_buffer,
 	gs_opengl_op_bind_uniform,
@@ -190,8 +194,12 @@ void opengl_init_default_state()
 {
 	// Need to add blend states
 	glEnable(GL_BLEND);
+	glBlendEquation(GL_FUNC_ADD);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_CULL_FACE);
+	glFrontFace(GL_CCW);
+	glDisable(GL_SCISSOR_TEST);
 }
 
 gs_result opengl_init( struct gs_graphics_i* gfx )
@@ -443,6 +451,18 @@ void opengl_bind_index_buffer( gs_resource( gs_command_buffer ) cb_handle, gs_re
 	});
 }
 
+void opengl_set_view_scissor( gs_resource( gs_command_buffer ) cb_handle, u32 x, u32 y, u32 w, u32 h )
+{
+	__push_command( cb_handle, gs_opengl_op_set_view_scissor, {
+
+		gs_byte_buffer_write( &cb->commands, u32, x );
+		gs_byte_buffer_write( &cb->commands, u32, y );
+		gs_byte_buffer_write( &cb->commands, u32, w );
+		gs_byte_buffer_write( &cb->commands, u32, h );
+
+	});
+}
+
 void opengl_set_view_port( gs_resource( gs_command_buffer ) cb_handle, u32 width, u32 height )
 {
 	__push_command( cb_handle, gs_opengl_op_set_view_port, {
@@ -466,7 +486,33 @@ void opengl_set_view_clear( gs_resource( gs_command_buffer ) cb_handle, f32* col
 	});
 }
 
-void opengl_set_blend_mode( gs_resource( gs_command_buffer ) cb_handle, gs_blend_mode src, gs_blend_mode dst )
+void opengl_set_winding_order( gs_resource( gs_command_buffer ) cb_handle, gs_winding_order_type type )
+{
+	__push_command( cb_handle, gs_opengl_op_set_winding_order, 
+	{
+		gs_byte_buffer_write( &cb->commands, u32, (u32)type );
+	});
+}
+
+void opengl_set_face_culling( gs_resource( gs_command_buffer ) cb_handle, gs_face_culling_type type )
+{	
+	__push_command( cb_handle, gs_opengl_op_set_face_culling, 
+	{
+		gs_byte_buffer_write( &cb->commands, u32, (u32)type );
+	});
+}
+
+void opengl_set_blend_equation( gs_resource( gs_command_buffer ) cb_handle, gs_blend_equation_type eq )
+{
+	__push_command( cb_handle, gs_opengl_op_set_blend_equation, {
+
+		// Write blend mode for blend equation
+		gs_byte_buffer_write( &cb->commands, u32, (u32)eq );
+	});
+
+}
+
+void opengl_set_blend_mode( gs_resource( gs_command_buffer ) cb_handle, gs_blend_mode_type src, gs_blend_mode_type dst )
 {
 	__push_command( cb_handle, gs_opengl_op_set_blend_mode, {
 
@@ -584,7 +630,7 @@ gs_dyn_array_push( data, color.y );\
 gs_dyn_array_push( data, color.z );\
 } while ( 0 )	
 
-GLenum __get_opengl_blend_mode( gs_blend_mode mode )
+GLenum __get_opengl_blend_mode( gs_blend_mode_type mode )
 {
 	switch ( mode )
 	{
@@ -611,6 +657,48 @@ GLenum __get_opengl_blend_mode( gs_blend_mode mode )
 	};
 
 	// Shouldn't ever hit here
+	return GL_ZERO;
+}
+
+GLenum __get_opengl_blend_equation( gs_blend_equation_type eq )
+{
+	switch ( eq )
+	{
+		case gs_blend_equation_add:					return GL_FUNC_ADD; break; 
+		case gs_blend_equation_subtract:			return GL_FUNC_SUBTRACT; break;
+		case gs_blend_equation_reverse_subtract:	return GL_FUNC_REVERSE_SUBTRACT; break;
+		case gs_blend_equation_min:					return GL_MAX; break;
+		case gs_blend_equation_max:					return GL_MIN; break;
+		default: 									return GL_ZERO; break;
+	}
+
+	// Shouldn't ever hit here
+	return GL_ZERO;
+}
+
+GLenum __get_opengl_cull_face( gs_face_culling_type type )
+{
+	switch ( type )
+	{
+		case gs_face_culling_front:					return GL_FRONT; break;
+		case gs_face_culling_back:					return GL_BACK; break;
+		case gs_face_culling_front_and_back:		return GL_FRONT_AND_BACK; break;
+
+		default:
+		case gs_face_culling_disabled: 				return GL_ZERO;
+	}
+
+	return GL_ZERO;
+}
+
+GLenum __get_opengl_winding_order( gs_winding_order_type type )
+{
+	switch ( type )
+	{
+		case gs_winding_order_cw:			return GL_CW; break;
+		case gs_winding_order_ccw:			return GL_CCW; break;
+	}
+
 	return GL_ZERO;
 }
 
@@ -704,6 +792,24 @@ void opengl_submit_command_buffer( gs_resource( gs_command_buffer ) cb_handle )
 				glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 			} break;
 
+			case gs_opengl_op_set_view_scissor: 
+			{
+				u32 x = gs_byte_buffer_read( &cb->commands, u32 );
+				u32 y = gs_byte_buffer_read( &cb->commands, u32 );
+				u32 w = gs_byte_buffer_read( &cb->commands, u32 );
+				u32 h = gs_byte_buffer_read( &cb->commands, u32 );
+
+				if ( x == y == w == h == 0 )
+				{
+					glDisable( GL_SCISSOR_TEST );	
+				}
+				else 
+				{
+					glEnable( GL_SCISSOR_TEST );
+					glScissor( (s32)x, (s32)y, (usize)w, (usize)h );	
+				}
+			}
+
 			case gs_opengl_op_set_view_port: 
 			{
 				// Read width from buffer
@@ -727,12 +833,39 @@ void opengl_submit_command_buffer( gs_resource( gs_command_buffer ) cb_handle )
 				}
 			} break;
 
+			case gs_opengl_op_set_winding_order: 
+			{
+				gs_winding_order_type type = (gs_winding_order_type )gs_byte_buffer_read( &cb->commands, u32 );
+				glFrontFace( __get_opengl_winding_order( type ) );
+			} break;			
+
+			case gs_opengl_op_set_face_culling: 
+			{
+				gs_face_culling_type type =	(gs_face_culling_type)gs_byte_buffer_read( &cb->commands, u32 );
+
+				if ( type == gs_face_culling_disabled ) {
+
+					glDisable(GL_CULL_FACE);
+				} else {
+
+					glEnable(GL_CULL_FACE);	
+					glCullFace( __get_opengl_cull_face( type ) );
+				}
+			} break;
+
+			case gs_opengl_op_set_blend_equation:
+			{
+				// Read blend mode for blend equation
+				gs_blend_equation_type eq = gs_byte_buffer_read( &cb->commands, u32 );
+				glBlendEquation( __get_opengl_blend_equation( eq ) );
+			} break;
+
 			case gs_opengl_op_set_blend_mode: 
 			{
 				// Read blend mode for source
-				gs_blend_mode src = (gs_blend_mode)gs_byte_buffer_read( &cb->commands, u32 );
+				gs_blend_mode_type src = (gs_blend_mode_type)gs_byte_buffer_read( &cb->commands, u32 );
 				// Read blend mode for destination
-				gs_blend_mode dst = (gs_blend_mode)gs_byte_buffer_read( &cb->commands, u32 );
+				gs_blend_mode_type dst = (gs_blend_mode_type)gs_byte_buffer_read( &cb->commands, u32 );
 
 				// Enabling and disabling blend states
 				if (src == gs_blend_mode_disabled || dst == gs_blend_mode_disabled ) {
@@ -1147,6 +1280,22 @@ gs_resource( gs_vertex_buffer ) opengl_construct_vertex_buffer( gs_vertex_attrib
 			case gs_vertex_attribute_uint: 
 			{
 				glVertexAttribIPointer( i, 1, GL_UNSIGNED_INT, total_size, int_2_void_p( byte_offset ) );
+			} break;	
+			case gs_vertex_attribute_byte: 
+			{
+				glVertexAttribPointer( i, 1, GL_UNSIGNED_BYTE, GL_TRUE, total_size, int_2_void_p( byte_offset ) );
+			} break;	
+			case gs_vertex_attribute_byte2: 
+			{
+				glVertexAttribPointer( i, 2, GL_UNSIGNED_BYTE, GL_TRUE, total_size, int_2_void_p( byte_offset ) );
+			} break;	
+			case gs_vertex_attribute_byte3: 
+			{
+				glVertexAttribPointer( i, 3, GL_UNSIGNED_BYTE, GL_TRUE, total_size, int_2_void_p( byte_offset ) );
+			} break;	
+			case gs_vertex_attribute_byte4: 
+			{
+				glVertexAttribPointer( i, 4, GL_UNSIGNED_BYTE, GL_TRUE, total_size, int_2_void_p( byte_offset ) );
 			} break;	
 
 			default: 
@@ -1640,8 +1789,12 @@ struct gs_graphics_i* gs_graphics_construct()
 	gfx->set_frame_buffer_attachment 	= &opengl_set_frame_buffer_attachment;
 	gfx->set_view_clear 				= &opengl_set_view_clear;
 	gfx->set_view_port 					= &opengl_set_view_port;
+	gfx->set_view_scissor 				= &opengl_set_view_scissor;
 	gfx->set_depth_enabled 				= &opengl_set_depth_enabled;
 	gfx->set_blend_mode 				= &opengl_set_blend_mode;
+	gfx->set_blend_equation  			= &opengl_set_blend_equation;
+	gfx->set_winding_order 				= &opengl_set_winding_order;
+	gfx->set_face_culling 				= &opengl_set_face_culling;
 	gfx->draw 							= &opengl_draw;
 	gfx->draw_indexed 					= &opengl_draw_indexed;
 	gfx->submit_command_buffer 			= &opengl_submit_command_buffer;

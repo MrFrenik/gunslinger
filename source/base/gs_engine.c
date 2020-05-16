@@ -4,7 +4,7 @@
 #include "graphics/gs_graphics.h"
 #include "math/gs_math.h"
 
-// Global instance of gunslinger engine ( ...THERE AN ONLY BE ONE )
+// Global instance of gunslinger engine ( ...THERE CAN ONLY BE ONE )
 _global gs_engine* gs_engine_instance_g = { 0 };
 
 // Function forward declarations

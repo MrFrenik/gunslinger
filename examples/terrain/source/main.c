@@ -472,6 +472,7 @@ void render_scene()
 	// Clear screen
 	f32 clear_color[4] = { 0.3f, 0.3f, 0.3f, 1.f };
 	gfx->set_view_clear( cb, clear_color );
+	gfx->set_face_culling( cb, gs_face_culling_front );
 
 	gfx->set_view_port( cb, ws.x, ws.y );
 

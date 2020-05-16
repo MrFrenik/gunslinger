@@ -197,16 +197,68 @@ b32 __gs_platform_file_exists( const char* file_path )
 	return false;
 }
 
-char* __gs_platform_read_file_contents_into_string_null_term( const char* file_path, const char* mode, usize* sz )
+u32
+__gs_safe_truncate_u64( u64 value )
+{
+  gs_assert(value <= 0xFFFFFFFF); 
+  u32 result = (u32)value;
+  return result;
+}
+
+s32 __gs_platform_file_size_in_bytes( const char* file_path )
+{
+	#ifdef GS_PLATFORM_WIN
+
+		HANDLE hFile = CreateFile( file_path, GENERIC_READ, 
+        FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 
+        FILE_ATTRIBUTE_NORMAL, NULL );
+	    if (hFile==INVALID_HANDLE_VALUE)
+	        return -1; // error condition, could call GetLastError to find out more
+
+	    LARGE_INTEGER size;
+	    if (!GetFileSizeEx(hFile, &size))
+	    {
+	        CloseHandle(hFile);
+	        return -1; // error condition, could call GetLastError to find out more
+	    }
+
+	    CloseHandle(hFile);
+	    return __gs_safe_truncate_u64(size.QuadPart);
+
+	#else
+
+		#include <sys/stat.h>
+
+		struct state st;
+		state( file_path, &st );
+		return (s32)st.st_size;	
+
+	#endif
+}
+
+gs_result __gs_write_file_contents( const char* file_path, const char* mode, void* data, usize data_type_size, usize data_size )
+{
+	FILE* fp = fopen( file_path, "wb" );
+	if ( fp )
+	{
+		s32 ret = fwrite( data, data_type_size, data_size, fp );
+		fclose( fp );
+		if ( ret == data_size ) {
+			return gs_result_success;
+		}
+	}
+
+	return gs_result_failure;
+}
+
+char* __gs_platform_read_file_contents_into_string_null_term( const char* file_path, const char* mode, s32* sz )
 {
 	char* buffer = 0;
 	FILE* fp = fopen( file_path, mode );
-	usize _sz = 0;
+	s32 _sz = 0;
 	if ( fp )
 	{
-		fseek( fp, 0, SEEK_END );
-		_sz = ftell( fp );
-		fseek( fp, 0, SEEK_SET );
+		_sz = __gs_platform_file_size_in_bytes( file_path );
 		buffer = ( char* )gs_malloc( _sz );
 		if ( buffer )
 		{
@@ -366,7 +418,9 @@ void __gs_default_init_platform( struct gs_platform_i* platform )
 
 	platform->file_exists 			= &__gs_platform_file_exists;
 	platform->read_file_contents 	= &__gs_platform_read_file_contents_into_string_null_term;
+	platform->write_file_contents   = &__gs_write_file_contents;
 	platform->write_str_to_file 	= &__gs_platform_write_str_to_file;
+	platform->file_size_in_bytes 	= &__gs_platform_file_size_in_bytes;
 
 	// Default world time initialization
 	platform->time.max_fps 		= 60.0;

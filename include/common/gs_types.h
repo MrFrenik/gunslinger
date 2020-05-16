@@ -24,6 +24,23 @@ extern "C" {
 	#define _force_inline 		_inline
 #endif
 
+/*============================================================
+// Resource Declarations
+============================================================*/
+
+#define gs_resource( type )\
+	gs_resource_##type
+
+// Strongly typed declarations for resource handles (slot array handles)
+#define gs_declare_resource_type( type )\
+	typedef struct gs_resource( type ) {\
+		u32 id;\
+	} gs_resource( type );\
+
+/*============================================================
+// Result
+============================================================*/
+
 typedef enum
 {
 	gs_result_success,
@@ -31,6 +48,10 @@ typedef enum
 	gs_result_incomplete,
 	gs_result_failure
 } gs_result;
+
+/*============================================================
+// Primitives
+============================================================*/
 
 #ifndef __cplusplus
 	#define false 		0
