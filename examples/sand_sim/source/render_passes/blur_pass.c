@@ -200,7 +200,7 @@ void _blur_pass( gs_resource( gs_command_buffer ) cb, render_pass_i* _pass, void
 			gfx->bind_uniform( cb, bp->data.u_tex_size, &tex_size );
 			gfx->bind_vertex_buffer( cb, bp->data.vb );
 			gfx->bind_index_buffer( cb, bp->data.ib );
-			gfx->draw_indexed( cb, 6 );
+			gfx->draw_indexed( cb, 6, 0 );
 		}
 	}
 }

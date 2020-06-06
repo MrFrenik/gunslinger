@@ -192,6 +192,6 @@ void cp_pass( gs_resource( gs_command_buffer ) cb, struct render_pass_i* _pass, 
 		gfx->bind_uniform( cb, p->data.u_bloom_scalar, &bloom_scalar );
 		gfx->bind_vertex_buffer( cb, p->data.vb );
 		gfx->bind_index_buffer( cb, p->data.ib );
-		gfx->draw_indexed( cb, 6 );
+		gfx->draw_indexed( cb, 6, 0 );
 	}
 }

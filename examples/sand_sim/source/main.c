@@ -1284,7 +1284,7 @@ void render_scene()
 		gfx->bind_vertex_buffer( g_cb, g_vbo );
 		gfx->bind_index_buffer( g_cb, g_ibo );
 		gfx->bind_texture( g_cb, u_tex, g_tex, 0 );
-		gfx->draw_indexed( g_cb, 6 );
+		gfx->draw_indexed( g_cb, 6, 0 );
 	}
 	// Unbind offscreen buffer
 	gfx->unbind_frame_buffer( g_cb );
@@ -1345,11 +1345,11 @@ void render_scene()
 
 			gfx->bind_texture( g_cb, u_tex, g_rt, 0 );
 		}
-		gfx->draw_indexed( g_cb, 6 );
+		gfx->draw_indexed( g_cb, 6, 0 );
 
 		// Draw UI on top
 		gfx->bind_texture( g_cb, u_tex, g_tex_ui, 0 );
-		gfx->draw_indexed( g_cb, 6 );
+		gfx->draw_indexed( g_cb, 6, 0);
 	}
 
 	// Submit command buffer for rendering

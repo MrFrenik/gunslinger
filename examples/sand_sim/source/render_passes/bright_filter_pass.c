@@ -137,7 +137,7 @@ bright_filter_pass_t bright_filter_pass_ctor()
 		gfx->bind_texture( cb, bp->data.u_input_tex, params->input_texture, 0 );
 		gfx->bind_vertex_buffer( cb, bp->data.vb );
 		gfx->bind_index_buffer( cb, bp->data.ib );
-		gfx->draw_indexed( cb, 6 );
+		gfx->draw_indexed( cb, 6, 0 );
 	}
  }
 
