@@ -84,8 +84,8 @@ gs_result app_init()
 	f32 v_data[] = 
 	{
 		0.0f, 0.5f, 0.0f,
-		0.5f, -0.5f, 0.0f,
-		-0.5f, -0.5f, 0.0f  
+		-0.5f, -0.5f, 0.0f, 
+		0.5f, -0.5f, 0.0f
 	};
 
 	// Construct vertex buffer
@@ -125,7 +125,6 @@ gs_result app_update()
 	// Set clear color and clear screen
 	f32 clear_color[4] = { 0.2f, 0.2f, 0.2f, 1.f };
 	gfx->set_view_clear( g_cb, clear_color );
-
 	gfx->set_view_port( g_cb, ws.x, ws.y );	
 
 	// Bind shader

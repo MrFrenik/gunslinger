@@ -5,7 +5,9 @@
 
 	The purpose of this example is to demonstrate how to load textures from file and construct a GPU texture resource to use
 		for your application.
-	There is also code to demonstrate how to construct a camera and manipulate it as well.
+
+	There is also code to demonstrate how to construct a camera and manipulate it as well. Look for "Camera Update" section, 
+		in the'app_update' function.
 */
 
 // Globals
@@ -118,8 +120,8 @@ gs_result app_init()
 
 	u32 i_data[] = {
 
-		0, 2, 3,	// First Triangle
-		3, 1, 0		// Second Triangle
+		0, 3, 2,	// First Triangle
+		0, 1, 3		// Second Triangle
 	};
 
 	// Construct vertex and index buffers
@@ -215,7 +217,6 @@ gs_result app_update()
 	// Set clear color and clear screen
 	f32 clear_color[4] = { 0.2f, 0.2f, 0.2f, 1.f };
 	gfx->set_view_clear( g_cb, clear_color );
-
 	gfx->set_view_port( g_cb, ws.x, ws.y );
 	gfx->set_depth_enabled( g_cb, false );
 	gfx->set_blend_mode( g_cb, gs_blend_mode_src_alpha, gs_blend_mode_one_minus_src_alpha );
@@ -243,7 +244,7 @@ gs_result app_update()
 	gfx->bind_index_buffer( g_cb, g_ibo );
 
 	// Draw
-	gfx->draw_indexed( g_cb, 6 );
+	gfx->draw_indexed( g_cb, 6, 0 );
 
 	// Submit command buffer for rendering
 	gfx->submit_command_buffer( g_cb );
