@@ -29,12 +29,14 @@ typedef struct gs_camera
 
 gs_mat4 gs_camera_get_view( gs_camera* cam );
 gs_mat4 gs_camera_get_projection( gs_camera* cam, s32 view_width, s32 view_height );
+gs_mat4 gs_camera_get_view_projection( gs_camera* cam, s32 view_width, s32 view_height );
 gs_vec3 gs_camera_forward( gs_camera* cam );
 gs_vec3 gs_camera_backward( gs_camera* cam );
 gs_vec3 gs_camera_up( gs_camera* cam );
 gs_vec3 gs_camera_down( gs_camera* cam );
 gs_vec3 gs_camera_right( gs_camera* cam );
 gs_vec3 gs_camera_left( gs_camera* cam );
+gs_vec3 gs_camera_unproject( gs_camera* cam, gs_vec3 coords, s32 view_width, s32 view_height );
 void gs_camera_offset_orientation( gs_camera* cam, f32 yaw, f32 picth );
 
 #ifdef __cplusplus

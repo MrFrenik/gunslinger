@@ -348,6 +348,20 @@ void* glfw_create_window( const char* title, u32 width, u32 height )
 	return window;
 }
 
+
+void* glfw_raw_window_handle( gs_resource_handle handle )
+{
+	// Grab instance of platform from engine
+	struct gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+	gs_assert( platform );
+
+	// Grab window from handle
+	GLFWwindow* win = __window_from_handle( gs_engine_instance()->ctx.platform, handle );
+	gs_assert( win );
+
+	return (void*)win;
+}
+
 void glfw_window_swap_buffer( gs_resource_handle handle )
 {
 	// Grab instance of platform from engine
@@ -462,6 +476,7 @@ struct gs_platform_i* gs_platform_construct()
 	platform->set_cursor 					= &glfw_set_cursor;
 	platform->set_dropped_files_callback 	= &glfw_set_dropped_files_callback;
 	platform->set_window_close_callback 	= &glfw_set_window_close_callback;
+	platform->raw_window_handle 			= &glfw_raw_window_handle;
 
 	// Todo(John): Remove this from the default initialization and make it a part of a plugin or config setting
 	platform->settings.video.driver = gs_platform_video_driver_type_opengl;

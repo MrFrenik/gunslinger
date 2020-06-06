@@ -100,6 +100,38 @@ typedef enum gs_vertex_attribute_type
 } gs_vertex_attribute_type;
 
 /*================
+// Color
+=================*/
+
+typedef struct gs_hsv_t
+{
+	union 
+	{
+		f32 hsv[3];
+		struct 
+		{
+			f32 h, s, v;
+		};
+	};
+} gs_hsv_t;
+
+typedef struct gs_color_t
+{
+	union 
+	{
+		u8 rgba[4];
+		struct 
+		{
+			u8 r, g, b, a;
+		};
+	};
+} gs_color_t;
+
+// From on: https://gist.github.com/fairlight1337/4935ae72bcbcc1ba5c72
+void gs_rgb_to_hsv( u8 r, u8 g, u8 b, f32* h, f32* s, f32* v );
+void gs_hsv_to_rgb( f32 h, f32 s, f32 v, u8* r, u8* g, u8* b );
+
+/*================
 // Texture
 =================*/
 
@@ -190,10 +222,12 @@ typedef struct gs_graphics_i
 	void ( * bind_vertex_buffer )( gs_resource( gs_command_buffer ), gs_resource( gs_vertex_buffer ) );
 	void ( * bind_index_buffer )( gs_resource( gs_command_buffer ), gs_resource( gs_index_buffer ) );
 	void ( * bind_texture )( gs_resource( gs_command_buffer ), gs_resource( gs_uniform ), gs_resource( gs_texture ), u32 );
+	void ( * bind_texture_id )( gs_resource( gs_command_buffer ), gs_resource( gs_uniform ), u32 id, u32 slot );
 	void ( * update_vertex_data )( gs_resource( gs_command_buffer ), gs_resource( gs_vertex_buffer ), void*, usize );
+	void ( * update_index_data )( gs_resource( gs_command_buffer ), gs_resource( gs_index_buffer ), void*, usize );
 	void ( * set_view_clear )( gs_resource( gs_command_buffer ), f32* color );
 	void ( * draw )( gs_resource( gs_command_buffer ), u32 start, u32 count );
-	void ( * draw_indexed )( gs_resource( gs_command_buffer ), u32 count );
+	void ( * draw_indexed )( gs_resource( gs_command_buffer ), u32 count, u32 offset );
 	void ( * submit_command_buffer )( gs_resource( gs_command_buffer ) );
 	// void ( * set_uniform_buffer_sub_data )( gs_resource( gs_command_buffer ), gs_resource( gs_uniform_buffer ), void*, usize );
 

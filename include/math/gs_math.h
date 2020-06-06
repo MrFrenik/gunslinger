@@ -129,6 +129,18 @@ gs_vec2_len( gs_vec2 v )
 	return ( f32 )sqrt( gs_vec2_dot( v, v ) );
 }
 
+_inline gs_vec2
+gs_vec2_project_onto( gs_vec2 v0, gs_vec2 v1 )
+{
+	f32 dot = gs_vec2_dot( v0, v1 );
+	f32 len = gs_vec2_dot( v1, v1 );
+
+	// Orthogonal, so return v1
+	if ( len == 0.f ) return v1;
+
+	return gs_vec2_scale( v1, dot / len );
+}
+
 _inline gs_vec2 gs_vec2_norm( gs_vec2 v ) 
 {
 	return gs_vec2_scale( v, 1.0f / gs_vec2_len( v ) );
@@ -218,6 +230,24 @@ gs_vec3_dot( gs_vec3 v0, gs_vec3 v1 )
 	return dot;
 }
 
+_inline f32 
+gs_vec3_len( gs_vec3 v )
+{
+	return ( f32 )sqrt( gs_vec3_dot( v, v ) );
+}
+
+_inline gs_vec3
+gs_vec3_project_onto( gs_vec3 v0, gs_vec3 v1 )
+{
+	f32 dot = gs_vec3_dot( v0, v1 );
+	f32 len = gs_vec3_dot( v1, v1 );
+
+	// Orthogonal, so return v1
+	if ( len == 0.f ) return v1;
+
+	return gs_vec3_scale( v1, dot / len );
+}
+
 _inline 
 f32 gs_vec3_dist( gs_vec3 a, gs_vec3 b )
 {
@@ -225,12 +255,6 @@ f32 gs_vec3_dist( gs_vec3 a, gs_vec3 b )
 	f32 dy = (a.y - b.y);
 	f32 dz = (a.z - b.z);
 	return ( sqrt(dx * dx + dy * dy + dz * dz) );
-}
-
-_inline f32 
-gs_vec3_len( gs_vec3 v )
-{
-	return ( f32 )sqrt( gs_vec3_dot( v, v ) );
 }
 
 _inline gs_vec3 
@@ -315,6 +339,18 @@ _inline f32
 gs_vec4_len( gs_vec4 v ) 
 {
 	return ( f32 )sqrt( gs_vec4_dot( v, v ) );
+}
+
+_inline gs_vec4
+gs_vec4_project_onto( gs_vec4 v0, gs_vec4 v1 )
+{
+	f32 dot = gs_vec4_dot( v0, v1 );
+	f32 len = gs_vec4_dot( v1, v1 );
+
+	// Orthogonal, so return v1
+	if ( len == 0.f ) return v1;
+
+	return gs_vec4_scale( v1, dot / len );
 }
 
 _inline gs_vec4
@@ -414,6 +450,134 @@ gs_mat4 gs_mat4_transpose( gs_mat4 m )
 	t.elements[ 3 * 4 + 3 ] = m.elements[ 3 * 4 + 3 ];
 
 	return t;
+}
+
+_inline
+gs_mat4 gs_mat4_inverse( gs_mat4 m )
+{
+	gs_mat4 res = gs_mat4_identity();
+
+	f32 temp[16];
+
+	temp[0] = m.elements[5] * m.elements[10] * m.elements[15] -
+		m.elements[5] * m.elements[11] * m.elements[14] -
+		m.elements[9] * m.elements[6] * m.elements[15] +
+		m.elements[9] * m.elements[7] * m.elements[14] +
+		m.elements[13] * m.elements[6] * m.elements[11] -
+		m.elements[13] * m.elements[7] * m.elements[10];
+
+	temp[4] = -m.elements[4] * m.elements[10] * m.elements[15] +
+		m.elements[4] * m.elements[11] * m.elements[14] +
+		m.elements[8] * m.elements[6] * m.elements[15] -
+		m.elements[8] * m.elements[7] * m.elements[14] -
+		m.elements[12] * m.elements[6] * m.elements[11] +
+		m.elements[12] * m.elements[7] * m.elements[10];
+
+	temp[8] = m.elements[4] * m.elements[9] * m.elements[15] -
+		m.elements[4] * m.elements[11] * m.elements[13] -
+		m.elements[8] * m.elements[5] * m.elements[15] +
+		m.elements[8] * m.elements[7] * m.elements[13] +
+		m.elements[12] * m.elements[5] * m.elements[11] -
+		m.elements[12] * m.elements[7] * m.elements[9];
+
+	temp[12] = -m.elements[4] * m.elements[9] * m.elements[14] +
+		m.elements[4] * m.elements[10] * m.elements[13] +
+		m.elements[8] * m.elements[5] * m.elements[14] -
+		m.elements[8] * m.elements[6] * m.elements[13] -
+		m.elements[12] * m.elements[5] * m.elements[10] +
+		m.elements[12] * m.elements[6] * m.elements[9];
+
+	temp[1] = -m.elements[1] * m.elements[10] * m.elements[15] +
+		m.elements[1] * m.elements[11] * m.elements[14] +
+		m.elements[9] * m.elements[2] * m.elements[15] -
+		m.elements[9] * m.elements[3] * m.elements[14] -
+		m.elements[13] * m.elements[2] * m.elements[11] +
+		m.elements[13] * m.elements[3] * m.elements[10];
+
+	temp[5] = m.elements[0] * m.elements[10] * m.elements[15] -
+		m.elements[0] * m.elements[11] * m.elements[14] -
+		m.elements[8] * m.elements[2] * m.elements[15] +
+		m.elements[8] * m.elements[3] * m.elements[14] +
+		m.elements[12] * m.elements[2] * m.elements[11] -
+		m.elements[12] * m.elements[3] * m.elements[10];
+
+	temp[9] = -m.elements[0] * m.elements[9] * m.elements[15] +
+		m.elements[0] * m.elements[11] * m.elements[13] +
+		m.elements[8] * m.elements[1] * m.elements[15] -
+		m.elements[8] * m.elements[3] * m.elements[13] -
+		m.elements[12] * m.elements[1] * m.elements[11] +
+		m.elements[12] * m.elements[3] * m.elements[9];
+
+	temp[13] = m.elements[0] * m.elements[9] * m.elements[14] -
+		m.elements[0] * m.elements[10] * m.elements[13] -
+		m.elements[8] * m.elements[1] * m.elements[14] +
+		m.elements[8] * m.elements[2] * m.elements[13] +
+		m.elements[12] * m.elements[1] * m.elements[10] -
+		m.elements[12] * m.elements[2] * m.elements[9];
+
+	temp[2] = m.elements[1] * m.elements[6] * m.elements[15] -
+		m.elements[1] * m.elements[7] * m.elements[14] -
+		m.elements[5] * m.elements[2] * m.elements[15] +
+		m.elements[5] * m.elements[3] * m.elements[14] +
+		m.elements[13] * m.elements[2] * m.elements[7] -
+		m.elements[13] * m.elements[3] * m.elements[6];
+
+	temp[6] = -m.elements[0] * m.elements[6] * m.elements[15] +
+		m.elements[0] * m.elements[7] * m.elements[14] +
+		m.elements[4] * m.elements[2] * m.elements[15] -
+		m.elements[4] * m.elements[3] * m.elements[14] -
+		m.elements[12] * m.elements[2] * m.elements[7] +
+		m.elements[12] * m.elements[3] * m.elements[6];
+
+	temp[10] = m.elements[0] * m.elements[5] * m.elements[15] -
+		m.elements[0] * m.elements[7] * m.elements[13] -
+		m.elements[4] * m.elements[1] * m.elements[15] +
+		m.elements[4] * m.elements[3] * m.elements[13] +
+		m.elements[12] * m.elements[1] * m.elements[7] -
+		m.elements[12] * m.elements[3] * m.elements[5];
+
+	temp[14] = -m.elements[0] * m.elements[5] * m.elements[14] +
+		m.elements[0] * m.elements[6] * m.elements[13] +
+		m.elements[4] * m.elements[1] * m.elements[14] -
+		m.elements[4] * m.elements[2] * m.elements[13] -
+		m.elements[12] * m.elements[1] * m.elements[6] +
+		m.elements[12] * m.elements[2] * m.elements[5];
+
+	temp[3] = -m.elements[1] * m.elements[6] * m.elements[11] +
+		m.elements[1] * m.elements[7] * m.elements[10] +
+		m.elements[5] * m.elements[2] * m.elements[11] -
+		m.elements[5] * m.elements[3] * m.elements[10] -
+		m.elements[9] * m.elements[2] * m.elements[7] +
+		m.elements[9] * m.elements[3] * m.elements[6];
+
+	temp[7] = m.elements[0] * m.elements[6] * m.elements[11] -
+		m.elements[0] * m.elements[7] * m.elements[10] -
+		m.elements[4] * m.elements[2] * m.elements[11] +
+		m.elements[4] * m.elements[3] * m.elements[10] +
+		m.elements[8] * m.elements[2] * m.elements[7] -
+		m.elements[8] * m.elements[3] * m.elements[6];
+
+	temp[11] = -m.elements[0] * m.elements[5] * m.elements[11] +
+		m.elements[0] * m.elements[7] * m.elements[9] +
+		m.elements[4] * m.elements[1] * m.elements[11] -
+		m.elements[4] * m.elements[3] * m.elements[9] -
+		m.elements[8] * m.elements[1] * m.elements[7] +
+		m.elements[8] * m.elements[3] * m.elements[5];
+
+	temp[15] = m.elements[0] * m.elements[5] * m.elements[10] -
+		m.elements[0] * m.elements[6] * m.elements[9] -
+		m.elements[4] * m.elements[1] * m.elements[10] +
+		m.elements[4] * m.elements[2] * m.elements[9] +
+		m.elements[8] * m.elements[1] * m.elements[6] -
+		m.elements[8] * m.elements[2] * m.elements[5];
+
+	f64 determinant = m.elements[0] * temp[0] + m.elements[1] * temp[4] + m.elements[2] * temp[8] + m.elements[3] * temp[12];
+	determinant = 1.0 / determinant;
+
+	for (int i = 0; i < 4 * 4; i++)
+		res.elements[i] = temp[i] * determinant;
+
+	return res;
 }
 
 /*
@@ -843,7 +1007,6 @@ gs_vqs gs_vqs_default()
 	);
 	return t;
 }
-
 
 // AbsScale	= ParentScale * LocalScale
 // AbsRot	= LocalRot * ParentRot

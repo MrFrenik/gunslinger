@@ -21,6 +21,8 @@
 		- Packet
 */
 
+#define int_2_void_p(i) (void*)(uintptr_t)(i)
+
 _inline void gs_mat4_debug_print( gs_mat4* mat )
 {
 	f32* e = mat->elements;
@@ -50,9 +52,11 @@ typedef enum gs_opengl_op_code
 	gs_opengl_op_bind_index_buffer,
 	gs_opengl_op_bind_uniform,
 	gs_opengl_op_bind_texture,
+	gs_opengl_op_bind_texture_id,
 	gs_opengl_op_bind_frame_buffer,
 	gs_opengl_op_unbind_frame_buffer,
 	gs_opengl_op_update_vertex_data,
+	gs_opengl_op_update_index_data,
 	gs_opengl_op_set_frame_buffer_attachment,
 	gs_opengl_op_draw,
 	gs_opengl_op_debug_draw_line,
@@ -400,6 +404,29 @@ void opengl_bind_uniform( gs_resource( gs_command_buffer ) cb_handle, gs_resourc
 	});
 }
 
+void opengl_bind_texture_id( gs_resource( gs_command_buffer ) cb_handle, gs_resource( gs_uniform ) u_handle, u32 id, u32 slot )
+{
+	__push_command( cb_handle, gs_opengl_op_bind_texture, {
+
+		// Grab uniform from handle
+		uniform_t u = gs_slot_array_get( __data->uniforms, u_handle.id );
+
+		// Cannot pass in uniform of wrong type
+		if ( u.type != gs_uniform_type_sampler2d )
+		{
+			gs_println( "opengl_bind_texture: Must be of uniform type 'gs_uniform_type_sampler2d'" );
+			gs_assert( false );
+		}
+
+		// Write out id
+		gs_byte_buffer_write( &cb->commands, u32, id );
+		// Write tex unit location
+		gs_byte_buffer_write( &cb->commands, u32, slot );
+		// Write out uniform location
+		gs_byte_buffer_write( &cb->commands, u32, (u32)u.location );
+	});
+}
+
 void opengl_bind_texture( gs_resource( gs_command_buffer ) cb_handle, gs_resource( gs_uniform ) u_handle, 
 		gs_resource( gs_texture ) tex_handle, u32 tex_unit )
 {
@@ -459,7 +486,6 @@ void opengl_set_view_scissor( gs_resource( gs_command_buffer ) cb_handle, u32 x,
 		gs_byte_buffer_write( &cb->commands, u32, y );
 		gs_byte_buffer_write( &cb->commands, u32, w );
 		gs_byte_buffer_write( &cb->commands, u32, h );
-
 	});
 }
 
@@ -532,12 +558,13 @@ void opengl_set_depth_enabled( gs_resource( gs_command_buffer ) cb_handle, b32 e
 	});
 }
 
-void opengl_draw_indexed( gs_resource( gs_command_buffer ) cb_handle, u32 count )
+void opengl_draw_indexed( gs_resource( gs_command_buffer ) cb_handle, u32 count, u32 offset )
 {
 	__push_command( cb_handle, gs_opengl_draw_indexed, {
 
-		// Write count
+		// Write count and offset
 		gs_byte_buffer_write( &cb->commands, u32, count );
+		gs_byte_buffer_write( &cb->commands, u32, offset );
 	});
 }
 
@@ -598,7 +625,25 @@ void opengl_submit_debug_drawing( gs_resource( gs_command_buffer ) cb_handle )
 	});
 }
 
-void opengl_update_vertex_data_command( gs_resource( gs_command_buffer ) cb_handle, gs_resource( gs_vertex_buffer ) vb_handle, void* v_data, usize v_size )
+void opengl_update_index_data_command( gs_resource( gs_command_buffer ) cb_handle, 
+	gs_resource( gs_index_buffer ) ib_handle, void* i_data, usize i_size )
+{
+	// Need to memcpy the data over to the command buffer	
+	__push_command( cb_handle, gs_opengl_op_update_index_data, {
+
+		// Get vertex buffer data
+		index_buffer_t ib = gs_slot_array_get( __data->index_buffers, ib_handle.id );
+
+		// Write out vao/vbo
+		gs_byte_buffer_write( &cb->commands, u32, ib.ibo );
+		gs_byte_buffer_write( &cb->commands, u32, i_size );
+		gs_byte_buffer_bulk_write( &cb->commands, i_data, i_size );
+	});
+
+}
+
+void opengl_update_vertex_data_command( gs_resource( gs_command_buffer ) cb_handle, gs_resource( gs_vertex_buffer ) vb_handle, 
+	void* v_data, usize v_size )
 {
 	// Need to memcpy the data over to the command buffer	
 	__push_command( cb_handle, gs_opengl_op_update_vertex_data, {
@@ -775,11 +820,11 @@ void opengl_submit_command_buffer( gs_resource( gs_command_buffer ) cb_handle )
 
 			case gs_opengl_draw_indexed:
 			{
-				// Read count
+				// Read count and offest
 				u32 count = gs_byte_buffer_read( &cb->commands, u32 );
+				u32 offset = gs_byte_buffer_read( &cb->commands, u32 );
 
-				// Draw ( this assumes a ibo is set, which is not correct )...for now, will assume
-				glDrawElements( GL_TRIANGLES, count, GL_UNSIGNED_INT, 0 );
+				glDrawElements( GL_TRIANGLES, count, GL_UNSIGNED_INT, int_2_void_p(offset) );
 			} break;
 
 			case gs_opengl_op_set_view_clear: 
@@ -799,7 +844,7 @@ void opengl_submit_command_buffer( gs_resource( gs_command_buffer ) cb_handle )
 				u32 w = gs_byte_buffer_read( &cb->commands, u32 );
 				u32 h = gs_byte_buffer_read( &cb->commands, u32 );
 
-				if ( x == y == w == h == 0 )
+				if ( x == 0 && y == 0 && w == 0 && h == 0 )
 				{
 					glDisable( GL_SCISSOR_TEST );	
 				}
@@ -808,7 +853,7 @@ void opengl_submit_command_buffer( gs_resource( gs_command_buffer ) cb_handle )
 					glEnable( GL_SCISSOR_TEST );
 					glScissor( (s32)x, (s32)y, (usize)w, (usize)h );	
 				}
-			}
+			} break;
 
 			case gs_opengl_op_set_view_port: 
 			{
@@ -981,6 +1026,25 @@ void opengl_submit_command_buffer( gs_resource( gs_command_buffer ) cb_handle )
 					}
 				}
 
+			} break;
+
+			case gs_opengl_op_update_index_data:
+			{
+				// Write out vao/vbo
+				u32 ibo = gs_byte_buffer_read( &cb->commands, u32 );
+				u32 data_size = gs_byte_buffer_read( &cb->commands, u32 );
+
+				void* tmp_data = gs_malloc( data_size );
+				memset( tmp_data, 0, data_size );
+				gs_byte_buffer_bulk_read( &cb->commands, tmp_data, data_size );
+
+				// Update index data
+				glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, (u32)ibo );
+				glBufferData( GL_ELEMENT_ARRAY_BUFFER, data_size, tmp_data, GL_STATIC_DRAW );
+				glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
+
+				gs_free( tmp_data );
+				tmp_data = NULL;
 			} break;
 
 			case gs_opengl_op_update_vertex_data: 
@@ -1220,7 +1284,6 @@ s32 get_byte_offest( gs_vertex_attribute_type* layout_data, u32 index )
 	return total_offset;
 }
 
-#define int_2_void_p(i) (void*)(uintptr_t)(i)
 
 gs_resource( gs_vertex_buffer ) opengl_construct_vertex_buffer( gs_vertex_attribute_type* layout_data, u32 layout_size, 
 	void* v_data, usize v_data_size )
@@ -1799,6 +1862,7 @@ struct gs_graphics_i* gs_graphics_construct()
 	gfx->draw_indexed 					= &opengl_draw_indexed;
 	gfx->submit_command_buffer 			= &opengl_submit_command_buffer;
 	gfx->update_vertex_data 			= &opengl_update_vertex_data_command;
+	gfx->update_index_data 				= &opengl_update_index_data_command;
 
 	// void ( * set_uniform_buffer_sub_data )( gs_resource( gs_command_buffer ), gs_resource( gs_uniform_buffer ), void*, usize );
 	// void ( * set_index_buffer )( gs_resource( gs_command_buffer ), gs_resource( gs_index_buffer ) );

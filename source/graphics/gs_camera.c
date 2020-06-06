@@ -32,6 +32,49 @@ gs_vec3 gs_camera_left( gs_camera* cam )
 	return ( gs_quat_rotate( cam->transform.rotation, ( gs_vec3 ){ -1.0f, 0.0f, 0.0f } ) );
 }
 
+gs_vec3 gs_camera_unproject( gs_camera* cam, gs_vec3 coords, s32 view_width, s32 view_height )
+{
+	gs_vec3 wc;
+
+	// Get inverse of view projection from camera
+	gs_mat4 inverse_vp = gs_mat4_inverse( gs_camera_get_view_projection( cam, view_width, view_height ) );	
+
+	f32 w_x = (f32)coords.x;
+	f32 w_y = (f32)coords.y;
+	f32 w_z = (f32)coords.z;
+
+	// Transform from ndc
+	gs_vec4 in;
+	in.x = (w_x / (f32)view_width ) * 2.f - 1.f;
+	in.y = 1.f - (w_y / (f32)view_height) * 2.f;
+	in.z = 2.f * w_z - 1.f;
+	in.w = 1.f;
+
+	// To world coords
+	gs_vec4 out = gs_mat4_mul_vec4( inverse_vp, in );
+	if ( out.w == 0.f )
+	{
+		// Avoid div by zero
+		return wc;
+	}
+
+	out.w = 1.f / out.w;
+	wc = (gs_vec3) {
+		out.x * out.w,
+		out.y * out.w,
+		out.z * out.w
+	};
+
+	return wc;
+}
+
+gs_mat4 gs_camera_get_view_projection( gs_camera* cam, s32 view_width, s32 view_height )
+{
+	gs_mat4 view = gs_camera_get_view( cam );
+	gs_mat4 proj = gs_camera_get_projection( cam, view_width, view_height );
+	return gs_mat4_mul( proj, view );	
+}
+
 gs_mat4 gs_camera_get_view( gs_camera* cam )
 {
 	gs_vec3 up = gs_camera_up( cam );
