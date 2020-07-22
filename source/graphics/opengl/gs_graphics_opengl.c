@@ -1703,6 +1703,15 @@ gs_resource( gs_texture ) opengl_construct_texture( gs_texture_parameter_desc de
 	return handle;
 }
 
+s32 opengl_texture_id( gs_resource( gs_texture ) tex_handle )
+{
+	opengl_render_data_t* __data = __get_opengl_data_internal();
+
+	// Get texture
+	texture_t tex = gs_slot_array_get( __data->textures, tex_handle.id );
+	return tex.id;
+} 
+
 void* opengl_load_texture_data_from_file( const char* file_path, b32 flip_vertically_on_load, 
 				gs_texture_format texture_format, s32* width, s32* height, s32* num_comps )
 	{
@@ -1831,16 +1840,16 @@ struct gs_graphics_i* gs_graphics_construct()
 	// Null out data
 	gfx->data = NULL;
 
-	// /*============================================================
-	// // Graphics Initilization / De-Initialization
-	// ============================================================*/
+	/*============================================================
+	// Graphics Initilization / De-Initialization
+	============================================================*/
 	gfx->init 		= &opengl_init;
 	gfx->shutdown 	= &opengl_shutdown;
 	gfx->update 	= &opengl_update;
 
-	// /*============================================================
-	// // Graphics Command Buffer Ops
-	// ============================================================*/
+	/*============================================================
+	// Graphics Command Buffer Ops
+	============================================================*/
 	gfx->reset_command_buffer 			= &opengl_reset_command_buffer;
 	gfx->bind_shader	      			= &opengl_bind_shader;
 	gfx->bind_vertex_buffer 			= &opengl_bind_vertex_buffer;
@@ -1867,9 +1876,9 @@ struct gs_graphics_i* gs_graphics_construct()
 	// void ( * set_uniform_buffer_sub_data )( gs_resource( gs_command_buffer ), gs_resource( gs_uniform_buffer ), void*, usize );
 	// void ( * set_index_buffer )( gs_resource( gs_command_buffer ), gs_resource( gs_index_buffer ) );
 
-	// ============================================================
-	// // Graphics Resource Construction
-	// ============================================================
+	/*============================================================
+	// Graphics Resource Construction
+	============================================================*/
 	gfx->construct_shader 						= &opengl_construct_shader;
 	gfx->construct_uniform 						= &opengl_construct_uniform;
 	gfx->construct_command_buffer 				= &opengl_construct_command_buffer;
@@ -1884,18 +1893,23 @@ struct gs_graphics_i* gs_graphics_construct()
 	gfx->load_texture_data_from_file 			= &opengl_load_texture_data_from_file;
 	// gs_resource( gs_uniform_buffer )( * construct_uniform_buffer )( gs_resource( gs_shader ), const char* uniform_name );
 
-	// /*============================================================
-	// // Graphics Resource Free Ops
-	// ============================================================*/
+	/*============================================================
+	// Graphics Ops
+	============================================================*/
+	gfx->texture_id 							= &opengl_texture_id;
+
+	/*============================================================
+	// Graphics Resource Free Ops
+	============================================================*/
 	// void ( * free_vertex_attribute_layout_t_desc )( gs_resource( gs_vertex_attribute_layout_desc ) );
 	// void ( * free_vertex_buffer )( gs_resource( gs_vertex_buffer ) );
 	// void ( * free_index_buffer )( gs_resource( gs_index_buffer ) );
 	// void ( * free_shader )( gs_resource( gs_shader ) );
 	// void ( * free_uniform_buffer )( gs_resource( gs_uniform_buffer ) );
 
-	// /*============================================================
-	// // Graphics Update Ops
-	// ============================================================*/
+	/*============================================================
+	// Graphics Update Ops
+	============================================================*/
 
 	/*============================================================
 	// Graphics Debug Rendering Ops

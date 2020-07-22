@@ -20,7 +20,6 @@ inc=(
 
 # Source files
 src=(
-	../source/main.c 
 	../source/base/*.c
 	../source/platform/*.c
 	../source/graphics/*.c

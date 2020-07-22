@@ -7,7 +7,6 @@ rem Include directories
 set inc=/I ..\include\ /I ..\third_party\include\ /I ..\
 
 rem Source files
-set src_main=..\source\*.c
 set src_base=..\source\base\*.c
 set src_serialize=..\source\serialize\*.c
 set src_graphics=..\source\graphics\*.c
@@ -22,7 +21,7 @@ set src_platform_glfw=..\source\platform\glfw\*.c
 rem TP Source
 
 rem All source together
-set src_all=%src_main% %src_base% %src_graphics% %src_serialize% ^
+set src_all=%src_base% %src_graphics% %src_serialize% ^
 %src_platform% %src_platform_glfw% %src_graphics_ogl%
 
 rem Library directories

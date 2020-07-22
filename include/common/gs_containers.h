@@ -98,7 +98,7 @@ _inline void* gs_dyn_array_resize_impl( void* arr, usize sz, usize amount )
 	} while ( 0 )
 
 #define gs_dyn_array_back( arr )\
-	( arr + ( gs_dyn_array_size( arr ) ? gs_dyn_array_size( arr ) - 1 : 0 ) )
+	*( arr + ( gs_dyn_array_size( arr ) ? gs_dyn_array_size( arr ) - 1 : 0 ) )
 
 #define gs_dyn_array_for( arr, type, iter_name )\
 	for ( type* iter_name = arr; iter_name != gs_dyn_array_back( arr ); ++iter_name )
@@ -176,7 +176,7 @@ typedef enum
 	typedef struct\
 	{\
 		gs_ht_entry_##key_type##_##val_type *data;\
-		u32 ( * hash_func )();\
+		u32 ( * hash_func )( key_type );\
 		u32 ( * hash_key_idx_func )( void*, key_type );\
 		val_type ( * hash_get_val_func )( void*, key_type );\
 		val_type* ( * hash_get_val_ptr_func )( void*, key_type );\

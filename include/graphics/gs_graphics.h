@@ -193,6 +193,10 @@ gs_declare_resource_type( gs_vertex_attribute_layout_desc );
 gs_declare_resource_type( gs_render_target );
 gs_declare_resource_type( gs_frame_buffer );
 
+/*================
+// Graphics API
+=================*/
+
 // This will not be abstracted, however the renderer absolutely could be 
 typedef struct gs_graphics_i
 {
@@ -247,6 +251,7 @@ typedef struct gs_graphics_i
 	gs_resource( gs_texture )( * construct_texture )( gs_texture_parameter_desc );
 	gs_resource( gs_texture )( * construct_texture_from_file )( const char* file_path, b32 flip_vertically_on_load, gs_texture_parameter_desc t_desc );
 	gs_resource( gs_index_buffer )( * construct_index_buffer )( void*, usize );
+	s32 ( * texture_id )( gs_resource( gs_texture ) ); 
 
 	/*============================================================
 	// Graphics Resource Free Ops
