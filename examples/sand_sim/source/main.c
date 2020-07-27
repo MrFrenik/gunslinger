@@ -52,7 +52,6 @@ _global blur_pass_t 						g_blur_pass = {0};
 _global bright_filter_pass_t 				g_bright_pass = {0};
 _global composite_pass_t 					g_composite_pass = {0};
 _global font_t								g_font = {0};
-_global b32 g_app_running = true;
 
 // For now, all particle information will simply be a value to determine its material id
 #define mat_id_empty (u8)0
@@ -362,11 +361,6 @@ b32 is_in_water( s32 x, s32 y, s32* lx, s32* ly )
 		return true;
 	}
 	return false;
-}
-
-void app_close_window_callback( void* window )
-{
-	g_app_running = false;
 }
 
 int main( int argc, char** argv )
@@ -703,18 +697,11 @@ gs_result app_init()
 	// Set up callback for dropping them files, yo.
 	platform->set_dropped_files_callback( platform->main_window(), &drop_file_callback );
 
-	// Set callback for when window close button is pressed
-	platform->set_window_close_callback( platform->main_window(), &app_close_window_callback );
-
 	return gs_result_success;
 }
 
 gs_result app_update()
 {
-	if ( !g_app_running ) {
-		return gs_result_success;
-	}
-
 	// Grab global instance of engine
 	gs_engine* engine = gs_engine_instance();
 

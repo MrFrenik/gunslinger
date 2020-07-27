@@ -229,8 +229,8 @@ s32 __gs_platform_file_size_in_bytes( const char* file_path )
 
 		#include <sys/stat.h>
 
-		struct stat st;
-		stat( file_path, &st );
+		struct state st;
+		state( file_path, &st );
 		return (s32)st.st_size;	
 
 	#endif
