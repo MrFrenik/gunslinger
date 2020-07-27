@@ -1,0 +1,42 @@
+static inline u32 rotl32 (u32 x, i8 r) { return (x << r) | (x >> (32 - r)); }
+
+static inline u32 fmix (u32 h ) {
+  h ^= h >> 16; h *= 0x85ebca6b;
+  h ^= h >> 13; h *= 0xc2b2ae35;
+  return h ^= h >> 16;
+}
+
+u32 m32 (const void *key, int len, u32 h1) {
+  const u8 *tail = (const u8*)(key + (len/4)*4); // handle this separately
+
+  u32 c1 = 0xcc9e2d51, c2 = 0x1b873593;
+
+  // body (full 32-bit blocks) handled uniformly
+  for (u32 *p = (u32*) key; p < (const u32*) tail; p++) {
+    u32 k1 = *p; k1 *= c1; k1 = rotl32(k1,15); k1 *= c2; // MUR1
+    h1 ^= k1; h1 = rotl32(h1,13); h1 = h1*5+0xe6546b64; // MUR2
+  }
+
+  u32 t = 0; // handle up to 3 tail bytes
+  switch(len & 3) {
+    case 3: t ^= tail[2] << 16;
+    case 2: t ^= tail[1] << 8;
+    case 1: {t ^= tail[0]; t *= c1; t = rotl32(t,15); t *= c2; h1 ^= t;};
+  }
+  return fmix(h1 ^ len);
+}
+
+
+uint32_t jenkins_one_at_a_time_hash(const uint8_t* key, size_t length) {
+  size_t i = 0;
+  uint32_t hash = 0;
+  while (i != length) {
+    hash += key[i++];
+    hash += hash << 10;
+    hash ^= hash >> 6;
+  }
+  hash += hash << 3;
+  hash ^= hash >> 11;
+  hash += hash << 15;
+  return hash;
+}

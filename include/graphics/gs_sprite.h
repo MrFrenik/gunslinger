@@ -52,3 +52,11 @@ void gs_sprite_batch_free( gs_sprite_batch_t* sb );
 #endif 	// c++
 
 #endif // gs_sprite
+
+/*
+	Quad-batch
+	Material -> shader
+	Custom sorting method?
+
+	Define custom material, custom shader, custom vertex decl? 
+*/
