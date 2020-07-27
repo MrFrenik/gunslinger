@@ -305,9 +305,8 @@ typedef enum
 		}\
 	} while( 0 )
 
-
 #define gs_hash_table_exists( tbl, k )\
-	gs_hash_table_valid_idx( tbl.hash_key_idx_func( &tbl, k ) )
+	( !gs_hash_table_empty( tbl ) && gs_hash_table_valid_idx( tbl.hash_key_idx_func( &tbl, k ) ) )
 
 #define gs_hash_table_key_idx( tbl, k )\
 	tbl.hash_key_idx_func( &tbl, k )
@@ -384,6 +383,8 @@ typedef enum
 
 // Hash table := key: u32, val: u32
 gs_hash_table_decl( u32, u32, gs_hash_u32, gs_hash_key_comp_std_type );
+// Hash table := key: u64, val: u32
+gs_hash_table_decl( u64, u32, gs_hash_u64, gs_hash_key_comp_std_type );
 
 
 /*===================================
