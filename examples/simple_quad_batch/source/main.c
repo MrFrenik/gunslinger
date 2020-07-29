@@ -110,10 +110,6 @@ gs_result app_init()
 	sampler.slot = 0;
 	gfx->set_material_uniform( g_batch_mat, gs_uniform_type_sampler2d, "u_tex", &sampler, sizeof(sampler) );
 
-	gs_uniform_block_type( vec4 ) u_color;
-	u_color.data = (gs_vec4){1.f, 0.f, 0.f, 1.f};
-	gfx->set_material_uniform( g_batch_mat, gs_uniform_type_vec4, "u_color", &u_color, sizeof(u_color) );
-
 	// Construct quad batch api and link up function pointers
 	g_batch = qb->new( g_batch_mat );
 
