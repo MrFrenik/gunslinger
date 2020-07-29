@@ -1,4 +1,5 @@
 #include "graphics/gs_graphics.h"
+#include "graphics/gs_material.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image_write.h>
@@ -136,3 +137,29 @@ void gs_hsv_to_rgb( f32 h, f32 s, f32 v, u8* r, u8* g, u8* b )
 	*g += fM;
 	*b += fM;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

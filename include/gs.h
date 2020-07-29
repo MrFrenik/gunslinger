@@ -14,7 +14,10 @@ extern "C" {
 #include "platform/gs_platform.h"
 #include "graphics/gs_camera.h"
 #include "graphics/gs_graphics.h"
+#include "graphics/gs_quad_batch.h"
 #include "graphics/gs_sprite.h"
+#include "graphics/gs_material.h"
+#include "graphics/gs_mesh.h"
 #include "lexer/gs_lexer.h"
 
 #ifdef __cplusplus

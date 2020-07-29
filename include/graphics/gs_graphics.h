@@ -8,6 +8,11 @@ extern "C" {
 #include "common/gs_containers.h"
 #include "math/gs_math.h"
 
+// Forward Decls
+struct gs_material_i;
+struct gs_uniform_block_i;
+struct gs_quad_batch_i;
+
 typedef enum gs_shader_program_type
 {
 	gs_vertex_program = 0,
@@ -192,6 +197,7 @@ gs_declare_resource_type( gs_uniform );
 gs_declare_resource_type( gs_vertex_attribute_layout_desc );
 gs_declare_resource_type( gs_render_target );
 gs_declare_resource_type( gs_frame_buffer );
+gs_declare_resource_type( gs_material );
 
 /*================
 // Graphics API
@@ -234,6 +240,8 @@ typedef struct gs_graphics_i
 	void ( * draw_indexed )( gs_resource( gs_command_buffer ), u32 count, u32 offset );
 	void ( * submit_command_buffer )( gs_resource( gs_command_buffer ) );
 	// void ( * set_uniform_buffer_sub_data )( gs_resource( gs_command_buffer ), gs_resource( gs_uniform_buffer ), void*, usize );
+	void ( * bind_material_uniforms )( gs_resource( gs_command_buffer ), gs_resource( gs_material ) );
+	void ( * bind_material_shader )( gs_resource( gs_command_buffer ), gs_resource( gs_material ) );
 
 	/*============================================================
 	// Graphics Resource Construction
@@ -251,7 +259,10 @@ typedef struct gs_graphics_i
 	gs_resource( gs_texture )( * construct_texture )( gs_texture_parameter_desc );
 	gs_resource( gs_texture )( * construct_texture_from_file )( const char* file_path, b32 flip_vertically_on_load, gs_texture_parameter_desc t_desc );
 	gs_resource( gs_index_buffer )( * construct_index_buffer )( void*, usize );
-	s32 ( * texture_id )( gs_resource( gs_texture ) ); 
+	s32 ( * texture_id )( gs_resource( gs_texture ) );
+
+	// Non resource for now, since this is mainly an asset...So this technically should belong in an Asset construction api
+	gs_resource( gs_material ) ( * construct_material )( gs_resource( gs_shader ) );
 
 	/*============================================================
 	// Graphics Resource Free Ops
@@ -267,6 +278,9 @@ typedef struct gs_graphics_i
 	============================================================*/
 	void ( * update_vertex_buffer_data )( gs_resource( gs_vertex_buffer ), void*, usize );
 	void ( * update_texture_data )( gs_resource( gs_texture ), gs_texture_parameter_desc );
+	gs_uniform_type ( * uniform_type )( gs_resource( gs_uniform ) );
+
+	void ( *set_material_uniform )( gs_resource( gs_material ), gs_uniform_type, const char*, void*, usize );
 
 	/*============================================================
 	// Graphics Debug Rendering Ops
@@ -276,8 +290,19 @@ typedef struct gs_graphics_i
 	void ( * draw_square )( gs_resource( gs_command_buffer ), gs_vec3 origin, f32 width, f32 height, gs_vec3 color, gs_mat4 transform );
 	void ( * submit_debug_drawing )( gs_resource( gs_command_buffer ) );
 
+	/*============================================================
+	// Graphics Utility Functions
+	============================================================*/
+	u32 (* get_byte_size_of_vertex_attribute)( gs_vertex_attribute_type type );
+	u32 (* calculate_vertex_size_in_bytes)( gs_vertex_attribute_type* layout_data, u32 count );
+
 	// Render Data 
 	void* data;
+
+	// Utility APIs
+	struct gs_material_i* 		material_i;
+	struct gs_uniform_block_i* 	uniform_i;
+	struct gs_quad_batch_i* 	quad_batch_i;
 
 } gs_graphics_i;
 

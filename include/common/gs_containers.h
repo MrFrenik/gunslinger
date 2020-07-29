@@ -378,6 +378,9 @@ typedef enum
 #define gs_hash_table_clear( tbl )\
 	gs_dyn_array_clear( tbl.data )
 
+#define gs_hash_table_free( tbl )\
+	gs_dyn_array_free( tbl.data );\
+
 
 // Some typical hash tables
 

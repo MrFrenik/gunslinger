@@ -1,9 +1,11 @@
-#include "graphics/gs_graphics.h"
 #include "common/gs_containers.h"
 #include "serialize/gs_byte_buffer.h"
 #include "math/gs_math.h"
 #include "common/gs_util.h"
 #include "base/gs_engine.h"
+#include "graphics/gs_graphics.h"
+#include "graphics/gs_material.h"
+#include "graphics/gs_quad_batch.h"
 
 #include <glad/glad.h>
 
@@ -82,16 +84,22 @@ typedef struct texture_t
 	gs_texture_format texture_format;
 } texture_t;
 
-typedef struct shader_t
-{
-	u32 program_id;
-} shader_t;
-
 typedef struct uniform_t
 {
 	gs_uniform_type type;
 	u32 location;
 } uniform_t;
+
+typedef gs_resource( gs_uniform ) gs_resource_uniform;
+
+// Hash table := key: u64, val: gs_resource_uniform
+gs_hash_table_decl( u64, gs_resource_uniform, gs_hash_u64, gs_hash_key_comp_std_type );
+
+typedef struct shader_t
+{
+	u32 program_id;
+	gs_hash_table( u64, gs_resource_uniform ) uniforms;
+} shader_t;
 
 typedef struct index_buffer_t
 {
@@ -143,6 +151,7 @@ gs_slot_array_decl( vertex_buffer_t );
 gs_slot_array_decl( vertex_attribute_layout_desc_t );
 gs_slot_array_decl( render_target_t );
 gs_slot_array_decl( frame_buffer_t );
+gs_slot_array_decl( gs_material_t );
 
 // Define render resource data structure
 typedef struct opengl_render_data_t
@@ -156,6 +165,7 @@ typedef struct opengl_render_data_t
 	gs_slot_array( vertex_attribute_layout_desc_t ) vertex_layout_descs;
 	gs_slot_array( render_target_t ) 				render_targets;
 	gs_slot_array( frame_buffer_t ) 				frame_buffers;
+	gs_slot_array( gs_material_t ) 					materials;
 	debug_drawing_internal_data 					debug_data;
 } opengl_render_data_t;
 
@@ -224,6 +234,7 @@ gs_result opengl_init( struct gs_graphics_i* gfx )
 	data->vertex_layout_descs 	= gs_slot_array_new( vertex_attribute_layout_desc_t );
 	data->render_targets 		= gs_slot_array_new( render_target_t );
 	data->frame_buffers 		= gs_slot_array_new( frame_buffer_t );
+	data->materials 			= gs_slot_array_new( gs_material_t );
 	data->debug_data 			= construct_debug_drawing_internal_data();
 
 	// Init all default opengl state here before frame begins
@@ -233,6 +244,9 @@ gs_result opengl_init( struct gs_graphics_i* gfx )
 	gs_println( "OpenGL::Vendor = %s", glGetString( GL_VENDOR ) ) ;
 	gs_println( "OpenGL::Renderer = %s", glGetString( GL_RENDERER ) ) ;
 	gs_println( "OpenGL::Version = %s", glGetString( GL_VERSION ) ) ;
+
+	// Init data for utility APIs
+	gfx->quad_batch_i->shader = gfx->construct_shader( gs_quad_batch_default_vertex_src, gs_quad_batch_default_frag_src );
 
 	// Initialize all data here
 	return gs_result_success;
@@ -1499,6 +1513,45 @@ void opengl_link_shaders( u32 program_id, u32 vert_id, u32 frag_id )
 	}
 }
 
+gs_resource( gs_material ) opengl_construct_material( gs_resource( gs_shader ) shader )
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	opengl_render_data_t* data = __get_opengl_data_internal();
+
+	// Construct new material resource (this should be an asset instead...)
+	gs_material_t mat = gfx->material_i->new( shader );
+
+	u32 m_handle = gs_slot_array_insert( data->materials, mat );
+	gs_resource( gs_material ) handle = {0};
+	handle.id = m_handle;
+	return handle;
+}
+
+void opengl_set_material_uniform( gs_resource( gs_material ) mat_handle, gs_uniform_type type, const char* name, void* data, usize sz )
+{
+	// This is ugly...but yeah
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	opengl_render_data_t* __data = __get_opengl_data_internal();
+	gs_material_t* mat = gs_slot_array_get_ptr( __data->materials, mat_handle.id );
+	gs_engine_instance()->ctx.graphics->material_i->set_uniform( mat, type, name, data, sz );
+}
+
+void opengl_bind_material_shader( gs_resource( gs_command_buffer ) cb, gs_resource( gs_material ) mat_handle )
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	opengl_render_data_t* data = __get_opengl_data_internal();
+	gs_material_t* mat = gs_slot_array_get_ptr( data->materials, mat_handle.id );
+	gs_engine_instance()->ctx.graphics->bind_shader( cb, mat->shader );
+}
+
+void opengl_bind_material_uniforms( gs_resource( gs_command_buffer ) cb, gs_resource( gs_material ) mat_handle )
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	opengl_render_data_t* data = __get_opengl_data_internal();
+	gs_material_t* mat = gs_slot_array_get_ptr( data->materials, mat_handle.id );
+	gs_engine_instance()->ctx.graphics->material_i->bind_uniforms( cb, mat );
+}
+
 gs_resource( gs_shader ) opengl_construct_shader( const char* vert_src, const char* frag_src )
 {
 	opengl_render_data_t* data = __get_opengl_data_internal();
@@ -1524,6 +1577,9 @@ gs_resource( gs_shader ) opengl_construct_shader( const char* vert_src, const ch
 	// Link shaders once compiled
 	opengl_link_shaders( s.program_id, vert_id, frag_id );
 
+	// Construct hash table for uniforms
+	s.uniforms = gs_hash_table_new( u64, gs_resource_uniform );
+
 	// Push shader into slot array
 	u32 s_handle = gs_slot_array_insert( data->shaders, s );
 
@@ -1542,10 +1598,18 @@ gs_resource( gs_uniform ) opengl_construct_uniform( gs_resource( gs_shader ) s_h
 	uniform_t u = {0};
 
 	// Grab shader from data
-	shader_t s = gs_slot_array_get( data->shaders, s_handle.id );
+	shader_t* s = gs_slot_array_get_unsafe( data->shaders, s_handle.id );
+
+	u64 hash_id = gs_hash_str_64( uniform_name );
+
+	// Will look for existing uniform first via shader then return that
+	if ( gs_hash_table_exists( s->uniforms, hash_id ) )
+	{
+		return gs_hash_table_get( s->uniforms, hash_id );
+	} // Otherwise, construct new uniform
 
 	// Grab location of uniform
-	u32 location = glGetUniformLocation( s.program_id, uniform_name );
+	u32 location = glGetUniformLocation( s->program_id, uniform_name );
 
 	if ( location >= u32_max ) {
 		gs_println( "Warning: uniform not found: \"%s\"", uniform_name );
@@ -1562,6 +1626,10 @@ gs_resource( gs_uniform ) opengl_construct_uniform( gs_resource( gs_shader ) s_h
 	// Set resource handle
 	gs_resource( gs_uniform ) handle = {0};
 	handle.id = u_handle;
+
+	// Insert into shader's uniform table
+	gs_hash_table_insert( s->uniforms, hash_id, handle );
+
 	return handle;
 }
 
@@ -1703,6 +1771,13 @@ gs_resource( gs_texture ) opengl_construct_texture( gs_texture_parameter_desc de
 	return handle;
 }
 
+gs_uniform_type opengl_uniform_type( gs_resource( gs_uniform ) uniform_handle )
+{
+	opengl_render_data_t* __data = __get_opengl_data_internal();
+	uniform_t uniform = gs_slot_array_get( __data->uniforms, uniform_handle.id );
+	return uniform.type;
+}
+
 s32 opengl_texture_id( gs_resource( gs_texture ) tex_handle )
 {
 	opengl_render_data_t* __data = __get_opengl_data_internal();
@@ -1831,7 +1906,24 @@ void opengl_update_texture_data( gs_resource( gs_texture ) t_handle, gs_texture_
 	tex->texture_format = texture_format;
 }
 
-// Method for creating platform layer for SDL
+void shader_t_free( shader_t* shader )
+{
+	glDeleteProgram( shader->program_id );
+	gs_hash_table_free( shader->uniforms );
+}
+
+void opengl_free_shader( gs_resource( gs_shader ) s_handle )
+{
+	opengl_render_data_t* __data = __get_opengl_data_internal();
+	
+	// Grab shader from handle
+	shader_t s = gs_slot_array_get( __data->shaders, s_handle.id );
+	shader_t_free( &s );
+
+	// TODO: Remove from slot array...
+}
+
+// Method for creating graphics layer for opengl
 struct gs_graphics_i* gs_graphics_construct()
 {
 	// Construct new graphics interface instance
@@ -1872,6 +1964,8 @@ struct gs_graphics_i* gs_graphics_construct()
 	gfx->submit_command_buffer 			= &opengl_submit_command_buffer;
 	gfx->update_vertex_data 			= &opengl_update_vertex_data_command;
 	gfx->update_index_data 				= &opengl_update_index_data_command;
+	gfx->bind_material_uniforms 		= &opengl_bind_material_uniforms;
+	gfx->bind_material_shader 			= &opengl_bind_material_shader;
 
 	// void ( * set_uniform_buffer_sub_data )( gs_resource( gs_command_buffer ), gs_resource( gs_uniform_buffer ), void*, usize );
 	// void ( * set_index_buffer )( gs_resource( gs_command_buffer ), gs_resource( gs_index_buffer ) );
@@ -1892,11 +1986,13 @@ struct gs_graphics_i* gs_graphics_construct()
 	gfx->update_texture_data 					= &opengl_update_texture_data;
 	gfx->load_texture_data_from_file 			= &opengl_load_texture_data_from_file;
 	// gs_resource( gs_uniform_buffer )( * construct_uniform_buffer )( gs_resource( gs_shader ), const char* uniform_name );
+	gfx->construct_material 					= &opengl_construct_material;
 
 	/*============================================================
 	// Graphics Ops
 	============================================================*/
 	gfx->texture_id 							= &opengl_texture_id;
+	gfx->uniform_type 							= &opengl_uniform_type;
 
 	/*============================================================
 	// Graphics Resource Free Ops
@@ -1906,10 +2002,13 @@ struct gs_graphics_i* gs_graphics_construct()
 	// void ( * free_index_buffer )( gs_resource( gs_index_buffer ) );
 	// void ( * free_shader )( gs_resource( gs_shader ) );
 	// void ( * free_uniform_buffer )( gs_resource( gs_uniform_buffer ) );
+	gfx->free_shader = &opengl_free_shader;
 
 	/*============================================================
 	// Graphics Update Ops
 	============================================================*/
+	gfx->set_material_uniform = &opengl_set_material_uniform;
+
 
 	/*============================================================
 	// Graphics Debug Rendering Ops
@@ -1918,6 +2017,23 @@ struct gs_graphics_i* gs_graphics_construct()
 	gfx->draw_line = &opengl_draw_line;
 	gfx->draw_square = &opengl_draw_square;
 	gfx->submit_debug_drawing = &opengl_submit_debug_drawing;
+
+	/*============================================================
+	// Graphics Utility Function
+	============================================================*/
+	gfx->get_byte_size_of_vertex_attribute	= &get_byte_size_of_vertex_attribute;
+	gfx->calculate_vertex_size_in_bytes 	= &calculate_vertex_size_in_bytes;
+
+	/*============================================================
+	// Graphics Utility APIs
+	============================================================*/
+	gfx->material_i = gs_malloc_init( gs_material_i ); 
+	gfx->uniform_i = gs_malloc_init( gs_uniform_block_i );
+	gfx->quad_batch_i = gs_malloc_init( gs_quad_batch_i );
+
+	*(gfx->material_i) = __gs_material_i_new();
+	*(gfx->uniform_i) = __gs_uniform_block_i_new();
+	*(gfx->quad_batch_i ) = __gs_quad_batch_i_new();
 
 	return gfx;
 }
