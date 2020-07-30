@@ -42,7 +42,7 @@
 // Custom Quad Batch Implementation
 =================================*/
 
-const char* quad_vert_src ="\n"
+const char* quad_batch_custom_vert_src ="\n"
 	"#version 110\n"
 	"in vec3 a_pos;\n"
 	"in vec2 a_uv;\n"
@@ -62,7 +62,7 @@ const char* quad_vert_src ="\n"
 	"	color_two = a_color_two;\n"
 	"}";
 
-const char* quad_frag_src = "\n"
+const char* quad_batch_custom_frag_src = "\n"
 	"#version 110\n"
 	"uniform sampler2D u_tex;\n"
 	"uniform float u_alpha;\n"
@@ -82,19 +82,19 @@ typedef struct quad_batch_custom_vert_t
 	gs_vec4 color_two;
 } quad_batch_custom_vert_t;
 
-typedef struct quad_batch_info_t
+typedef struct quad_batch_custom_info_t
 {
 	gs_vqs transform;
 	gs_vec4 uv;
 	gs_vec4 color;
 	gs_vec4 color_two;
-} quad_batch_info_t;
+} quad_batch_custom_info_t;
 
-void quad_batch_add( gs_quad_batch_t* qb, void* quad_info_data, usize quad_info_data_size )
+void quad_batch_custom_add( gs_quad_batch_t* qb, void* quad_info_data, usize quad_info_data_size )
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 
-	quad_batch_info_t* quad_info = (quad_batch_info_t*)(quad_info_data);
+	quad_batch_custom_info_t* quad_info = (quad_batch_custom_info_t*)(quad_info_data);
 	if ( !quad_info ) {
 		gs_assert( false );
 	}
@@ -269,10 +269,10 @@ gs_result app_init()
 		gs_vertex_attribute_float4	// Color2
 	};
 
-	g_batch_shader = gfx->construct_shader( quad_vert_src, quad_frag_src );
+	g_batch_shader = gfx->construct_shader( quad_batch_custom_vert_src, quad_batch_custom_frag_src );
 	qb->set_shader( qb, g_batch_shader );
 	qb->set_layout( qb, qb_layout, sizeof(qb_layout) );
-	qb->add = &quad_batch_add;
+	qb->add = &quad_batch_custom_add;
 
 	// Setup quad batch
 	g_batch_mat = gfx->construct_material( gfx->quad_batch_i->shader );
@@ -337,7 +337,7 @@ gs_result app_update()
 		gs_for_range_i( 100 )
 			gs_for_range_j( 100 )
 			{
-				quad_batch_info_t quad_info = {0};
+				quad_batch_custom_info_t quad_info = {0};
 
 				quad_info.transform = gs_vqs_default();
 				quad_info.transform.position = (gs_vec3){i, j, 0.f};
