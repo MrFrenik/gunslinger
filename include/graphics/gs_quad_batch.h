@@ -100,7 +100,7 @@ typedef struct gs_quad_batch_i
 	gs_quad_batch_t ( * new )( gs_resource( gs_material ) );
 	void ( * begin )( gs_quad_batch_t* );
 	void ( * end )( gs_quad_batch_t* );
-	void ( * add )( gs_quad_batch_t*, void* vertex_data, usize data_size );
+	void ( * add )( gs_quad_batch_t*, void* quad_data, usize data_size );
 	void ( * submit )( gs_resource( gs_command_buffer ), gs_quad_batch_t* );
 	void ( * free )( gs_quad_batch_t* );
 	void ( * set_layout )( struct gs_quad_batch_i* api, void* layout, usize layout_size );
@@ -142,6 +142,25 @@ typedef struct gs_default_quad_info_t
 	gs_vec4 uv;
 	gs_vec4 color;
 } gs_default_quad_info_t;
+
+_force_inline
+void __gs_quad_batch_add_raw_vert_data( gs_quad_batch_t* qb, void* data, usize data_size )
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gs_quad_batch_i* qbi = gfx->quad_batch_i;
+
+	// Calculate layout size from layout
+	void* layout = (void*)qbi->vert_info.layout;
+	u32 layout_count = gs_dyn_array_size( qbi->vert_info.layout );
+
+	// Calculate vert size
+	usize vert_size = gfx->calculate_vertex_size_in_bytes( layout, layout_count );
+
+	// In here, you need to know how to read/structure your data to parse the package
+	u32 vert_count = data_size / vert_size;
+	gs_byte_buffer_bulk_write( &qb->raw_vertex_data, data, data_size );
+	qb->mesh.vertex_count += vert_count;
+}
 
 _force_inline
 void __gs_quad_batch_default_add( gs_quad_batch_t* qb, void* quad_info_data, usize quad_info_data_size )
@@ -203,19 +222,7 @@ void __gs_quad_batch_default_add( gs_quad_batch_t* qb, void* quad_info_data, usi
 		tl, br, bl, tl, tr, br
 	};
 
-	usize data_size = sizeof(verts);
-
-	// Calculate layout size from layout
-	void* layout = (void*)gfx->quad_batch_i->vert_info.layout;
-	u32 layout_count = gs_dyn_array_size( gfx->quad_batch_i->vert_info.layout );
-
-	// Calculate vert size
-	usize vert_size = gfx->calculate_vertex_size_in_bytes( layout, layout_count );
-
-	// In here, you need to know how to read/structure your data to parse the package
-	u32 vert_count = data_size / vert_size;
-	gs_byte_buffer_bulk_write( &qb->raw_vertex_data, verts, data_size );
-	qb->mesh.vertex_count += vert_count;
+	__gs_quad_batch_add_raw_vert_data( qb, verts, sizeof(verts) );
 }
 
 _force_inline

@@ -34,6 +34,8 @@
 		- Vec4: ColorTwo
 
 	The fragment shader will blend color, colortwo and then multiply that into a passed in texture for the final fragment color.
+	We'll also use a custom uniform variable for alpha, 'u_alpha', which will be controlled by the platform time to fade
+		the batch in and out.
 */
 
 /*=================================
@@ -63,12 +65,13 @@ const char* quad_vert_src ="\n"
 const char* quad_frag_src = "\n"
 	"#version 110\n"
 	"uniform sampler2D u_tex;\n"
+	"uniform float u_alpha;\n"
 	"varying vec2 uv;\n"
 	"varying vec4 color;\n"
 	"varying vec4 color_two;\n"
 	"void main()\n"
 	"{\n"
-	"	gl_FragColor = mix(color_two, color, 0.5) * texture2D(u_tex, uv);\n"
+	"	gl_FragColor = vec4((mix(color_two, color, 0.5) * texture2D(u_tex, uv)).rgb, u_alpha);\n"
 	"}";
 
 typedef struct quad_batch_custom_vert_t
@@ -151,19 +154,7 @@ void quad_batch_add( gs_quad_batch_t* qb, void* quad_info_data, usize quad_info_
 		tl, br, bl, tl, tr, br
 	};
 
-	usize data_size = sizeof(verts);
-
-	// Calculate layout size from layout
-	void* layout = (void*)gfx->quad_batch_i->vert_info.layout;
-	u32 layout_count = gs_dyn_array_size( gfx->quad_batch_i->vert_info.layout );
-
-	// Calculate total vert size for single custom quad vert (based on given layout)
-	usize vert_size = gfx->calculate_vertex_size_in_bytes( layout, layout_count );
-
-	// In here, you need to know how to read/structure your data to parse the package
-	u32 vert_count = data_size / vert_size;
-	gs_byte_buffer_bulk_write( &qb->raw_vertex_data, verts, data_size );
-	qb->mesh.vertex_count += vert_count;
+	__gs_quad_batch_add_raw_vert_data( qb, verts, sizeof(verts) );
 }
 
 /*============================
@@ -390,6 +381,10 @@ gs_result app_update()
 	gs_uniform_block_type( mat4 ) u_proj;
 	u_proj.data = proj_mtx;
 	gfx->set_material_uniform( g_batch.material, gs_uniform_type_mat4, "u_proj", &u_proj, sizeof(u_proj) );
+
+	gs_uniform_block_type( float ) u_alpha;
+	u_alpha.data = sin(t * 0.001f) * 0.5f + 0.5f;
+	gfx->set_material_uniform( g_batch.material, gs_uniform_type_float, "u_alpha", &u_alpha, sizeof(u_alpha) );
 
 	// Need to submit quad batch
 	qb->submit( g_cb, &g_batch );
