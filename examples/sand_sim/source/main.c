@@ -52,6 +52,7 @@ _global blur_pass_t 						g_blur_pass = {0};
 _global bright_filter_pass_t 				g_bright_pass = {0};
 _global composite_pass_t 					g_composite_pass = {0};
 _global font_t								g_font = {0};
+_global b32 g_app_running 					= true;
 
 // For now, all particle information will simply be a value to determine its material id
 #define mat_id_empty (u8)0
@@ -590,12 +591,20 @@ void drop_file_callback( void* platform_window, s32 count, const char** file_pat
 	}
 }
 
+void app_close_window_callback( void* window )
+{
+	g_app_running = false;
+}
+
 // Here, we'll initialize all of our application data, which in this case is our graphics resources
 gs_result app_init()
 {
 	// Cache instance of api contexts from engine
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+	
+	// Set callback for when window close button is pressed
+	platform->set_window_close_callback( platform->main_window(), &app_close_window_callback );
 
 	// Construct command buffer ( the command buffer is used to allow for immediate drawing at any point in our program )
 	g_cb = gfx->construct_command_buffer();
@@ -706,7 +715,7 @@ gs_result app_update()
 	gs_engine* engine = gs_engine_instance();
 
 	// If we press the escape key, exit the application
-	if ( engine->ctx.platform->key_pressed( gs_keycode_esc ) )
+	if ( engine->ctx.platform->key_pressed( gs_keycode_esc ) || !g_app_running )
 	{
 		return gs_result_success;
 	}

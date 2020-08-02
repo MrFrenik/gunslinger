@@ -12,6 +12,11 @@ extern "C" {
 #define gs_pi 		3.1415926535897932
 #define gs_tau		2.0 * gs_pi
 
+// Useful Utility
+#define gs_v2(...)	(gs_vec2){ __VA_ARGS__ }
+#define gs_v3(...)	(gs_vec3){ __VA_ARGS__ }
+#define gs_v4(...)	(gs_vec4){ __VA_ARGS__ }
+
 /*================================================================================
 // Useful Common Functions
 ================================================================================*/
