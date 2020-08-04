@@ -338,6 +338,7 @@ void* glfw_create_window( const char* title, u32 width, u32 height )
 	glfwSetScrollCallback( window, &__glfw_mouse_scroll_wheel_callback );
 	glfwSetCursorEnterCallback( window, &__glfw_mouse_cursor_enter_callback );
 	glfwSetFramebufferSizeCallback(window, &__glfw_frame_buffer_size_callback);
+	glfwSetInputMode( window, GLFW_STICKY_KEYS, GLFW_TRUE );
 
 	if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
 	{
@@ -347,7 +348,6 @@ void* glfw_create_window( const char* title, u32 width, u32 height )
 
 	return window;
 }
-
 
 void* glfw_raw_window_handle( gs_resource_handle handle )
 {

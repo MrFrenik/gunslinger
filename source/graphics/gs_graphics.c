@@ -30,21 +30,21 @@ gs_texture_parameter_desc gs_texture_parameter_desc_default()
 
 void* gs_load_texture_data_from_file( const char* file_path, b32 flip_vertically_on_load )
 {
-// Load texture data
-stbi_set_flip_vertically_on_load( flip_vertically_on_load );
+	// Load texture data
+	stbi_set_flip_vertically_on_load( flip_vertically_on_load );
 
-// For now, this data will always have 4 components, since STBI_rgb_alpha is being passed in as required components param
-// Could optimize this later
-s32 width, height, num_comps;
-void* texture_data = stbi_load( file_path, ( s32* )&width, ( s32* )&height, &num_comps, STBI_rgb_alpha );
+	// For now, this data will always have 4 components, since STBI_rgb_alpha is being passed in as required components param
+	// Could optimize this later
+	s32 width, height, num_comps;
+	void* texture_data = stbi_load( file_path, ( s32* )&width, ( s32* )&height, &num_comps, STBI_rgb_alpha );
 
-if ( !texture_data )
-{
-	gs_println( "Warning: could not load texture: %s", file_path );
-	return NULL;
-}
+	if ( !texture_data )
+	{
+		gs_println( "Warning: could not load texture: %s", file_path );
+		return NULL;
+	}
 
-return texture_data;
+	return texture_data;
 }
 
 void gs_rgb_to_hsv( u8 r, u8 g, u8 b, f32* h, f32* s, f32* v )

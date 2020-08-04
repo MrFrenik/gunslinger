@@ -155,6 +155,22 @@ gs_string_compare_equal_n
 	return true;
 }
 
+_force_inline void
+gs_util_str_to_lower
+(
+	const char* src,
+	char* buffer,
+	usize buffer_sz
+)
+{
+	u32 src_sz = gs_string_length( src );
+	u32 len = gs_min( src_sz, buffer_sz );
+
+	for ( u32 i = 0; i < len; ++i ) {
+		buffer[i] = tolower( src[i] );
+	}
+}
+
 _force_inline b32
 gs_util_str_is_numeric( const char* str )
 {

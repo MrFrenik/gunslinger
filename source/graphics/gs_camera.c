@@ -34,7 +34,7 @@ gs_vec3 gs_camera_left( gs_camera* cam )
 
 gs_vec3 gs_camera_unproject( gs_camera* cam, gs_vec3 coords, s32 view_width, s32 view_height )
 {
-	gs_vec3 wc;
+	gs_vec3 wc = {0};
 
 	// Get inverse of view projection from camera
 	gs_mat4 inverse_vp = gs_mat4_inverse( gs_camera_get_view_projection( cam, view_width, view_height ) );	

@@ -252,7 +252,7 @@ gs_result opengl_init( struct gs_graphics_i* gfx )
 	return gs_result_success;
 }
 
-gs_result opengl_update()
+gs_result opengl_update( struct gs_graphics_i* gfx )
 {
 	opengl_render_data_t* data = __get_opengl_data_internal();
 

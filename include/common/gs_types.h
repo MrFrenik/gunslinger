@@ -37,6 +37,9 @@ extern "C" {
 		u32 id;\
 	} gs_resource( type );\
 
+#define gs_resource_invalid( type )\
+	(gs_resource( type )){ u32_max }
+
 /*============================================================
 // Result
 ============================================================*/

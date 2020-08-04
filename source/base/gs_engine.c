@@ -2,6 +2,7 @@
 #include "common/gs_util.h"
 #include "platform/gs_platform.h"
 #include "graphics/gs_graphics.h"
+#include "audio/gs_audio.h"
 #include "math/gs_math.h"
 
 // Global instance of gunslinger engine ( ...THERE CAN ONLY BE ONE )
@@ -55,6 +56,12 @@ gs_engine* gs_engine_construct( gs_application_desc app_desc )
 		// Initialize graphics here
 		gs_engine_instance_g->ctx.graphics->init( gs_engine_instance_g->ctx.graphics );
 
+		// Construct audio api
+		gs_engine_instance_g->ctx.audio = gs_audio_construct();
+
+		// Initialize audio
+		gs_engine_instance_g->ctx.audio->init( gs_engine_instance_g->ctx.audio );
+
 		// Default application context
 		gs_engine_instance_g->ctx.app.update = app_desc.update == NULL ? &gs_default_app_update : app_desc.update;
 		gs_engine_instance_g->ctx.app.shutdown = app_desc.shutdown == NULL ? &gs_default_app_shutdown : app_desc.shutdown;
@@ -84,6 +91,8 @@ gs_result gs_engine_run()
 
 		// Cache platform pointer
 		gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+		gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+		gs_audio_i* audio = gs_engine_instance()->ctx.audio;
 
 		// Cache times at start of frame
 		platform->time.current 	= platform->elapsed_time();  
@@ -106,9 +115,21 @@ gs_result gs_engine_run()
 			return ( gs_engine_instance()->shutdown() );
 		}
 
-		if ( gs_engine_instance()->ctx.graphics && gs_engine_instance()->ctx.graphics->update )
+		// Audio update and commit
+		if ( audio )
 		{
-			gs_engine_instance()->ctx.graphics->update();
+			if ( audio->update) {
+				audio->update( audio );
+			}
+			if ( audio->commit ) {
+				audio->commit( audio );
+			}
+		}
+
+		// Graphics update and commit
+		if ( gfx && gfx->update )
+		{
+			gfx->update( gfx );
 		}
 
 		// NOTE(John): This won't work forever. Must change eventually.

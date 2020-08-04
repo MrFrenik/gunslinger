@@ -211,7 +211,7 @@ typedef struct gs_graphics_i
 	============================================================*/
 	gs_result ( * init )( struct gs_graphics_i* );
 	gs_result ( * shutdown )( struct gs_graphics_i* );
-	gs_result ( * update )();
+	gs_result ( * update )( struct gs_graphics_i* );
 
 	/*============================================================
 	// Graphics Command Buffer Ops

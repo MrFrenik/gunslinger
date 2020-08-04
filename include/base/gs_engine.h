@@ -19,6 +19,7 @@ extern "C" {
 // Forward Decl
 struct gs_platform_i;
 struct gs_graphics_i;
+struct gs_audio_i;
 
 typedef struct gs_application_desc
 {
@@ -38,6 +39,7 @@ typedef struct
 {
 	struct gs_platform_i* 			platform;		// Main platform interface
 	struct gs_graphics_i* 			graphics;
+	struct gs_audio_i* 				audio;
 	gs_application_desc 			app;
 } gs_engine_context;
 

@@ -11,9 +11,13 @@ set src_base=..\source\base\*.c
 set src_serialize=..\source\serialize\*.c
 set src_graphics=..\source\graphics\*.c
 set src_platform=..\source\platform\*.c
+set src_audio=..\source\audio\*.c
 
 rem Graphics specific plugin
 set src_graphics_ogl=..\source\graphics\opengl\*.c
+
+rem Audio specific plugin
+set src_audio_wasapi=..\source\audio\wasapi\*.c
 
 rem Platform specific plugin
 set src_platform_glfw=..\source\platform\glfw\*.c
@@ -22,7 +26,7 @@ rem TP Source
 
 rem All source together
 set src_all=%src_base% %src_graphics% %src_serialize% ^
-%src_platform% %src_platform_glfw% %src_graphics_ogl%
+%src_platform% %src_platform_glfw% %src_graphics_ogl% %src_audio_wasapi%
 
 rem Library directories
 set lib_d=/LIBPATH:"..\third_party\lib\release\win\"
@@ -42,6 +46,7 @@ set l_options=/EHsc /link /SUBSYSTEM:CONSOLE /NODEFAULTLIB:msvcrt.lib
 
 rem Compile library objects
 cl /c /MP /FS /Ox /W1 %src_all% %inc% /EHsc
+rem cl /c /Zi /MP /FS /Od /DEBUG:FULL /W1 %src_all% %inc% /EHsc
 
 rem Compile library
 lib *.obj /out:Gunslinger.lib

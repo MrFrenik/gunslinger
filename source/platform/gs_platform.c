@@ -286,6 +286,11 @@ gs_result __gs_platform_write_str_to_file( const char* contents, const char* mod
 	return gs_result_failure;
 }
 
+void __gs_platform_file_extension( char* buffer, usize buffer_sz, const char* file_path )
+{
+	gs_util_get_file_extension ( buffer, buffer_sz, file_path );
+}
+
 /*============================
 // Platform UUID
 ============================*/
@@ -421,6 +426,7 @@ void __gs_default_init_platform( struct gs_platform_i* platform )
 	platform->write_file_contents   = &__gs_write_file_contents;
 	platform->write_str_to_file 	= &__gs_platform_write_str_to_file;
 	platform->file_size_in_bytes 	= &__gs_platform_file_size_in_bytes;
+	platform->file_extension 		= &__gs_platform_file_extension;
 
 	// Default world time initialization
 	platform->time.max_fps 		= 60.0;

@@ -19,6 +19,8 @@ extern "C" {
 	#define GS_PLATFORM_WIN
 	#include <windows.h>
 
+	#define WIN32_LEAN_AND_MEAN
+
 #elif ( defined linux || defined _linux || defined __linux__ )
 
 	#define GS_PLATFORM_LINUX
@@ -373,6 +375,7 @@ typedef struct gs_platform_i
 	gs_result 	( * write_str_to_file )( const char* contents, const char* mode, usize sz, const char* output_path );
 	b32 		( * file_exists )( const char* file_path );
 	s32 		( * file_size_in_bytes )( const char* file_path );
+	void 		( * file_extension )( char* buffer, usize buffer_sz, const char* file_path );
 
 	// Settings for platform, including video, audio
 	gs_platform_settings settings;
@@ -456,6 +459,7 @@ gs_resource_handle __gs_platform_main_window();
 b32 __gs_platform_file_exists( const char* file_path );
 char* __gs_platform_read_file_contents_into_string_null_term( const char* file_path, const char* mode, s32* sz );
 gs_result __gs_platform_write_str_to_file( const char* contents, const char* mode, usize sz, const char* output_path );
+void __gs_platform_file_extension( char* buffer, usize buffer_sz, const char* file_path );
 
 /*============================
 // Platform Util
