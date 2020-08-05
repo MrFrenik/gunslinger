@@ -37,6 +37,24 @@ typedef struct gs_audio_instance_data_t
 	void* user_data;						// Any custom user data required for a specific internal/external usage
 } gs_audio_instance_data_t;
 
+gs_slot_array_decl( gs_audio_source_t );
+gs_slot_array_decl( gs_audio_instance_data_t );
+
+typedef struct gs_audio_data_t
+{
+	// Other internal resource data, like audio resources
+	void* sample_out;				// Samples to actually write to hardware buffer
+    u32 sample_count_to_output;	
+    u32 samples_per_second;
+
+    gs_slot_array( gs_audio_source_t ) 			sources;	// Raw source data
+    gs_slot_array( gs_audio_instance_data_t ) 	instances; 	// Instanced data
+
+    // Any internal data required for audio API
+    void* internal;
+
+} gs_audio_data_t;
+
 _force_inline
 gs_audio_instance_data_t gs_audio_instance_data_new( gs_resource( gs_audio_source ) src )
 {
@@ -84,7 +102,8 @@ typedef struct gs_audio_i
 
 } gs_audio_i;
 
-extern struct gs_audio_i* gs_audio_construct();
+struct gs_audio_i* gs_audio_construct();
+gs_result __gs_audio_update_internal( struct gs_audio_i* audio );
 
 #ifdef __cplusplus
 }

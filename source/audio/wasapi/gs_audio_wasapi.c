@@ -59,59 +59,6 @@ typedef struct wasapi_sound_output_t
     u32 latency_frame_count;
 } wasapi_sound_output_t;
 
-gs_slot_array_decl( gs_audio_source_t );
-gs_slot_array_decl( gs_audio_instance_data_t );
-
-typedef struct audio_data_t
-{
-	// Main interface into OS sound hardware
-	wasapi_sound_output_t output;
-
-	// Other internal resource data, like audio resources
-	s16* sample_out;				// Samples to actually write to hardware buffer
-    u32 sample_count_to_output;	
-    u32 samples_per_second;
-
-    gs_slot_array( gs_audio_source_t ) 			sources;	// Raw source data
-    gs_slot_array( gs_audio_instance_data_t ) 	instances; 	// Instanced data
-
-} audio_data_t;
-
-/*
-	// Perhaps this is a default that could be entirely user defined? 
-	typedef struct audio_instance_desc_t
-	{
-		gs_resource( gs_audio_source ) src;
-		f32 volume;
-		f64 play_position;
-		b32 loop;
-		b32 playing;
-	} audio_instance_desc_t;
-*/
-
-/*
-	// Load audio data from file, get back 'audio_source_t' struct or resource handle?
-
-	gs_resource( gs_audio_source ) src = audio->load_audio_source( "source.wav" );
-
-	audio_instance_desc_t desc = {0};
-	desc.src = src;
-	desc.volume = 2.f;
-	desc.loop = false;
-	desc.playing = true;
-	desc.play_position = 0;
-
-	// Instance of audio source
-	gs_resource( gs_audio_instance ) instance = audio->play( void* );		// Will create an new instance internally and hold it until sound is done
-
-	play_sound	
-	resume_sound
-	pause_sound
-	stop_sound
-		
-	audio->play_sound( instance );
-*/
-
 void wasapi_init( gs_audio_i* audio )
 {
 	// Load WASAPI library
@@ -127,8 +74,8 @@ void wasapi_init( gs_audio_i* audio )
         CoInitializeExProc = CoInitializeExStub;
     }
 
-    audio_data_t* data = (audio_data_t*)(audio->data);
-	wasapi_sound_output_t* output = &data->output;
+    gs_audio_data_t* data = (gs_audio_data_t*)(audio->data);
+	wasapi_sound_output_t* output = data->internal;
 
     CoInitializeExProc(0, COINIT_SPEED_OVER_MEMORY);
     
@@ -240,45 +187,51 @@ void wasapi_init( gs_audio_i* audio )
 
 void audio_query( gs_audio_i* audio )
 {
-	audio_data_t* data = (audio_data_t*)audio->data;
+	gs_audio_data_t* data = (gs_audio_data_t*)audio->data;
+	wasapi_sound_output_t* output = (wasapi_sound_output_t*)data->internal;
 
 	data->sample_count_to_output = 0;
 	u32 sound_padding_size;
 
-	if ( SUCCEEDED( data->output.audio_client->lpVtbl->GetCurrentPadding( data->output.audio_client, &sound_padding_size ) ) )
+	if ( SUCCEEDED( output->audio_client->lpVtbl->GetCurrentPadding( output->audio_client, &sound_padding_size ) ) )
 	{
-		data->samples_per_second = data->output.samples_per_second;
-		data->sample_count_to_output = (u32)( data->output.latency_frame_count - sound_padding_size );
+		data->samples_per_second = output->samples_per_second;
+		data->sample_count_to_output = (u32)( output->latency_frame_count - sound_padding_size );
 
-		if ( data->sample_count_to_output > data->output.latency_frame_count )
+		if ( data->sample_count_to_output > output->latency_frame_count )
 		{
-			data->sample_count_to_output = data->output.latency_frame_count;
+			data->sample_count_to_output = output->latency_frame_count;
 		}
 	}
 
+	s16* samples = (s16*)(data->sample_out);
+
 	// Set memory for output for frame count
-	gs_for_range_i( data->output.buffer_frame_count )
+	gs_for_range_i( output->buffer_frame_count )
 	{
-		data->sample_out[ i ] = 0;
+		samples[ i ] = 0;
 	}
 }
 
 gs_result audio_init( gs_audio_i* audio )
 {
 	// Construct instance of render data
-	struct audio_data_t* data = gs_malloc_init( struct audio_data_t );
+	struct gs_audio_data_t* data = gs_malloc_init( struct gs_audio_data_t );
+	data->internal = gs_malloc_init( struct wasapi_sound_output_t );
+
+	wasapi_sound_output_t* output = (wasapi_sound_output_t*)data->internal;
 
 	// Initialize sound output values
-	data->output.channels = 2;
-	data->output.samples_per_second = 48000;
-	data->output.latency_frame_count = 48000;
+	output->channels = 2;
+	output->samples_per_second = 48000;
+	output->latency_frame_count = 48000;
 
     data->sources = gs_slot_array_new( gs_audio_source_t );
     data->instances = gs_slot_array_new( gs_audio_instance_data_t );
 
 	// Allocate storage for samples output for hardware
-	data->sample_out = gs_malloc( data->output.samples_per_second * sizeof(s16) * 2 );
-	memset(data->sample_out, 0, data->output.samples_per_second * sizeof(s16) * 2);
+	data->sample_out = gs_malloc( output->samples_per_second * sizeof(s16) * 2 );
+	memset(data->sample_out, 0, output->samples_per_second * sizeof(s16) * 2);
 
 	// Set data
 	audio->data = data;
@@ -292,12 +245,12 @@ gs_result audio_init( gs_audio_i* audio )
 
 gs_result audio_commit( gs_audio_i* audio )
 {
-	audio_data_t* __data = (audio_data_t*)audio->data;
+	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
 
 	// Commit all audio to memory (fill sound buffer)
 	u32 samples_to_write 			= __data->sample_count_to_output;
 	s16* samples 					= __data->sample_out;
-	wasapi_sound_output_t* output 	= &__data->output;
+	wasapi_sound_output_t* output 	= __data->internal;
 
 	if ( samples_to_write )
 	{
@@ -321,116 +274,6 @@ gs_result audio_commit( gs_audio_i* audio )
 	}
 
 	audio_query( audio );
-
-	return gs_result_success;
-}
-
-// Default audio upate function
-gs_result audio_update( gs_audio_i* audio ) 
-{
-	// For the update, we're going to iterate through all contiguous instance data, check whether or not it's playing, 
-	// Then we'll just play the shiz
-	audio_data_t* __data = (audio_data_t*)audio->data;
-
-	for ( u32 i = 0; i < gs_slot_array_size( __data->instances ); ++i )
-	{
-		gs_audio_instance_data_t* inst = &__data->instances.data[ i ];
-
-		// Get raw audio source from instance
-		gs_audio_source_t* src = gs_slot_array_get_ptr( __data->sources, inst->src.id );
-
-		// Easy out if the instance is not playing currently or the source is invalid
-		if ( !inst->playing || !src ) {
-			continue;
-		}
-
-		s16* sample_out = __data->sample_out;
-		s16* samples = (s16*)src->samples;
-
-		u64 samples_to_write = __data->sample_count_to_output;
-		f64 sample_volume = inst->volume;
-
-		// Write to channels
-		for ( u64 write_sample = 0; write_sample < samples_to_write; ++write_sample )
-		{
-			s32 channels = src->channels;
-			f64 start_sample_position = inst->sample_position;
-			s16 start_left_sample;
-			s16 start_right_sample;
-
-			// Not sure about this line of code...
-			f64 target_sample_position = start_sample_position + (f64)channels * (f64)1.f;
-
-			if ( target_sample_position >= src->sample_count )
-			{
-				target_sample_position -= src->sample_count;
-			}
-
-			s16 target_left_sample;
-			s16 target_right_sample;
-
-			{
-				u64 left_idx = (u64)start_sample_position;
-				if ( channels > 1 )
-				{
-					left_idx &= ~((u64)(0x01));
-				}
-				u64 right_idx = left_idx + (channels - 1);
-
-				s16 first_left_sample = samples[left_idx];
-				s16 first_right_sample = samples[right_idx];
-				s16 second_left_sample = samples[left_idx + channels];
-				s16 second_right_sample = samples[right_idx + channels];
-
-				start_left_sample = (s16)(first_left_sample + (second_left_sample - first_left_sample) * (start_sample_position / channels - (u64)(start_sample_position / channels)));
-                start_right_sample = (s16)(first_right_sample + (second_right_sample - first_right_sample) * (start_sample_position / channels - (u64)(start_sample_position / channels)));
-			}
-
-			{
-                u64 left_index = (u64)target_sample_position;
-                if(channels > 1)
-                {
-                    left_index &= ~((u64)(0x01));
-                }
-                u64 right_index = left_index + (channels - 1);
-                
-                s16 first_left_sample = samples[left_index];
-                s16 first_right_sample = samples[right_index];
-                s16 second_left_sample = samples[left_index + channels];
-                s16 second_right_sample = samples[right_index + channels];
-                
-                target_left_sample = (s16)(first_left_sample + (second_left_sample - first_left_sample) * (target_sample_position / channels - (u64)(target_sample_position / channels)));
-                target_right_sample = (s16)(first_right_sample + (second_right_sample - first_right_sample) * (target_sample_position / channels - (u64)(target_sample_position / channels)));
-            }
-
-            s16 left_sample = (s16)((((s64)start_left_sample + (s64)target_left_sample) / 2) * sample_volume);
-            s16 right_sample = (s16)((((s64)start_right_sample + (s64)target_right_sample) / 2) * sample_volume);
-
-            *sample_out++ += left_sample;  // Left
-            *sample_out++ += right_sample; // Right
-
-            // Possibly need fixed sampling instead
-            inst->sample_position = target_sample_position;
-
-            // Loop sound if necessary
-            if( inst->sample_position >= (u32)((f32)src->sample_count * 0.95f) ||  inst->sample_position >= src->sample_count - channels - 1 )
-            {
-                if( inst->loop )
-                {
-                    // inst->sample_position -= src->sample_count;
-                    inst->sample_position = 0;
-                }
-                else
-                {
-                	// Need to destroy the instance at this point...
-                    inst->playing = false;
-                    inst->sample_position = 0;
-                    break;
-                }
-            }
-
-		}		
-	}
 
 	return gs_result_success;
 }
@@ -485,7 +328,7 @@ gs_resource( gs_audio_source ) load_audio_source_from_file( const char* file_nam
 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 
-	audio_data_t* __data = (audio_data_t*)audio->data;
+	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
 
 	if ( !platform->file_exists( file_name ) ) {
 		gs_println( "WARNING: Could not open file: %s", file_name );
@@ -526,7 +369,7 @@ gs_resource( gs_audio_instance ) play( gs_audio_instance_data_t inst )
 	gs_resource( gs_audio_instance ) inst_h = gs_resource_invalid( gs_audio_instance );
 
 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
-	audio_data_t* __data = (audio_data_t*)audio->data;
+	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
 
 	// Verify that source is valid first
 	if ( gs_slot_array_handle_valid( __data->sources, inst.src.id ) )
@@ -541,7 +384,7 @@ gs_resource( gs_audio_instance ) play( gs_audio_instance_data_t inst )
 void pause( gs_resource( gs_audio_instance ) inst_h )
 {
 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
-	audio_data_t* __data = (audio_data_t*)audio->data;
+	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
 	gs_audio_instance_data_t* inst = gs_slot_array_get_ptr( __data->instances, inst_h.id );
 	if ( inst )
 	{
@@ -552,7 +395,7 @@ void pause( gs_resource( gs_audio_instance ) inst_h )
 void resume( gs_resource( gs_audio_instance ) inst_h )
 {
 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
-	audio_data_t* __data = (audio_data_t*)audio->data;
+	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
 	gs_audio_instance_data_t* inst = gs_slot_array_get_ptr( __data->instances, inst_h.id );
 	if ( inst )
 	{
@@ -563,7 +406,7 @@ void resume( gs_resource( gs_audio_instance ) inst_h )
 void restart( gs_resource( gs_audio_instance ) inst_h )
 {
 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
-	audio_data_t* __data = (audio_data_t*)audio->data;
+	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
 	gs_audio_instance_data_t* inst = gs_slot_array_get_ptr( __data->instances, inst_h.id );
 	if ( inst )
 	{
@@ -575,7 +418,7 @@ void restart( gs_resource( gs_audio_instance ) inst_h )
 void set_instance_data( gs_resource( gs_audio_instance ) inst_h, gs_audio_instance_data_t data )
 {
 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
-	audio_data_t* __data = (audio_data_t*)audio->data;
+	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
 	gs_audio_instance_data_t* inst = gs_slot_array_get_ptr( __data->instances, inst_h.id );
 	if ( inst )
 	{
@@ -586,7 +429,7 @@ void set_instance_data( gs_resource( gs_audio_instance ) inst_h, gs_audio_instan
 f32 get_volume( gs_resource( gs_audio_instance ) inst_h )
 {
 	 gs_audio_i* audio = gs_engine_instance()->ctx.audio;
-	audio_data_t* __data = (audio_data_t*)audio->data;
+	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
 	gs_audio_instance_data_t* inst = gs_slot_array_get_ptr( __data->instances, inst_h.id );
 	if ( inst )
 	{
@@ -599,7 +442,7 @@ f32 get_volume( gs_resource( gs_audio_instance ) inst_h )
 void set_volume( gs_resource( gs_audio_instance ) inst_h, f32 vol )
 {
  	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
-	audio_data_t* __data = (audio_data_t*)audio->data;
+	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
 	gs_audio_instance_data_t* inst = gs_slot_array_get_ptr( __data->instances, inst_h.id );
 	if ( inst )
 	{
@@ -611,7 +454,7 @@ void stop( gs_resource( gs_audio_instance ) inst_h )
 {
 	// Should actually destroy a sound if it's not persistent
  	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
-	audio_data_t* __data = (audio_data_t*)audio->data;
+	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
 	gs_audio_instance_data_t* inst = gs_slot_array_get_ptr( __data->instances, inst_h.id );
 	if ( inst )
 	{
@@ -633,7 +476,7 @@ struct gs_audio_i* gs_audio_construct()
 
 	// Audio Init/De-Init Functions
 	audio->init 		= &audio_init;
-	audio->update 		= &audio_update;
+	audio->update 		= &__gs_audio_update_internal;
 	audio->shutdown 	= &audio_shutdown;
 	audio->commit 		= &audio_commit;
 

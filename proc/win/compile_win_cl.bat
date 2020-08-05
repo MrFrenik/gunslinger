@@ -26,7 +26,8 @@ rem TP Source
 
 rem All source together
 set src_all=%src_base% %src_graphics% %src_serialize% ^
-%src_platform% %src_platform_glfw% %src_graphics_ogl% %src_audio_wasapi%
+%src_platform% %src_platform_glfw% %src_graphics_ogl% ^
+%src_audio% %src_audio_wasapi%
 
 rem Library directories
 set lib_d=/LIBPATH:"..\third_party\lib\release\win\"
