@@ -317,7 +317,7 @@ void* gs_load_texture_data_from_file( const char* path, b32 flip_vertically_on_l
 // Graphics User Provided Funcs
 ===============================*/
 
-extern struct gs_graphics_i* gs_graphics_construct();
+extern struct gs_graphics_i* __gs_graphics_construct();
 
 /*
 	What are the responsibilities here? 

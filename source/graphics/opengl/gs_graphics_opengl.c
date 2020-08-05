@@ -1934,7 +1934,7 @@ void opengl_free_shader( gs_resource( gs_shader ) s_handle )
 }
 
 // Method for creating graphics layer for opengl
-struct gs_graphics_i* gs_graphics_construct()
+struct gs_graphics_i* __gs_graphics_construct()
 {
 	// Construct new graphics interface instance
 	struct gs_graphics_i* gfx = gs_malloc_init( gs_graphics_i );

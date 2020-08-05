@@ -51,13 +51,13 @@ gs_engine* gs_engine_construct( gs_application_desc app_desc )
 		gs_engine_instance()->ctx.platform->create_window( app_desc.window_title, app_desc.window_width, app_desc.window_height );
 
 		// Construct graphics api 
-		gs_engine_instance_g->ctx.graphics = gs_graphics_construct();
+		gs_engine_instance_g->ctx.graphics = __gs_graphics_construct();
 
 		// Initialize graphics here
 		gs_engine_instance_g->ctx.graphics->init( gs_engine_instance_g->ctx.graphics );
 
 		// Construct audio api
-		gs_engine_instance_g->ctx.audio = gs_audio_construct();
+		gs_engine_instance_g->ctx.audio = __gs_audio_construct();
 
 		// Initialize audio
 		gs_engine_instance_g->ctx.audio->init( gs_engine_instance_g->ctx.audio );

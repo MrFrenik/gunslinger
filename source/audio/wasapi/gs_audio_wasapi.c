@@ -214,7 +214,7 @@ void audio_query( gs_audio_i* audio )
 gs_result audio_init( gs_audio_i* audio )
 {
 	// Construct instance of render data
-	struct gs_audio_data_t* data = gs_malloc_init( struct gs_audio_data_t );
+	struct gs_audio_data_t* data = audio->data;
 	data->internal = gs_malloc_init( struct wasapi_sound_output_t );
 
 	wasapi_sound_output_t* output = (wasapi_sound_output_t*)data->internal;
@@ -224,19 +224,11 @@ gs_result audio_init( gs_audio_i* audio )
 	output->samples_per_second = 48000;
 	output->latency_frame_count = 48000;
 
-    data->sources = gs_slot_array_new( gs_audio_source_t );
-    data->instances = gs_slot_array_new( gs_audio_instance_data_t );
-
 	// Allocate storage for samples output for hardware
 	data->sample_out = gs_malloc( output->samples_per_second * sizeof(s16) * 2 );
 	memset(data->sample_out, 0, output->samples_per_second * sizeof(s16) * 2);
 
-	// Set data
-	audio->data = data;
-
 	wasapi_init( audio );
-
-	// audio_query( audio );
 
 	return gs_result_success;
 }
@@ -282,25 +274,16 @@ gs_result audio_shutdown( gs_audio_i* audio )
 	return gs_result_success;
 }
 
-/*============================================================
-// Audio API Construction
-============================================================*/
+/*===================================================================
+// Audio API Construction (fill out specific internal for custom API)
+====================================================================*/
 
-struct gs_audio_i* gs_audio_construct()
+struct gs_audio_i* gs_audio_construct_internal()
 {
-	struct gs_audio_i* audio = gs_malloc_init( struct gs_audio_i );
-
-	// Null out all data
-	audio->data = NULL;
-	audio->user_data = NULL;
-
 	// Audio Init/De-Init Functions
 	audio->init 		= &audio_init;
 	audio->shutdown 	= &audio_shutdown;
 	audio->commit 		= &audio_commit;
-
-	// Default internals
-	__gs_audio_set_internals_functions( audio );
 
 	return audio;
 }

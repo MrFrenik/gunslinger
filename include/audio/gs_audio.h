@@ -103,7 +103,8 @@ typedef struct gs_audio_i
 } gs_audio_i;
 
 // Extern internal functions
-extern struct gs_audio_i* gs_audio_construct();
+extern struct gs_audio_i* __gs_audio_construct();
+extern void gs_audio_construct_internal( struct gs_audio_i* audio );
 extern void __gs_audio_set_default_functions( struct gs_audio_i* audio );
 extern gs_result __gs_audio_update_internal( struct gs_audio_i* audio );
 extern b32 __gs_load_ogg_data( const char* file_name, gs_audio_source_t* src );

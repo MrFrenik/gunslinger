@@ -299,6 +299,25 @@ void __gs_audio_stop( gs_resource( gs_audio_instance ) inst_h )
 	}
 }
 
+struct gs_audio_i* __gs_audio_construct()
+{
+	struct gs_audio_i* audio = gs_malloc_init( struct gs_audio_i );
+    struct gs_audio_data_t* data = gs_malloc_init( struct gs_audio_data_t );
+
+    data->internal = NULL;
+    data->sources = gs_slot_array_new( gs_audio_source_t );
+    data->instances = gs_slot_array_new( gs_audio_instance_data_t );
+
+    // Set data
+    audio->user_data = NULL;
+    audio->data = data;
+
+	// Default internals
+	__gs_audio_set_default_functions( audio );
+
+	return audio;
+}
+
 void __gs_audio_set_default_functions( struct gs_audio_i* audio )
 {
 	audio->update 						= &__gs_audio_update_internal;
@@ -311,4 +330,6 @@ void __gs_audio_set_default_functions( struct gs_audio_i* audio )
 	audio->get_volume 					= &__gs_audio_get_volume;
 	audio->set_volume 					= &__gs_audio_set_volume;
 	audio->set_instance_data 			= &__gs_audio_set_instance_data;
+
+	gs_audio_construct_internal( audio );
 }
