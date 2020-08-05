@@ -20,7 +20,7 @@ typedef struct gs_uniform_block_t
 	u32 count;
 } gs_uniform_block_t;
 
-#define __gs_uniform_data_block_uniform_decl( T, __VA_ARGS__ )\
+#define __gs_uniform_data_block_uniform_decl( T, ... )\
 	typedef struct gs_uniform_data_block_##T##_t\
 	{\
 		__VA_ARGS__\

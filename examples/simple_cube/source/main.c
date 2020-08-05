@@ -10,8 +10,8 @@ _global gs_resource( gs_uniform ) u_view = {0};
 _global gs_resource( gs_uniform ) u_proj = {0};
 
 const char* v_src = "\n"
-"#version 330 core\n"
-"layout (location = 0) in vec3 a_pos;\n"
+"#version 110\n"
+"attribute vec3 a_pos;\n"
 "uniform mat4 u_model;\n"
 "uniform mat4 u_view;\n"
 "uniform mat4 u_proj;\n"
@@ -21,12 +21,11 @@ const char* v_src = "\n"
 "}";
 
 const char* f_src = "\n"
-"#version 330 core\n"
-"out vec4 frag_color;\n"
+"#version 110\n"
 "uniform vec4 u_color;\n"
 "void main()\n"
 "{\n"
-"	frag_color = u_color;\n"
+"	gl_FragColor = u_color;\n"
 "}";
 
 // Forward Decls.
@@ -170,8 +169,9 @@ gs_result app_update()
 	// Set clear color and clear screen
 	f32 clear_color[4] = { 0.2f, 0.2f, 0.2f, 1.f };
 	gfx->set_view_clear( g_cb, clear_color );
-
 	gfx->set_view_port( g_cb, ws.x, ws.y );
+	gfx->set_depth_enabled( g_cb, true );
+	gfx->set_face_culling( g_cb, gs_face_culling_disabled );
 
 	// Bind shader
 	gfx->bind_shader( g_cb, g_shader );

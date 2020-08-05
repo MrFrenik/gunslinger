@@ -14,9 +14,9 @@ _force_inline
  const char* __gs_default_quad_batch_vertex_src()
  {
  	return "#version 110\n"
-	"in vec3 a_pos;\n"
-	"in vec2 a_uv;\n"
-	"in vec4 a_color;\n"
+	"attribute vec3 a_pos;\n"
+	"attribute vec2 a_uv;\n"
+	"attribute vec4 a_color;\n"
 	"uniform mat4 u_model;\n"
 	"uniform mat4 u_view;\n"
 	"uniform mat4 u_proj;\n"

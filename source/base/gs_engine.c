@@ -69,6 +69,7 @@ gs_engine* gs_engine_construct( gs_application_desc app_desc )
 		if ( app_desc.init )
 		{
 			app_desc.init();
+
 		}
 
 		// gs_engine_instance_g->ctx.assets = gs_construct_heap( gs_asset_subsystem );

@@ -9,6 +9,7 @@ extern "C" {
 
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 
 // Helper macro for compiling to nothing
 #define gs_empty_instruction( ... )

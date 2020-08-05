@@ -1,11 +1,9 @@
-#version 330 core
+#version 110
 
-out vec4 frag_color;
-
-in vec2 tex_coord;
-in vec3 normal;
-in vec3 frag_pos;
-in float height;
+varying vec2 tex_coord;
+varying vec3 normal;
+varying vec3 frag_pos;
+varying float height;
 
 uniform sampler2D u_noise_tex;
 uniform vec3 u_view_pos;
@@ -38,8 +36,8 @@ float max_height = 20.0;
 vec3 heightblend(vec3 input1, float height1, vec3 input2, float height2)
 {
     float height_start = max(height1, height2) - _HeightblendFactor;
-    float level1 = max(height1 - height_start, 0);
-    float level2 = max(height2 - height_start, 0);
+    float level1 = max(height1 - height_start, 0.0);
+    float level2 = max(height2 - height_start, 0.0);
     return ((input1 * level1) + (input2 * level2)) / (level1 + level2);
 }
 
@@ -101,12 +99,12 @@ map_range( float input_start, float input_end, float output_start, float output_
 void main()
 {
     // Tex color
-    // vec3 tex_color = texture(s_noise_tex, tex_coord).rgb;
-    // tex_color = mix( tex_color, texture( s_noise_tex, tex_coord + vec2(-1.0, -1.0) ).rgb, 0.5 );
-    // tex_color = mix( tex_color, texture( s_noise_tex, tex_coord + vec2(1.0, -1.0) ).rgb, 0.5 );
-    // tex_color = mix( tex_color, texture( s_noise_tex, tex_coord + vec2(1.0, 1.0) ).rgb, 0.5 );
-    // tex_color = mix( tex_color, texture( s_noise_tex, tex_coord + vec2(1.0, 0.0) ).rgb, 0.5 );
-    // tex_color = mix( tex_color, texture( s_noise_tex, tex_coord + vec2(0.0, 1.0) ).rgb, 0.5 );
+    // vec3 tex_color = texture2D(s_noise_tex, tex_coord).rgb;
+    // tex_color = mix( tex_color, texture2D( s_noise_tex, tex_coord + vec2(-1.0, -1.0) ).rgb, 0.5 );
+    // tex_color = mix( tex_color, texture2D( s_noise_tex, tex_coord + vec2(1.0, -1.0) ).rgb, 0.5 );
+    // tex_color = mix( tex_color, texture2D( s_noise_tex, tex_coord + vec2(1.0, 1.0) ).rgb, 0.5 );
+    // tex_color = mix( tex_color, texture2D( s_noise_tex, tex_coord + vec2(1.0, 0.0) ).rgb, 0.5 );
+    // tex_color = mix( tex_color, texture2D( s_noise_tex, tex_coord + vec2(0.0, 1.0) ).rgb, 0.5 );
 
     // mix the alpha of the fragment from the center? (want it to blend away from center)
     vec3 tex_color = color_from_height( height );
@@ -167,9 +165,9 @@ void main()
     float specularStrength = 0.1;
     vec3 viewDir = normalize(u_view_pos - frag_pos);
     vec3 reflectDir = reflect(-lightDir, norm);  
-    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
+    float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32.0);
     vec3 specular = specularStrength * spec * light_col;  
         
     vec3 result = (ambient + diffuse + specular) * tex_color;
-    frag_color = vec4(clamp(result, 0.0, 1.0), alpha);
+    gl_FragColor = vec4(clamp(result, 0.0, 1.0), alpha);
 }

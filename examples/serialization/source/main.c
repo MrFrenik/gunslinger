@@ -215,12 +215,12 @@ b32 color_equal( gs_color_t c0, gs_color_t c1 )
 #define ui_frame_height 				128
 
 const char* pixel_frame_v_src = "\n"
-"#version 330 core\n"
-"layout (location = 0) in vec2 a_pos;\n"
-"layout (location = 1) in vec2 a_uv;\n"
+"#version 110\n"
+"attribute vec2 a_pos;\n"
+"attribute vec2 a_uv;\n"
 "uniform mat4 u_proj;\n"
 "uniform mat4 u_view;\n"
-"out vec2 uv;\n"
+"varying vec2 uv;\n"
 "void main()\n"
 "{\n"
 "	gl_Position = u_proj * u_view * vec4(a_pos, 0.0, 1.0);\n"
@@ -228,13 +228,12 @@ const char* pixel_frame_v_src = "\n"
 "}";
 
 const char* pixel_frame_f_src = "\n"
-"#version 330 core\n"
-"out vec4 frag_color;\n"
+"#version 110\n"
 "uniform sampler2D u_tex;"
-"in vec2 uv;\n"
+"varying vec2 uv;\n"
 "void main()\n"
 "{\n"
-"	frag_color = texture(u_tex, uv);\n"
+"	gl_FragColor = texture2D(u_tex, uv);\n"
 "}";
 
 /*

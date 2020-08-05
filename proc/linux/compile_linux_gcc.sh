@@ -24,6 +24,7 @@ src=(
 	../source/platform/*.c
 	../source/graphics/*.c
 	../source/serialize/*.c
+	../source/audio/*.c
 
 	# Todo(John): Remove this into a plugin
 	# ../source/platform/sdl/*.c
@@ -31,6 +32,9 @@ src=(
 
 	# Gfx plugin ( Again, remove from engine build )
 	../source/graphics/opengl/*.c
+
+	# Alsa plugin
+	../source/audio/alsa/*.c
 )
 
 # Build library

@@ -806,7 +806,7 @@ void opengl_submit_command_buffer( gs_resource( gs_command_buffer ) cb_handle )
 			{
 				u32 t_id = gs_byte_buffer_read( &cb->commands, u32 );
 				u32 idx  = gs_byte_buffer_read( &cb->commands, u32 );
-				glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + idx, t_id, 0);
+				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + idx, GL_TEXTURE_2D, t_id, 0);
 			} break;
 
 			case gs_opengl_op_bind_frame_buffer: 
@@ -1464,7 +1464,7 @@ void opengl_compile_shader( const char* src, u32 id )
 		//Exit with failure.
 		glDeleteShader( id ); //Don't leak the shader.
 
-		gs_println( "Opengl::opengl_compile_shader::FAILED_TO_COMPILE: %s", log );
+		gs_println( "Opengl::opengl_compile_shader::FAILED_TO_COMPILE: %s\n %s", log, src );
 
 		free( log );
 		log = NULL;
@@ -1652,8 +1652,12 @@ gs_resource( gs_frame_buffer ) opengl_construct_frame_buffer( gs_resource( gs_te
 	GLenum draw_buffers[ 1 ] = { GL_COLOR_ATTACHMENT0 };
 	glDrawBuffers( 1, draw_buffers );
 
+	gs_println( "fbt: bind: %zu", tex.id );
+
 	// Idx is 0, for now
-	glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + 0, tex.id , 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + 0, GL_TEXTURE_2D, tex.id , 0);
+
+	gs_println( "fbt: done" );
 
 	// Error checking
 	if ( glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
@@ -1661,11 +1665,17 @@ gs_resource( gs_frame_buffer ) opengl_construct_frame_buffer( gs_resource( gs_te
 		gs_assert( false );
 	}
 
+	gs_println( "uh oh" );
+
 	// Set frame buffer to back buffer
 	glBindFramebuffer( GL_FRAMEBUFFER, 0 );
 
+	gs_println( "unbind fb" );
+
 	// Push back uniform into slot array
 	u32 _handle = gs_slot_array_insert( data->frame_buffers, fb );
+
+	gs_println( "insert fb" );
 
 	// Set resource handle
 	gs_resource( gs_frame_buffer ) handle = {0};

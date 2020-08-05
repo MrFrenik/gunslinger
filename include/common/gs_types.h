@@ -11,6 +11,7 @@ extern "C" {
 #include <string.h> 	// memset
 #include <float.h>		// FLT_MAX
 #include <time.h>
+#include <ctype.h>
 
 #define _inline 			static inline
 #define _local_persist 		static

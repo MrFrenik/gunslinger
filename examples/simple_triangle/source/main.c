@@ -7,20 +7,19 @@ _global gs_resource( gs_shader ) g_shader = {0};
 _global gs_resource( gs_uniform ) u_color = {0}; 
 
 const char* v_src = "\n"
-"#version 330 core\n"
-"layout (location = 0) in vec3 a_pos;\n"
+"#version 110\n"
+"attribute vec3 a_pos;\n"
 "void main()\n"
 "{\n"
 "	gl_Position = vec4(a_pos, 1.0);\n"
 "}";
 
 const char* f_src = "\n"
-"#version 330 core\n"
-"out vec4 frag_color;\n"
+"#version 110\n"
 "uniform vec4 u_color;\n"
 "void main()\n"
 "{\n"
-"	frag_color = u_color;\n"
+"	gl_FragColor = u_color;\n"
 "}";
 
 // Forward Decls.

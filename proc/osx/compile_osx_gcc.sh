@@ -25,6 +25,7 @@ src=(
 	../source/platform/*.c
 	../source/graphics/*.c
 	../source/serialize/*.c
+	../source/audio/*.c
 
 	# Todo(John): Remove this into a plugin
 	# ../source/platform/sdl/*.c
