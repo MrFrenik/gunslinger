@@ -278,12 +278,10 @@ gs_result audio_shutdown( gs_audio_i* audio )
 // Audio API Construction (fill out specific internal for custom API)
 ====================================================================*/
 
-struct gs_audio_i* gs_audio_construct_internal()
+void gs_audio_construct_internal( struct gs_audio_i* audio )
 {
 	// Audio Init/De-Init Functions
 	audio->init 		= &audio_init;
 	audio->shutdown 	= &audio_shutdown;
 	audio->commit 		= &audio_commit;
-
-	return audio;
 }

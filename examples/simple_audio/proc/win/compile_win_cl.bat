@@ -4,7 +4,7 @@ mkdir bin
 pushd bin
 
 rem Name
-set name=HelloGS
+set name=SimpleAudio
 
 rem Include directories 
 set inc=/I ..\..\..\include
