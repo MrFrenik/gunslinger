@@ -54,9 +54,10 @@ gs_result app_init()
 	platform->set_window_close_callback( platform->main_window(), &app_close_window_callback );
 
 	// Constuct audio resource to play
-	g_music_src = audio->load_audio_source_from_file( "./assets/pacman.ogg" );
+	g_music_src = audio->load_audio_source_from_file( platform->file_exists( "./assets/pacman.ogg" ) ? 
+		"./assets/pacman.ogg" : "./../assets/pacman.ogg" );
 
-	// Construct instance source and play
+	// Construct instance source and play on loop. Forever.
 	gs_audio_instance_data_t inst = gs_audio_instance_data_new( g_music_src );
 	inst.loop = true;
 	inst.persistent = true;
