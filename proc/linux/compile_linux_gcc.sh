@@ -34,7 +34,7 @@ src=(
 	../source/graphics/opengl/*.c
 
 	# Audio plugin
-	../source/audio/miniaudio/*.c
+	../source/graphics/audio/miniaudio/*.c
 )
 
 # Build library
