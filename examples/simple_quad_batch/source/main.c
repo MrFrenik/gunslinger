@@ -80,8 +80,8 @@ gs_result app_init()
 	gs_assert(platform->file_exists(tfp));	// We'll assert if the file doesn't exist
 
 	// Load texture from file and pass into description format
-	desc.data = gfx->load_texture_data_from_file( tfp, true, desc.texture_format, &desc.width, 
-										&desc.height, &desc.num_comps );
+	desc.data = gfx->load_texture_data_from_file( tfp, true, desc.texture_format, (s32*)&desc.width, 
+										(s32*)&desc.height, (s32*)&desc.num_comps );
 
 	// Assert that our texture data is valid (it should be)
 	gs_assert(desc.data != NULL);

@@ -20,8 +20,8 @@ inc=(
 
 # Source files
 src=(
-	../source/main.c
 	../source/font/*.c
+	../source/*.c
 )
 
 lib_dirs=(

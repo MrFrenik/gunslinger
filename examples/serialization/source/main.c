@@ -215,12 +215,12 @@ b32 color_equal( gs_color_t c0, gs_color_t c1 )
 #define ui_frame_height 				128
 
 const char* pixel_frame_v_src = "\n"
-"#version 110\n"
-"attribute vec2 a_pos;\n"
-"attribute vec2 a_uv;\n"
+"#version 330 core\n"
+"layout(location = 0) in vec2 a_pos;\n"
+"layout(location = 1) in vec2 a_uv;\n"
 "uniform mat4 u_proj;\n"
 "uniform mat4 u_view;\n"
-"varying vec2 uv;\n"
+"out vec2 uv;\n"
 "void main()\n"
 "{\n"
 "	gl_Position = u_proj * u_view * vec4(a_pos, 0.0, 1.0);\n"
@@ -228,12 +228,13 @@ const char* pixel_frame_v_src = "\n"
 "}";
 
 const char* pixel_frame_f_src = "\n"
-"#version 110\n"
+"#version 330 core\n"
 "uniform sampler2D u_tex;"
-"varying vec2 uv;\n"
+"in vec2 uv;\n"
+"out vec4 frag_color;\n"
 "void main()\n"
 "{\n"
-"	gl_FragColor = texture2D(u_tex, uv);\n"
+"	frag_color = texture(u_tex, uv);\n"
 "}";
 
 /*
@@ -1314,7 +1315,7 @@ gs_result app_update()
 	f32 clear_color[4] = { 0.1f, 0.1f, 0.1f, 1.f };
 	gfx->set_view_clear( g_cb, clear_color );
 
-	gfx->set_view_port( g_cb, ws.x, ws.y );
+	gfx->set_view_port( g_cb, ws.x * 2, ws.y * 2 );
 	gfx->set_depth_enabled( g_cb, false );
 	gfx->set_blend_mode( g_cb, gs_blend_mode_src_alpha, gs_blend_mode_one_minus_src_alpha );
 

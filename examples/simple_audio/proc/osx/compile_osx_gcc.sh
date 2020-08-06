@@ -31,6 +31,7 @@ fworks=(
 	-framework IOKit 
 	-framework Cocoa 
 	-framework Carbon
+	-framework CoreAudio
 )
 
 libs=(
@@ -38,7 +39,7 @@ libs=(
 )
 
 # Build
-gcc -O3 ${lib_dirs[*]} ${libs[*]} ${fworks[*]} ${inc[*]} ${src[*]} ${flags[*]} -o HelloGS
+gcc -O3 ${lib_dirs[*]} ${libs[*]} ${fworks[*]} ${inc[*]} ${src[*]} ${flags[*]} -o SimpleAudio
 
 cd ..
 

@@ -134,11 +134,11 @@ _global b32 g_use_post_processing = true;
 _global gs_resource_handle g_window;
 
 const char* v_src = "\n"
-"#version 110\n"
-"attribute vec2 a_pos;\n"
-"attribute vec2 a_texCoord;\n"
+"#version 330 core\n"
+"layout( location = 0 ) in vec2 a_pos;\n"
+"layout( location = 1 ) in vec2 a_texCoord;\n"
 "uniform int u_flip_y;"
-"varying vec2 texCoord;\n"
+"out vec2 texCoord;\n"
 "void main()\n"
 "{\n"
 "	gl_Position = vec4(a_pos, 0.0, 1.0);\n"
@@ -146,12 +146,13 @@ const char* v_src = "\n"
 "}";
 
 const char* f_src = "\n"
-"#version 110\n"
-"varying vec2 texCoord;\n"
+"#version 330 core\n"
+"in vec2 texCoord;\n"
+"out vec4 frag_color;\n"
 "uniform sampler2D u_tex;\n"
 "void main()\n"
 "{\n"
-"	gl_FragColor = texture2D(u_tex, texCoord);\n"
+"	frag_color = texture(u_tex, texCoord);\n"
 "}";
 
 // Forward Decls.

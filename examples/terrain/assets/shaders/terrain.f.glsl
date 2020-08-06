@@ -1,9 +1,11 @@
-#version 110
+#version 330 core
 
-varying vec2 tex_coord;
-varying vec3 normal;
-varying vec3 frag_pos;
-varying float height;
+in vec2 tex_coord;
+in vec3 normal;
+in vec3 frag_pos;
+in float height;
+
+out vec4 frag_color;
 
 uniform sampler2D u_noise_tex;
 uniform vec3 u_view_pos;
@@ -169,5 +171,5 @@ void main()
     vec3 specular = specularStrength * spec * light_col;  
         
     vec3 result = (ambient + diffuse + specular) * tex_color;
-    gl_FragColor = vec4(clamp(result, 0.0, 1.0), alpha);
+    frag_color = vec4(clamp(result, 0.0, 1.0), alpha);
 }

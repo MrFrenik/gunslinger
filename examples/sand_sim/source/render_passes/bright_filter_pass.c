@@ -4,26 +4,27 @@
 void bp_pass( gs_resource( gs_command_buffer ) cb, struct render_pass_i* pass, void* paramters );
 
 const char* bp_v_src = "\n"
-"#version 110\n"
-"attribute vec2 a_position;\n"
-"attribute vec2 a_uv;\n"
-"varying vec2 tex_coord;\n"
+"#version 330 core\n"
+"layout(location = 0 ) in vec2 a_position;\n"
+"layout(location = 1 ) in vec2 a_uv;\n"
+"out vec2 tex_coord;\n"
 "void main() {\n"
 "	gl_Position = vec4(a_position, 0.0, 1.0);\n"
 "	tex_coord = a_uv;\n"
 "}\n";
 
 const char* bp_f_src = "\n"
-"#version 110\n"
-"varying vec2 tex_coord;\n"
+"#version 330 core\n"
+"in vec2 tex_coord;\n"
+"out vec4 frag_color;\n"
 "uniform sampler2D u_tex;\n"
 "void main() {\n"
-"	gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);\n"
-"	vec3 tex_color = texture2D(u_tex, tex_coord).rgb;\n"
+"	frag_color = vec4(0.0, 0.0, 0.0, 1.0);\n"
+"	vec3 tex_color = texture(u_tex, tex_coord).rgb;\n"
 "	float brightness = dot(tex_color, vec3(0.2126, 0.7152, 0.0722));\n"
 "	if (tex_color.b < 0.2 && brightness > 0.4 ) {\n"
 "		vec3 op = clamp(tex_color, vec3(0), vec3(255));\n"
-"		gl_FragColor = vec4(op * 0.1, 1.0);\n"
+"		frag_color = vec4(op * 0.1, 1.0);\n"
 "	}\n"
 "}\n";
 

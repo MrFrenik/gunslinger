@@ -13,15 +13,15 @@ extern "C" {
 _force_inline
  const char* __gs_default_quad_batch_vertex_src()
  {
- 	return "#version 110\n"
-	"attribute vec3 a_pos;\n"
-	"attribute vec2 a_uv;\n"
-	"attribute vec4 a_color;\n"
+ 	return "#version 330 core\n"
+	"layout(location = 0) in vec3 a_pos;\n"
+	"layout(location = 1) in vec2 a_uv;\n"
+	"layout(location = 2) in vec4 a_color;\n"
 	"uniform mat4 u_model;\n"
 	"uniform mat4 u_view;\n"
 	"uniform mat4 u_proj;\n"
-	"varying vec2 uv;\n"
-	"varying vec4 color;\n"
+	"out vec2 uv;\n"
+	"out vec4 color;\n"
 	"void main()\n"
 	"{\n"
 	"	gl_Position = u_proj * u_view * u_model * vec4(a_pos, 1.0);\n"
@@ -36,13 +36,14 @@ _force_inline
 _force_inline
 const char* __gs_default_quad_batch_frag_src()
 {
-	return "#version 110\n"
+	return "#version 330 core\n"
 	"uniform sampler2D u_tex;\n"
-	"varying vec2 uv;\n"
-	"varying vec4 color;\n"
+	"in vec2 uv;\n"
+	"in vec4 color;\n"
+	"out vec4 frag_color;\n"
 	"void main()\n"
 	"{\n"
-	"	gl_FragColor = color * texture2D(u_tex, uv);\n"
+	"	frag_color = color * texture(u_tex, uv);\n"
 	"}";
 }
 

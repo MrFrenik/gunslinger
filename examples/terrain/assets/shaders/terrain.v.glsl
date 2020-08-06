@@ -1,17 +1,17 @@
-#version 110
+#version 330 core
 
-attribute vec3 a_pos;
-attribute vec3 a_normal;
-attribute vec2 a_texcoord;
+layout( location = 0 ) in vec3 a_pos;
+layout( location = 1 ) in vec3 a_normal;
+layout( location = 2 ) in vec2 a_texcoord;
 
 uniform mat4 u_model;
 uniform mat4 u_view;
 uniform mat4 u_proj;
 
-varying vec2 tex_coord;
-varying vec3 normal;
-varying vec3 frag_pos;
-varying float height;
+out vec2 tex_coord;
+out vec3 normal;
+out vec3 frag_pos;
+out float height;
 
 // source: https://github.com/glslify/glsl-inverse/blob/master/index.glsl
 mat4 inverse(mat4 m) {

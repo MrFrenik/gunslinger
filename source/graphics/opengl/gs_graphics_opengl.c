@@ -1257,6 +1257,10 @@ u32 get_byte_size_of_vertex_attribute( gs_vertex_attribute_type type )
 		case gs_vertex_attribute_uint3:		{ byte_size = sizeof(u32) * 3; } break;
 		case gs_vertex_attribute_uint2:		{ byte_size = sizeof(u32) * 2; } break;
 		case gs_vertex_attribute_uint:		{ byte_size = sizeof(u32) * 1; } break;
+		case gs_vertex_attribute_byte4:		{ byte_size = sizeof(u8) * 4; } break;
+		case gs_vertex_attribute_byte3:		{ byte_size = sizeof(u8) * 3; } break;
+		case gs_vertex_attribute_byte2:		{ byte_size = sizeof(u8) * 2; } break;
+		case gs_vertex_attribute_byte:		{ byte_size = sizeof(u8) * 1; } break;
 	} 
 
 	return byte_size;

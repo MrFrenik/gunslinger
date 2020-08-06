@@ -23,13 +23,13 @@ _global gs_resource( gs_texture ) g_tex = {0};
 _global gs_camera g_camera = {0};
 
 const char* v_src = "\n"
-"#version 110\n"
-"attribute vec2 a_pos;\n"
-"attribute vec2 a_uv;\n"
+"#version 330 core\n"
+"layout(location = 0) in vec2 a_pos;\n"
+"layout(location = 1) in vec2 a_uv;\n"
 "uniform mat4 u_model;\n"
 "uniform mat4 u_view;\n"
 "uniform mat4 u_proj;\n"
-"varying vec2 uv;\n"
+"out vec2 uv;\n"
 "void main()\n"
 "{\n"
 "	gl_Position = u_proj * u_view * u_model * vec4(a_pos, 0.0, 1.0);\n"
@@ -37,12 +37,13 @@ const char* v_src = "\n"
 "}";
 
 const char* f_src = "\n"
-"#version 110\n"
+"#version 330 core\n"
 "uniform sampler2D u_tex;"
-"varying vec2 uv;\n"
+"in vec2 uv;\n"
+"out vec4 frag_color;\n"
 "void main()\n"
 "{\n"
-"	gl_FragColor = texture2D(u_tex, uv);\n"
+"	frag_color = texture(u_tex, uv);\n"
 "}";
 
 // Forward Decls.
@@ -137,8 +138,8 @@ gs_result app_init()
 	gs_assert(platform->file_exists(tfp));	// We'll assert if the file doesn't exist
 
 	// Load texture from file and pass into description format
-	desc.data = gfx->load_texture_data_from_file( tfp, true, desc.texture_format, &desc.width, 
-										&desc.height, &desc.num_comps );
+	desc.data = gfx->load_texture_data_from_file( tfp, true, desc.texture_format, (s32*)&desc.width, 
+										(s32*)&desc.height, (s32*)&desc.num_comps );
 
 	// Assert that our texture data is valid (it should be)
 	gs_assert(desc.data != NULL);
