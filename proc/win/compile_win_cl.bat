@@ -17,7 +17,8 @@ rem Graphics specific plugin
 set src_graphics_ogl=..\source\graphics\opengl\*.c
 
 rem Audio specific plugin
-set src_audio_wasapi=..\source\audio\wasapi\*.c
+rem set src_audio_wasapi=..\source\audio\wasapi\*.c
+set src_audio_plugin=..\source\audio\miniaudio\*.c
 
 rem Platform specific plugin
 set src_platform_glfw=..\source\platform\glfw\*.c
@@ -27,7 +28,7 @@ rem TP Source
 rem All source together
 set src_all=%src_base% %src_graphics% %src_serialize% ^
 %src_platform% %src_platform_glfw% %src_graphics_ogl% ^
-%src_audio% %src_audio_wasapi%
+%src_audio% %src_audio_plugin%
 
 rem Library directories
 set lib_d=/LIBPATH:"..\third_party\lib\release\win\"
