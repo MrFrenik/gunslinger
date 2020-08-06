@@ -33,8 +33,8 @@ src=(
 	# Gfx plugin ( Again, remove from engine build )
 	../source/graphics/opengl/*.c
 
-	# Alsa plugin
-	../source/audio/alsa/*.c
+	# Audio plugin
+	../source/graphics/audio/miniaudio/*.c
 )
 
 # Build library
