@@ -59,8 +59,9 @@ gs_result app_init()
 
 	// Construct instance source and play on loop. Forever.
 	gs_audio_instance_data_t inst = gs_audio_instance_data_new( g_music_src );
-	inst.loop = true;
-	inst.persistent = true;
+	inst.volume = 0.8f;						// Range from [0.f, 1.f]
+	inst.loop = true;						// Tell whether or not audio should loop 
+	inst.persistent = true;					// Whether or not instance should stick in memory after completing 
 	g_music = audio->play( inst );
 
 	return gs_result_success;
@@ -77,44 +78,6 @@ gs_result app_update()
 	if ( platform->key_pressed( gs_keycode_esc ) || !g_app_running )
 	{
 		return gs_result_success;
-	}
-
-	// Pause audio
-	if ( platform->key_pressed( gs_keycode_p ) ) 
-	{
-		audio->pause( g_music );
-	}
-
-	// Resume audio
-	if ( platform->key_pressed( gs_keycode_r ) ) 
-	{
-		audio->resume( g_music );
-	}
-
-	// Restart audio
-	if ( platform->key_pressed( gs_keycode_b ) ) 
-	{
-		audio->restart( g_music );
-	}
-
-	// Stop audio
-	if ( platform->key_pressed( gs_keycode_s ) ) 
-	{
-		audio->stop( g_music );
-	}
-
-	// Volume up
-	if ( platform->key_pressed( gs_keycode_up ) )
-	{
-		f32 vol = audio->get_volume( g_music );
-		audio->set_volume( g_music, gs_min( vol + 0.1f, 1.f ) );
-	}
-
-	// Volume down
-	if ( platform->key_pressed( gs_keycode_down ) )
-	{
-		f32 vol = audio->get_volume( g_music );
-		audio->set_volume( g_music, gs_max( vol - 0.1f, 0.f ) );
 	}
 
 	// Otherwise, continue
