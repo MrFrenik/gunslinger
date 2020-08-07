@@ -32,6 +32,7 @@ typedef struct gs_application_desc
 	u32 window_flags;
 	f32 frame_rate;
 	b32 enable_vsync;
+	b32 is_running;
 } gs_application_desc;
 
 // What would the context necessarily hold? Some container of all subsystems? 

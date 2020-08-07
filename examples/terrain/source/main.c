@@ -328,10 +328,9 @@ gs_result app_init()
 		gs_vertex_attribute_float3,
 		gs_vertex_attribute_float2
 	};
-	u32 layout_count = sizeof(layout) / sizeof(gs_vertex_attribute_type);
 
 	// Create mesh 
-	terrain_model.vbo = gfx->construct_vertex_buffer( layout, layout_count, mesh.data, mesh.sz );
+	terrain_model.vbo = gfx->construct_vertex_buffer( layout, sizeof(layout), mesh.data, mesh.sz );
 	terrain_model.vertex_count = mesh.count;
 
 	// Make our noise texture for gpu

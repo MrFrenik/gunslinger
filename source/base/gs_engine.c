@@ -11,10 +11,12 @@ _global gs_engine* gs_engine_instance_g = { 0 };
 // Function forward declarations
 gs_result gs_engine_run();
 gs_result gs_engine_shutdown();
-gs_result gs_default_app_update();
-gs_result gs_default_app_shutdown();
+gs_result __gs_default_app_update();
+gs_result __gs_default_app_shutdown();
+void __gs_default_main_window_close_callback( void* window );
 
 gs_resource_handle window;
+
 
 gs_engine* gs_engine_construct( gs_application_desc app_desc )
 {
@@ -63,20 +65,24 @@ gs_engine* gs_engine_construct( gs_application_desc app_desc )
 		gs_engine_instance_g->ctx.audio->init( gs_engine_instance_g->ctx.audio );
 
 		// Default application context
-		gs_engine_instance_g->ctx.app.update = app_desc.update == NULL ? &gs_default_app_update : app_desc.update;
-		gs_engine_instance_g->ctx.app.shutdown = app_desc.shutdown == NULL ? &gs_default_app_shutdown : app_desc.shutdown;
+		gs_engine_instance_g->ctx.app = app_desc;
+		gs_engine_instance_g->ctx.app.update = app_desc.update == NULL ? &__gs_default_app_update : app_desc.update;
+		gs_engine_instance_g->ctx.app.shutdown = app_desc.shutdown == NULL ? &__gs_default_app_shutdown : app_desc.shutdown;
 
 		if ( app_desc.init )
 		{
-			app_desc.init();
-
+			if ( app_desc.init() != gs_result_success ) 
+			{
+				gs_assert( false );
+				gs_println( "ERROR: Application failed to initialize." );
+			}
 		}
 
-		// gs_engine_instance_g->ctx.assets = gs_construct_heap( gs_asset_subsystem );
-		// gs_asset_subsystem_init( gs_engine_instance_g->ctx.assets, "./assets/" );
+		gs_engine_instance_g->ctx.app.is_running = true;
 
-		// Construct graphics
-		// gs_engine_instance_g->ctx.graphics = gs_graphics_subsystem_construct();
+		// Set default callback for when main window close button is pressed
+		gs_platform_i* platform = gs_engine_instance_g->ctx.platform;
+		platform->set_window_close_callback( platform->main_window(), &__gs_default_main_window_close_callback );
 	}
 
 	return gs_engine_instance_g;
@@ -110,7 +116,8 @@ gs_result gs_engine_run()
 		}
 
 		// Process application context
-		if ( gs_engine_instance()->ctx.app.update() != gs_result_in_progress )
+		if ( gs_engine_instance()->ctx.app.update() != gs_result_in_progress ||
+			 !gs_engine_instance()->ctx.app.is_running )
 		{
 			// Shutdown engine and return
 			return ( gs_engine_instance()->shutdown() );
@@ -177,14 +184,19 @@ gs_engine* gs_engine_instance()
 	return gs_engine_instance_g;
 }
 
-gs_result gs_default_app_update()
+gs_result __gs_default_app_update()
 {
 	return gs_result_in_progress;
 }
 
-gs_result gs_default_app_shutdown()
+gs_result __gs_default_app_shutdown()
 {
 	return gs_result_success;
+}
+
+void __gs_default_main_window_close_callback( void* window )
+{
+	gs_engine_instance()->ctx.app.is_running = false;
 }
 
 

@@ -175,6 +175,7 @@ typedef struct gs_texture_parameter_desc
 	u32 width;
 	u32 height;
 	u32 num_comps;
+	b32 flip_vertically_on_load;
 } gs_texture_parameter_desc;
 
 typedef struct gs_debug_draw_properties
@@ -198,6 +199,7 @@ gs_declare_resource_type( gs_vertex_attribute_layout_desc );
 gs_declare_resource_type( gs_render_target );
 gs_declare_resource_type( gs_frame_buffer );
 gs_declare_resource_type( gs_material );
+gs_declare_resource_type( gs_quad_batch );
 
 /*================
 // Graphics API
@@ -246,7 +248,7 @@ typedef struct gs_graphics_i
 	/*============================================================
 	// Graphics Resource Construction
 	============================================================*/
-	gs_resource( gs_vertex_buffer )( * construct_vertex_buffer )( gs_vertex_attribute_type*, u32, void*, usize );
+	gs_resource( gs_vertex_buffer )( * construct_vertex_buffer )( gs_vertex_attribute_type*, usize, void*, usize );
 	gs_resource( gs_shader )( * construct_shader )( const char* vert_src, const char* frag_src );
 	gs_resource( gs_uniform )( * construct_uniform )( gs_resource( gs_shader ), const char* uniform_name, gs_uniform_type );
 	gs_resource( gs_command_buffer )( * construct_command_buffer )();
@@ -257,12 +259,13 @@ typedef struct gs_graphics_i
 
 	// Will construct texture resource and let user free data...for now
 	gs_resource( gs_texture )( * construct_texture )( gs_texture_parameter_desc );
-	gs_resource( gs_texture )( * construct_texture_from_file )( const char* file_path, b32 flip_vertically_on_load, gs_texture_parameter_desc t_desc );
+	gs_resource( gs_texture )( * construct_texture_from_file )( const char* file_path, gs_texture_parameter_desc t_desc );
 	gs_resource( gs_index_buffer )( * construct_index_buffer )( void*, usize );
 	s32 ( * texture_id )( gs_resource( gs_texture ) );
 
 	// Non resource for now, since this is mainly an asset...So this technically should belong in an Asset construction api
-	gs_resource( gs_material ) ( * construct_material )( gs_resource( gs_shader ) );
+	gs_resource( gs_material )( * construct_material )( gs_resource( gs_shader ) );
+	gs_resource( gs_quad_batch )( * construct_quad_batch )( gs_resource( gs_material ) );
 
 	/*============================================================
 	// Graphics Resource Free Ops
@@ -280,7 +283,19 @@ typedef struct gs_graphics_i
 	void ( * update_texture_data )( gs_resource( gs_texture ), gs_texture_parameter_desc );
 	gs_uniform_type ( * uniform_type )( gs_resource( gs_uniform ) );
 
-	void ( *set_material_uniform )( gs_resource( gs_material ), gs_uniform_type, const char*, void*, usize );
+	void ( * set_material_uniform )( gs_resource( gs_material ), gs_uniform_type, const char*, void* );		// Generic method for setting uniform data
+	void ( * set_material_uniform_mat4 )( gs_resource( gs_material ), const char*, gs_mat4 );
+	void ( * set_material_uniform_vec4 )( gs_resource( gs_material ), const char*, gs_vec4 );
+	void ( * set_material_uniform_vec3 )( gs_resource( gs_material ), const char*, gs_vec3 );
+	void ( * set_material_uniform_vec2 )( gs_resource( gs_material ), const char*, gs_vec2 );
+	void ( * set_material_uniform_float )( gs_resource( gs_material ), const char*, f32 );
+	void ( * set_material_uniform_int )( gs_resource( gs_material ), const char*, s32 );
+	void ( * set_material_uniform_sampler2d )( gs_resource( gs_material ), const char*, gs_resource( gs_texture ), u32 );
+
+	void ( * quad_batch_begin )( gs_resource( gs_quad_batch ) );
+	void ( * quad_batch_add )( gs_resource( gs_quad_batch ), void* );
+	void ( * quad_batch_end )( gs_resource( gs_quad_batch ) );
+	void ( * quad_batch_submit )( gs_resource( gs_command_buffer ), gs_resource( gs_quad_batch ) );
 
 	/*============================================================
 	// Graphics Debug Rendering Ops

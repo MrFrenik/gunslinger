@@ -81,13 +81,9 @@ gs_result app_init()
 	u_proj = gfx->construct_uniform( g_shader, "u_proj", gs_uniform_type_mat4 );
 
 	// Vertex data layout for our mesh (for this shader, it's a single float3 attribute for position)
-	gs_vertex_attribute_type layout[] = 
-	{
+	gs_vertex_attribute_type layout[] = {
 		gs_vertex_attribute_float3
 	};
-
-	// Count of our vertex attribute array
-	u32 layout_count = sizeof( layout ) / sizeof( gs_vertex_attribute_type ); 
 
 	// Vertex data for cube
 	float v_data[] = {
@@ -135,7 +131,7 @@ gs_result app_init()
         -0.5f,  0.5f, -0.5f
     };
 	// Construct vertex buffer
-	g_vbo = gfx->construct_vertex_buffer( layout, layout_count, v_data, sizeof(v_data) );
+	g_vbo = gfx->construct_vertex_buffer( layout, sizeof(layout), v_data, sizeof(v_data) );
 
 	return gs_result_success;
 }

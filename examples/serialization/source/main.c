@@ -436,9 +436,6 @@ pixel_frame_t pixel_frame_new()
 		gs_vertex_attribute_float2		// UV
 	};
 
-	// Count of our vertex attribute array
-	u32 layout_count = sizeof( layout ) / sizeof( gs_vertex_attribute_type ); 
-
 	// Vertex data for editor screen quad
 	f32 v_data[] = 
 	{
@@ -456,7 +453,7 @@ pixel_frame_t pixel_frame_new()
 	};
 
 	// Construct vertex and index buffers
-	pf.vbo = gfx->construct_vertex_buffer( layout, layout_count, v_data, sizeof(v_data) );
+	pf.vbo = gfx->construct_vertex_buffer( layout, sizeof(layout), v_data, sizeof(v_data) );
 	pf.ibo = gfx->construct_index_buffer( i_data, sizeof(i_data) );
 	pf.mouse_down = false;
 	pf.undo_buffer = byte_buffer_new();

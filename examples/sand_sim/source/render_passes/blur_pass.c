@@ -75,8 +75,6 @@ _global gs_vertex_attribute_type layout[] = {
 	gs_vertex_attribute_float2,
 	gs_vertex_attribute_float2
 };
-// Count of our vertex attribute array
-_global u32 layout_count = sizeof( layout ) / sizeof( gs_vertex_attribute_type ); 
 
 // Vertex data for triangle
 _global f32 v_data[] = {
@@ -130,7 +128,7 @@ blur_pass_t blur_pass_ctor()
 	bp.data.blur_render_target_a = gfx->construct_texture( t_desc );
 	bp.data.blur_render_target_b = gfx->construct_texture( t_desc );
 
-	bp.data.vb = gfx->construct_vertex_buffer( layout, layout_count, v_data, sizeof(v_data) );
+	bp.data.vb = gfx->construct_vertex_buffer( layout, sizeof(layout), v_data, sizeof(v_data) );
 	bp.data.ib = gfx->construct_index_buffer( i_data, sizeof(i_data) );
 
 	return bp;

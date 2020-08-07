@@ -101,7 +101,7 @@ typedef struct gs_quad_batch_i
 	gs_quad_batch_t ( * new )( gs_resource( gs_material ) );
 	void ( * begin )( gs_quad_batch_t* );
 	void ( * end )( gs_quad_batch_t* );
-	void ( * add )( gs_quad_batch_t*, void* quad_data, usize data_size );
+	void ( * add )( gs_quad_batch_t*, void* quad_data );
 	void ( * submit )( gs_resource( gs_command_buffer ), gs_quad_batch_t* );
 	void ( * free )( gs_quad_batch_t* );
 	void ( * set_layout )( struct gs_quad_batch_i* api, void* layout, usize layout_size );
@@ -124,7 +124,7 @@ gs_quad_batch_t __gs_quad_batch_default_new( gs_resource( gs_material ) mat )
 	u32 layout_count = gs_dyn_array_size( gfx->quad_batch_i->vert_info.layout );
 
 	// The data for will be empty for now
-	qb.mesh.vbo = gfx->construct_vertex_buffer( layout, layout_count, NULL, 0 );
+	qb.mesh.vbo = gfx->construct_vertex_buffer( layout, layout_count * sizeof(gs_vertex_attribute_type), NULL, 0 );
 
 	return qb;
 }
@@ -164,7 +164,7 @@ void __gs_quad_batch_add_raw_vert_data( gs_quad_batch_t* qb, void* data, usize d
 }
 
 _force_inline
-void __gs_quad_batch_default_add( gs_quad_batch_t* qb, void* quad_info_data, usize quad_info_data_size )
+void __gs_quad_batch_default_add( gs_quad_batch_t* qb, void* quad_info_data )
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 

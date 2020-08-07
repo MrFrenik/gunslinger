@@ -204,14 +204,27 @@ _force_inline
 }
 
 _force_inline
-void __gs_material_i_set_uniform( gs_material_t* mat, gs_uniform_type type, const char* name, void* data, usize data_size )
+void __gs_material_i_set_uniform( gs_material_t* mat, gs_uniform_type type, const char* name, void* data )
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	gs_uniform_block_i* uapi = gfx->uniform_i;
 
 	// Construct or get existing uniform
 	gs_resource( gs_uniform ) uniform = gfx->construct_uniform( mat->shader, name, type );
-	uapi->set_uniform( &mat->uniforms, uniform, name, data, data_size );
+
+	usize sz = 0;
+	switch ( type )
+	{
+		case gs_uniform_type_mat4: sz = sizeof(gs_uniform_block_type( mat4 )); break;
+		case gs_uniform_type_vec4: sz = sizeof(gs_uniform_block_type( vec4 )); break;
+		case gs_uniform_type_vec3: sz = sizeof(gs_uniform_block_type( vec3 )); break;
+		case gs_uniform_type_vec2: sz = sizeof(gs_uniform_block_type( vec2 )); break;
+		case gs_uniform_type_float: sz = sizeof(gs_uniform_block_type( float )); break;
+		case gs_uniform_type_int: sz = sizeof(gs_uniform_block_type( int )); break;
+		case gs_uniform_type_sampler2d: sz = sizeof(gs_uniform_block_type( texture_sampler )); break;
+	};
+
+	uapi->set_uniform( &mat->uniforms, uniform, name, data, sz );
 }
 
 _force_inline
@@ -223,7 +236,7 @@ void __gs_material_i_bind_uniforms( gs_resource( gs_command_buffer ) cb, gs_mate
 typedef struct gs_material_i
 {
 	gs_material_t ( *new )( gs_resource( gs_shader ) );
-	void ( *set_uniform )( gs_material_t*, gs_uniform_type, const char* name, void* data, usize data_size );
+	void ( *set_uniform )( gs_material_t*, gs_uniform_type, const char* name, void* data );
 	void ( *bind_uniforms )( gs_resource( gs_command_buffer ), gs_material_t* );
 } gs_material_i;
 

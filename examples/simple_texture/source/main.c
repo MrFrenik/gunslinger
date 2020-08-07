@@ -100,13 +100,9 @@ gs_result app_init()
 
 	// Vertex data layout for our mesh
 	gs_vertex_attribute_type layout[] = {
-
 		gs_vertex_attribute_float2,		// Position
 		gs_vertex_attribute_float2		// UV
 	};
-
-	// Count of our vertex attribute array
-	u32 layout_count = sizeof( layout ) / sizeof( gs_vertex_attribute_type ); 
 
 	// Vertex data for quad
 	f32 v_data[] = 
@@ -125,7 +121,7 @@ gs_result app_init()
 	};
 
 	// Construct vertex and index buffers
-	g_vbo = gfx->construct_vertex_buffer( layout, layout_count, v_data, sizeof(v_data) );
+	g_vbo = gfx->construct_vertex_buffer( layout, sizeof(layout), v_data, sizeof(v_data) );
 	g_ibo = gfx->construct_index_buffer( i_data, sizeof(i_data) );
 
 	// This is a descriptor for our texture. It includes various metrics, such as the width, height, texture format, 
@@ -137,19 +133,7 @@ gs_result app_init()
 	const char* tfp = platform->file_exists("./assets/gs.png") ? "./assets/gs.png" : "./../assets/gs.png";
 	gs_assert(platform->file_exists(tfp));	// We'll assert if the file doesn't exist
 
-	// Load texture from file and pass into description format
-	desc.data = gfx->load_texture_data_from_file( tfp, true, desc.texture_format, (s32*)&desc.width, 
-										(s32*)&desc.height, (s32*)&desc.num_comps );
-
-	// Assert that our texture data is valid (it should be)
-	gs_assert(desc.data != NULL);
-
-	// Now we can pass this descriptor to our graphics api to construct our GPU texture
-	g_tex = gfx->construct_texture( desc );
-
-	// We can now safely release the memory for our descriptor
-	gs_free( desc.data );
-	desc.data = NULL;
+	g_tex = gfx->construct_texture_from_file( tfp, gs_texture_parameter_desc_default() );
 
 	// Construct camera parameters
 	g_camera.transform = gs_vqs_default();

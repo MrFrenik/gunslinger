@@ -1,11 +1,7 @@
 #include <gs.h>
 
 // Forward Decls.
-gs_result app_init();		// Use to init your application
 gs_result app_update();		// Use to update your application
-gs_result app_shutdown();	// Use to shutdown your appliaction
-
-_global b32 g_app_running = true;
 
 int main( int argc, char** argv )
 {
@@ -15,9 +11,7 @@ int main( int argc, char** argv )
 	app.window_title 		= "Hello, Gunslinger";
 	app.window_width 		= 800;
 	app.window_height 		= 600;
-	app.init 				= &app_init;
 	app.update 				= &app_update;
-	app.shutdown 			= &app_shutdown;
 
 	// Construct internal instance of our engine
 	gs_engine* engine = gs_engine_construct( app );
@@ -37,40 +31,18 @@ int main( int argc, char** argv )
 	return 0;	
 }
 
-void app_close_window_callback( void* window )
-{
-	g_app_running = false;
-}
-
-gs_result app_init()
-{
-	// Cache platform api
-	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
-
-	// Set callback for when window close button is pressed
-	platform->set_window_close_callback( platform->main_window(), &app_close_window_callback );
-
-	gs_println( "Hello, Gunslinger." );
-	return gs_result_success;
-}
-
+// Update your application here
 gs_result app_update()
 {
 	// Grab global instance of engine
 	gs_engine* engine = gs_engine_instance();
 
 	// If we press the escape key, exit the application
-	if ( engine->ctx.platform->key_pressed( gs_keycode_esc ) || !g_app_running )
+	if ( engine->ctx.platform->key_pressed( gs_keycode_esc ) )
 	{
 		return gs_result_success;
 	}
 
 	// Otherwise, continue
 	return gs_result_in_progress;
-}
-
-gs_result app_shutdown()
-{
-	gs_println( "Goodbye, Gunslinger." );
-	return gs_result_success;
 }

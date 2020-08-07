@@ -26,7 +26,6 @@ const char* f_src = "\n"
 // Forward Decls.
 gs_result app_init();		// Use to init your application
 gs_result app_update();		// Use to update your application
-gs_result app_shutdown();	// Use to shutdown your appliaction
 
 int main( int argc, char** argv )
 {
@@ -36,7 +35,6 @@ int main( int argc, char** argv )
 	app.window_height 		= 600;
 	app.init 				= &app_init;
 	app.update 				= &app_update;
-	app.shutdown 			= &app_shutdown;
 
 	// Construct internal instance of our engine
 	gs_engine* engine = gs_engine_construct( app );
@@ -72,24 +70,19 @@ gs_result app_init()
 	u_color = gfx->construct_uniform( g_shader, "u_color", gs_uniform_type_vec4 );
 
 	// Vertex data layout for our mesh (for this shader, it's a single float3 attribute for position)
-	gs_vertex_attribute_type layout[] = 
-	{
+	gs_vertex_attribute_type layout[] = {
 		gs_vertex_attribute_float3
 	};
 
-	// Count of our vertex attribute array
-	u32 layout_count = sizeof( layout ) / sizeof( gs_vertex_attribute_type ); 
-
 	// Vertex data for triangle
-	f32 v_data[] = 
-	{
+	f32 v_data[] = {
 		0.0f, 0.5f, 0.0f,
 		-0.5f, -0.5f, 0.0f, 
 		0.5f, -0.5f, 0.0f
 	};
 
 	// Construct vertex buffer
-	g_vbo = gfx->construct_vertex_buffer( layout, layout_count, v_data, sizeof(v_data) );
+	g_vbo = gfx->construct_vertex_buffer( layout, sizeof(layout), v_data, sizeof(v_data) );
 
 	return gs_result_success;
 }
@@ -145,10 +138,4 @@ gs_result app_update()
 	gfx->submit_command_buffer( g_cb );
 
 	return gs_result_in_progress;
-}
-
-gs_result app_shutdown()
-{
-	gs_println( "Goodbye, Gunslinger." );
-	return gs_result_success;
 }

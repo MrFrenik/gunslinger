@@ -91,11 +91,11 @@ typedef struct quad_batch_custom_info_t
 	gs_vec4 color_two;
 } quad_batch_custom_info_t;
 
-void quad_batch_custom_add( gs_quad_batch_t* qb, void* quad_info_data, usize quad_info_data_size )
+void quad_batch_custom_add( gs_quad_batch_t* qb, void* quad_batch_custom_info_data )
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 
-	quad_batch_custom_info_t* quad_info = (quad_batch_custom_info_t*)(quad_info_data);
+	quad_batch_custom_info_t* quad_info = (quad_batch_custom_info_t*)(quad_batch_custom_info_data);
 	if ( !quad_info ) {
 		gs_assert( false );
 	}
@@ -105,8 +105,6 @@ void quad_batch_custom_add( gs_quad_batch_t* qb, void* quad_info_data, usize qua
 	gs_vec4 color = quad_info->color;
 	gs_vec4 color_two = quad_info->color_two;
 
-	// Add as many vertices as you want into the batch...should I perhaps just call this a triangle batch instead?
-	// For now, no rotation (just position and scale)	
 	gs_mat4 model = gs_vqs_to_mat4( &transform );
 
 	gs_vec3 _tl = (gs_vec3){-0.5f, -0.5f, 0.f};
@@ -163,29 +161,18 @@ void quad_batch_custom_add( gs_quad_batch_t* qb, void* quad_info_data, usize qua
 =============================*/
 
 // Globals
-_global gs_resource( gs_vertex_buffer ) g_vbo = {0};
-_global gs_resource( gs_index_buffer ) g_ibo = {0};
 _global gs_resource( gs_command_buffer ) g_cb = {0};
-_global gs_resource( gs_uniform ) u_model = {0};
-_global gs_resource( gs_uniform ) u_view = {0};
-_global gs_resource( gs_uniform ) u_proj = {0};
-_global gs_resource( gs_uniform ) u_tex = {0};
 _global gs_resource( gs_texture ) g_tex = {0};
 _global gs_resource( gs_shader ) g_batch_shader = {0};
 _global gs_resource( gs_material ) g_batch_mat = {0};
-_global gs_quad_batch_t g_batch = {0};
+_global gs_resource( gs_quad_batch ) g_batch = {0};
 _global gs_camera g_camera = {0};
-_global b32 g_app_running = true;
 
 // Forward Decls.
 gs_result app_init();		// Use to init your application
 gs_result app_update();		// Use to update your application
 gs_result app_shutdown();	// Use to shutdown your appliaction
-
-void app_close_window_callback( void* window )
-{
-	g_app_running = false;
-}
+void update_camera();
 
 int main( int argc, char** argv )
 {
@@ -223,34 +210,12 @@ gs_result app_init()
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 	gs_quad_batch_i* qb = gfx->quad_batch_i;
 
-	// Set callback for when window close button is pressed
-	platform->set_window_close_callback( platform->main_window(), &app_close_window_callback );
-
 	// Construct command buffer ( the command buffer is used to allow for immediate drawing at any point in our program )
 	g_cb = gfx->construct_command_buffer();
 
-	// This is a descriptor for our texture. It includes various metrics, such as the width, height, texture format, 
-	// and holds the actual uncompressed texture data for the texture. After using it for loading a raw texture 
-	// from file, it's the responsibility of the user to free the data.
-	gs_texture_parameter_desc desc = gs_texture_parameter_desc_default();
-
-	// Get appropriate file path for our texture (depending on where the app is running from)
-	const char* tfp = platform->file_exists("./assets/gs.png") ? "./assets/gs.png" : "./../assets/gs.png";
-	gs_assert(platform->file_exists(tfp));	// We'll assert if the file doesn't exist
-
-	// Load texture from file and pass into description format
-	desc.data = gfx->load_texture_data_from_file( tfp, true, desc.texture_format, (s32*)&desc.width, 
-										(s32*)&desc.height, (s32*)&desc.num_comps );
-
-	// Assert that our texture data is valid (it should be)
-	gs_assert(desc.data != NULL);
-
-	// Now we can pass this descriptor to our graphics api to construct our GPU texture
-	g_tex = gfx->construct_texture( desc );
-
-	// We can now safely release the memory for our descriptor
-	gs_free( desc.data );
-	desc.data = NULL;
+	// Load texture from file
+	g_tex = gfx->construct_texture_from_file( platform->file_exists( "./assets/gs.png" ) ? "./assets/gs.png" : "./../assets/gs.png", 
+											gs_texture_parameter_desc_default() );
 
 	// Construct camera parameters
 	g_camera.transform = gs_vqs_default();
@@ -262,8 +227,7 @@ gs_result app_init()
 	g_camera.proj_type = gs_projection_type_orthographic;
 
 	// Initialize quad batch API with custom implementation data
-	gs_vertex_attribute_type qb_layout[] = 
-	{
+	gs_vertex_attribute_type qb_layout[] = {
 		gs_vertex_attribute_float3,	// Position
 		gs_vertex_attribute_float2,	// UV
 		gs_vertex_attribute_float4,	// Color
@@ -278,13 +242,11 @@ gs_result app_init()
 	// Setup quad batch
 	g_batch_mat = gfx->construct_material( gfx->quad_batch_i->shader );
 
-	gs_uniform_block_type( texture_sampler ) sampler;
-	sampler.data = g_tex;
-	sampler.slot = 0;
-	gfx->set_material_uniform( g_batch_mat, gs_uniform_type_sampler2d, "u_tex", &sampler, sizeof(sampler) );
+	// Set texture uniform for material
+	gfx->set_material_uniform_sampler2d( g_batch_mat, "u_tex", g_tex, 0 );
 
 	// Construct quad batch api and link up function pointers
-	g_batch = qb->new( g_batch_mat );
+	g_batch = gfx->construct_quad_batch( g_batch_mat );
 
 	return gs_result_success;
 }
@@ -297,10 +259,9 @@ gs_result app_update()
 	// Platform api 
 	gs_platform_i* platform = engine->ctx.platform;
 	gs_graphics_i* gfx = engine->ctx.graphics;
-	gs_quad_batch_i* qb = gfx->quad_batch_i;
 
 	// If we press the escape key, exit the application
-	if ( platform->key_pressed( gs_keycode_esc ) || !g_app_running )
+	if ( platform->key_pressed( gs_keycode_esc ) )
 	{
 		return gs_result_success;
 	}
@@ -308,36 +269,15 @@ gs_result app_update()
 	const f32 dt = platform->time.delta;
 	const f32 t = platform->elapsed_time();
 
-	/*=================
-	// Camera controls
-	==================*/
-
-	if ( platform->key_down( gs_keycode_q ) ) {
-		g_camera.ortho_scale += 0.1f;
-	}
-	if ( platform->key_down( gs_keycode_e ) ) {
-		g_camera.ortho_scale -= 0.1f;
-	}
-
-	if (platform->key_down(gs_keycode_a)) {
-		g_camera.transform.position.x -= 0.1f;
-	}
-	if (platform->key_down(gs_keycode_d)) {
-		g_camera.transform.position.x += 0.1f;
-	}
-	if (platform->key_down(gs_keycode_w)) {
-		g_camera.transform.position.y += 0.1f;
-	}
-	if (platform->key_down(gs_keycode_s)) {
-		g_camera.transform.position.y -= 0.1f;
-	}
+	update_camera();
 
 	// Add 10k items to batch
-	qb->begin( &g_batch );
+	gfx->quad_batch_begin( g_batch );
 	{
-		gs_for_range_i( 100 )
+		gs_for_range_i( 100 ) {
 			gs_for_range_j( 100 )
 			{
+				// Instance of our custom quad batch info struct
 				quad_batch_custom_info_t quad_info = {0};
 
 				quad_info.transform = gs_vqs_default();
@@ -346,10 +286,11 @@ gs_result app_update()
 				quad_info.color = i % 2 == 0 ? (gs_vec4){1.f, 1.f, 1.f, 1.f} : (gs_vec4){1.f, 0.f, 0.f, 1.f};
 				quad_info.color_two = (gs_vec4){0.f, 1.f, 0.f, 1.f};
 
-				qb->add( &g_batch, &quad_info, sizeof(quad_info) );
+				gfx->quad_batch_add( g_batch, &quad_info );
 			}
+		}
 	}
-	qb->end( &g_batch );
+	gfx->quad_batch_end( g_batch );
 
 	/*===============
 	// Render scene
@@ -372,29 +313,43 @@ gs_result app_update()
 	gs_mat4 model_mtx = gs_mat4_scale((gs_vec3){1.f, 1.f, 1.f});
 
 	// Set necessary dynamic uniforms for quad batch material (defined in default shader in gs_quad_batch.h)
-	gs_uniform_block_type( mat4 ) u_model;
-	u_model.data = model_mtx;
-	gfx->set_material_uniform( g_batch.material, gs_uniform_type_mat4, "u_model", &u_model, sizeof(u_model) );
-
-	gs_uniform_block_type( mat4 ) u_view;
-	u_view.data = view_mtx;
-	gfx->set_material_uniform( g_batch.material, gs_uniform_type_mat4, "u_view", &u_view, sizeof(u_view) );
-
-	gs_uniform_block_type( mat4 ) u_proj;
-	u_proj.data = proj_mtx;
-	gfx->set_material_uniform( g_batch.material, gs_uniform_type_mat4, "u_proj", &u_proj, sizeof(u_proj) );
-
-	gs_uniform_block_type( float ) u_alpha;
-	u_alpha.data = sin(t * 0.001f) * 0.5f + 0.5f;
-	gfx->set_material_uniform( g_batch.material, gs_uniform_type_float, "u_alpha", &u_alpha, sizeof(u_alpha) );
+	gfx->set_material_uniform_mat4( g_batch_mat, "u_model", model_mtx );
+	gfx->set_material_uniform_mat4( g_batch_mat, "u_view", view_mtx );
+	gfx->set_material_uniform_mat4( g_batch_mat, "u_proj", proj_mtx );
+	gfx->set_material_uniform_float( g_batch_mat, "u_alpha", sin(t * 0.001f) * 0.5f + 0.5f );
 
 	// Need to submit quad batch
-	qb->submit( g_cb, &g_batch );
+	gfx->quad_batch_submit( g_cb, g_batch );
 
 	// Submit command buffer for rendering
 	gfx->submit_command_buffer( g_cb );
 
 	return gs_result_in_progress;
+}
+
+void update_camera()
+{
+	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+
+	if ( platform->key_down( gs_keycode_q ) ) {
+		g_camera.ortho_scale += 0.1f;
+	}
+	if ( platform->key_down( gs_keycode_e ) ) {
+		g_camera.ortho_scale -= 0.1f;
+	}
+
+	if (platform->key_down(gs_keycode_a)) {
+		g_camera.transform.position.x -= 0.1f;
+	}
+	if (platform->key_down(gs_keycode_d)) {
+		g_camera.transform.position.x += 0.1f;
+	}
+	if (platform->key_down(gs_keycode_w)) {
+		g_camera.transform.position.y += 0.1f;
+	}
+	if (platform->key_down(gs_keycode_s)) {
+		g_camera.transform.position.y -= 0.1f;
+	}
 }
 
 gs_result app_shutdown()

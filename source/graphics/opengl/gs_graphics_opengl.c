@@ -152,6 +152,7 @@ gs_slot_array_decl( vertex_attribute_layout_desc_t );
 gs_slot_array_decl( render_target_t );
 gs_slot_array_decl( frame_buffer_t );
 gs_slot_array_decl( gs_material_t );
+gs_slot_array_decl( gs_quad_batch_t );
 
 // Define render resource data structure
 typedef struct opengl_render_data_t
@@ -162,10 +163,10 @@ typedef struct opengl_render_data_t
 	gs_slot_array( uniform_t ) 						uniforms;
 	gs_slot_array( index_buffer_t )   				index_buffers;
 	gs_slot_array( vertex_buffer_t )  				vertex_buffers;
-	gs_slot_array( vertex_attribute_layout_desc_t ) vertex_layout_descs;
 	gs_slot_array( render_target_t ) 				render_targets;
 	gs_slot_array( frame_buffer_t ) 				frame_buffers;
 	gs_slot_array( gs_material_t ) 					materials;
+	gs_slot_array( gs_quad_batch_t ) 				quad_batches;
 	debug_drawing_internal_data 					debug_data;
 } opengl_render_data_t;
 
@@ -231,10 +232,10 @@ gs_result opengl_init( struct gs_graphics_i* gfx )
 	data->uniforms 				= gs_slot_array_new( uniform_t );
 	data->index_buffers 		= gs_slot_array_new( index_buffer_t );
 	data->vertex_buffers 		= gs_slot_array_new( vertex_buffer_t );
-	data->vertex_layout_descs 	= gs_slot_array_new( vertex_attribute_layout_desc_t );
 	data->render_targets 		= gs_slot_array_new( render_target_t );
 	data->frame_buffers 		= gs_slot_array_new( frame_buffer_t );
 	data->materials 			= gs_slot_array_new( gs_material_t );
+	data->quad_batches 			= gs_slot_array_new( gs_quad_batch_t );
 	data->debug_data 			= construct_debug_drawing_internal_data();
 
 	// Init all default opengl state here before frame begins
@@ -293,10 +294,9 @@ debug_drawing_internal_data construct_debug_drawing_internal_data()
 		gs_vertex_attribute_float3,	// Position
 		gs_vertex_attribute_float3  // Color
 	};
-	u32 layout_count = sizeof(vertex_layout) / sizeof(gs_vertex_attribute_type);
 
 	// Construct vertex buffer objects
-	data.line_vbo = gfx->construct_vertex_buffer( vertex_layout, layout_count, NULL, 0 );
+	data.line_vbo = gfx->construct_vertex_buffer( vertex_layout, sizeof(vertex_layout), NULL, 0 );
 
 	// Construct default matrix data to be used
 	data.view_mat = gs_mat4_identity();
@@ -1303,7 +1303,7 @@ s32 get_byte_offest( gs_vertex_attribute_type* layout_data, u32 index )
 }
 
 
-gs_resource( gs_vertex_buffer ) opengl_construct_vertex_buffer( gs_vertex_attribute_type* layout_data, u32 layout_size, 
+gs_resource( gs_vertex_buffer ) opengl_construct_vertex_buffer( gs_vertex_attribute_type* layout_data, usize layout_sz, 
 	void* v_data, usize v_data_size )
 {
 	opengl_render_data_t* data = __get_opengl_data_internal();
@@ -1321,10 +1321,11 @@ gs_resource( gs_vertex_buffer ) opengl_construct_vertex_buffer( gs_vertex_attrib
 	glBindBuffer( GL_ARRAY_BUFFER, (u32)vb->vbo );
 	glBufferData( GL_ARRAY_BUFFER, v_data_size, v_data, GL_STATIC_DRAW );
 
-	u32 total_size = calculate_vertex_size_in_bytes( layout_data, layout_size );
+	u32 layout_count = layout_sz / sizeof(gs_vertex_attribute_type);
+	u32 total_size = calculate_vertex_size_in_bytes( layout_data, layout_count );
 
 	// Bind vertex attrib pointers for vao using layout descriptor
-	gs_for_range_i( layout_size )
+	gs_for_range_i( layout_count )
 	{
 		gs_vertex_attribute_type type = layout_data[ i ];
 		u32 byte_offset = get_byte_offest( layout_data, i );
@@ -1517,6 +1518,52 @@ void opengl_link_shaders( u32 program_id, u32 vert_id, u32 frag_id )
 	}
 }
 
+gs_resource( gs_quad_batch ) opengl_construct_quad_batch( gs_resource( gs_material ) mat_h )
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	opengl_render_data_t* data = __get_opengl_data_internal();
+
+	// Construct new quad batch resource (this should be an asset instead...)
+	gs_quad_batch_t qb = gfx->quad_batch_i->new( mat_h );
+
+	u32 id = gs_slot_array_insert( data->quad_batches, qb );
+	gs_resource( gs_quad_batch ) handle = {0};
+	handle.id = id;
+	return handle;
+}
+
+void opengl_quad_batch_begin( gs_resource( gs_quad_batch ) qb_h )
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	opengl_render_data_t* data = __get_opengl_data_internal();
+	gs_quad_batch_t* qb = gs_slot_array_get_ptr( data->quad_batches, qb_h.id );
+	gfx->quad_batch_i->begin( qb );
+}
+
+void opengl_quad_batch_add( gs_resource( gs_quad_batch ) qb_h, void* qb_data ) 
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	opengl_render_data_t* data = __get_opengl_data_internal();
+	gs_quad_batch_t* qb = gs_slot_array_get_ptr( data->quad_batches, qb_h.id );
+	gfx->quad_batch_i->add( qb, qb_data );
+}
+
+void opengl_quad_batch_end( gs_resource( gs_quad_batch ) qb_h ) 
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	opengl_render_data_t* data = __get_opengl_data_internal();
+	gs_quad_batch_t* qb = gs_slot_array_get_ptr( data->quad_batches, qb_h.id );
+	gfx->quad_batch_i->end( qb );
+}
+
+void opengl_quad_batch_submit( gs_resource( gs_command_buffer ) cb_h, gs_resource( gs_quad_batch ) qb_h ) 
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	opengl_render_data_t* data = __get_opengl_data_internal();
+	gs_quad_batch_t* qb = gs_slot_array_get_ptr( data->quad_batches, qb_h.id );
+	gfx->quad_batch_i->submit( cb_h, qb );
+}
+
 gs_resource( gs_material ) opengl_construct_material( gs_resource( gs_shader ) shader )
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
@@ -1531,13 +1578,76 @@ gs_resource( gs_material ) opengl_construct_material( gs_resource( gs_shader ) s
 	return handle;
 }
 
-void opengl_set_material_uniform( gs_resource( gs_material ) mat_handle, gs_uniform_type type, const char* name, void* data, usize sz )
+void opengl_set_material_uniform( gs_resource( gs_material ) mat_handle, gs_uniform_type type, const char* name, void* data )
 {
 	// This is ugly...but yeah
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	opengl_render_data_t* __data = __get_opengl_data_internal();
 	gs_material_t* mat = gs_slot_array_get_ptr( __data->materials, mat_handle.id );
-	gs_engine_instance()->ctx.graphics->material_i->set_uniform( mat, type, name, data, sz );
+	gs_engine_instance()->ctx.graphics->material_i->set_uniform( mat, type, name, data );
+}
+
+void opengl_set_material_uniform_mat4( gs_resource( gs_material ) mat_handle, const char* name, gs_mat4 val )
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	opengl_render_data_t* __data = __get_opengl_data_internal();
+	gs_material_t* mat = gs_slot_array_get_ptr( __data->materials, mat_handle.id );
+	gs_uniform_block_type( mat4 ) u_block = (gs_uniform_block_type(mat4)){ val };
+	gs_engine_instance()->ctx.graphics->material_i->set_uniform( mat, gs_uniform_type_mat4, name, &u_block );
+}
+
+void opengl_set_material_uniform_vec4( gs_resource( gs_material ) mat_handle, const char* name, gs_vec4 val )
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	opengl_render_data_t* __data = __get_opengl_data_internal();
+	gs_material_t* mat = gs_slot_array_get_ptr( __data->materials, mat_handle.id );
+	gs_uniform_block_type( vec4 ) u_block = (gs_uniform_block_type(vec4)){ val };
+	gs_engine_instance()->ctx.graphics->material_i->set_uniform( mat, gs_uniform_type_vec4, name, &u_block );
+}
+
+void opengl_set_material_uniform_vec3( gs_resource( gs_material ) mat_handle, const char* name, gs_vec3 val )
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	opengl_render_data_t* __data = __get_opengl_data_internal();
+	gs_material_t* mat = gs_slot_array_get_ptr( __data->materials, mat_handle.id );
+	gs_uniform_block_type( vec3 ) u_block = (gs_uniform_block_type(vec3)){ val };
+	gs_engine_instance()->ctx.graphics->material_i->set_uniform( mat, gs_uniform_type_vec3, name, &u_block );
+}
+
+void opengl_set_material_uniform_vec2( gs_resource( gs_material ) mat_handle, const char* name, gs_vec2 val )
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	opengl_render_data_t* __data = __get_opengl_data_internal();
+	gs_material_t* mat = gs_slot_array_get_ptr( __data->materials, mat_handle.id );
+	gs_uniform_block_type( vec2 ) u_block = (gs_uniform_block_type(vec2)){ val };
+	gs_engine_instance()->ctx.graphics->material_i->set_uniform( mat, gs_uniform_type_vec2, name, &u_block );
+}
+
+void opengl_set_material_uniform_float( gs_resource( gs_material ) mat_handle, const char* name, f32 val )
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	opengl_render_data_t* __data = __get_opengl_data_internal();
+	gs_material_t* mat = gs_slot_array_get_ptr( __data->materials, mat_handle.id );
+	gs_uniform_block_type( float ) u_block = (gs_uniform_block_type(float)){ val };
+	gs_engine_instance()->ctx.graphics->material_i->set_uniform( mat, gs_uniform_type_float, name, &u_block );
+}
+
+void opengl_set_material_uniform_int( gs_resource( gs_material ) mat_handle, const char* name, s32 val )
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	opengl_render_data_t* __data = __get_opengl_data_internal();
+	gs_material_t* mat = gs_slot_array_get_ptr( __data->materials, mat_handle.id );
+	gs_uniform_block_type( int ) u_block = (gs_uniform_block_type(int)){ val };
+	gs_engine_instance()->ctx.graphics->material_i->set_uniform( mat, gs_uniform_type_int, name, &u_block );
+}
+
+void opengl_set_material_uniform_sampler2d( gs_resource( gs_material ) mat_handle, const char* name, gs_resource( gs_texture ) val, u32 slot )
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	opengl_render_data_t* __data = __get_opengl_data_internal();
+	gs_material_t* mat = gs_slot_array_get_ptr( __data->materials, mat_handle.id );
+	gs_uniform_block_type( texture_sampler ) u_block = (gs_uniform_block_type(texture_sampler)){ val, slot };
+	gs_engine_instance()->ctx.graphics->material_i->set_uniform( mat, gs_uniform_type_sampler2d, name, &u_block );
 }
 
 void opengl_bind_material_shader( gs_resource( gs_command_buffer ) cb, gs_resource( gs_material ) mat_handle )
@@ -1827,16 +1937,20 @@ void* opengl_load_texture_data_from_file( const char* file_path, b32 flip_vertic
 	return texture_data;
 }
 
-gs_resource( gs_texture ) opengl_construct_texture_from_file( const char* file_path, b32 flip_vertically_on_load, gs_texture_parameter_desc t_desc )
+gs_resource( gs_texture ) opengl_construct_texture_from_file( const char* file_path, gs_texture_parameter_desc t_desc )
 {
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
 	// Load texture data and fill out parameters for descriptor
-	t_desc.data = opengl_load_texture_data_from_file( file_path, t_desc.texture_format, 
-		flip_vertically_on_load, (s32*)&t_desc.width, (s32*)&t_desc.height, (s32*)&t_desc.num_comps );
+	t_desc.data = gfx->load_texture_data_from_file( file_path, true, t_desc.texture_format, 
+		(s32*)&t_desc.width, (s32*)&t_desc.height, (s32*)&t_desc.num_comps );
 
 	// Finish constructing texture resource from descriptor and return handle
-	return ( opengl_construct_texture( t_desc ) );
+	gs_resource( gs_texture ) tex = opengl_construct_texture( t_desc );
+	gs_free( t_desc.data );
+
+	return tex;
 }
 
 void opengl_update_texture_data( gs_resource( gs_texture ) t_handle, gs_texture_parameter_desc t_desc )
@@ -1991,6 +2105,7 @@ struct gs_graphics_i* __gs_graphics_construct()
 	gfx->load_texture_data_from_file 			= &opengl_load_texture_data_from_file;
 	// gs_resource( gs_uniform_buffer )( * construct_uniform_buffer )( gs_resource( gs_shader ), const char* uniform_name );
 	gfx->construct_material 					= &opengl_construct_material;
+	gfx->construct_quad_batch 					= &opengl_construct_quad_batch;
 
 	/*============================================================
 	// Graphics Ops
@@ -2011,8 +2126,18 @@ struct gs_graphics_i* __gs_graphics_construct()
 	/*============================================================
 	// Graphics Update Ops
 	============================================================*/
-	gfx->set_material_uniform = &opengl_set_material_uniform;
-
+	gfx->set_material_uniform 			= &opengl_set_material_uniform;
+	gfx->set_material_uniform_mat4 		= &opengl_set_material_uniform_mat4;
+	gfx->set_material_uniform_vec4 		= &opengl_set_material_uniform_vec4;
+	gfx->set_material_uniform_vec3 		= &opengl_set_material_uniform_vec3;
+	gfx->set_material_uniform_vec2 		= &opengl_set_material_uniform_vec2;
+	gfx->set_material_uniform_float 	= &opengl_set_material_uniform_float;
+	gfx->set_material_uniform_int 		= &opengl_set_material_uniform_int;
+	gfx->set_material_uniform_sampler2d = &opengl_set_material_uniform_sampler2d;
+	gfx->quad_batch_begin 				= &opengl_quad_batch_begin;
+	gfx->quad_batch_add 				= &opengl_quad_batch_add;
+	gfx->quad_batch_end 				= &opengl_quad_batch_end;
+	gfx->quad_batch_submit 				= &opengl_quad_batch_submit;
 
 	/*============================================================
 	// Graphics Debug Rendering Ops

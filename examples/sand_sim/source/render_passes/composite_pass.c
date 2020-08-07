@@ -72,8 +72,6 @@ _global gs_vertex_attribute_type layout[] = {
 	gs_vertex_attribute_float2,
 	gs_vertex_attribute_float2
 };
-// Count of our vertex attribute array
-_global u32 layout_count = sizeof( layout ) / sizeof( gs_vertex_attribute_type ); 
 
 // Vertex data for triangle
 _global f32 cp_v_data[] = {
@@ -97,7 +95,7 @@ composite_pass_t composite_pass_ctor()
 	composite_pass_t p = {0};
 
 	// Construct shaders resources
-	p.data.vb = gfx->construct_vertex_buffer( layout, layout_count, cp_v_data, sizeof(cp_v_data) );
+	p.data.vb = gfx->construct_vertex_buffer( layout, sizeof(layout), cp_v_data, sizeof(cp_v_data) );
 	p.data.ib = gfx->construct_index_buffer( cp_i_data, sizeof(cp_i_data) );
 	p.data.shader = gfx->construct_shader( cp_v_src, cp_f_src );
 	p.data.u_input_tex = gfx->construct_uniform( p.data.shader, "u_tex", gs_uniform_type_sampler2d );

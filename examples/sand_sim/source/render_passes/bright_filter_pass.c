@@ -33,8 +33,6 @@ _global gs_vertex_attribute_type layout[] = {
 	gs_vertex_attribute_float2,
 	gs_vertex_attribute_float2
 };
-// Count of our vertex attribute array
-_global u32 layout_count = sizeof( layout ) / sizeof( gs_vertex_attribute_type ); 
 
 // Vertex data for triangle
 _global f32 bp_v_data[] = {
@@ -58,7 +56,7 @@ bright_filter_pass_t bright_filter_pass_ctor()
 	bright_filter_pass_t bp = {0};
 
 	// Construct shaders resources
-	bp.data.vb = gfx->construct_vertex_buffer( layout, layout_count, bp_v_data, sizeof(bp_v_data) );
+	bp.data.vb = gfx->construct_vertex_buffer( layout, sizeof(layout), bp_v_data, sizeof(bp_v_data) );
 	bp.data.ib = gfx->construct_index_buffer( bp_i_data, sizeof(bp_i_data) );
 	bp.data.shader = gfx->construct_shader( bp_v_src, bp_f_src );
 	bp.data.u_input_tex = gfx->construct_uniform( bp.data.shader, "u_tex", gs_uniform_type_sampler2d );

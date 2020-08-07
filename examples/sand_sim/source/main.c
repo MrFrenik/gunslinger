@@ -622,8 +622,6 @@ gs_result app_init()
 		gs_vertex_attribute_float2,
 		gs_vertex_attribute_float2
 	};
-	// Count of our vertex attribute array
-	u32 layout_count = sizeof( layout ) / sizeof( gs_vertex_attribute_type ); 
 
 	// Vertex data for triangle
 	f32 v_data[] = 
@@ -642,7 +640,7 @@ gs_result app_init()
 	};
 
 	// Construct vertex buffer
-	g_vbo = gfx->construct_vertex_buffer( layout, layout_count, v_data, sizeof(v_data) );
+	g_vbo = gfx->construct_vertex_buffer( layout, sizeof(layout), v_data, sizeof(v_data) );
 	// Construct index buffer
 	g_ibo = gfx->construct_index_buffer( i_data, sizeof(i_data) );
 

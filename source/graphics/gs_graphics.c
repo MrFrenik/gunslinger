@@ -24,6 +24,7 @@ gs_texture_parameter_desc gs_texture_parameter_desc_default()
 	desc.width 				= 0;
 	desc.height 			= 0;
 	desc.num_comps 			= 0;
+	desc.flip_vertically_on_load = true;
 
 	return desc;
 }
