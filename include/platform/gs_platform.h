@@ -364,6 +364,8 @@ typedef struct gs_platform_i
 	void 					( * set_dropped_files_callback )( gs_resource_handle, dropped_files_callback_t );
 	void 					( * set_window_close_callback )( gs_resource_handle, window_close_callback_t );
 	void* 					( *raw_window_handle )( gs_resource_handle );		// Do not call unless you know what you're doing	
+	gs_vec2 				( * frame_buffer_size )( gs_resource_handle handle );
+	void 					( * frame_buffer_size_w_h )( gs_resource_handle handle, s32* w, s32* h );
 
 	/*============================================================
 	// Platform File IO

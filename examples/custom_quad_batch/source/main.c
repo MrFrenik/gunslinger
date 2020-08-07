@@ -357,11 +357,12 @@ gs_result app_update()
 
 	// Main window size
 	gs_vec2 ws = platform->window_size( platform->main_window() );
+	gs_vec2 fbs = platform->frame_buffer_size( platform->main_window() );
 
 	// Set clear color and clear screen
 	f32 clear_color[4] = { 0.2f, 0.2f, 0.2f, 1.f };
 	gfx->set_view_clear( g_cb, clear_color );
-	gfx->set_view_port( g_cb, ws.x, ws.y );
+	gfx->set_view_port( g_cb, fbs.x, fbs.y );
 	gfx->set_depth_enabled( g_cb, false );
 	gfx->set_blend_mode( g_cb, gs_blend_mode_src_alpha, gs_blend_mode_one_minus_src_alpha );
 

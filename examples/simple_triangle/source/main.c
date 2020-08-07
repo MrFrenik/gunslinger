@@ -7,19 +7,20 @@ _global gs_resource( gs_shader ) g_shader = {0};
 _global gs_resource( gs_uniform ) u_color = {0}; 
 
 const char* v_src = "\n"
-"#version 110\n"
-"attribute vec3 a_pos;\n"
+"#version 330 core\n"
+"layout( location = 0 ) in vec3 a_pos;\n"
 "void main()\n"
 "{\n"
 "	gl_Position = vec4(a_pos, 1.0);\n"
 "}";
 
 const char* f_src = "\n"
-"#version 110\n"
+"#version 330 core\n"
 "uniform vec4 u_color;\n"
+"out vec4 frag_color;\n"
 "void main()\n"
 "{\n"
-"	gl_FragColor = u_color;\n"
+"	frag_color = u_color;\n"
 "}";
 
 // Forward Decls.
@@ -120,11 +121,12 @@ gs_result app_update()
 	gs_graphics_i* gfx = engine->ctx.graphics;
 	gs_platform_i* platform = engine->ctx.platform;
 	const gs_vec2 ws = platform->window_size(platform->main_window());
+	const gs_vec2 fbs = platform->frame_buffer_size(platform->main_window());
 
 	// Set clear color and clear screen
 	f32 clear_color[4] = { 0.2f, 0.2f, 0.2f, 1.f };
 	gfx->set_view_clear( g_cb, clear_color );
-	gfx->set_view_port( g_cb, ws.x, ws.y );	
+	gfx->set_view_port( g_cb, fbs.x, fbs.y );	
 
 	// Bind shader
 	gfx->bind_shader( g_cb, g_shader );

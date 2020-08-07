@@ -1270,6 +1270,7 @@ void render_scene()
 	gfx->update_texture_data( g_tex, t_desc );
 
 	gs_vec2 ws = platform->window_size( g_window );
+	gs_vec2 fbs = platform->frame_buffer_size( g_window );
 	b32 flip_y = false;
 
 	// Default state set up
@@ -1332,11 +1333,7 @@ void render_scene()
 		gfx->set_depth_enabled( g_cb, false );
 
 		// This is to handle mac's retina high dpi for now until I fix that internally.
-	#if (defined GS_PLATFORM_APPLE)
-		gfx->set_view_port( g_cb, (s32)ws.x * 2, (s32)ws.y * 2 );
-	#else
-		gfx->set_view_port( g_cb, (s32)ws.x, (s32)ws.y );
-	#endif
+		gfx->set_view_port( g_cb, fbs.x, fbs.y );
 
 		f32 t = gs_engine_instance()->ctx.platform->elapsed_time() * gs_engine_instance()->ctx.platform->time.delta * 0.001f;
 		flip_y = true;

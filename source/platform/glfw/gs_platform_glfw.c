@@ -38,6 +38,7 @@ gs_result glfw_platform_init( struct gs_platform_i* platform  )
 				glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, 1 );
 				glfwWindowHint( GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE );
 				glfwWindowHint( GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE );
+				glfwWindowHint( GLFW_SCALE_TO_MONITOR, GLFW_TRUE );
 			#else
 				// glfwWindowHint( GLFW_CONTEXT_VERSION_MAJOR, platform->settings.video.graphics.opengl.major_version );
 				// glfwWindowHint( GLFW_CONTEXT_VERSION_MINOR, platform->settings.video.graphics.opengl.minor_version );
@@ -388,6 +389,7 @@ gs_vec2 glfw_window_size( gs_resource_handle handle )
 	gs_assert( win );
 	s32 w, h;
 	glfwGetWindowSize( win, &w, &h );
+
 	return ( gs_vec2 ) { .x = w, .y = h };
 }
 
@@ -396,6 +398,24 @@ void glfw_window_size_w_h( gs_resource_handle handle, s32* w, s32* h )
 	GLFWwindow* win = __window_from_handle( gs_engine_instance()->ctx.platform, handle );
 	gs_assert( win );
 	glfwGetWindowSize( win, w, h );
+}
+
+void glfw_frame_buffer_size_w_h( gs_resource_handle handle, s32* w, s32* h )
+{
+	GLFWwindow* win = __window_from_handle( gs_engine_instance()->ctx.platform, handle );
+	gs_assert( win );
+	f32 xscale = 0.f, yscale = 0.f;
+	glfwGetWindowContentScale( win, &xscale, &yscale );
+	glfwGetWindowSize( win, w, h );
+	*w = (s32)((f32)*w * xscale);
+	*h = (s32)((f32)*h * yscale);
+}
+
+gs_vec2 glfw_frame_buffer_size( gs_resource_handle handle )
+{
+	s32 w = 0, h = 0;
+	glfw_frame_buffer_size_w_h( handle, &w, &h );
+	return (gs_vec2){ w, h };
 }
 
 void glfw_set_cursor( gs_resource_handle handle, gs_platform_cursor cursor )
@@ -477,6 +497,8 @@ struct gs_platform_i* gs_platform_construct()
 	platform->set_dropped_files_callback 	= &glfw_set_dropped_files_callback;
 	platform->set_window_close_callback 	= &glfw_set_window_close_callback;
 	platform->raw_window_handle 			= &glfw_raw_window_handle;
+	platform->frame_buffer_size 			= &glfw_frame_buffer_size;
+	platform->frame_buffer_size_w_h 		= &glfw_frame_buffer_size_w_h;
 
 	// Todo(John): Remove this from the default initialization and make it a part of a plugin or config setting
 	platform->settings.video.driver = gs_platform_video_driver_type_opengl;
