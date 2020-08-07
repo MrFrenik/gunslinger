@@ -3,18 +3,20 @@
 #include "platform/gs_platform.h"
 
 #include "stb/stb_vorbis.c"
+#include "dr_libs/dr_wav.h"
+#include "dr_libs/dr_mp3.h"
+
+// typedef struct gs_audio_source_t
+// {
+// 	s32 channels;
+// 	s32 sample_rate;
+// 	void* samples;
+// 	s32 sample_count;
+// } gs_audio_source_t;
 
 b32 __gs_load_ogg_data( const char* file_name, gs_audio_source_t* src )
 {
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
-
-	// typedef struct gs_audio_source_t
-	// {
-	// 	s32 channels;
-	// 	s32 sample_rate;
-	// 	void* samples;
-	// 	s32 sample_count;
-	// } gs_audio_source_t;
 
 	// Init OGG
 	{
@@ -36,6 +38,46 @@ b32 __gs_load_ogg_data( const char* file_name, gs_audio_source_t* src )
 	return false;
 }
 
+b32 __gs_load_wav_data( const char* file_name, gs_audio_source_t* src )
+{
+	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+
+	u64 total_pcm_frame_count = 0;
+	src->samples = drwav_open_file_and_read_pcm_frames_s16( file_name, (u32*)&src->channels, (u32*)&src->sample_rate, 
+		&total_pcm_frame_count, NULL );
+
+	if ( !src->samples ) {
+		src->samples = NULL; 
+		gs_println( "WARNING: Could not load .ogg file: %s", file_name );
+		return false; 
+	}
+
+	src->sample_count = total_pcm_frame_count * src->channels;
+
+	return true;
+}
+
+b32 __gs_load_mp3_data( const char* file_name, gs_audio_source_t* src )
+{
+	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+
+	// Decode entire mp3 
+	u64 total_pcm_frame_count = 0;
+	drmp3_config cfg = {0};
+	src->samples = drmp3_open_file_and_read_pcm_frames_s16( file_name, &cfg, &total_pcm_frame_count, NULL );
+
+	if ( !src->samples ) {
+		src->samples = NULL; 
+		gs_println( "WARNING: Could not load .ogg file: %s", file_name );
+		return false; 
+	}
+
+	src->channels = cfg.channels;
+	src->sample_rate = cfg.sampleRate;
+	src->sample_count = total_pcm_frame_count * src->channels;
+
+	return true;
+}
 
 // Default audio upate function (taken from Ryan Fluery's win32 app template)
 gs_result __gs_audio_update_internal( struct gs_audio_i* audio ) 
@@ -182,6 +224,14 @@ gs_resource( gs_audio_source ) __gs_load_audio_source_from_file( const char* fil
 		load_successful = __gs_load_ogg_data( file_name, &source );
 	}
 
+	if ( gs_string_compare_equal( file_ext, "wav" ) ) {
+		load_successful = __gs_load_wav_data( file_name, &source );	
+	}
+
+	if ( gs_string_compare_equal( file_ext, "mp3" ) ) {
+		load_successful = __gs_load_mp3_data( file_name, &source );	
+	}
+
 	// Load raw source into memory and return handle id
 	if ( load_successful )
 	{
@@ -296,6 +346,7 @@ void __gs_audio_stop( gs_resource( gs_audio_instance ) inst_h )
 	if ( inst )
 	{
 		inst->playing = false;
+		inst->sample_position = 0;
 	}
 }
 
