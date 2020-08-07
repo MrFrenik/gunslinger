@@ -70,19 +70,35 @@ extern "C" {
 		}\
 	} while ( 0 )		
 
+/*===================================
+// Memory Allocation Utils
+===================================*/
+
+#ifndef gs_malloc
+	#define gs_malloc( sz ) 			malloc( sz )
+#endif
+
+#ifndef gs_free
+	#define gs_free( mem )				free( mem )
+#endif
+
+#ifndef gs_realloc
+	#define gs_realloc( mem, sz )		realloc( mem, sz )
+#endif
+
+#ifndef gs_calloc
+	#define gs_calloc( num, sz )		calloc( num, sz )
+#endif
+
+#define gs_malloc_init( type )	( type* )_gs_malloc_init_impl( sizeof( type ) )
+
 _force_inline void* 
 _gs_malloc_init_impl( usize sz )
 {
-	void* data = malloc( sz );
+	void* data = gs_malloc( sz );
 	memset( data, 0, sz );
 	return data;
 }
-
-// Helper functions for heap allocations
-#define gs_malloc( sz ) 			malloc( sz )
-#define gs_free( mem )				free( mem )
-#define gs_realloc( mem, sz )		realloc( mem, sz )
-#define gs_malloc_init( type )	( type* )_gs_malloc_init_impl( sizeof( type ) )
 
 /*===================================
 // String Utils
