@@ -231,13 +231,14 @@ typedef struct gs_graphics_i
 	void ( * unbind_frame_buffer )( gs_resource( gs_command_buffer ) );
 	void ( * bind_shader )( gs_resource( gs_command_buffer ), gs_resource( gs_shader ) );
 	void ( * bind_uniform )( gs_resource( gs_command_buffer ), gs_resource( gs_uniform ), void* );
+	void ( * bind_uniform_mat4 )( gs_resource( gs_command_buffer ), gs_resource( gs_uniform ), gs_mat4 );
 	void ( * bind_vertex_buffer )( gs_resource( gs_command_buffer ), gs_resource( gs_vertex_buffer ) );
 	void ( * bind_index_buffer )( gs_resource( gs_command_buffer ), gs_resource( gs_index_buffer ) );
 	void ( * bind_texture )( gs_resource( gs_command_buffer ), gs_resource( gs_uniform ), gs_resource( gs_texture ), u32 );
 	void ( * bind_texture_id )( gs_resource( gs_command_buffer ), gs_resource( gs_uniform ), u32 id, u32 slot );
 	void ( * update_vertex_data )( gs_resource( gs_command_buffer ), gs_resource( gs_vertex_buffer ), void*, usize );
 	void ( * update_index_data )( gs_resource( gs_command_buffer ), gs_resource( gs_index_buffer ), void*, usize );
-	void ( * set_view_clear )( gs_resource( gs_command_buffer ), f32* color );
+	void ( * set_view_clear )( gs_resource( gs_command_buffer ), f32* );
 	void ( * draw )( gs_resource( gs_command_buffer ), u32 start, u32 count );
 	void ( * draw_indexed )( gs_resource( gs_command_buffer ), u32 count, u32 offset );
 	void ( * submit_command_buffer )( gs_resource( gs_command_buffer ) );

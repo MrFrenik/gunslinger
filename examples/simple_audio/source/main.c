@@ -3,9 +3,7 @@
 // Forward Decls.
 gs_result app_init();		// Use to init your application
 gs_result app_update();		// Use to update your application
-gs_result app_shutdown();	// Use to shutdown your appliaction
 
-_global b32 g_app_running = true;
 _global gs_resource( gs_audio_source ) g_music_src = {0};
 _global gs_resource( gs_audio_instance ) g_music = {0};
 
@@ -39,19 +37,11 @@ int main( int argc, char** argv )
 	return 0;	
 }
 
-void app_close_window_callback( void* window )
-{
-	g_app_running = false;
-}
-
 gs_result app_init()
 {
 	// Cache apis
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
-
-	// Set callback for when window close button is pressed
-	platform->set_window_close_callback( platform->main_window(), &app_close_window_callback );
 
 	// Constuct audio resource to play
 	g_music_src = audio->load_audio_source_from_file( platform->file_exists( "./assets/cold_morning_tx.mp3" ) ? 
@@ -64,28 +54,5 @@ gs_result app_init()
 	inst.persistent = true;					// Whether or not instance should stick in memory after completing 
 	g_music = audio->play( inst );
 
-	return gs_result_success;
-}
-
-gs_result app_update()
-{
-	// Grab global instance of engine
-	gs_engine* engine = gs_engine_instance();
-	gs_platform_i* platform = engine->ctx.platform;
-	gs_audio_i* audio = engine->ctx.audio;
-
-	// If we press the escape key, exit the application
-	if ( platform->key_pressed( gs_keycode_esc ) || !g_app_running )
-	{
-		return gs_result_success;
-	}
-
-	// Otherwise, continue
-	return gs_result_in_progress;
-}
-
-gs_result app_shutdown()
-{
-	gs_println( "Goodbye, Gunslinger." );
 	return gs_result_success;
 }

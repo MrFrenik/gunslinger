@@ -418,6 +418,26 @@ void opengl_bind_uniform( gs_resource( gs_command_buffer ) cb_handle, gs_resourc
 	});
 }
 
+void opengl_bind_uniform_mat4( gs_resource( gs_command_buffer ) cb_handle, gs_resource( gs_uniform ) u_handle, gs_mat4 val )
+{
+	__push_command( cb_handle, gs_opengl_op_bind_uniform, {
+
+		// Grab uniform from handle
+		uniform_t u = gs_slot_array_get( __data->uniforms, u_handle.id );
+
+		if ( u.type != gs_uniform_type_mat4 ) {
+			return;	
+		}
+
+		// Write out uniform location
+		gs_byte_buffer_write( &cb->commands, u32, (u32)u.location );
+		// Write out uniform type
+		gs_byte_buffer_write( &cb->commands, u32, (u32)u.type );
+
+		__write_uniform_val(cb->commands, gs_mat4, &val);
+	});
+}
+
 void opengl_bind_texture_id( gs_resource( gs_command_buffer ) cb_handle, gs_resource( gs_uniform ) u_handle, u32 id, u32 slot )
 {
 	__push_command( cb_handle, gs_opengl_op_bind_texture, {
@@ -2066,6 +2086,7 @@ struct gs_graphics_i* __gs_graphics_construct()
 	gfx->bind_index_buffer 				= &opengl_bind_index_buffer;
 	gfx->bind_texture 					= &opengl_bind_texture;
 	gfx->bind_uniform 					= &opengl_bind_uniform;
+	gfx->bind_uniform_mat4 				= &opengl_bind_uniform_mat4;
 	gfx->bind_frame_buffer  			= &opengl_bind_frame_buffer;
 	gfx->unbind_frame_buffer 			= &opengl_unbind_frame_buffer;
 	gfx->set_frame_buffer_attachment 	= &opengl_set_frame_buffer_attachment;

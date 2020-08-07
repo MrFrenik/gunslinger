@@ -141,7 +141,7 @@ gs_result app_init()
 	g_camera.fov = 60.f;
 	g_camera.near_plane = 0.1f;
 	g_camera.far_plane = 1000.f;
-	g_camera.ortho_scale = 2.f;
+	g_camera.ortho_scale = 1.f;
 	g_camera.proj_type = gs_projection_type_orthographic;
 
 	return gs_result_success;
@@ -161,33 +161,6 @@ gs_result app_update()
 		return gs_result_success;
 	}
 
-	const f32 dt = platform->time.delta;
-	const f32 t = platform->elapsed_time();
-
-	/*=================
-	// Camera controls
-	==================*/
-
-	if ( platform->key_down( gs_keycode_q ) ) {
-		g_camera.ortho_scale += 0.1f;
-	}
-	if ( platform->key_down( gs_keycode_e ) ) {
-		g_camera.ortho_scale -= 0.1f;
-	}
-
-	if (platform->key_down(gs_keycode_a)) {
-		g_camera.transform.position.x -= 0.1f;
-	}
-	if (platform->key_down(gs_keycode_d)) {
-		g_camera.transform.position.x += 0.1f;
-	}
-	if (platform->key_down(gs_keycode_w)) {
-		g_camera.transform.position.y += 0.1f;
-	}
-	if (platform->key_down(gs_keycode_s)) {
-		g_camera.transform.position.y -= 0.1f;
-	}
-
 	/*===============
 	// Render scene
 	================*/
@@ -203,21 +176,14 @@ gs_result app_update()
 	f32 clear_color[4] = { 0.2f, 0.2f, 0.2f, 1.f };
 	gfx->set_view_clear( g_cb, clear_color );
 	gfx->set_view_port( g_cb, fbs.x, fbs.y );
-	gfx->set_depth_enabled( g_cb, false );
-	gfx->set_blend_mode( g_cb, gs_blend_mode_src_alpha, gs_blend_mode_one_minus_src_alpha );
 
 	// Bind shader
 	gfx->bind_shader( g_cb, g_shader );
 
-	// Create model/view/projection matrices from camera
-	gs_mat4 view_mtx = gs_camera_get_view( &g_camera );
-	gs_mat4 proj_mtx = gs_camera_get_projection( &g_camera, ws.x, ws.y );
-	gs_mat4 model_mtx = gs_mat4_scale((gs_vec3){1.f, 1.f, 1.f});
-
 	// Bind matrix uniforms
-	gfx->bind_uniform( g_cb, u_proj, &proj_mtx );
-	gfx->bind_uniform( g_cb, u_view, &view_mtx );
-	gfx->bind_uniform( g_cb, u_model, &model_mtx );
+	gfx->bind_uniform_mat4( g_cb, u_proj, gs_camera_get_projection( &g_camera, ws.x, ws.y ) );
+	gfx->bind_uniform_mat4( g_cb, u_view, gs_camera_get_view( &g_camera ) );
+	gfx->bind_uniform_mat4( g_cb, u_model, gs_mat4_identity() );
 
 	// Bind texture slot
 	gfx->bind_texture( g_cb, u_tex, g_tex, 0 );

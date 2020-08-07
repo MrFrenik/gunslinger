@@ -32,7 +32,6 @@ const char* f_src = "\n"
 // Forward Decls.
 gs_result app_init();		// Use to init your application
 gs_result app_update();		// Use to update your application
-gs_result app_shutdown();	// Use to shutdown your appliaction
 
 int main( int argc, char** argv )
 {
@@ -42,7 +41,6 @@ int main( int argc, char** argv )
 	app.window_height 		= 600;
 	app.init 				= &app_init;
 	app.update 				= &app_update;
-	app.shutdown 			= &app_shutdown;
 
 	// Construct internal instance of our engine
 	gs_engine* engine = gs_engine_construct( app );
@@ -185,9 +183,9 @@ gs_result app_update()
 	gs_mat4 model_mtx = gs_mat4_rotate(t * 0.01f, (gs_vec3){0.f, 1.f, 0.f});
 
 	// Bind matrix uniforms
-	gfx->bind_uniform( g_cb, u_proj, &proj_mtx );
-	gfx->bind_uniform( g_cb, u_view, &view_mtx );
-	gfx->bind_uniform( g_cb, u_model, &model_mtx );
+	gfx->bind_uniform_mat4( g_cb, u_proj, proj_mtx );
+	gfx->bind_uniform_mat4( g_cb, u_view, view_mtx );
+	gfx->bind_uniform_mat4( g_cb, u_model, model_mtx );
 
 	// Bind vertex buffer
 	gfx->bind_vertex_buffer( g_cb, g_vbo );
@@ -199,10 +197,4 @@ gs_result app_update()
 	gfx->submit_command_buffer( g_cb );
 
 	return gs_result_in_progress;
-}
-
-gs_result app_shutdown()
-{
-	gs_println( "Goodbye, Gunslinger." );
-	return gs_result_success;
 }
