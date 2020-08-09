@@ -1544,7 +1544,7 @@ gs_resource( gs_quad_batch ) opengl_construct_quad_batch( gs_resource( gs_materi
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
 	// Construct new quad batch resource (this should be an asset instead...)
-	gs_quad_batch_t qb = gfx->quad_batch_i->new( mat_h );
+	gs_quad_batch_t qb = gfx->quad_batch_i->construct( mat_h );
 
 	u32 id = gs_slot_array_insert( data->quad_batches, qb );
 	gs_resource( gs_quad_batch ) handle = {0};
@@ -1590,7 +1590,7 @@ gs_resource( gs_material ) opengl_construct_material( gs_resource( gs_shader ) s
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
 	// Construct new material resource (this should be an asset instead...)
-	gs_material_t mat = gfx->material_i->new( shader );
+	gs_material_t mat = gfx->material_i->construct( shader );
 
 	u32 m_handle = gs_slot_array_insert( data->materials, mat );
 	gs_resource( gs_material ) handle = {0};

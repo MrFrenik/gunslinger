@@ -13,9 +13,9 @@ extern "C" {
 #define gs_tau		2.0 * gs_pi
 
 // Useful Utility
-#define gs_v2(...)	(gs_vec2){ __VA_ARGS__ }
-#define gs_v3(...)	(gs_vec3){ __VA_ARGS__ }
-#define gs_v4(...)	(gs_vec4){ __VA_ARGS__ }
+#define gs_v2(...)	gs_vec2_ctor( __VA_ARGS__ )
+#define gs_v3(...)	gs_vec3_ctor( __VA_ARGS__ )
+#define gs_v4(...)	gs_vec4_ctor( __VA_ARGS__ )
 
 /*================================================================================
 // Useful Common Functions
@@ -402,8 +402,11 @@ gs_mat4_diag( f32 val )
 #define gs_mat4_identity()\
 	gs_mat4_diag( 1.0f )
 
-#define gs_mat4_ctor()\
-	( gs_mat4 ){ 0 }
+_force_inline gs_mat4
+gs_mat4_ctor() {
+	gs_mat4 mat = {0};
+	return mat;
+}
 
 _inline gs_mat4 
 gs_mat4_mul( gs_mat4 m0, gs_mat4 m1 )

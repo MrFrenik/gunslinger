@@ -263,15 +263,14 @@ typedef enum
 \
 	_inline gs_ht_##key_type##_##val_type gs_ht_##key_type##_##val_type##_new()\
 	{\
-		gs_ht_##key_type##_##val_type ht = {\
-			.data 					= gs_dyn_array_new( gs_ht_entry_##key_type##_##val_type ),\
-			.hash_func 				= &_hash_func,\
-			.hash_key_idx_func 		= gs_ht_##key_type##_##val_type##_key_idx_func,\
-			.hash_get_val_func 		= gs_ht_##key_type##_##val_type##_get_func,\
-			.hash_get_val_ptr_func 	= gs_ht_##key_type##_##val_type##_get_ptr_func,\
-			.hash_comp_key_func 	= gs_ht_##key_type##_##val_type##_comp_key_func,\
-			.hash_grow_func 		= gs_ht_##key_type##_##val_type##_grow_func\
-		};\
+		gs_ht_##key_type##_##val_type ht = {0};\
+		ht.data 					= gs_dyn_array_new( gs_ht_entry_##key_type##_##val_type );\
+		ht.hash_func 				= &_hash_func;\
+		ht.hash_key_idx_func 		= gs_ht_##key_type##_##val_type##_key_idx_func;\
+		ht.hash_get_val_func 		= gs_ht_##key_type##_##val_type##_get_func;\
+		ht.hash_get_val_ptr_func 	= gs_ht_##key_type##_##val_type##_get_ptr_func;\
+		ht.hash_comp_key_func 		= gs_ht_##key_type##_##val_type##_comp_key_func;\
+		ht.hash_grow_func 			= gs_ht_##key_type##_##val_type##_grow_func;\
 		return ht;\
 	}\
 \
@@ -425,13 +424,12 @@ gs_slot_array_base
 	_force_inline\
 	gs_sa_##T __gs_sa_##T##_new()\
 	{\
-		gs_sa_##T sa = {\
-			.data 								= gs_dyn_array_new( T ),\
-			._base.handle_indices 				= gs_dyn_array_new( u32 ),\
-			._base.reverse_indirection_indices 	= gs_dyn_array_new( u32 ),\
-			._base.index_free_list 				= gs_dyn_array_new( u32 ),\
-			.insert_func 						= &gs_sa_##T##_insert_func,\
-		};\
+		gs_sa_##T sa = {0};\
+		sa.data 								= gs_dyn_array_new( T );\
+		sa._base.handle_indices 				= gs_dyn_array_new( u32 );\
+		sa._base.reverse_indirection_indices 	= gs_dyn_array_new( u32 );\
+		sa._base.index_free_list 				= gs_dyn_array_new( u32 );\
+		sa.insert_func 						= &gs_sa_##T##_insert_func;\
 		return sa;\
 	}
 
