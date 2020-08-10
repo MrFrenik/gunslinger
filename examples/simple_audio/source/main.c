@@ -16,8 +16,6 @@ int main( int argc, char** argv )
 	app.window_width 		= 800;
 	app.window_height 		= 600;
 	app.init 				= &app_init;
-	app.update 				= &app_update;
-	app.shutdown 			= &app_shutdown;
 
 	// Construct internal instance of our engine
 	gs_engine* engine = gs_engine_construct( app );
@@ -47,12 +45,8 @@ gs_result app_init()
 	g_music_src = audio->load_audio_source_from_file( platform->file_exists( "./assets/cold_morning_tx.mp3" ) ? 
 		"./assets/cold_morning_tx.mp3" : "./../assets/cold_morning_tx.mp3" );
 
-	// Construct instance source and play on loop. Forever.
-	gs_audio_instance_data_t inst = gs_audio_instance_data_new( g_music_src );
-	inst.volume = 0.8f;						// Range from [0.f, 1.f]
-	inst.loop = true;						// Tell whether or not audio should loop 
-	inst.persistent = true;					// Whether or not instance should stick in memory after completing 
-	g_music = audio->play( inst );
+	// Construct instance source and play music.
+	g_music = audio->play( g_music_src );
 
 	return gs_result_success;
 }
