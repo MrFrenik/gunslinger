@@ -68,65 +68,6 @@ typedef enum gs_opengl_op_code
 	gs_opengl_draw_indexed
 } gs_opengl_op_code;
 
-// Could make this a simple byte buffer, then read from that buffer for commands?
-typedef struct command_buffer_t
-{
-	u32 num_commands;
-	gs_byte_buffer commands;
-} command_buffer_t;
-
-typedef struct texture_t
-{
-	u16 width;
-	u16 height;
-	u32 id;	
-	u32 num_comps;
-	gs_texture_format texture_format;
-} texture_t;
-
-typedef struct uniform_t
-{
-	gs_uniform_type type;
-	u32 location;
-} uniform_t;
-
-typedef gs_resource( gs_uniform ) gs_resource_uniform;
-
-// Hash table := key: u64, val: gs_resource_uniform
-gs_hash_table_decl( u64, gs_resource_uniform, gs_hash_u64, gs_hash_key_comp_std_type );
-
-typedef struct shader_t
-{
-	u32 program_id;
-	gs_hash_table( u64, gs_resource_uniform ) uniforms;
-} shader_t;
-
-typedef struct index_buffer_t
-{
-	u32 ibo;
-} index_buffer_t;
-
-typedef struct vertex_buffer_t
-{
-	u32 vbo;
-	u32 vao;		// Not sure if I need to do this as well, but we will for now...
-} vertex_buffer_t;
-
-typedef struct render_target_t 
-{
-	gs_resource( gs_texture ) tex_handle;
-} render_target_t;
-
-typedef struct frame_buffer_t
-{
-	u32 fbo;
-} frame_buffer_t;
-
-typedef struct vertex_attribute_layout_desc_t
-{
-	gs_dyn_array( gs_vertex_attribute_type ) attributes;	
-} vertex_attribute_layout_desc_t;
-
 // Internally
 typedef struct debug_drawing_internal_data 
 {
@@ -140,6 +81,16 @@ typedef struct debug_drawing_internal_data
 	gs_resource( gs_vertex_buffer) quad_vbo;
 	gs_resource( gs_vertex_buffer ) line_vbo;
 } debug_drawing_internal_data;
+
+typedef gs_command_buffer_t command_buffer_t;
+typedef gs_texture_t texture_t;
+typedef gs_shader_t shader_t;
+typedef gs_uniform_t uniform_t;
+typedef gs_index_buffer_t index_buffer_t;
+typedef gs_vertex_buffer_t vertex_buffer_t;
+typedef gs_vertex_attribute_layout_desc_t vertex_attribute_layout_desc_t;
+typedef gs_render_target_t render_target_t;
+typedef gs_frame_buffer_t frame_buffer_t;
 
 // Slot array declarations
 gs_slot_array_decl( command_buffer_t );

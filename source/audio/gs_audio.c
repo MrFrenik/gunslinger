@@ -251,7 +251,7 @@ gs_resource( gs_audio_source ) __gs_load_audio_source_from_file( const char* fil
 // Audio Instance Data
 ============================================================*/
 
-gs_resource( gs_audio_instance ) __gs_audio_play( gs_audio_instance_data_t inst )
+gs_resource( gs_audio_instance )__gs_audio_play_instance_data( gs_audio_instance_data_t inst )
 {
 	gs_resource( gs_audio_instance ) inst_h = gs_resource_invalid( gs_audio_instance );
 
@@ -263,6 +263,23 @@ gs_resource( gs_audio_instance ) __gs_audio_play( gs_audio_instance_data_t inst 
 	{
 		u32 id = gs_slot_array_insert( __data->instances, inst );
 		inst_h.id = id;
+	}
+
+	return inst_h;
+}
+
+gs_resource( gs_audio_instance ) __gs_audio_play(  gs_resource( gs_audio_source ) src_h )
+{
+	gs_resource( gs_audio_instance ) inst_h = gs_resource_invalid( gs_audio_instance );
+
+	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
+	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
+
+	// Verify that source is valid first
+	if ( gs_slot_array_handle_valid( __data->sources, src_h.id ) )
+	{
+		gs_audio_instance_data_t i_data = gs_audio_instance_data_new( src_h );
+		return audio->play_instance_data( i_data );
 	}
 
 	return inst_h;
@@ -374,6 +391,7 @@ void __gs_audio_set_default_functions( struct gs_audio_i* audio )
 	audio->update 						= &__gs_audio_update_internal;
 	audio->load_audio_source_from_file 	= &__gs_load_audio_source_from_file;
 	audio->play 						= &__gs_audio_play;
+	audio->play_instance_data 			= &__gs_audio_play_instance_data;
 	audio->pause 						= &__gs_audio_pause;
 	audio->resume 						= &__gs_audio_resume;
 	audio->restart 						= &__gs_audio_restart;

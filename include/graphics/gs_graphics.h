@@ -7,6 +7,7 @@ extern "C" {
 
 #include "common/gs_containers.h"
 #include "math/gs_math.h"
+#include "serialize/gs_byte_buffer.h"
 
 // Forward Decls
 struct gs_material_i;
@@ -64,9 +65,10 @@ typedef enum gs_blend_mode_type
 	gs_blend_mode_src_alpha_saturate
 } gs_blend_mode_type;
 
+
 typedef enum gs_shader_language_type
 {
-	gs_glsl = 0
+	gs_glsl = 0x00
 } gs_shader_language_type;
 
 typedef struct gs_shader_program_desc
@@ -105,6 +107,73 @@ typedef enum gs_vertex_attribute_type
 } gs_vertex_attribute_type;
 
 /*================
+// Resource Decls
+=================*/
+
+gs_declare_resource_type( gs_command_buffer );
+gs_declare_resource_type( gs_uniform_buffer );
+gs_declare_resource_type( gs_vertex_buffer );
+gs_declare_resource_type( gs_index_buffer );
+gs_declare_resource_type( gs_texture );
+gs_declare_resource_type( gs_shader );
+gs_declare_resource_type( gs_uniform );
+gs_declare_resource_type( gs_vertex_attribute_layout_desc );
+gs_declare_resource_type( gs_render_target );
+gs_declare_resource_type( gs_frame_buffer );
+gs_declare_resource_type( gs_material );
+gs_declare_resource_type( gs_quad_batch );
+
+// Could make this a simple byte buffer, then read from that buffer for commands?
+typedef struct gs_command_buffer_t
+{
+	u32 num_commands;
+	gs_byte_buffer commands;
+} gs_command_buffer_t;
+
+typedef struct gs_uniform_t
+{
+	gs_uniform_type type;
+	u32 location;
+} gs_uniform_t;
+
+typedef gs_resource( gs_uniform ) gs_resource_uniform;
+
+// Hash table := key: u64, val: gs_resource_uniform
+gs_hash_table_decl( u64, gs_resource_uniform, gs_hash_u64, gs_hash_key_comp_std_type );
+
+typedef struct gs_shader_t
+{
+	u32 program_id;
+	gs_hash_table( u64, gs_resource_uniform ) uniforms;
+} gs_shader_t;
+
+typedef struct gs_index_buffer_t
+{
+	u32 ibo;
+} gs_index_buffer_t;
+
+typedef struct gs_vertex_buffer_t
+{
+	u32 vbo;
+	u32 vao;		// Not sure if I need to do this as well, but we will for now...
+} gs_vertex_buffer_t;
+
+typedef struct gs_render_target_t 
+{
+	gs_resource( gs_texture ) tex_handle;
+} gs_render_target_t;
+
+typedef struct gs_frame_buffer_t
+{
+	u32 fbo;
+} gs_frame_buffer_t;
+
+typedef struct gs_vertex_attribute_layout_desc_t
+{
+	gs_dyn_array( gs_vertex_attribute_type ) attributes;	
+} gs_vertex_attribute_layout_desc_t;
+
+/*================
 // Color
 =================*/
 
@@ -133,8 +202,8 @@ typedef struct gs_color_t
 } gs_color_t;
 
 // From on: https://gist.github.com/fairlight1337/4935ae72bcbcc1ba5c72
-void gs_rgb_to_hsv( u8 r, u8 g, u8 b, f32* h, f32* s, f32* v );
-void gs_hsv_to_rgb( f32 h, f32 s, f32 v, u8* r, u8* g, u8* b );
+extern void gs_rgb_to_hsv( u8 r, u8 g, u8 b, f32* h, f32* s, f32* v );
+extern void gs_hsv_to_rgb( f32 h, f32 s, f32 v, u8* r, u8* g, u8* b );
 
 /*================
 // Texture
@@ -178,28 +247,20 @@ typedef struct gs_texture_parameter_desc
 	b32 flip_vertically_on_load;
 } gs_texture_parameter_desc;
 
+typedef struct gs_texture_t
+{
+	u16 width;
+	u16 height;
+	u32 id;	
+	u32 num_comps;
+	gs_texture_format texture_format;
+} gs_texture_t;
+
 typedef struct gs_debug_draw_properties
 {
 	gs_mat4 view_mat;
 	gs_mat4 proj_mat;
 } gs_debug_draw_properties;
-
-/*================
-// Resource Decls
-=================*/
-
-gs_declare_resource_type( gs_command_buffer );
-gs_declare_resource_type( gs_uniform_buffer );
-gs_declare_resource_type( gs_vertex_buffer );
-gs_declare_resource_type( gs_index_buffer );
-gs_declare_resource_type( gs_texture );
-gs_declare_resource_type( gs_shader );
-gs_declare_resource_type( gs_uniform );
-gs_declare_resource_type( gs_vertex_attribute_layout_desc );
-gs_declare_resource_type( gs_render_target );
-gs_declare_resource_type( gs_frame_buffer );
-gs_declare_resource_type( gs_material );
-gs_declare_resource_type( gs_quad_batch );
 
 /*================
 // Graphics API
@@ -326,8 +387,8 @@ typedef struct gs_graphics_i
 // Graphics Default Functionality
 ===============================*/
 
-gs_texture_parameter_desc gs_texture_parameter_desc_default();
-void* gs_load_texture_data_from_file( const char* path, b32 flip_vertically_on_load );
+extern gs_texture_parameter_desc gs_texture_parameter_desc_default();
+extern void* gs_load_texture_data_from_file( const char* path, b32 flip_vertically_on_load );
 
 /*===============================
 // Graphics User Provided Funcs

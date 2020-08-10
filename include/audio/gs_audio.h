@@ -86,7 +86,8 @@ typedef struct gs_audio_i
 	/*============================================================
 	// Audio Instance Data
 	============================================================*/
-	gs_resource( gs_audio_instance )( * play )( gs_audio_instance_data_t );
+	gs_resource( gs_audio_instance )( * play )(  gs_resource( gs_audio_source ) );
+	gs_resource( gs_audio_instance )( * play_instance_data )( gs_audio_instance_data_t );
 	void ( * pause )( gs_resource( gs_audio_instance ) );
 	void ( * resume )( gs_resource( gs_audio_instance ) );
 	void ( * stop )( gs_resource( gs_audio_instance ) );
@@ -108,7 +109,8 @@ extern void gs_audio_construct_internal( struct gs_audio_i* audio );
 extern void __gs_audio_set_default_functions( struct gs_audio_i* audio );
 extern gs_result __gs_audio_update_internal( struct gs_audio_i* audio );
 extern b32 __gs_load_ogg_data( const char* file_name, gs_audio_source_t* src );
-extern gs_resource( gs_audio_instance ) __gs_audio_play( gs_audio_instance_data_t inst );
+extern gs_resource( gs_audio_instance ) __gs_audio_play( gs_resource( gs_audio_source ) );
+extern gs_resource( gs_audio_instance ) __gs_audio_play_instance_data( gs_audio_instance_data_t inst );
 extern void __gs_audio_pause( gs_resource( gs_audio_instance ) inst_h );
 extern void __gs_audio_resume( gs_resource( gs_audio_instance ) inst_h );
 extern void __gs_audio_restart( gs_resource( gs_audio_instance ) inst_h );
