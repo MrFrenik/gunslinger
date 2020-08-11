@@ -161,12 +161,13 @@ void quad_batch_custom_add( gs_quad_batch_t* qb, void* quad_batch_custom_info_da
 =============================*/
 
 // Globals
-_global gs_resource( gs_command_buffer ) g_cb = {0};
-_global gs_resource( gs_texture ) g_tex = {0};
-_global gs_resource( gs_shader ) g_batch_shader = {0};
+_global gs_command_buffer_t g_cb = {0};
+_global gs_texture_t g_tex = {0};
+_global gs_shader_t g_batch_shader = {0};
+_global gs_camera_t g_camera = {0};
+
 _global gs_resource( gs_material ) g_batch_mat = {0};
 _global gs_resource( gs_quad_batch ) g_batch = {0};
-_global gs_camera g_camera = {0};
 
 // Forward Decls.
 gs_result app_init();		// Use to init your application
@@ -211,7 +212,7 @@ gs_result app_init()
 	gs_quad_batch_i* qb = gfx->quad_batch_i;
 
 	// Construct command buffer ( the command buffer is used to allow for immediate drawing at any point in our program )
-	g_cb = gfx->construct_command_buffer();
+	g_cb = gs_command_buffer_new();
 
 	// Load texture from file
 	g_tex = gfx->construct_texture_from_file( platform->file_exists( "./assets/gs.png" ) ? "./assets/gs.png" : "./../assets/gs.png", 
@@ -302,10 +303,10 @@ gs_result app_update()
 
 	// Set clear color and clear screen
 	f32 clear_color[4] = { 0.2f, 0.2f, 0.2f, 1.f };
-	gfx->set_view_clear( g_cb, clear_color );
-	gfx->set_view_port( g_cb, fbs.x, fbs.y );
-	gfx->set_depth_enabled( g_cb, false );
-	gfx->set_blend_mode( g_cb, gs_blend_mode_src_alpha, gs_blend_mode_one_minus_src_alpha );
+	gfx->set_view_clear( &g_cb, clear_color );
+	gfx->set_view_port( &g_cb, fbs.x, fbs.y );
+	gfx->set_depth_enabled( &g_cb, false );
+	gfx->set_blend_mode( &g_cb, gs_blend_mode_src_alpha, gs_blend_mode_one_minus_src_alpha );
 
 	// Create model/view/projection matrices from camera
 	gs_mat4 view_mtx = gs_camera_get_view( &g_camera );
@@ -319,10 +320,10 @@ gs_result app_update()
 	gfx->set_material_uniform_float( g_batch_mat, "u_alpha", sin(t * 0.001f) * 0.5f + 0.5f );
 
 	// Need to submit quad batch
-	gfx->quad_batch_submit( g_cb, g_batch );
+	gfx->quad_batch_submit( &g_cb, g_batch );
 
 	// Submit command buffer for rendering
-	gfx->submit_command_buffer( g_cb );
+	gfx->submit_command_buffer( &g_cb );
 
 	return gs_result_in_progress;
 }

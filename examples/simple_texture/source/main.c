@@ -11,16 +11,16 @@
 */
 
 // Globals
-_global gs_resource( gs_vertex_buffer ) g_vbo = {0};
-_global gs_resource( gs_index_buffer ) g_ibo = {0};
-_global gs_resource( gs_command_buffer ) g_cb = {0};
-_global gs_resource( gs_shader ) g_shader = {0};
-_global gs_resource( gs_uniform ) u_model = {0};
-_global gs_resource( gs_uniform ) u_view = {0};
-_global gs_resource( gs_uniform ) u_proj = {0};
-_global gs_resource( gs_uniform ) u_tex = {0};
-_global gs_resource( gs_texture ) g_tex = {0};
-_global gs_camera g_camera = {0};
+_global gs_shader_t 		g_shader = {0};
+_global gs_uniform_t 		u_model = {0};
+_global gs_uniform_t 		u_view = {0};
+_global gs_uniform_t 		u_proj = {0};
+_global gs_uniform_t 		u_tex = {0};
+_global gs_index_buffer_t 	g_ibo = {0};
+_global gs_vertex_buffer_t 	g_vbo = {0};
+_global gs_command_buffer_t g_cb = {0};
+_global gs_texture_t 		g_tex = {0};
+_global gs_camera_t 		g_camera = {0};
 
 const char* v_src = "\n"
 "#version 330 core\n"
@@ -87,7 +87,7 @@ gs_result app_init()
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 
 	// Construct command buffer ( the command buffer is used to allow for immediate drawing at any point in our program )
-	g_cb = gfx->construct_command_buffer();
+	g_cb = gs_command_buffer_new();
 
 	// Construct shader from our source above
 	g_shader = gfx->construct_shader( v_src, f_src );
@@ -114,8 +114,8 @@ gs_result app_init()
 		 0.5f,  0.5f,  1.0f, 1.0f   // Bottom Right
 	};
 
-	u32 i_data[] = {
-
+	u32 i_data[] = 
+	{
 		0, 3, 2,	// First Triangle
 		0, 1, 3		// Second Triangle
 	};
@@ -174,31 +174,31 @@ gs_result app_update()
 
 	// Set clear color and clear screen
 	f32 clear_color[4] = { 0.2f, 0.2f, 0.2f, 1.f };
-	gfx->set_view_clear( g_cb, clear_color );
-	gfx->set_view_port( g_cb, fbs.x, fbs.y );
+	gfx->set_view_clear( &g_cb, clear_color );
+	gfx->set_view_port( &g_cb, fbs.x, fbs.y );
 
 	// Bind shader
-	gfx->bind_shader( g_cb, g_shader );
+	gfx->bind_shader( &g_cb, g_shader );
 
 	// Bind matrix uniforms
-	gfx->bind_uniform_mat4( g_cb, u_proj, gs_camera_get_projection( &g_camera, ws.x, ws.y ) );
-	gfx->bind_uniform_mat4( g_cb, u_view, gs_camera_get_view( &g_camera ) );
-	gfx->bind_uniform_mat4( g_cb, u_model, gs_mat4_identity() );
+	gfx->bind_uniform_mat4( &g_cb, u_proj, gs_camera_get_projection( &g_camera, ws.x, ws.y ) );
+	gfx->bind_uniform_mat4( &g_cb, u_view, gs_camera_get_view( &g_camera ) );
+	gfx->bind_uniform_mat4( &g_cb, u_model, gs_mat4_identity() );
 
 	// Bind texture slot
-	gfx->bind_texture( g_cb, u_tex, g_tex, 0 );
+	gfx->bind_texture( &g_cb, u_tex, g_tex, 0 );
 
 	// Bind vertex buffer
-	gfx->bind_vertex_buffer( g_cb, g_vbo );
+	gfx->bind_vertex_buffer( &g_cb, g_vbo );
 
 	// Bind index buffer
-	gfx->bind_index_buffer( g_cb, g_ibo );
+	gfx->bind_index_buffer( &g_cb, g_ibo );
 
 	// Draw
-	gfx->draw_indexed( g_cb, 6, 0 );
+	gfx->draw_indexed( &g_cb, 6, 0 );
 
 	// Submit command buffer for rendering
-	gfx->submit_command_buffer( g_cb );
+	gfx->submit_command_buffer( &g_cb );
 
 	return gs_result_in_progress;
 }

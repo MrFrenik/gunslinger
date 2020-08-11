@@ -117,7 +117,7 @@ void __gs_quad_batch_default_free( gs_quad_batch_t* batch )
 	gs_byte_buffer_free( &batch->raw_vertex_data );	
 }
 
-void __gs_quad_batch_default_submit( gs_resource( gs_command_buffer ) cb, gs_quad_batch_t* batch )
+void __gs_quad_batch_default_submit( gs_command_buffer_t* cb, gs_quad_batch_t* batch )
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 
@@ -144,12 +144,9 @@ void __gs_quad_batch_i_set_layout( gs_quad_batch_i* api, void* layout, usize lay
 	}
 }
 
-void __gs_quad_batch_i_set_shader( gs_quad_batch_i* api, gs_resource( gs_shader ) shader )
+void __gs_quad_batch_i_set_shader( gs_quad_batch_i* api, gs_shader_t shader )
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
-
-	// Free previous shader
-	gfx->free_shader( api->shader );
 	api->shader = shader;
 }
 

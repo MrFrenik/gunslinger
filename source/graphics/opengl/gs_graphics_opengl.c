@@ -73,13 +73,13 @@ typedef struct debug_drawing_internal_data
 {
 	gs_mat4 view_mat;
 	gs_mat4 proj_mat;
-	gs_resource( gs_shader ) shader;
-	gs_resource( gs_uniform ) u_proj;
-	gs_resource( gs_uniform ) u_view;
+	gs_shader_t shader;
+	gs_uniform_t u_proj;
+	gs_uniform_t u_view;
 	gs_dyn_array( f32 ) line_vertex_data; 
 	gs_dyn_array( f32 ) quad_vertex_data;
-	gs_resource( gs_vertex_buffer) quad_vbo;
-	gs_resource( gs_vertex_buffer ) line_vbo;
+	gs_vertex_buffer_t quad_vbo;
+	gs_vertex_buffer_t line_vbo;
 } debug_drawing_internal_data;
 
 typedef gs_command_buffer_t command_buffer_t;
@@ -93,29 +93,12 @@ typedef gs_render_target_t render_target_t;
 typedef gs_frame_buffer_t frame_buffer_t;
 
 // Slot array declarations
-gs_slot_array_decl( command_buffer_t );
-gs_slot_array_decl( texture_t );
-gs_slot_array_decl( shader_t );
-gs_slot_array_decl( uniform_t );
-gs_slot_array_decl( index_buffer_t );
-gs_slot_array_decl( vertex_buffer_t );
-gs_slot_array_decl( vertex_attribute_layout_desc_t );
-gs_slot_array_decl( render_target_t );
-gs_slot_array_decl( frame_buffer_t );
 gs_slot_array_decl( gs_material_t );
 gs_slot_array_decl( gs_quad_batch_t );
 
 // Define render resource data structure
 typedef struct opengl_render_data_t
 {
-	gs_slot_array( command_buffer_t ) 				command_buffers;
-	gs_slot_array( texture_t ) 						textures;
-	gs_slot_array( shader_t ) 						shaders;
-	gs_slot_array( uniform_t ) 						uniforms;
-	gs_slot_array( index_buffer_t )   				index_buffers;
-	gs_slot_array( vertex_buffer_t )  				vertex_buffers;
-	gs_slot_array( render_target_t ) 				render_targets;
-	gs_slot_array( frame_buffer_t ) 				frame_buffers;
 	gs_slot_array( gs_material_t ) 					materials;
 	gs_slot_array( gs_quad_batch_t ) 				quad_batches;
 	debug_drawing_internal_data 					debug_data;
@@ -150,7 +133,7 @@ typedef struct opengl_render_data_t
 // Forward Decls;
 void __reset_command_buffer_internal( command_buffer_t* cb );
 debug_drawing_internal_data construct_debug_drawing_internal_data();
-gs_resource( gs_texture ) opengl_construct_texture( gs_texture_parameter_desc desc );
+gs_texture_t opengl_construct_texture( gs_texture_parameter_desc desc );
 
 /*============================================================
 // Graphics Initilization / De-Initialization
@@ -177,14 +160,6 @@ gs_result opengl_init( struct gs_graphics_i* gfx )
 	gfx->data = data;
 
 	// Initialize data
-	data->command_buffers 		= gs_slot_array_new( command_buffer_t );
-	data->textures				= gs_slot_array_new( texture_t );
-	data->shaders 				= gs_slot_array_new( shader_t );
-	data->uniforms 				= gs_slot_array_new( uniform_t );
-	data->index_buffers 		= gs_slot_array_new( index_buffer_t );
-	data->vertex_buffers 		= gs_slot_array_new( vertex_buffer_t );
-	data->render_targets 		= gs_slot_array_new( render_target_t );
-	data->frame_buffers 		= gs_slot_array_new( frame_buffer_t );
 	data->materials 			= gs_slot_array_new( gs_material_t );
 	data->quad_batches 			= gs_slot_array_new( gs_quad_batch_t );
 	data->debug_data 			= construct_debug_drawing_internal_data();
@@ -209,10 +184,10 @@ gs_result opengl_update( struct gs_graphics_i* gfx )
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
 	// For now, just go through all command buffers and reset them
-	gs_for_range_i( gs_dyn_array_size( data->command_buffers.data ) )
-	{
-		__reset_command_buffer_internal( &data->command_buffers.data[ i ] );
-	}
+	// gs_for_range_i( gs_dyn_array_size( data->command_buffers.data ) )
+	// {
+	// 	__reset_command_buffer_internal( &data->command_buffers.data[ i ] );
+	// }
 
 	return gs_result_in_progress;
 }
@@ -265,24 +240,21 @@ void __reset_command_buffer_internal( command_buffer_t* cb )
 	cb->num_commands = 0;
 }
 
-void opengl_reset_command_buffer( gs_resource( gs_command_buffer ) cb_handle )
+void opengl_reset_command_buffer( gs_command_buffer_t* cb )
 {
 	// Get data from graphics api
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
 	// Grab command buffer ptr from command buffer slot array
-	command_buffer_t* cb = __get_command_buffer_internal( data, cb_handle );
+	// command_buffer_t* cb = __get_command_buffer_internal( data, cb );
 
 	__reset_command_buffer_internal( cb );
 }
 
-#define __push_command( cbh, op_code, ... )\
+#define __push_command( cb, op_code, ... )\
 do {\
 	/* Get data from graphics api */\
 	opengl_render_data_t* __data = __get_opengl_data_internal();\
-	/* Grab command buffer ptr from command buffer slot array */\
-	command_buffer_t* cb = __get_command_buffer_internal( __data, cbh );\
-	/* Write op code */\
 	gs_byte_buffer_write( &cb->commands, u32, op_code );\
 	/* Push back all data required */\
 	__VA_ARGS__\
@@ -290,12 +262,12 @@ do {\
 	cb->num_commands++;\
 } while (0)
 
-void opengl_set_frame_buffer_attachment( gs_resource( gs_command_buffer ) cb_handle, gs_resource( gs_texture ) t_handle, u32 idx )
+void opengl_set_frame_buffer_attachment( gs_command_buffer_t* cb, gs_texture_t t, u32 idx )
 {
-	__push_command( cb_handle, gs_opengl_op_set_frame_buffer_attachment, {
+	__push_command( cb, gs_opengl_op_set_frame_buffer_attachment, {
 
 		// Grab texture from handle
-		texture_t t = gs_slot_array_get( __data->textures, t_handle.id );
+		// texture_t t = gs_slot_array_get( __data->textures, t_handle.id );
 
 		// Push back commands
 		gs_byte_buffer_write( &cb->commands, u32, t.id );
@@ -303,31 +275,31 @@ void opengl_set_frame_buffer_attachment( gs_resource( gs_command_buffer ) cb_han
 	});
 }
 
-void opengl_bind_frame_buffer( gs_resource( gs_command_buffer ) cb_handle, gs_resource( gs_frame_buffer ) fb_handle )
+void opengl_bind_frame_buffer( gs_command_buffer_t* cb, gs_frame_buffer_t fb )
 {
-	__push_command( cb_handle, gs_opengl_op_bind_frame_buffer, {
+	__push_command( cb, gs_opengl_op_bind_frame_buffer, {
 
 		// Grab shader from handle
-		frame_buffer_t fb = gs_slot_array_get( __data->frame_buffers, fb_handle.id );
+		// frame_buffer_t fb = gs_slot_array_get( __data->frame_buffers, fb_handle.id );
 
 		// Push back commands
 		gs_byte_buffer_write( &cb->commands, u32, fb.fbo );
 	});
 }
 
-void opengl_unbind_frame_buffer( gs_resource( gs_command_buffer ) cb_handle )
+void opengl_unbind_frame_buffer( gs_command_buffer_t* cb )
 {
-	__push_command( cb_handle, gs_opengl_op_unbind_frame_buffer, {
+	__push_command( cb, gs_opengl_op_unbind_frame_buffer, {
 
 	});
 }
 
-void opengl_bind_shader( gs_resource( gs_command_buffer ) cb_handle, gs_resource( gs_shader ) s_handle )
+void opengl_bind_shader( gs_command_buffer_t* cb, gs_shader_t s )
 {
-	__push_command( cb_handle, gs_opengl_op_bind_shader, {
+	__push_command( cb, gs_opengl_op_bind_shader, {
 
 		// Grab shader from handle
-		shader_t s = gs_slot_array_get( __data->shaders, s_handle.id );
+		// shader_t s = gs_slot_array_get( __data->shaders, s_handle.id );
 
 		// Construct command packet for binding shader
 		gs_byte_buffer_write( &cb->commands, u32, s.program_id );
@@ -337,12 +309,12 @@ void opengl_bind_shader( gs_resource( gs_command_buffer ) cb_handle, gs_resource
 #define __write_uniform_val(bb, type, u_data)\
 	gs_byte_buffer_write(&bb, type, *((type*)(u_data)));
 
-void opengl_bind_uniform( gs_resource( gs_command_buffer ) cb_handle, gs_resource( gs_uniform ) u_handle, void* u_data )
+void opengl_bind_uniform( gs_command_buffer_t* cb, gs_uniform_t u, void* u_data )
 {
-	__push_command( cb_handle, gs_opengl_op_bind_uniform, {
+	__push_command( cb, gs_opengl_op_bind_uniform, {
 
 		// Grab uniform from handle
-		uniform_t u = gs_slot_array_get( __data->uniforms, u_handle.id );
+		// uniform_t u = gs_slot_array_get( __data->uniforms, u_handle.id );
 
 		// Write out uniform location
 		gs_byte_buffer_write( &cb->commands, u32, (u32)u.location );
@@ -369,12 +341,12 @@ void opengl_bind_uniform( gs_resource( gs_command_buffer ) cb_handle, gs_resourc
 	});
 }
 
-void opengl_bind_uniform_mat4( gs_resource( gs_command_buffer ) cb_handle, gs_resource( gs_uniform ) u_handle, gs_mat4 val )
+void opengl_bind_uniform_mat4( gs_command_buffer_t* cb, gs_uniform_t u, gs_mat4 val )
 {
-	__push_command( cb_handle, gs_opengl_op_bind_uniform, {
+	__push_command( cb, gs_opengl_op_bind_uniform, {
 
 		// Grab uniform from handle
-		uniform_t u = gs_slot_array_get( __data->uniforms, u_handle.id );
+		// uniform_t u = gs_slot_array_get( __data->uniforms, u_handle.id );
 
 		if ( u.type != gs_uniform_type_mat4 ) {
 			return;	
@@ -389,12 +361,12 @@ void opengl_bind_uniform_mat4( gs_resource( gs_command_buffer ) cb_handle, gs_re
 	});
 }
 
-void opengl_bind_texture_id( gs_resource( gs_command_buffer ) cb_handle, gs_resource( gs_uniform ) u_handle, u32 id, u32 slot )
+void opengl_bind_texture_id( gs_command_buffer_t* cb, gs_uniform_t u, u32 id, u32 slot )
 {
-	__push_command( cb_handle, gs_opengl_op_bind_texture, {
+	__push_command( cb, gs_opengl_op_bind_texture, {
 
 		// Grab uniform from handle
-		uniform_t u = gs_slot_array_get( __data->uniforms, u_handle.id );
+		// uniform_t u = gs_slot_array_get( __data->uniforms, u_handle.id );
 
 		// Cannot pass in uniform of wrong type
 		if ( u.type != gs_uniform_type_sampler2d )
@@ -412,16 +384,10 @@ void opengl_bind_texture_id( gs_resource( gs_command_buffer ) cb_handle, gs_reso
 	});
 }
 
-void opengl_bind_texture( gs_resource( gs_command_buffer ) cb_handle, gs_resource( gs_uniform ) u_handle, 
-		gs_resource( gs_texture ) tex_handle, u32 tex_unit )
+void opengl_bind_texture( gs_command_buffer_t* cb, gs_uniform_t u, 
+		gs_texture_t tex, u32 tex_unit )
 {
-	__push_command( cb_handle, gs_opengl_op_bind_texture, {
-
-		// Get texture
-		texture_t tex = gs_slot_array_get( __data->textures, tex_handle.id );
-
-		// Grab uniform from handle
-		uniform_t u = gs_slot_array_get( __data->uniforms, u_handle.id );
+	__push_command( cb, gs_opengl_op_bind_texture, {
 
 		// Cannot pass in uniform of wrong type
 		if ( u.type != gs_uniform_type_sampler2d )
@@ -439,33 +405,27 @@ void opengl_bind_texture( gs_resource( gs_command_buffer ) cb_handle, gs_resourc
 	});
 }
 
-void opengl_bind_vertex_buffer( gs_resource( gs_command_buffer ) cb_handle, gs_resource( gs_vertex_buffer ) vb_handle )
+void opengl_bind_vertex_buffer( gs_command_buffer_t* cb, gs_vertex_buffer_t vb )
 {
-	__push_command( cb_handle, gs_opengl_op_bind_vertex_buffer, {
-
-		// Get vertex buffer data
-		vertex_buffer_t vb = gs_slot_array_get( __data->vertex_buffers, vb_handle.id );
+	__push_command( cb, gs_opengl_op_bind_vertex_buffer, {
 
 		// Write out vao
 		gs_byte_buffer_write( &cb->commands, u32, vb.vao );
 	});
 }
 
-void opengl_bind_index_buffer( gs_resource( gs_command_buffer ) cb_handle, gs_resource( gs_index_buffer ) ib_handle )
+void opengl_bind_index_buffer( gs_command_buffer_t* cb, gs_index_buffer_t ib )
 {
-	__push_command( cb_handle, gs_opengl_op_bind_index_buffer, {
-
-		// Get index buffer data
-		index_buffer_t ib = gs_slot_array_get( __data->index_buffers, ib_handle.id );
+	__push_command( cb, gs_opengl_op_bind_index_buffer, {
 
 		// Write out ibo
 		gs_byte_buffer_write( &cb->commands, u32, ib.ibo );
 	});
 }
 
-void opengl_set_view_scissor( gs_resource( gs_command_buffer ) cb_handle, u32 x, u32 y, u32 w, u32 h )
+void opengl_set_view_scissor( gs_command_buffer_t* cb, u32 x, u32 y, u32 w, u32 h )
 {
-	__push_command( cb_handle, gs_opengl_op_set_view_scissor, {
+	__push_command( cb, gs_opengl_op_set_view_scissor, {
 
 		gs_byte_buffer_write( &cb->commands, u32, x );
 		gs_byte_buffer_write( &cb->commands, u32, y );
@@ -474,9 +434,9 @@ void opengl_set_view_scissor( gs_resource( gs_command_buffer ) cb_handle, u32 x,
 	});
 }
 
-void opengl_set_view_port( gs_resource( gs_command_buffer ) cb_handle, u32 width, u32 height )
+void opengl_set_view_port( gs_command_buffer_t* cb, u32 width, u32 height )
 {
-	__push_command( cb_handle, gs_opengl_op_set_view_port, {
+	__push_command( cb, gs_opengl_op_set_view_port, {
 
 		// Write width into buffer
 		gs_byte_buffer_write( &cb->commands, u32, width );
@@ -486,9 +446,9 @@ void opengl_set_view_port( gs_resource( gs_command_buffer ) cb_handle, u32 width
 }
 
 // Want to set a bitmask for this as well to determine clear types
-void opengl_set_view_clear( gs_resource( gs_command_buffer ) cb_handle, f32* col )
+void opengl_set_view_clear( gs_command_buffer_t* cb, f32* col )
 {
-	__push_command( cb_handle, gs_opengl_op_set_view_clear, {
+	__push_command( cb, gs_opengl_op_set_view_clear, {
 
 		gs_vec4 c = (gs_vec4){col[0], col[1], col[2], col[3]};
 
@@ -497,25 +457,25 @@ void opengl_set_view_clear( gs_resource( gs_command_buffer ) cb_handle, f32* col
 	});
 }
 
-void opengl_set_winding_order( gs_resource( gs_command_buffer ) cb_handle, gs_winding_order_type type )
+void opengl_set_winding_order( gs_command_buffer_t* cb, gs_winding_order_type type )
 {
-	__push_command( cb_handle, gs_opengl_op_set_winding_order, 
+	__push_command( cb, gs_opengl_op_set_winding_order, 
 	{
 		gs_byte_buffer_write( &cb->commands, u32, (u32)type );
 	});
 }
 
-void opengl_set_face_culling( gs_resource( gs_command_buffer ) cb_handle, gs_face_culling_type type )
+void opengl_set_face_culling( gs_command_buffer_t* cb, gs_face_culling_type type )
 {	
-	__push_command( cb_handle, gs_opengl_op_set_face_culling, 
+	__push_command( cb, gs_opengl_op_set_face_culling, 
 	{
 		gs_byte_buffer_write( &cb->commands, u32, (u32)type );
 	});
 }
 
-void opengl_set_blend_equation( gs_resource( gs_command_buffer ) cb_handle, gs_blend_equation_type eq )
+void opengl_set_blend_equation( gs_command_buffer_t* cb, gs_blend_equation_type eq )
 {
-	__push_command( cb_handle, gs_opengl_op_set_blend_equation, {
+	__push_command( cb, gs_opengl_op_set_blend_equation, {
 
 		// Write blend mode for blend equation
 		gs_byte_buffer_write( &cb->commands, u32, (u32)eq );
@@ -523,9 +483,9 @@ void opengl_set_blend_equation( gs_resource( gs_command_buffer ) cb_handle, gs_b
 
 }
 
-void opengl_set_blend_mode( gs_resource( gs_command_buffer ) cb_handle, gs_blend_mode_type src, gs_blend_mode_type dst )
+void opengl_set_blend_mode( gs_command_buffer_t* cb, gs_blend_mode_type src, gs_blend_mode_type dst )
 {
-	__push_command( cb_handle, gs_opengl_op_set_blend_mode, {
+	__push_command( cb, gs_opengl_op_set_blend_mode, {
 
 		// Write blend mode for source
 		gs_byte_buffer_write( &cb->commands, u32, (u32)src );
@@ -534,18 +494,18 @@ void opengl_set_blend_mode( gs_resource( gs_command_buffer ) cb_handle, gs_blend
 	});
 }
 
-void opengl_set_depth_enabled( gs_resource( gs_command_buffer ) cb_handle, b32 enable )
+void opengl_set_depth_enabled( gs_command_buffer_t* cb, b32 enable )
 {
-	__push_command( cb_handle, gs_opengl_op_set_depth_enabled, {
+	__push_command( cb, gs_opengl_op_set_depth_enabled, {
 
 		// Write color into buffer (as vec4)
 		gs_byte_buffer_write( &cb->commands, b32, enable );
 	});
 }
 
-void opengl_draw_indexed( gs_resource( gs_command_buffer ) cb_handle, u32 count, u32 offset )
+void opengl_draw_indexed( gs_command_buffer_t* cb, u32 count, u32 offset )
 {
-	__push_command( cb_handle, gs_opengl_draw_indexed, {
+	__push_command( cb, gs_opengl_draw_indexed, {
 
 		// Write count and offset
 		gs_byte_buffer_write( &cb->commands, u32, count );
@@ -553,9 +513,9 @@ void opengl_draw_indexed( gs_resource( gs_command_buffer ) cb_handle, u32 count,
 	});
 }
 
-void opengl_draw( gs_resource( gs_command_buffer ) cb_handle, u32 start, u32 count )
+void opengl_draw( gs_command_buffer_t* cb, u32 start, u32 count )
 {
-	__push_command( cb_handle, gs_opengl_op_draw, {
+	__push_command( cb, gs_opengl_op_draw, {
 
 		// Write start
 		gs_byte_buffer_write( &cb->commands, u32, start );
@@ -564,9 +524,9 @@ void opengl_draw( gs_resource( gs_command_buffer ) cb_handle, u32 start, u32 cou
 	});
 }
 
-void opengl_set_debug_draw_properties( gs_resource( gs_command_buffer ) cb_handle, gs_debug_draw_properties props )
+void opengl_set_debug_draw_properties( gs_command_buffer_t* cb, gs_debug_draw_properties props )
 {
-	__push_command( cb_handle, gs_opengl_op_debug_set_properties, {
+	__push_command( cb, gs_opengl_op_debug_set_properties, {
 
 		// Write view
 		gs_byte_buffer_write( &cb->commands, gs_mat4, props.view_mat );
@@ -577,9 +537,9 @@ void opengl_set_debug_draw_properties( gs_resource( gs_command_buffer ) cb_handl
 
 // Yeah, don't like this...Because it takes control away from the user completely.
 // Maybe user has ability to add as much as they want into the debug buffer and then can control when to submit it? Hmm...
-void opengl_draw_line( gs_resource( gs_command_buffer ) cb_handle, gs_vec3 start, gs_vec3 end, gs_vec3 color )
+void opengl_draw_line( gs_command_buffer_t* cb, gs_vec3 start, gs_vec3 end, gs_vec3 color )
 {
-	__push_command( cb_handle, gs_opengl_op_debug_draw_line, {
+	__push_command( cb, gs_opengl_op_debug_draw_line, {
 
 		// Write start position
 		gs_byte_buffer_write( &cb->commands, gs_vec3, start );
@@ -590,9 +550,9 @@ void opengl_draw_line( gs_resource( gs_command_buffer ) cb_handle, gs_vec3 start
 	});
 }
 
-void opengl_draw_square( gs_resource( gs_command_buffer ) cb_handle, gs_vec3 origin, f32 width, f32 height, gs_vec3 color, gs_mat4 model )
+void opengl_draw_square( gs_command_buffer_t* cb, gs_vec3 origin, f32 width, f32 height, gs_vec3 color, gs_mat4 model )
 {
-	__push_command( cb_handle, gs_opengl_op_debug_draw_square, {
+	__push_command( cb, gs_opengl_op_debug_draw_square, {
 
 		gs_byte_buffer_write( &cb->commands, gs_vec3, origin );
 		gs_byte_buffer_write( &cb->commands, f32, width );
@@ -602,22 +562,19 @@ void opengl_draw_square( gs_resource( gs_command_buffer ) cb_handle, gs_vec3 ori
 	});
 }
 
-void opengl_submit_debug_drawing( gs_resource( gs_command_buffer ) cb_handle )
+void opengl_submit_debug_drawing( gs_command_buffer_t* cb )
 {
-	__push_command( cb_handle, gs_opengl_op_debug_draw_submit, {
+	__push_command( cb, gs_opengl_op_debug_draw_submit, {
 
 		// Nothing...
 	});
 }
 
-void opengl_update_index_data_command( gs_resource( gs_command_buffer ) cb_handle, 
-	gs_resource( gs_index_buffer ) ib_handle, void* i_data, usize i_size )
+void opengl_update_index_data_command( gs_command_buffer_t* cb, 
+	gs_index_buffer_t ib, void* i_data, usize i_size )
 {
 	// Need to memcpy the data over to the command buffer	
-	__push_command( cb_handle, gs_opengl_op_update_index_data, {
-
-		// Get vertex buffer data
-		index_buffer_t ib = gs_slot_array_get( __data->index_buffers, ib_handle.id );
+	__push_command( cb, gs_opengl_op_update_index_data, {
 
 		// Write out vao/vbo
 		gs_byte_buffer_write( &cb->commands, u32, ib.ibo );
@@ -627,14 +584,11 @@ void opengl_update_index_data_command( gs_resource( gs_command_buffer ) cb_handl
 
 }
 
-void opengl_update_vertex_data_command( gs_resource( gs_command_buffer ) cb_handle, gs_resource( gs_vertex_buffer ) vb_handle, 
+void opengl_update_vertex_data_command( gs_command_buffer_t* cb, gs_vertex_buffer_t vb, 
 	void* v_data, usize v_size )
 {
 	// Need to memcpy the data over to the command buffer	
-	__push_command( cb_handle, gs_opengl_op_update_vertex_data, {
-
-		// Get vertex buffer data
-		vertex_buffer_t vb = gs_slot_array_get( __data->vertex_buffers, vb_handle.id );
+	__push_command( cb, gs_opengl_op_update_vertex_data, {
 
 		// Write out vao/vbo
 		gs_byte_buffer_write( &cb->commands, u32, vb.vao );
@@ -745,13 +699,13 @@ typedef struct vert_t
 } vert_t;
 
 // For now, just rip through command buffer. Later on, will add all command buffers into a queue to be processed on rendering thread.
-void opengl_submit_command_buffer( gs_resource( gs_command_buffer ) cb_handle )
+void opengl_submit_command_buffer( gs_command_buffer_t* cb )
 {
 	// Get data from graphics api
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
 	// Grab command buffer ptr from command buffer slot array
-	command_buffer_t* cb = __get_command_buffer_internal( data, cb_handle );
+	// command_buffer_t* cb = __get_command_buffer_internal( data, cb );
 
 	// Read through all commands
 	/*
@@ -1196,24 +1150,24 @@ void opengl_submit_command_buffer( gs_resource( gs_command_buffer ) cb_handle )
 	opengl_init_default_state();
 }
 
-gs_resource( gs_command_buffer ) opengl_construct_command_buffer()
-{
-	opengl_render_data_t* data = __get_opengl_data_internal();
+// gs_command_buffer_t* opengl_construct_command_buffer()
+// {
+// 	opengl_render_data_t* data = __get_opengl_data_internal();
 
-	// Construct new command buffer, then insert into slot array
-	u32 cb_handle = gs_slot_array_insert( data->command_buffers, (command_buffer_t){0} );
-	command_buffer_t* cb = gs_slot_array_get_ptr( data->command_buffers, cb_handle );
+// 	// Construct new command buffer, then insert into slot array
+// 	u32 cb = gs_slot_array_insert( data->command_buffers, (command_buffer_t){0} );
+// 	command_buffer_t* cb = gs_slot_array_get_ptr( data->command_buffers, cb );
 
-	// Initialize command buffer 
-	cb->num_commands = 0;
-	cb->commands = gs_byte_buffer_new();
+// 	// Initialize command buffer 
+// 	cb->num_commands = 0;
+// 	cb->commands = gs_byte_buffer_new();
 
-	// Set resource handle
-	gs_resource( gs_command_buffer ) handle = {0};
-	handle.id = cb_handle;
+// 	// Set resource handle
+// 	gs_command_buffer_t* handle = {0};
+// 	handle.id = cb;
 
-	return handle;
-}
+// 	return handle;
+// }
 
 u32 get_byte_size_of_vertex_attribute( gs_vertex_attribute_type type )
 {
@@ -1273,23 +1227,23 @@ s32 get_byte_offest( gs_vertex_attribute_type* layout_data, u32 index )
 	return total_offset;
 }
 
-
-gs_resource( gs_vertex_buffer ) opengl_construct_vertex_buffer( gs_vertex_attribute_type* layout_data, usize layout_sz, 
+gs_vertex_buffer_t opengl_construct_vertex_buffer( gs_vertex_attribute_type* layout_data, usize layout_sz, 
 	void* v_data, usize v_data_size )
 {
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
 	// Construct new vertex buffer, then insert into slot array
-	u32 vb_handle = gs_slot_array_insert( data->vertex_buffers, (vertex_buffer_t){0} );
-	vertex_buffer_t* vb = gs_slot_array_get_ptr( data->vertex_buffers, vb_handle );
+	// u32 vb_handle = gs_slot_array_insert( data->vertex_buffers, (vertex_buffer_t){0} );
+	// vertex_buffer_t* vb = gs_slot_array_get_ptr( data->vertex_buffers, vb_handle );
+	gs_vertex_buffer_t vb = {0};
 
 	// Create and bind vertex array
-	glGenVertexArrays( 1, (u32*)&vb->vao );
-	glBindVertexArray( (u32)vb->vao );
+	glGenVertexArrays( 1, (u32*)&vb.vao );
+	glBindVertexArray( (u32)vb.vao );
 
 	// Create and upload mesh data
-	glGenBuffers( 1, (u32*)&vb->vbo );
-	glBindBuffer( GL_ARRAY_BUFFER, (u32)vb->vbo );
+	glGenBuffers( 1, (u32*)&vb.vbo );
+	glBindBuffer( GL_ARRAY_BUFFER, (u32)vb.vbo );
 	glBufferData( GL_ARRAY_BUFFER, v_data_size, v_data, GL_STATIC_DRAW );
 
 	u32 layout_count = layout_sz / sizeof(gs_vertex_attribute_type);
@@ -1366,24 +1320,18 @@ gs_resource( gs_vertex_buffer ) opengl_construct_vertex_buffer( gs_vertex_attrib
 	glBindBuffer( GL_ARRAY_BUFFER, 0 );
 	glBindVertexArray( 0 );
 
-	// Set resource handle
-	gs_resource( gs_vertex_buffer ) handle = {0};
-	handle.id = vb_handle;
-	return handle;
+	return vb;
 }
 
-void opengl_update_vertex_buffer_data( gs_resource( gs_vertex_buffer ) v_handle, void* v_data, usize v_sz )
+void opengl_update_vertex_buffer_data( gs_vertex_buffer_t vb, void* v_data, usize v_sz )
 {
 	gs_assert( v_data );
 
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
-	// Construct new vertex buffer, then insert into slot array
-	vertex_buffer_t* vb = gs_slot_array_get_ptr( data->vertex_buffers, v_handle.id );
-
 	// Bind vao/vbo
-	glBindVertexArray( (u32)vb->vao );
-	glBindBuffer( GL_ARRAY_BUFFER, (u32)vb->vbo );
+	glBindVertexArray( (u32)vb.vao );
+	glBindBuffer( GL_ARRAY_BUFFER, (u32)vb.vbo );
 	glBufferData( GL_ARRAY_BUFFER, v_sz, v_data, GL_STATIC_DRAW );
 
 	// Unbind buffer and array
@@ -1391,25 +1339,20 @@ void opengl_update_vertex_buffer_data( gs_resource( gs_vertex_buffer ) v_handle,
 	glBindVertexArray( 0 );
 }
 
-gs_resource( gs_index_buffer ) opengl_construct_index_buffer( void* indices, usize sz )
+gs_index_buffer_t opengl_construct_index_buffer( void* indices, usize sz )
 {
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
-	// Construct new vertex buffer, then insert into slot array
-	u32 ib_handle = gs_slot_array_insert( data->index_buffers, (index_buffer_t){0} );
-	index_buffer_t* ib = gs_slot_array_get_ptr( data->index_buffers, ib_handle );
+	gs_index_buffer_t ib = {0};
 
-	glGenBuffers( 1, &ib->ibo );
-  	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ib->ibo );
+	glGenBuffers( 1, &ib.ibo );
+  	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ib.ibo );
     glBufferData( GL_ELEMENT_ARRAY_BUFFER, sz, indices, GL_STATIC_DRAW );
 
     // Unbind buffer after setting data
   	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
 
-  	// Create resource
-	gs_resource( gs_index_buffer ) handle = {0};
-	handle.id = ib_handle;
-	return handle;
+	return ib;
 }
 
 // Compiles single shader
@@ -1527,15 +1470,15 @@ void opengl_quad_batch_end( gs_resource( gs_quad_batch ) qb_h )
 	gfx->quad_batch_i->end( qb );
 }
 
-void opengl_quad_batch_submit( gs_resource( gs_command_buffer ) cb_h, gs_resource( gs_quad_batch ) qb_h ) 
+void opengl_quad_batch_submit( gs_command_buffer_t* cb, gs_resource( gs_quad_batch ) qb_h ) 
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	opengl_render_data_t* data = __get_opengl_data_internal();
 	gs_quad_batch_t* qb = gs_slot_array_get_ptr( data->quad_batches, qb_h.id );
-	gfx->quad_batch_i->submit( cb_h, qb );
+	gfx->quad_batch_i->submit( cb, qb );
 }
 
-gs_resource( gs_material ) opengl_construct_material( gs_resource( gs_shader ) shader )
+gs_resource( gs_material ) opengl_construct_material( gs_shader_t shader )
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	opengl_render_data_t* data = __get_opengl_data_internal();
@@ -1612,16 +1555,16 @@ void opengl_set_material_uniform_int( gs_resource( gs_material ) mat_handle, con
 	gs_engine_instance()->ctx.graphics->material_i->set_uniform( mat, gs_uniform_type_int, name, &u_block );
 }
 
-void opengl_set_material_uniform_sampler2d( gs_resource( gs_material ) mat_handle, const char* name, gs_resource( gs_texture ) val, u32 slot )
+void opengl_set_material_uniform_sampler2d( gs_resource( gs_material ) mat_handle, const char* name, gs_texture_t val, u32 slot )
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	opengl_render_data_t* __data = __get_opengl_data_internal();
 	gs_material_t* mat = gs_slot_array_get_ptr( __data->materials, mat_handle.id );
-	gs_uniform_block_type( texture_sampler ) u_block = (gs_uniform_block_type(texture_sampler)){ val, slot };
+	gs_uniform_block_type( texture_sampler ) u_block = (gs_uniform_block_type(texture_sampler)){ val.id, slot };
 	gs_engine_instance()->ctx.graphics->material_i->set_uniform( mat, gs_uniform_type_sampler2d, name, &u_block );
 }
 
-void opengl_bind_material_shader( gs_resource( gs_command_buffer ) cb, gs_resource( gs_material ) mat_handle )
+void opengl_bind_material_shader( gs_command_buffer_t* cb, gs_resource( gs_material ) mat_handle )
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	opengl_render_data_t* data = __get_opengl_data_internal();
@@ -1629,7 +1572,7 @@ void opengl_bind_material_shader( gs_resource( gs_command_buffer ) cb, gs_resour
 	gs_engine_instance()->ctx.graphics->bind_shader( cb, mat->shader );
 }
 
-void opengl_bind_material_uniforms( gs_resource( gs_command_buffer ) cb, gs_resource( gs_material ) mat_handle )
+void opengl_bind_material_uniforms( gs_command_buffer_t* cb, gs_resource( gs_material ) mat_handle )
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	opengl_render_data_t* data = __get_opengl_data_internal();
@@ -1637,12 +1580,12 @@ void opengl_bind_material_uniforms( gs_resource( gs_command_buffer ) cb, gs_reso
 	gs_engine_instance()->ctx.graphics->material_i->bind_uniforms( cb, mat );
 }
 
-gs_resource( gs_shader ) opengl_construct_shader( const char* vert_src, const char* frag_src )
+gs_shader_t opengl_construct_shader( const char* vert_src, const char* frag_src )
 {
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
 	// Shader to fill out
-	shader_t s = {0};
+	gs_shader_t s = {0};
 
 	// Construct vertex program
 	s.program_id = glCreateProgram();
@@ -1663,38 +1606,29 @@ gs_resource( gs_shader ) opengl_construct_shader( const char* vert_src, const ch
 	opengl_link_shaders( s.program_id, vert_id, frag_id );
 
 	// Construct hash table for uniforms
-	s.uniforms = gs_hash_table_new( u64, gs_resource_uniform );
+	// s.uniforms = gs_hash_table_new( u64, gs_uniform_t );
 
 	// Push shader into slot array
-	u32 s_handle = gs_slot_array_insert( data->shaders, s );
+	// u32 s_handle = gs_slot_array_insert( data->shaders, s );
 
 	// Set resource handle
-	gs_resource( gs_shader ) handle = {0};
-	handle.id = s_handle;
+	// gs_resource( gs_shader ) handle = {0};
+	// handle.id = s_handle;
 
-	return handle;
+	// return handle;
+
+	return s;
 }
 
-gs_resource( gs_uniform ) opengl_construct_uniform( gs_resource( gs_shader ) s_handle, const char* uniform_name, gs_uniform_type type )
+gs_uniform_t opengl_construct_uniform( gs_shader_t s, const char* uniform_name, gs_uniform_type type )
 {
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
 	// Uniform to fill out
 	uniform_t u = {0};
 
-	// Grab shader from data
-	shader_t* s = gs_slot_array_get_unsafe( data->shaders, s_handle.id );
-
-	u64 hash_id = gs_hash_str_64( uniform_name );
-
-	// Will look for existing uniform first via shader then return that
-	if ( gs_hash_table_exists( s->uniforms, hash_id ) )
-	{
-		return gs_hash_table_get( s->uniforms, hash_id );
-	} // Otherwise, construct new uniform
-
 	// Grab location of uniform
-	u32 location = glGetUniformLocation( s->program_id, uniform_name );
+	u32 location = glGetUniformLocation( s.program_id, uniform_name );
 
 	if ( location >= u32_max ) {
 		gs_println( "Warning: uniform not found: \"%s\"", uniform_name );
@@ -1705,28 +1639,15 @@ gs_resource( gs_uniform ) opengl_construct_uniform( gs_resource( gs_shader ) s_h
 	u.location = location;
 	u.type = type;
 
-	// Push back uniform into slot array
-	u32 u_handle = gs_slot_array_insert( data->uniforms, u );
-
-	// Set resource handle
-	gs_resource( gs_uniform ) handle = {0};
-	handle.id = u_handle;
-
-	// Insert into shader's uniform table
-	gs_hash_table_insert( s->uniforms, hash_id, handle );
-
-	return handle;
+	return u;
 }
 
-gs_resource( gs_frame_buffer ) opengl_construct_frame_buffer( gs_resource( gs_texture ) t_handle )
+gs_frame_buffer_t opengl_construct_frame_buffer( gs_texture_t tex )
 {
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
 	// Render target to create
 	frame_buffer_t fb = {0};
-
-	// render_target_t rt = gs_slot_array_get( data->render_targets, rt_handle.id );
-	texture_t tex = gs_slot_array_get( data->textures, t_handle.id );
 
 	// Construct and bind frame buffer
 	glGenFramebuffers( 1, &fb.fbo );
@@ -1749,35 +1670,23 @@ gs_resource( gs_frame_buffer ) opengl_construct_frame_buffer( gs_resource( gs_te
 	// Set frame buffer to back buffer
 	glBindFramebuffer( GL_FRAMEBUFFER, 0 );
 
-	// Push back uniform into slot array
-	u32 _handle = gs_slot_array_insert( data->frame_buffers, fb );
-
-	// Set resource handle
-	gs_resource( gs_frame_buffer ) handle = {0};
-	handle.id = _handle;
-	return handle;
+	return fb;
 }
 
-gs_resource( gs_render_target ) opengl_construct_render_target( gs_texture_parameter_desc t_desc )
+gs_render_target_t opengl_construct_render_target( gs_texture_parameter_desc t_desc )
 {
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
 	// Render target to create
 	render_target_t target = {0};
 
-	// Construct color texture
-	target.tex_handle = opengl_construct_texture( t_desc );
+	gs_texture_t tex = opengl_construct_texture( t_desc );
+	target.tex_id = tex.id;
 
-	// Push back uniform into slot array
-	u32 _handle = gs_slot_array_insert( data->render_targets, target );
-
-	// Set resource handle
-	gs_resource( gs_render_target ) handle = {0};
-	handle.id = _handle;
-	return handle;
+	return target;
 }
 
-gs_resource( gs_texture ) opengl_construct_texture( gs_texture_parameter_desc desc )
+gs_texture_t opengl_construct_texture( gs_texture_parameter_desc desc )
 {
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
@@ -1848,28 +1757,17 @@ gs_resource( gs_texture ) opengl_construct_texture( gs_texture_parameter_desc de
 
 	glBindTexture( GL_TEXTURE_2D, 0 );
 
-	// Push back texture for handle
-	u32 t_handle = gs_slot_array_insert( data->textures, tex );
-
-	gs_resource( gs_texture ) handle = {0};
-	handle.id = t_handle;
-	return handle;
+	return tex;
 }
 
-gs_uniform_type opengl_uniform_type( gs_resource( gs_uniform ) uniform_handle )
+gs_uniform_type opengl_uniform_type( gs_uniform_t u )
 {
-	opengl_render_data_t* __data = __get_opengl_data_internal();
-	uniform_t uniform = gs_slot_array_get( __data->uniforms, uniform_handle.id );
-	return uniform.type;
+	return u.type;
 }
 
-s32 opengl_texture_id( gs_resource( gs_texture ) tex_handle )
+s32 opengl_texture_id( gs_texture_t* tex )
 {
-	opengl_render_data_t* __data = __get_opengl_data_internal();
-
-	// Get texture
-	texture_t tex = gs_slot_array_get( __data->textures, tex_handle.id );
-	return tex.id;
+	return tex->id;
 } 
 
 void* opengl_load_texture_data_from_file( const char* file_path, b32 flip_vertically_on_load, 
@@ -1908,7 +1806,7 @@ void* opengl_load_texture_data_from_file( const char* file_path, b32 flip_vertic
 	return texture_data;
 }
 
-gs_resource( gs_texture ) opengl_construct_texture_from_file( const char* file_path, gs_texture_parameter_desc t_desc )
+gs_texture_t opengl_construct_texture_from_file( const char* file_path, gs_texture_parameter_desc t_desc )
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	opengl_render_data_t* data = __get_opengl_data_internal();
@@ -1918,18 +1816,15 @@ gs_resource( gs_texture ) opengl_construct_texture_from_file( const char* file_p
 		(s32*)&t_desc.width, (s32*)&t_desc.height, (s32*)&t_desc.num_comps );
 
 	// Finish constructing texture resource from descriptor and return handle
-	gs_resource( gs_texture ) tex = opengl_construct_texture( t_desc );
+	gs_texture_t tex = opengl_construct_texture( t_desc );
 	gs_free( t_desc.data );
 
 	return tex;
 }
 
-void opengl_update_texture_data( gs_resource( gs_texture ) t_handle, gs_texture_parameter_desc t_desc )
+void opengl_update_texture_data( gs_texture_t* tex, gs_texture_parameter_desc t_desc )
 {
 	opengl_render_data_t* data = __get_opengl_data_internal();
-
-	// Get texture from slot id
-	texture_t* tex = gs_slot_array_get_ptr( data->textures, t_handle.id );
 
 	gs_texture_format texture_format = t_desc.texture_format;
 	u32 width = t_desc.width;
@@ -1998,18 +1893,13 @@ void opengl_update_texture_data( gs_resource( gs_texture ) t_handle, gs_texture_
 void shader_t_free( shader_t* shader )
 {
 	glDeleteProgram( shader->program_id );
-	gs_hash_table_free( shader->uniforms );
 }
 
-void opengl_free_shader( gs_resource( gs_shader ) s_handle )
+void opengl_free_shader( gs_shader_t shader )
 {
 	opengl_render_data_t* __data = __get_opengl_data_internal();
 	
-	// Grab shader from handle
-	shader_t s = gs_slot_array_get( __data->shaders, s_handle.id );
-	shader_t_free( &s );
-
-	// TODO: Remove from slot array...
+	shader_t_free( &shader );
 }
 
 // Method for creating graphics layer for opengl
@@ -2036,6 +1926,7 @@ struct gs_graphics_i* __gs_graphics_construct()
 	gfx->bind_vertex_buffer 			= &opengl_bind_vertex_buffer;
 	gfx->bind_index_buffer 				= &opengl_bind_index_buffer;
 	gfx->bind_texture 					= &opengl_bind_texture;
+	gfx->bind_texture_id 				= &opengl_bind_texture_id;
 	gfx->bind_uniform 					= &opengl_bind_uniform;
 	gfx->bind_uniform_mat4 				= &opengl_bind_uniform_mat4;
 	gfx->bind_frame_buffer  			= &opengl_bind_frame_buffer;
@@ -2057,15 +1948,15 @@ struct gs_graphics_i* __gs_graphics_construct()
 	gfx->bind_material_uniforms 		= &opengl_bind_material_uniforms;
 	gfx->bind_material_shader 			= &opengl_bind_material_shader;
 
-	// void ( * set_uniform_buffer_sub_data )( gs_resource( gs_command_buffer ), gs_resource( gs_uniform_buffer ), void*, usize );
-	// void ( * set_index_buffer )( gs_resource( gs_command_buffer ), gs_resource( gs_index_buffer ) );
+	// void ( * set_uniform_buffer_sub_data )( gs_command_buffer_t*, gs_resource( gs_uniform_buffer ), void*, usize );
+	// void ( * set_index_buffer )( gs_command_buffer_t*, gs_resource( gs_index_buffer ) );
 
 	/*============================================================
 	// Graphics Resource Construction
 	============================================================*/
 	gfx->construct_shader 						= &opengl_construct_shader;
 	gfx->construct_uniform 						= &opengl_construct_uniform;
-	gfx->construct_command_buffer 				= &opengl_construct_command_buffer;
+	// gfx->construct_command_buffer 				= &opengl_construct_command_buffer;
 	gfx->construct_frame_buffer 				= &opengl_construct_frame_buffer;
 	gfx->construct_render_target 				= &opengl_construct_render_target;
 	gfx->construct_vertex_buffer 				= &opengl_construct_vertex_buffer;

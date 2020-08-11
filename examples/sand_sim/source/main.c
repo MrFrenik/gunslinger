@@ -38,21 +38,20 @@ typedef struct particle_t
 // Should have a hash map of glyph character to glyph metric
 
 // Globals
-_global gs_resource( gs_vertex_buffer ) 	g_vbo = {0};
-_global gs_resource( gs_index_buffer ) 		g_ibo = {0};
-_global gs_resource( gs_command_buffer ) 	g_cb = {0};
-_global gs_resource( gs_shader ) 			g_shader = {0};
-_global gs_resource( gs_uniform ) 			u_tex = {0}; 
-_global gs_resource( gs_uniform ) 			u_flip_y = {0}; 
-_global gs_resource( gs_texture ) 			g_tex = {0};
-_global gs_resource( gs_texture ) 			g_tex_ui = {0};
-_global gs_resource( gs_texture ) 			g_rt = {0};
-_global gs_resource( gs_frame_buffer ) 		g_fb = {0};
-_global blur_pass_t 						g_blur_pass = {0};
-_global bright_filter_pass_t 				g_bright_pass = {0};
-_global composite_pass_t 					g_composite_pass = {0};
-_global font_t								g_font = {0};
-_global b32 g_app_running 					= true;
+_global gs_vertex_buffer_t 		g_vbo = {0};
+_global gs_index_buffer_t 		g_ibo = {0};
+_global gs_command_buffer_t 	g_cb = {0};
+_global gs_shader_t 			g_shader = {0};
+_global gs_uniform_t 			u_tex = {0}; 
+_global gs_uniform_t 			u_flip_y = {0}; 
+_global gs_texture_t 			g_tex = {0};
+_global gs_texture_t 			g_tex_ui = {0};
+_global gs_texture_t 			g_rt = {0};
+_global gs_frame_buffer_t 		g_fb = {0};
+_global blur_pass_t 			g_blur_pass = {0};
+_global bright_filter_pass_t 	g_bright_pass = {0};
+_global composite_pass_t 		g_composite_pass = {0};
+_global font_t					g_font = {0};
 
 // For now, all particle information will simply be a value to determine its material id
 #define mat_id_empty (u8)0
@@ -607,7 +606,7 @@ gs_result app_init()
 	platform->set_window_close_callback( platform->main_window(), &app_close_window_callback );
 
 	// Construct command buffer ( the command buffer is used to allow for immediate drawing at any point in our program )
-	g_cb = gfx->construct_command_buffer();
+	g_cb = gs_command_buffer_new();
 
 	// Construct shader from our source above
 	g_shader = gfx->construct_shader( v_src, f_src );
