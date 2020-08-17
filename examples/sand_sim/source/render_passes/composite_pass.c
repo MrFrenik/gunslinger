@@ -23,7 +23,7 @@
 // } composite_pass_parameters_t;
 
 // Forward Decl.
-void cp_pass( gs_resource( gs_command_buffer ) cb, struct render_pass_i* pass, void* paramters );
+void cp_pass( gs_command_buffer_t* cb, struct render_pass_i* pass, void* paramters );
 
 const char* cp_v_src = "\n"
 "#version 330 core\n"
@@ -128,7 +128,7 @@ composite_pass_t composite_pass_ctor()
 	return p;
 }
 
-void cp_pass( gs_resource( gs_command_buffer ) cb, struct render_pass_i* _pass, void* _params )
+void cp_pass( gs_command_buffer_t* cb, struct render_pass_i* _pass, void* _params )
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
@@ -158,7 +158,7 @@ void cp_pass( gs_resource( gs_command_buffer ) cb, struct render_pass_i* _pass, 
 	t_desc.height = (s32)(ws.y);
 
 	// Two render targets for double buffered separable blur ( For now, just set to window's viewport )
-	gfx->update_texture_data( p->data.render_target, t_desc );
+	gfx->update_texture_data( &p->data.render_target, t_desc );
 
 	// Set frame buffer attachment for rendering
 	gfx->set_frame_buffer_attachment( cb, p->data.render_target, 0 );

@@ -3,7 +3,7 @@
 
 // Forward Decls.
 void calculate_blur_weights( blur_pass_t* pass );
-void _blur_pass( gs_resource( gs_command_buffer ) cb, render_pass_i* _pass, void* _params );
+void _blur_pass( gs_command_buffer_t* cb, render_pass_i* _pass, void* _params );
 
 /*===============
 // Blur Shaders
@@ -134,7 +134,7 @@ blur_pass_t blur_pass_ctor()
 	return bp;
 }
 
-void _blur_pass( gs_resource( gs_command_buffer ) cb, render_pass_i* _pass, void* _params )
+void _blur_pass( gs_command_buffer_t* cb, render_pass_i* _pass, void* _params )
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
@@ -166,15 +166,15 @@ void _blur_pass( gs_resource( gs_command_buffer ) cb, render_pass_i* _pass, void
 	t_desc.height = (s32)(ws.y / 16);
 
 	// Two render targets for double buffered separable blur ( For now, just set to window's viewport )
-	gfx->update_texture_data( bp->data.blur_render_target_a, t_desc );
-	gfx->update_texture_data( bp->data.blur_render_target_b, t_desc );
+	gfx->update_texture_data( &bp->data.blur_render_target_a, t_desc );
+	gfx->update_texture_data( &bp->data.blur_render_target_b, t_desc );
 
 	for ( u32 i = 0; i < bp->data.iterations * 2; ++i ) 
 	{
 		b32 is_even = ( i % 2 == 0 );
-		gs_resource( gs_texture )* target = is_even ? &bp->data.blur_render_target_a : &bp->data.blur_render_target_b;
-		gs_resource( gs_shader )* shader = is_even ? &bp->data.horizontal_blur_shader : &bp->data.vertical_blur_shader;
-		gs_resource( gs_texture )* tex = (i == 0) ? &params->input_texture : is_even ? &bp->data.blur_render_target_b : &bp->data.blur_render_target_a;
+		gs_texture_t* target = is_even ? &bp->data.blur_render_target_a : &bp->data.blur_render_target_b;
+		gs_shader_t* shader = is_even ? &bp->data.horizontal_blur_shader : &bp->data.vertical_blur_shader;
+		gs_texture_t* tex = (i == 0) ? &params->input_texture : is_even ? &bp->data.blur_render_target_b : &bp->data.blur_render_target_a;
 
 		// Set frame buffer attachment for rendering
 		gfx->set_frame_buffer_attachment( cb, *target, 0 );
