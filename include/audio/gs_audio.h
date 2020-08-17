@@ -37,6 +37,9 @@ typedef struct gs_audio_instance_data_t
 	void* user_data;						// Any custom user data required for a specific internal/external usage
 } gs_audio_instance_data_t;
 
+typedef gs_resource( gs_audio_source ) gs_handle_audio_source;
+typedef gs_resource( gs_audio_instance ) gs_handle_audio_instance;
+
 gs_slot_array_decl( gs_audio_source_t );
 gs_slot_array_decl( gs_audio_instance_data_t );
 
