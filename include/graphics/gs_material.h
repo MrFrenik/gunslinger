@@ -64,7 +64,7 @@ typedef struct gs_material_t
 	gs_uniform_block_t uniforms;
 } gs_material_t;
 
-extern gs_material_t __gs_material_t_new( gs_shader_t shader );
+extern gs_material_t gs_material_new( gs_shader_t shader );
 extern void __gs_material_i_set_uniform( gs_material_t* mat, gs_uniform_type type, const char* name, void* data );
 extern void __gs_material_i_bind_uniforms( gs_command_buffer_t* cb, gs_material_t* mat );
 

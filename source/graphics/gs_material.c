@@ -137,7 +137,7 @@ gs_uniform_block_i __gs_uniform_block_i_new()
 	return api;	
 }
 
- gs_material_t __gs_material_t_new( gs_shader_t shader )
+ gs_material_t gs_material_new( gs_shader_t shader )
 {
 	gs_material_t mat = {0};
 	mat.shader = shader;
@@ -193,7 +193,7 @@ void __gs_material_i_bind_uniforms( gs_command_buffer_t* cb, gs_material_t* mat 
 gs_material_i __gs_material_i_new()
 {
 	gs_material_i api = {0};
-	api.construct = &__gs_material_t_new;
+	api.construct = &gs_material_new;
 	api.set_uniform = &__gs_material_i_set_uniform;
 	api.bind_uniforms = &__gs_material_i_bind_uniforms;
 	return api;

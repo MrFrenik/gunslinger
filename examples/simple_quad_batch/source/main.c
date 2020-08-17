@@ -5,13 +5,11 @@
 */
 
 // Globals
-_global gs_command_buffer_t 		g_cb = {0};
-_global gs_texture_t 				g_tex = {0};
-_global gs_camera_t 				g_camera = {0};
-
-_global gs_resource( gs_material )  	g_mat = {0};
-_global gs_resource( gs_quad_batch ) 	g_batch = {0};
-
+_global gs_command_buffer_t g_cb = {0};
+_global gs_texture_t 		g_tex = {0};
+_global gs_camera_t 		g_camera = {0};
+_global gs_material_t  		g_mat = {0};
+_global gs_quad_batch_t 	g_batch = {0};
 
 // Forward Decls.
 gs_result app_init();		// Use to init your application
@@ -75,13 +73,13 @@ gs_result app_init()
 	g_camera.proj_type = gs_projection_type_orthographic;
 
 	// Setup quad batch
-	g_mat = gfx->construct_material( gfx->quad_batch_i->shader );
+	g_mat = gs_material_new( gfx->quad_batch_i->shader );
 
 	// Set material texture uniform
-	gfx->set_material_uniform_sampler2d( g_mat, "u_tex", g_tex, 0 );
+	gfx->set_material_uniform_sampler2d( &g_mat, "u_tex", g_tex, 0 );
 
 	// Construct quad batch api and link up function pointers
-	g_batch = gfx->construct_quad_batch( g_mat );
+	g_batch = gs_quad_batch_new( &g_mat );
 
 	return gs_result_success;
 }
@@ -95,6 +93,10 @@ gs_result app_update()
 	gs_platform_i* platform = engine->ctx.platform;
 	gs_graphics_i* gfx = engine->ctx.graphics;
 
+	// Cache pointers
+	gs_quad_batch_t* qb = &g_batch;
+	gs_command_buffer_t* cb = &g_cb;
+
 	// If we press the escape key, exit the application
 	if ( platform->key_pressed( gs_keycode_esc ) )
 	{
@@ -107,7 +109,7 @@ gs_result app_update()
 	update_camera();
 
 	// Add some stuff to the quad batch
-	gfx->quad_batch_begin( g_batch );
+	gfx->quad_batch_begin( qb );
 	{
 		gs_for_range_i( 100 ) {
 			gs_for_range_j( 100 ) {
@@ -116,11 +118,11 @@ gs_result app_update()
 				quad_info.transform.position = (gs_vec3){i, j, 0.f};
 				quad_info.uv = (gs_vec4){0.f, 0.f, 1.f, 1.f};
 				quad_info.color = i % 2 == 0 ? (gs_vec4){1.f, 1.f, 1.f, 1.f} : (gs_vec4){1.f, 0.f, 0.f, 1.f};
-				gfx->quad_batch_add( g_batch, &quad_info );
+				gfx->quad_batch_add( qb, &quad_info );
 			}
 		}
 	}
-	gfx->quad_batch_end( g_batch );
+	gfx->quad_batch_end( qb );
 
 	/*===============
 	// Render scene
@@ -132,10 +134,10 @@ gs_result app_update()
 
 	// Set clear color and clear screen
 	f32 clear_color[4] = { 0.2f, 0.2f, 0.2f, 1.f };
-	gfx->set_view_clear( &g_cb, clear_color );
-	gfx->set_view_port( &g_cb, fbs.x, fbs.y );
-	gfx->set_depth_enabled( &g_cb, false );
-	gfx->set_blend_mode( &g_cb, gs_blend_mode_src_alpha, gs_blend_mode_one_minus_src_alpha );
+	gfx->set_view_clear( cb, clear_color );
+	gfx->set_view_port( cb, fbs.x, fbs.y );
+	gfx->set_depth_enabled( cb, false );
+	gfx->set_blend_mode( cb, gs_blend_mode_src_alpha, gs_blend_mode_one_minus_src_alpha );
 
 	// Create model/view/projection matrices from camera
 	gs_mat4 view_mtx = gs_camera_get_view( &g_camera );
@@ -143,15 +145,15 @@ gs_result app_update()
 	gs_mat4 model_mtx = gs_mat4_scale((gs_vec3){1.f, 1.f, 1.f});
 
 	// Set necessary dynamic uniforms for quad batch material (defined in default shader in gs_quad_batch.h)
-	gfx->set_material_uniform_mat4( g_mat, "u_model", model_mtx );
-	gfx->set_material_uniform_mat4( g_mat, "u_view", view_mtx );
-	gfx->set_material_uniform_mat4( g_mat, "u_proj", proj_mtx );
+	gfx->set_material_uniform_mat4( qb->material, "u_model", model_mtx );
+	gfx->set_material_uniform_mat4( qb->material, "u_view", view_mtx );
+	gfx->set_material_uniform_mat4( qb->material, "u_proj", proj_mtx );
 
 	// Need to submit quad batch
-	gfx->quad_batch_submit( &g_cb, g_batch );
+	gfx->quad_batch_submit( cb, qb );
 
 	// Submit command buffer for rendering
-	gfx->submit_command_buffer( &g_cb );
+	gfx->submit_command_buffer( cb );
 
 	return gs_result_in_progress;
 }

@@ -13,6 +13,8 @@ extern "C" {
 struct gs_material_i;
 struct gs_uniform_block_i;
 struct gs_quad_batch_i;
+struct gs_material_t;
+struct gs_quad_batch_t;
 
 typedef enum gs_shader_program_type
 {
@@ -109,9 +111,6 @@ typedef enum gs_vertex_attribute_type
 /*================
 // Resource Decls
 =================*/
-
-gs_declare_resource_type( gs_material );
-gs_declare_resource_type( gs_quad_batch );
 
 typedef struct gs_uniform_t
 {
@@ -289,8 +288,8 @@ typedef struct gs_graphics_i
 	// void ( * set_uniform_buffer_sub_data )( gs_command_buffer_t*, gs_resource( gs_uniform_buffer ), void*, usize );
 
 	// Need to think about materials a bit, because they're assets, not raw resources.
-	void ( * bind_material_uniforms )( gs_command_buffer_t*, gs_resource( gs_material ) );
-	void ( * bind_material_shader )( gs_command_buffer_t*, gs_resource( gs_material ) );
+	void ( * bind_material_uniforms )( gs_command_buffer_t*, struct gs_material_t* );
+	void ( * bind_material_shader )( gs_command_buffer_t*, struct gs_material_t* );
 
 	/*============================================================
 	// Graphics Resource Construction
@@ -310,10 +309,6 @@ typedef struct gs_graphics_i
 	gs_index_buffer_t ( * construct_index_buffer )( void*, usize );
 	s32 ( * texture_id )( gs_texture_t* );
 
-	// Non resource for now, since this is mainly an asset...So this technically should belong in an Asset construction api
-	gs_resource( gs_material )( * construct_material )( gs_shader_t );
-	gs_resource( gs_quad_batch )( * construct_quad_batch )( gs_resource( gs_material ) );
-
 	/*============================================================
 	// Graphics Resource Free Ops
 	============================================================*/
@@ -329,19 +324,19 @@ typedef struct gs_graphics_i
 	void ( * update_texture_data )( gs_texture_t*, gs_texture_parameter_desc );
 	gs_uniform_type ( * uniform_type )( gs_uniform_t );
 
-	void ( * set_material_uniform )( gs_resource( gs_material ), gs_uniform_type, const char*, void* );		// Generic method for setting uniform data
-	void ( * set_material_uniform_mat4 )( gs_resource( gs_material ), const char*, gs_mat4 );
-	void ( * set_material_uniform_vec4 )( gs_resource( gs_material ), const char*, gs_vec4 );
-	void ( * set_material_uniform_vec3 )( gs_resource( gs_material ), const char*, gs_vec3 );
-	void ( * set_material_uniform_vec2 )( gs_resource( gs_material ), const char*, gs_vec2 );
-	void ( * set_material_uniform_float )( gs_resource( gs_material ), const char*, f32 );
-	void ( * set_material_uniform_int )( gs_resource( gs_material ), const char*, s32 );
-	void ( * set_material_uniform_sampler2d )( gs_resource( gs_material ), const char*, gs_texture_t, u32 );
+	void ( * set_material_uniform )( struct gs_material_t*, gs_uniform_type, const char*, void* );		// Generic method for setting uniform data
+	void ( * set_material_uniform_mat4 )( struct gs_material_t*, const char*, gs_mat4 );
+	void ( * set_material_uniform_vec4 )( struct gs_material_t*, const char*, gs_vec4 );
+	void ( * set_material_uniform_vec3 )( struct gs_material_t*, const char*, gs_vec3 );
+	void ( * set_material_uniform_vec2 )( struct gs_material_t*, const char*, gs_vec2 );
+	void ( * set_material_uniform_float )( struct gs_material_t*, const char*, f32 );
+	void ( * set_material_uniform_int )( struct gs_material_t*, const char*, s32 );
+	void ( * set_material_uniform_sampler2d )( struct gs_material_t*, const char*, gs_texture_t, u32 );
 
-	void ( * quad_batch_begin )( gs_resource( gs_quad_batch ) );
-	void ( * quad_batch_add )( gs_resource( gs_quad_batch ), void* );
-	void ( * quad_batch_end )( gs_resource( gs_quad_batch ) );
-	void ( * quad_batch_submit )( gs_command_buffer_t*, gs_resource( gs_quad_batch ) );
+	void ( * quad_batch_begin )( struct gs_quad_batch_t* );
+	void ( * quad_batch_add )( struct gs_quad_batch_t*, void* );
+	void ( * quad_batch_end )( struct gs_quad_batch_t* );
+	void ( * quad_batch_submit )( gs_command_buffer_t*, struct gs_quad_batch_t* );
 
 	/*============================================================
 	// Graphics Debug Rendering Ops

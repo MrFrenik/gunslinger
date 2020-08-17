@@ -1,6 +1,7 @@
 #include "graphics/gs_quad_batch.h"
+#include "graphics/gs_material.h"
 
-gs_quad_batch_t __gs_quad_batch_default_new( gs_resource( gs_material ) mat )
+gs_quad_batch_t gs_quad_batch_new( gs_material_t* mat )
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 
@@ -146,7 +147,6 @@ void __gs_quad_batch_i_set_layout( gs_quad_batch_i* api, void* layout, usize lay
 
 void __gs_quad_batch_i_set_shader( gs_quad_batch_i* api, gs_shader_t shader )
 {
-	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	api->shader = shader;
 }
 
@@ -157,7 +157,7 @@ gs_quad_batch_i __gs_quad_batch_i_new()
 	api.end = &__gs_quad_batch_default_end;
 	api.add = &__gs_quad_batch_default_add;
 	api.begin = &__gs_quad_batch_default_begin;
-	api.construct = &__gs_quad_batch_default_new;
+	api.construct = &gs_quad_batch_new;
 	api.free = &__gs_quad_batch_default_free;
 	api.submit = &__gs_quad_batch_default_submit;
 	api.set_layout = &__gs_quad_batch_i_set_layout;

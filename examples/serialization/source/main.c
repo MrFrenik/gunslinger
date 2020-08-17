@@ -267,15 +267,15 @@ typedef struct pixel_frame_t
 	gs_color_t* ui_data;
 	uint32_t pixel_frame_width;
 	uint32_t pixel_frame_height;
-	gs_resource( gs_texture ) bg_texture;
-	gs_resource( gs_texture ) texture;
-	gs_resource( gs_texture ) ui_texture;
-	gs_resource( gs_shader ) shader;
-	gs_resource( gs_uniform ) u_tex;
-	gs_resource( gs_uniform ) u_proj;
-	gs_resource( gs_uniform ) u_view;
-	gs_resource( gs_vertex_buffer ) vbo;
-	gs_resource( gs_index_buffer ) ibo;
+	gs_texture_t bg_texture;
+	gs_texture_t texture;
+	gs_texture_t ui_texture;
+	gs_shader_t shader;
+	gs_uniform_t u_tex;
+	gs_uniform_t u_proj;
+	gs_uniform_t u_view;
+	gs_vertex_buffer_t vbo;
+	gs_index_buffer_t ibo;
 	uint32_t paint_radius;
 	b32 mouse_down;
 	byte_buffer_t undo_buffer;
@@ -695,7 +695,7 @@ void pixel_frame_redo_action( pixel_frame_t* pf )
 	}
 }
 
-gs_vec2 pixel_frame_calculate_mouse_position( pixel_frame_t* pf, gs_camera* camera )
+gs_vec2 pixel_frame_calculate_mouse_position( pixel_frame_t* pf, gs_camera_t* camera )
 {
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 	gs_vec2 ws = platform->window_size( platform->main_window() );
@@ -924,7 +924,7 @@ b32 pixel_frame_hovering_ui_window()
 // 						complicated gui mechanism)
 // Radius for painting
 
-void pixel_frame_update( pixel_frame_t* pf, gs_camera* camera )
+void pixel_frame_update( pixel_frame_t* pf, gs_camera_t* camera )
 {
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 	b32 need_update = false;
@@ -1031,7 +1031,7 @@ void pixel_frame_update( pixel_frame_t* pf, gs_camera* camera )
 	desc.width = pf->pixel_frame_width;
 	desc.height = pf->pixel_frame_height;
 	desc.data = pf->pixel_data;
-	gfx->update_texture_data( pf->texture, desc );	
+	gfx->update_texture_data( &pf->texture, desc );	
 
 	// Draw ui into buffer
 	memset( pf->ui_data, 0, ui_frame_width * ui_frame_height * sizeof(gs_color_t) );
@@ -1049,10 +1049,10 @@ void pixel_frame_update( pixel_frame_t* pf, gs_camera* camera )
 	desc.width = ui_frame_width;
 	desc.height = ui_frame_height;
 	desc.data = pf->ui_data;
-	gfx->update_texture_data( pf->ui_texture, desc );	
+	gfx->update_texture_data( &pf->ui_texture, desc );	
 }
 
-void pixel_frame_render( pixel_frame_t* pf, gs_resource( gs_command_buffer ) cb, gs_camera* camera )
+void pixel_frame_render( pixel_frame_t* pf, gs_command_buffer_t* cb, gs_camera_t* camera )
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
@@ -1091,20 +1091,14 @@ void pixel_frame_render( pixel_frame_t* pf, gs_resource( gs_command_buffer ) cb,
 //================================================================
 
 // Globals
-_global gs_resource( gs_command_buffer ) g_cb = {0};
+_global gs_command_buffer_t g_cb = {0};
 _global pixel_frame_t g_pixel_frame = {0};
-_global b32 g_app_running = true;
-_global gs_camera g_camera = {0};
+_global gs_camera_t g_camera = {0};
 
 // Forward Decls.
 gs_result app_init();		// Use to init your application
 gs_result app_update();		// Use to update your application
 gs_result app_shutdown();	// Use to shutdown your appliaction
-
-void app_close_window_callback( void* window )
-{
-	g_app_running = false;
-}
 
 typedef struct test_t
 {
@@ -1205,9 +1199,6 @@ gs_result app_init()
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 
-	// Set callback for when window close button is pressed
-	platform->set_window_close_callback( platform->main_window(), &app_close_window_callback );
-
 	byte_buffer_test();
 
 	g_pixel_frame = pixel_frame_new();
@@ -1218,7 +1209,7 @@ gs_result app_init()
 	gs_texture_parameter_desc desc = gs_texture_parameter_desc_default();
 
 	// Construct command buffer ( the command buffer is used to allow for immediate drawing at any point in our program )
-	g_cb = gfx->construct_command_buffer();
+	g_cb = gs_command_buffer_new();
 
 	// Construct camera parameters
 	g_camera.transform = gs_vqs_default();
@@ -1247,7 +1238,7 @@ gs_result app_update()
 	gs_vec2 fbs = platform->frame_buffer_size( platform->main_window() );
 
 	// If we press the escape key, exit the application
-	if ( platform->key_pressed( gs_keycode_esc ) || !g_app_running )
+	if ( platform->key_pressed( gs_keycode_esc ) )
 	{
 		return gs_result_success;
 	}
@@ -1308,19 +1299,20 @@ gs_result app_update()
 
 	// Graphics api instance
 	gs_graphics_i* gfx = engine->ctx.graphics;
+	gs_command_buffer_t* cb = &g_cb;
 
 	// Set clear color and clear screen
 	f32 clear_color[4] = { 0.1f, 0.1f, 0.1f, 1.f };
-	gfx->set_view_clear( g_cb, clear_color );
+	gfx->set_view_clear( cb, clear_color );
 
-	gfx->set_view_port( g_cb, fbs.x, fbs.y );
-	gfx->set_depth_enabled( g_cb, false );
-	gfx->set_blend_mode( g_cb, gs_blend_mode_src_alpha, gs_blend_mode_one_minus_src_alpha );
+	gfx->set_view_port( cb, fbs.x, fbs.y );
+	gfx->set_depth_enabled( cb, false );
+	gfx->set_blend_mode( cb, gs_blend_mode_src_alpha, gs_blend_mode_one_minus_src_alpha );
 
-	pixel_frame_render( &g_pixel_frame, g_cb, &g_camera );
+	pixel_frame_render( &g_pixel_frame, cb, &g_camera );
 
 	// Submit command buffer for rendering
-	gfx->submit_command_buffer( g_cb );
+	gfx->submit_command_buffer( cb );
 
 	// Handle ui
 	nk_do_ui( &g_pixel_frame );
