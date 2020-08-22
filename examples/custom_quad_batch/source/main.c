@@ -215,7 +215,7 @@ gs_result app_init()
 
 	// Load texture from file
 	g_tex = gfx->construct_texture_from_file( platform->file_exists( "./assets/gs.png" ) ? "./assets/gs.png" : "./../assets/gs.png", 
-											gs_texture_parameter_desc_default() );
+											NULL );
 
 	// Construct camera parameters
 	g_camera.transform = gs_vqs_default();
