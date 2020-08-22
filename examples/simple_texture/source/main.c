@@ -124,16 +124,11 @@ gs_result app_init()
 	g_vbo = gfx->construct_vertex_buffer( layout, sizeof(layout), v_data, sizeof(v_data) );
 	g_ibo = gfx->construct_index_buffer( i_data, sizeof(i_data) );
 
-	// This is a descriptor for our texture. It includes various metrics, such as the width, height, texture format, 
-	// and holds the actual uncompressed texture data for the texture. After using it for loading a raw texture 
-	// from file, it's the responsibility of the user to free the data.
-	gs_texture_parameter_desc desc = gs_texture_parameter_desc_default();
-
 	// Get appropriate file path for our texture (depending on where the app is running from)
 	const char* tfp = platform->file_exists("./assets/gs.png") ? "./assets/gs.png" : "./../assets/gs.png";
 	gs_assert(platform->file_exists(tfp));	// We'll assert if the file doesn't exist
 
-	g_tex = gfx->construct_texture_from_file( tfp, gs_texture_parameter_desc_default() );
+	g_tex = gfx->construct_texture_from_file( tfp, NULL );
 
 	// Construct camera parameters
 	g_camera.transform = gs_vqs_default();

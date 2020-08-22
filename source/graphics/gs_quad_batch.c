@@ -4,9 +4,17 @@
 gs_quad_batch_t gs_quad_batch_new( gs_material_t* mat )
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gs_quad_batch_i* qbi = gfx->quad_batch_i;
 
 	gs_quad_batch_t qb = {0};
 	qb.raw_vertex_data = gs_byte_buffer_new();
+
+	if ( !mat )
+	{
+		mat = gs_malloc_init( gs_material_t );
+		*mat = gs_material_new( qbi->shader );
+	}
+
 	qb.material = mat;
 
 	// Calculate layout size from layout

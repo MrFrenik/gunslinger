@@ -229,6 +229,8 @@ typedef struct gs_texture_parameter_desc
 	b32 flip_vertically_on_load;
 } gs_texture_parameter_desc;
 
+typedef gs_texture_parameter_desc gs_texture_parameter_desc_t;
+
 typedef struct gs_texture_t
 {
 	u16 width;
@@ -243,6 +245,12 @@ typedef struct gs_debug_draw_properties
 	gs_mat4 view_mat;
 	gs_mat4 proj_mat;
 } gs_debug_draw_properties;
+
+// Let's try something, bro
+typedef struct gs_graphics_immediate_mode_i
+{
+	void ( * draw_square )( gs_command_buffer_t*, gs_vec3 position, f32 scale );
+} gs_graphics_immediate_mode_i;
 
 /*================
 // Graphics API
@@ -305,7 +313,7 @@ typedef struct gs_graphics_i
 
 	// Will construct texture resource and let user free data...for no
 	gs_texture_t ( * construct_texture )( gs_texture_parameter_desc );
-	gs_texture_t ( * construct_texture_from_file )( const char* file_path, gs_texture_parameter_desc t_desc );
+	gs_texture_t ( * construct_texture_from_file )( const char* file_path, gs_texture_parameter_desc* t_desc );
 	gs_index_buffer_t ( * construct_index_buffer )( void*, usize );
 	s32 ( * texture_id )( gs_texture_t* );
 
@@ -345,6 +353,11 @@ typedef struct gs_graphics_i
 	void ( * draw_line )( gs_command_buffer_t*, gs_vec3 start, gs_vec3 end, gs_vec3 color );
 	void ( * draw_square )( gs_command_buffer_t*, gs_vec3 origin, f32 width, f32 height, gs_vec3 color, gs_mat4 transform );
 	void ( * submit_debug_drawing )( gs_command_buffer_t* );
+
+	/*============================================================
+	// Graphics Immediate Mode Debug Rendering Ops
+	============================================================*/
+	gs_graphics_immediate_mode_i immediate;
 
 	/*============================================================
 	// Graphics Utility Functions

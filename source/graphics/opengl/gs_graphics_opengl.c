@@ -61,6 +61,7 @@ typedef enum gs_opengl_op_code
 	gs_opengl_op_update_index_data,
 	gs_opengl_op_set_frame_buffer_attachment,
 	gs_opengl_op_draw,
+	gs_opengl_op_immediate_draw_square,
 	gs_opengl_op_debug_draw_line,
 	gs_opengl_op_debug_draw_square,
 	gs_opengl_op_debug_draw_submit,
@@ -1770,18 +1771,36 @@ void* opengl_load_texture_data_from_file( const char* file_path, b32 flip_vertic
 	return texture_data;
 }
 
-gs_texture_t opengl_construct_texture_from_file( const char* file_path, gs_texture_parameter_desc t_desc )
+
+gs_texture_t opengl_construct_texture_from_file( const char* file_path, gs_texture_parameter_desc* t_desc )
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	opengl_render_data_t* data = __get_opengl_data_internal();
+	gs_texture_t tex = {0};
 
-	// Load texture data and fill out parameters for descriptor
-	t_desc.data = gfx->load_texture_data_from_file( file_path, true, t_desc.texture_format, 
-		(s32*)&t_desc.width, (s32*)&t_desc.height, (s32*)&t_desc.num_comps );
+	if ( t_desc ) 
+	{
+		// Load texture data and fill out parameters for descriptor
+		t_desc->data = gfx->load_texture_data_from_file( file_path, true, t_desc->texture_format, 
+			(s32*)&t_desc->width, (s32*)&t_desc->height, (s32*)&t_desc->num_comps );
+		
+		// Finish constructing texture resource from descriptor and return handle
+		tex = opengl_construct_texture( *t_desc );
 
-	// Finish constructing texture resource from descriptor and return handle
-	gs_texture_t tex = opengl_construct_texture( t_desc );
-	gs_free( t_desc.data );
+		gs_free( t_desc->data );
+	}
+	else
+	{
+		gs_texture_parameter_desc desc = gs_texture_parameter_desc_default();
+		// Load texture data and fill out parameters for descriptor
+		desc.data = gfx->load_texture_data_from_file( file_path, true, desc.texture_format, 
+			(s32*)&desc.width, (s32*)&desc.height, (s32*)&desc.num_comps );
+
+		// Finish constructing texture resource from descriptor and return handle
+		tex = opengl_construct_texture( desc );
+
+		gs_free( desc.data );
+	}
 
 	return tex;
 }

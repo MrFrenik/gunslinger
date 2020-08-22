@@ -8,7 +8,6 @@
 _global gs_command_buffer_t g_cb = {0};
 _global gs_texture_t 		g_tex = {0};
 _global gs_camera_t 		g_camera = {0};
-_global gs_material_t  		g_mat = {0};
 _global gs_quad_batch_t 	g_batch = {0};
 
 // Forward Decls.
@@ -61,7 +60,7 @@ gs_result app_init()
 
 	// Now we can pass this descriptor to our graphics api to construct our GPU texture
 	g_tex = gfx->construct_texture_from_file( platform->file_exists("./assets/gs.png") ? "./assets/gs.png" : "./../assets/gs.png", 
-											  gs_texture_parameter_desc_default() );
+											  NULL );
 
 	// Construct camera parameters
 	g_camera.transform = gs_vqs_default();
@@ -72,14 +71,11 @@ gs_result app_init()
 	g_camera.ortho_scale = 2.f;
 	g_camera.proj_type = gs_projection_type_orthographic;
 
-	// Setup quad batch
-	g_mat = gs_material_new( gfx->quad_batch_i->shader );
+	// Construct quad batch api and link up function pointers
+	g_batch = gs_quad_batch_new( NULL );
 
 	// Set material texture uniform
-	gfx->set_material_uniform_sampler2d( &g_mat, "u_tex", g_tex, 0 );
-
-	// Construct quad batch api and link up function pointers
-	g_batch = gs_quad_batch_new( &g_mat );
+	gfx->set_material_uniform_sampler2d( g_batch.material, "u_tex", g_tex, 0 );
 
 	return gs_result_success;
 }
