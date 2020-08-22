@@ -1,11 +1,20 @@
 #include "graphics/gs_quad_batch.h"
+#include "graphics/gs_material.h"
 
-gs_quad_batch_t __gs_quad_batch_default_new( gs_resource( gs_material ) mat )
+gs_quad_batch_t gs_quad_batch_new( gs_material_t* mat )
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gs_quad_batch_i* qbi = gfx->quad_batch_i;
 
 	gs_quad_batch_t qb = {0};
 	qb.raw_vertex_data = gs_byte_buffer_new();
+
+	if ( !mat )
+	{
+		mat = gs_malloc_init( gs_material_t );
+		*mat = gs_material_new( qbi->shader );
+	}
+
 	qb.material = mat;
 
 	// Calculate layout size from layout
@@ -117,7 +126,7 @@ void __gs_quad_batch_default_free( gs_quad_batch_t* batch )
 	gs_byte_buffer_free( &batch->raw_vertex_data );	
 }
 
-void __gs_quad_batch_default_submit( gs_resource( gs_command_buffer ) cb, gs_quad_batch_t* batch )
+void __gs_quad_batch_default_submit( gs_command_buffer_t* cb, gs_quad_batch_t* batch )
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 
@@ -144,12 +153,8 @@ void __gs_quad_batch_i_set_layout( gs_quad_batch_i* api, void* layout, usize lay
 	}
 }
 
-void __gs_quad_batch_i_set_shader( gs_quad_batch_i* api, gs_resource( gs_shader ) shader )
+void __gs_quad_batch_i_set_shader( gs_quad_batch_i* api, gs_shader_t shader )
 {
-	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
-
-	// Free previous shader
-	gfx->free_shader( api->shader );
 	api->shader = shader;
 }
 
@@ -160,7 +165,7 @@ gs_quad_batch_i __gs_quad_batch_i_new()
 	api.end = &__gs_quad_batch_default_end;
 	api.add = &__gs_quad_batch_default_add;
 	api.begin = &__gs_quad_batch_default_begin;
-	api.construct = &__gs_quad_batch_default_new;
+	api.construct = &gs_quad_batch_new;
 	api.free = &__gs_quad_batch_default_free;
 	api.submit = &__gs_quad_batch_default_submit;
 	api.set_layout = &__gs_quad_batch_i_set_layout;

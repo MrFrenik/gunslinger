@@ -13,6 +13,8 @@ extern "C" {
 struct gs_material_i;
 struct gs_uniform_block_i;
 struct gs_quad_batch_i;
+struct gs_material_t;
+struct gs_quad_batch_t;
 
 typedef enum gs_shader_program_type
 {
@@ -110,41 +112,21 @@ typedef enum gs_vertex_attribute_type
 // Resource Decls
 =================*/
 
-gs_declare_resource_type( gs_command_buffer );
-gs_declare_resource_type( gs_uniform_buffer );
-gs_declare_resource_type( gs_vertex_buffer );
-gs_declare_resource_type( gs_index_buffer );
-gs_declare_resource_type( gs_texture );
-gs_declare_resource_type( gs_shader );
-gs_declare_resource_type( gs_uniform );
-gs_declare_resource_type( gs_vertex_attribute_layout_desc );
-gs_declare_resource_type( gs_render_target );
-gs_declare_resource_type( gs_frame_buffer );
-gs_declare_resource_type( gs_material );
-gs_declare_resource_type( gs_quad_batch );
-
-// Could make this a simple byte buffer, then read from that buffer for commands?
-typedef struct gs_command_buffer_t
-{
-	u32 num_commands;
-	gs_byte_buffer commands;
-} gs_command_buffer_t;
-
 typedef struct gs_uniform_t
 {
 	gs_uniform_type type;
 	u32 location;
 } gs_uniform_t;
 
-typedef gs_resource( gs_uniform ) gs_resource_uniform;
+// typedef gs_resource( gs_uniform ) gs_resource_uniform;
 
 // Hash table := key: u64, val: gs_resource_uniform
-gs_hash_table_decl( u64, gs_resource_uniform, gs_hash_u64, gs_hash_key_comp_std_type );
+// gs_hash_table_decl( u64, gs_uniform_t, gs_hash_u64, gs_hash_key_comp_std_type );
 
+// Don't want to pass this around...
 typedef struct gs_shader_t
 {
 	u32 program_id;
-	gs_hash_table( u64, gs_resource_uniform ) uniforms;
 } gs_shader_t;
 
 typedef struct gs_index_buffer_t
@@ -160,7 +142,7 @@ typedef struct gs_vertex_buffer_t
 
 typedef struct gs_render_target_t 
 {
-	gs_resource( gs_texture ) tex_handle;
+	u32 tex_id;
 } gs_render_target_t;
 
 typedef struct gs_frame_buffer_t
@@ -247,6 +229,8 @@ typedef struct gs_texture_parameter_desc
 	b32 flip_vertically_on_load;
 } gs_texture_parameter_desc;
 
+typedef gs_texture_parameter_desc gs_texture_parameter_desc_t;
+
 typedef struct gs_texture_t
 {
 	u16 width;
@@ -261,6 +245,12 @@ typedef struct gs_debug_draw_properties
 	gs_mat4 view_mat;
 	gs_mat4 proj_mat;
 } gs_debug_draw_properties;
+
+// Let's try something, bro
+typedef struct gs_graphics_immediate_mode_i
+{
+	void ( * draw_square )( gs_command_buffer_t*, gs_vec3 position, f32 scale );
+} gs_graphics_immediate_mode_i;
 
 /*================
 // Graphics API
@@ -279,93 +269,95 @@ typedef struct gs_graphics_i
 	/*============================================================
 	// Graphics Command Buffer Ops
 	============================================================*/
-	void ( * reset_command_buffer )( gs_resource( gs_command_buffer ) );
-	void ( * set_depth_enabled )( gs_resource( gs_command_buffer ), b32 );
-	void ( * set_winding_order )( gs_resource( gs_command_buffer ), gs_winding_order_type );
-	void ( * set_face_culling )( gs_resource( gs_command_buffer ), gs_face_culling_type );
-	void ( * set_blend_mode )( gs_resource( gs_command_buffer ), gs_blend_mode_type, gs_blend_mode_type );
-	void ( * set_blend_equation )( gs_resource( gs_command_buffer ), gs_blend_equation_type );
-	void ( * set_view_port)( gs_resource( gs_command_buffer ), u32 width, u32 height );
-	void ( * set_view_scissor )( gs_resource( gs_command_buffer ), u32 x, u32 y, u32 width, u32 height );
-	void ( * bind_frame_buffer )( gs_resource( gs_command_buffer ), gs_resource( gs_frame_buffer ) );
-	void ( * set_frame_buffer_attachment )( gs_resource( gs_command_buffer ), gs_resource( gs_texture ), u32 idx );
-	void ( * unbind_frame_buffer )( gs_resource( gs_command_buffer ) );
-	void ( * bind_shader )( gs_resource( gs_command_buffer ), gs_resource( gs_shader ) );
-	void ( * bind_uniform )( gs_resource( gs_command_buffer ), gs_resource( gs_uniform ), void* );
-	void ( * bind_uniform_mat4 )( gs_resource( gs_command_buffer ), gs_resource( gs_uniform ), gs_mat4 );
-	void ( * bind_vertex_buffer )( gs_resource( gs_command_buffer ), gs_resource( gs_vertex_buffer ) );
-	void ( * bind_index_buffer )( gs_resource( gs_command_buffer ), gs_resource( gs_index_buffer ) );
-	void ( * bind_texture )( gs_resource( gs_command_buffer ), gs_resource( gs_uniform ), gs_resource( gs_texture ), u32 );
-	void ( * bind_texture_id )( gs_resource( gs_command_buffer ), gs_resource( gs_uniform ), u32 id, u32 slot );
-	void ( * update_vertex_data )( gs_resource( gs_command_buffer ), gs_resource( gs_vertex_buffer ), void*, usize );
-	void ( * update_index_data )( gs_resource( gs_command_buffer ), gs_resource( gs_index_buffer ), void*, usize );
-	void ( * set_view_clear )( gs_resource( gs_command_buffer ), f32* );
-	void ( * draw )( gs_resource( gs_command_buffer ), u32 start, u32 count );
-	void ( * draw_indexed )( gs_resource( gs_command_buffer ), u32 count, u32 offset );
-	void ( * submit_command_buffer )( gs_resource( gs_command_buffer ) );
-	// void ( * set_uniform_buffer_sub_data )( gs_resource( gs_command_buffer ), gs_resource( gs_uniform_buffer ), void*, usize );
-	void ( * bind_material_uniforms )( gs_resource( gs_command_buffer ), gs_resource( gs_material ) );
-	void ( * bind_material_shader )( gs_resource( gs_command_buffer ), gs_resource( gs_material ) );
+	void ( * reset_command_buffer )( gs_command_buffer_t* );
+	void ( * set_depth_enabled )( gs_command_buffer_t*, b32 );
+	void ( * set_winding_order )( gs_command_buffer_t*, gs_winding_order_type );
+	void ( * set_face_culling )( gs_command_buffer_t*, gs_face_culling_type );
+	void ( * set_blend_mode )( gs_command_buffer_t*, gs_blend_mode_type, gs_blend_mode_type );
+	void ( * set_blend_equation )( gs_command_buffer_t*, gs_blend_equation_type );
+	void ( * set_view_port)( gs_command_buffer_t*, u32 width, u32 height );
+	void ( * set_view_scissor )( gs_command_buffer_t*, u32 x, u32 y, u32 width, u32 height );
+	void ( * bind_frame_buffer )( gs_command_buffer_t*, gs_frame_buffer_t );
+	void ( * set_frame_buffer_attachment )( gs_command_buffer_t*, gs_texture_t tex, u32 idx );
+	void ( * unbind_frame_buffer )( gs_command_buffer_t* );
+	void ( * bind_shader )( gs_command_buffer_t*, gs_shader_t );
+	void ( * bind_uniform )( gs_command_buffer_t*, gs_uniform_t, void* );
+	void ( * bind_uniform_mat4 )( gs_command_buffer_t*, gs_uniform_t, gs_mat4 );
+	void ( * bind_vertex_buffer )( gs_command_buffer_t*, gs_vertex_buffer_t );
+	void ( * bind_index_buffer )( gs_command_buffer_t*, gs_index_buffer_t );
+	void ( * bind_texture )( gs_command_buffer_t*, gs_uniform_t, gs_texture_t, u32 slot );
+	void ( * bind_texture_id )( gs_command_buffer_t*, gs_uniform_t, u32 id, u32 slot );
+	void ( * update_vertex_data )( gs_command_buffer_t*, gs_vertex_buffer_t, void*, usize );
+	void ( * update_index_data )( gs_command_buffer_t*, gs_index_buffer_t, void*, usize );
+	void ( * set_view_clear )( gs_command_buffer_t*, f32* );
+	void ( * draw )( gs_command_buffer_t*, u32 start, u32 count );
+	void ( * draw_indexed )( gs_command_buffer_t*, u32 count, u32 offset );
+	void ( * submit_command_buffer )( gs_command_buffer_t* );
+	// void ( * set_uniform_buffer_sub_data )( gs_command_buffer_t*, gs_resource( gs_uniform_buffer ), void*, usize );
+
+	// Need to think about materials a bit, because they're assets, not raw resources.
+	void ( * bind_material_uniforms )( gs_command_buffer_t*, struct gs_material_t* );
+	void ( * bind_material_shader )( gs_command_buffer_t*, struct gs_material_t* );
 
 	/*============================================================
 	// Graphics Resource Construction
 	============================================================*/
-	gs_resource( gs_vertex_buffer )( * construct_vertex_buffer )( gs_vertex_attribute_type*, usize, void*, usize );
-	gs_resource( gs_shader )( * construct_shader )( const char* vert_src, const char* frag_src );
-	gs_resource( gs_uniform )( * construct_uniform )( gs_resource( gs_shader ), const char* uniform_name, gs_uniform_type );
-	gs_resource( gs_command_buffer )( * construct_command_buffer )();
-	gs_resource( gs_render_target )( * construct_render_target )( gs_texture_parameter_desc );	// Will eventually set this so you can have a number of targets for MRT (is this even necessary)?
-	gs_resource( gs_frame_buffer )( * construct_frame_buffer )( gs_resource( gs_texture ) );
+	gs_vertex_buffer_t ( * construct_vertex_buffer )( gs_vertex_attribute_type*, usize, void*, usize );
+	gs_shader_t ( * construct_shader )( const char* vert_src, const char* frag_src );
+	gs_uniform_t ( * construct_uniform )( gs_shader_t, const char* uniform_name, gs_uniform_type );
+	// gs_command_buffer_t*( * construct_command_buffer )();
+	gs_render_target_t ( * construct_render_target )( gs_texture_parameter_desc );	// Will eventually set this so you can have a number of targets for MRT (is this even necessary)?
+	gs_frame_buffer_t ( * construct_frame_buffer )( gs_texture_t );
 	void* ( * load_texture_data_from_file )( const char* file_path, b32 flip_vertically_on_load, gs_texture_format,
 					s32* width, s32* height, s32* num_comps );
 
-	// Will construct texture resource and let user free data...for now
-	gs_resource( gs_texture )( * construct_texture )( gs_texture_parameter_desc );
-	gs_resource( gs_texture )( * construct_texture_from_file )( const char* file_path, gs_texture_parameter_desc t_desc );
-	gs_resource( gs_index_buffer )( * construct_index_buffer )( void*, usize );
-	s32 ( * texture_id )( gs_resource( gs_texture ) );
-
-	// Non resource for now, since this is mainly an asset...So this technically should belong in an Asset construction api
-	gs_resource( gs_material )( * construct_material )( gs_resource( gs_shader ) );
-	gs_resource( gs_quad_batch )( * construct_quad_batch )( gs_resource( gs_material ) );
+	// Will construct texture resource and let user free data...for no
+	gs_texture_t ( * construct_texture )( gs_texture_parameter_desc );
+	gs_texture_t ( * construct_texture_from_file )( const char* file_path, gs_texture_parameter_desc* t_desc );
+	gs_index_buffer_t ( * construct_index_buffer )( void*, usize );
+	s32 ( * texture_id )( gs_texture_t* );
 
 	/*============================================================
 	// Graphics Resource Free Ops
 	============================================================*/
-	void ( * free_vertex_attribute_layout_desc )( gs_resource( gs_vertex_attribute_layout_desc ) );
-	void ( * free_vertex_buffer )( gs_resource( gs_vertex_buffer ) );
-	void ( * free_index_buffer )( gs_resource( gs_index_buffer ) );
-	void ( * free_shader )( gs_resource( gs_shader ) );
+	void ( * free_vertex_buffer )( gs_vertex_buffer_t );
+	void ( * free_index_buffer )( gs_index_buffer_t );
+	void ( * free_shader )( gs_shader_t );
 	// void ( * free_uniform_buffer )( gs_resource( gs_uniform_buffer ) );
 
 	/*============================================================
 	// Graphics Update Ops
 	============================================================*/
-	void ( * update_vertex_buffer_data )( gs_resource( gs_vertex_buffer ), void*, usize );
-	void ( * update_texture_data )( gs_resource( gs_texture ), gs_texture_parameter_desc );
-	gs_uniform_type ( * uniform_type )( gs_resource( gs_uniform ) );
+	void ( * update_vertex_buffer_data )( gs_vertex_buffer_t, void*, usize );
+	void ( * update_texture_data )( gs_texture_t*, gs_texture_parameter_desc );
+	gs_uniform_type ( * uniform_type )( gs_uniform_t );
 
-	void ( * set_material_uniform )( gs_resource( gs_material ), gs_uniform_type, const char*, void* );		// Generic method for setting uniform data
-	void ( * set_material_uniform_mat4 )( gs_resource( gs_material ), const char*, gs_mat4 );
-	void ( * set_material_uniform_vec4 )( gs_resource( gs_material ), const char*, gs_vec4 );
-	void ( * set_material_uniform_vec3 )( gs_resource( gs_material ), const char*, gs_vec3 );
-	void ( * set_material_uniform_vec2 )( gs_resource( gs_material ), const char*, gs_vec2 );
-	void ( * set_material_uniform_float )( gs_resource( gs_material ), const char*, f32 );
-	void ( * set_material_uniform_int )( gs_resource( gs_material ), const char*, s32 );
-	void ( * set_material_uniform_sampler2d )( gs_resource( gs_material ), const char*, gs_resource( gs_texture ), u32 );
+	void ( * set_material_uniform )( struct gs_material_t*, gs_uniform_type, const char*, void* );		// Generic method for setting uniform data
+	void ( * set_material_uniform_mat4 )( struct gs_material_t*, const char*, gs_mat4 );
+	void ( * set_material_uniform_vec4 )( struct gs_material_t*, const char*, gs_vec4 );
+	void ( * set_material_uniform_vec3 )( struct gs_material_t*, const char*, gs_vec3 );
+	void ( * set_material_uniform_vec2 )( struct gs_material_t*, const char*, gs_vec2 );
+	void ( * set_material_uniform_float )( struct gs_material_t*, const char*, f32 );
+	void ( * set_material_uniform_int )( struct gs_material_t*, const char*, s32 );
+	void ( * set_material_uniform_sampler2d )( struct gs_material_t*, const char*, gs_texture_t, u32 );
 
-	void ( * quad_batch_begin )( gs_resource( gs_quad_batch ) );
-	void ( * quad_batch_add )( gs_resource( gs_quad_batch ), void* );
-	void ( * quad_batch_end )( gs_resource( gs_quad_batch ) );
-	void ( * quad_batch_submit )( gs_resource( gs_command_buffer ), gs_resource( gs_quad_batch ) );
+	void ( * quad_batch_begin )( struct gs_quad_batch_t* );
+	void ( * quad_batch_add )( struct gs_quad_batch_t*, void* );
+	void ( * quad_batch_end )( struct gs_quad_batch_t* );
+	void ( * quad_batch_submit )( gs_command_buffer_t*, struct gs_quad_batch_t* );
 
 	/*============================================================
 	// Graphics Debug Rendering Ops
 	============================================================*/
-	void ( * set_debug_draw_properties )( gs_resource( gs_command_buffer ), gs_debug_draw_properties );
-	void ( * draw_line )( gs_resource( gs_command_buffer ), gs_vec3 start, gs_vec3 end, gs_vec3 color );
-	void ( * draw_square )( gs_resource( gs_command_buffer ), gs_vec3 origin, f32 width, f32 height, gs_vec3 color, gs_mat4 transform );
-	void ( * submit_debug_drawing )( gs_resource( gs_command_buffer ) );
+	void ( * set_debug_draw_properties )( gs_command_buffer_t*, gs_debug_draw_properties );
+	void ( * draw_line )( gs_command_buffer_t*, gs_vec3 start, gs_vec3 end, gs_vec3 color );
+	void ( * draw_square )( gs_command_buffer_t*, gs_vec3 origin, f32 width, f32 height, gs_vec3 color, gs_mat4 transform );
+	void ( * submit_debug_drawing )( gs_command_buffer_t* );
+
+	/*============================================================
+	// Graphics Immediate Mode Debug Rendering Ops
+	============================================================*/
+	gs_graphics_immediate_mode_i immediate;
 
 	/*============================================================
 	// Graphics Utility Functions
@@ -1210,7 +1202,7 @@ extern struct gs_graphics_i* __gs_graphics_construct();
 
 	struct gs_render_pass
 	{
-		gs_resource( gs_command_buffer ) command_buffer;
+		gs_command_buffer_t* command_buffer;
 	}
 
 	What would a deferred rendering pass look like? Would be implicit, I believe...

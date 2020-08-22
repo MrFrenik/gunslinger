@@ -11,6 +11,9 @@ extern "C" {
 #include "math/gs_math.h"
 #include "serialize/gs_byte_buffer.h"
 
+// Forward declare
+struct gs_material_t;
+
 extern const char* __gs_default_quad_batch_vertex_src();
 
  #define gs_quad_batch_default_vertex_src\
@@ -25,8 +28,17 @@ typedef struct gs_quad_batch_t
 {
 	gs_byte_buffer raw_vertex_data;
 	gs_mesh_t mesh;
-	gs_resource( gs_material ) material;
+	struct gs_material_t* material;			// Pointer to a material instance
 } gs_quad_batch_t;
+
+/*
+	typedef struct gs_quad_batch_t
+	{
+		gs_byte_buffer raw_vertex_data;
+		gs_mesh_t mesh;	
+		gs_material_t material;	
+	} gs_quad_batch_t;
+*/
 
 // Default quad vertex structure
 // Define your own to match custom materials
@@ -69,19 +81,19 @@ typedef struct gs_quad_batch_vert_into_t
 */
 typedef struct gs_quad_batch_i
 {
-	gs_quad_batch_t ( * construct )( gs_resource( gs_material ) );
+	gs_quad_batch_t ( * construct )( struct gs_material_t* );
 	void ( * begin )( gs_quad_batch_t* );
 	void ( * end )( gs_quad_batch_t* );
 	void ( * add )( gs_quad_batch_t*, void* quad_data );
-	void ( * submit )( gs_resource( gs_command_buffer ), gs_quad_batch_t* );
+	void ( * submit )( gs_command_buffer_t*, gs_quad_batch_t* );
 	void ( * free )( gs_quad_batch_t* );
 	void ( * set_layout )( struct gs_quad_batch_i* api, void* layout, usize layout_size );
-	void ( * set_shader )( struct gs_quad_batch_i* api, gs_resource( gs_shader ) );
-	gs_resource( gs_shader ) shader;
+	void ( * set_shader )( struct gs_quad_batch_i* api, gs_shader_t );
+	gs_shader_t shader;
 	gs_quad_batch_vert_info_t vert_info;
 } gs_quad_batch_i;
 
-extern gs_quad_batch_t __gs_quad_batch_default_new( gs_resource( gs_material ) mat );
+extern gs_quad_batch_t gs_quad_batch_new( struct gs_material_t* mat );
 extern void __gs_quad_batch_default_begin( gs_quad_batch_t* batch );
 
 typedef struct gs_default_quad_info_t
@@ -95,9 +107,9 @@ extern void __gs_quad_batch_add_raw_vert_data( gs_quad_batch_t* qb, void* data, 
 extern void __gs_quad_batch_default_add( gs_quad_batch_t* qb, void* quad_info_data );
 extern void __gs_quad_batch_default_end( gs_quad_batch_t* batch );
 extern void __gs_quad_batch_default_free( gs_quad_batch_t* batch );
-extern void __gs_quad_batch_default_submit( gs_resource( gs_command_buffer ) cb, gs_quad_batch_t* batch );
+extern void __gs_quad_batch_default_submit( gs_command_buffer_t* cb, gs_quad_batch_t* batch );
 extern void __gs_quad_batch_i_set_layout( gs_quad_batch_i* api, void* layout, usize layout_size );
-extern void __gs_quad_batch_i_set_shader( gs_quad_batch_i* api, gs_resource( gs_shader ) shader );
+extern void __gs_quad_batch_i_set_shader( gs_quad_batch_i* api, gs_shader_t shader );
 extern gs_quad_batch_i __gs_quad_batch_i_new();
 
 #ifdef __cplusplus

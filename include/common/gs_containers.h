@@ -7,6 +7,7 @@ extern "C" {
 
 #include "common/gs_types.h"
 #include "common/gs_util.h"
+#include "serialize/gs_byte_buffer.h"
 
 /*===================================
 // Dynamic Array
@@ -484,6 +485,44 @@ gs_slot_array_find_next_available_index( gs_slot_array_base* sa )
 
 #define gs_slot_array( T )\
 	gs_sa_##T
+
+/*===================================
+// Command Buffer
+===================================*/
+
+// This could be a simple container
+typedef struct gs_command_buffer_t
+{
+	u32 num_commands;
+	gs_byte_buffer commands;
+} gs_command_buffer_t;
+
+_force_inline
+gs_command_buffer_t gs_command_buffer_new()
+{
+	gs_command_buffer_t cb = {0};
+	cb.commands = gs_byte_buffer_new();
+	return cb;
+}
+
+#define gs_command_buffer_write( cb, T, val )\
+	do {\
+		gs_byte_buffer_write( &cb->commands, T, val );\
+		cb->num_commands++;\
+	} while ( 0 )
+
+_force_inline 
+void gs_command_buffer_clear( gs_command_buffer_t* cb )
+{
+	cb->num_commands = 0;
+	gs_byte_buffer_clear( &cb->commands );
+}
+
+_force_inline
+void gs_command_buffer_free( gs_command_buffer_t* cb )
+{
+	gs_byte_buffer_free( &cb->commands );
+}
 
 #ifdef __cplusplus
 }

@@ -8,7 +8,7 @@
 // Struct Defines
 typedef struct model_t
 {
-	gs_resource( gs_vertex_buffer ) vbo;
+	gs_vertex_buffer_t vbo;
 	u32 vertex_count;
 } model_t;
 
@@ -49,15 +49,15 @@ _global const u32 map_width = 200;
 _global const u32 map_height = 200;
 
 // Globals
-_global gs_resource( gs_shader ) 			shader = {0};
-_global gs_resource( gs_uniform ) 			u_noise_tex = {0};
-_global gs_resource( gs_texture ) 			noise_tex = {0};
-_global gs_resource( gs_command_buffer ) 	cb = {0};
-_global gs_resource( gs_uniform )			u_proj = {0};
-_global gs_resource( gs_uniform )			u_view = {0};
-_global gs_resource( gs_uniform )			u_model = {0};
-_global gs_resource( gs_uniform )			u_view_pos = {0};
-_global model_t 							terrain_model = {0};
+_global gs_shader_t 			shader = {0};
+_global gs_texture_t 			noise_tex = {0};
+_global gs_uniform_t 			u_noise_tex = {0};
+_global gs_uniform_t			u_proj = {0};
+_global gs_uniform_t			u_view = {0};
+_global gs_uniform_t			u_model = {0};
+_global gs_uniform_t			u_view_pos = {0};
+_global model_t 				terrain_model = {0};
+_global gs_command_buffer_t 	g_cb = {0};
 
 // Function Forward Decls.
 gs_result app_init();		// Use to init your application
@@ -372,7 +372,7 @@ gs_result app_init()
 	u_view_pos = gfx->construct_uniform( shader, "u_view_pos", gs_uniform_type_vec3 );
 
 	// Construct command buffer for rendering
-	cb = gfx->construct_command_buffer();
+	g_cb = gs_command_buffer_new();
 
 	// Free data
 	gs_free( noise_map );
@@ -415,7 +415,7 @@ void update_terrain()
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 
 	// Update texture (let's just glTexImage2d for now)...
-	gfx->update_texture_data( noise_tex, t_desc );
+	gfx->update_texture_data( &noise_tex, t_desc );
 
 	// Generate terrain mesh data from noise
 	terrain_mesh_data_packet_t mesh = generate_terrain_mesh_data( noise_map, map_width, map_height );
@@ -465,6 +465,7 @@ void render_scene()
 	// Grab graphics api instance
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+	gs_command_buffer_t* cb = &g_cb;
 
 	const gs_vec2 ws = platform->window_size(platform->main_window());
 	const gs_vec2 fbs = platform->frame_buffer_size(platform->main_window());

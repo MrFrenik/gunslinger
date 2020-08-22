@@ -5,11 +5,12 @@ gs_uniform_block_t __gs_uniform_block_t_new()
 	gs_uniform_block_t ub = {0};
 	ub.data = gs_byte_buffer_new();
 	ub.offset_lookup_table = gs_hash_table_new(u64, u32);
+	ub.uniforms = gs_hash_table_new(u64, gs_uniform_t);
 	ub.count = 0;
 	return ub;
 }
 
-void __gs_uniform_block_t_set_uniform( gs_uniform_block_t* u_block, gs_resource( gs_uniform ) uniform, const char* name, void* data, usize data_size )
+void __gs_uniform_block_t_set_uniform( gs_uniform_block_t* u_block, gs_uniform_t uniform, const char* name, void* data, usize data_size )
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 
@@ -37,7 +38,7 @@ void __gs_uniform_block_t_set_uniform( gs_uniform_block_t* u_block, gs_resource(
 	u_block->data.position = offset;
 
 	// Write type into data
-	gs_byte_buffer_write( &u_block->data, gs_resource( gs_uniform ), uniform );
+	gs_byte_buffer_write( &u_block->data, gs_uniform_t, uniform );
 	// Write data size
 	gs_byte_buffer_write( &u_block->data, usize, data_size);
 	// Write data
@@ -46,7 +47,7 @@ void __gs_uniform_block_t_set_uniform( gs_uniform_block_t* u_block, gs_resource(
 	// Subtract sizes since we were overwriting data and not appending if already exists
 	if ( exists ) 
 	{
-		usize total_size = sizeof(u32) + sizeof(usize) + data_size;
+		usize total_size = sizeof(gs_uniform_t) + sizeof(usize) + data_size;
 		u_block->data.size -= total_size;
 	}
 
@@ -54,7 +55,7 @@ void __gs_uniform_block_t_set_uniform( gs_uniform_block_t* u_block, gs_resource(
 	gs_byte_buffer_seek_to_end( &u_block->data );
 }
 
-void __gs_uniform_block_t_bind_uniforms( gs_resource( gs_command_buffer ) cb, gs_uniform_block_t* u_block )
+void __gs_uniform_block_t_bind_uniforms( gs_command_buffer_t* cb, gs_uniform_block_t* u_block )
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 
@@ -65,12 +66,12 @@ void __gs_uniform_block_t_bind_uniforms( gs_resource( gs_command_buffer ) cb, gs
 	gs_for_range_i( u_block->count )
 	{
 		// Grab uniform
-		gs_resource( gs_uniform ) uniform;
-		gs_byte_buffer_bulk_read( &u_block->data, &uniform, sizeof(gs_resource(gs_uniform)) );
+		gs_uniform_t uniform;
+		gs_byte_buffer_bulk_read( &u_block->data, &uniform, sizeof(gs_uniform_t) );
 		// Grab data size
 		usize sz = gs_byte_buffer_read( &u_block->data, usize );
 		// Grab type
-		gs_uniform_type type = gfx->uniform_type( uniform );
+		gs_uniform_type type = uniform.type;
 
 		// Grab data based on type and bind
 		switch ( type )
@@ -79,7 +80,7 @@ void __gs_uniform_block_t_bind_uniforms( gs_resource( gs_command_buffer ) cb, gs
 			{
 				gs_uniform_block_type( texture_sampler ) value = {0};
 				gs_byte_buffer_bulk_read( &u_block->data, &value, sz );
-				gfx->bind_texture( cb, uniform, value.data, value.slot );
+				gfx->bind_texture_id( cb, uniform, value.data, value.slot );
 			} break;
 
 			case gs_uniform_type_mat4:
@@ -136,7 +137,7 @@ gs_uniform_block_i __gs_uniform_block_i_new()
 	return api;	
 }
 
- gs_material_t __gs_material_t_new( gs_resource( gs_shader ) shader )
+ gs_material_t gs_material_new( gs_shader_t shader )
 {
 	gs_material_t mat = {0};
 	mat.shader = shader;
@@ -149,8 +150,25 @@ void __gs_material_i_set_uniform( gs_material_t* mat, gs_uniform_type type, cons
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	gs_uniform_block_i* uapi = gfx->uniform_i;
 
-	// Construct or get existing uniform
-	gs_resource( gs_uniform ) uniform = gfx->construct_uniform( mat->shader, name, type );
+	// Either look for uniform or construct it
+	// Look for uniform name in uniforms
+	// Grab uniform from uniforms
+	u64 hash_id = gs_hash_str_64( name );	
+	gs_uniform_t uniform = {0};
+	gs_uniform_block_t* u_block = &mat->uniforms;
+
+	if ( !gs_hash_table_exists( u_block->offset_lookup_table, hash_id ) )	
+	{
+		// Construct or get existing uniform
+		uniform = gfx->construct_uniform( mat->shader, name, type );
+
+		// Insert buffer position into offset table (which should be end)
+		gs_hash_table_insert( u_block->uniforms, hash_id, uniform );
+	}
+	else 
+	{
+		uniform = gs_hash_table_get( u_block->uniforms, hash_id );
+	}
 
 	usize sz = 0;
 	switch ( type )
@@ -167,7 +185,7 @@ void __gs_material_i_set_uniform( gs_material_t* mat, gs_uniform_type type, cons
 	uapi->set_uniform( &mat->uniforms, uniform, name, data, sz );
 }
 
-void __gs_material_i_bind_uniforms( gs_resource( gs_command_buffer ) cb, gs_material_t* mat )
+void __gs_material_i_bind_uniforms( gs_command_buffer_t* cb, gs_material_t* mat )
 {
 	gs_engine_instance()->ctx.graphics->uniform_i->bind_uniforms( cb, &mat->uniforms );
 }
@@ -175,7 +193,7 @@ void __gs_material_i_bind_uniforms( gs_resource( gs_command_buffer ) cb, gs_mate
 gs_material_i __gs_material_i_new()
 {
 	gs_material_i api = {0};
-	api.construct = &__gs_material_t_new;
+	api.construct = &gs_material_new;
 	api.set_uniform = &__gs_material_i_set_uniform;
 	api.bind_uniforms = &__gs_material_i_bind_uniforms;
 	return api;

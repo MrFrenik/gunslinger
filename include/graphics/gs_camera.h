@@ -16,7 +16,7 @@ typedef enum
 } gs_projection_type;
 
 // TODO(john): enums need to be supported with the reflection generation
-typedef struct gs_camera
+typedef struct gs_camera_t
 {
 	gs_vqs transform;
 	f32 fov; 
@@ -25,19 +25,19 @@ typedef struct gs_camera
 	f32 far_plane;
 	f32 ortho_scale;
 	gs_projection_type proj_type;
-} gs_camera;
+} gs_camera_t;
 
-gs_mat4 gs_camera_get_view( gs_camera* cam );
-gs_mat4 gs_camera_get_projection( gs_camera* cam, s32 view_width, s32 view_height );
-gs_mat4 gs_camera_get_view_projection( gs_camera* cam, s32 view_width, s32 view_height );
-gs_vec3 gs_camera_forward( gs_camera* cam );
-gs_vec3 gs_camera_backward( gs_camera* cam );
-gs_vec3 gs_camera_up( gs_camera* cam );
-gs_vec3 gs_camera_down( gs_camera* cam );
-gs_vec3 gs_camera_right( gs_camera* cam );
-gs_vec3 gs_camera_left( gs_camera* cam );
-gs_vec3 gs_camera_unproject( gs_camera* cam, gs_vec3 coords, s32 view_width, s32 view_height );
-void gs_camera_offset_orientation( gs_camera* cam, f32 yaw, f32 picth );
+gs_mat4 gs_camera_get_view( gs_camera_t* cam );
+gs_mat4 gs_camera_get_projection( gs_camera_t* cam, s32 view_width, s32 view_height );
+gs_mat4 gs_camera_get_view_projection( gs_camera_t* cam, s32 view_width, s32 view_height );
+gs_vec3 gs_camera_forward( gs_camera_t* cam );
+gs_vec3 gs_camera_backward( gs_camera_t* cam );
+gs_vec3 gs_camera_up( gs_camera_t* cam );
+gs_vec3 gs_camera_down( gs_camera_t* cam );
+gs_vec3 gs_camera_right( gs_camera_t* cam );
+gs_vec3 gs_camera_left( gs_camera_t* cam );
+gs_vec3 gs_camera_unproject( gs_camera_t* cam, gs_vec3 coords, s32 view_width, s32 view_height );
+void gs_camera_offset_orientation( gs_camera_t* cam, f32 yaw, f32 picth );
 
 #ifdef __cplusplus
 }

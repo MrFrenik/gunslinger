@@ -38,21 +38,20 @@ typedef struct particle_t
 // Should have a hash map of glyph character to glyph metric
 
 // Globals
-_global gs_resource( gs_vertex_buffer ) 	g_vbo = {0};
-_global gs_resource( gs_index_buffer ) 		g_ibo = {0};
-_global gs_resource( gs_command_buffer ) 	g_cb = {0};
-_global gs_resource( gs_shader ) 			g_shader = {0};
-_global gs_resource( gs_uniform ) 			u_tex = {0}; 
-_global gs_resource( gs_uniform ) 			u_flip_y = {0}; 
-_global gs_resource( gs_texture ) 			g_tex = {0};
-_global gs_resource( gs_texture ) 			g_tex_ui = {0};
-_global gs_resource( gs_texture ) 			g_rt = {0};
-_global gs_resource( gs_frame_buffer ) 		g_fb = {0};
-_global blur_pass_t 						g_blur_pass = {0};
-_global bright_filter_pass_t 				g_bright_pass = {0};
-_global composite_pass_t 					g_composite_pass = {0};
-_global font_t								g_font = {0};
-_global b32 g_app_running 					= true;
+_global gs_vertex_buffer_t 		g_vbo = {0};
+_global gs_index_buffer_t 		g_ibo = {0};
+_global gs_command_buffer_t 	g_cb = {0};
+_global gs_shader_t 			g_shader = {0};
+_global gs_uniform_t 			u_tex = {0}; 
+_global gs_uniform_t 			u_flip_y = {0}; 
+_global gs_texture_t 			g_tex = {0};
+_global gs_texture_t 			g_tex_ui = {0};
+_global gs_texture_t 			g_rt = {0};
+_global gs_frame_buffer_t 		g_fb = {0};
+_global blur_pass_t 			g_blur_pass = {0};
+_global bright_filter_pass_t 	g_bright_pass = {0};
+_global composite_pass_t 		g_composite_pass = {0};
+_global font_t					g_font = {0};
 
 // For now, all particle information will simply be a value to determine its material id
 #define mat_id_empty (u8)0
@@ -591,23 +590,15 @@ void drop_file_callback( void* platform_window, s32 count, const char** file_pat
 	}
 }
 
-void app_close_window_callback( void* window )
-{
-	g_app_running = false;
-}
-
 // Here, we'll initialize all of our application data, which in this case is our graphics resources
 gs_result app_init()
 {
 	// Cache instance of api contexts from engine
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
-	
-	// Set callback for when window close button is pressed
-	platform->set_window_close_callback( platform->main_window(), &app_close_window_callback );
 
 	// Construct command buffer ( the command buffer is used to allow for immediate drawing at any point in our program )
-	g_cb = gfx->construct_command_buffer();
+	g_cb = gs_command_buffer_new();
 
 	// Construct shader from our source above
 	g_shader = gfx->construct_shader( v_src, f_src );
@@ -713,7 +704,7 @@ gs_result app_update()
 	gs_engine* engine = gs_engine_instance();
 
 	// If we press the escape key, exit the application
-	if ( engine->ctx.platform->key_pressed( gs_keycode_esc ) || !g_app_running )
+	if ( engine->ctx.platform->key_pressed( gs_keycode_esc ) )
 	{
 		return gs_result_success;
 	}
@@ -1243,7 +1234,7 @@ b32 update_ui()
 	t_desc.height = g_texture_height;
 	t_desc.num_comps = 4;
 	t_desc.data = g_ui_buffer;
-	gfx->update_texture_data( g_tex_ui, t_desc )	;
+	gfx->update_texture_data( &g_tex_ui, t_desc )	;
 
 	return interaction;
 }
@@ -1256,6 +1247,8 @@ void render_scene()
 	// Platform api instance
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 
+	gs_command_buffer_t* cb = &g_cb;
+
 	// Upload our updated texture data to GPU
 	gs_texture_parameter_desc t_desc = gs_texture_parameter_desc_default();
 	t_desc.mag_filter = gs_nearest;
@@ -1265,99 +1258,99 @@ void render_scene()
 	t_desc.height = g_texture_height;
 	t_desc.num_comps = 4;
 	t_desc.data = g_texture_buffer;
-	gfx->update_texture_data( g_tex, t_desc );
+	gfx->update_texture_data( &g_tex, t_desc );
 
 	gs_vec2 ws = platform->window_size( g_window );
 	gs_vec2 fbs = platform->frame_buffer_size( g_window );
 	b32 flip_y = false;
 
 	// Default state set up
-	gfx->set_depth_enabled( g_cb, false );
-	gfx->set_face_culling( g_cb, gs_face_culling_disabled );
+	gfx->set_depth_enabled( cb, false );
+	gfx->set_face_culling( cb, gs_face_culling_disabled );
 
 	// Bind our render target and render offscreen
-	gfx->bind_frame_buffer( g_cb, g_fb );
+	gfx->bind_frame_buffer( cb, g_fb );
 	{
 		// Bind frame buffer attachment for rendering
-		gfx->set_frame_buffer_attachment( g_cb, g_rt, 0 );
+		gfx->set_frame_buffer_attachment( cb, g_rt, 0 );
 
 		// Set clear color and clear screen
 		f32 clear_color[4] = { 0.1f, 0.1f, 0.1f, 1.f };
-		gfx->set_view_clear( g_cb, clear_color );
+		gfx->set_view_clear( cb, clear_color );
 
 		// This is to handle mac's retina high dpi for now until I fix that internally.
-		gfx->set_view_port( g_cb, g_texture_width, g_texture_height );
-		gfx->bind_shader( g_cb, g_shader );
-		gfx->bind_uniform( g_cb, u_flip_y, &flip_y );
-		gfx->bind_vertex_buffer( g_cb, g_vbo );
-		gfx->bind_index_buffer( g_cb, g_ibo );
-		gfx->bind_texture( g_cb, u_tex, g_tex, 0 );
-		gfx->draw_indexed( g_cb, 6, 0 );
+		gfx->set_view_port( cb, g_texture_width, g_texture_height );
+		gfx->bind_shader( cb, g_shader );
+		gfx->bind_uniform( cb, u_flip_y, &flip_y );
+		gfx->bind_vertex_buffer( cb, g_vbo );
+		gfx->bind_index_buffer( cb, g_ibo );
+		gfx->bind_texture( cb, u_tex, g_tex, 0 );
+		gfx->draw_indexed( cb, 6, 0 );
 	}
 	// Unbind offscreen buffer
-	gfx->unbind_frame_buffer( g_cb );
+	gfx->unbind_frame_buffer( cb );
 
 	// Bind frame buffer for post processing
-	gfx->bind_frame_buffer( g_cb, g_fb );
+	gfx->bind_frame_buffer( cb, g_fb );
 	{
 		// Brightness pass
 		{
 			bright_filter_pass_parameters_t params = (bright_filter_pass_parameters_t){ g_rt };
 			render_pass_i* p = gs_cast( render_pass_i, &g_bright_pass );
-			p->pass( g_cb, p, &params );
+			p->pass( cb, p, &params );
 		}
 
 		// Blur pass
 		{
 			blur_pass_parameters_t params = (blur_pass_parameters_t){ g_bright_pass.data.render_target };
 			render_pass_i* p = gs_cast( render_pass_i, &g_blur_pass );
-			p->pass( g_cb, p, &params );
+			p->pass( cb, p, &params );
 		}
 
 		// composite pass w/ gamma correction
 		{
 			composite_pass_parameters_t params = (composite_pass_parameters_t){ g_rt, g_blur_pass.data.blur_render_target_b };
 			render_pass_i* p = gs_cast( render_pass_i, &g_composite_pass );
-			p->pass( g_cb, p, &params );
+			p->pass( cb, p, &params );
 		}
 	}
-	gfx->unbind_frame_buffer( g_cb );
+	gfx->unbind_frame_buffer( cb );
 
 	// Back buffer Presentation
 	{
 		// Set clear color and clear screen
 		f32 clear_color[4] = { 0.2f, 0.2f, 0.2f, 1.f };
-		gfx->set_view_clear( g_cb, clear_color );
-		gfx->set_depth_enabled( g_cb, false );
+		gfx->set_view_clear( cb, clear_color );
+		gfx->set_depth_enabled( cb, false );
 
 		// This is to handle mac's retina high dpi for now until I fix that internally.
-		gfx->set_view_port( g_cb, fbs.x, fbs.y );
+		gfx->set_view_port( cb, fbs.x, fbs.y );
 
 		f32 t = gs_engine_instance()->ctx.platform->elapsed_time() * gs_engine_instance()->ctx.platform->time.delta * 0.001f;
 		flip_y = true;
 
-		gfx->bind_shader( g_cb, g_shader );
-		gfx->bind_uniform( g_cb, u_flip_y, &flip_y );		
-		gfx->bind_vertex_buffer( g_cb, g_vbo );
-		gfx->bind_index_buffer( g_cb, g_ibo );
+		gfx->bind_shader( cb, g_shader );
+		gfx->bind_uniform( cb, u_flip_y, &flip_y );		
+		gfx->bind_vertex_buffer( cb, g_vbo );
+		gfx->bind_index_buffer( cb, g_ibo );
 
 		// Draw final composited image
 		if (g_use_post_processing) {
 
-			gfx->bind_texture( g_cb, u_tex, g_composite_pass.data.render_target, 0 );
+			gfx->bind_texture( cb, u_tex, g_composite_pass.data.render_target, 0 );
 		} else {
 
-			gfx->bind_texture( g_cb, u_tex, g_rt, 0 );
+			gfx->bind_texture( cb, u_tex, g_rt, 0 );
 		}
-		gfx->draw_indexed( g_cb, 6, 0 );
+		gfx->draw_indexed( cb, 6, 0 );
 
 		// Draw UI on top
-		gfx->bind_texture( g_cb, u_tex, g_tex_ui, 0 );
-		gfx->draw_indexed( g_cb, 6, 0);
+		gfx->bind_texture( cb, u_tex, g_tex_ui, 0 );
+		gfx->draw_indexed( cb, 6, 0);
 	}
 
 	// Submit command buffer for rendering
-	gfx->submit_command_buffer( g_cb );
+	gfx->submit_command_buffer( cb );
 }
 
 void write_data( u32 idx, particle_t p )

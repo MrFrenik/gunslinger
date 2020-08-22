@@ -11,7 +11,7 @@ extern "C" {
 
 typedef struct gs_mesh_t
 {
-	gs_resource( gs_vertex_buffer ) vbo;
+	gs_vertex_buffer_t vbo;
 	u32 vertex_count;
 } gs_mesh_t;
 
