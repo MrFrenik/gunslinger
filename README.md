@@ -18,7 +18,7 @@ A simple c99 framework for multimedia applications
   - This will build the library and place it in `gunslinger/bin`
 
 **linux**: 
-  - From terminal, run `bash ./proc/osx/compile_linux_gcc.sh`
+  - From terminal, run `bash ./proc/linux/compile_linux_gcc.sh`
   - This will build the library and place it in `gunslinger/bin`
 
 ## Examples
