@@ -26,16 +26,16 @@ typedef struct
 } gs_dyn_array;
 
 #define gs_dyn_array_head( arr )\
-	( ( gs_dyn_array* )( ( u8* )arr - sizeof( gs_dyn_array ) ) )
+	( ( gs_dyn_array* )( ( u8* )(arr) - sizeof( gs_dyn_array ) ) )
 
 #define gs_dyn_array_size( arr )\
-	gs_dyn_array_head( arr )->size
+	gs_dyn_array_head( (arr) )->size
 
 #define gs_dyn_array_capacity( arr )\
-	gs_dyn_array_head( arr )->capacity
+	gs_dyn_array_head( (arr) )->capacity
 
 #define gs_dyn_array_full( arr )\
-	( ( gs_dyn_array_size( arr ) == gs_dyn_array_capacity( arr ) ) )	
+	( ( gs_dyn_array_size( (arr) ) == gs_dyn_array_capacity( (arr) ) ) )	
 
 _inline void* gs_dyn_array_resize_impl( void* arr, usize sz, usize amount ) 
 {
@@ -174,7 +174,14 @@ typedef enum
 		gs_hash_table_entry_state entry_state;\
 	} gs_ht_entry_##key_type##_##val_type;\
 \
+	/* Iterator for hash table */\
 	typedef struct\
+	{\
+		gs_ht_entry_##key_type##_##val_type *data;\
+		u32 cur_idx;\
+	}gs_ht_iter_##key_type##_##val_type;\
+\
+	typedef struct gs_ht_##key_type##_##val_type\
 	{\
 		gs_ht_entry_##key_type##_##val_type *data;\
 		u32 ( * hash_func )( key_type );\
@@ -183,7 +190,48 @@ typedef enum
 		val_type* ( * hash_get_val_ptr_func )( void*, key_type );\
 		b8 ( * hash_comp_key_func )( key_type, key_type );\
 		void ( * hash_grow_func )( void*, u32 );\
+		b32 ( * hash_table_iter_valid_func )( void* ht, void* iter );\
+		void ( * hash_table_iter_advance_func )( void* ht, void* iter );\
+		gs_ht_iter_##key_type##_##val_type ( * hash_table_iter_new_func )( void* ht );\
+		void ( * hash_table_clear_func )( void* ht );\
 	} gs_ht_##key_type##_##val_type;\
+\
+	/* Function for determining if iterator is valid (if data pointer less than capacity) */\
+	b32 gs_ht_##key_type##_##val_type##_iter_valid_func( void* _ht, void* _iter )\
+	{\
+		gs_ht_##key_type##_##val_type* ht = (gs_ht_##key_type##_##val_type*)_ht;\
+		gs_ht_iter_##key_type##_##val_type* iter = (gs_ht_iter_##key_type##_##val_type*)_iter;\
+		return iter->data != NULL && iter->cur_idx < gs_hash_table_capacity( *ht );\
+	}\
+\
+	/* Function for advancing place of iterator */\
+	void gs_ht_##key_type##_##val_type##_iter_advance_func( void* _ht, void* _iter )\
+	{\
+		gs_ht_##key_type##_##val_type* ht = (gs_ht_##key_type##_##val_type*)_ht;\
+		gs_ht_iter_##key_type##_##val_type* iter = (gs_ht_iter_##key_type##_##val_type*)_iter;\
+		if ( iter->data == NULL )\
+		{\
+			return;\
+		}\
+		u32 cap = gs_hash_table_capacity( *ht );\
+		/* Move forward in data array */\
+		while ( iter->cur_idx++ < cap )\
+		{\
+			iter->data = &ht->data[ iter->cur_idx ];\
+			if ( iter->data->entry_state == hash_table_entry_active ) \
+			{\
+				break;\
+			}\
+		}\
+	}\
+\
+	gs_ht_iter_##key_type##_##val_type gs_ht_##key_type##_##val_type##_iter_new_func( void* _ht )\
+	{\
+		gs_ht_##key_type##_##val_type* ht = (gs_ht_##key_type##_##val_type*)_ht;\
+		gs_ht_iter_##key_type##_##val_type iter = {0};\
+		iter.data = gs_hash_table_size( *ht ) ? ht->data : NULL;\
+		return iter;\
+	}\
 \
 	_inline u32 gs_ht_##key_type##_##val_type##_key_idx_func( void* tbl_ptr, key_type key )\
 	{\
@@ -213,7 +261,7 @@ typedef enum
 		gs_ht_entry_##key_type##_##val_type* data = tbl->data;\
 		for ( u32 i = idx, c = 0; c < capacity; ++c, i = ( ( i + 1 ) % capacity ) )\
 		{\
-			if ( _hash_comp_key_func( data[ i ].key, key ) )\
+			if ( _hash_comp_key_func( data[ i ].key, key ) && tbl->data[i].entry_state == hash_table_entry_active )\
 			{\
 				val = i;\
 				break;\
@@ -239,7 +287,7 @@ typedef enum
 		gs_ht_entry_##key_type##_##val_type* data = tbl->data;\
 		for ( u32 i = idx, c = 0; c < capacity; ++c, i = ( ( i + 1 ) % capacity ) )\
 		{\
-			if ( _hash_comp_key_func( data[ i ].key, key ) )\
+			if ( _hash_comp_key_func( data[ i ].key, key ) && data[i].entry_state == hash_table_entry_active )\
 			{\
 				val = i;\
 				break;\
@@ -260,18 +308,29 @@ typedef enum
 		return false;\
 	}\
 \
+	_inline void gs_ht_##key_type##_##val_type##_clear_func( void* tbl_ptr )\
+	{\
+		gs_ht_##key_type##_##val_type* tbl = ( gs_ht_##key_type##_##val_type* )tbl_ptr;\
+		memset( tbl->data, 0, gs_dyn_array_capacity(tbl->data) * sizeof(gs_ht_entry_##key_type##_##val_type) );\
+		gs_dyn_array_clear( tbl->data );\
+	}\
+\
 	_inline void gs_ht_##key_type##_##val_type##_grow_func( void* tbl_ptr, u32 new_sz );\
 \
 	_inline gs_ht_##key_type##_##val_type gs_ht_##key_type##_##val_type##_new()\
 	{\
 		gs_ht_##key_type##_##val_type ht = {0};\
-		ht.data 					= gs_dyn_array_new( gs_ht_entry_##key_type##_##val_type );\
-		ht.hash_func 				= &_hash_func;\
-		ht.hash_key_idx_func 		= gs_ht_##key_type##_##val_type##_key_idx_func;\
-		ht.hash_get_val_func 		= gs_ht_##key_type##_##val_type##_get_func;\
-		ht.hash_get_val_ptr_func 	= gs_ht_##key_type##_##val_type##_get_ptr_func;\
-		ht.hash_comp_key_func 		= gs_ht_##key_type##_##val_type##_comp_key_func;\
-		ht.hash_grow_func 			= gs_ht_##key_type##_##val_type##_grow_func;\
+		ht.data 						= gs_dyn_array_new( gs_ht_entry_##key_type##_##val_type );\
+		ht.hash_func 					= &_hash_func;\
+		ht.hash_key_idx_func 			= gs_ht_##key_type##_##val_type##_key_idx_func;\
+		ht.hash_get_val_func 			= gs_ht_##key_type##_##val_type##_get_func;\
+		ht.hash_get_val_ptr_func 		= gs_ht_##key_type##_##val_type##_get_ptr_func;\
+		ht.hash_comp_key_func 			= gs_ht_##key_type##_##val_type##_comp_key_func;\
+		ht.hash_grow_func 				= gs_ht_##key_type##_##val_type##_grow_func;\
+		ht.hash_table_iter_new_func 	= gs_ht_##key_type##_##val_type##_iter_new_func;\
+		ht.hash_table_iter_advance_func = gs_ht_##key_type##_##val_type##_iter_advance_func;\
+		ht.hash_table_iter_valid_func 	= gs_ht_##key_type##_##val_type##_iter_valid_func;\
+		ht.hash_table_clear_func 		= gs_ht_##key_type##_##val_type##_clear_func;\
 		return ht;\
 	}\
 \
@@ -305,23 +364,38 @@ typedef enum
 		}\
 	} while( 0 )
 
+// How do I do an iterator...
+// Want some way to grab specific datas for it...
+/*
+	for ( gs_hash_table_iter( k, v ) v = gs_hash_table_iter_new( ht, k, v ); 
+		  gs_hash_table_iter_valid( v );
+		  gs_hash_table_iter_advance( v );
+	)
+	{
+		k key = v->data.key;
+		v val = v->data.val;
+	}
+*/
+
+// Create way to iterate through hash table container
+
 #define gs_hash_table_exists( tbl, k )\
 	( !gs_hash_table_empty( tbl ) && gs_hash_table_valid_idx( tbl.hash_key_idx_func( &tbl, k ) ) )
 
 #define gs_hash_table_key_idx( tbl, k )\
-	tbl.hash_key_idx_func( &tbl, k )
+	tbl.hash_key_idx_func( &(tbl), k )
 
 #define gs_hash_table_reserve( tbl, sz )\
-	__gs_hash_table_grow( tbl, sz )
+	__gs_hash_table_grow( (tbl), sz )
 
 #define gs_hash_table_size( tbl )\
-	gs_dyn_array_size( tbl.data )
+	gs_dyn_array_size( (tbl).data )
 
 #define gs_hash_table_empty( tbl )\
-	!gs_dyn_array_size( tbl.data )
+	!gs_dyn_array_size( (tbl).data )
 
 #define gs_hash_table_capacity( tbl )\
-	gs_dyn_array_capacity( tbl.data )
+	gs_dyn_array_capacity( (tbl).data )
 
 #define gs_hash_table_load_factor( tbl )\
 	gs_hash_table_capacity( tbl ) ? (f32)gs_hash_table_size( tbl ) / (f32)gs_hash_table_capacity( tbl ) : 0.0f
@@ -350,7 +424,10 @@ typedef enum
 		}\
 		u32 hash_idx = tbl.hash_func( k ) % gs_hash_table_capacity( tbl );\
 		u32 c = 0;\
-		while ( c < capacity && !tbl.hash_comp_key_func( tbl.data[ hash_idx ].key, k ) && tbl.data[ hash_idx ].entry_state == hash_table_entry_active ) {\
+		while ( c < capacity &&\
+				!tbl.hash_comp_key_func( tbl.data[ hash_idx ].key, k )\
+				&& tbl.data[ hash_idx ].entry_state == hash_table_entry_active\
+		){\
 			hash_idx = ( ( hash_idx + 1 ) % capacity );\
 			c++;\
 		}\
@@ -369,18 +446,30 @@ typedef enum
 #define gs_hash_table( key_type, val_type )\
 	gs_ht_##key_type##_##val_type
 
+#define gs_hash_table_iter( key_type, val_type )\
+	gs_ht_iter_##key_type##_##val_type
+
 #define gs_hash_table_entry( key_type, val_type )\
 	gs_ht_entry_##key_type##_##val_type
 
 #define gs_hash_table_new( key_type, val_type )\
 	gs_ht_##key_type##_##val_type##_new()
 
+// Need to memset all of the data to cleared
 #define gs_hash_table_clear( tbl )\
-	gs_dyn_array_clear( tbl.data )
+	tbl.hash_table_clear_func( &(tbl) )
 
 #define gs_hash_table_free( tbl )\
-	gs_dyn_array_free( tbl.data );\
+	gs_dyn_array_free( tbl.data )
 
+#define gs_hash_table_iter_new( tbl )\
+	(tbl).hash_table_iter_new_func( &(tbl) )
+
+#define gs_hash_table_iter_advance( tbl, iter )\
+	(tbl).hash_table_iter_advance_func( &(tbl), &(iter) )
+
+#define gs_hash_table_iter_valid( tbl, iter )\
+	(tbl).hash_table_iter_valid_func( &(tbl), &(iter) )
 
 // Some typical hash tables
 
