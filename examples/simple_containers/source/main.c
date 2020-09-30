@@ -31,8 +31,7 @@ gs_slot_array_decl( object_t );
 gs_dyn_array(object_t) 			g_dyn_array;
 gs_hash_table(u64, object_t) 	g_hash_table;
 gs_slot_array(object_t) 		g_slot_array;
-
-gs_hash_table(u32, u32) g_test_hash;
+u32 							g_cur_val;
 
 // Util functions
 void print_console_commands();
@@ -40,36 +39,6 @@ void print_array( gs_dyn_array( object_t )* );
 void print_slot_array( gs_slot_array( object_t )* );
 void print_hash_table( gs_hash_table( u64, object_t )* );
 void object_to_str( object_t* obj, char* str, usize str_sz );
-
-void print_u32( u32* v ) 
-{
-	gs_printf( "%zu", *v );
-}
-
-#define __print_hash_table( table, __key, __val, key_print, val_print )\
-do {\
-	/* Hash Table*/\
-	gs_printf( "Hash Table: [ " );\
-	/* Loop through all elements of hash table data array */\
-	u32 cap = gs_dyn_array_capacity( table.data );\
-	for ( u32 i = 0; i < cap; ++i ) {\
-		b32 found = false;\
-		if ( table.data[i].entry_state == hash_table_entry_active ){\
-			found = true;\
-			__key* k = &table.data[i].key;\
-			__val* v = &table.data[i].val;\
-			gs_printf( "<key: " );\
-			key_print(k);\
-			gs_printf( ", val: " );\
-			val_print(v);\
-			gs_printf( " >" );\
-		}\
-		if ( found ) {\
-			gs_printf( i < cap - 1 ? ", " : "" );\
-		}\
-	}\
-	gs_printf( " ]\n" );\
-} while (0)
 
 int main( int argc, char** argv )
 {
@@ -103,19 +72,19 @@ int main( int argc, char** argv )
 
 gs_result app_init()
 {
+	g_cur_val = 0;
+
 	// Allocate containers
 	g_dyn_array = gs_dyn_array_new( object_t );
 	g_slot_array = gs_slot_array_new( object_t );
 	g_hash_table = gs_hash_table_new( u64, object_t );
 
-	g_test_hash = gs_hash_table_new( u32, u32 );
-
 	// Add elements to containers
-	for ( u32 i = 0; i < 10; ++i ) 
+	for ( g_cur_val = 0; g_cur_val < 10; ++g_cur_val ) 
 	{
 		object_t obj = {0};
-		obj.float_value = (f32)i;
-		obj.uint_value = i;
+		obj.float_value = (f32)g_cur_val;
+		obj.uint_value = g_cur_val;
 
 		// Push into dyn array
 		gs_dyn_array_push( g_dyn_array, obj );
@@ -124,17 +93,7 @@ gs_result app_init()
 		u32 id = gs_slot_array_insert( g_slot_array, obj );
 
 		// Push into hash table
-		gs_hash_table_insert( g_hash_table, (u64)i, obj );
-
-		gs_hash_table_insert( g_test_hash, i, i );
-	}
-
-	__print_hash_table( g_test_hash, u32, u32, print_u32, print_u32 );
-
-	gs_for_range_i( 10 )
-	{
-		u32 v = gs_hash_table_get( g_test_hash, i );
-		gs_println( "%zu", v );
+		gs_hash_table_insert( g_hash_table, (u64)g_cur_val, obj );
 	}
 
 	print_console_commands();
@@ -166,15 +125,15 @@ gs_result app_update()
 	// Insert incrementing val into array
 	if ( engine->ctx.platform->key_pressed( gs_keycode_a ) )
 	{
-		static u32 v = 0;
 		object_t obj = {};
-		obj.float_value = (f32)v;
-		obj.uint_value = v;
+		obj.float_value = (f32)g_cur_val;
+		obj.uint_value = g_cur_val;
 
 		gs_dyn_array_push( g_dyn_array, obj );
 		gs_slot_array_insert( g_slot_array, obj );
-		gs_hash_table_insert( g_hash_table, (u64)v, obj );
-		v++;
+		gs_hash_table_insert( g_hash_table, (u64)g_cur_val, obj );
+
+		g_cur_val++;
 
 		print_console_commands();		
 	}
@@ -199,57 +158,70 @@ gs_result app_shutdown()
 {
 	// Release memory for array
 	gs_dyn_array_free( g_dyn_array );
+	gs_hash_table_free( g_hash_table );
+	gs_slot_array_free( g_slot_array );
 
 	return gs_result_success;
 }
 
-void print_array( gs_dyn_array( object_t )* array )
+void print_array( gs_dyn_array( object_t )* arr )
 {
+	char buffer[256] = {0};
+
 	// Array
-	gs_printf( "Array: [ " );
+	gs_println( "Array: [ " );
 
 	// Loop through all elements of array
-	u32 sz = gs_dyn_array_size( *array );
+	u32 sz = gs_dyn_array_size( *arr );
 	for ( u32 i = 0; i < sz; ++i )
 	{
+		object_to_str( &(*arr)[i], buffer, 256 );
+		gs_println( "\t%s", buffer );
 	}
 	gs_printf( " ]\n" );
 }
 
-void print_slot_array( gs_slot_array( object_t )* slot_array )
+void print_slot_array( gs_slot_array( object_t )* sa )
 {
 	// Slot Array
-	gs_printf( "Slot Array: [ " );
+	gs_println( "Slot Array: [ " );
 
-	// Loop through all elements of array
-	u32 sz = gs_dyn_array_size( slot_array->data );
-	for ( u32 i = 0; i < sz; ++i )
-	{
-	}
+	char buffer[256] = {0};
+
+		for ( 
+			gs_slot_array_iter(object_t) it = gs_slot_array_iter_new(*sa);
+			gs_slot_array_iter_valid(*sa, it);
+			gs_slot_array_iter_advance(*sa, it)
+		)
+		{
+			object_t* obj = it.data;
+			object_to_str(obj, buffer, 256);
+			gs_println("\t%s", buffer);
+		}
+
 	gs_printf( " ]\n" );
 }
 
-void print_hash_table( gs_hash_table( u64, object_t )* hash_table )
+void print_hash_table( gs_hash_table( u64, object_t )* ht )
 {
 	// Temp buffer for printing object
 	char tmp_buffer[256] = {0};
 
-	gs_println( "%zu", gs_hash_table_size( *hash_table ) );
-
-	b32 exists = gs_hash_table_exists( *hash_table, 0 );
-	gs_println( "exists: %s", exists ? "true" : "false" );
-	
 	// Hash Table
 	gs_println( "Hash Table: [ " );
 
-	gs_hash_table_iter( u64, object_t ) iter = gs_hash_table_iter_new( *hash_table );
-	for ( ; gs_hash_table_iter_valid( *hash_table, iter ); gs_hash_table_iter_advance( *hash_table, iter ) )
+	// Use iterator to iterate through hash table and print elements
+	for ( 
+		gs_hash_table_iter( u64, object_t ) it = gs_hash_table_iter_new( *ht ); 
+		gs_hash_table_iter_valid( *ht, it ); 
+		gs_hash_table_iter_advance( *ht, it ) )
 	{
-		u64 k = iter.data->key;
-		object_t* v = &iter.data->val;
+		u64 k = it.data->key;
+		object_t* v = &it.data->val;
 		object_to_str( v, tmp_buffer, 256 );
 		gs_println( "\t{ k: %zu, %s } ", k, tmp_buffer );
 	}
+
 	gs_println( "]" );
 }
 

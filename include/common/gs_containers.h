@@ -199,7 +199,7 @@ typedef enum
 	} gs_ht_##key_type##_##val_type;\
 \
 	/* Function for determining if iterator is valid (if data pointer less than capacity) */\
-	b32 gs_ht_##key_type##_##val_type##_iter_valid_func( void* _ht, void* _iter )\
+	_inline b32 gs_ht_##key_type##_##val_type##_iter_valid_func( void* _ht, void* _iter )\
 	{\
 		gs_ht_##key_type##_##val_type* ht = (gs_ht_##key_type##_##val_type*)_ht;\
 		gs_ht_iter_##key_type##_##val_type* iter = (gs_ht_iter_##key_type##_##val_type*)_iter;\
@@ -207,7 +207,7 @@ typedef enum
 	}\
 \
 	/* Function for advancing place of iterator */\
-	void gs_ht_##key_type##_##val_type##_iter_advance_func( void* _ht, void* _iter )\
+	_inline void gs_ht_##key_type##_##val_type##_iter_advance_func( void* _ht, void* _iter )\
 	{\
 		/* This function is wrong */\
 		gs_ht_##key_type##_##val_type* ht = (gs_ht_##key_type##_##val_type*)_ht;\
@@ -228,7 +228,7 @@ typedef enum
 		}\
 	}\
 \
-	gs_ht_iter_##key_type##_##val_type gs_ht_##key_type##_##val_type##_iter_new_func( void* _ht )\
+	_inline gs_ht_iter_##key_type##_##val_type gs_ht_##key_type##_##val_type##_iter_new_func( void* _ht )\
 	{\
 		gs_ht_##key_type##_##val_type* ht = (gs_ht_##key_type##_##val_type*)_ht;\
 		gs_ht_iter_##key_type##_##val_type iter = {0};\
@@ -368,21 +368,6 @@ typedef enum
 		}\
 	} while( 0 )
 
-// How do I do an iterator...
-// Want some way to grab specific datas for it...
-/*
-	for ( gs_hash_table_iter( k, v ) v = gs_hash_table_iter_new( ht, k, v ); 
-		  gs_hash_table_iter_valid( v );
-		  gs_hash_table_iter_advance( v );
-	)
-	{
-		k key = v->data.key;
-		v val = v->data.val;
-	}
-*/
-
-// Create way to iterate through hash table container
-
 #define gs_hash_table_exists( tbl, k )\
 	( !gs_hash_table_empty( (tbl) ) && gs_hash_table_is_indx_valid( (tbl).hash_key_idx_func( &(tbl), k ) ) )
 
@@ -509,12 +494,43 @@ gs_slot_array_base
 } gs_slot_array_base;
 
 #define gs_slot_array_decl( T )\
+\
+	/* Iterator type declaration */\
+	typedef struct gs_sa_##T##_iter\
+	{\
+		T* data;\
+		u32 cur_idx;\
+	} gs_sa_##T##_iter;\
+\
 	typedef struct gs_sa_##T\
 	{\
 		gs_slot_array_base _base;\
 		gs_dyn_array( T ) data;\
 		u32 ( * insert_func )( struct gs_sa_##T*, T );\
+		gs_sa_##T##_iter ( * iter_new_func )( struct gs_sa_##T* );\
+		b32 ( * iter_valid_func )( struct gs_sa_##T*, gs_sa_##T##_iter* );\
+		void ( * iter_advance_func )( struct gs_sa_##T*, gs_sa_##T##_iter* );\
 	} gs_sa_##T;\
+\
+	_inline gs_sa_##T##_iter gs_sa_##T##_iter_new_func( gs_sa_##T* s )\
+	{\
+		gs_sa_##T##_iter it = {0};\
+		it.data = s->data;\
+		return it;\
+	}\
+\
+	/* Iterator iterates through indirection indices to grab data */\
+	_inline b32 gs_sa_##T##_iter_valid_func( gs_sa_##T* s, gs_sa_##T##_iter* it )\
+	{\
+		return ( it->cur_idx < gs_dyn_array_size( s->_base.handle_indices ) );\
+	}\
+\
+	_inline void gs_sa_##T##_iter_advance_func( gs_sa_##T* s, gs_sa_##T##_iter* it )\
+	{\
+		it->cur_idx++;\
+		u32 idx = s->_base.handle_indices[it->cur_idx];\
+		it->data = &s->data[idx];\
+	}\
 \
 	_force_inline u32\
 	gs_sa_##T##_insert_func( struct gs_sa_##T* s, T v )\
@@ -534,7 +550,10 @@ gs_slot_array_base
 		sa._base.handle_indices 				= gs_dyn_array_new( u32 );\
 		sa._base.reverse_indirection_indices 	= gs_dyn_array_new( u32 );\
 		sa._base.index_free_list 				= gs_dyn_array_new( u32 );\
-		sa.insert_func 						= &gs_sa_##T##_insert_func;\
+		sa.insert_func 							= &gs_sa_##T##_insert_func;\
+		sa.iter_new_func 						= &gs_sa_##T##_iter_new_func;\
+		sa.iter_valid_func 						= &gs_sa_##T##_iter_valid_func;\
+		sa.iter_advance_func 					= &gs_sa_##T##_iter_advance_func;\
 		return sa;\
 	}
 
@@ -589,6 +608,26 @@ gs_slot_array_find_next_available_index( gs_slot_array_base* sa )
 
 #define gs_slot_array( T )\
 	gs_sa_##T
+
+#define gs_slot_array_iter( T )\
+	gs_sa_##T##_iter
+
+#define gs_slot_array_iter_new( sa )\
+	(sa).iter_new_func( &(sa) )
+
+#define gs_slot_array_iter_valid( sa, it )\
+	(sa).iter_valid_func( &(sa), &(it) )
+
+#define gs_slot_array_iter_advance( sa, it )\
+	(sa).iter_advance_func( &(sa), &(it) )
+
+#define gs_slot_array_free( sa )\
+	do {\
+		gs_dyn_array_free( sa._base.handle_indices );\
+		gs_dyn_array_free( sa._base.index_free_list );\
+		gs_dyn_array_free( sa._base.reverse_indirection_indices );\
+		gs_dyn_array_free( sa.data );\
+	} while ( 0 )
 
 /*===================================
 // Command Buffer
