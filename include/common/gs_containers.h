@@ -157,8 +157,10 @@ _inline void* gs_dyn_array_resize_impl( void* arr, usize sz, usize amount )
 
 #define gs_hash_key_comp_std_type( a, b ) ( a == b )
 
-#define gs_hash_table_valid_idx( idx )\
-	( idx < ( UINT_MAX - 1 ) )
+#define gs_hash_table_invalid_idx UINT_MAX
+
+#define gs_hash_table_is_indx_valid( idx )\
+	( idx < gs_hash_table_invalid_idx )
 
 typedef enum
 {
@@ -207,6 +209,7 @@ typedef enum
 	/* Function for advancing place of iterator */\
 	void gs_ht_##key_type##_##val_type##_iter_advance_func( void* _ht, void* _iter )\
 	{\
+		/* This function is wrong */\
 		gs_ht_##key_type##_##val_type* ht = (gs_ht_##key_type##_##val_type*)_ht;\
 		gs_ht_iter_##key_type##_##val_type* iter = (gs_ht_iter_##key_type##_##val_type*)_iter;\
 		if ( iter->data == NULL )\
@@ -245,8 +248,9 @@ typedef enum
 				return i;\
 			}\
 		}\
-		return UINT_MAX - 1;\
+		return gs_hash_table_invalid_idx;\
 	}\
+\
 	_inline val_type gs_ht_##key_type##_##val_type##_get_func( void* tbl_ptr, key_type key )\
 	{\
 		val_type out = { 0 };\
@@ -256,7 +260,7 @@ typedef enum
 			return out;\
 		}\
 		u32 capacity = gs_hash_table_capacity( ( *tbl ) );\
-		u32 val = UINT_MAX - 1;\
+		u32 val = gs_hash_table_invalid_idx;\
 		u32 idx = tbl->hash_func( key ) % capacity;\
 		gs_ht_entry_##key_type##_##val_type* data = tbl->data;\
 		for ( u32 i = idx, c = 0; c < capacity; ++c, i = ( ( i + 1 ) % capacity ) )\
@@ -267,12 +271,13 @@ typedef enum
 				break;\
 			}\
 		}\
-		if ( gs_hash_table_valid_idx( val ) )\
+		if ( gs_hash_table_is_indx_valid( val ) )\
 		{\
 			out = data[ val ].val;\
 		}\
 		return out;\
 	}\
+\
 	_inline val_type* gs_ht_##key_type##_##val_type##_get_ptr_func( void* tbl_ptr, key_type key )\
 	{\
 		val_type* out = NULL;\
@@ -282,7 +287,7 @@ typedef enum
 			return out;\
 		}\
 		u32 capacity = gs_hash_table_capacity( ( *tbl ) );\
-		u32 val = UINT_MAX - 1;\
+		u32 val = gs_hash_table_invalid_idx;\
 		u32 idx = tbl->hash_func( key ) % capacity;\
 		gs_ht_entry_##key_type##_##val_type* data = tbl->data;\
 		for ( u32 i = idx, c = 0; c < capacity; ++c, i = ( ( i + 1 ) % capacity ) )\
@@ -293,12 +298,13 @@ typedef enum
 				break;\
 			}\
 		}\
-		if ( gs_hash_table_valid_idx( val ) )\
+		if ( gs_hash_table_is_indx_valid( val ) )\
 		{\
 			out = &data[ val ].val;\
 		}\
 		return out;\
 	}\
+\
 	_inline b8 gs_ht_##key_type##_##val_type##_comp_key_func( key_type k0, key_type k1 )\
 	{\
 		if ( _hash_comp_key_func( k0, k1 ) )\
@@ -312,7 +318,8 @@ typedef enum
 	{\
 		gs_ht_##key_type##_##val_type* tbl = ( gs_ht_##key_type##_##val_type* )tbl_ptr;\
 		memset( tbl->data, 0, gs_dyn_array_capacity(tbl->data) * sizeof(gs_ht_entry_##key_type##_##val_type) );\
-		gs_dyn_array_clear( tbl->data );\
+		gs_dyn_array_free( tbl->data );\
+		tbl->data = gs_dyn_array_new( gs_ht_entry_##key_type##_##val_type );\
 	}\
 \
 	_inline void gs_ht_##key_type##_##val_type##_grow_func( void* tbl_ptr, u32 new_sz );\
@@ -339,12 +346,9 @@ typedef enum
 		gs_ht_##key_type##_##val_type* tbl = ( gs_ht_##key_type##_##val_type* )tbl_ptr;\
 		gs_ht_##key_type##_##val_type new_tbl = gs_ht_##key_type##_##val_type##_new();\
 		gs_dyn_array_reserve( new_tbl.data, new_sz );\
-		memset( new_tbl.data, 0, new_sz * sizeof( gs_ht_entry_##key_type##_##val_type ) );\
-		for ( u32 i = 0; i < gs_dyn_array_capacity( tbl->data ); ++i ) {\
-			if ( tbl->data[ i ].entry_state == hash_table_entry_active ) {\
-				gs_hash_table_insert( new_tbl, tbl->data[ i ].key, tbl->data[ i ].val );\
-			}\
-		}\
+		usize entry_sz = sizeof( gs_ht_entry_##key_type##_##val_type );\
+		memset( new_tbl.data, gs_hash_table_invalid_idx, new_sz * entry_sz );\
+		memcpy( new_tbl.data, tbl->data, gs_hash_table_capacity( *tbl ) * entry_sz );\
 		gs_dyn_array_free( tbl->data );\
 		tbl->data = new_tbl.data;\
 	}
@@ -353,7 +357,7 @@ typedef enum
 	do {\
 		u32 capacity = gs_hash_table_capacity( ( *tbl ) );\
 		u32 idx = tbl->hash_func( key ) % capacity;\
-		val =  UINT_MAX - 1;\
+		val =  gs_hash_table_invalid_idx;\
 		for ( u32 i = idx, c = 0; c < capacity; ++c, i = ( ( i + 1 ) % capacity ) )\
 		{\
 			if ( _hash_comp_key_func( tbl->data[ i ].key, key ) )\
@@ -380,7 +384,7 @@ typedef enum
 // Create way to iterate through hash table container
 
 #define gs_hash_table_exists( tbl, k )\
-	( !gs_hash_table_empty( tbl ) && gs_hash_table_valid_idx( tbl.hash_key_idx_func( &tbl, k ) ) )
+	( !gs_hash_table_empty( (tbl) ) && gs_hash_table_is_indx_valid( (tbl).hash_key_idx_func( &(tbl), k ) ) )
 
 #define gs_hash_table_key_idx( tbl, k )\
 	tbl.hash_key_idx_func( &(tbl), k )
@@ -406,6 +410,15 @@ typedef enum
 		tbl.hash_grow_func( &tbl, sz );\
 	} while ( 0 )
 
+// while ( 
+// 	c < capacity\
+// 	&& !tbl.hash_comp_key_func( tbl.data[ hash_idx ].key, k )\
+// 	&& tbl.data[ hash_idx ].entry_state == hash_table_entry_active\
+// ){\
+// 	hash_idx = ( ( hash_idx + 1 ) % capacity );\
+// 	c++;\
+// }\
+
 // Need to check load factor for this
 // If the load factor grows beyond max, then need to grow data array and rehash
 // If shrinks beyond min, then shrink data array and rehash
@@ -422,12 +435,14 @@ typedef enum
 			__gs_hash_table_grow( tbl, capacity ? capacity * 2 : 1 );\
 			capacity = gs_hash_table_capacity( tbl );\
 		}\
-		u32 hash_idx = tbl.hash_func( k ) % gs_hash_table_capacity( tbl );\
+		u32 hash_idx = tbl.hash_func( k ) % capacity;\
 		u32 c = 0;\
-		while ( c < capacity &&\
-				!tbl.hash_comp_key_func( tbl.data[ hash_idx ].key, k )\
-				&& tbl.data[ hash_idx ].entry_state == hash_table_entry_active\
-		){\
+		while (\
+			c < capacity\
+			&& !tbl.hash_comp_key_func( tbl.data[hash_idx].key, k )\
+			&& tbl.data[hash_idx].entry_state == hash_table_entry_active\
+		)\
+		{\
 			hash_idx = ( ( hash_idx + 1 ) % capacity );\
 			c++;\
 		}\

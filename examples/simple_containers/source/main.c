@@ -175,6 +175,7 @@ gs_result app_update()
 		gs_slot_array_insert( g_slot_array, obj );
 		gs_hash_table_insert( g_hash_table, (u64)v, obj );
 		v++;
+
 		print_console_commands();		
 	}
 
@@ -189,11 +190,6 @@ gs_result app_update()
 		print_hash_table( &g_hash_table );
 		print_console_commands();
 	}
-
-	// gs_timed_action( 60, 
-	// {
-	// 	gs_println( "here" );
-	// });
 
 	// Otherwise, continue
 	return gs_result_in_progress;
@@ -238,6 +234,11 @@ void print_hash_table( gs_hash_table( u64, object_t )* hash_table )
 	// Temp buffer for printing object
 	char tmp_buffer[256] = {0};
 
+	gs_println( "%zu", gs_hash_table_size( *hash_table ) );
+
+	b32 exists = gs_hash_table_exists( *hash_table, 0 );
+	gs_println( "exists: %s", exists ? "true" : "false" );
+	
 	// Hash Table
 	gs_println( "Hash Table: [ " );
 
