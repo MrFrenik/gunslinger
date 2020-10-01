@@ -251,7 +251,7 @@ gs_resource( gs_audio_source ) __gs_load_audio_source_from_file( const char* fil
 // Audio Instance Data
 ============================================================*/
 
-gs_resource( gs_audio_instance )__gs_audio_play_instance_data( gs_audio_instance_data_t inst )
+gs_resource( gs_audio_instance ) __gs_audio_construct_instance( gs_audio_instance_data_t inst )
 {
 	gs_resource( gs_audio_instance ) inst_h = gs_resource_invalid( gs_audio_instance );
 
@@ -268,21 +268,27 @@ gs_resource( gs_audio_instance )__gs_audio_play_instance_data( gs_audio_instance
 	return inst_h;
 }
 
-gs_resource( gs_audio_instance ) __gs_audio_play(  gs_resource( gs_audio_source ) src_h )
+void __gs_audio_play_source(  gs_resource( gs_audio_source ) src_h, f32 volume )
 {
-	gs_resource( gs_audio_instance ) inst_h = gs_resource_invalid( gs_audio_instance );
+	// Construct instance data from source
+	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
+	gs_audio_instance_data_t inst = gs_audio_instance_data_new( src_h );
+	inst.volume = gs_clamp( volume, audio->min_audio_volume, audio->max_audio_volume );
+	inst.persistent = false;
+	gs_resource( gs_audio_instance ) inst_h = audio->construct_instance( inst );
+	audio->play( inst_h );
+}
 
+// Essentially just restarts the audio instance
+void __gs_audio_play(  gs_resource( gs_audio_instance ) inst_h )
+{
 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
 	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
-
-	// Verify that source is valid first
-	if ( gs_slot_array_handle_valid( __data->sources, src_h.id ) )
+	gs_audio_instance_data_t* inst = gs_slot_array_get_ptr( __data->instances, inst_h.id );
+	if ( inst )
 	{
-		gs_audio_instance_data_t i_data = gs_audio_instance_data_new( src_h );
-		return audio->play_instance_data( i_data );
+		inst->playing = true;
 	}
-
-	return inst_h;
 }
 
 void __gs_audio_pause( gs_resource( gs_audio_instance ) inst_h )
@@ -293,17 +299,6 @@ void __gs_audio_pause( gs_resource( gs_audio_instance ) inst_h )
 	if ( inst )
 	{
 		inst->playing = false;
-	}
-}
-
-void __gs_audio_resume( gs_resource( gs_audio_instance ) inst_h )
-{
-	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
-	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
-	gs_audio_instance_data_t* inst = gs_slot_array_get_ptr( __data->instances, inst_h.id );
-	if ( inst )
-	{
-		inst->playing = true;
 	}
 }
 
@@ -350,7 +345,7 @@ void __gs_audio_set_volume( gs_resource( gs_audio_instance ) inst_h, f32 vol )
 	gs_audio_instance_data_t* inst = gs_slot_array_get_ptr( __data->instances, inst_h.id );
 	if ( inst )
 	{
-		inst->volume = vol;
+		inst->volume = gs_clamp( vol, audio->min_audio_volume, audio->max_audio_volume );
 	}
 }
 
@@ -367,6 +362,14 @@ void __gs_audio_stop( gs_resource( gs_audio_instance ) inst_h )
 	}
 }
 
+b32 __gs_audio_is_playing( gs_resource( gs_audio_instance ) inst_h )
+{
+ 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
+	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
+	gs_audio_instance_data_t* inst = gs_slot_array_get_ptr( __data->instances, inst_h.id );
+	return ( inst && inst->playing );
+}
+
 struct gs_audio_i* __gs_audio_construct()
 {
 	struct gs_audio_i* audio = gs_malloc_init( struct gs_audio_i );
@@ -380,6 +383,10 @@ struct gs_audio_i* __gs_audio_construct()
     audio->user_data = NULL;
     audio->data = data;
 
+    // Default audio max/min
+    audio->max_audio_volume = 1.f;
+    audio->min_audio_volume = 0.f;
+
 	// Default internals
 	__gs_audio_set_default_functions( audio );
 
@@ -390,15 +397,16 @@ void __gs_audio_set_default_functions( struct gs_audio_i* audio )
 {
 	audio->update 						= &__gs_audio_update_internal;
 	audio->load_audio_source_from_file 	= &__gs_load_audio_source_from_file;
+	audio->construct_instance 			= &__gs_audio_construct_instance;
 	audio->play 						= &__gs_audio_play;
-	audio->play_instance_data 			= &__gs_audio_play_instance_data;
+	audio->play_source 					= &__gs_audio_play_source;
 	audio->pause 						= &__gs_audio_pause;
-	audio->resume 						= &__gs_audio_resume;
 	audio->restart 						= &__gs_audio_restart;
 	audio->stop 						= &__gs_audio_stop;
 	audio->get_volume 					= &__gs_audio_get_volume;
 	audio->set_volume 					= &__gs_audio_set_volume;
 	audio->set_instance_data 			= &__gs_audio_set_instance_data;
+	audio->is_playing 					= &__gs_audio_is_playing;
 
 	gs_audio_construct_internal( audio );
 }

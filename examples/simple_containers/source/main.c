@@ -188,16 +188,16 @@ void print_slot_array( gs_slot_array( object_t )* sa )
 
 	char buffer[256] = {0};
 
-		for ( 
-			gs_slot_array_iter(object_t) it = gs_slot_array_iter_new(*sa);
-			gs_slot_array_iter_valid(*sa, it);
-			gs_slot_array_iter_advance(*sa, it)
-		)
-		{
-			object_t* obj = it.data;
-			object_to_str(obj, buffer, 256);
-			gs_println("\t%s", buffer);
-		}
+	for ( 
+		gs_slot_array_iter(object_t) it = gs_slot_array_iter_new(*sa);
+		gs_slot_array_iter_valid(*sa, it);
+		gs_slot_array_iter_advance(*sa, it)
+	)
+	{
+		object_t* obj = it.data;
+		object_to_str(obj, buffer, 256);
+		gs_println("\t%s", buffer);
+	}
 
 	gs_printf( " ]\n" );
 }
