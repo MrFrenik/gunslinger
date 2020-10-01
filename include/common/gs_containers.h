@@ -231,7 +231,7 @@ typedef enum
 	_inline gs_ht_iter_##key_type##_##val_type gs_ht_##key_type##_##val_type##_iter_new_func( void* _ht )\
 	{\
 		gs_ht_##key_type##_##val_type* ht = (gs_ht_##key_type##_##val_type*)_ht;\
-		gs_ht_iter_##key_type##_##val_type iter = {};\
+		gs_ht_iter_##key_type##_##val_type iter = gs_default_val();\
 		iter.data = gs_hash_table_size( *ht ) ? ht->data : NULL;\
 		return iter;\
 	}\
@@ -253,7 +253,7 @@ typedef enum
 \
 	_inline val_type gs_ht_##key_type##_##val_type##_get_func( void* tbl_ptr, key_type key )\
 	{\
-		val_type out = {};\
+		val_type out = gs_default_val();\
 		gs_ht_##key_type##_##val_type* tbl = ( gs_ht_##key_type##_##val_type* )tbl_ptr;\
 		if ( gs_dyn_array_empty( tbl->data ) ) \
 		{\
@@ -326,7 +326,7 @@ typedef enum
 \
 	_inline gs_ht_##key_type##_##val_type gs_ht_##key_type##_##val_type##_new()\
 	{\
-		gs_ht_##key_type##_##val_type ht = {};\
+		gs_ht_##key_type##_##val_type ht = gs_default_val();\
 		ht.data 						= gs_dyn_array_new( gs_ht_entry_##key_type##_##val_type );\
 		ht.hash_func 					= &_hash_func;\
 		ht.hash_key_idx_func 			= gs_ht_##key_type##_##val_type##_key_idx_func;\
@@ -514,7 +514,7 @@ gs_slot_array_base
 \
 	_inline gs_sa_##T##_iter gs_sa_##T##_iter_new_func( gs_sa_##T* s )\
 	{\
-		gs_sa_##T##_iter it = {};\
+		gs_sa_##T##_iter it = gs_default_val();\
 		it.data = s->data;\
 		return it;\
 	}\
@@ -545,7 +545,7 @@ gs_slot_array_base
 	_force_inline\
 	gs_sa_##T __gs_sa_##T##_new()\
 	{\
-		gs_sa_##T sa = {};\
+		gs_sa_##T sa = gs_default_val();\
 		sa.data 								= gs_dyn_array_new( T );\
 		sa._base.handle_indices 				= gs_dyn_array_new( u32 );\
 		sa._base.reverse_indirection_indices 	= gs_dyn_array_new( u32 );\
@@ -643,7 +643,7 @@ typedef struct gs_command_buffer_t
 _force_inline
 gs_command_buffer_t gs_command_buffer_new()
 {
-	gs_command_buffer_t cb = {};
+	gs_command_buffer_t cb = gs_default_val();
 	cb.commands = gs_byte_buffer_new();
 	return cb;
 }

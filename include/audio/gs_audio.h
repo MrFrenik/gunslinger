@@ -98,6 +98,7 @@ typedef struct gs_audio_i
 	b32 ( * is_playing )( gs_resource( gs_audio_instance ) );
 
 	void ( * set_instance_data )( gs_resource( gs_audio_instance ), gs_audio_instance_data_t );
+	gs_audio_instance_data_t ( * get_instance_data )( gs_resource( gs_audio_instance ) );
 	f32 ( * get_volume )( gs_resource( gs_audio_instance ) );
 	void ( * set_volume )( gs_resource( gs_audio_instance ), f32 );
 

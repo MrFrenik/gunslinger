@@ -325,6 +325,19 @@ void __gs_audio_set_instance_data( gs_resource( gs_audio_instance ) inst_h, gs_a
 	}
 }
 
+gs_audio_instance_data_t __gs_audio_get_instance_data( gs_resource( gs_audio_instance ) inst_h )
+{
+	gs_audio_instance_data_t data = {};	
+	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
+	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
+	gs_audio_instance_data_t* inst = gs_slot_array_get_ptr( __data->instances, inst_h.id );
+	if ( inst )
+	{
+		data = *inst;
+	}
+	return data;
+}
+
 f32 __gs_audio_get_volume( gs_resource( gs_audio_instance ) inst_h )
 {
 	 gs_audio_i* audio = gs_engine_instance()->ctx.audio;
@@ -405,8 +418,9 @@ void __gs_audio_set_default_functions( struct gs_audio_i* audio )
 	audio->stop 						= &__gs_audio_stop;
 	audio->get_volume 					= &__gs_audio_get_volume;
 	audio->set_volume 					= &__gs_audio_set_volume;
-	audio->set_instance_data 			= &__gs_audio_set_instance_data;
 	audio->is_playing 					= &__gs_audio_is_playing;
+	audio->set_instance_data 			= &__gs_audio_set_instance_data;
+	audio->get_instance_data 			= &__gs_audio_get_instance_data;
 
 	gs_audio_construct_internal( audio );
 }

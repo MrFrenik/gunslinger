@@ -21,6 +21,12 @@ extern "C" {
 	abort();\
 }
 
+#if defined ( __cplusplus )
+	#define gs_default_val() {}
+#else
+	#define gs_default_val() {0}
+#endif
+
 // Helper macro for an in place for-range loop
 #define gs_for_range_i( count )\
 	for ( u32 i = 0; i < count; ++i )
