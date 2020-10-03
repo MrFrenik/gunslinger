@@ -42,7 +42,7 @@ void ma_audio_commit( ma_device* device, void* output, const void* input, ma_uin
 			gs_audio_instance_data_t* inst = &__data->instances.data[ i ];
 
 			// Get raw audio source from instance
-			gs_audio_source_t* src = gs_slot_array_get_ptr( __data->sources, inst->src.id );
+			gs_audio_source_t* src = inst->src;
 
 			// Easy out if the instance is not playing currently or the source is invalid
 			if ( !inst->playing || !src ) {

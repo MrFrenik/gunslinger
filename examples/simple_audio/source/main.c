@@ -5,7 +5,7 @@ gs_result app_init();		// Use to init your application
 gs_result app_update();		// Use to update your application
 
 // Resource handles for internal audio data. Since audio must run on a separate thread, this is necessary.
-_global gs_handle_audio_source 		g_src = {0};
+_global gs_audio_source_t* 			g_src = {0};
 _global gs_handle_audio_instance 	g_inst = {0};
 
 int main( int argc, char** argv )
@@ -108,5 +108,35 @@ gs_result app_update()
 		audio->set_volume( g_inst, cur_vol - 0.1f );
 	}
 
+	gs_audio_instance_data_t id = audio->get_instance_data( g_inst );
+	s32 sample_count = g_src->sample_count;
+	s32 sample_rate = g_src->sample_rate;
+	s32 num_channels = g_src->channels;
+
+	gs_timed_action( 10, 
+	{
+		s32 min, sec;
+		char buf[256] = gs_default_val();
+
+		// Runtime of source
+		audio->get_runtime( g_src, &min, &sec );
+		gs_snprintf( buf, 256, sec < 10 ? "%d:0%d" : "%d:%d", min, sec );
+		gs_println( "Runtime: %s", buf );
+
+		// Get current play position
+		audio->convert_to_runtime( sample_count, sample_rate, 
+			num_channels, id.sample_position, &min, &sec );
+
+		gs_snprintf( buf, 256, sec < 10 ? "%d:0%d" : "%d:%d", min, sec );
+		gs_println( "Play Time: %s", buf );
+	});
+
 	return gs_result_in_progress;
 }
+
+
+
+
+
+
+

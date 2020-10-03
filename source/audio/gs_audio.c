@@ -96,7 +96,7 @@ gs_result __gs_audio_update_internal( struct gs_audio_i* audio )
 		gs_audio_instance_data_t* inst = &__data->instances.data[ i ];
 
 		// Get raw audio source from instance
-		gs_audio_source_t* src = gs_slot_array_get_ptr( __data->sources, inst->src.id );
+		gs_audio_source_t* src = inst->src;
 
 		// Easy out if the instance is not playing currently or the source is invalid
 		if ( !inst->playing || !src ) {
@@ -118,7 +118,7 @@ gs_result __gs_audio_update_internal( struct gs_audio_i* audio )
 			s16 start_right_sample;
 
 			// Not sure about this line of code...
-			f64 target_sample_position = start_sample_position + (f64)channels * (f64)1.f;
+			f64 target_sample_position = start_sample_position + (f64)channels * (f64)1.f; // pitch
 
 			if ( target_sample_position >= src->sample_count )
 			{
@@ -198,10 +198,11 @@ gs_result __gs_audio_update_internal( struct gs_audio_i* audio )
 // Audio Source
 ============================================================*/
 
-gs_resource( gs_audio_source ) __gs_load_audio_source_from_file( const char* file_name )
+// This will allocate memory for user.
+gs_audio_source_t* __gs_load_audio_source_from_file( const char* file_name )
 {
-	gs_audio_source_t source = {0};
-	gs_resource( gs_audio_source ) handle = gs_resource_invalid( gs_audio_source );
+	gs_audio_source_t* source = gs_malloc( sizeof(gs_audio_source_t) );
+	memset( source, 0, sizeof(gs_audio_source_t) );
 	b32 load_successful = false;
 
 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
@@ -211,7 +212,7 @@ gs_resource( gs_audio_source ) __gs_load_audio_source_from_file( const char* fil
 
 	if ( !platform->file_exists( file_name ) ) {
 		gs_println( "WARNING: Could not open file: %s", file_name );
-		return handle;
+		gs_free( source );
 	}
 
 	// Lower case and grab file ext.
@@ -221,30 +222,30 @@ gs_resource( gs_audio_source ) __gs_load_audio_source_from_file( const char* fil
 
 	// Load OGG data
 	if ( gs_string_compare_equal( file_ext, "ogg" ) ) {
-		load_successful = __gs_load_ogg_data( file_name, &source );
+		load_successful = __gs_load_ogg_data( file_name, source );
 	}
 
 	if ( gs_string_compare_equal( file_ext, "wav" ) ) {
-		load_successful = __gs_load_wav_data( file_name, &source );	
+		load_successful = __gs_load_wav_data( file_name, source );	
 	}
 
 	if ( gs_string_compare_equal( file_ext, "mp3" ) ) {
-		load_successful = __gs_load_mp3_data( file_name, &source );	
+		load_successful = __gs_load_mp3_data( file_name, source );	
 	}
 
 	// Load raw source into memory and return handle id
 	if ( load_successful )
 	{
 		gs_println( "SUCCESS: Audio source loaded: %s", file_name );
-		u32 id = gs_slot_array_insert( __data->sources, source );
-		handle.id = id;
+		return source;
 	}
 	else
 	{
 		gs_println( "WARNING: Could not load audio source data: %s", file_name );
+		gs_free( source );
 	}
 
-	return handle;
+	return NULL;
 }
 
 /*============================================================
@@ -257,22 +258,16 @@ gs_resource( gs_audio_instance ) __gs_audio_construct_instance( gs_audio_instanc
 
 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
 	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
-
-	// Verify that source is valid first
-	if ( gs_slot_array_handle_valid( __data->sources, inst.src.id ) )
-	{
-		u32 id = gs_slot_array_insert( __data->instances, inst );
-		inst_h.id = id;
-	}
-
+	u32 id = gs_slot_array_insert( __data->instances, inst );
+	inst_h.id = id;
 	return inst_h;
 }
 
-void __gs_audio_play_source(  gs_resource( gs_audio_source ) src_h, f32 volume )
+void __gs_audio_play_source(  gs_audio_source_t* src, f32 volume )
 {
 	// Construct instance data from source
 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
-	gs_audio_instance_data_t inst = gs_audio_instance_data_new( src_h );
+	gs_audio_instance_data_t inst = gs_audio_instance_data_new( src );
 	inst.volume = gs_clamp( volume, audio->min_audio_volume, audio->max_audio_volume );
 	inst.persistent = false;
 	gs_resource( gs_audio_instance ) inst_h = audio->construct_instance( inst );
@@ -383,13 +378,56 @@ b32 __gs_audio_is_playing( gs_resource( gs_audio_instance ) inst_h )
 	return ( inst && inst->playing );
 }
 
+void __gs_audio_get_runtime( gs_audio_source_t* src, s32* _minutes, s32* _seconds )
+{
+ 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
+	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
+	if ( src )
+	{
+		// Calculate total length in seconds
+		f64 total_seconds = ((f32)src->sample_count / (f32)src->sample_rate) / src->channels;
+		s32 seconds = (s32)(fmodf(total_seconds, 60.f));
+		s32 minutes = (s32)(total_seconds / 60.f);	
+
+		if ( _minutes )
+		{
+			*_minutes = minutes;
+		}
+
+		if ( _seconds )
+		{
+			*_seconds = seconds;
+		}
+	}
+}
+
+void __gs_audio_convert_to_runtime( s32 sample_count, s32 sample_rate, 
+	s32 num_channels, s32 position, s32* minutes_out, s32* seconds_out )
+{
+	// Calculate total length in seconds
+	f64 frac = (f64)position / (f64)sample_count;
+	f64 total_seconds = ((f64)sample_count / (f64)sample_rate) / num_channels;
+	total_seconds = total_seconds * frac;
+	s32 seconds = (s32)(fmodf(total_seconds, 60.f));
+	s32 minutes = (s32)(total_seconds / 60.f);	
+
+	if ( minutes_out )
+	{
+		*minutes_out = minutes;
+	}
+
+	if ( seconds_out )
+	{
+		*seconds_out = seconds;
+	}
+}
+
 struct gs_audio_i* __gs_audio_construct()
 {
 	struct gs_audio_i* audio = gs_malloc_init( struct gs_audio_i );
     struct gs_audio_data_t* data = gs_malloc_init( struct gs_audio_data_t );
 
     data->internal = NULL;
-    data->sources = gs_slot_array_new( gs_audio_source_t );
     data->instances = gs_slot_array_new( gs_audio_instance_data_t );
 
     // Set data
@@ -421,6 +459,8 @@ void __gs_audio_set_default_functions( struct gs_audio_i* audio )
 	audio->is_playing 					= &__gs_audio_is_playing;
 	audio->set_instance_data 			= &__gs_audio_set_instance_data;
 	audio->get_instance_data 			= &__gs_audio_get_instance_data;
+	audio->get_runtime 					= &__gs_audio_get_runtime;
+	audio->convert_to_runtime 			= &__gs_audio_convert_to_runtime;
 
 	gs_audio_construct_internal( audio );
 }
