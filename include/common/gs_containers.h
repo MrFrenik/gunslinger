@@ -489,8 +489,6 @@ typedef struct
 gs_slot_array_base
 {
 	gs_dyn_array( u32 )	handle_indices;
-	gs_dyn_array( u32 )	reverse_indirection_indices;
-	gs_dyn_array( u32 )	index_free_list;
 } gs_slot_array_base;
 
 #define gs_slot_array_decl( T )\
@@ -514,8 +512,16 @@ gs_slot_array_base
 \
 	_inline gs_sa_##T##_iter gs_sa_##T##_iter_new_func( gs_sa_##T* s )\
 	{\
+		/* Need to find starting place for VALID entry only */\
 		gs_sa_##T##_iter it = gs_default_val();\
-		it.data = s->data;\
+		for ( ; it.cur_idx < gs_dyn_array_size( s->_base.handle_indices ); ++it.cur_idx )\
+		{\
+			if ( s->_base.handle_indices[it.cur_idx] != gs_slot_array_invalid_handle )\
+			{\
+				break;\
+			}\
+		}\
+		it.data = &s->data[it.cur_idx];\
 		return it;\
 	}\
 \
@@ -528,7 +534,15 @@ gs_slot_array_base
 	_inline void gs_sa_##T##_iter_advance_func( gs_sa_##T* s, gs_sa_##T##_iter* it )\
 	{\
 		it->cur_idx++;\
+		for ( ; it->cur_idx < gs_dyn_array_size( s->_base.handle_indices ); ++it->cur_idx )\
+		{\
+			if ( s->_base.handle_indices[it->cur_idx] != gs_slot_array_invalid_handle )\
+			{\
+				break;\
+			}\
+		}\
 		u32 idx = s->_base.handle_indices[it->cur_idx];\
+		/*gs_println( "cur_idx: %zu, idx: %zu", it->cur_idx, idx );*/\
 		it->data = &s->data[idx];\
 	}\
 \
@@ -536,8 +550,8 @@ gs_slot_array_base
 	gs_sa_##T##_insert_func( struct gs_sa_##T* s, T v )\
 	{\
 		u32 free_idx = gs_slot_array_find_next_available_index( ( gs_slot_array_base* )s );\
+		gs_println( "free_idx: %zu", free_idx );\
 		gs_dyn_array_push( s->data, v );\
-		gs_dyn_array_push( s->_base.reverse_indirection_indices, free_idx );\
 		s->_base.handle_indices[ free_idx ] = gs_dyn_array_size( s->data ) - 1;\
 		return free_idx;\
 	}\
@@ -548,30 +562,31 @@ gs_slot_array_base
 		gs_sa_##T sa = gs_default_val();\
 		sa.data 								= gs_dyn_array_new( T );\
 		sa._base.handle_indices 				= gs_dyn_array_new( u32 );\
-		sa._base.reverse_indirection_indices 	= gs_dyn_array_new( u32 );\
-		sa._base.index_free_list 				= gs_dyn_array_new( u32 );\
 		sa.insert_func 							= &gs_sa_##T##_insert_func;\
 		sa.iter_new_func 						= &gs_sa_##T##_iter_new_func;\
 		sa.iter_valid_func 						= &gs_sa_##T##_iter_valid_func;\
 		sa.iter_advance_func 					= &gs_sa_##T##_iter_advance_func;\
 		return sa;\
-	}
+	}\
 
 _force_inline u32
 gs_slot_array_find_next_available_index( gs_slot_array_base* sa )
 {
-	if ( gs_dyn_array_empty( sa->index_free_list ) ) {
-		gs_dyn_array_push( sa->handle_indices, 0 );
-		return ( gs_dyn_array_size( sa->handle_indices ) - 1 );
+	/* Loop through indices, look for next available slot based on invalid index */
+	u32 idx = gs_slot_array_invalid_handle;
+	gs_for_range_i( gs_dyn_array_size( sa->handle_indices ) )
+	{
+		u32 handle = sa->handle_indices[i];
+		if ( handle == gs_slot_array_invalid_handle )
+		{
+			idx = i;
+			break;
+		}
 	}
-	u32 idx = sa->index_free_list[ 0 ];
-	if ( gs_dyn_array_size( sa->index_free_list ) > 1 ) {
-		u32 sz = gs_dyn_array_size( sa->index_free_list );
-		u32 tmp = sa->index_free_list[ sz - 1 ];
-		sa->index_free_list[ 0 ] = tmp;
-		gs_dyn_array_pop( sa->index_free_list );
-	} else {
-		gs_dyn_array_clear( sa->index_free_list );	
+	if ( idx == gs_slot_array_invalid_handle )
+	{
+		gs_dyn_array_push( sa->handle_indices, 0 );
+		idx = gs_dyn_array_size( sa->handle_indices ) - 1;
 	}
 
 	return idx;
@@ -580,8 +595,6 @@ gs_slot_array_find_next_available_index( gs_slot_array_base* sa )
 #define gs_slot_array_clear( s )\
 	do {\
 		gs_dyn_array_clear( s._base.handle_indices );\
-		gs_dyn_array_clear( s._base.index_free_list );\
-		gs_dyn_array_clear( s._base.reverse_indirection_indices );\
 		gs_dyn_array_clear( s.data );\
 	} while ( 0 )
 
@@ -597,14 +610,14 @@ gs_slot_array_find_next_available_index( gs_slot_array_base* sa )
 #define gs_slot_array_get( s, handle )\
 	( s.data[ s._base.handle_indices[ handle ] ] )
 
+#define gs_slot_array_handle_valid( s, handle )\
+	( handle < gs_dyn_array_size( (s)._base.handle_indices ) && (s)._base.handle_indices[handle] != gs_slot_array_invalid_handle )
+
 #define gs_slot_array_get_unsafe( s, handle )\
 	( &s.data[ s._base.handle_indices[ handle ] ] )
 
 #define gs_slot_array_get_ptr( s, handle )\
 	( gs_slot_array_handle_valid( s, handle ) ? &s.data[ s._base.handle_indices[ handle ] ] : NULL )
-
-#define gs_slot_array_handle_valid( s, handle )\
-	( handle < gs_slot_array_size( s ) )
 
 #define gs_slot_array( T )\
 	gs_sa_##T
@@ -624,10 +637,46 @@ gs_slot_array_find_next_available_index( gs_slot_array_base* sa )
 #define gs_slot_array_free( sa )\
 	do {\
 		gs_dyn_array_free( sa._base.handle_indices );\
-		gs_dyn_array_free( sa._base.index_free_list );\
-		gs_dyn_array_free( sa._base.reverse_indirection_indices );\
 		gs_dyn_array_free( sa.data );\
 	} while ( 0 )
+
+#define gs_slot_array_erase( sa, __handle )\
+	do {\
+		gs_println( "handle: %zu", __handle );\
+		/* If size is only one, then just clear the entire slot array*/\
+		if ( gs_slot_array_size( (sa) ) == 1 )\
+		{\
+			gs_slot_array_clear( (sa) );\
+		}\
+		else if ( !gs_slot_array_handle_valid( sa, __handle ) )\
+		{\
+			gs_println( "Warning: Attempting to erase invalid slot array handle (%zu)", __handle );\
+			/* Do Nothing */\
+		}\
+		else\
+		{\
+			/* Get original data index, and swap with back, this is wrong */\
+			u32 og_data_idx = (sa)._base.handle_indices[__handle];\
+			/* Iterate through handles until last index of data found */\
+			u32 __h = 0;\
+			for ( u32 i = 0; i < gs_dyn_array_size( (sa)._base.handle_indices ); ++i )\
+			{\
+				if ( (sa)._base.handle_indices[i] == gs_dyn_array_size( (sa).data ) - 1 )\
+				{\
+					__h = i;\
+					break;\
+				}\
+			}\
+		\
+			/* Swap and pop data */\
+			(sa).data[og_data_idx] = gs_dyn_array_back( (sa).data );\
+			gs_dyn_array_pop( (sa).data );\
+		\
+			/* Point new handle, Set og handle to invalid */\
+			(sa)._base.handle_indices[__h] = og_data_idx;\
+			(sa)._base.handle_indices[__handle] = gs_slot_array_invalid_handle;\
+		}\
+	} while (0)
 
 /*===================================
 // Command Buffer
