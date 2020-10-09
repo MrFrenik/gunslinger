@@ -542,7 +542,6 @@ gs_slot_array_base
 			}\
 		}\
 		u32 idx = s->_base.handle_indices[it->cur_idx];\
-		/*gs_println( "cur_idx: %zu, idx: %zu", it->cur_idx, idx );*/\
 		it->data = &s->data[idx];\
 	}\
 \
@@ -550,7 +549,6 @@ gs_slot_array_base
 	gs_sa_##T##_insert_func( struct gs_sa_##T* s, T v )\
 	{\
 		u32 free_idx = gs_slot_array_find_next_available_index( ( gs_slot_array_base* )s );\
-		gs_println( "free_idx: %zu", free_idx );\
 		gs_dyn_array_push( s->data, v );\
 		s->_base.handle_indices[ free_idx ] = gs_dyn_array_size( s->data ) - 1;\
 		return free_idx;\
@@ -642,7 +640,6 @@ gs_slot_array_find_next_available_index( gs_slot_array_base* sa )
 
 #define gs_slot_array_erase( sa, __handle )\
 	do {\
-		gs_println( "handle: %zu", __handle );\
 		/* If size is only one, then just clear the entire slot array*/\
 		if ( gs_slot_array_size( (sa) ) == 1 )\
 		{\
