@@ -676,6 +676,40 @@ gs_slot_array_find_next_available_index( gs_slot_array_base* sa )
 	} while (0)
 
 /*===================================
+// Slot Map
+===================================*/
+
+#define gs_slot_map_decl( k, v )\
+\
+	typedef struct gs_sm_##k##_##v\
+	{\
+		gs_hash_table( k, u32 ) indirection_map;\
+		gs_slot_array( v ) slot_array;\
+		void ( * insert_func )( struct gs_sm_##k##_##v*, k, v );\
+	} gs_sm_##k##_##v;\
+\
+	_force_inline\
+	gs_sm_##k##_##v __gs_sm_##k##_##v##_new()\
+	{\
+		gs_sm_##k##_##v sm 			= gs_default_val();\
+		sm.slot_array 				= gs_slot_array_new( v );\
+		sm.indirection_map 			= gs_hash_table_new( k, u32 );\
+		return sm;\
+	}\
+
+#define gs_slot_map( k, v )\
+	gs_sm_##k##_##v
+
+#define gs_slot_map_new( k, v )\
+	__gs_sm_##k##_##v##_new()
+
+#define gs_slot_map_get( s, k )\
+	gs_slot_array_get( (s).slot_array, gs_hash_table_get( (s).indirection_map, (k) ) )
+
+#define gs_slot_map_insert( s, _k, _v )\
+	gs_hash_table_insert( (s).indirection_map, (_k), gs_slot_array_insert( (s).slot_array, (_v) ) );
+
+/*===================================
 // Command Buffer
 ===================================*/
 
