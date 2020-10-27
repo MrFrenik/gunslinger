@@ -73,8 +73,9 @@ gs_engine* gs_engine_construct( gs_application_desc app_desc )
 		{
 			if ( app_desc.init() != gs_result_success ) 
 			{
-				gs_assert( false );
+				// Show error before aborting
 				gs_println( "ERROR: Application failed to initialize." );
+				gs_assert( false );
 			}
 		}
 
