@@ -322,7 +322,7 @@ void __gs_audio_set_instance_data( gs_resource( gs_audio_instance ) inst_h, gs_a
 
 gs_audio_instance_data_t __gs_audio_get_instance_data( gs_resource( gs_audio_instance ) inst_h )
 {
-	gs_audio_instance_data_t data = {};	
+	gs_audio_instance_data_t data = gs_default_val();	
 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
 	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
 	gs_audio_instance_data_t* inst = gs_slot_array_get_ptr( __data->instances, inst_h.id );
