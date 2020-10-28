@@ -4,13 +4,13 @@ mkdir bin
 pushd bin
 
 rem Name
-set name=HelloCPP
+set name=ImGui
 
 rem Include directories 
-set inc=/I ..\..\..\include
+set inc=/I ..\..\..\include /I ..\source\ /I ..\..\..\third_party\include\
 
 rem Source files
-set src_main=..\source\*.c
+set src_main=..\source\*.cpp ..\source\imgui\*.cpp
 
 rem All source together
 set src_all=%src_main%
