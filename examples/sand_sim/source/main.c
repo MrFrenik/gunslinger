@@ -6,16 +6,10 @@
 #include "font/font.h"
 #include "font/font_data.c"
 
-#if (defined GS_PLATFORM_APPLE)
-	_global const s32 g_window_width 	= 800;
-	_global const s32 g_window_height 	= 600;
-#else
-	_global const s32 g_window_width 	= 1258;
-	_global const s32 g_window_height 	= 848;
-#endif
-
-_global const s32 g_texture_width 	= 1258 / 2;
-_global const s32 g_texture_height 	= 848 / 2;
+#define g_window_width 		1258
+#define g_window_height 	848
+_global const s32 g_texture_width 	= g_window_width / 2;
+_global const s32 g_texture_height 	= g_window_height / 2;
 
 // 32 bit color structure
 typedef struct color_t
@@ -1335,13 +1329,13 @@ void render_scene()
 		gfx->bind_index_buffer( cb, g_ibo );
 
 		// Draw final composited image
-		if (g_use_post_processing) {
+		// if (g_use_post_processing) {
 
-			gfx->bind_texture( cb, u_tex, g_composite_pass.data.render_target, 0 );
-		} else {
+		// 	gfx->bind_texture( cb, u_tex, g_composite_pass.data.render_target, 0 );
+		// } else {
 
 			gfx->bind_texture( cb, u_tex, g_rt, 0 );
-		}
+		// }
 		gfx->draw_indexed( cb, 6, 0 );
 
 		// Draw UI on top
