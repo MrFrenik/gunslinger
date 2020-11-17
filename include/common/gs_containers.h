@@ -615,7 +615,7 @@ gs_slot_array_find_next_available_index( gs_slot_array_base* sa )
 	( &s.data[ s._base.handle_indices[ handle ] ] )
 
 #define gs_slot_array_get_ptr( s, handle )\
-	( gs_slot_array_handle_valid( s, handle ) ? &s.data[ s._base.handle_indices[ handle ] ] : NULL )
+	( gs_slot_array_handle_valid((s), handle ) ? &(s).data[ (s)._base.handle_indices[ handle ] ] : NULL )
 
 #define gs_slot_array( T )\
 	gs_sa_##T

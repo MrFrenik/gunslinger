@@ -148,7 +148,8 @@ gs_vec2_project_onto( gs_vec2 v0, gs_vec2 v1 )
 
 _inline gs_vec2 gs_vec2_norm( gs_vec2 v ) 
 {
-	return gs_vec2_scale( v, 1.0f / gs_vec2_len( v ) );
+	f32 len = gs_vec2_len( v );
+	return gs_vec2_scale( v, len != 0.f ? 1.0f / gs_vec2_len( v ) : 1.f );
 }
 
 _inline 
@@ -757,7 +758,7 @@ gs_quat gs_quat_default()
 	q.x = 0.f;	
 	q.y = 0.f;	
 	q.z = 0.f;	
-	q.w = 0.f;	
+	q.w = 1.f;	
 	return q;
 }
 

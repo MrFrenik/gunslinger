@@ -274,7 +274,7 @@ typedef struct gs_opengl_video_settings
 	u8 								multi_sampling_count;
 	void* 							ctx;
 } gs_opengl_video_settings;
-
+	
 typedef union gs_graphics_api_settings
 {
 	gs_opengl_video_settings 	opengl;
