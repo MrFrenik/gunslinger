@@ -10,44 +10,44 @@
 // Platform Initialization
 ============================*/
 
-#define __window_from_handle( platform, handle )\
-	( (SDL_Window*)( gs_slot_array_get( ( platform )->windows, ( handle ) ) ) )
+#define __window_from_handle(platform, handle)\
+	((SDL_Window*)(gs_slot_array_get((platform)->windows, (handle))))
 
-gs_result sdl_platform_init( struct gs_platform_i* platform  )
+gs_result sdl_platform_init(struct gs_platform_i* platform )
 {
-	gs_println( "Initializing SDL" );
+	gs_println("Initializing SDL");
 
 	// Verify platform is valid
-	gs_assert( platform );
+	gs_assert(platform);
 
-    SDL_SetHint( SDL_HINT_VIDEO_HIGHDPI_DISABLED, "1" );
+    SDL_SetHint(SDL_HINT_VIDEO_HIGHDPI_DISABLED, "1");
 
-	if ( SDL_Init( SDL_INIT_EVERYTHING ) != 0 ) 
+	if (SDL_Init(SDL_INIT_EVERYTHING) != 0) 
 	{
-		gs_println( "SDL_Init Error: %s", SDL_GetError() );
+		gs_println("SDL_Init Error: %s", SDL_GetError());
 		return gs_result_failure;
 	}
 
-	switch ( platform->settings.video.driver )	
+	switch (platform->settings.video.driver)	
 	{
 		case gs_platform_video_driver_type_opengl: 
 		{
-			SDL_GL_SetAttribute( SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG );
-		    SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE );
-		    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, 3 );
-		    SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, 3 );
-		    SDL_GL_SetAttribute( SDL_GL_DOUBLEBUFFER, 1 );
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+		    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+		    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+		    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+		    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
-			SDL_GL_SetAttribute( SDL_GL_RED_SIZE, 8 );
-			SDL_GL_SetAttribute( SDL_GL_GREEN_SIZE, 8 );
-			SDL_GL_SetAttribute( SDL_GL_BLUE_SIZE, 8 );
-			SDL_GL_SetAttribute( SDL_GL_ALPHA_SIZE, 8 );
+			SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
+			SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
+			SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
+			SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
 			 
-			SDL_GL_SetAttribute( SDL_GL_DEPTH_SIZE, 16 );
-			SDL_GL_SetAttribute( SDL_GL_BUFFER_SIZE, 32 );
+			SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 16);
+			SDL_GL_SetAttribute(SDL_GL_BUFFER_SIZE, 32);
 
-			if ( platform->settings.video.vsync_enabled ) {
-				SDL_GL_SetSwapInterval( 1 );
+			if (platform->settings.video.vsync_enabled) {
+				SDL_GL_SetSwapInterval(1);
 			}
 
 		} break;
@@ -55,25 +55,25 @@ gs_result sdl_platform_init( struct gs_platform_i* platform  )
 		default:
 		{
 			// Default to no output at all.
-			gs_println( "Video format not supported." );
+			gs_println("Video format not supported.");
 		} break;
 	}
 
     // Construct cursors
-    platform->cursors[ gs_platform_cursor_arrow ] 		= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_ARROW );
-    platform->cursors[ gs_platform_cursor_ibeam ] 		= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_IBEAM );
-    platform->cursors[ gs_platform_cursor_size_nw_se ] 	= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_SIZENWSE );
-    platform->cursors[ gs_platform_cursor_size_ne_sw ] 	= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_SIZENESW );
-    platform->cursors[ gs_platform_cursor_size_ns ] 	= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_SIZENS );
-    platform->cursors[ gs_platform_cursor_size_we ] 	= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_SIZEWE );
-    platform->cursors[ gs_platform_cursor_size_all ] 	= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_SIZEALL );
-    platform->cursors[ gs_platform_cursor_hand ] 		= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_HAND );
-    platform->cursors[ gs_platform_cursor_no ] 			= SDL_CreateSystemCursor( SDL_SYSTEM_CURSOR_NO );
+    platform->cursors[ gs_platform_cursor_arrow ] 		= SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
+    platform->cursors[ gs_platform_cursor_ibeam ] 		= SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
+    platform->cursors[ gs_platform_cursor_size_nw_se ] 	= SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENWSE);
+    platform->cursors[ gs_platform_cursor_size_ne_sw ] 	= SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENESW);
+    platform->cursors[ gs_platform_cursor_size_ns ] 	= SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENS);
+    platform->cursors[ gs_platform_cursor_size_we ] 	= SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEWE);
+    platform->cursors[ gs_platform_cursor_size_all ] 	= SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEALL);
+    platform->cursors[ gs_platform_cursor_hand ] 		= SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
+    platform->cursors[ gs_platform_cursor_no ] 			= SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NO);
 
 	return gs_result_success;
 }
 
-gs_result sdl_platform_shutdown( struct gs_platform_i* platform )
+gs_result sdl_platform_shutdown(struct gs_platform_i* platform)
 {
 	// TODO(John): Actually free up memory and shut down resources...
 	return gs_result_success;
@@ -83,9 +83,9 @@ gs_result sdl_platform_shutdown( struct gs_platform_i* platform )
 // Platform Util
 ============================*/
 
-void sdl_platform_sleep( f32 ms )
+void sdl_platform_sleep(f32 ms)
 {
-	SDL_Delay( (u32)ms );	
+	SDL_Delay((u32)ms);	
 }
 
 f64 sdl_platform_time()
@@ -97,9 +97,9 @@ f64 sdl_platform_time()
 // Platform Input
 ============================*/
 
-gs_platform_keycode __sdl_key_to_gs_keycode( SDL_Keycode code )
+gs_platform_keycode __sdl_key_to_gs_keycode(SDL_Keycode code)
 {
-	switch ( code )
+	switch (code)
 	{
 		case SDLK_a: 			return gs_keycode_a; break;
 		case SDLK_b: 			return gs_keycode_b; break;
@@ -209,9 +209,9 @@ gs_platform_keycode __sdl_key_to_gs_keycode( SDL_Keycode code )
 	return gs_keycode_count;
 }
 
-gs_platform_mouse_button_code __sdl_button_to_gs_mouse_button( SDL_Keycode code )
+gs_platform_mouse_button_code __sdl_button_to_gs_mouse_button(SDL_Keycode code)
 {
-	switch ( code )
+	switch (code)
 	{
 		case SDL_BUTTON_LEFT: 	return gs_mouse_lbutton; break;
 		case SDL_BUTTON_RIGHT: 	return gs_mouse_rbutton; break;
@@ -222,20 +222,20 @@ gs_platform_mouse_button_code __sdl_button_to_gs_mouse_button( SDL_Keycode code 
 	return gs_mouse_button_code_count;
 }
 
-gs_result sdl_process_input( struct gs_platform_input* input )
+gs_result sdl_process_input(struct gs_platform_input* input)
 {
 	// Grab platform instance from engine
 	struct gs_platform_i* platform = gs_engine_instance()->ctx.platform;
-	gs_assert( platform );
+	gs_assert(platform);
 
-	gs_assert( input );
+	gs_assert(input);
 
 	SDL_Event event;
 
 	// Poll for events
-	while ( SDL_PollEvent( &event ) )
+	while (SDL_PollEvent(&event))
 	{ 
-		switch ( event.type )
+		switch (event.type)
 		{
 			case SDL_QUIT:
 			{
@@ -244,42 +244,42 @@ gs_result sdl_process_input( struct gs_platform_input* input )
 
 			case SDL_KEYDOWN:
 			{
-				platform->press_key( __sdl_key_to_gs_keycode( event.key.keysym.sym ) );
+				platform->press_key(__sdl_key_to_gs_keycode(event.key.keysym.sym));
 			} break;
 
 			case SDL_KEYUP:
 			{
-				platform->release_key( __sdl_key_to_gs_keycode( event.key.keysym.sym ) );
+				platform->release_key(__sdl_key_to_gs_keycode(event.key.keysym.sym));
 			} break;
 
 			case SDL_MOUSEBUTTONDOWN:
 			{
-				platform->press_mouse_button( __sdl_button_to_gs_mouse_button( event.button.button ) );
+				platform->press_mouse_button(__sdl_button_to_gs_mouse_button(event.button.button));
 			} break;
 
 			case SDL_MOUSEBUTTONUP:
 			{
-				platform->release_mouse_button( __sdl_button_to_gs_mouse_button( event.button.button ) );
+				platform->release_mouse_button(__sdl_button_to_gs_mouse_button(event.button.button));
 			} break;
 
 			case SDL_MOUSEMOTION:
 			{
-				input->mouse.position = ( gs_vec2 ){ .x = ( f32 )event.motion.x, .y = ( f32 )event.motion.y };
+				input->mouse.position = (gs_vec2){ .x = (f32)event.motion.x, .y = (f32)event.motion.y };
 			} break;
 
 			case SDL_MOUSEWHEEL:
 			{
-				input->mouse.wheel = ( gs_vec2 ){ .x = event.wheel.x, .y = event.wheel.y };
+				input->mouse.wheel = (gs_vec2){ .x = event.wheel.x, .y = event.wheel.y };
 			} break;
 
 			case SDL_WINDOWEVENT:
 			{
-				switch( event.window.event )
+				switch(event.window.event)
 				{
 					case SDL_WINDOWEVENT_LEAVE:
 					{
 						// Invalidate mouse position if we leave the window
-						input->mouse.position = ( gs_vec2 ){ .x = -1.0f, .y = -1.0f };
+						input->mouse.position = (gs_vec2){ .x = -1.0f, .y = -1.0f };
 					} break;	
 				}
 			} break;
@@ -294,25 +294,25 @@ gs_result sdl_process_input( struct gs_platform_input* input )
 // Platform Window
 ============================*/
 
-gs_result __sdl_init_gl_context( struct gs_platform_i* platform, SDL_Window* win )
+gs_result __sdl_init_gl_context(struct gs_platform_i* platform, SDL_Window* win)
 {
 	// Construct gl context and store in platform layer
-    platform->settings.video.graphics.opengl.ctx = SDL_GL_CreateContext( win );
+    platform->settings.video.graphics.opengl.ctx = SDL_GL_CreateContext(win);
 
     // Verify that context is valid
-	if ( platform->settings.video.graphics.opengl.ctx == NULL ) 
+	if (platform->settings.video.graphics.opengl.ctx == NULL) 
 	{
-		gs_println( "SDL_CreateWindow Error: %s", SDL_GetError() );
-		gs_assert( false );
+		gs_println("SDL_CreateWindow Error: %s", SDL_GetError());
+		gs_assert(false);
 		return gs_result_failure;
 	} 
 
 	//Set up glew (optional but recommended)
 	GLenum error = glewInit();
-	if ( error != GLEW_OK ) 
+	if (error != GLEW_OK) 
 	{
-		gs_println( "SDL_CreateWindow Error: %s", SDL_GetError() );
-		gs_assert( false );
+		gs_println("SDL_CreateWindow Error: %s", SDL_GetError());
+		gs_assert(false);
 		return gs_result_failure;
 	}
 
@@ -320,26 +320,26 @@ gs_result __sdl_init_gl_context( struct gs_platform_i* platform, SDL_Window* win
 	glewExperimental = GL_TRUE;
 
 	// Set major gl version for platform
-	// SDL_GL_GetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, (s32*)&platform->settings.video.graphics.opengl.major_version );
+	// SDL_GL_GetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, (s32*)&platform->settings.video.graphics.opengl.major_version);
 
 	// Set minor gl version for platform
-	// SDL_GL_GetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, (s32*)&platform->settings.video.graphics.opengl.minor_version );
+	// SDL_GL_GetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, (s32*)&platform->settings.video.graphics.opengl.minor_version);
 
 	//Check OpenGL version
-	gs_println("OpenGL Version: %s", glGetString( GL_VERSION ) );
+	gs_println("OpenGL Version: %s", glGetString(GL_VERSION));
 	printf("Supported GLSL version is %s.\n", (char *)glGetString(GL_SHADING_LANGUAGE_VERSION));
 
 	return gs_result_success;
 }
 
-void* sdl_create_window( const char* title, u32 width, u32 height )
+void* sdl_create_window(const char* title, u32 width, u32 height)
 {
 	// Grab instance of platform API
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 	// Assert that platform is registered
-	gs_assert( platform );
+	gs_assert(platform);
 
-	switch ( platform->settings.video.driver )
+	switch (platform->settings.video.driver)
 	{
 		case gs_platform_video_driver_type_opengl:
 		{
@@ -356,27 +356,27 @@ void* sdl_create_window( const char* title, u32 width, u32 height )
 				window_flags
 			);
 
-			if ( win == NULL ) 
+			if (win == NULL) 
 			{
-				gs_println( "SDL_CreateWindow Error: %s", SDL_GetError() );
-				gs_assert( false );
+				gs_println("SDL_CreateWindow Error: %s", SDL_GetError());
+				gs_assert(false);
 				return NULL;
 			}
 
 			// For now, the the window will be an opengl window if SDL is used.
 			// Single, static opengl context
-			if ( !platform->settings.video.graphics.opengl.ctx )
+			if (!platform->settings.video.graphics.opengl.ctx)
 			{
-				gs_result res = __sdl_init_gl_context( platform, win );
-				if ( res != gs_result_success )
+				gs_result res = __sdl_init_gl_context(platform, win);
+				if (res != gs_result_success)
 				{
-					gs_println( "SDL_CreateWindow Error: %s", SDL_GetError() );
-					gs_assert( false );
+					gs_println("SDL_CreateWindow Error: %s", SDL_GetError());
+					gs_assert(false);
 					return NULL;
 				}
 			}
 
-		    SDL_GL_MakeCurrent( win, platform->settings.video.graphics.opengl.ctx );
+		    SDL_GL_MakeCurrent(win, platform->settings.video.graphics.opengl.ctx);
 
 		    return (void*)win;
 
@@ -384,8 +384,8 @@ void* sdl_create_window( const char* title, u32 width, u32 height )
 
 		default: 
 		{
-			gs_println( "Error: graphics driver type not supported." );
-			gs_assert( false );
+			gs_println("Error: graphics driver type not supported.");
+			gs_assert(false);
 		} break;
 
 		return NULL;
@@ -395,44 +395,44 @@ void* sdl_create_window( const char* title, u32 width, u32 height )
 	return NULL;
 }
 
-void sdl_window_swap_buffer( gs_resource_handle handle )
+void sdl_window_swap_buffer(gs_resource_handle handle)
 {
 	// Grab window from plaform layer slot array
-	SDL_Window* win = __window_from_handle( gs_engine_instance()->ctx.platform, handle );
-    SDL_GL_SwapWindow( win );
+	SDL_Window* win = __window_from_handle(gs_engine_instance()->ctx.platform, handle);
+    SDL_GL_SwapWindow(win);
 }
 
-gs_vec2 sdl_window_size( gs_resource_handle handle )
+gs_vec2 sdl_window_size(gs_resource_handle handle)
 {
-	SDL_Window* win = __window_from_handle( gs_engine_instance()->ctx.platform, handle );
+	SDL_Window* win = __window_from_handle(gs_engine_instance()->ctx.platform, handle);
 	s32 w, h;
-	SDL_GetWindowSize( win, &w, &h );	
-	return ( gs_vec2 ) { .x = w, .y = h };
+	SDL_GetWindowSize(win, &w, &h);	
+	return (gs_vec2) { .x = w, .y = h };
 }
 
-void sdl_window_size_w_h( gs_resource_handle handle, s32* w, s32* h )
+void sdl_window_size_w_h(gs_resource_handle handle, s32* w, s32* h)
 {
-	SDL_Window* win = __window_from_handle( gs_engine_instance()->ctx.platform, handle );
-	SDL_GetWindowSize( win, w, h );
+	SDL_Window* win = __window_from_handle(gs_engine_instance()->ctx.platform, handle);
+	SDL_GetWindowSize(win, w, h);
 }
 
-void sdl_set_window_size( gs_resource_handle handle, s32 w, s32 h )
+void sdl_set_window_size(gs_resource_handle handle, s32 w, s32 h)
 {
-	SDL_Window* win = __window_from_handle( gs_engine_instance()->ctx.platform, handle );
-	SDL_SetWindowSize( win, w, h );
+	SDL_Window* win = __window_from_handle(gs_engine_instance()->ctx.platform, handle);
+	SDL_SetWindowSize(win, w, h);
 }
 
-void sdl_set_cursor( gs_resource_handle handle, gs_platform_cursor cursor )
+void sdl_set_cursor(gs_resource_handle handle, gs_platform_cursor cursor)
 {
-	SDL_Cursor* cp = ( SDL_Cursor* )gs_engine_instance()->ctx.platform->cursors[ cursor ];
-	SDL_SetCursor( cp );
+	SDL_Cursor* cp = (SDL_Cursor*)gs_engine_instance()->ctx.platform->cursors[ cursor ];
+	SDL_SetCursor(cp);
 }
 
 // Method for creating platform layer for SDL
 struct gs_platform_i* gs_platform_construct()
 {
 	// Construct new platform interface
-	struct gs_platform_i* platform = gs_malloc_init( gs_platform_i );
+	struct gs_platform_i* platform = gs_malloc_init(gs_platform_i);
 
 	/*
 	 	Initialize platform interface with all appropriate function pointers

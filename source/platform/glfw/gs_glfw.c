@@ -27,7 +27,7 @@
 #include "third_party/source/GLFW/vulkan.c"
 #include "third_party/source/GLFW/window.c"
 
-#if ( defined _WIN32 | defined _WIN64 )
+#if (defined _WIN32 | defined _WIN64)
     #include "third_party/source/GLFW/win32_init.c"
     #include "third_party/source/GLFW/win32_joystick.c"
     #include "third_party/source/GLFW/win32_monitor.c"
@@ -39,7 +39,7 @@
     #include "third_party/source/GLFW/osmesa_context.c"
 #endif
 
-#if ( defined __linux__ || defined _linux || defined __linux )
+#if (defined __linux__ || defined _linux || defined __linux)
     #if defined(_GLFW_WAYLAND)
         #include "third_party/source/GLFW/wl_init.c"
         #include "third_party/source/GLFW/wl_monitor.c"
@@ -62,7 +62,7 @@
     #include "third_party/source/GLFW/osmesa_context.c"
 #endif
 
-#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined( __NetBSD__) || defined(__DragonFly__)
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
     #include "third_party/source/GLFW/x11_init.c"
     #include "third_party/source/GLFW/x11_monitor.c"
     #include "third_party/source/GLFW/x11_window.c"

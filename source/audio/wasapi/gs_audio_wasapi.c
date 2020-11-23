@@ -57,7 +57,7 @@ typedef struct wasapi_sound_output_t
     u32 latency_frame_count;
 } wasapi_sound_output_t;
 
-void wasapi_init( gs_audio_i* audio )
+void wasapi_init(gs_audio_i* audio)
 {
 	// Load WASAPI library
 	HMODULE wasapi_lib = LoadLibraryA("ole32.dll");
@@ -154,36 +154,36 @@ void wasapi_init( gs_audio_i* audio )
                     else
                     {
                         gs_println("WASAPI Error", "Request for audio render service failed.");
-                        gs_assert( false );
+                        gs_assert(false);
                     }
                 }
                 else
                 {
                     gs_println("WASAPI Error",
                                      "Audio client initialization failed.");
-                    gs_assert( false );
+                    gs_assert(false);
                 }
             }
             else
             {
                 gs_println("WASAPI Error", "Could not activate audio device.");
-                gs_assert( false );
+                gs_assert(false);
             }
         }
         else
         {
             gs_println("WASAPI Error", "Default audio endpoint was not found.");
-            gs_assert( false );
+            gs_assert(false);
         }
     }
     else
     {
         gs_println("WASAPI Error", "Device enumerator retrieval failed.");
-        gs_assert( false );
+        gs_assert(false);
     }
 }
 
-void audio_query( gs_audio_i* audio )
+void audio_query(gs_audio_i* audio)
 {
 	gs_audio_data_t* data = (gs_audio_data_t*)audio->data;
 	wasapi_sound_output_t* output = (wasapi_sound_output_t*)data->internal;
@@ -191,12 +191,12 @@ void audio_query( gs_audio_i* audio )
 	data->sample_count_to_output = 0;
 	u32 sound_padding_size;
 
-	if ( SUCCEEDED( output->audio_client->lpVtbl->GetCurrentPadding( output->audio_client, &sound_padding_size ) ) )
+	if (SUCCEEDED(output->audio_client->lpVtbl->GetCurrentPadding(output->audio_client, &sound_padding_size)))
 	{
 		data->samples_per_second = output->samples_per_second;
-		data->sample_count_to_output = (u32)( output->latency_frame_count - sound_padding_size );
+		data->sample_count_to_output = (u32)(output->latency_frame_count - sound_padding_size);
 
-		if ( data->sample_count_to_output > output->latency_frame_count )
+		if (data->sample_count_to_output > output->latency_frame_count)
 		{
 			data->sample_count_to_output = output->latency_frame_count;
 		}
@@ -205,17 +205,17 @@ void audio_query( gs_audio_i* audio )
 	s16* samples = (s16*)(data->sample_out);
 
 	// Set memory for output for frame count
-	gs_for_range_i( output->buffer_frame_count )
+	gs_for_range_i(output->buffer_frame_count)
 	{
 		samples[ i ] = 0;
 	}
 }
 
-gs_result audio_init( gs_audio_i* audio )
+gs_result audio_init(gs_audio_i* audio)
 {
 	// Construct instance of render data
 	struct gs_audio_data_t* data = audio->data;
-	data->internal = gs_malloc_init( struct wasapi_sound_output_t );
+	data->internal = gs_malloc_init(struct wasapi_sound_output_t);
 
 	wasapi_sound_output_t* output = (wasapi_sound_output_t*)data->internal;
 
@@ -225,15 +225,15 @@ gs_result audio_init( gs_audio_i* audio )
 	output->latency_frame_count = 48000;
 
 	// Allocate storage for samples output for hardware
-	data->sample_out = gs_malloc( output->samples_per_second * sizeof(s16) * 2 );
+	data->sample_out = gs_malloc(output->samples_per_second * sizeof(s16) * 2);
 	memset(data->sample_out, 0, output->samples_per_second * sizeof(s16) * 2);
 
-	wasapi_init( audio );
+	wasapi_init(audio);
 
 	return gs_result_success;
 }
 
-gs_result audio_commit( gs_audio_i* audio )
+gs_result audio_commit(gs_audio_i* audio)
 {
 	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
 
@@ -242,33 +242,33 @@ gs_result audio_commit( gs_audio_i* audio )
 	s16* samples 					= __data->sample_out;
 	wasapi_sound_output_t* output 	= __data->internal;
 
-	if ( samples_to_write )
+	if (samples_to_write)
 	{
 		BYTE* data = 0;
 		DWORD flags = 0;
 
-		output->audio_render_client->lpVtbl->GetBuffer( output->audio_render_client, samples_to_write, &data );
-		if ( data )
+		output->audio_render_client->lpVtbl->GetBuffer(output->audio_render_client, samples_to_write, &data);
+		if (data)
 		{
 			s16* dst = (s16*)data;
 			s16* src = samples;
 
-			gs_for_range_i( samples_to_write )
+			gs_for_range_i(samples_to_write)
 			{
 				*dst++ = *src++; // left sample
 				*dst++ = *src++; // right sample
 			}
 		}
 
-		output->audio_render_client->lpVtbl->ReleaseBuffer( output->audio_render_client, samples_to_write, flags );
+		output->audio_render_client->lpVtbl->ReleaseBuffer(output->audio_render_client, samples_to_write, flags);
 	}
 
-	audio_query( audio );
+	audio_query(audio);
 
 	return gs_result_success;
 }
 
-gs_result audio_shutdown( gs_audio_i* audio )
+gs_result audio_shutdown(gs_audio_i* audio)
 {
 	// NOTE(john): Free resources and stuff...
 	return gs_result_success;
@@ -278,7 +278,7 @@ gs_result audio_shutdown( gs_audio_i* audio )
 // Audio API Construction (fill out specific internal for custom API)
 ====================================================================*/
 
-void gs_audio_construct_internal( struct gs_audio_i* audio )
+void gs_audio_construct_internal(struct gs_audio_i* audio)
 {
 	// Audio Init/De-Init Functions
 	audio->init 		= &audio_init;

@@ -23,9 +23,9 @@ struct gs_audio_i;
 
 typedef struct gs_application_desc
 {
-	gs_result ( * init )();
-	gs_result ( * update )();
-	gs_result ( * shutdown )();
+	gs_result (* init)();
+	gs_result (* update)();
+	gs_result (* shutdown)();
 	const char* window_title;
 	u32 window_width;
 	u32 window_height;
@@ -48,11 +48,11 @@ typedef struct
 typedef struct 
 {
 	gs_engine_context ctx;
-	gs_result ( * run )();
-	gs_result ( * shutdown )();
+	gs_result (* run)();
+	gs_result (* shutdown)();
 } gs_engine;
 
-gs_engine* gs_engine_construct( gs_application_desc app_desc );
+gs_engine* gs_engine_construct(gs_application_desc app_desc);
 gs_engine* gs_engine_instance();
 
 #ifdef __cplusplus

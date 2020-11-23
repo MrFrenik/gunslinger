@@ -29,26 +29,26 @@ gs_texture_parameter_desc gs_texture_parameter_desc_default()
 	return desc;
 }
 
-void* gs_load_texture_data_from_file( const char* file_path, b32 flip_vertically_on_load )
+void* gs_load_texture_data_from_file(const char* file_path, b32 flip_vertically_on_load)
 {
 	// Load texture data
-	stbi_set_flip_vertically_on_load( flip_vertically_on_load );
+	stbi_set_flip_vertically_on_load(flip_vertically_on_load);
 
 	// For now, this data will always have 4 components, since STBI_rgb_alpha is being passed in as required components param
 	// Could optimize this later
 	s32 width, height, num_comps;
-	void* texture_data = stbi_load( file_path, ( s32* )&width, ( s32* )&height, &num_comps, STBI_rgb_alpha );
+	void* texture_data = stbi_load(file_path, (s32*)&width, (s32*)&height, &num_comps, STBI_rgb_alpha);
 
-	if ( !texture_data )
+	if (!texture_data)
 	{
-		gs_println( "Warning: could not load texture: %s", file_path );
+		gs_println("Warning: could not load texture: %s", file_path);
 		return NULL;
 	}
 
 	return texture_data;
 }
 
-void gs_rgb_to_hsv( u8 r, u8 g, u8 b, f32* h, f32* s, f32* v )
+void gs_rgb_to_hsv(u8 r, u8 g, u8 b, f32* h, f32* s, f32* v)
 {
 	f32 fR = (f32)r / 255.f; 
 	f32 fG = (f32)g / 255.f; 
@@ -58,22 +58,22 @@ void gs_rgb_to_hsv( u8 r, u8 g, u8 b, f32* h, f32* s, f32* v )
 	f32 fCMin = gs_min(gs_min(fR, fG), fB);
 	f32 fDelta = fCMax - fCMin;
 
-	if( fDelta > 0.f ) {
+	if(fDelta > 0.f) {
 
-		if( fCMax == fR ) 
+		if(fCMax == fR) 
 		{
 		  *h = 60.f * (fmod(((fG - fB) / fDelta), 6));
 		} 
-		else if( fCMax == fG ) 
+		else if(fCMax == fG) 
 		{
 		  *h = 60.f * (((fB - fR) / fDelta) + 2);
 		} 
-		else if( fCMax == fB ) 
+		else if(fCMax == fB) 
 		{
 		  *h = 60.f * (((fR - fG) / fDelta) + 4);
 		}
 
-		if( fCMax > 0.f ) 
+		if(fCMax > 0.f) 
 		{
 		  *s = fDelta / fCMax;
 		} 
@@ -91,13 +91,13 @@ void gs_rgb_to_hsv( u8 r, u8 g, u8 b, f32* h, f32* s, f32* v )
 		*v = fCMax;
 	}
 
-	if( *h < 0.f ) 
+	if(*h < 0.f) 
 	{
 		*h = 360.f + *h;
 	}
 }
 
-void gs_hsv_to_rgb( f32 h, f32 s, f32 v, u8* r, u8* g, u8* b )
+void gs_hsv_to_rgb(f32 h, f32 s, f32 v, u8* r, u8* g, u8* b)
 {
 	f32 fC = v * s; // Chroma
 	f32 fHPrime = fmod(h / 60.0, 6);

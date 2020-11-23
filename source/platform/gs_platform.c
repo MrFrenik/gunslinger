@@ -5,13 +5,13 @@
 // Platform Window
 ============================*/
 
-gs_resource_handle __gs_platform_create_window( const char* title, u32 width, u32 height )
+gs_resource_handle __gs_platform_create_window(const char* title, u32 width, u32 height)
 {
 	struct gs_platform_i* platform = gs_engine_instance()->ctx.platform;
-	void* win = platform->create_window_internal( title, width, height );
-	gs_assert( win );
-	gs_resource_handle handle = gs_slot_array_insert( platform->windows, win );
-	gs_dyn_array_push( platform->active_window_handles, handle );
+	void* win = platform->create_window_internal(title, width, height);
+	gs_assert(win);
+	gs_resource_handle handle = gs_slot_array_insert(platform->windows, win);
+	gs_dyn_array_push(platform->active_window_handles, handle);
 	return handle;
 }
 
@@ -26,7 +26,7 @@ gs_resource_handle __gs_platform_main_window()
 ============================*/
 
 #define __input()\
-	( &gs_engine_instance()->ctx.platform->input )
+	(&gs_engine_instance()->ctx.platform->input)
 
 void __gs_platform_update_input()
 {
@@ -34,94 +34,94 @@ void __gs_platform_update_input()
 
 	// Update all input and mouse keys from previous frame
 	// Previous key presses
-	gs_for_range_i( gs_keycode_count )
+	gs_for_range_i(gs_keycode_count)
 	{
-		input->prev_key_map[ i ] = input->key_map[ i ];
+		input->prev_key_map[i] = input->key_map[i];
 	}
 
 	// Previous mouse button presses
-	gs_for_range_i( gs_mouse_button_code_count )
+	gs_for_range_i(gs_mouse_button_code_count)
 	{
-		input->mouse.prev_button_map[ i ] = input->mouse.button_map[ i ];
+		input->mouse.prev_button_map[i] = input->mouse.button_map[i];
 	}
 
 	input->mouse.prev_position = input->mouse.position;
-	input->mouse.wheel = (gs_vec2){ 0.0f, 0.0f };
+	input->mouse.wheel = (gs_vec2){0.0f, 0.0f};
 	input->mouse.moved_this_frame = false;
 }
 
-b32 __gs_platform_was_key_down( gs_platform_keycode code )
+b32 __gs_platform_was_key_down(gs_platform_keycode code)
 {
 	gs_platform_input* input = __input();
-	return ( input->prev_key_map[ code ] );
+	return (input->prev_key_map[code]);
 }
 
-b32 __gs_platform_key_down( gs_platform_keycode code )
+b32 __gs_platform_key_down(gs_platform_keycode code)
 {
 	gs_platform_input* input = __input();
-	return ( input->key_map[ code ] );
+	return (input->key_map[code]);
 }
 
-b32 __gs_platform_key_pressed( gs_platform_keycode code )
+b32 __gs_platform_key_pressed(gs_platform_keycode code)
 {
 	gs_platform_input* input = __input();
-	if ( __gs_platform_key_down( code ) && !__gs_platform_was_key_down( code ) )
+	if (__gs_platform_key_down(code) && !__gs_platform_was_key_down(code))
 	{
 		return true;
 	}
 	return false;
 }
 
-b32 __gs_platform_key_released( gs_platform_keycode code )
+b32 __gs_platform_key_released(gs_platform_keycode code)
 {
 	gs_platform_input* input = __input();
-	return ( __gs_platform_was_key_down( code ) && !__gs_platform_key_down( code ) );
+	return (__gs_platform_was_key_down(code) && !__gs_platform_key_down(code));
 }
 
-b32 __gs_platform_was_mouse_down( gs_platform_mouse_button_code code )
+b32 __gs_platform_was_mouse_down(gs_platform_mouse_button_code code)
 {
 	gs_platform_input* input = __input();
-	return ( input->mouse.prev_button_map[ code ] );
+	return (input->mouse.prev_button_map[code]);
 }
 
-void __gs_platform_press_mouse_button( gs_platform_mouse_button_code code )
+void __gs_platform_press_mouse_button(gs_platform_mouse_button_code code)
 {
 	gs_platform_input* input = __input();
-	if ( (u32)code < (u32)gs_mouse_button_code_count ) 
+	if ((u32)code < (u32)gs_mouse_button_code_count) 
 	{
-		input->mouse.button_map[ code ] = true;
+		input->mouse.button_map[code] = true;
 	}
 }
 
-void __gs_platform_release_mouse_button( gs_platform_mouse_button_code code )
+void __gs_platform_release_mouse_button(gs_platform_mouse_button_code code)
 {
 	gs_platform_input* input = __input();
-	if ( (u32)code < (u32)gs_mouse_button_code_count ) 
+	if ((u32)code < (u32)gs_mouse_button_code_count) 
 	{
-		input->mouse.button_map[ code ] = false;
+		input->mouse.button_map[code] = false;
 	}
 }
 
-b32 __gs_platform_mouse_down( gs_platform_mouse_button_code code )
+b32 __gs_platform_mouse_down(gs_platform_mouse_button_code code)
 {
 	gs_platform_input* input = __input();
-	return ( input->mouse.button_map[ code ] );
+	return (input->mouse.button_map[code]);
 }
 
-b32 __gs_platform_mouse_pressed( gs_platform_mouse_button_code code )
+b32 __gs_platform_mouse_pressed(gs_platform_mouse_button_code code)
 {
 	gs_platform_input* input = __input();
-	if ( __gs_platform_mouse_down( code ) && !__gs_platform_was_mouse_down( code ) )
+	if (__gs_platform_mouse_down(code) && !__gs_platform_was_mouse_down(code))
 	{
 		return true;
 	}
 	return false;
 }
 
-b32 __gs_platform_mouse_released( gs_platform_mouse_button_code code )
+b32 __gs_platform_mouse_released(gs_platform_mouse_button_code code)
 {
 	gs_platform_input* input = __input();
-	return ( __gs_platform_was_mouse_down( code ) && !__gs_platform_mouse_down( code ) );
+	return (__gs_platform_was_mouse_down(code) && !__gs_platform_mouse_down(code));
 }
 
 gs_vec2 __gs_platform_mouse_delta()
@@ -131,55 +131,55 @@ gs_vec2 __gs_platform_mouse_delta()
 	if (input->mouse.prev_position.x < 0.0f || 
 		input->mouse.prev_position.y < 0.0f ||
 		input->mouse.position.x < 0.0f || 
-		input->mouse.position.y < 0.0f )
+		input->mouse.position.y < 0.0f)
 	{
-		return (gs_vec2){ 0.0f, 0.0f };
+		return (gs_vec2){0.0f, 0.0f};
 	}
 	
-	return (gs_vec2){ input->mouse.position.x - input->mouse.prev_position.x, 
-					  input->mouse.position.y - input->mouse.prev_position.y };
+	return (gs_vec2){input->mouse.position.x - input->mouse.prev_position.x, 
+					  input->mouse.position.y - input->mouse.prev_position.y};
 }
 
 gs_vec2 __gs_platform_mouse_position()
 {
 	gs_platform_input* input = __input();
 
-	return ( gs_vec2 ) 
+	return (gs_vec2) 
 	{
 		input->mouse.position.x, 
 		input->mouse.position.y
 	};
 }
 
-void __gs_platform_mouse_position_x_y( f32* x, f32* y )
+void __gs_platform_mouse_position_x_y(f32* x, f32* y)
 {
 	gs_platform_input* input = __input();
 	*x = input->mouse.position.x;
 	*y = input->mouse.position.y;
 }
 
-void __gs_platform_mouse_wheel( f32* x, f32* y )
+void __gs_platform_mouse_wheel(f32* x, f32* y)
 {
 	gs_platform_input* input = __input();
 	*x = input->mouse.wheel.x;
 	*y = input->mouse.wheel.y;	
 }
 
-void __gs_platform_press_key( gs_platform_keycode code )
+void __gs_platform_press_key(gs_platform_keycode code)
 {
 	gs_platform_input* input = __input();
-	if ( code < gs_keycode_count ) 
+	if (code < gs_keycode_count) 
 	{
-		input->key_map[ code ] = true;
+		input->key_map[code] = true;
 	}
 }
 
-void __gs_platform_release_key( gs_platform_keycode code )
+void __gs_platform_release_key(gs_platform_keycode code)
 {
 	gs_platform_input* input = __input();
-	if ( code < gs_keycode_count ) 
+	if (code < gs_keycode_count) 
 	{
-		input->key_map[ code ] = false;
+		input->key_map[code] = false;
 	}
 }
 
@@ -187,10 +187,10 @@ void __gs_platform_release_key( gs_platform_keycode code )
 // Platform File I/O
 ============================*/
 
-b32 __gs_platform_file_exists( const char* file_path )
+b32 __gs_platform_file_exists(const char* file_path)
 {
-	FILE* fp = fopen( file_path, "r" );
-	if ( fp ) {
+	FILE* fp = fopen(file_path, "r");
+	if (fp) {
 		fclose(fp);
 		return true;
 	}
@@ -198,20 +198,20 @@ b32 __gs_platform_file_exists( const char* file_path )
 }
 
 u32
-__gs_safe_truncate_u64( u64 value )
+__gs_safe_truncate_u64(u64 value)
 {
   gs_assert(value <= 0xFFFFFFFF); 
   u32 result = (u32)value;
   return result;
 }
 
-s32 __gs_platform_file_size_in_bytes( const char* file_path )
+s32 __gs_platform_file_size_in_bytes(const char* file_path)
 {
 	#ifdef GS_PLATFORM_WIN
 
-		HANDLE hFile = CreateFile( file_path, GENERIC_READ, 
+		HANDLE hFile = CreateFile(file_path, GENERIC_READ, 
         FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 
-        FILE_ATTRIBUTE_NORMAL, NULL );
+        FILE_ATTRIBUTE_NORMAL, NULL);
 	    if (hFile==INVALID_HANDLE_VALUE)
 	        return -1; // error condition, could call GetLastError to find out more
 
@@ -230,20 +230,20 @@ s32 __gs_platform_file_size_in_bytes( const char* file_path )
 		#include <sys/stat.h>
 
 		struct stat st;
-		stat( file_path, &st );
+		stat(file_path, &st);
 		return (s32)st.st_size;	
 
 	#endif
 }
 
-gs_result __gs_write_file_contents( const char* file_path, const char* mode, void* data, usize data_type_size, usize data_size )
+gs_result __gs_write_file_contents(const char* file_path, const char* mode, void* data, usize data_type_size, usize data_size)
 {
-	FILE* fp = fopen( file_path, "wb" );
-	if ( fp )
+	FILE* fp = fopen(file_path, "wb");
+	if (fp)
 	{
-		s32 ret = fwrite( data, data_type_size, data_size, fp );
-		fclose( fp );
-		if ( ret == data_size ) {
+		s32 ret = fwrite(data, data_type_size, data_size, fp);
+		fclose(fp);
+		if (ret == data_size) {
 			return gs_result_success;
 		}
 	}
@@ -251,34 +251,34 @@ gs_result __gs_write_file_contents( const char* file_path, const char* mode, voi
 	return gs_result_failure;
 }
 
-char* __gs_platform_read_file_contents_into_string_null_term( const char* file_path, const char* mode, s32* sz )
+char* __gs_platform_read_file_contents_into_string_null_term(const char* file_path, const char* mode, s32* sz)
 {
 	char* buffer = 0;
-	FILE* fp = fopen( file_path, mode );
+	FILE* fp = fopen(file_path, mode);
 	s32 _sz = 0;
-	if ( fp )
+	if (fp)
 	{
-		_sz = __gs_platform_file_size_in_bytes( file_path );
-		buffer = ( char* )gs_malloc( _sz );
-		if ( buffer )
+		_sz = __gs_platform_file_size_in_bytes(file_path);
+		buffer = (char*)gs_malloc(_sz);
+		if (buffer)
 		{
-			fread( buffer, 1, _sz, fp );
+			fread(buffer, 1, _sz, fp);
 		}
-		fclose( fp );
+		fclose(fp);
 		buffer[ _sz ] = '\0';
 	}
-	if ( sz )
+	if (sz)
 		*sz = _sz;
 	return buffer;
 }
 
-gs_result __gs_platform_write_str_to_file( const char* contents, const char* mode, usize sz, const char* output_path )
+gs_result __gs_platform_write_str_to_file(const char* contents, const char* mode, usize sz, const char* output_path)
 {
-	FILE* fp = fopen( output_path, mode );
-	if ( fp ) 
+	FILE* fp = fopen(output_path, mode);
+	if (fp) 
 	{
-		s32 ret = fwrite( contents, sizeof( u8 ), sz, fp );
-		if ( ret == sz )
+		s32 ret = fwrite(contents, sizeof(u8), sz, fp);
+		if (ret == sz)
 		{
 			return gs_result_success;
 		}
@@ -286,9 +286,9 @@ gs_result __gs_platform_write_str_to_file( const char* contents, const char* mod
 	return gs_result_failure;
 }
 
-void __gs_platform_file_extension( char* buffer, usize buffer_sz, const char* file_path )
+void __gs_platform_file_extension(char* buffer, usize buffer_sz, const char* file_path)
 {
-	gs_util_get_file_extension ( buffer, buffer_sz, file_path );
+	gs_util_get_file_extension (buffer, buffer_sz, file_path);
 }
 
 /*============================
@@ -299,36 +299,36 @@ struct gs_uuid __gs_platform_generate_uuid()
 {
 	struct gs_uuid uuid;
 
-	srand( clock() );
+	srand(clock());
 	char guid[40];
 	s32 t = 0;
 	char* sz_temp = "xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx";
 	char* sz_hex = "0123456789abcdef-";
-	s32 n_len = strlen( sz_temp );
+	s32 n_len = strlen(sz_temp);
 
-	for ( t=0; t < n_len + 1; t++ )
+	for (t=0; t < n_len + 1; t++)
 	{
 	    s32 r = rand () % 16;
 	    char c = ' ';   
 
-	    switch ( sz_temp[t] )
+	    switch (sz_temp[t])
 	    {
 	        case 'x' : { c = sz_hex [r]; } break;
-	        case 'y' : { c = sz_hex [( r & 0x03 ) | 0x08]; } break;
+	        case 'y' : { c = sz_hex [(r & 0x03) | 0x08]; } break;
 	        case '-' : { c = '-'; } break;
 	        case '4' : { c = '4'; } break;
 	    }
 
-	    guid[t] = ( t < n_len ) ? c : 0x00;
+	    guid[t] = (t < n_len) ? c : 0x00;
 	}
 
 	// Convert to uuid bytes from string
 	const char* hex_string = sz_temp, *pos = hex_string;
 
      /* WARNING: no sanitization or error-checking whatsoever */
-    for ( usize count = 0; count < 16; count++) 
+    for (usize count = 0; count < 16; count++) 
     {
-        sscanf( pos, "%2hhx", &uuid.bytes[count] );
+        sscanf(pos, "%2hhx", &uuid.bytes[count]);
         pos += 2;
     }
 
@@ -336,10 +336,10 @@ struct gs_uuid __gs_platform_generate_uuid()
 }
 
 // Mutable temp buffer 'tmp_buffer'
-void __gs_platform_uuid_to_string( char* tmp_buffer, const struct gs_uuid* uuid )
+void __gs_platform_uuid_to_string(char* tmp_buffer, const struct gs_uuid* uuid)
 {
 	gs_snprintf 
-	( 
+	(
 		tmp_buffer, 
 		32,
 		"%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x",
@@ -362,19 +362,19 @@ void __gs_platform_uuid_to_string( char* tmp_buffer, const struct gs_uuid* uuid 
 	);
 }
 
-u32 __gs_platform_hash_uuid( const struct gs_uuid* uuid )
+u32 __gs_platform_hash_uuid(const struct gs_uuid* uuid)
 {
 	char temp_buffer[] = gs_uuid_temp_str_buffer();
-	__gs_platform_uuid_to_string( temp_buffer, uuid );
-	return ( gs_hash_str( temp_buffer ) );
+	__gs_platform_uuid_to_string(temp_buffer, uuid);
+	return (gs_hash_str(temp_buffer));
 }
 
-void __gs_default_init_platform( struct gs_platform_i* platform )
+void __gs_default_init_platform(struct gs_platform_i* platform)
 {
-	gs_assert( platform );
+	gs_assert(platform);
 
 	// Just assert these for now
-	__gs_verify_platform_correctness( platform );
+	__gs_verify_platform_correctness(platform);
 
 	// Initialize random with time
 	srand(time(0));
@@ -382,8 +382,8 @@ void __gs_default_init_platform( struct gs_platform_i* platform )
 	/*============================
 	// Platform Window
 	============================*/
-	platform->windows 				= gs_slot_array_new( gs_platform_window_ptr );
-	platform->active_window_handles = gs_dyn_array_new( gs_resource_handle );
+	platform->windows 				= gs_slot_array_new(gs_platform_window_ptr);
+	platform->active_window_handles = gs_dyn_array_new(gs_resource_handle);
 	platform->create_window 		= &__gs_platform_create_window;
 	platform->main_window 			= &__gs_platform_main_window;
 
@@ -438,23 +438,23 @@ void __gs_default_init_platform( struct gs_platform_i* platform )
 	platform->time.frame 		= 0.0;
 
 	// Custom initialize plaform layer
-	platform->init( platform );
+	platform->init(platform);
 }
 
-void __gs_verify_platform_correctness( struct gs_platform_i* platform )
+void __gs_verify_platform_correctness(struct gs_platform_i* platform)
 {
-	gs_assert( platform );
-	gs_assert( platform->init );
-	gs_assert( platform->shutdown );
-	gs_assert( platform->sleep );
-	gs_assert( platform->elapsed_time );
-	gs_assert( platform->process_input );
-	gs_assert( platform->create_window_internal );
-	gs_assert( platform->window_swap_buffer );
-	gs_assert( platform->set_window_size );
-	gs_assert( platform->window_size );
-	gs_assert( platform->window_size_w_h );
-	gs_assert( platform->set_cursor );
-	gs_assert( platform->enable_vsync );
+	gs_assert(platform);
+	gs_assert(platform->init);
+	gs_assert(platform->shutdown);
+	gs_assert(platform->sleep);
+	gs_assert(platform->elapsed_time);
+	gs_assert(platform->process_input);
+	gs_assert(platform->create_window_internal);
+	gs_assert(platform->window_swap_buffer);
+	gs_assert(platform->set_window_size);
+	gs_assert(platform->window_size);
+	gs_assert(platform->window_size_w_h);
+	gs_assert(platform->set_cursor);
+	gs_assert(platform->enable_vsync);
 }
 

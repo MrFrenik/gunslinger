@@ -25,7 +25,7 @@
 
 #define int_2_void_p(i) (void*)(uintptr_t)(i)
 
-_inline void gs_mat4_debug_print( gs_mat4* mat )
+_inline void gs_mat4_debug_print( gs_mat4* mat)
 {
 	f32* e = mat->elements;
 	gs_println( "[%.5f, %.5f, %.5f, %.5f]\n"
@@ -36,7 +36,7 @@ _inline void gs_mat4_debug_print( gs_mat4* mat )
 			   e[4], e[5], e[6], e[7], 
 			   e[8], e[9], e[10], e[11], 
 			   e[12], e[13], e[14], e[15]
-			   );
+			  );
 }
 
 typedef enum gs_opengl_op_code
@@ -77,8 +77,8 @@ typedef struct debug_drawing_internal_data
 	gs_shader_t shader;
 	gs_uniform_t u_proj;
 	gs_uniform_t u_view;
-	gs_dyn_array( f32 ) line_vertex_data; 
-	gs_dyn_array( f32 ) quad_vertex_data;
+	gs_dyn_array( f32) line_vertex_data; 
+	gs_dyn_array( f32) quad_vertex_data;
 	gs_vertex_buffer_t quad_vbo;
 	gs_vertex_buffer_t line_vbo;
 } debug_drawing_internal_data;
@@ -122,13 +122,13 @@ typedef struct opengl_render_data_t
 #define __get_opengl_data_internal()\
 	(opengl_render_data_t*)(gs_engine_instance()->ctx.graphics->data)
 
-#define __get_command_buffer_internal( data, cb )\
+#define __get_command_buffer_internal( data, cb)\
 	(gs_slot_array_get_ptr(data->command_buffers, cb.id))
 
 // Forward Decls;
-void __reset_command_buffer_internal( command_buffer_t* cb );
+void __reset_command_buffer_internal( command_buffer_t* cb);
 debug_drawing_internal_data construct_debug_drawing_internal_data();
-gs_texture_t opengl_construct_texture( gs_texture_parameter_desc desc );
+gs_texture_t opengl_construct_texture( gs_texture_parameter_desc desc);
 
 /*============================================================
 // Graphics Initilization / De-Initialization
@@ -146,10 +146,10 @@ void opengl_init_default_state()
 	glDisable(GL_SCISSOR_TEST);
 }
 
-gs_result opengl_init( struct gs_graphics_i* gfx )
+gs_result opengl_init( struct gs_graphics_i* gfx)
 {
 	// Construct instance of render data
-	struct opengl_render_data_t* data = gs_malloc_init( opengl_render_data_t );
+	struct opengl_render_data_t* data = gs_malloc_init( opengl_render_data_t);
 
 	// Set data
 	gfx->data = data;
@@ -161,31 +161,31 @@ gs_result opengl_init( struct gs_graphics_i* gfx )
 	opengl_init_default_state();
 
 	// Print some debug info
-	gs_println( "OpenGL::Vendor = %s", glGetString( GL_VENDOR ) ) ;
-	gs_println( "OpenGL::Renderer = %s", glGetString( GL_RENDERER ) ) ;
-	gs_println( "OpenGL::Version = %s", glGetString( GL_VERSION ) ) ;
+	gs_println( "OpenGL::Vendor = %s", glGetString( GL_VENDOR)) ;
+	gs_println( "OpenGL::Renderer = %s", glGetString( GL_RENDERER)) ;
+	gs_println( "OpenGL::Version = %s", glGetString( GL_VERSION)) ;
 
 	// Init data for utility APIs
-	gfx->quad_batch_i->shader = gfx->construct_shader( gs_quad_batch_default_vertex_src, gs_quad_batch_default_frag_src );
+	gfx->quad_batch_i->shader = gfx->construct_shader( gs_quad_batch_default_vertex_src, gs_quad_batch_default_frag_src);
 
 	// Initialize all data here
 	return gs_result_success;
 }
 
-gs_result opengl_update( struct gs_graphics_i* gfx )
+gs_result opengl_update( struct gs_graphics_i* gfx)
 {
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
 	// For now, just go through all command buffers and reset them
-	// gs_for_range_i( gs_dyn_array_size( data->command_buffers.data ) )
+	// gs_for_range_i( gs_dyn_array_size( data->command_buffers.data))
 	// {
-	// 	__reset_command_buffer_internal( &data->command_buffers.data[ i ] );
+	// 	__reset_command_buffer_internal( &data->command_buffers.data[ i ]);
 	// }
 
 	return gs_result_in_progress;
 }
 
-gs_result opengl_shutdown( struct gs_graphics_i* gfx )
+gs_result opengl_shutdown( struct gs_graphics_i* gfx)
 {
 	// Release all data here
 	return gs_result_success;
@@ -196,16 +196,16 @@ debug_drawing_internal_data construct_debug_drawing_internal_data()
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 
 	debug_drawing_internal_data data = {0};
-	data.line_vertex_data = gs_dyn_array_new( f32 );
-	data.quad_vertex_data = gs_dyn_array_new( f32 );
+	data.line_vertex_data = gs_dyn_array_new( f32);
+	data.quad_vertex_data = gs_dyn_array_new( f32);
 
 	// Construct shader
-	// data.shader = gfx->construct_shader( debug_shader_v_src, debug_shader_f_src );
+	// data.shader = gfx->construct_shader( debug_shader_v_src, debug_shader_f_src);
 
 	/*
 	// Construct uniforms
-	data.u_proj = gfx->construct_uniform( data.shader, "u_proj", gs_uniform_type_mat4 );
-	data.u_view = gfx->construct_uniform( data.shader, "u_view", gs_uniform_type_mat4 );
+	data.u_proj = gfx->construct_uniform( data.shader, "u_proj", gs_uniform_type_mat4);
+	data.u_view = gfx->construct_uniform( data.shader, "u_view", gs_uniform_type_mat4);
 	*/
 
 	// Vertex data layout
@@ -215,7 +215,7 @@ debug_drawing_internal_data construct_debug_drawing_internal_data()
 	};
 
 	// Construct vertex buffer objects
-	data.line_vbo = gfx->construct_vertex_buffer( vertex_layout, sizeof(vertex_layout), NULL, 0 );
+	data.line_vbo = gfx->construct_vertex_buffer( vertex_layout, sizeof(vertex_layout), NULL, 0);
 
 	// Construct default matrix data to be used
 	data.view_mat = gs_mat4_identity();
@@ -224,98 +224,98 @@ debug_drawing_internal_data construct_debug_drawing_internal_data()
 	return data;
 }
 
-void __reset_command_buffer_internal( command_buffer_t* cb )
+void __reset_command_buffer_internal( command_buffer_t* cb)
 {
 	// Clear byte buffer of commands
-	gs_byte_buffer_clear( &cb->commands );
+	gs_byte_buffer_clear( &cb->commands);
 
 	// Set num commands to 0
 	cb->num_commands = 0;
 }
 
-void opengl_reset_command_buffer( gs_command_buffer_t* cb )
+void opengl_reset_command_buffer( gs_command_buffer_t* cb)
 {
 	// Get data from graphics api
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
 	// Grab command buffer ptr from command buffer slot array
-	// command_buffer_t* cb = __get_command_buffer_internal( data, cb );
+	// command_buffer_t* cb = __get_command_buffer_internal( data, cb);
 
-	__reset_command_buffer_internal( cb );
+	__reset_command_buffer_internal( cb);
 }
 
-#define __push_command( cb, op_code, ... )\
+#define __push_command( cb, op_code, ...)\
 do {\
 	/* Get data from graphics api */\
 	opengl_render_data_t* __data = __get_opengl_data_internal();\
-	gs_byte_buffer_write( &cb->commands, u32, op_code );\
+	gs_byte_buffer_write( &cb->commands, u32, op_code);\
 	/* Push back all data required */\
 	__VA_ARGS__\
 	/* Increase command count for command buffer */\
 	cb->num_commands++;\
 } while (0)
 
-void opengl_set_frame_buffer_attachment( gs_command_buffer_t* cb, gs_texture_t t, u32 idx )
+void opengl_set_frame_buffer_attachment( gs_command_buffer_t* cb, gs_texture_t t, u32 idx)
 {
 	__push_command( cb, gs_opengl_op_set_frame_buffer_attachment, {
 
 		// Grab texture from handle
-		// texture_t t = gs_slot_array_get( __data->textures, t_handle.id );
+		// texture_t t = gs_slot_array_get( __data->textures, t_handle.id);
 
 		// Push back commands
-		gs_byte_buffer_write( &cb->commands, u32, t.id );
-		gs_byte_buffer_write( &cb->commands, u32, idx );
+		gs_byte_buffer_write( &cb->commands, u32, t.id);
+		gs_byte_buffer_write( &cb->commands, u32, idx);
 	});
 }
 
-void opengl_bind_frame_buffer( gs_command_buffer_t* cb, gs_frame_buffer_t fb )
+void opengl_bind_frame_buffer( gs_command_buffer_t* cb, gs_frame_buffer_t fb)
 {
 	__push_command( cb, gs_opengl_op_bind_frame_buffer, {
 
 		// Grab shader from handle
-		// frame_buffer_t fb = gs_slot_array_get( __data->frame_buffers, fb_handle.id );
+		// frame_buffer_t fb = gs_slot_array_get( __data->frame_buffers, fb_handle.id);
 
 		// Push back commands
-		gs_byte_buffer_write( &cb->commands, u32, fb.fbo );
+		gs_byte_buffer_write( &cb->commands, u32, fb.fbo);
 	});
 }
 
-void opengl_unbind_frame_buffer( gs_command_buffer_t* cb )
+void opengl_unbind_frame_buffer( gs_command_buffer_t* cb)
 {
 	__push_command( cb, gs_opengl_op_unbind_frame_buffer, {
 
 	});
 }
 
-void opengl_bind_shader( gs_command_buffer_t* cb, gs_shader_t s )
+void opengl_bind_shader( gs_command_buffer_t* cb, gs_shader_t s)
 {
 	__push_command( cb, gs_opengl_op_bind_shader, {
 
 		// Grab shader from handle
-		// shader_t s = gs_slot_array_get( __data->shaders, s_handle.id );
+		// shader_t s = gs_slot_array_get( __data->shaders, s_handle.id);
 
 		// Construct command packet for binding shader
-		gs_byte_buffer_write( &cb->commands, u32, s.program_id );
+		gs_byte_buffer_write( &cb->commands, u32, s.program_id);
 	});
 }
 
 #define __write_uniform_val(bb, type, u_data)\
 	gs_byte_buffer_write(&bb, type, *((type*)(u_data)));
 
-void opengl_bind_uniform( gs_command_buffer_t* cb, gs_uniform_t u, void* u_data )
+void opengl_bind_uniform( gs_command_buffer_t* cb, gs_uniform_t u, void* u_data)
 {
 	__push_command( cb, gs_opengl_op_bind_uniform, {
 
 		// Grab uniform from handle
-		// uniform_t u = gs_slot_array_get( __data->uniforms, u_handle.id );
+		// uniform_t u = gs_slot_array_get( __data->uniforms, u_handle.id);
 
 		// Write out uniform location
-		gs_byte_buffer_write( &cb->commands, u32, (u32)u.location );
+		gs_byte_buffer_write( &cb->commands, u32, (u32)u.location);
 		// Write out uniform type
-		gs_byte_buffer_write( &cb->commands, u32, (u32)u.type );
+		gs_byte_buffer_write( &cb->commands, u32, (u32)u.type);
 
 		// Write out uniform value
-		switch ( u.type )
+		switch ( u.type)
 		{
 			case gs_uniform_type_float: __write_uniform_val(cb->commands, f32, u_data); 	break;
 			case gs_uniform_type_int:   __write_uniform_val(cb->commands, s32, u_data); 	break;
@@ -327,235 +327,235 @@ void opengl_bind_uniform( gs_command_buffer_t* cb, gs_uniform_t u, void* u_data 
 
 			default:
 			{
-				gs_println( "Invalid uniform type passed" );
-				gs_assert( false );
+				gs_println( "Invalid uniform type passed");
+				gs_assert( false);
 			}
 		}
 	});
 }
 
-void opengl_bind_uniform_mat4( gs_command_buffer_t* cb, gs_uniform_t u, gs_mat4 val )
+void opengl_bind_uniform_mat4( gs_command_buffer_t* cb, gs_uniform_t u, gs_mat4 val)
 {
 	__push_command( cb, gs_opengl_op_bind_uniform, {
 
 		// Grab uniform from handle
-		// uniform_t u = gs_slot_array_get( __data->uniforms, u_handle.id );
+		// uniform_t u = gs_slot_array_get( __data->uniforms, u_handle.id);
 
-		if ( u.type != gs_uniform_type_mat4 ) {
+		if ( u.type != gs_uniform_type_mat4) {
 			return;	
 		}
 
 		// Write out uniform location
-		gs_byte_buffer_write( &cb->commands, u32, (u32)u.location );
+		gs_byte_buffer_write( &cb->commands, u32, (u32)u.location);
 		// Write out uniform type
-		gs_byte_buffer_write( &cb->commands, u32, (u32)u.type );
+		gs_byte_buffer_write( &cb->commands, u32, (u32)u.type);
 
 		__write_uniform_val(cb->commands, gs_mat4, &val);
 	});
 }
 
-void opengl_bind_texture_id( gs_command_buffer_t* cb, gs_uniform_t u, u32 id, u32 slot )
+void opengl_bind_texture_id( gs_command_buffer_t* cb, gs_uniform_t u, u32 id, u32 slot)
 {
 	__push_command( cb, gs_opengl_op_bind_texture, {
 
 		// Grab uniform from handle
-		// uniform_t u = gs_slot_array_get( __data->uniforms, u_handle.id );
+		// uniform_t u = gs_slot_array_get( __data->uniforms, u_handle.id);
 
 		// Cannot pass in uniform of wrong type
-		if ( u.type != gs_uniform_type_sampler2d )
+		if ( u.type != gs_uniform_type_sampler2d)
 		{
-			gs_println( "opengl_bind_texture: Must be of uniform type 'gs_uniform_type_sampler2d'" );
-			gs_assert( false );
+			gs_println( "opengl_bind_texture: Must be of uniform type 'gs_uniform_type_sampler2d'");
+			gs_assert( false);
 		}
 
 		// Write out id
-		gs_byte_buffer_write( &cb->commands, u32, id );
+		gs_byte_buffer_write( &cb->commands, u32, id);
 		// Write tex unit location
-		gs_byte_buffer_write( &cb->commands, u32, slot );
+		gs_byte_buffer_write( &cb->commands, u32, slot);
 		// Write out uniform location
-		gs_byte_buffer_write( &cb->commands, u32, (u32)u.location );
+		gs_byte_buffer_write( &cb->commands, u32, (u32)u.location);
 	});
 }
 
 void opengl_bind_texture( gs_command_buffer_t* cb, gs_uniform_t u, 
-		gs_texture_t tex, u32 tex_unit )
+		gs_texture_t tex, u32 tex_unit)
 {
 	__push_command( cb, gs_opengl_op_bind_texture, {
 
 		// Cannot pass in uniform of wrong type
-		if ( u.type != gs_uniform_type_sampler2d )
+		if ( u.type != gs_uniform_type_sampler2d)
 		{
-			gs_println( "opengl_bind_texture: Must be of uniform type 'gs_uniform_type_sampler2d'" );
-			gs_assert( false );
+			gs_println( "opengl_bind_texture: Must be of uniform type 'gs_uniform_type_sampler2d'");
+			gs_assert( false);
 		}
 
 		// Write out id
-		gs_byte_buffer_write( &cb->commands, u32, tex.id );
+		gs_byte_buffer_write( &cb->commands, u32, tex.id);
 		// Write tex unit location
-		gs_byte_buffer_write( &cb->commands, u32, tex_unit );
+		gs_byte_buffer_write( &cb->commands, u32, tex_unit);
 		// Write out uniform location
-		gs_byte_buffer_write( &cb->commands, u32, (u32)u.location );
+		gs_byte_buffer_write( &cb->commands, u32, (u32)u.location);
 	});
 }
 
-void opengl_bind_vertex_buffer( gs_command_buffer_t* cb, gs_vertex_buffer_t vb )
+void opengl_bind_vertex_buffer( gs_command_buffer_t* cb, gs_vertex_buffer_t vb)
 {
 	__push_command( cb, gs_opengl_op_bind_vertex_buffer, {
 
 		// Write out vao
-		gs_byte_buffer_write( &cb->commands, u32, vb.vao );
+		gs_byte_buffer_write( &cb->commands, u32, vb.vao);
 	});
 }
 
-void opengl_bind_index_buffer( gs_command_buffer_t* cb, gs_index_buffer_t ib )
+void opengl_bind_index_buffer( gs_command_buffer_t* cb, gs_index_buffer_t ib)
 {
 	__push_command( cb, gs_opengl_op_bind_index_buffer, {
 
 		// Write out ibo
-		gs_byte_buffer_write( &cb->commands, u32, ib.ibo );
+		gs_byte_buffer_write( &cb->commands, u32, ib.ibo);
 	});
 }
 
-void opengl_set_view_scissor( gs_command_buffer_t* cb, u32 x, u32 y, u32 w, u32 h )
+void opengl_set_view_scissor( gs_command_buffer_t* cb, u32 x, u32 y, u32 w, u32 h)
 {
 	__push_command( cb, gs_opengl_op_set_view_scissor, {
 
-		gs_byte_buffer_write( &cb->commands, u32, x );
-		gs_byte_buffer_write( &cb->commands, u32, y );
-		gs_byte_buffer_write( &cb->commands, u32, w );
-		gs_byte_buffer_write( &cb->commands, u32, h );
+		gs_byte_buffer_write( &cb->commands, u32, x);
+		gs_byte_buffer_write( &cb->commands, u32, y);
+		gs_byte_buffer_write( &cb->commands, u32, w);
+		gs_byte_buffer_write( &cb->commands, u32, h);
 	});
 }
 
-void opengl_set_view_port( gs_command_buffer_t* cb, u32 width, u32 height )
+void opengl_set_view_port( gs_command_buffer_t* cb, u32 width, u32 height)
 {
 	__push_command( cb, gs_opengl_op_set_view_port, {
 
 		// Write width into buffer
-		gs_byte_buffer_write( &cb->commands, u32, width );
+		gs_byte_buffer_write( &cb->commands, u32, width);
 		// Write height into buffer
-		gs_byte_buffer_write( &cb->commands, u32, height );
+		gs_byte_buffer_write( &cb->commands, u32, height);
 	});
 }
 
 // Want to set a bitmask for this as well to determine clear types
-void opengl_set_view_clear( gs_command_buffer_t* cb, f32* col )
+void opengl_set_view_clear( gs_command_buffer_t* cb, f32* col)
 {
 	__push_command( cb, gs_opengl_op_set_view_clear, {
 
 		gs_vec4 c = (gs_vec4){col[0], col[1], col[2], col[3]};
 
 		// Write color into buffer (as vec4)
-		gs_byte_buffer_write( &cb->commands, gs_vec4, c );
+		gs_byte_buffer_write( &cb->commands, gs_vec4, c);
 	});
 }
 
-void opengl_set_winding_order( gs_command_buffer_t* cb, gs_winding_order_type type )
+void opengl_set_winding_order( gs_command_buffer_t* cb, gs_winding_order_type type)
 {
 	__push_command( cb, gs_opengl_op_set_winding_order, 
 	{
-		gs_byte_buffer_write( &cb->commands, u32, (u32)type );
+		gs_byte_buffer_write( &cb->commands, u32, (u32)type);
 	});
 }
 
-void opengl_set_face_culling( gs_command_buffer_t* cb, gs_face_culling_type type )
+void opengl_set_face_culling( gs_command_buffer_t* cb, gs_face_culling_type type)
 {	
 	__push_command( cb, gs_opengl_op_set_face_culling, 
 	{
-		gs_byte_buffer_write( &cb->commands, u32, (u32)type );
+		gs_byte_buffer_write( &cb->commands, u32, (u32)type);
 	});
 }
 
-void opengl_set_blend_equation( gs_command_buffer_t* cb, gs_blend_equation_type eq )
+void opengl_set_blend_equation( gs_command_buffer_t* cb, gs_blend_equation_type eq)
 {
 	__push_command( cb, gs_opengl_op_set_blend_equation, {
 
 		// Write blend mode for blend equation
-		gs_byte_buffer_write( &cb->commands, u32, (u32)eq );
+		gs_byte_buffer_write( &cb->commands, u32, (u32)eq);
 	});
 
 }
 
-void opengl_set_blend_mode( gs_command_buffer_t* cb, gs_blend_mode_type src, gs_blend_mode_type dst )
+void opengl_set_blend_mode( gs_command_buffer_t* cb, gs_blend_mode_type src, gs_blend_mode_type dst)
 {
 	__push_command( cb, gs_opengl_op_set_blend_mode, {
 
 		// Write blend mode for source
-		gs_byte_buffer_write( &cb->commands, u32, (u32)src );
+		gs_byte_buffer_write( &cb->commands, u32, (u32)src);
 		// Write blend mode for destination
-		gs_byte_buffer_write( &cb->commands, u32, (u32)dst );
+		gs_byte_buffer_write( &cb->commands, u32, (u32)dst);
 	});
 }
 
-void opengl_set_depth_enabled( gs_command_buffer_t* cb, b32 enable )
+void opengl_set_depth_enabled( gs_command_buffer_t* cb, b32 enable)
 {
 	__push_command( cb, gs_opengl_op_set_depth_enabled, {
 
 		// Write color into buffer (as vec4)
-		gs_byte_buffer_write( &cb->commands, b32, enable );
+		gs_byte_buffer_write( &cb->commands, b32, enable);
 	});
 }
 
-void opengl_draw_indexed( gs_command_buffer_t* cb, u32 count, u32 offset )
+void opengl_draw_indexed( gs_command_buffer_t* cb, u32 count, u32 offset)
 {
 	__push_command( cb, gs_opengl_draw_indexed, {
 
 		// Write count and offset
-		gs_byte_buffer_write( &cb->commands, u32, count );
-		gs_byte_buffer_write( &cb->commands, u32, offset );
+		gs_byte_buffer_write( &cb->commands, u32, count);
+		gs_byte_buffer_write( &cb->commands, u32, offset);
 	});
 }
 
-void opengl_draw( gs_command_buffer_t* cb, u32 start, u32 count )
+void opengl_draw( gs_command_buffer_t* cb, u32 start, u32 count)
 {
 	__push_command( cb, gs_opengl_op_draw, {
 
 		// Write start
-		gs_byte_buffer_write( &cb->commands, u32, start );
+		gs_byte_buffer_write( &cb->commands, u32, start);
 		// Write count
-		gs_byte_buffer_write( &cb->commands, u32, count );
+		gs_byte_buffer_write( &cb->commands, u32, count);
 	});
 }
 
-void opengl_set_debug_draw_properties( gs_command_buffer_t* cb, gs_debug_draw_properties props )
+void opengl_set_debug_draw_properties( gs_command_buffer_t* cb, gs_debug_draw_properties props)
 {
 	__push_command( cb, gs_opengl_op_debug_set_properties, {
 
 		// Write view
-		gs_byte_buffer_write( &cb->commands, gs_mat4, props.view_mat );
+		gs_byte_buffer_write( &cb->commands, gs_mat4, props.view_mat);
 		// Write proj
-		gs_byte_buffer_write( &cb->commands, gs_mat4, props.proj_mat );
+		gs_byte_buffer_write( &cb->commands, gs_mat4, props.proj_mat);
 	});
 }
 
 // Yeah, don't like this...Because it takes control away from the user completely.
 // Maybe user has ability to add as much as they want into the debug buffer and then can control when to submit it? Hmm...
-void opengl_draw_line( gs_command_buffer_t* cb, gs_vec3 start, gs_vec3 end, gs_vec3 color )
+void opengl_draw_line( gs_command_buffer_t* cb, gs_vec3 start, gs_vec3 end, gs_vec3 color)
 {
 	__push_command( cb, gs_opengl_op_debug_draw_line, {
 
 		// Write start position
-		gs_byte_buffer_write( &cb->commands, gs_vec3, start );
+		gs_byte_buffer_write( &cb->commands, gs_vec3, start);
 		// Write end position
-		gs_byte_buffer_write( &cb->commands, gs_vec3, end );
+		gs_byte_buffer_write( &cb->commands, gs_vec3, end);
 		// Write color
-		gs_byte_buffer_write( &cb->commands, gs_vec3, color );
+		gs_byte_buffer_write( &cb->commands, gs_vec3, color);
 	});
 }
 
-void opengl_draw_square( gs_command_buffer_t* cb, gs_vec3 origin, f32 width, f32 height, gs_vec3 color, gs_mat4 model )
+void opengl_draw_square( gs_command_buffer_t* cb, gs_vec3 origin, f32 width, f32 height, gs_vec3 color, gs_mat4 model)
 {
 	__push_command( cb, gs_opengl_op_debug_draw_square, {
 
-		gs_byte_buffer_write( &cb->commands, gs_vec3, origin );
-		gs_byte_buffer_write( &cb->commands, f32, width );
-		gs_byte_buffer_write( &cb->commands, f32, height );
-		gs_byte_buffer_write( &cb->commands, gs_vec3, color );
-		gs_byte_buffer_write( &cb->commands, gs_mat4, model );
+		gs_byte_buffer_write( &cb->commands, gs_vec3, origin);
+		gs_byte_buffer_write( &cb->commands, f32, width);
+		gs_byte_buffer_write( &cb->commands, f32, height);
+		gs_byte_buffer_write( &cb->commands, gs_vec3, color);
+		gs_byte_buffer_write( &cb->commands, gs_mat4, model);
 	});
 }
 
-void opengl_submit_debug_drawing( gs_command_buffer_t* cb )
+void opengl_submit_debug_drawing( gs_command_buffer_t* cb)
 {
 	__push_command( cb, gs_opengl_op_debug_draw_submit, {
 
@@ -564,52 +564,52 @@ void opengl_submit_debug_drawing( gs_command_buffer_t* cb )
 }
 
 void opengl_update_index_data_command( gs_command_buffer_t* cb, 
-	gs_index_buffer_t ib, void* i_data, usize i_size )
+	gs_index_buffer_t ib, void* i_data, usize i_size)
 {
 	// Need to memcpy the data over to the command buffer	
 	__push_command( cb, gs_opengl_op_update_index_data, {
 
 		// Write out vao/vbo
-		gs_byte_buffer_write( &cb->commands, u32, ib.ibo );
-		gs_byte_buffer_write( &cb->commands, u32, i_size );
-		gs_byte_buffer_bulk_write( &cb->commands, i_data, i_size );
+		gs_byte_buffer_write( &cb->commands, u32, ib.ibo);
+		gs_byte_buffer_write( &cb->commands, u32, i_size);
+		gs_byte_buffer_bulk_write( &cb->commands, i_data, i_size);
 	});
 
 }
 
 void opengl_update_vertex_data_command( gs_command_buffer_t* cb, gs_vertex_buffer_t vb, 
-	void* v_data, usize v_size )
+	void* v_data, usize v_size)
 {
 	// Need to memcpy the data over to the command buffer	
 	__push_command( cb, gs_opengl_op_update_vertex_data, {
 
 		// Write out vao/vbo
-		gs_byte_buffer_write( &cb->commands, u32, vb.vao );
-		gs_byte_buffer_write( &cb->commands, u32, vb.vbo );
-		gs_byte_buffer_write( &cb->commands, u32, v_size );
-		gs_byte_buffer_bulk_write( &cb->commands, v_data, v_size );
+		gs_byte_buffer_write( &cb->commands, u32, vb.vao);
+		gs_byte_buffer_write( &cb->commands, u32, vb.vbo);
+		gs_byte_buffer_write( &cb->commands, u32, v_size);
+		gs_byte_buffer_bulk_write( &cb->commands, v_data, v_size);
 	});
 } 
 
-#define __gfx_add_debug_line_internal( data, start, end, color )\
+#define __gfx_add_debug_line_internal( data, start, end, color)\
 do {\
-gs_dyn_array_push( data, start.x );\
-gs_dyn_array_push( data, start.y );\
-gs_dyn_array_push( data, start.z );\
-gs_dyn_array_push( data, color.x );\
-gs_dyn_array_push( data, color.y );\
-gs_dyn_array_push( data, color.z );\
-gs_dyn_array_push( data, end.x );\
-gs_dyn_array_push( data, end.y );\
-gs_dyn_array_push( data, end.z );\
-gs_dyn_array_push( data, color.x );\
-gs_dyn_array_push( data, color.y );\
-gs_dyn_array_push( data, color.z );\
-} while ( 0 )	
+gs_dyn_array_push( data, start.x);\
+gs_dyn_array_push( data, start.y);\
+gs_dyn_array_push( data, start.z);\
+gs_dyn_array_push( data, color.x);\
+gs_dyn_array_push( data, color.y);\
+gs_dyn_array_push( data, color.z);\
+gs_dyn_array_push( data, end.x);\
+gs_dyn_array_push( data, end.y);\
+gs_dyn_array_push( data, end.z);\
+gs_dyn_array_push( data, color.x);\
+gs_dyn_array_push( data, color.y);\
+gs_dyn_array_push( data, color.z);\
+} while ( 0)	
 
-GLenum __get_opengl_blend_mode( gs_blend_mode_type mode )
+GLenum __get_opengl_blend_mode( gs_blend_mode_type mode)
 {
-	switch ( mode )
+	switch ( mode)
 	{
 		case gs_blend_mode_zero:
 		case gs_blend_mode_disabled:
@@ -637,9 +637,9 @@ GLenum __get_opengl_blend_mode( gs_blend_mode_type mode )
 	return GL_ZERO;
 }
 
-GLenum __get_opengl_blend_equation( gs_blend_equation_type eq )
+GLenum __get_opengl_blend_equation( gs_blend_equation_type eq)
 {
-	switch ( eq )
+	switch ( eq)
 	{
 		case gs_blend_equation_add:					return GL_FUNC_ADD; break; 
 		case gs_blend_equation_subtract:			return GL_FUNC_SUBTRACT; break;
@@ -653,9 +653,9 @@ GLenum __get_opengl_blend_equation( gs_blend_equation_type eq )
 	return GL_ZERO;
 }
 
-GLenum __get_opengl_cull_face( gs_face_culling_type type )
+GLenum __get_opengl_cull_face( gs_face_culling_type type)
 {
-	switch ( type )
+	switch ( type)
 	{
 		case gs_face_culling_front:					return GL_FRONT; break;
 		case gs_face_culling_back:					return GL_BACK; break;
@@ -668,9 +668,9 @@ GLenum __get_opengl_cull_face( gs_face_culling_type type )
 	return GL_ZERO;
 }
 
-GLenum __get_opengl_winding_order( gs_winding_order_type type )
+GLenum __get_opengl_winding_order( gs_winding_order_type type)
 {
-	switch ( type )
+	switch ( type)
 	{
 		case gs_winding_order_cw:			return GL_CW; break;
 		case gs_winding_order_ccw:			return GL_CCW; break;
@@ -692,13 +692,13 @@ typedef struct vert_t
 } vert_t;
 
 // For now, just rip through command buffer. Later on, will add all command buffers into a queue to be processed on rendering thread.
-void opengl_submit_command_buffer( gs_command_buffer_t* cb )
+void opengl_submit_command_buffer( gs_command_buffer_t* cb)
 {
 	// Get data from graphics api
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
 	// Grab command buffer ptr from command buffer slot array
-	// command_buffer_t* cb = __get_command_buffer_internal( data, cb );
+	// command_buffer_t* cb = __get_command_buffer_internal( data, cb);
 
 	// Read through all commands
 	/*
@@ -708,150 +708,150 @@ void opengl_submit_command_buffer( gs_command_buffer_t* cb )
 	*/
 
 	// Set read position of buffer to beginning
-	gs_byte_buffer_seek_to_beg( &cb->commands );
+	gs_byte_buffer_seek_to_beg( &cb->commands);
 
 	u32 num_commands = cb->num_commands;
 
 	// For each command in buffer
-	gs_for_range_i( num_commands )
+	gs_for_range_i( num_commands)
 	{
 		// Read in op code of command
-		gs_opengl_op_code op_code = ( gs_opengl_op_code )gs_byte_buffer_read( &cb->commands, u32 );
+		gs_opengl_op_code op_code = ( gs_opengl_op_code)gs_byte_buffer_read( &cb->commands, u32);
 
-		switch ( op_code )
+		switch ( op_code)
 		{
 			case gs_opengl_op_set_frame_buffer_attachment: 
 			{
-				u32 t_id = gs_byte_buffer_read( &cb->commands, u32 );
-				u32 idx  = gs_byte_buffer_read( &cb->commands, u32 );
+				u32 t_id = gs_byte_buffer_read( &cb->commands, u32);
+				u32 idx  = gs_byte_buffer_read( &cb->commands, u32);
 				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + idx, GL_TEXTURE_2D, t_id, 0);
 			} break;
 
 			case gs_opengl_op_bind_frame_buffer: 
 			{
-				u32 fbo = gs_byte_buffer_read( &cb->commands, u32 );
-				glBindFramebuffer( GL_FRAMEBUFFER, fbo );
+				u32 fbo = gs_byte_buffer_read( &cb->commands, u32);
+				glBindFramebuffer( GL_FRAMEBUFFER, fbo);
 			} break;
 
 			case gs_opengl_op_unbind_frame_buffer: 
 			{
-				glBindFramebuffer( GL_FRAMEBUFFER, 0 );
+				glBindFramebuffer( GL_FRAMEBUFFER, 0);
 			} break;
 
 			case gs_opengl_op_draw:
 			{
 				// Read start
-				u32 start = gs_byte_buffer_read( &cb->commands, u32 );
+				u32 start = gs_byte_buffer_read( &cb->commands, u32);
 				// Read count
-				u32 count = gs_byte_buffer_read( &cb->commands, u32 );
+				u32 count = gs_byte_buffer_read( &cb->commands, u32);
 
-				// Draw ( this assumes a vao is set, which is not correct )...for now, will assume
+				// Draw ( this assumes a vao is set, which is not correct)...for now, will assume
 				// glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-				glDrawArrays( GL_TRIANGLES, start, count );
+				glDrawArrays( GL_TRIANGLES, start, count);
 			} break;
 
 			case gs_opengl_draw_indexed:
 			{
 				// Read count and offest
-				u32 count = gs_byte_buffer_read( &cb->commands, u32 );
-				u32 offset = gs_byte_buffer_read( &cb->commands, u32 );
+				u32 count = gs_byte_buffer_read( &cb->commands, u32);
+				u32 offset = gs_byte_buffer_read( &cb->commands, u32);
 
-				glDrawElements( GL_TRIANGLES, count, GL_UNSIGNED_INT, int_2_void_p(offset) );
+				glDrawElements( GL_TRIANGLES, count, GL_UNSIGNED_INT, int_2_void_p(offset));
 			} break;
 
 			case gs_opengl_op_set_view_clear: 
 			{
 				// Read color from buffer (as vec4)
-				gs_vec4 col = gs_byte_buffer_read( &cb->commands, gs_vec4 );
+				gs_vec4 col = gs_byte_buffer_read( &cb->commands, gs_vec4);
 				// Set clear color
-				glClearColor( col.x, col.y, col.z, col.w );
+				glClearColor( col.x, col.y, col.z, col.w);
 				// Clear screen
-				glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
+				glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 			} break;
 
 			case gs_opengl_op_set_view_scissor: 
 			{
-				u32 x = gs_byte_buffer_read( &cb->commands, u32 );
-				u32 y = gs_byte_buffer_read( &cb->commands, u32 );
-				u32 w = gs_byte_buffer_read( &cb->commands, u32 );
-				u32 h = gs_byte_buffer_read( &cb->commands, u32 );
+				u32 x = gs_byte_buffer_read( &cb->commands, u32);
+				u32 y = gs_byte_buffer_read( &cb->commands, u32);
+				u32 w = gs_byte_buffer_read( &cb->commands, u32);
+				u32 h = gs_byte_buffer_read( &cb->commands, u32);
 
-				if ( x == 0 && y == 0 && w == 0 && h == 0 )
+				if ( x == 0 && y == 0 && w == 0 && h == 0)
 				{
-					glDisable( GL_SCISSOR_TEST );	
+					glDisable( GL_SCISSOR_TEST);	
 				}
 				else 
 				{
-					glEnable( GL_SCISSOR_TEST );
-					glScissor( (s32)x, (s32)y, (usize)w, (usize)h );	
+					glEnable( GL_SCISSOR_TEST);
+					glScissor( (s32)x, (s32)y, (usize)w, (usize)h);	
 				}
 			} break;
 
 			case gs_opengl_op_set_view_port: 
 			{
 				// Read width from buffer
-				u32 width = gs_byte_buffer_read( &cb->commands, u32 );
+				u32 width = gs_byte_buffer_read( &cb->commands, u32);
 				// Read height from buffer
-				u32 height = gs_byte_buffer_read( &cb->commands, u32 );
+				u32 height = gs_byte_buffer_read( &cb->commands, u32);
 				// Set viewport
-				glViewport( 0, 0, (s32)width, (s32)height );
+				glViewport( 0, 0, (s32)width, (s32)height);
 
 			} break;
 
 			case gs_opengl_op_set_depth_enabled: 
 			{
 				// Read color from buffer (as vec4)
-				b32 enabled = gs_byte_buffer_read( &cb->commands, b32 );
+				b32 enabled = gs_byte_buffer_read( &cb->commands, b32);
 				// Clear screen
-				if ( enabled ) {
-					glEnable( GL_DEPTH_TEST );
+				if ( enabled) {
+					glEnable( GL_DEPTH_TEST);
 				} else {
-					glDisable( GL_DEPTH_TEST );
+					glDisable( GL_DEPTH_TEST);
 				}
 			} break;
 
 			case gs_opengl_op_set_winding_order: 
 			{
-				gs_winding_order_type type = (gs_winding_order_type )gs_byte_buffer_read( &cb->commands, u32 );
-				glFrontFace( __get_opengl_winding_order( type ) );
+				gs_winding_order_type type = (gs_winding_order_type)gs_byte_buffer_read( &cb->commands, u32);
+				glFrontFace( __get_opengl_winding_order( type));
 			} break;			
 
 			case gs_opengl_op_set_face_culling: 
 			{
-				gs_face_culling_type type =	(gs_face_culling_type)gs_byte_buffer_read( &cb->commands, u32 );
+				gs_face_culling_type type =	(gs_face_culling_type)gs_byte_buffer_read( &cb->commands, u32);
 
-				if ( type == gs_face_culling_disabled ) {
+				if ( type == gs_face_culling_disabled) {
 
 					glDisable(GL_CULL_FACE);
 				} else {
 
 					glEnable(GL_CULL_FACE);	
-					glCullFace( __get_opengl_cull_face( type ) );
+					glCullFace( __get_opengl_cull_face( type));
 				}
 			} break;
 
 			case gs_opengl_op_set_blend_equation:
 			{
 				// Read blend mode for blend equation
-				gs_blend_equation_type eq = gs_byte_buffer_read( &cb->commands, u32 );
-				glBlendEquation( __get_opengl_blend_equation( eq ) );
+				gs_blend_equation_type eq = gs_byte_buffer_read( &cb->commands, u32);
+				glBlendEquation( __get_opengl_blend_equation( eq));
 			} break;
 
 			case gs_opengl_op_set_blend_mode: 
 			{
 				// Read blend mode for source
-				gs_blend_mode_type src = (gs_blend_mode_type)gs_byte_buffer_read( &cb->commands, u32 );
+				gs_blend_mode_type src = (gs_blend_mode_type)gs_byte_buffer_read( &cb->commands, u32);
 				// Read blend mode for destination
-				gs_blend_mode_type dst = (gs_blend_mode_type)gs_byte_buffer_read( &cb->commands, u32 );
+				gs_blend_mode_type dst = (gs_blend_mode_type)gs_byte_buffer_read( &cb->commands, u32);
 
 				// Enabling and disabling blend states
-				if (src == gs_blend_mode_disabled || dst == gs_blend_mode_disabled ) {
-					glDisable( GL_BLEND );
+				if (src == gs_blend_mode_disabled || dst == gs_blend_mode_disabled) {
+					glDisable( GL_BLEND);
 				} else {
-					glEnable( GL_BLEND );
-					GLenum sfactor = __get_opengl_blend_mode( src );
-					GLenum dfactor = __get_opengl_blend_mode( dst );
-					glBlendFunc( sfactor, dfactor );	
+					glEnable( GL_BLEND);
+					GLenum sfactor = __get_opengl_blend_mode( src);
+					GLenum dfactor = __get_opengl_blend_mode( dst);
+					glBlendFunc( sfactor, dfactor);	
 				}
 
 			} break;
@@ -859,102 +859,102 @@ void opengl_submit_command_buffer( gs_command_buffer_t* cb )
 			case gs_opengl_op_bind_texture:
 			{
 				// Write out id
-				u32 tex_id = gs_byte_buffer_read( &cb->commands, u32 );
+				u32 tex_id = gs_byte_buffer_read( &cb->commands, u32);
 				// Write tex unit location
-				u32 tex_unit = gs_byte_buffer_read( &cb->commands, u32 );
+				u32 tex_unit = gs_byte_buffer_read( &cb->commands, u32);
 				// Write out uniform location
-				u32 location = gs_byte_buffer_read( &cb->commands, u32 );
+				u32 location = gs_byte_buffer_read( &cb->commands, u32);
 
 				// Activate texture unit
-				glActiveTexture( GL_TEXTURE0 + tex_unit );
+				glActiveTexture( GL_TEXTURE0 + tex_unit);
 				// Bind texture
-				glBindTexture( GL_TEXTURE_2D, tex_id );
+				glBindTexture( GL_TEXTURE_2D, tex_id);
 				// Bind uniform
-				glUniform1i( location, tex_unit );
+				glUniform1i( location, tex_unit);
 			} break;
 
 			case gs_opengl_op_bind_vertex_buffer:
 			{
 				// Read out vao
-				u32 vao = gs_byte_buffer_read( &cb->commands, u32 );
+				u32 vao = gs_byte_buffer_read( &cb->commands, u32);
 
 				// Bind vao
-				glBindVertexArray( vao );
+				glBindVertexArray( vao);
 			} break;
 
 			case gs_opengl_op_bind_index_buffer:
 			{
 				// Read out vao
-				u32 ibo = gs_byte_buffer_read( &cb->commands, u32 );
+				u32 ibo = gs_byte_buffer_read( &cb->commands, u32);
 
 				// Bind vao
-				glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibo );
+				glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ibo);
 			} break;
 
 			case gs_opengl_op_bind_shader: 
 			{
 				// Read in shader id
-				u32 program_id = gs_byte_buffer_read( &cb->commands, u32 );
+				u32 program_id = gs_byte_buffer_read( &cb->commands, u32);
 				// Bind program
-				glUseProgram( program_id );
+				glUseProgram( program_id);
 			} break;
 
 			case gs_opengl_op_bind_uniform:
 			{
 				// Read in uniform location
-				u32 location = gs_byte_buffer_read( &cb->commands, u32 );
+				u32 location = gs_byte_buffer_read( &cb->commands, u32);
 				// Read in uniform type
-				gs_uniform_type type = (gs_uniform_type)gs_byte_buffer_read( &cb->commands, u32 );
+				gs_uniform_type type = (gs_uniform_type)gs_byte_buffer_read( &cb->commands, u32);
 
 				// Read and bind val
-				switch ( type )
+				switch ( type)
 				{
 					case gs_uniform_type_float:
 					{
-						f32 val = gs_byte_buffer_read( &cb->commands, f32 );
-						glUniform1f( location, val );
+						f32 val = gs_byte_buffer_read( &cb->commands, f32);
+						glUniform1f( location, val);
 					} break;
 
 					case gs_uniform_type_int: 
 					{
-						s32 val = gs_byte_buffer_read( &cb->commands, s32 );
-						glUniform1i( location, val );
+						s32 val = gs_byte_buffer_read( &cb->commands, s32);
+						glUniform1i( location, val);
 					} break;
 
 					case gs_uniform_type_vec2:
 					{
-						gs_vec2 val = gs_byte_buffer_read( &cb->commands, gs_vec2 );
-						glUniform2f( location, val.x, val.y );
+						gs_vec2 val = gs_byte_buffer_read( &cb->commands, gs_vec2);
+						glUniform2f( location, val.x, val.y);
 					} break;
 
 					case gs_uniform_type_vec3:
 					{
-						gs_vec3 val = gs_byte_buffer_read( &cb->commands, gs_vec3 );
-						glUniform3f( location, val.x, val.y, val.z );
+						gs_vec3 val = gs_byte_buffer_read( &cb->commands, gs_vec3);
+						glUniform3f( location, val.x, val.y, val.z);
 					} break;
 
 					case gs_uniform_type_vec4:
 					{
-						gs_vec4 val = gs_byte_buffer_read( &cb->commands, gs_vec4 );
-						glUniform4f( location, val.x, val.y, val.z, val.w );
+						gs_vec4 val = gs_byte_buffer_read( &cb->commands, gs_vec4);
+						glUniform4f( location, val.x, val.y, val.z, val.w);
 					} break;
 
 					case gs_uniform_type_mat4:
 					{
-						gs_mat4 val = gs_byte_buffer_read( &cb->commands, gs_mat4 );
-						glUniformMatrix4fv( location, 1, false, (f32*)(val.elements) );
+						gs_mat4 val = gs_byte_buffer_read( &cb->commands, gs_mat4);
+						glUniformMatrix4fv( location, 1, false, (f32*)(val.elements));
 					} break;
 
 					case gs_uniform_type_sampler2d:
 					{
-						u32 val = gs_byte_buffer_read( &cb->commands, u32 );
-						glUniform1i( location, val );
+						u32 val = gs_byte_buffer_read( &cb->commands, u32);
+						glUniform1i( location, val);
 					} break;
 
 					default: 
 					{
-						gs_println( "Invalid uniform type read." );
-						gs_assert( false );
+						gs_println( "Invalid uniform type read.");
+						gs_assert( false);
 					}
 				}
 
@@ -963,45 +963,45 @@ void opengl_submit_command_buffer( gs_command_buffer_t* cb )
 			case gs_opengl_op_update_index_data:
 			{
 				// Write out vao/vbo
-				u32 ibo = gs_byte_buffer_read( &cb->commands, u32 );
-				u32 data_size = gs_byte_buffer_read( &cb->commands, u32 );
+				u32 ibo = gs_byte_buffer_read( &cb->commands, u32);
+				u32 data_size = gs_byte_buffer_read( &cb->commands, u32);
 
-				void* tmp_data = gs_malloc( data_size );
-				memset( tmp_data, 0, data_size );
-				gs_byte_buffer_bulk_read( &cb->commands, tmp_data, data_size );
+				void* tmp_data = gs_malloc( data_size);
+				memset( tmp_data, 0, data_size);
+				gs_byte_buffer_bulk_read( &cb->commands, tmp_data, data_size);
 
 				// Update index data
-				glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, (u32)ibo );
-				glBufferData( GL_ELEMENT_ARRAY_BUFFER, data_size, tmp_data, GL_STATIC_DRAW );
-				glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
+				glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, (u32)ibo);
+				glBufferData( GL_ELEMENT_ARRAY_BUFFER, data_size, tmp_data, GL_STATIC_DRAW);
+				glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0);
 
-				gs_free( tmp_data );
+				gs_free( tmp_data);
 				tmp_data = NULL;
 			} break;
 
 			case gs_opengl_op_update_vertex_data: 
 			{
 				// Read in vao
-				u32 vao = gs_byte_buffer_read( &cb->commands, u32 );
-				u32 vbo = gs_byte_buffer_read( &cb->commands, u32 );
-				u32 data_size = gs_byte_buffer_read( &cb->commands, u32 );
+				u32 vao = gs_byte_buffer_read( &cb->commands, u32);
+				u32 vbo = gs_byte_buffer_read( &cb->commands, u32);
+				u32 data_size = gs_byte_buffer_read( &cb->commands, u32);
 
 				// Read in data for vertices
-				void* tmp_data = gs_malloc( data_size );
-				memset(tmp_data, 0, data_size );
-				gs_byte_buffer_bulk_read( &cb->commands, tmp_data, data_size );
+				void* tmp_data = gs_malloc( data_size);
+				memset(tmp_data, 0, data_size);
+				gs_byte_buffer_bulk_read( &cb->commands, tmp_data, data_size);
 
 				// Update vertex data
 				// Bind vao/vbo
-				glBindVertexArray( (u32)vao );
-				glBindBuffer( GL_ARRAY_BUFFER, (u32)vbo );
-				glBufferData( GL_ARRAY_BUFFER, data_size, tmp_data, GL_STATIC_DRAW );
+				glBindVertexArray( (u32)vao);
+				glBindBuffer( GL_ARRAY_BUFFER, (u32)vbo);
+				glBufferData( GL_ARRAY_BUFFER, data_size, tmp_data, GL_STATIC_DRAW);
 
 				// Unbind buffer and array
-				glBindBuffer( GL_ARRAY_BUFFER, 0 );
-				glBindVertexArray( 0 );
+				glBindBuffer( GL_ARRAY_BUFFER, 0);
+				glBindVertexArray( 0);
 
-				gs_free( tmp_data );
+				gs_free( tmp_data);
 				tmp_data = NULL;
 
 			} break;
@@ -1011,49 +1011,49 @@ void opengl_submit_command_buffer( gs_command_buffer_t* cb )
 				// Push back vertices into local debug line drawing data buffer
 
 				// Read start position
-				gs_vec3 start = gs_byte_buffer_read( &cb->commands, gs_vec3 );
+				gs_vec3 start = gs_byte_buffer_read( &cb->commands, gs_vec3);
 				// Read end position
-				gs_vec3 end = gs_byte_buffer_read( &cb->commands, gs_vec3 );
+				gs_vec3 end = gs_byte_buffer_read( &cb->commands, gs_vec3);
 				// Read color
-				gs_vec3 color = gs_byte_buffer_read( &cb->commands, gs_vec3 );
+				gs_vec3 color = gs_byte_buffer_read( &cb->commands, gs_vec3);
 
 				// Add line data
-				__gfx_add_debug_line_internal( data->debug_data.line_vertex_data, start, end, color );
+				__gfx_add_debug_line_internal( data->debug_data.line_vertex_data, start, end, color);
 			} break;
 
 			case gs_opengl_op_debug_draw_square: 
 			{
-				gs_vec3 origin = gs_byte_buffer_read( &cb->commands, gs_vec3 );
-				f32 w = gs_byte_buffer_read( &cb->commands, f32 );
-				f32 h = gs_byte_buffer_read( &cb->commands, f32 );
-				gs_vec3 color = gs_byte_buffer_read( &cb->commands, gs_vec3 );
-				gs_mat4 model = gs_byte_buffer_read( &cb->commands, gs_mat4 );
+				gs_vec3 origin = gs_byte_buffer_read( &cb->commands, gs_vec3);
+				f32 w = gs_byte_buffer_read( &cb->commands, f32);
+				f32 h = gs_byte_buffer_read( &cb->commands, f32);
+				gs_vec3 color = gs_byte_buffer_read( &cb->commands, gs_vec3);
+				gs_mat4 model = gs_byte_buffer_read( &cb->commands, gs_mat4);
 
-				gs_vec3 tl = gs_mat4_mul_vec3( model, origin );
-				gs_vec3 tr = gs_mat4_mul_vec3( model, (gs_vec3){ origin.x + w, origin.y } );
-				gs_vec3 bl = gs_mat4_mul_vec3( model, (gs_vec3){ origin.x, origin.y + h } );
-				gs_vec3 br = gs_mat4_mul_vec3( model, (gs_vec3){ origin.x + w, origin.y + h } );
+				gs_vec3 tl = gs_mat4_mul_vec3( model, origin);
+				gs_vec3 tr = gs_mat4_mul_vec3( model, (gs_vec3){ origin.x + w, origin.y });
+				gs_vec3 bl = gs_mat4_mul_vec3( model, (gs_vec3){ origin.x, origin.y + h });
+				gs_vec3 br = gs_mat4_mul_vec3( model, (gs_vec3){ origin.x + w, origin.y + h });
 
 				// Four lines, don'tcha know?
-				__gfx_add_debug_line_internal( data->debug_data.line_vertex_data, tl, tr, color );	
-				__gfx_add_debug_line_internal( data->debug_data.line_vertex_data, tr, br, color );	
-				__gfx_add_debug_line_internal( data->debug_data.line_vertex_data, br, bl, color );	
-				__gfx_add_debug_line_internal( data->debug_data.line_vertex_data, bl, tl, color );
+				__gfx_add_debug_line_internal( data->debug_data.line_vertex_data, tl, tr, color);	
+				__gfx_add_debug_line_internal( data->debug_data.line_vertex_data, tr, br, color);	
+				__gfx_add_debug_line_internal( data->debug_data.line_vertex_data, br, bl, color);	
+				__gfx_add_debug_line_internal( data->debug_data.line_vertex_data, bl, tl, color);
 			} break;
 
 			case gs_opengl_op_debug_set_properties: 
 			{
 				// Read view
-				gs_mat4 view = gs_byte_buffer_read( &cb->commands, gs_mat4 );
+				gs_mat4 view = gs_byte_buffer_read( &cb->commands, gs_mat4);
 				// Read proj
-				gs_mat4 proj = gs_byte_buffer_read( &cb->commands, gs_mat4 );
+				gs_mat4 proj = gs_byte_buffer_read( &cb->commands, gs_mat4);
 
 				data->debug_data.view_mat = view;  
 				data->debug_data.proj_mat = proj;
 
 				// gs_timed_action( 10, 
 				// {
-				// 	gs_mat4_debug_print( &data->debug_data.proj_mat );
+				// 	gs_mat4_debug_print( &data->debug_data.proj_mat);
 				// });
 			}
 
@@ -1066,13 +1066,13 @@ void opengl_submit_command_buffer( gs_command_buffer_t* cb )
 				u32 vert_count = (vertex_data_size) / (sizeof(f32) * 6);
 
 				// Bind shader program
-				shader_t s = gs_slot_array_get( data->shaders, data->debug_data.shader.id );
-				glUseProgram( s.program_id );
+				shader_t s = gs_slot_array_get( data->shaders, data->debug_data.shader.id);
+				glUseProgram( s.program_id);
 
 				// Bind uniforms
 				// Let's just create an ortho projection real quirk...
 			    s32 width = 800, height = 600;
-				// gs_platform_window_width_height( gs_engine_instance()->ctx.window, &width, &height );
+				// gs_platform_window_width_height( gs_engine_instance()->ctx.window, &width, &height);
 			    // glViewport(0, 0, width, height);
 			    f32 L = 0.0f;
 			    f32 R = 0.0f + width;
@@ -1088,31 +1088,31 @@ void opengl_submit_command_buffer( gs_command_buffer_t* cb )
 
 			    gs_mat4 vm = gs_mat4_identity();
 
-				uniform_t proj = gs_slot_array_get( data->uniforms, data->debug_data.u_proj.id );
-				uniform_t view = gs_slot_array_get( data->uniforms, data->debug_data.u_view.id );
+				uniform_t proj = gs_slot_array_get( data->uniforms, data->debug_data.u_proj.id);
+				uniform_t view = gs_slot_array_get( data->uniforms, data->debug_data.u_view.id);
 
 				// gs_timed_action( 10, 
 				// {
-				// 	gs_println( "after" );
-				// 	gs_mat4_debug_print( &data->debug_data.proj_mat );
+				// 	gs_println( "after");
+				// 	gs_mat4_debug_print( &data->debug_data.proj_mat);
 				// });
 
-				glUniformMatrix4fv( proj.location, 1, false, (f32*)(data->debug_data.proj_mat.elements) );
-				glUniformMatrix4fv( view.location, 1, false, (f32*)(data->debug_data.view_mat.elements) );
+				glUniformMatrix4fv( proj.location, 1, false, (f32*)(data->debug_data.proj_mat.elements));
+				glUniformMatrix4fv( view.location, 1, false, (f32*)(data->debug_data.view_mat.elements));
 
-				// glUniformMatrix4fv( proj.location, 1, false, (f32*)(ortho_mat_2) );
-				// glUniformMatrix4fv( view.location, 1, false, (f32*)(vm.elements) );
+				// glUniformMatrix4fv( proj.location, 1, false, (f32*)(ortho_mat_2));
+				// glUniformMatrix4fv( view.location, 1, false, (f32*)(vm.elements));
 
 				// Bind vertex data
-				vertex_buffer_t vb = gs_slot_array_get( data->vertex_buffers, data->debug_data.line_vbo.id );
-				glBindVertexArray( vb.vao );
+				vertex_buffer_t vb = gs_slot_array_get( data->vertex_buffers, data->debug_data.line_vbo.id);
+				glBindVertexArray( vb.vao);
 				// Upload data
-				glBindBuffer( GL_ARRAY_BUFFER, vb.vbo );
-				glBufferData( GL_ARRAY_BUFFER, vertex_data_size, data->debug_data.line_vertex_data, GL_STATIC_DRAW );
-				// glBufferSubData( GL_ARRAY_BUFFER, 0, vertex_data_size, (f32*)data->debug_data.line_vertex_data );
+				glBindBuffer( GL_ARRAY_BUFFER, vb.vbo);
+				glBufferData( GL_ARRAY_BUFFER, vertex_data_size, data->debug_data.line_vertex_data, GL_STATIC_DRAW);
+				// glBufferSubData( GL_ARRAY_BUFFER, 0, vertex_data_size, (f32*)data->debug_data.line_vertex_data);
 
 				// Draw data
-				glDrawArrays( GL_LINES, 0, vert_count );
+				glDrawArrays( GL_LINES, 0, vert_count);
 
 				// Unbind data
 				glBindVertexArray(0);
@@ -1124,20 +1124,20 @@ void opengl_submit_command_buffer( gs_command_buffer_t* cb )
 				// data->debug_data.proj_mat = gs_mat4_identity();
 
 				// Flush vertex data
-				gs_dyn_array_clear( data->debug_data.line_vertex_data );
+				gs_dyn_array_clear( data->debug_data.line_vertex_data);
 			} break;
 
 			default:
 			{
 				// Op code not supported yet!
-				gs_println( "Op code not supported yet: %zu", (u32)op_code );
-				gs_assert( false );
+				gs_println( "Op code not supported yet: %zu", (u32)op_code);
+				gs_assert( false);
 			}
 		}
 	}
 
 	// Reset command buffer
-	__reset_command_buffer_internal( cb );
+	__reset_command_buffer_internal( cb);
 
 	// Reset default opengl state
 	opengl_init_default_state();
@@ -1148,8 +1148,8 @@ void opengl_submit_command_buffer( gs_command_buffer_t* cb )
 // 	opengl_render_data_t* data = __get_opengl_data_internal();
 
 // 	// Construct new command buffer, then insert into slot array
-// 	u32 cb = gs_slot_array_insert( data->command_buffers, (command_buffer_t){0} );
-// 	command_buffer_t* cb = gs_slot_array_get_ptr( data->command_buffers, cb );
+// 	u32 cb = gs_slot_array_insert( data->command_buffers, (command_buffer_t){0});
+// 	command_buffer_t* cb = gs_slot_array_get_ptr( data->command_buffers, cb);
 
 // 	// Initialize command buffer 
 // 	cb->num_commands = 0;
@@ -1162,10 +1162,10 @@ void opengl_submit_command_buffer( gs_command_buffer_t* cb )
 // 	return handle;
 // }
 
-u32 get_byte_size_of_vertex_attribute( gs_vertex_attribute_type type )
+u32 get_byte_size_of_vertex_attribute( gs_vertex_attribute_type type)
 {
 	u32 byte_size = 0; 
-	switch ( type )
+	switch ( type)
 	{
 		case gs_vertex_attribute_float4:	{ byte_size = sizeof(f32) * 4; } break;
 		case gs_vertex_attribute_float3:	{ byte_size = sizeof(f32) * 3; } break;
@@ -1184,368 +1184,368 @@ u32 get_byte_size_of_vertex_attribute( gs_vertex_attribute_type type )
 	return byte_size;
 }
 
-u32 calculate_vertex_size_in_bytes( gs_vertex_attribute_type* layout_data, u32 count )
+u32 calculate_vertex_size_in_bytes( gs_vertex_attribute_type* layout_data, u32 count)
 {
 	// Iterate through all formats in delcarations and calculate total size
 	u32 sz = 0;
 
-	gs_for_range_i( count )
+	gs_for_range_i( count)
 	{
 		gs_vertex_attribute_type type = layout_data[ i ];
-		sz += get_byte_size_of_vertex_attribute( type );
+		sz += get_byte_size_of_vertex_attribute( type);
 	}
 
 	return sz;
 }
 
-s32 get_byte_offest( gs_vertex_attribute_type* layout_data, u32 index )
+s32 get_byte_offest( gs_vertex_attribute_type* layout_data, u32 index)
 {
-	gs_assert( layout_data );
+	gs_assert( layout_data);
 
 	// Recursively calculate offset
 	s32 total_offset = 0;
 
 	// Base case
-	if ( index == 0 )
+	if ( index == 0)
 	{
 		return total_offset;
 	} 
 
 	// Calculate total offset up to this point
-	for ( u32 i = 0; i < index; ++i )
+	for ( u32 i = 0; i < index; ++i)
 	{ 
-		total_offset += get_byte_size_of_vertex_attribute( layout_data[ i ] );
+		total_offset += get_byte_size_of_vertex_attribute( layout_data[ i ]);
 	} 
 
 	return total_offset;
 }
 
 gs_vertex_buffer_t opengl_construct_vertex_buffer( gs_vertex_attribute_type* layout_data, usize layout_sz, 
-	void* v_data, usize v_data_size )
+	void* v_data, usize v_data_size)
 {
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
 	// Construct new vertex buffer, then insert into slot array
-	// u32 vb_handle = gs_slot_array_insert( data->vertex_buffers, (vertex_buffer_t){0} );
-	// vertex_buffer_t* vb = gs_slot_array_get_ptr( data->vertex_buffers, vb_handle );
+	// u32 vb_handle = gs_slot_array_insert( data->vertex_buffers, (vertex_buffer_t){0});
+	// vertex_buffer_t* vb = gs_slot_array_get_ptr( data->vertex_buffers, vb_handle);
 	gs_vertex_buffer_t vb = {0};
 
 	// Create and bind vertex array
-	glGenVertexArrays( 1, (u32*)&vb.vao );
-	glBindVertexArray( (u32)vb.vao );
+	glGenVertexArrays( 1, (u32*)&vb.vao);
+	glBindVertexArray( (u32)vb.vao);
 
 	// Create and upload mesh data
-	glGenBuffers( 1, (u32*)&vb.vbo );
-	glBindBuffer( GL_ARRAY_BUFFER, (u32)vb.vbo );
-	glBufferData( GL_ARRAY_BUFFER, v_data_size, v_data, GL_STATIC_DRAW );
+	glGenBuffers( 1, (u32*)&vb.vbo);
+	glBindBuffer( GL_ARRAY_BUFFER, (u32)vb.vbo);
+	glBufferData( GL_ARRAY_BUFFER, v_data_size, v_data, GL_STATIC_DRAW);
 
 	u32 layout_count = layout_sz / sizeof(gs_vertex_attribute_type);
-	u32 total_size = calculate_vertex_size_in_bytes( layout_data, layout_count );
+	u32 total_size = calculate_vertex_size_in_bytes( layout_data, layout_count);
 
 	// Bind vertex attrib pointers for vao using layout descriptor
-	gs_for_range_i( layout_count )
+	gs_for_range_i( layout_count)
 	{
 		gs_vertex_attribute_type type = layout_data[ i ];
-		u32 byte_offset = get_byte_offest( layout_data, i );
+		u32 byte_offset = get_byte_offest( layout_data, i);
 
-		switch ( type )
+		switch ( type)
 		{
 			case gs_vertex_attribute_float4: 
 			{
-				glVertexAttribPointer( i, 4, GL_FLOAT, GL_FALSE, total_size, int_2_void_p( byte_offset ) );
+				glVertexAttribPointer( i, 4, GL_FLOAT, GL_FALSE, total_size, int_2_void_p( byte_offset));
 			} break;	
 			case gs_vertex_attribute_float3: 
 			{
-				glVertexAttribPointer( i, 3, GL_FLOAT, GL_FALSE, total_size, int_2_void_p( byte_offset ) );
+				glVertexAttribPointer( i, 3, GL_FLOAT, GL_FALSE, total_size, int_2_void_p( byte_offset));
 			} break;	
 			case gs_vertex_attribute_float2: 
 			{
-				glVertexAttribPointer( i, 2, GL_FLOAT, GL_FALSE, total_size, int_2_void_p( byte_offset ) );
+				glVertexAttribPointer( i, 2, GL_FLOAT, GL_FALSE, total_size, int_2_void_p( byte_offset));
 			} break;	
 			case gs_vertex_attribute_float: 
 			{
-				glVertexAttribPointer( i, 1, GL_FLOAT, GL_FALSE, total_size, int_2_void_p( byte_offset ) );
+				glVertexAttribPointer( i, 1, GL_FLOAT, GL_FALSE, total_size, int_2_void_p( byte_offset));
 			} break;	
 			case gs_vertex_attribute_uint4: {
-				glVertexAttribIPointer( i, 4, GL_UNSIGNED_INT, total_size, int_2_void_p( byte_offset ) );
+				glVertexAttribIPointer( i, 4, GL_UNSIGNED_INT, total_size, int_2_void_p( byte_offset));
 			} break;	
 			case gs_vertex_attribute_uint3: 
 			{
-				glVertexAttribIPointer( i, 3, GL_UNSIGNED_INT, total_size, int_2_void_p( byte_offset ) );
+				glVertexAttribIPointer( i, 3, GL_UNSIGNED_INT, total_size, int_2_void_p( byte_offset));
 			} break;	
 			case gs_vertex_attribute_uint2: 
 			{
-				glVertexAttribIPointer( i, 2, GL_UNSIGNED_INT, total_size, int_2_void_p( byte_offset ) );
+				glVertexAttribIPointer( i, 2, GL_UNSIGNED_INT, total_size, int_2_void_p( byte_offset));
 			} break;	
 			case gs_vertex_attribute_uint: 
 			{
-				glVertexAttribIPointer( i, 1, GL_UNSIGNED_INT, total_size, int_2_void_p( byte_offset ) );
+				glVertexAttribIPointer( i, 1, GL_UNSIGNED_INT, total_size, int_2_void_p( byte_offset));
 			} break;	
 			case gs_vertex_attribute_byte: 
 			{
-				glVertexAttribPointer( i, 1, GL_UNSIGNED_BYTE, GL_TRUE, total_size, int_2_void_p( byte_offset ) );
+				glVertexAttribPointer( i, 1, GL_UNSIGNED_BYTE, GL_TRUE, total_size, int_2_void_p( byte_offset));
 			} break;	
 			case gs_vertex_attribute_byte2: 
 			{
-				glVertexAttribPointer( i, 2, GL_UNSIGNED_BYTE, GL_TRUE, total_size, int_2_void_p( byte_offset ) );
+				glVertexAttribPointer( i, 2, GL_UNSIGNED_BYTE, GL_TRUE, total_size, int_2_void_p( byte_offset));
 			} break;	
 			case gs_vertex_attribute_byte3: 
 			{
-				glVertexAttribPointer( i, 3, GL_UNSIGNED_BYTE, GL_TRUE, total_size, int_2_void_p( byte_offset ) );
+				glVertexAttribPointer( i, 3, GL_UNSIGNED_BYTE, GL_TRUE, total_size, int_2_void_p( byte_offset));
 			} break;	
 			case gs_vertex_attribute_byte4: 
 			{
-				glVertexAttribPointer( i, 4, GL_UNSIGNED_BYTE, GL_TRUE, total_size, int_2_void_p( byte_offset ) );
+				glVertexAttribPointer( i, 4, GL_UNSIGNED_BYTE, GL_TRUE, total_size, int_2_void_p( byte_offset));
 			} break;	
 
 			default: 
 			{
 				// Shouldn't get here
-				gs_assert( false );
+				gs_assert( false);
 			} break;
 		}
 
 		// Enable the vertex attribute pointer
-		glEnableVertexAttribArray( i );
+		glEnableVertexAttribArray( i);
 	}
 
 	// Unbind buffer and array
-	glBindBuffer( GL_ARRAY_BUFFER, 0 );
-	glBindVertexArray( 0 );
+	glBindBuffer( GL_ARRAY_BUFFER, 0);
+	glBindVertexArray( 0);
 
 	return vb;
 }
 
-void opengl_update_vertex_buffer_data( gs_vertex_buffer_t vb, void* v_data, usize v_sz )
+void opengl_update_vertex_buffer_data( gs_vertex_buffer_t vb, void* v_data, usize v_sz)
 {
-	gs_assert( v_data );
+	gs_assert( v_data);
 
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
 	// Bind vao/vbo
-	glBindVertexArray( (u32)vb.vao );
-	glBindBuffer( GL_ARRAY_BUFFER, (u32)vb.vbo );
-	glBufferData( GL_ARRAY_BUFFER, v_sz, v_data, GL_STATIC_DRAW );
+	glBindVertexArray( (u32)vb.vao);
+	glBindBuffer( GL_ARRAY_BUFFER, (u32)vb.vbo);
+	glBufferData( GL_ARRAY_BUFFER, v_sz, v_data, GL_STATIC_DRAW);
 
 	// Unbind buffer and array
-	glBindBuffer( GL_ARRAY_BUFFER, 0 );
-	glBindVertexArray( 0 );
+	glBindBuffer( GL_ARRAY_BUFFER, 0);
+	glBindVertexArray( 0);
 }
 
-gs_index_buffer_t opengl_construct_index_buffer( void* indices, usize sz )
+gs_index_buffer_t opengl_construct_index_buffer( void* indices, usize sz)
 {
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
 	gs_index_buffer_t ib = {0};
 
-	glGenBuffers( 1, &ib.ibo );
-  	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ib.ibo );
-    glBufferData( GL_ELEMENT_ARRAY_BUFFER, sz, indices, GL_STATIC_DRAW );
+	glGenBuffers( 1, &ib.ibo);
+  	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, ib.ibo);
+    glBufferData( GL_ELEMENT_ARRAY_BUFFER, sz, indices, GL_STATIC_DRAW);
 
     // Unbind buffer after setting data
-  	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0 );
+  	glBindBuffer( GL_ELEMENT_ARRAY_BUFFER, 0);
 
 	return ib;
 }
 
 // Compiles single shader
-void opengl_compile_shader( const char* src, u32 id ) 
+void opengl_compile_shader( const char* src, u32 id) 
 {
 	//Tell opengl that we want to use fileContents as the contents of the shader file
-	glShaderSource( id, 1, &src, NULL );
+	glShaderSource( id, 1, &src, NULL);
 
 	//Compile the shader
-	glCompileShader( id );
+	glCompileShader( id);
 
 	//Check for errors
 	GLint success = 0;
-	glGetShaderiv( id, GL_COMPILE_STATUS, &success );
+	glGetShaderiv( id, GL_COMPILE_STATUS, &success);
 
 	if (success == GL_FALSE)
 	{
 		GLint max_len = 0;
-		glGetShaderiv( id, GL_INFO_LOG_LENGTH, &max_len );
+		glGetShaderiv( id, GL_INFO_LOG_LENGTH, &max_len);
 
-		char* log = gs_malloc( max_len );
-		memset( log, 0, max_len );
+		char* log = gs_malloc( max_len);
+		memset( log, 0, max_len);
 
 		//The max_len includes the NULL character
-		glGetShaderInfoLog( id, max_len, &max_len, log );
+		glGetShaderInfoLog( id, max_len, &max_len, log);
 
 		//Provide the infolog in whatever manor you deem best.
 		//Exit with failure.
-		glDeleteShader( id ); //Don't leak the shader.
+		glDeleteShader( id); //Don't leak the shader.
 
-		gs_println( "Opengl::opengl_compile_shader::FAILED_TO_COMPILE: %s\n %s", log, src );
+		gs_println( "Opengl::opengl_compile_shader::FAILED_TO_COMPILE: %s\n %s", log, src);
 
-		free( log );
+		free( log);
 		log = NULL;
 
-		gs_assert( false );
+		gs_assert( false);
 	}
 }
 
-void opengl_link_shaders( u32 program_id, u32 vert_id, u32 frag_id )
+void opengl_link_shaders( u32 program_id, u32 vert_id, u32 frag_id)
 {
 	//Attach our shaders to our program
-	glAttachShader( program_id, vert_id );
-	glAttachShader( program_id, frag_id );
+	glAttachShader( program_id, vert_id);
+	glAttachShader( program_id, frag_id);
 
 	//Link our program
-	glLinkProgram( program_id );
+	glLinkProgram( program_id);
 
 	//Create info log
 	// Error shit...
 	s32 is_linked = 0;
-	glGetProgramiv( program_id, GL_LINK_STATUS, (s32*)&is_linked );
-	if ( is_linked == GL_FALSE )
+	glGetProgramiv( program_id, GL_LINK_STATUS, (s32*)&is_linked);
+	if ( is_linked == GL_FALSE)
 	{
 		GLint max_len = 0;
-		glGetProgramiv( program_id, GL_INFO_LOG_LENGTH, &max_len );
+		glGetProgramiv( program_id, GL_INFO_LOG_LENGTH, &max_len);
 
-		char* log = gs_malloc( max_len );
-		memset( log, 0, max_len );
-		glGetProgramInfoLog( program_id, max_len, &max_len, log ); 
+		char* log = gs_malloc( max_len);
+		memset( log, 0, max_len);
+		glGetProgramInfoLog( program_id, max_len, &max_len, log); 
 
 		// Print error
-		gs_println( "Fail To Link::opengl_link_shaders::%s" );
+		gs_println( "Fail To Link::opengl_link_shaders::%s");
 
 		// //We don't need the program anymore.
-		glDeleteProgram( program_id );
+		glDeleteProgram( program_id);
 
 		// //Don't leak shaders either.
-		glDeleteShader( vert_id );
-		glDeleteShader( frag_id );
+		glDeleteShader( vert_id);
+		glDeleteShader( frag_id);
 
-		free( log );
+		free( log);
 		log = NULL;
 
 		// Just assert for now
-		gs_assert( false );
+		gs_assert( false);
 	}
 }
 
-void opengl_quad_batch_begin( gs_quad_batch_t* qb )
+void opengl_quad_batch_begin( gs_quad_batch_t* qb)
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	// opengl_render_data_t* data = __get_opengl_data_internal();
-	// gs_quad_batch_t* qb = gs_slot_array_get_ptr( data->quad_batches, qb_h.id );
-	gfx->quad_batch_i->begin( qb );
+	// gs_quad_batch_t* qb = gs_slot_array_get_ptr( data->quad_batches, qb_h.id);
+	gfx->quad_batch_i->begin( qb);
 }
 
-void opengl_quad_batch_add( gs_quad_batch_t* qb, void* qb_data ) 
+void opengl_quad_batch_add( gs_quad_batch_t* qb, void* qb_data) 
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	// opengl_render_data_t* data = __get_opengl_data_internal();
-	// gs_quad_batch_t* qb = gs_slot_array_get_ptr( data->quad_batches, qb_h.id );
-	gfx->quad_batch_i->add( qb, qb_data );
+	// gs_quad_batch_t* qb = gs_slot_array_get_ptr( data->quad_batches, qb_h.id);
+	gfx->quad_batch_i->add( qb, qb_data);
 }
 
-void opengl_quad_batch_end( gs_quad_batch_t* qb ) 
+void opengl_quad_batch_end( gs_quad_batch_t* qb) 
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	// opengl_render_data_t* data = __get_opengl_data_internal();
-	// gs_quad_batch_t* qb = gs_slot_array_get_ptr( data->quad_batches, qb_h.id );
-	gfx->quad_batch_i->end( qb );
+	// gs_quad_batch_t* qb = gs_slot_array_get_ptr( data->quad_batches, qb_h.id);
+	gfx->quad_batch_i->end( qb);
 }
 
-void opengl_quad_batch_submit( gs_command_buffer_t* cb, gs_quad_batch_t* qb ) 
+void opengl_quad_batch_submit( gs_command_buffer_t* cb, gs_quad_batch_t* qb) 
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	// opengl_render_data_t* data = __get_opengl_data_internal();
-	// gs_quad_batch_t* qb = gs_slot_array_get_ptr( data->quad_batches, qb_h.id );
-	gfx->quad_batch_i->submit( cb, qb );
+	// gs_quad_batch_t* qb = gs_slot_array_get_ptr( data->quad_batches, qb_h.id);
+	gfx->quad_batch_i->submit( cb, qb);
 }
 
-void opengl_set_material_uniform( gs_material_t* mat, gs_uniform_type type, const char* name, void* data )
+void opengl_set_material_uniform( gs_material_t* mat, gs_uniform_type type, const char* name, void* data)
 {
 	// This is ugly...but yeah
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	opengl_render_data_t* __data = __get_opengl_data_internal();
-	// gs_material_t* mat = gs_slot_array_get_ptr( __data->materials, mat_handle.id );
-	gs_engine_instance()->ctx.graphics->material_i->set_uniform( mat, type, name, data );
+	// gs_material_t* mat = gs_slot_array_get_ptr( __data->materials, mat_handle.id);
+	gs_engine_instance()->ctx.graphics->material_i->set_uniform( mat, type, name, data);
 }
 
-void opengl_set_material_uniform_mat4( gs_material_t* mat, const char* name, gs_mat4 val )
+void opengl_set_material_uniform_mat4( gs_material_t* mat, const char* name, gs_mat4 val)
 {
 	// gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	// opengl_render_data_t* __data = __get_opengl_data_internal();
-	// gs_material_t* mat = gs_slot_array_get_ptr( __data->materials, mat_handle.id );
-	gs_uniform_block_type( mat4 ) u_block = (gs_uniform_block_type(mat4)){ val };
-	gs_engine_instance()->ctx.graphics->material_i->set_uniform( mat, gs_uniform_type_mat4, name, &u_block );
+	// gs_material_t* mat = gs_slot_array_get_ptr( __data->materials, mat_handle.id);
+	gs_uniform_block_type( mat4) u_block = (gs_uniform_block_type(mat4)){ val };
+	gs_engine_instance()->ctx.graphics->material_i->set_uniform( mat, gs_uniform_type_mat4, name, &u_block);
 }
 
-void opengl_set_material_uniform_vec4( gs_material_t* mat, const char* name, gs_vec4 val )
+void opengl_set_material_uniform_vec4( gs_material_t* mat, const char* name, gs_vec4 val)
 {
 	// gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	// opengl_render_data_t* __data = __get_opengl_data_internal();
-	// gs_material_t* mat = gs_slot_array_get_ptr( __data->materials, mat_handle.id );
-	gs_uniform_block_type( vec4 ) u_block = (gs_uniform_block_type(vec4)){ val };
-	gs_engine_instance()->ctx.graphics->material_i->set_uniform( mat, gs_uniform_type_vec4, name, &u_block );
+	// gs_material_t* mat = gs_slot_array_get_ptr( __data->materials, mat_handle.id);
+	gs_uniform_block_type( vec4) u_block = (gs_uniform_block_type(vec4)){ val };
+	gs_engine_instance()->ctx.graphics->material_i->set_uniform( mat, gs_uniform_type_vec4, name, &u_block);
 }
 
-void opengl_set_material_uniform_vec3( gs_material_t* mat, const char* name, gs_vec3 val )
+void opengl_set_material_uniform_vec3( gs_material_t* mat, const char* name, gs_vec3 val)
 {
 	// gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	// opengl_render_data_t* __data = __get_opengl_data_internal();
-	// gs_material_t* mat = gs_slot_array_get_ptr( __data->materials, mat_handle.id );
-	gs_uniform_block_type( vec3 ) u_block = (gs_uniform_block_type(vec3)){ val };
-	gs_engine_instance()->ctx.graphics->material_i->set_uniform( mat, gs_uniform_type_vec3, name, &u_block );
+	// gs_material_t* mat = gs_slot_array_get_ptr( __data->materials, mat_handle.id);
+	gs_uniform_block_type( vec3) u_block = (gs_uniform_block_type(vec3)){ val };
+	gs_engine_instance()->ctx.graphics->material_i->set_uniform( mat, gs_uniform_type_vec3, name, &u_block);
 }
 
-void opengl_set_material_uniform_vec2( gs_material_t* mat, const char* name, gs_vec2 val )
+void opengl_set_material_uniform_vec2( gs_material_t* mat, const char* name, gs_vec2 val)
 {
 	// gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	// opengl_render_data_t* __data = __get_opengl_data_internal();
-	// gs_material_t* mat = gs_slot_array_get_ptr( __data->materials, mat_handle.id );
-	gs_uniform_block_type( vec2 ) u_block = (gs_uniform_block_type(vec2)){ val };
-	gs_engine_instance()->ctx.graphics->material_i->set_uniform( mat, gs_uniform_type_vec2, name, &u_block );
+	// gs_material_t* mat = gs_slot_array_get_ptr( __data->materials, mat_handle.id);
+	gs_uniform_block_type( vec2) u_block = (gs_uniform_block_type(vec2)){ val };
+	gs_engine_instance()->ctx.graphics->material_i->set_uniform( mat, gs_uniform_type_vec2, name, &u_block);
 }
 
-void opengl_set_material_uniform_float( gs_material_t* mat, const char* name, f32 val )
+void opengl_set_material_uniform_float( gs_material_t* mat, const char* name, f32 val)
 {
 	// gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	// opengl_render_data_t* __data = __get_opengl_data_internal();
-	// gs_material_t* mat = gs_slot_array_get_ptr( __data->materials, mat_handle.id );
-	gs_uniform_block_type( float ) u_block = (gs_uniform_block_type(float)){ val };
-	gs_engine_instance()->ctx.graphics->material_i->set_uniform( mat, gs_uniform_type_float, name, &u_block );
+	// gs_material_t* mat = gs_slot_array_get_ptr( __data->materials, mat_handle.id);
+	gs_uniform_block_type( float) u_block = (gs_uniform_block_type(float)){ val };
+	gs_engine_instance()->ctx.graphics->material_i->set_uniform( mat, gs_uniform_type_float, name, &u_block);
 }
 
-void opengl_set_material_uniform_int( gs_material_t* mat, const char* name, s32 val )
+void opengl_set_material_uniform_int( gs_material_t* mat, const char* name, s32 val)
 {
 	// gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	// opengl_render_data_t* __data = __get_opengl_data_internal();
-	// gs_material_t* mat = gs_slot_array_get_ptr( __data->materials, mat_handle.id );
-	gs_uniform_block_type( int ) u_block = (gs_uniform_block_type(int)){ val };
-	gs_engine_instance()->ctx.graphics->material_i->set_uniform( mat, gs_uniform_type_int, name, &u_block );
+	// gs_material_t* mat = gs_slot_array_get_ptr( __data->materials, mat_handle.id);
+	gs_uniform_block_type( int) u_block = (gs_uniform_block_type(int)){ val };
+	gs_engine_instance()->ctx.graphics->material_i->set_uniform( mat, gs_uniform_type_int, name, &u_block);
 }
 
-void opengl_set_material_uniform_sampler2d( gs_material_t* mat, const char* name, gs_texture_t val, u32 slot )
+void opengl_set_material_uniform_sampler2d( gs_material_t* mat, const char* name, gs_texture_t val, u32 slot)
 {
 	// gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	// opengl_render_data_t* __data = __get_opengl_data_internal();
-	// gs_material_t* mat = gs_slot_array_get_ptr( __data->materials, mat_handle.id );
-	gs_uniform_block_type( texture_sampler ) u_block = (gs_uniform_block_type(texture_sampler)){ val.id, slot };
-	gs_engine_instance()->ctx.graphics->material_i->set_uniform( mat, gs_uniform_type_sampler2d, name, &u_block );
+	// gs_material_t* mat = gs_slot_array_get_ptr( __data->materials, mat_handle.id);
+	gs_uniform_block_type( texture_sampler) u_block = (gs_uniform_block_type(texture_sampler)){ val.id, slot };
+	gs_engine_instance()->ctx.graphics->material_i->set_uniform( mat, gs_uniform_type_sampler2d, name, &u_block);
 }
 
-void opengl_bind_material_shader( gs_command_buffer_t* cb, gs_material_t* mat )
+void opengl_bind_material_shader( gs_command_buffer_t* cb, gs_material_t* mat)
 {
 	// gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	// opengl_render_data_t* data = __get_opengl_data_internal();
-	// gs_material_t* mat = gs_slot_array_get_ptr( data->materials, mat_handle.id );
-	gs_engine_instance()->ctx.graphics->bind_shader( cb, mat->shader );
+	// gs_material_t* mat = gs_slot_array_get_ptr( data->materials, mat_handle.id);
+	gs_engine_instance()->ctx.graphics->bind_shader( cb, mat->shader);
 }
 
-void opengl_bind_material_uniforms( gs_command_buffer_t* cb, gs_material_t* mat )
+void opengl_bind_material_uniforms( gs_command_buffer_t* cb, gs_material_t* mat)
 {
 	// gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	// opengl_render_data_t* data = __get_opengl_data_internal();
-	// gs_material_t* mat = gs_slot_array_get_ptr( data->materials, mat_handle.id );
-	gs_engine_instance()->ctx.graphics->material_i->bind_uniforms( cb, mat );
+	// gs_material_t* mat = gs_slot_array_get_ptr( data->materials, mat_handle.id);
+	gs_engine_instance()->ctx.graphics->material_i->bind_uniforms( cb, mat);
 }
 
-gs_shader_t opengl_construct_shader( const char* vert_src, const char* frag_src )
+gs_shader_t opengl_construct_shader( const char* vert_src, const char* frag_src)
 {
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
@@ -1556,28 +1556,28 @@ gs_shader_t opengl_construct_shader( const char* vert_src, const char* frag_src 
 	s.program_id = glCreateProgram();
 
 	// Construct vertex shader
-	u32 vert_id = glCreateShader( GL_VERTEX_SHADER );
-	gs_assert( vert_id != 0 );
+	u32 vert_id = glCreateShader( GL_VERTEX_SHADER);
+	gs_assert( vert_id != 0);
 
 	// Construct fragment shader
-	u32 frag_id = glCreateShader( GL_FRAGMENT_SHADER );
-	gs_assert( frag_id != 0 );
+	u32 frag_id = glCreateShader( GL_FRAGMENT_SHADER);
+	gs_assert( frag_id != 0);
 
 	// Compile each shader separately
-	opengl_compile_shader( vert_src, vert_id );
-	opengl_compile_shader( frag_src, frag_id );
+	opengl_compile_shader( vert_src, vert_id);
+	opengl_compile_shader( frag_src, frag_id);
 
 	// Link shaders once compiled
-	opengl_link_shaders( s.program_id, vert_id, frag_id );
+	opengl_link_shaders( s.program_id, vert_id, frag_id);
 
 	// Construct hash table for uniforms
-	// s.uniforms = gs_hash_table_new( u64, gs_uniform_t );
+	// s.uniforms = gs_hash_table_new( u64, gs_uniform_t);
 
 	// Push shader into slot array
-	// u32 s_handle = gs_slot_array_insert( data->shaders, s );
+	// u32 s_handle = gs_slot_array_insert( data->shaders, s);
 
 	// Set resource handle
-	// gs_resource( gs_shader ) handle = {0};
+	// gs_resource( gs_shader) handle = {0};
 	// handle.id = s_handle;
 
 	// return handle;
@@ -1585,7 +1585,7 @@ gs_shader_t opengl_construct_shader( const char* vert_src, const char* frag_src 
 	return s;
 }
 
-gs_uniform_t opengl_construct_uniform( gs_shader_t s, const char* uniform_name, gs_uniform_type type )
+gs_uniform_t opengl_construct_uniform( gs_shader_t s, const char* uniform_name, gs_uniform_type type)
 {
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
@@ -1593,10 +1593,10 @@ gs_uniform_t opengl_construct_uniform( gs_shader_t s, const char* uniform_name, 
 	uniform_t u = {0};
 
 	// Grab location of uniform
-	u32 location = glGetUniformLocation( s.program_id, uniform_name );
+	u32 location = glGetUniformLocation( s.program_id, uniform_name);
 
-	if ( location >= u32_max ) {
-		gs_println( "Warning: uniform not found: \"%s\"", uniform_name );
+	if ( location >= u32_max) {
+		gs_println( "Warning: uniform not found: \"%s\"", uniform_name);
 	}
 
 	// Won't know uniform's type, unfortunately...
@@ -1607,7 +1607,7 @@ gs_uniform_t opengl_construct_uniform( gs_shader_t s, const char* uniform_name, 
 	return u;
 }
 
-gs_frame_buffer_t opengl_construct_frame_buffer( gs_texture_t tex )
+gs_frame_buffer_t opengl_construct_frame_buffer( gs_texture_t tex)
 {
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
@@ -1615,43 +1615,43 @@ gs_frame_buffer_t opengl_construct_frame_buffer( gs_texture_t tex )
 	frame_buffer_t fb = {0};
 
 	// Construct and bind frame buffer
-	glGenFramebuffers( 1, &fb.fbo );
-	glBindFramebuffer( GL_FRAMEBUFFER, fb.fbo );
+	glGenFramebuffers( 1, &fb.fbo);
+	glBindFramebuffer( GL_FRAMEBUFFER, fb.fbo);
 
 	// Set list of buffers to draw for this framebuffer 
 	// This will need to be changed, I think, but when and where?
 	GLenum draw_buffers[ 1 ] = { GL_COLOR_ATTACHMENT0 };
-	glDrawBuffers( 1, draw_buffers );
+	glDrawBuffers( 1, draw_buffers);
 
 	// Idx is 0, for now
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + 0, GL_TEXTURE_2D, tex.id , 0);
 
 	// Error checking
 	if ( glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-		gs_println( "Error: Frame buffer could not be created." );
-		gs_assert( false );
+		gs_println( "Error: Frame buffer could not be created.");
+		gs_assert( false);
 	}
 
 	// Set frame buffer to back buffer
-	glBindFramebuffer( GL_FRAMEBUFFER, 0 );
+	glBindFramebuffer( GL_FRAMEBUFFER, 0);
 
 	return fb;
 }
 
-gs_render_target_t opengl_construct_render_target( gs_texture_parameter_desc t_desc )
+gs_render_target_t opengl_construct_render_target( gs_texture_parameter_desc t_desc)
 {
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
 	// Render target to create
 	render_target_t target = {0};
 
-	gs_texture_t tex = opengl_construct_texture( t_desc );
+	gs_texture_t tex = opengl_construct_texture( t_desc);
 	target.tex_id = tex.id;
 
 	return target;
 }
 
-gs_texture_t opengl_construct_texture( gs_texture_parameter_desc desc )
+gs_texture_t opengl_construct_texture( gs_texture_parameter_desc desc)
 {
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
@@ -1663,23 +1663,23 @@ gs_texture_t opengl_construct_texture( gs_texture_parameter_desc desc )
 	u32 height = desc.height;
 	u32 num_comps = desc.num_comps;
 
-	glGenTextures( 1, &( tex.id ) );
-	glBindTexture( GL_TEXTURE_2D, tex.id );
+	glGenTextures( 1, &( tex.id));
+	glBindTexture( GL_TEXTURE_2D, tex.id);
 
 	// Construct texture based on appropriate format
-	switch( texture_format ) 
+	switch( texture_format) 
 	{
-		case gs_texture_format_rgb8: 	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, desc.data ); break;
-		case gs_texture_format_rgba8: 	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, desc.data ); break;
-		case gs_texture_format_rgba16f: glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, desc.data ); break;
+		case gs_texture_format_rgb8: 	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, desc.data); break;
+		case gs_texture_format_rgba8: 	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, desc.data); break;
+		case gs_texture_format_rgba16f: glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, desc.data); break;
 	}
 
 	s32 mag_filter = desc.mag_filter == gs_nearest ? GL_NEAREST : GL_LINEAR;
 	s32 min_filter = desc.min_filter == gs_nearest ? GL_NEAREST : GL_LINEAR;
 
-	if ( desc.generate_mips ) 
+	if ( desc.generate_mips) 
 	{
-		if ( desc.min_filter == gs_nearest ) 
+		if ( desc.min_filter == gs_nearest) 
 		{
 			min_filter = desc.mipmap_filter == gs_nearest ? GL_NEAREST_MIPMAP_NEAREST : 
 				GL_NEAREST_MIPMAP_LINEAR;
@@ -1700,19 +1700,19 @@ gs_texture_t opengl_construct_texture( gs_texture_parameter_desc desc )
 						 desc.texture_wrap_t == gs_clamp_to_edge ? GL_CLAMP_TO_EDGE : 
 						 GL_CLAMP_TO_BORDER;
 
-	// Anisotropic filtering ( not supported by default, need to figure this out )
+	// Anisotropic filtering ( not supported by default, need to figure this out)
 	// f32 aniso = 0.0f; 
-	// glGetFloatv( GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &aniso );
-	// glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso );
+	// glGetFloatv( GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &aniso);
+	// glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso);
 
-	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, texture_wrap_s );
-	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, texture_wrap_t );
-	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter );
-	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter );
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, texture_wrap_s);
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, texture_wrap_t);
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter);
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter);
 
-	if ( desc.generate_mips )
+	if ( desc.generate_mips)
 	{
-		glGenerateMipmap( GL_TEXTURE_2D );
+		glGenerateMipmap( GL_TEXTURE_2D);
 	}
 
 	tex.width 			= width;
@@ -1720,92 +1720,92 @@ gs_texture_t opengl_construct_texture( gs_texture_parameter_desc desc )
 	tex.num_comps 		= num_comps;
 	tex.texture_format 	= texture_format;
 
-	glBindTexture( GL_TEXTURE_2D, 0 );
+	glBindTexture( GL_TEXTURE_2D, 0);
 
 	return tex;
 }
 
-gs_uniform_type opengl_uniform_type( gs_uniform_t u )
+gs_uniform_type opengl_uniform_type( gs_uniform_t u)
 {
 	return u.type;
 }
 
-s32 opengl_texture_id( gs_texture_t* tex )
+s32 opengl_texture_id( gs_texture_t* tex)
 {
 	return tex->id;
 } 
 
 void* opengl_load_texture_data_from_file( const char* file_path, b32 flip_vertically_on_load, 
-				gs_texture_format texture_format, s32* width, s32* height, s32* num_comps )
+				gs_texture_format texture_format, s32* width, s32* height, s32* num_comps)
 	{
 	// Load texture data
-	stbi_set_flip_vertically_on_load( flip_vertically_on_load );
+	stbi_set_flip_vertically_on_load( flip_vertically_on_load);
 
 	// Load in texture data using stb for now
 	char temp_file_extension_buffer[ 16 ] = {0}; 
-	gs_util_get_file_extension( temp_file_extension_buffer, sizeof( temp_file_extension_buffer ), file_path );
+	gs_util_get_file_extension( temp_file_extension_buffer, sizeof( temp_file_extension_buffer), file_path);
 
 	// Load texture data
-	stbi_set_flip_vertically_on_load( flip_vertically_on_load );
+	stbi_set_flip_vertically_on_load( flip_vertically_on_load);
 
 	// Texture data to fill out
 	void* texture_data = NULL;
 
-	switch ( texture_format )
+	switch ( texture_format)
 	{
-		case gs_texture_format_rgba8: texture_data = (u8*)stbi_load( file_path, width, height, num_comps, STBI_rgb_alpha ); break;
-		case gs_texture_format_rgb8: texture_data = (u8*)stbi_load( file_path, width, height, num_comps, STBI_rgb ); break;
+		case gs_texture_format_rgba8: texture_data = (u8*)stbi_load( file_path, width, height, num_comps, STBI_rgb_alpha); break;
+		case gs_texture_format_rgb8: texture_data = (u8*)stbi_load( file_path, width, height, num_comps, STBI_rgb); break;
 
 		// TODO(john): support this format
 		case gs_texture_format_rgba16f: 
 		default:
 		{
-			gs_assert( false );
+			gs_assert( false);
 		} break;
 	}
 
-	if ( !texture_data ) {
-		gs_println( "Warning: could not load texture: %s", file_path );
+	if ( !texture_data) {
+		gs_println( "Warning: could not load texture: %s", file_path);
 	}
 
 	return texture_data;
 }
 
 
-gs_texture_t opengl_construct_texture_from_file( const char* file_path, gs_texture_parameter_desc* t_desc )
+gs_texture_t opengl_construct_texture_from_file( const char* file_path, gs_texture_parameter_desc* t_desc)
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	opengl_render_data_t* data = __get_opengl_data_internal();
 	gs_texture_t tex = {0};
 
-	if ( t_desc ) 
+	if ( t_desc) 
 	{
 		// Load texture data and fill out parameters for descriptor
 		t_desc->data = gfx->load_texture_data_from_file( file_path, true, t_desc->texture_format, 
-			(s32*)&t_desc->width, (s32*)&t_desc->height, (s32*)&t_desc->num_comps );
+			(s32*)&t_desc->width, (s32*)&t_desc->height, (s32*)&t_desc->num_comps);
 		
 		// Finish constructing texture resource from descriptor and return handle
-		tex = opengl_construct_texture( *t_desc );
+		tex = opengl_construct_texture( *t_desc);
 
-		gs_free( t_desc->data );
+		gs_free( t_desc->data);
 	}
 	else
 	{
 		gs_texture_parameter_desc desc = gs_texture_parameter_desc_default();
 		// Load texture data and fill out parameters for descriptor
 		desc.data = gfx->load_texture_data_from_file( file_path, true, desc.texture_format, 
-			(s32*)&desc.width, (s32*)&desc.height, (s32*)&desc.num_comps );
+			(s32*)&desc.width, (s32*)&desc.height, (s32*)&desc.num_comps);
 
 		// Finish constructing texture resource from descriptor and return handle
-		tex = opengl_construct_texture( desc );
+		tex = opengl_construct_texture( desc);
 
-		gs_free( desc.data );
+		gs_free( desc.data);
 	}
 
 	return tex;
 }
 
-void opengl_update_texture_data( gs_texture_t* tex, gs_texture_parameter_desc t_desc )
+void opengl_update_texture_data( gs_texture_t* tex, gs_texture_parameter_desc t_desc)
 {
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
@@ -1814,22 +1814,22 @@ void opengl_update_texture_data( gs_texture_t* tex, gs_texture_parameter_desc t_
 	u32 height = t_desc.height;
 	u32 num_comps = t_desc.num_comps;
 
-	glBindTexture( GL_TEXTURE_2D, tex->id );
+	glBindTexture( GL_TEXTURE_2D, tex->id);
 
 	// Construct texture based on appropriate format
-	switch( texture_format ) 
+	switch( texture_format) 
 	{
-		case gs_texture_format_rgb8: 	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, t_desc.data ); break;
-		case gs_texture_format_rgba8: 	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, t_desc.data ); break;
-		case gs_texture_format_rgba16f: glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, t_desc.data ); break;
+		case gs_texture_format_rgb8: 	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, t_desc.data); break;
+		case gs_texture_format_rgba8: 	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, t_desc.data); break;
+		case gs_texture_format_rgba16f: glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, t_desc.data); break;
 	}
 
 	s32 mag_filter = t_desc.mag_filter == gs_nearest ? GL_NEAREST : GL_LINEAR;
 	s32 min_filter = t_desc.min_filter == gs_nearest ? GL_NEAREST : GL_LINEAR;
 
-	if ( t_desc.generate_mips ) 
+	if ( t_desc.generate_mips) 
 	{
-		if ( t_desc.min_filter == gs_nearest ) 
+		if ( t_desc.min_filter == gs_nearest) 
 		{
 			min_filter = t_desc.mipmap_filter == gs_nearest ? GL_NEAREST_MIPMAP_NEAREST : 
 				GL_NEAREST_MIPMAP_LINEAR;
@@ -1850,22 +1850,22 @@ void opengl_update_texture_data( gs_texture_t* tex, gs_texture_parameter_desc t_
 						 t_desc.texture_wrap_t == gs_clamp_to_edge ? GL_CLAMP_TO_EDGE : 
 						 GL_CLAMP_TO_BORDER;
 
-	// Anisotropic filtering ( not supported by default, need to figure this out )
+	// Anisotropic filtering ( not supported by default, need to figure this out)
 	// f32 aniso = 0.0f; 
-	// glGetFloatv( GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &aniso );
-	// glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso );
+	// glGetFloatv( GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &aniso);
+	// glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso);
 
-	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, texture_wrap_s );
-	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, texture_wrap_t );
-	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter );
-	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter );
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, texture_wrap_s);
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, texture_wrap_t);
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter);
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter);
 
-	if ( t_desc.generate_mips )
+	if ( t_desc.generate_mips)
 	{
-		glGenerateMipmap( GL_TEXTURE_2D );
+		glGenerateMipmap( GL_TEXTURE_2D);
 	}
 
-	glBindTexture( GL_TEXTURE_2D, 0 );
+	glBindTexture( GL_TEXTURE_2D, 0);
 
 	tex->width 			= width;
 	tex->height 		= height;
@@ -1873,23 +1873,23 @@ void opengl_update_texture_data( gs_texture_t* tex, gs_texture_parameter_desc t_
 	tex->texture_format = texture_format;
 }
 
-void shader_t_free( shader_t* shader )
+void shader_t_free( shader_t* shader)
 {
-	glDeleteProgram( shader->program_id );
+	glDeleteProgram( shader->program_id);
 }
 
-void opengl_free_shader( gs_shader_t shader )
+void opengl_free_shader( gs_shader_t shader)
 {
 	opengl_render_data_t* __data = __get_opengl_data_internal();
 	
-	shader_t_free( &shader );
+	shader_t_free( &shader);
 }
 
 // Method for creating graphics layer for opengl
 struct gs_graphics_i* __gs_graphics_construct()
 {
 	// Construct new graphics interface instance
-	struct gs_graphics_i* gfx = gs_malloc_init( gs_graphics_i );
+	struct gs_graphics_i* gfx = gs_malloc_init( gs_graphics_i);
 
 	// Null out data
 	gfx->data = NULL;
@@ -1931,8 +1931,8 @@ struct gs_graphics_i* __gs_graphics_construct()
 	gfx->bind_material_uniforms 		= &opengl_bind_material_uniforms;
 	gfx->bind_material_shader 			= &opengl_bind_material_shader;
 
-	// void ( * set_uniform_buffer_sub_data )( gs_command_buffer_t*, gs_resource( gs_uniform_buffer ), void*, usize );
-	// void ( * set_index_buffer )( gs_command_buffer_t*, gs_resource( gs_index_buffer ) );
+	// void ( * set_uniform_buffer_sub_data)( gs_command_buffer_t*, gs_resource( gs_uniform_buffer), void*, usize);
+	// void ( * set_index_buffer)( gs_command_buffer_t*, gs_resource( gs_index_buffer));
 
 	/*============================================================
 	// Graphics Resource Construction
@@ -1949,7 +1949,7 @@ struct gs_graphics_i* __gs_graphics_construct()
 	gfx->construct_texture_from_file 			= &opengl_construct_texture_from_file;
 	gfx->update_texture_data 					= &opengl_update_texture_data;
 	gfx->load_texture_data_from_file 			= &opengl_load_texture_data_from_file;
-	// gs_resource( gs_uniform_buffer )( * construct_uniform_buffer )( gs_resource( gs_shader ), const char* uniform_name );
+	// gs_resource( gs_uniform_buffer)( * construct_uniform_buffer)( gs_resource( gs_shader), const char* uniform_name);
 	// gfx->construct_material 					= &opengl_construct_material;
 	// gfx->construct_quad_batch 					= &opengl_construct_quad_batch;
 
@@ -1962,11 +1962,11 @@ struct gs_graphics_i* __gs_graphics_construct()
 	/*============================================================
 	// Graphics Resource Free Ops
 	============================================================*/
-	// void ( * free_vertex_attribute_layout_t_desc )( gs_resource( gs_vertex_attribute_layout_desc ) );
-	// void ( * free_vertex_buffer )( gs_resource( gs_vertex_buffer ) );
-	// void ( * free_index_buffer )( gs_resource( gs_index_buffer ) );
-	// void ( * free_shader )( gs_resource( gs_shader ) );
-	// void ( * free_uniform_buffer )( gs_resource( gs_uniform_buffer ) );
+	// void ( * free_vertex_attribute_layout_t_desc)( gs_resource( gs_vertex_attribute_layout_desc));
+	// void ( * free_vertex_buffer)( gs_resource( gs_vertex_buffer));
+	// void ( * free_index_buffer)( gs_resource( gs_index_buffer));
+	// void ( * free_shader)( gs_resource( gs_shader));
+	// void ( * free_uniform_buffer)( gs_resource( gs_uniform_buffer));
 	gfx->free_shader = &opengl_free_shader;
 
 	/*============================================================
@@ -2002,13 +2002,13 @@ struct gs_graphics_i* __gs_graphics_construct()
 	/*============================================================
 	// Graphics Utility APIs
 	============================================================*/
-	gfx->material_i = gs_malloc_init( gs_material_i ); 
-	gfx->uniform_i = gs_malloc_init( gs_uniform_block_i );
-	gfx->quad_batch_i = gs_malloc_init( gs_quad_batch_i );
+	gfx->material_i = gs_malloc_init( gs_material_i); 
+	gfx->uniform_i = gs_malloc_init( gs_uniform_block_i);
+	gfx->quad_batch_i = gs_malloc_init( gs_quad_batch_i);
 
 	*(gfx->material_i) = __gs_material_i_new();
 	*(gfx->uniform_i) = __gs_uniform_block_i_new();
-	*(gfx->quad_batch_i ) = __gs_quad_batch_i_new();
+	*(gfx->quad_batch_i) = __gs_quad_batch_i_new();
 
 	return gfx;
 }

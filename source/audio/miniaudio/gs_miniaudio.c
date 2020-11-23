@@ -19,25 +19,25 @@ typedef struct miniaudio_data_t
 //     u32 sample_count_to_output;	
 //     u32 samples_per_second;
 
-//     gs_slot_array( gs_audio_source_t ) 			sources;	// Raw source data
-//     gs_slot_array( gs_audio_instance_data_t ) 	instances; 	// Instanced data
+//     gs_slot_array(gs_audio_source_t) 			sources;	// Raw source data
+//     gs_slot_array(gs_audio_instance_data_t) 	instances; 	// Instanced data
 
 //     // Any internal data required for audio API
 //     void* internal;
 
 // } gs_audio_data_t;
 
-void ma_audio_commit( ma_device* device, void* output, const void* input, ma_uint32 frame_count )
+void ma_audio_commit(ma_device* device, void* output, const void* input, ma_uint32 frame_count)
 {
 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
 	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
 	miniaudio_data_t* ma = (miniaudio_data_t*)__data->internal;	
 
-	memset( output, 0, frame_count * device->playback.channels * ma_get_bytes_per_sample(device->playback.format) );
+	memset(output, 0, frame_count * device->playback.channels * ma_get_bytes_per_sample(device->playback.format));
 
 	ma_mutex_lock(&ma->lock);
 	{
-		for ( u32 i = 0; i < gs_slot_array_size( __data->instances ); ++i )
+		for (u32 i = 0; i < gs_slot_array_size(__data->instances); ++i)
 		{
 			gs_audio_instance_data_t* inst = &__data->instances.data[ i ];
 
@@ -45,7 +45,7 @@ void ma_audio_commit( ma_device* device, void* output, const void* input, ma_uin
 			gs_audio_source_t* src = inst->src;
 
 			// Easy out if the instance is not playing currently or the source is invalid
-			if ( !inst->playing || !src ) {
+			if (!inst->playing || !src) {
 				continue;
 			}
 
@@ -56,7 +56,7 @@ void ma_audio_commit( ma_device* device, void* output, const void* input, ma_uin
 			f64 sample_volume = inst->volume;
 
 			// Write to channels
-			for ( u64 write_sample = 0; write_sample < samples_to_write; ++write_sample )
+			for (u64 write_sample = 0; write_sample < samples_to_write; ++write_sample)
 			{
 				s32 channels = src->channels;
 				f64 start_sample_position = inst->sample_position;
@@ -66,7 +66,7 @@ void ma_audio_commit( ma_device* device, void* output, const void* input, ma_uin
 				// Not sure about this line of code...
 				f64 target_sample_position = start_sample_position + (f64)channels * (f64)1.f;
 
-				if ( target_sample_position >= src->sample_count )
+				if (target_sample_position >= src->sample_count)
 				{
 					target_sample_position -= src->sample_count;
 				}
@@ -76,7 +76,7 @@ void ma_audio_commit( ma_device* device, void* output, const void* input, ma_uin
 
 				{
 					u64 left_idx = (u64)start_sample_position;
-					if ( channels > 1 )
+					if (channels > 1)
 					{
 						left_idx &= ~((u64)(0x01));
 					}
@@ -118,9 +118,9 @@ void ma_audio_commit( ma_device* device, void* output, const void* input, ma_uin
 	            inst->sample_position = target_sample_position;
 
 	            // Loop sound if necessary
-	            if( inst->sample_position >= src->sample_count - channels - 1 )
+	            if(inst->sample_position >= src->sample_count - channels - 1)
 	            {
-	                if( inst->loop )
+	                if(inst->loop)
 	                {
 	                    // inst->sample_position -= src->sample_count;
 	                    inst->sample_position = 0;
@@ -140,11 +140,11 @@ void ma_audio_commit( ma_device* device, void* output, const void* input, ma_uin
 	ma_mutex_unlock(&ma->lock);
 }
 
-gs_result audio_init( gs_audio_i* audio )
+gs_result audio_init(gs_audio_i* audio)
 {
 	// Construct instance of render data
 	struct gs_audio_data_t* data = audio->data;
-	data->internal = gs_malloc_init( struct miniaudio_data_t );
+	data->internal = gs_malloc_init(struct miniaudio_data_t);
 	miniaudio_data_t* output = (miniaudio_data_t*)data->internal;
 
 	ma_result result = {0};
@@ -164,29 +164,29 @@ gs_result audio_init( gs_audio_i* audio )
 
     output->device_config = config;
 
-    if ( ( ma_device_init( NULL, &output->device_config, &output->device ) ) != MA_SUCCESS ) {
-    	gs_assert( false );
+    if ((ma_device_init(NULL, &output->device_config, &output->device)) != MA_SUCCESS) {
+    	gs_assert(false);
     }
 
-    if ( ( ma_device_start( &output->device ) ) != MA_SUCCESS ) {
-    	gs_assert( false );
+    if ((ma_device_start(&output->device)) != MA_SUCCESS) {
+    	gs_assert(false);
     }
 
 	return gs_result_success;
 }
 
-gs_result audio_commit( gs_audio_i* audio )
+gs_result audio_commit(gs_audio_i* audio)
 {
 	return gs_result_success;
 }
 
-gs_result audio_shutdown( gs_audio_i* audio )
+gs_result audio_shutdown(gs_audio_i* audio)
 {
 	// NOTE(john): Free resources and stuff...
 	return gs_result_success;
 }
 
-gs_result audio_update( gs_audio_i* audio )
+gs_result audio_update(gs_audio_i* audio)
 {
 	return gs_result_success;
 }
@@ -195,7 +195,7 @@ gs_result audio_update( gs_audio_i* audio )
 // Audio API Construction (fill out specific internal for custom API)
 ====================================================================*/
 
-void gs_audio_construct_internal( struct gs_audio_i* audio )
+void gs_audio_construct_internal(struct gs_audio_i* audio)
 {
 	// Audio Init/De-Init Functions
 	audio->init 		= &audio_init;
