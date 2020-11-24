@@ -3,32 +3,32 @@
 
 // typedef struct composite_pass_data_t
 // {
-// 	gs_resource( gs_shader ) shader;
-// 	gs_resource ( gs_uniform ) u_input_tex;
-// 	gs_resource( gs_texture ) render_target;
-// 	gs_resource( gs_vertex_buffer ) vb;
-// 	gs_resource( gs_index_buffer ) ib;
+// 	gs_resource(gs_shader) shader;
+// 	gs_resource (gs_uniform) u_input_tex;
+// 	gs_resource(gs_texture) render_target;
+// 	gs_resource(gs_vertex_buffer) vb;
+// 	gs_resource(gs_index_buffer) ib;
 // } composite_pass_data_t;
 
 // typedef struct composite_pass_t
 // {
-// 	_base( render_pass_i );
+// 	_base(render_pass_i);
 // 	composite_pass_data_t data;
 // } composite_pass_t;
 
-// // Use this to pass in parameters for the pass ( will check for this )
+// // Use this to pass in parameters for the pass (will check for this)
 // typedef struct composite_pass_parameters_t 
 // {
-// 	gs_resource( gs_texture ) input_texture;
+// 	gs_resource(gs_texture) input_texture;
 // } composite_pass_parameters_t;
 
 // Forward Decl.
-void cp_pass( gs_command_buffer_t* cb, struct render_pass_i* pass, void* paramters );
+void cp_pass(gs_command_buffer_t* cb, struct render_pass_i* pass, void* paramters);
 
 const char* cp_v_src = "\n"
 "#version 330 core\n"
-"layout( location = 0 ) in vec2 a_position;\n"
-"layout( location = 1 ) in vec2 a_uv;\n"
+"layout(location = 0) in vec2 a_position;\n"
+"layout(location = 1) in vec2 a_uv;\n"
 "out vec2 tex_coord;\n"
 "void main() {\n"
 "	gl_Position = vec4(a_position, 0.0, 1.0);\n"
@@ -56,7 +56,7 @@ const char* cp_f_src = "\n"
 "	return ((x*(A*x+C*B)+D*E)/(x*(A*x+B)+D*F))-E/F;\n"
 "}\n"
 "void main() {\n"
-"	vec3 hdr = max( vec3(0.0), texture(u_tex, tex_coord).rgb );\n"
+"	vec3 hdr = max(vec3(0.0), texture(u_tex, tex_coord).rgb);\n"
 "	vec3 bloom = texture(u_blur_tex, tex_coord).rgb;\n"
 "	hdr += bloom * u_bloom_scalar;\n"
 "	vec3 result = vec3(1.0) - exp(-hdr * u_exposure);\n"
@@ -95,20 +95,20 @@ composite_pass_t composite_pass_ctor()
 	composite_pass_t p = {0};
 
 	// Construct shaders resources
-	p.data.vb = gfx->construct_vertex_buffer( layout, sizeof(layout), cp_v_data, sizeof(cp_v_data) );
-	p.data.ib = gfx->construct_index_buffer( cp_i_data, sizeof(cp_i_data) );
-	p.data.shader = gfx->construct_shader( cp_v_src, cp_f_src );
-	p.data.u_input_tex = gfx->construct_uniform( p.data.shader, "u_tex", gs_uniform_type_sampler2d );
-	p.data.u_blur_tex = gfx->construct_uniform( p.data.shader, "u_blur_tex", gs_uniform_type_sampler2d );
-	// p.data.u_exposure = gfx->construct_uniform( p.data.shader, "u_exposure", gs_uniform_type_float );
-	// p.data.u_gamma = gfx->construct_uniform( p.data.shader, "u_gamma", gs_uniform_type_float );
-	p.data.u_bloom_scalar = gfx->construct_uniform( p.data.shader, "u_bloom_scalar", gs_uniform_type_float );
-	// p.data.u_saturation = gfx->construct_uniform( p.data.shader, "u_saturation", gs_uniform_type_float );
+	p.data.vb = gfx->construct_vertex_buffer(layout, sizeof(layout), cp_v_data, sizeof(cp_v_data));
+	p.data.ib = gfx->construct_index_buffer(cp_i_data, sizeof(cp_i_data));
+	p.data.shader = gfx->construct_shader(cp_v_src, cp_f_src);
+	p.data.u_input_tex = gfx->construct_uniform(p.data.shader, "u_tex", gs_uniform_type_sampler2d);
+	p.data.u_blur_tex = gfx->construct_uniform(p.data.shader, "u_blur_tex", gs_uniform_type_sampler2d);
+	// p.data.u_exposure = gfx->construct_uniform(p.data.shader, "u_exposure", gs_uniform_type_float);
+	// p.data.u_gamma = gfx->construct_uniform(p.data.shader, "u_gamma", gs_uniform_type_float);
+	p.data.u_bloom_scalar = gfx->construct_uniform(p.data.shader, "u_bloom_scalar", gs_uniform_type_float);
+	// p.data.u_saturation = gfx->construct_uniform(p.data.shader, "u_saturation", gs_uniform_type_float);
 
 	p._base.pass = &cp_pass;
 
 	// Construct render target to render into
-	gs_vec2 ws = platform->window_size( platform->main_window() );
+	gs_vec2 ws = platform->window_size(platform->main_window());
 
 	gs_texture_parameter_desc t_desc = gs_texture_parameter_desc_default();
 	t_desc.texture_wrap_s = gs_clamp_to_border;
@@ -122,26 +122,26 @@ composite_pass_t composite_pass_ctor()
 	t_desc.width = (s32)(ws.x);
 	t_desc.height = (s32)(ws.y);
 
-	// Two render targets for double buffered separable blur ( For now, just set to window's viewport )
-	p.data.render_target = gfx->construct_texture( t_desc );
+	// Two render targets for double buffered separable blur (For now, just set to window's viewport)
+	p.data.render_target = gfx->construct_texture(t_desc);
 
 	return p;
 }
 
-void cp_pass( gs_command_buffer_t* cb, struct render_pass_i* _pass, void* _params )
+void cp_pass(gs_command_buffer_t* cb, struct render_pass_i* _pass, void* _params)
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 	gs_vec2 ws = platform->window_size(platform->main_window());
 
 	composite_pass_t* p = (composite_pass_t*)_pass;
-	if ( !p ) {
+	if (!p) {
 		return;
 	} 
 
 	// Can only use valid params
 	composite_pass_parameters_t* params = (composite_pass_parameters_t*)_params;
-	if ( !params ) {
+	if (!params) {
 		return;
 	}
 
@@ -157,35 +157,35 @@ void cp_pass( gs_command_buffer_t* cb, struct render_pass_i* _pass, void* _param
 	t_desc.width = (s32)(ws.x);
 	t_desc.height = (s32)(ws.y);
 
-	// Two render targets for double buffered separable blur ( For now, just set to window's viewport )
-	gfx->update_texture_data( &p->data.render_target, t_desc );
+	// Two render targets for double buffered separable blur (For now, just set to window's viewport)
+	gfx->update_texture_data(&p->data.render_target, t_desc);
 
 	// Set frame buffer attachment for rendering
-	gfx->set_frame_buffer_attachment( cb, p->data.render_target, 0 );
+	gfx->set_frame_buffer_attachment(cb, p->data.render_target, 0);
 
 	// Set viewport 
-	gfx->set_view_port( cb, (u32)(ws.x), (u32)(ws.y) );	
+	gfx->set_view_port(cb, (u32)(ws.x), (u32)(ws.y));	
 
 	// Clear
 	f32 cc[4] = { 0.f, 0.f, 0.f, 1.f };
-	gfx->set_view_clear( cb, (f32*)&cc );
+	gfx->set_view_clear(cb, (f32*)&cc);
 
 	// Use the program
-	gfx->bind_shader( cb, p->data.shader );
+	gfx->bind_shader(cb, p->data.shader);
 	{
 		f32 saturation = 2.0f;
 		f32 gamma = 2.2f;
 		f32 exposure = 0.5f;
 		f32 bloom_scalar = 1.0f;
 
-		gfx->bind_texture( cb, p->data.u_input_tex, params->input_texture, 0 );
-		gfx->bind_texture( cb, p->data.u_blur_tex, params->blur_texture, 1 );
-		gfx->bind_uniform( cb, p->data.u_saturation, &saturation );
-		gfx->bind_uniform( cb, p->data.u_gamma, &gamma );
-		gfx->bind_uniform( cb, p->data.u_exposure, &exposure );
-		gfx->bind_uniform( cb, p->data.u_bloom_scalar, &bloom_scalar );
-		gfx->bind_vertex_buffer( cb, p->data.vb );
-		gfx->bind_index_buffer( cb, p->data.ib );
-		gfx->draw_indexed( cb, 6, 0 );
+		gfx->bind_texture(cb, p->data.u_input_tex, params->input_texture, 0);
+		gfx->bind_texture(cb, p->data.u_blur_tex, params->blur_texture, 1);
+		gfx->bind_uniform(cb, p->data.u_saturation, &saturation);
+		gfx->bind_uniform(cb, p->data.u_gamma, &gamma);
+		gfx->bind_uniform(cb, p->data.u_exposure, &exposure);
+		gfx->bind_uniform(cb, p->data.u_bloom_scalar, &bloom_scalar);
+		gfx->bind_vertex_buffer(cb, p->data.vb);
+		gfx->bind_index_buffer(cb, p->data.ib);
+		gfx->draw_indexed(cb, 6, 0);
 	}
 }

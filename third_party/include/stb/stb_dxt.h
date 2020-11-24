@@ -66,11 +66,11 @@
 #define STB_DXT_DITHER    1   // use dithering. dubious win. never use for normal maps and the like!
 #define STB_DXT_HIGHQUAL  2   // high quality mode, does two refinement steps instead of 1. ~30-40% slower.
 
-void rygCompress( unsigned char *dst, unsigned char *src, int w, int h, int isDxt5 );
+void rygCompress(unsigned char *dst, unsigned char *src, int w, int h, int isDxt5);
 
 // TODO remove these, not working properly..
-void rygCompressYCoCg( unsigned char *dst, unsigned char *src, int w, int h );
-void linearize( unsigned char * dst, const unsigned char * src, int n );
+void rygCompressYCoCg(unsigned char *dst, unsigned char *src, int w, int h);
+void linearize(unsigned char * dst, const unsigned char * src, int n);
 
 void stb_compress_dxt_block(unsigned char *dest, const unsigned char *src, int alpha, int mode);
 #define STB_COMPRESS_DXT_BLOCK
@@ -260,9 +260,9 @@ static unsigned int stb__MatchColorsBlock(unsigned char *block, unsigned char *c
         int dot = dots[i];
         mask >>= 2;
 
-        int bits =( (dot < halfPoint) ? 4 : 0 )
-                | ( (dot < c0Point) ? 2 : 0 )
-                | ( (dot < c3Point) ? 1 : 0 );
+        int bits =((dot < halfPoint) ? 4 : 0)
+                | ((dot < c0Point) ? 2 : 0)
+                | ((dot < c3Point) ? 1 : 0);
 
         mask |= indexMap[bits];
       }
@@ -355,8 +355,8 @@ static void stb__OptimizeColorsBlock(unsigned char *block, unsigned short *pmax1
     int muv,minv,maxv;
 
 #ifdef NEW_OPTIMISATIONS
-#   define MIN(a,b)      (int)a + ( ((int)b-a) & ( ((int)b-a) >> 31 ) )
-#   define MAX(a,b)      (int)a + ( ((int)b-a) & ( ((int)a-b) >> 31 ) )
+#   define MIN(a,b)      (int)a + (((int)b-a) & (((int)b-a) >> 31))
+#   define MAX(a,b)      (int)a + (((int)b-a) & (((int)a-b) >> 31))
 #   define RANGE(a,b,n)  int min##n = MIN(a,b); int max##n = a+b - min##n; muv += a+b;
 #   define MINMAX(a,b,n) int min##n = MIN(min##a, min##b); int max##n = MAX(max##a, max##b); 
 
@@ -836,15 +836,15 @@ static void extractBlock(const unsigned char *src, int x, int y,
 }
 
  // should be a pretty optimized 0-255 clamper
-inline static unsigned char clamp255( int n )
+inline static unsigned char clamp255(int n)
 {
-  if( n > 255 ) n = 255;
-  if( n < 0 ) n = 0;
+  if(n > 255) n = 255;
+  if(n < 0) n = 0;
   return n;
 }
 
 
-void rgbToYCoCgBlock( unsigned char * dst, const unsigned char * src )
+void rgbToYCoCgBlock(unsigned char * dst, const unsigned char * src)
 {
     // Calculate Co and Cg extents
     int extents = 0;
@@ -860,9 +860,9 @@ void rgbToYCoCgBlock( unsigned char * dst, const unsigned char * src )
         iCo = (px[0]<<1) - (px[2]<<1);
         iCg = (px[1]<<1) - px[0] - px[2];
         if(-iCo > extents) extents = -iCo;
-        if( iCo > extents) extents = iCo;
+        if(iCo > extents) extents = iCo;
         if(-iCg > extents) extents = -iCg;
-        if( iCg > extents) extents = iCg;
+        if(iCg > extents) extents = iCg;
 
         blockCo[n] = iCo;
         blockCg[n++] = iCg;
@@ -892,7 +892,7 @@ void rgbToYCoCgBlock( unsigned char * dst, const unsigned char * src )
     for(i=0;i<16;i++)
     {
         // Calculate components
-        iY = ( px[0] + (px[1]<<1) + px[2] + 2 ) / 4;
+        iY = (px[0] + (px[1]<<1) + px[2] + 2) / 4;
         iCo = ((blockCo[n] / scaleFactor) + 128);
         iCg = ((blockCg[n] / scaleFactor) + 128);
 
@@ -918,11 +918,11 @@ void rgbToYCoCgBlock( unsigned char * dst, const unsigned char * src )
         int tmp = (2 + r + b) >> 2;
         
         // Co
-        iCo = clamp255( 128 + ((r - b + 1) >> 1) );
+        iCo = clamp255(128 + ((r - b + 1) >> 1));
         // Y
-        iY = clamp255( g + tmp );
+        iY = clamp255(g + tmp);
         // Cg
-        iCg = clamp255( 128 + g - tmp );
+        iCg = clamp255(128 + g - tmp);
 
         px += 4;
 
@@ -937,7 +937,7 @@ void rgbToYCoCgBlock( unsigned char * dst, const unsigned char * src )
 }
 
 
-void rygCompress( unsigned char *dst, unsigned char *src, int w, int h, int isDxt5 )
+void rygCompress(unsigned char *dst, unsigned char *src, int w, int h, int isDxt5)
 {
    
    unsigned char block[64];
@@ -954,7 +954,7 @@ void rygCompress( unsigned char *dst, unsigned char *src, int w, int h, int isDx
    }
 }
 
-void rygCompressYCoCg( unsigned char *dst, unsigned char *src, int w, int h )
+void rygCompressYCoCg(unsigned char *dst, unsigned char *src, int w, int h)
 {
     unsigned char block[64];
    unsigned char ycocgblock[64];
@@ -1024,15 +1024,15 @@ static inline unsigned char linearize(unsigned char inByte)
     if(srgbVal < 0.04045)
         linearVal = srgbVal / 12.92f;
     else
-        linearVal = pow( (srgbVal + 0.055f) / 1.055f, 2.4f);
+        linearVal = pow((srgbVal + 0.055f) / 1.055f, 2.4f);
 
     return (unsigned char)(floor(sqrt(linearVal)* 255.0 + 0.5));
 }
 
-void linearize( unsigned char * dst, const unsigned char * src, int n )
+void linearize(unsigned char * dst, const unsigned char * src, int n)
 {
   n*=4;
-  for( int i = 0; i < n; i++ )
+  for(int i = 0; i < n; i++)
     dst[i] = linearize(src[i]);
 }
 

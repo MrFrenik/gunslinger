@@ -65,11 +65,11 @@ gs_result app_update();		// Use to update your application
 gs_result app_shutdown();	// Use to shutdown your appliaction
 
 void render_scene();
-void generate_terrain_mesh( f32* noise_data, u32 width, u32 height );
+void generate_terrain_mesh(f32* noise_data, u32 width, u32 height);
 
-int main( int argc, char** argv )
+int main(int argc, char** argv)
 {
-	gs_application_desc app = {0};
+	gs_application_desc_t app = {0};
 	app.window_title 		= "Terrain Demo";
 	app.window_width 		= 800;
 	app.window_height 		= 600;
@@ -78,32 +78,32 @@ int main( int argc, char** argv )
 	app.shutdown 			= &app_shutdown;
 
 	// Construct internal instance of our engine
-	gs_engine* engine = gs_engine_construct( app );
+	gs_engine_t* engine = gs_engine_construct(app);
 
 	// Run the internal engine loop until completion
 	gs_result res = engine->run();
 
 	// Check result of engine after exiting loop
-	if ( res != gs_result_success ) 
+	if (res != gs_result_success) 
 	{
-		gs_println( "Error: Engine did not successfully finish running." );
+		gs_println("Error: Engine did not successfully finish running.");
 		return -1;
 	}
 
-	gs_println( "Gunslinger exited successfully." );
+	gs_println("Gunslinger exited successfully.");
 
 	return 0;	
 }
 
-f32* generate_noise_map( u32 width, u32 height, f32 scale, u32 octaves, f32 persistence, f32 lacunarity, f32 x_offset, f32 y_offset )
+f32* generate_noise_map(u32 width, u32 height, f32 scale, u32 octaves, f32 persistence, f32 lacunarity, f32 x_offset, f32 y_offset)
 {
-	f32* noise_map = gs_malloc( width * height * sizeof(f32) );
-	gs_assert( noise_map );
+	f32* noise_map = gs_malloc(width * height * sizeof(f32));
+	gs_assert(noise_map);
 
 	f32 max_noise_height = f32_min;
 	f32 min_noise_height = f32_max;
 
-	for ( s32 y = 0; y < height; y++ ) 
+	for (s32 y = 0; y < height; y++) 
 	{
 		for (s32 x = 0; x < width; x++) 
 		{
@@ -111,12 +111,12 @@ f32* generate_noise_map( u32 width, u32 height, f32 scale, u32 octaves, f32 pers
 			f32 frequency = 1.f;
 			f32 noise_height = 0.f;
 
-			for ( u32 i = 0; i < octaves; ++i )
+			for (u32 i = 0; i < octaves; ++i)
 			{
 				f32 sample_x = ((x + x_offset) / scale) * frequency;
 				f32 sample_y = ((y + y_offset) / scale) * frequency;
 
-				f32 p_val = sdnoise2( sample_x, sample_y, NULL, NULL );
+				f32 p_val = sdnoise2(sample_x, sample_y, NULL, NULL);
 				noise_height += p_val * amplitude;
 
 				amplitude *= persistence;
@@ -125,32 +125,32 @@ f32* generate_noise_map( u32 width, u32 height, f32 scale, u32 octaves, f32 pers
 
 			noise_map[ y * width + x ] = noise_height;
 
-			if ( noise_height > max_noise_height )
+			if (noise_height > max_noise_height)
 				max_noise_height = noise_height;
-			else if ( noise_height < min_noise_height )
+			else if (noise_height < min_noise_height)
 				min_noise_height = noise_height;
 		}
 	}
 
 	// Renormalize ranges between [0.0, 1.0]
-	for ( s32 y = 0; y < height; ++y )
+	for (s32 y = 0; y < height; ++y)
 	{
-		for ( s32 x = 0; x < width; ++x )
+		for (s32 x = 0; x < width; ++x)
 		{
-			noise_map[ y * width + x ] = gs_map_range( min_noise_height, max_noise_height, 
-				0.0f, 1.f, noise_map[ y * width + x ] );
+			noise_map[ y * width + x ] = gs_map_range(min_noise_height, max_noise_height, 
+				0.0f, 1.f, noise_map[ y * width + x ]);
 		}
 	}
 
 	return noise_map;
 }
 
-color_t* generate_color_map( f32* noise_map, u32 width, u32 height )
+color_t* generate_color_map(f32* noise_map, u32 width, u32 height)
 {
-	gs_assert( noise_map );
+	gs_assert(noise_map);
 
-	color_t* color_map= gs_malloc( width * height * sizeof(color_t) );
-	gs_assert( color_map );
+	color_t* color_map= gs_malloc(width * height * sizeof(color_t));
+	gs_assert(color_map);
 
 	terrain_type regions[] = {
 		{0.3f, {10, 20, 150, 255}},		// Deep Water
@@ -166,14 +166,14 @@ color_t* generate_color_map( f32* noise_map, u32 width, u32 height )
 	u32 num_regions = sizeof(regions) / sizeof(terrain_type);
 
 	// We'll then create a color map from these noise values
-	for ( s32 y = 0; y < height; y++ ) 
+	for (s32 y = 0; y < height; y++) 
 	{
-		for ( s32 x = 0; x < width; x++ ) 
+		for (s32 x = 0; x < width; x++) 
 		{
 			u32 idx = y * width + x;
 			f32 p = noise_map[ idx ];
-			for ( u32 i = 0; i < num_regions; ++i ) {
-				if ( p <= regions[ i ].height ) {
+			for (u32 i = 0; i < num_regions; ++i) {
+				if (p <= regions[ i ].height) {
 					color_map[ idx ] = regions[ i ].color;
 					break;
 				}
@@ -184,22 +184,22 @@ color_t* generate_color_map( f32* noise_map, u32 width, u32 height )
 	return color_map;
 }
 
-terrain_mesh_data_packet_t generate_terrain_mesh_data( f32* noise_data, u32 width, u32 height )
+terrain_mesh_data_packet_t generate_terrain_mesh_data(f32* noise_data, u32 width, u32 height)
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 
-	gs_dyn_array( gs_vec3 ) positions = gs_dyn_array_new( gs_vec3 );
-	gs_dyn_array( gs_vec2 ) uvs = gs_dyn_array_new( gs_vec2 );
-	gs_dyn_array( u32 ) tris = gs_dyn_array_new( u32 );
+	gs_dyn_array(gs_vec3) positions = gs_dyn_array_new(gs_vec3);
+	gs_dyn_array(gs_vec2) uvs = gs_dyn_array_new(gs_vec2);
+	gs_dyn_array(u32) tris = gs_dyn_array_new(u32);
 
 	// Generate triangles, calculate normals, calculate uvs
 	f32 top_left_x = (f32)(width - 1) / -2.f;
 	f32 top_left_z = (f32)(height - 1) / 2.f;
 
 	// Generate mesh data
-	for ( u32 y = 0; y < height; ++y )
+	for (u32 y = 0; y < height; ++y)
 	{
-		for ( u32 x = 0; x < width; ++x )
+		for (u32 x = 0; x < width; ++x)
 		{
 			u32 idx = y * width + x;
 
@@ -208,34 +208,34 @@ terrain_mesh_data_packet_t generate_terrain_mesh_data( f32* noise_data, u32 widt
 			f32 mult = 1.f;
 			f32 water_height = 0.3f;
 			f32 sand_height = 0.5f;
-			if ( nd <= water_height ) {
-				mult = gs_map_range( 0.f, water_height, 0.f, 0.9f, nd );
+			if (nd <= water_height) {
+				mult = gs_map_range(0.f, water_height, 0.f, 0.9f, nd);
 			} else {
-				mult = gs_map_range( water_height + 0.1f, 1.f, 10.f, 30.f, nd );
+				mult = gs_map_range(water_height + 0.1f, 1.f, 10.f, 30.f, nd);
 			}
-			gs_dyn_array_push( positions, ((gs_vec3){top_left_x + x, nd * mult, top_left_z - y }) );
-			gs_dyn_array_push( uvs, ((gs_vec2){ x / (f32)width, y / (f32)height }) );
+			gs_dyn_array_push(positions, ((gs_vec3){top_left_x + x, nd * mult, top_left_z - y }));
+			gs_dyn_array_push(uvs, ((gs_vec2){ x / (f32)width, y / (f32)height }));
 
-			if ( x < (width - 1) && y < (height - 1) ) {
+			if (x < (width - 1) && y < (height - 1)) {
 				// Add triangle 
-				gs_dyn_array_push( tris, idx );
-				gs_dyn_array_push( tris, idx + width );
-				gs_dyn_array_push( tris, idx + width + 1 );
+				gs_dyn_array_push(tris, idx);
+				gs_dyn_array_push(tris, idx + width);
+				gs_dyn_array_push(tris, idx + width + 1);
 				// Add triangle
-				gs_dyn_array_push( tris, idx + width + 1 );
-				gs_dyn_array_push( tris, idx + 1 );
-				gs_dyn_array_push( tris, idx );
+				gs_dyn_array_push(tris, idx + width + 1);
+				gs_dyn_array_push(tris, idx + 1);
+				gs_dyn_array_push(tris, idx);
 			}
 		}
 	}
 
-	gs_vec3* vertex_normals = gs_malloc( sizeof(gs_vec3) * gs_dyn_array_size(positions) );
-	memset( vertex_normals, 0, sizeof(gs_vec3) * gs_dyn_array_size(positions));
+	gs_vec3* vertex_normals = gs_malloc(sizeof(gs_vec3) * gs_dyn_array_size(positions));
+	memset(vertex_normals, 0, sizeof(gs_vec3) * gs_dyn_array_size(positions));
 
 	// Now that we have positions, uvs, and triangles, need to calculate normals for each triangle
 	// For now, just put normal as UP, cause normals are going to take more time to do
 	// Go through each triangle, calculate normal
-	for ( u32 i = 0; i < gs_dyn_array_size( tris ); i += 3 )
+	for (u32 i = 0; i < gs_dyn_array_size(tris); i += 3)
 	{
 		u32 idx_0 = tris[ i ];
 		u32 idx_1 = tris[ i + 1 ];
@@ -245,34 +245,34 @@ terrain_mesh_data_packet_t generate_terrain_mesh_data( f32* noise_data, u32 widt
 		gs_vec3 pos_1 = positions[ idx_1 ];
 		gs_vec3 pos_2 = positions[ idx_2 ];
 
-		// Calculate vector a = normalize( pos_1 - pos_0 )
-		gs_vec3 a = gs_vec3_norm( gs_vec3_sub( pos_1, pos_0 ) );
+		// Calculate vector a = normalize(pos_1 - pos_0)
+		gs_vec3 a = gs_vec3_norm(gs_vec3_sub(pos_1, pos_0));
 
-		// Calculate vector b = normalize( pos_2 - pos_0 )
-		gs_vec3 b = gs_vec3_norm( gs_vec3_sub( pos_2, pos_0 ) );
+		// Calculate vector b = normalize(pos_2 - pos_0)
+		gs_vec3 b = gs_vec3_norm(gs_vec3_sub(pos_2, pos_0));
 
 		// Calculate normal 
-		gs_vec3 n = gs_vec3_norm( gs_vec3_cross( b, a ) );
+		gs_vec3 n = gs_vec3_norm(gs_vec3_cross(b, a));
 
 		// Add normal to every position idx found up above
-		vertex_normals[ idx_0 ] = gs_vec3_add( vertex_normals[ idx_0 ], n );
-		vertex_normals[ idx_1 ] = gs_vec3_add( vertex_normals[ idx_1 ], n );
-		vertex_normals[ idx_2 ] = gs_vec3_add( vertex_normals[ idx_2 ], n );
+		vertex_normals[ idx_0 ] = gs_vec3_add(vertex_normals[ idx_0 ], n);
+		vertex_normals[ idx_1 ] = gs_vec3_add(vertex_normals[ idx_1 ], n);
+		vertex_normals[ idx_2 ] = gs_vec3_add(vertex_normals[ idx_2 ], n);
 	}
 
 	// Loop through all vertex normals and normalize
-	gs_for_range_i( gs_dyn_array_size( positions ) )
+	gs_for_range_i(gs_dyn_array_size(positions))
 	{
-		vertex_normals[ i ] = gs_vec3_norm( vertex_normals[ i ] );
+		vertex_normals[ i ] = gs_vec3_norm(vertex_normals[ i ]);
 	}
 
 	// Batch vertex data together
-	usize vert_data_size = gs_dyn_array_size( tris ) * sizeof(terrain_vert_data_t);
-	f32* vertex_data = gs_malloc( vert_data_size );
+	usize vert_data_size = gs_dyn_array_size(tris) * sizeof(terrain_vert_data_t);
+	f32* vertex_data = gs_malloc(vert_data_size);
 
 	// Have to interleave data
 	u32 n_idx = 0;
-	gs_for_range_i( gs_dyn_array_size( tris ) )
+	gs_for_range_i(gs_dyn_array_size(tris))
 	{
 		u32 base_idx = i * 8;
 		u32 idx = tris[ i ];
@@ -289,20 +289,20 @@ terrain_mesh_data_packet_t generate_terrain_mesh_data( f32* noise_data, u32 widt
 		vertex_data[ base_idx + 6 ] = uv.x;
 		vertex_data[ base_idx + 7 ] = uv.y;
 
-		if ( i % 3 == 0 ) 
+		if (i % 3 == 0) 
 			n_idx++;
 	}
 
 	terrain_mesh_data_packet_t packet;
 	packet.data = vertex_data;
 	packet.sz = vert_data_size;
-	packet.count = gs_dyn_array_size( tris );
+	packet.count = gs_dyn_array_size(tris);
 
 	// Free used memory
-	gs_dyn_array_free( positions );
-	gs_dyn_array_free( uvs );
-	gs_free( vertex_normals );
-	gs_dyn_array_free( tris );
+	gs_dyn_array_free(positions);
+	gs_dyn_array_free(uvs);
+	gs_free(vertex_normals);
+	gs_dyn_array_free(tris);
 
 	return packet;
 }
@@ -315,13 +315,13 @@ gs_result app_init()
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 	
 	// Create noise map
-	f32* noise_map = generate_noise_map( map_width, map_height, scale, octaves, persistence, lacunarity, 0.f, 0.f );
+	f32* noise_map = generate_noise_map(map_width, map_height, scale, octaves, persistence, lacunarity, 0.f, 0.f);
 
 	// Create color map from noise
-	color_t* color_map = generate_color_map( noise_map, map_width, map_height );
+	color_t* color_map = generate_color_map(noise_map, map_width, map_height);
 
 	// Generate terrain mesh data from noise
-	terrain_mesh_data_packet_t mesh = generate_terrain_mesh_data( noise_map, map_width, map_height );
+	terrain_mesh_data_packet_t mesh = generate_terrain_mesh_data(noise_map, map_width, map_height);
 
 	gs_vertex_attribute_type layout[] = {
 		gs_vertex_attribute_float3,
@@ -330,7 +330,7 @@ gs_result app_init()
 	};
 
 	// Create mesh 
-	terrain_model.vbo = gfx->construct_vertex_buffer( layout, sizeof(layout), mesh.data, mesh.sz );
+	terrain_model.vbo = gfx->construct_vertex_buffer(layout, sizeof(layout), mesh.data, mesh.sz);
 	terrain_model.vertex_count = mesh.count;
 
 	// Make our noise texture for gpu
@@ -343,43 +343,43 @@ gs_result app_init()
 	t_desc.data = color_map; 
 
 	// Construct texture
-	noise_tex = gfx->construct_texture( t_desc );
+	noise_tex = gfx->construct_texture(t_desc);
 
 	char* v_src = NULL;
 	char* f_src = NULL;
 
 	// Construct shader
 	if (platform->file_exists("../assets/shaders/terrain.v.glsl")) {
-		v_src = platform->read_file_contents( "../assets/shaders/terrain.v.glsl", "r", NULL );
-		f_src = platform->read_file_contents( "../assets/shaders/terrain.f.glsl", "r", NULL );
-		shader = gfx->construct_shader( v_src, f_src );
+		v_src = platform->read_file_contents("../assets/shaders/terrain.v.glsl", "r", NULL);
+		f_src = platform->read_file_contents("../assets/shaders/terrain.f.glsl", "r", NULL);
+		shader = gfx->construct_shader(v_src, f_src);
 	}
 	else if (platform->file_exists("./assets/shaders/terrain.v.glsl")) {
-		v_src = platform->read_file_contents( "./assets/shaders/terrain.v.glsl", "r", NULL );
-		f_src = platform->read_file_contents( "./assets/shaders/terrain.f.glsl", "r", NULL );
-		shader = gfx->construct_shader( v_src, f_src );
+		v_src = platform->read_file_contents("./assets/shaders/terrain.v.glsl", "r", NULL);
+		f_src = platform->read_file_contents("./assets/shaders/terrain.f.glsl", "r", NULL);
+		shader = gfx->construct_shader(v_src, f_src);
 	}
 	else {
 		gs_println("Can't find shaders!");
-		gs_assert( false );
+		gs_assert(false);
 	}
 
 	// Construct uniforms
-	u_noise_tex = gfx->construct_uniform( shader, "u_noise_tex", gs_uniform_type_sampler2d );
-	u_proj = gfx->construct_uniform( shader, "u_proj", gs_uniform_type_mat4 );
-	u_view = gfx->construct_uniform( shader, "u_view", gs_uniform_type_mat4 );
-	u_model = gfx->construct_uniform( shader, "u_model", gs_uniform_type_mat4 );
-	u_view_pos = gfx->construct_uniform( shader, "u_view_pos", gs_uniform_type_vec3 );
+	u_noise_tex = gfx->construct_uniform(shader, "u_noise_tex", gs_uniform_type_sampler2d);
+	u_proj = gfx->construct_uniform(shader, "u_proj", gs_uniform_type_mat4);
+	u_view = gfx->construct_uniform(shader, "u_view", gs_uniform_type_mat4);
+	u_model = gfx->construct_uniform(shader, "u_model", gs_uniform_type_mat4);
+	u_view_pos = gfx->construct_uniform(shader, "u_view_pos", gs_uniform_type_vec3);
 
 	// Construct command buffer for rendering
 	g_cb = gs_command_buffer_new();
 
 	// Free data
-	gs_free( noise_map );
-	gs_free( color_map );
-	gs_free( mesh.data );
-	gs_free( v_src );
-	gs_free( f_src );
+	gs_free(noise_map);
+	gs_free(color_map);
+	gs_free(mesh.data);
+	gs_free(v_src);
+	gs_free(f_src);
 
 	return gs_result_success;
 }
@@ -398,10 +398,10 @@ void update_terrain()
 	f32 _lacunarity = (2.5f);
 
 	// Create noise map
-	f32* noise_map = generate_noise_map( map_width, map_height, _scale, octaves, _persistence, _lacunarity, t * speed, t );
+	f32* noise_map = generate_noise_map(map_width, map_height, _scale, octaves, _persistence, _lacunarity, t * speed, t);
 
 	// Create color map from noise
-	color_t* color_map = generate_color_map( noise_map, map_width, map_height );
+	color_t* color_map = generate_color_map(noise_map, map_width, map_height);
 
 	// Make our noise texture for gpu
 	gs_texture_parameter_desc t_desc = gs_texture_parameter_desc_default();
@@ -415,32 +415,32 @@ void update_terrain()
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 
 	// Update texture (let's just glTexImage2d for now)...
-	gfx->update_texture_data( &noise_tex, t_desc );
+	gfx->update_texture_data(&noise_tex, t_desc);
 
 	// Generate terrain mesh data from noise
-	terrain_mesh_data_packet_t mesh = generate_terrain_mesh_data( noise_map, map_width, map_height );
+	terrain_mesh_data_packet_t mesh = generate_terrain_mesh_data(noise_map, map_width, map_height);
 
 	// Create mesh 
-	gfx->update_vertex_buffer_data( terrain_model.vbo, mesh.data, mesh.sz );
+	gfx->update_vertex_buffer_data(terrain_model.vbo, mesh.data, mesh.sz);
 
 	// Free data
-	gs_free( noise_map );
-	gs_free( color_map );
-	gs_free( mesh.data );
+	gs_free(noise_map);
+	gs_free(color_map);
+	gs_free(mesh.data);
 }
 
 gs_result app_update()
 {
 	// Grab global instance of engine
-	gs_engine* engine = gs_engine_instance();
+	gs_engine_t* engine = gs_engine_instance();
 
-	gs_timed_action( 20, 
+	gs_timed_action(20, 
 	{
-		gs_println( "Frame: %.2f", engine->ctx.platform->time.frame );
+		gs_println("Frame: %.2f", engine->ctx.platform->time.frame);
 	});
 
 	// If we press the escape key, exit the application
-	if ( engine->ctx.platform->key_pressed( gs_keycode_esc ) )
+	if (engine->ctx.platform->key_pressed(gs_keycode_esc))
 	{
 		return gs_result_success;
 	}
@@ -472,27 +472,27 @@ void render_scene()
 
 	// Clear screen
 	f32 clear_color[4] = { 0.3f, 0.3f, 0.3f, 1.f };
-	gfx->set_view_clear( cb, clear_color );
-	gfx->set_face_culling( cb, gs_face_culling_front );
-	gfx->set_view_port( cb, fbs.x, fbs.y );
+	gfx->set_view_clear(cb, clear_color);
+	gfx->set_face_culling(cb, gs_face_culling_front);
+	gfx->set_view_port(cb, fbs.x, fbs.y);
 
 	// Set depth flags
-	gfx->set_depth_enabled( cb, true );
+	gfx->set_depth_enabled(cb, true);
 
 	// Bind shader
-	gfx->bind_shader( cb, shader );
+	gfx->bind_shader(cb, shader);
 
 	// Bind texture
-	gfx->bind_texture( cb, u_noise_tex, noise_tex, 0 );	
+	gfx->bind_texture(cb, u_noise_tex, noise_tex, 0);	
 
 	static f32 t = 0.f;
 	t += 0.1f * gs_engine_instance()->ctx.platform->time.delta;
 	gs_mat4 model = gs_mat4_identity();
 	gs_vqs xform = gs_vqs_default();
-	gs_quat rot = gs_quat_angle_axis( gs_deg_to_rad(30.f), (gs_vec3){1.f, 0.f, 0.f});
-	rot = gs_quat_mul_quat( rot, gs_quat_angle_axis( t, (gs_vec3){0.f, 1.f, 0.f}));
+	gs_quat rot = gs_quat_angle_axis(gs_deg_to_rad(30.f), (gs_vec3){1.f, 0.f, 0.f});
+	rot = gs_quat_mul_quat(rot, gs_quat_angle_axis(t, (gs_vec3){0.f, 1.f, 0.f}));
 	xform.rotation = rot;
-	model = gs_vqs_to_mat4( &xform );
+	model = gs_vqs_to_mat4(&xform);
 	gs_mat4 view = gs_mat4_identity();
 	gs_mat4 proj = gs_mat4_identity();
 	// view = gs_mat4_translate((gs_vec3){0.f, -10.f, -200.f});
@@ -506,19 +506,19 @@ void render_scene()
 	f32 t_s = t * 10.f;
 
 	gs_vec3 vp = (gs_vec3){0.f, -10.f, -250.f};
-	gfx->bind_uniform( cb, u_view_pos, &vp );
-	gfx->bind_uniform( cb, u_view, &view_mtx );
-	gfx->bind_uniform( cb, u_proj, &proj_mtx );
-	gfx->bind_uniform( cb, u_model, &model );
+	gfx->bind_uniform(cb, u_view_pos, &vp);
+	gfx->bind_uniform(cb, u_view, &view_mtx);
+	gfx->bind_uniform(cb, u_proj, &proj_mtx);
+	gfx->bind_uniform(cb, u_model, &model);
 
 	// Bind vertex buffer of terrain
-	gfx->bind_vertex_buffer( cb, terrain_model.vbo );
+	gfx->bind_vertex_buffer(cb, terrain_model.vbo);
 
 	// Draw
-	gfx->draw( cb, 0, terrain_model.vertex_count );
+	gfx->draw(cb, 0, terrain_model.vertex_count);
 
 	// Submit command buffer to graphics api for final render
-	gfx->submit_command_buffer( cb );
+	gfx->submit_command_buffer(cb);
 
 }
 

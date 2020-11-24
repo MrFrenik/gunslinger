@@ -1995,7 +1995,7 @@ static void ShowDemoWindowWidgets()
             ImGui::GetItemRectMin().x, ImGui::GetItemRectMin().y,
             ImGui::GetItemRectMax().x, ImGui::GetItemRectMax().y,
             ImGui::GetItemRectSize().x, ImGui::GetItemRectSize().y
-        );
+       );
 
         static bool embed_all_inside_a_child_window = false;
         ImGui::Checkbox("Embed everything inside a child window (for additional testing)", &embed_all_inside_a_child_window);
@@ -2398,7 +2398,7 @@ static void ShowDemoWindowLayout()
                         active_tabs.push_back(next_tab_id++); // Add new tab
 
                 // Submit our regular tabs
-                for (int n = 0; n < active_tabs.Size; )
+                for (int n = 0; n < active_tabs.Size;)
                 {
                     bool open = true;
                     char name[16];

@@ -1123,7 +1123,7 @@ STBIWDEF unsigned char *stbi_write_png_to_mem(const unsigned char *pixels, int s
       STBIW_MEMMOVE(filt+j*(x*n+1)+1, line_buffer, x*n);
    }
    STBIW_FREE(line_buffer);
-   zlib = stbi_zlib_compress(filt, y*( x*n+1), &zlen, stbi_write_png_compression_level);
+   zlib = stbi_zlib_compress(filt, y*(x*n+1), &zlen, stbi_write_png_compression_level);
    STBIW_FREE(filt);
    if (!zlib) return 0;
 
@@ -1323,7 +1323,7 @@ static int stbiw__jpg_processDU(stbi__write_context *s, int *bitBuf, int *bitCnt
       for (; DU[i]==0 && i<=end0pos; ++i) {
       }
       nrzeroes = i-startpos;
-      if ( nrzeroes >= 16 ) {
+      if (nrzeroes >= 16) {
          int lng = nrzeroes>>4;
          int nrmarker;
          for (nrmarker=1; nrmarker <= lng; ++nrmarker)

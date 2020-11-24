@@ -385,7 +385,7 @@ static GLFWbool initializeTIS(void)
 
 @implementation GLFWHelper
 
-- (void)selectedKeyboardInputSourceChanged:(NSObject* )object
+- (void)selectedKeyboardInputSourceChanged:(NSObject*)object
 {
     updateUnicodeDataNS();
 }

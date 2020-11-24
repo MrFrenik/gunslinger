@@ -18,11 +18,11 @@ void imgui_render();
 // Globals
 b8 g_show_demo_window = true;
 
-int main( int argc, char** argv )
+int main(int argc, char** argv)
 {
 	// This is our app description. It gives internal hints to our engine for various things like 
 	// window size, title, as well as update, init, and shutdown functions to be run. 
-	gs_application_desc app = {0};
+	gs_application_desc_t app = {0};
 	app.window_title 		= "ImGui";
 	app.window_width 		= 800;
 	app.window_height 		= 600;
@@ -30,19 +30,19 @@ int main( int argc, char** argv )
 	app.update 				= &app_update;
 
 	// Construct internal instance of our engine
-	gs_engine* engine = gs_engine_construct( app );
+	gs_engine_t* engine = gs_engine_construct(app);
 
 	// Run the internal engine loop until completion
 	gs_result res = engine->run();
 
 	// Check result of engine after exiting loop
-	if ( res != gs_result_success ) 
+	if (res != gs_result_success) 
 	{
-		gs_println( "Error: Engine did not successfully finish running." );
+		gs_println("Error: Engine did not successfully finish running.");
 		return -1;
 	}
 
-	gs_println( "Gunslinger exited successfully." );
+	gs_println("Gunslinger exited successfully.");
 
 	return 0;	
 }
@@ -58,10 +58,10 @@ gs_result app_init()
 gs_result app_update()
 {
 	// Grab global instance of engine
-	gs_engine* engine = gs_engine_instance();
+	gs_engine_t* engine = gs_engine_instance();
 
 	// If we press the escape key, exit the application
-	if ( engine->ctx.platform->key_pressed( gs_keycode_esc ) )
+	if (engine->ctx.platform->key_pressed(gs_keycode_esc))
 	{
 		return gs_result_success;
 	}
@@ -83,7 +83,7 @@ void imgui_init()
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 
 	// Get main window from platform
-	void* win = platform->raw_window_handle( platform->main_window() );
+	void* win = platform->raw_window_handle(platform->main_window());
 
 	 // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -113,7 +113,7 @@ void imgui_render()
 
     // TODO(john): abstract this all away to be rendered via command buffer system
     ImGui::Render();
-    gs_vec2 fbs = platform->frame_buffer_size( platform->main_window() );
+    gs_vec2 fbs = platform->frame_buffer_size(platform->main_window());
     glViewport(0, 0, fbs.x, fbs.y);
     glClearColor(0.1f, 0.1f, 0.1f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT);

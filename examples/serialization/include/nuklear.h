@@ -5692,8 +5692,8 @@ template<typename T> struct nk_alignof{struct Big {T x; char c;}; enum {
 #ifndef STBTT_malloc
 static nk_handle fictional_handle = {0};
 
-#define STBTT_malloc(x,u)  nk_malloc( fictional_handle, 0, x )
-#define STBTT_free(x,u)    nk_mfree( fictional_handle , x)
+#define STBTT_malloc(x,u)  nk_malloc(fictional_handle, 0, x)
+#define STBTT_free(x,u)    nk_mfree(fictional_handle , x)
 #endif
 
 #endif /* NK_NUKLEAR_H_ */
@@ -6516,7 +6516,7 @@ nk_strtod(const char *str, const char **endptr)
 
     if (*p == '.') {
         p++;
-        for(m = 0.1; *p && *p != 'e'; p++ ) {
+        for(m = 0.1; *p && *p != 'e'; p++) {
             value = value + (double) (*p - '0') * m;
             m *= 0.1;
         }
@@ -9430,7 +9430,7 @@ nk_draw_list_push_image(struct nk_draw_list *list, nk_handle texture)
         #ifdef NK_INCLUDE_COMMAND_USERDATA
             || prev->userdata.id != list->userdata.id
         #endif
-        ) nk_draw_list_push_command(list, prev->clip_rect, texture);
+       ) nk_draw_list_push_command(list, prev->clip_rect, texture);
     }
 }
 #ifdef NK_INCLUDE_COMMAND_USERDATA
@@ -13841,7 +13841,7 @@ STBTT_DEF void stbtt_GetCodepointHMetrics(const stbtt_fontinfo *info, int codepo
 
 STBTT_DEF void stbtt_GetFontVMetrics(const stbtt_fontinfo *info, int *ascent, int *descent, int *lineGap)
 {
-   if (ascent ) *ascent  = ttSHORT(info->data+info->hhea + 4);
+   if (ascent) *ascent  = ttSHORT(info->data+info->hhea + 4);
    if (descent) *descent = ttSHORT(info->data+info->hhea + 6);
    if (lineGap) *lineGap = ttSHORT(info->data+info->hhea + 8);
 }
@@ -13851,7 +13851,7 @@ STBTT_DEF int  stbtt_GetFontVMetricsOS2(const stbtt_fontinfo *info, int *typoAsc
    int tab = stbtt__find_table(info->data, info->fontstart, "OS/2");
    if (!tab)
       return 0;
-   if (typoAscent ) *typoAscent  = ttSHORT(info->data+tab + 68);
+   if (typoAscent) *typoAscent  = ttSHORT(info->data+tab + 68);
    if (typoDescent) *typoDescent = ttSHORT(info->data+tab + 70);
    if (typoLineGap) *typoLineGap = ttSHORT(info->data+tab + 72);
    return 1;
@@ -13937,9 +13937,9 @@ STBTT_DEF void stbtt_GetGlyphBitmapBoxSubpixel(const stbtt_fontinfo *font, int g
       if (iy1) *iy1 = 0;
    } else {
       /*  move to integral bboxes (treating pixels as little squares, what pixels get touched)? */
-      if (ix0) *ix0 = STBTT_ifloor( x0 * scale_x + shift_x);
+      if (ix0) *ix0 = STBTT_ifloor(x0 * scale_x + shift_x);
       if (iy0) *iy0 = STBTT_ifloor(-y1 * scale_y + shift_y);
-      if (ix1) *ix1 = STBTT_iceil ( x1 * scale_x + shift_x);
+      if (ix1) *ix1 = STBTT_iceil (x1 * scale_x + shift_x);
       if (iy1) *iy1 = STBTT_iceil (-y0 * scale_y + shift_y);
    }
 }
@@ -14871,10 +14871,10 @@ STBTT_DEF unsigned char *stbtt_GetGlyphBitmapSubpixel(const stbtt_fontinfo *info
    gbm.h = (iy1 - iy0);
    gbm.pixels = NULL; /*  in case we error */
 
-   if (width ) *width  = gbm.w;
+   if (width) *width  = gbm.w;
    if (height) *height = gbm.h;
-   if (xoff  ) *xoff   = ix0;
-   if (yoff  ) *yoff   = iy0;
+   if (xoff ) *xoff   = ix0;
+   if (yoff ) *yoff   = iy0;
 
    if (gbm.w && gbm.h) {
       gbm.pixels = (unsigned char *) STBTT_malloc(gbm.w * gbm.h, info->userdata);
@@ -15080,7 +15080,7 @@ static void stbrp_pack_rects(stbrp_context *con, stbrp_rect *rects, int num_rect
       if (con->y + rects[i].h > con->bottom_y)
          con->bottom_y = con->y + rects[i].h;
    }
-   for (   ; i < num_rects; ++i)
+   for (  ; i < num_rects; ++i)
       rects[i].was_packed = 0;
 }
 #endif
@@ -15096,7 +15096,7 @@ STBTT_DEF int stbtt_PackBegin(stbtt_pack_context *spc, unsigned char *pixels, in
 {
    stbrp_context *context = (stbrp_context *) STBTT_malloc(sizeof(*context)            ,alloc_context);
    int            num_nodes = pw - padding;
-   stbrp_node    *nodes   = (stbrp_node    *) STBTT_malloc(sizeof(*nodes  ) * num_nodes,alloc_context);
+   stbrp_node    *nodes   = (stbrp_node    *) STBTT_malloc(sizeof(*nodes ) * num_nodes,alloc_context);
 
    if (context == NULL || nodes == NULL) {
       if (context != NULL) STBTT_free(context, alloc_context);
@@ -15671,12 +15671,12 @@ static int stbtt__compute_crossings_x(float x, float y, int nverts, stbtt_vertex
    return winding;
 }
 
-static float stbtt__cuberoot( float x )
+static float stbtt__cuberoot(float x)
 {
    if (x<0)
       return -(float) STBTT_pow(-x,1.0f/3.0f);
    else
-      return  (float) STBTT_pow( x,1.0f/3.0f);
+      return  (float) STBTT_pow(x,1.0f/3.0f);
 }
 
 /*  x^3 + c*x^2 + b*x + a = 0 */
@@ -15704,9 +15704,9 @@ static int stbtt__solve_cubic(float a, float b, float c, float* r)
 	   r[1] = s - u * (m + n);
 	   r[2] = s - u * (m - n);
 
-      /* STBTT_assert( STBTT_fabs(((r[0]+a)*r[0]+b)*r[0]+c) < 0.05f);  // these asserts may not be safe at all scales, though they're in bezier t parameter units so maybe? */
-      /* STBTT_assert( STBTT_fabs(((r[1]+a)*r[1]+b)*r[1]+c) < 0.05f); */
-      /* STBTT_assert( STBTT_fabs(((r[2]+a)*r[2]+b)*r[2]+c) < 0.05f); */
+      /* STBTT_assert(STBTT_fabs(((r[0]+a)*r[0]+b)*r[0]+c) < 0.05f);  // these asserts may not be safe at all scales, though they're in bezier t parameter units so maybe? */
+      /* STBTT_assert(STBTT_fabs(((r[1]+a)*r[1]+b)*r[1]+c) < 0.05f); */
+      /* STBTT_assert(STBTT_fabs(((r[2]+a)*r[2]+b)*r[2]+c) < 0.05f); */
    	return 3;
    }
 }
@@ -15734,10 +15734,10 @@ STBTT_DEF unsigned char * stbtt_GetGlyphSDF(const stbtt_fontinfo *info, float sc
    w = (ix1 - ix0);
    h = (iy1 - iy0);
 
-   if (width ) *width  = w;
+   if (width) *width  = w;
    if (height) *height = h;
-   if (xoff  ) *xoff   = ix0;
-   if (yoff  ) *yoff   = iy0;
+   if (xoff ) *xoff   = ix0;
+   if (yoff ) *yoff   = iy0;
 
    /*  invert for y-downwards bitmaps */
    scale_y = -scale_y;
@@ -15930,7 +15930,7 @@ static stbtt_int32 stbtt__CompareUTF8toUTF16_bigendian_prefix(stbtt_uint8 *s1, s
          if (s1[i++] != 0xf0 + (c >> 18)) return -1;
          if (s1[i++] != 0x80 + ((c >> 12) & 0x3f)) return -1;
          if (s1[i++] != 0x80 + ((c >>  6) & 0x3f)) return -1;
-         if (s1[i++] != 0x80 + ((c      ) & 0x3f)) return -1;
+         if (s1[i++] != 0x80 + ((c     ) & 0x3f)) return -1;
          s2 += 2; /*  plus another 2 below */
          len2 -= 2;
       } else if (ch >= 0xdc00 && ch < 0xe000) {
@@ -15939,7 +15939,7 @@ static stbtt_int32 stbtt__CompareUTF8toUTF16_bigendian_prefix(stbtt_uint8 *s1, s
          if (i+2 >= len1) return -1;
          if (s1[i++] != 0xe0 + (ch >> 12)) return -1;
          if (s1[i++] != 0x80 + ((ch >> 6) & 0x3f)) return -1;
-         if (s1[i++] != 0x80 + ((ch     ) & 0x3f)) return -1;
+         if (s1[i++] != 0x80 + ((ch    ) & 0x3f)) return -1;
       }
       s2 += 2;
       len2 -= 2;
@@ -21171,7 +21171,7 @@ nk_menu_begin_symbol_text(struct nk_context *ctx, const char *title, int len,
 }
 NK_API int
 nk_menu_begin_symbol_label(struct nk_context *ctx,
-    const char *title, nk_flags align, enum nk_symbol_type sym, struct nk_vec2 size )
+    const char *title, nk_flags align, enum nk_symbol_type sym, struct nk_vec2 size)
 {
     return nk_menu_begin_symbol_text(ctx, title, nk_strlen(title), align,sym,size);
 }
@@ -25583,7 +25583,7 @@ nk_textedit_move_to_last(struct nk_text_edit *state)
     }
 }
 NK_INTERN int
-nk_is_word_boundary( struct nk_text_edit *state, int idx)
+nk_is_word_boundary(struct nk_text_edit *state, int idx)
 {
     int len;
     nk_rune c;
@@ -25597,10 +25597,10 @@ NK_INTERN int
 nk_textedit_move_to_word_previous(struct nk_text_edit *state)
 {
    int c = state->cursor - 1;
-   while( c >= 0 && !nk_is_word_boundary(state, c))
+   while(c >= 0 && !nk_is_word_boundary(state, c))
       --c;
 
-   if( c < 0 )
+   if(c < 0)
       c = 0;
 
    return c;
@@ -25610,10 +25610,10 @@ nk_textedit_move_to_word_next(struct nk_text_edit *state)
 {
    const int len = state->string.len;
    int c = state->cursor+1;
-   while( c < len && !nk_is_word_boundary(state, c))
+   while(c < len && !nk_is_word_boundary(state, c))
       ++c;
 
-   if( c > len )
+   if(c > len)
       c = len;
 
    return c;
@@ -25798,23 +25798,23 @@ retry:
 
     case NK_KEY_TEXT_WORD_LEFT:
         if (shift_mod) {
-            if( !NK_TEXT_HAS_SELECTION( state ) )
+            if(!NK_TEXT_HAS_SELECTION(state))
             nk_textedit_prep_selection_at_cursor(state);
             state->cursor = nk_textedit_move_to_word_previous(state);
             state->select_end = state->cursor;
-            nk_textedit_clamp(state );
+            nk_textedit_clamp(state);
         } else {
             if (NK_TEXT_HAS_SELECTION(state))
                 nk_textedit_move_to_first(state);
             else {
                 state->cursor = nk_textedit_move_to_word_previous(state);
-                nk_textedit_clamp(state );
+                nk_textedit_clamp(state);
             }
         } break;
 
     case NK_KEY_TEXT_WORD_RIGHT:
         if (shift_mod) {
-            if( !NK_TEXT_HAS_SELECTION( state ) )
+            if(!NK_TEXT_HAS_SELECTION(state))
                 nk_textedit_prep_selection_at_cursor(state);
             state->cursor = nk_textedit_move_to_word_next(state);
             state->select_end = state->cursor;
@@ -25824,7 +25824,7 @@ retry:
                 nk_textedit_move_to_last(state);
             else {
                 state->cursor = nk_textedit_move_to_word_next(state);
-                nk_textedit_clamp(state );
+                nk_textedit_clamp(state);
             }
         } break;
 

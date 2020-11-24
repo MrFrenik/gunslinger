@@ -21,7 +21,7 @@ struct gs_platform_i;
 struct gs_graphics_i;
 struct gs_audio_i;
 
-typedef struct gs_application_desc
+typedef struct gs_application_desc_t
 {
 	gs_result (* init)();
 	gs_result (* update)();
@@ -33,27 +33,27 @@ typedef struct gs_application_desc
 	f32 frame_rate;
 	b32 enable_vsync;
 	b32 is_running;
-} gs_application_desc;
+} gs_application_desc_t;
 
 // What would the context necessarily hold? Some container of all subsystems? 
-typedef struct
+typedef struct gs_engine_context_t
 {
 	struct gs_platform_i* 			platform;		// Main platform interface
 	struct gs_graphics_i* 			graphics;
 	struct gs_audio_i* 				audio;
-	gs_application_desc 			app;
-} gs_engine_context;
+	gs_application_desc_t 			app;
+} gs_engine_context_t;
 
 // This could be kept in an implementation file and just provide an interface to the user
-typedef struct 
+typedef struct gs_engine_t
 {
-	gs_engine_context ctx;
+	gs_engine_context_t ctx;
 	gs_result (* run)();
 	gs_result (* shutdown)();
-} gs_engine;
+} gs_engine_t;
 
-gs_engine* gs_engine_construct(gs_application_desc app_desc);
-gs_engine* gs_engine_instance();
+gs_engine_t* gs_engine_construct(gs_application_desc_t app_desc);
+gs_engine_t* gs_engine_instance();
 
 #ifdef __cplusplus
 }

@@ -5,8 +5,8 @@
 #include "audio/gs_audio.h"
 #include "math/gs_math.h"
 
-// Global instance of gunslinger engine ( ...THERE CAN ONLY BE ONE )
-_global gs_engine* gs_engine_instance_g = {0};
+// Global instance of gunslinger engine (...THERE CAN ONLY BE ONE)
+_global gs_engine_t* gs_engine_instance_g = {0};
 
 // Function forward declarations
 gs_result gs_engine_run();
@@ -17,18 +17,18 @@ void __gs_default_main_window_close_callback(void* window);
 
 gs_resource_handle window;
 
-gs_engine* gs_engine_construct(gs_application_desc app_desc)
+gs_engine_t* gs_engine_construct(gs_application_desc_t app_desc)
 {
 	if (gs_engine_instance_g == NULL)
 	{
 		// Construct instance
-		gs_engine_instance_g = gs_malloc_init(gs_engine);
+		gs_engine_instance_g = gs_malloc_init(gs_engine_t);
 
 		// Initialize the meta class registry
 		// Want a way to add user meta class information as well as the engine's (haven't considered how that looks yet)
-		// gs_meta_class_registry_init( &gs_engine_instance_g->ctx.registry );
+		// gs_meta_class_registry_init(&gs_engine_instance_g->ctx.registry);
 
-		// gs_assert( gs_engine_instance_g->ctx.registry.classes != NULL );	
+		// gs_assert(gs_engine_instance_g->ctx.registry.classes != NULL);	
 
 		// Set up function pointers
 		gs_engine_instance_g->run 		= &gs_engine_run;
@@ -179,7 +179,7 @@ gs_result gs_engine_shutdown()
 	return (gs_engine_instance()->ctx.app.shutdown());
 }
 
-gs_engine* gs_engine_instance()
+gs_engine_t* gs_engine_instance()
 {
 	return gs_engine_instance_g;
 }
@@ -194,7 +194,7 @@ gs_result __gs_default_app_shutdown()
 	return gs_result_success;
 }
 
-void __gs_default_main_window_close_callback( void* window )
+void __gs_default_main_window_close_callback(void* window)
 {
 	gs_engine_instance()->ctx.app.is_running = false;
 }

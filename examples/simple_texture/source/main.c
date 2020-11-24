@@ -51,9 +51,9 @@ gs_result app_init();		// Use to init your application
 gs_result app_update();		// Use to update your application
 gs_result app_shutdown();	// Use to shutdown your appliaction
 
-int main( int argc, char** argv )
+int main(int argc, char** argv)
 {
-	gs_application_desc app = {0};
+	gs_application_desc_t app = {0};
 	app.window_title 		= "Simple Texture";
 	app.window_width 		= 800;
 	app.window_height 		= 600;
@@ -62,19 +62,19 @@ int main( int argc, char** argv )
 	app.shutdown 			= &app_shutdown;
 
 	// Construct internal instance of our engine
-	gs_engine* engine = gs_engine_construct( app );
+	gs_engine_t* engine = gs_engine_construct(app);
 
 	// Run the internal engine loop until completion
 	gs_result res = engine->run();
 
 	// Check result of engine after exiting loop
-	if ( res != gs_result_success ) 
+	if (res != gs_result_success) 
 	{
-		gs_println( "Error: Engine did not successfully finish running." );
+		gs_println("Error: Engine did not successfully finish running.");
 		return -1;
 	}
 
-	gs_println( "Gunslinger exited successfully." );
+	gs_println("Gunslinger exited successfully.");
 
 	return 0;	
 }
@@ -86,17 +86,17 @@ gs_result app_init()
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 
-	// Construct command buffer ( the command buffer is used to allow for immediate drawing at any point in our program )
+	// Construct command buffer (the command buffer is used to allow for immediate drawing at any point in our program)
 	g_cb = gs_command_buffer_new();
 
 	// Construct shader from our source above
-	g_shader = gfx->construct_shader( v_src, f_src );
+	g_shader = gfx->construct_shader(v_src, f_src);
 
 	// Construct uniform for shader
-	u_view = gfx->construct_uniform( g_shader, "u_view", gs_uniform_type_mat4 );
-	u_model = gfx->construct_uniform( g_shader, "u_model", gs_uniform_type_mat4 );
-	u_proj = gfx->construct_uniform( g_shader, "u_proj", gs_uniform_type_mat4 );
-	u_tex = gfx->construct_uniform( g_shader, "u_tex", gs_uniform_type_sampler2d );
+	u_view = gfx->construct_uniform(g_shader, "u_view", gs_uniform_type_mat4);
+	u_model = gfx->construct_uniform(g_shader, "u_model", gs_uniform_type_mat4);
+	u_proj = gfx->construct_uniform(g_shader, "u_proj", gs_uniform_type_mat4);
+	u_tex = gfx->construct_uniform(g_shader, "u_tex", gs_uniform_type_sampler2d);
 
 	// Vertex data layout for our mesh
 	gs_vertex_attribute_type layout[] = {
@@ -121,14 +121,14 @@ gs_result app_init()
 	};
 
 	// Construct vertex and index buffers
-	g_vbo = gfx->construct_vertex_buffer( layout, sizeof(layout), v_data, sizeof(v_data) );
-	g_ibo = gfx->construct_index_buffer( i_data, sizeof(i_data) );
+	g_vbo = gfx->construct_vertex_buffer(layout, sizeof(layout), v_data, sizeof(v_data));
+	g_ibo = gfx->construct_index_buffer(i_data, sizeof(i_data));
 
 	// Get appropriate file path for our texture (depending on where the app is running from)
 	const char* tfp = platform->file_exists("./assets/gs.png") ? "./assets/gs.png" : "./../assets/gs.png";
 	gs_assert(platform->file_exists(tfp));	// We'll assert if the file doesn't exist
 
-	g_tex = gfx->construct_texture_from_file( tfp, NULL );
+	g_tex = gfx->construct_texture_from_file(tfp, NULL);
 
 	// Construct camera parameters
 	g_camera.transform = gs_vqs_default();
@@ -145,13 +145,13 @@ gs_result app_init()
 gs_result app_update()
 {
 	// Grab global instance of engine
-	gs_engine* engine = gs_engine_instance();
+	gs_engine_t* engine = gs_engine_instance();
 
 	// Platform api 
 	gs_platform_i* platform = engine->ctx.platform;
 
 	// If we press the escape key, exit the application
-	if ( platform->key_pressed( gs_keycode_esc ) )
+	if (platform->key_pressed(gs_keycode_esc))
 	{
 		return gs_result_success;
 	}
@@ -164,42 +164,42 @@ gs_result app_update()
 	gs_graphics_i* gfx = engine->ctx.graphics;
 
 	// Main window size
-	gs_vec2 ws = platform->window_size( platform->main_window() );
-	gs_vec2 fbs = platform->frame_buffer_size( platform->main_window() );
+	gs_vec2 ws = platform->window_size(platform->main_window());
+	gs_vec2 fbs = platform->frame_buffer_size(platform->main_window());
 
 	// Set clear color and clear screen
 	f32 clear_color[4] = { 0.2f, 0.2f, 0.2f, 1.f };
-	gfx->set_view_clear( &g_cb, clear_color );
-	gfx->set_view_port( &g_cb, fbs.x, fbs.y );
+	gfx->set_view_clear(&g_cb, clear_color);
+	gfx->set_view_port(&g_cb, fbs.x, fbs.y);
 
 	// Bind shader
-	gfx->bind_shader( &g_cb, g_shader );
+	gfx->bind_shader(&g_cb, g_shader);
 
 	// Bind matrix uniforms
-	gfx->bind_uniform_mat4( &g_cb, u_proj, gs_camera_get_projection( &g_camera, ws.x, ws.y ) );
-	gfx->bind_uniform_mat4( &g_cb, u_view, gs_camera_get_view( &g_camera ) );
-	gfx->bind_uniform_mat4( &g_cb, u_model, gs_mat4_identity() );
+	gfx->bind_uniform_mat4(&g_cb, u_proj, gs_camera_get_projection(&g_camera, ws.x, ws.y));
+	gfx->bind_uniform_mat4(&g_cb, u_view, gs_camera_get_view(&g_camera));
+	gfx->bind_uniform_mat4(&g_cb, u_model, gs_mat4_identity());
 
 	// Bind texture slot
-	gfx->bind_texture( &g_cb, u_tex, g_tex, 0 );
+	gfx->bind_texture(&g_cb, u_tex, g_tex, 0);
 
 	// Bind vertex buffer
-	gfx->bind_vertex_buffer( &g_cb, g_vbo );
+	gfx->bind_vertex_buffer(&g_cb, g_vbo);
 
 	// Bind index buffer
-	gfx->bind_index_buffer( &g_cb, g_ibo );
+	gfx->bind_index_buffer(&g_cb, g_ibo);
 
 	// Draw
-	gfx->draw_indexed( &g_cb, 6, 0 );
+	gfx->draw_indexed(&g_cb, 6, 0);
 
 	// Submit command buffer for rendering
-	gfx->submit_command_buffer( &g_cb );
+	gfx->submit_command_buffer(&g_cb);
 
 	return gs_result_in_progress;
 }
 
 gs_result app_shutdown()
 {
-	gs_println( "Goodbye, Gunslinger." );
+	gs_println("Goodbye, Gunslinger.");
 	return gs_result_success;
 }

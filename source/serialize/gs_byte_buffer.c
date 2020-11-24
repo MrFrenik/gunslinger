@@ -112,7 +112,7 @@ void gs_byte_buffer_read_str(gs_byte_buffer* buffer, char* str)
 
 gs_result 
 gs_byte_buffer_write_to_file
-( 
+(
 	gs_byte_buffer* buffer, 
 	const char* output_path 
 )
@@ -131,7 +131,7 @@ gs_byte_buffer_write_to_file
 
 gs_result 
 gs_byte_buffer_read_from_file
-( 
+(
 	gs_byte_buffer* buffer, 
 	const char* file_path 
 )

@@ -27,17 +27,17 @@ typedef struct gs_camera_t
 	gs_projection_type proj_type;
 } gs_camera_t;
 
-gs_mat4 gs_camera_get_view( gs_camera_t* cam );
-gs_mat4 gs_camera_get_projection( gs_camera_t* cam, s32 view_width, s32 view_height );
-gs_mat4 gs_camera_get_view_projection( gs_camera_t* cam, s32 view_width, s32 view_height );
-gs_vec3 gs_camera_forward( gs_camera_t* cam );
-gs_vec3 gs_camera_backward( gs_camera_t* cam );
-gs_vec3 gs_camera_up( gs_camera_t* cam );
-gs_vec3 gs_camera_down( gs_camera_t* cam );
-gs_vec3 gs_camera_right( gs_camera_t* cam );
-gs_vec3 gs_camera_left( gs_camera_t* cam );
-gs_vec3 gs_camera_unproject( gs_camera_t* cam, gs_vec3 coords, s32 view_width, s32 view_height );
-void gs_camera_offset_orientation( gs_camera_t* cam, f32 yaw, f32 picth );
+gs_mat4 gs_camera_get_view(gs_camera_t* cam);
+gs_mat4 gs_camera_get_projection(gs_camera_t* cam, s32 view_width, s32 view_height);
+gs_mat4 gs_camera_get_view_projection(gs_camera_t* cam, s32 view_width, s32 view_height);
+gs_vec3 gs_camera_forward(gs_camera_t* cam);
+gs_vec3 gs_camera_backward(gs_camera_t* cam);
+gs_vec3 gs_camera_up(gs_camera_t* cam);
+gs_vec3 gs_camera_down(gs_camera_t* cam);
+gs_vec3 gs_camera_right(gs_camera_t* cam);
+gs_vec3 gs_camera_left(gs_camera_t* cam);
+gs_vec3 gs_camera_unproject(gs_camera_t* cam, gs_vec3 coords, s32 view_width, s32 view_height);
+void gs_camera_offset_orientation(gs_camera_t* cam, f32 yaw, f32 picth);
 
 #ifdef __cplusplus
 }

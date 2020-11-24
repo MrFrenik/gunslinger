@@ -827,7 +827,7 @@ conversion is very similar to the resampling API. Create a `ma_data_converter` o
         outputChannels,
         inputSampleRate,
         outputSampleRate
-    );
+   );
 
     ma_data_converter converter;
     ma_result result = ma_data_converter_init(&config, &converter);
@@ -3208,14 +3208,14 @@ struct ma_context
     ma_device_info* pDeviceInfos;          /* Playback devices first, then capture. */
     ma_bool32 isBackendAsynchronous : 1;   /* Set when the context is initialized. Set to 1 for asynchronous backends such as Core Audio and JACK. Do not modify. */
 
-    ma_result (* onUninit        )(ma_context* pContext);
-    ma_bool32 (* onDeviceIDEqual )(ma_context* pContext, const ma_device_id* pID0, const ma_device_id* pID1);
-    ma_result (* onEnumDevices   )(ma_context* pContext, ma_enum_devices_callback_proc callback, void* pUserData);    /* Return false from the callback to stop enumeration. */
-    ma_result (* onGetDeviceInfo )(ma_context* pContext, ma_device_type deviceType, const ma_device_id* pDeviceID, ma_share_mode shareMode, ma_device_info* pDeviceInfo);
-    ma_result (* onDeviceInit    )(ma_context* pContext, const ma_device_config* pConfig, ma_device* pDevice);
-    void      (* onDeviceUninit  )(ma_device* pDevice);
-    ma_result (* onDeviceStart   )(ma_device* pDevice);
-    ma_result (* onDeviceStop    )(ma_device* pDevice);
+    ma_result (* onUninit       )(ma_context* pContext);
+    ma_bool32 (* onDeviceIDEqual)(ma_context* pContext, const ma_device_id* pID0, const ma_device_id* pID1);
+    ma_result (* onEnumDevices  )(ma_context* pContext, ma_enum_devices_callback_proc callback, void* pUserData);    /* Return false from the callback to stop enumeration. */
+    ma_result (* onGetDeviceInfo)(ma_context* pContext, ma_device_type deviceType, const ma_device_id* pDeviceID, ma_share_mode shareMode, ma_device_info* pDeviceInfo);
+    ma_result (* onDeviceInit   )(ma_context* pContext, const ma_device_config* pConfig, ma_device* pDevice);
+    void      (* onDeviceUninit )(ma_device* pDevice);
+    ma_result (* onDeviceStart  )(ma_device* pDevice);
+    ma_result (* onDeviceStop   )(ma_device* pDevice);
     ma_result (* onDeviceMainLoop)(ma_device* pDevice);
 
     union
@@ -5822,11 +5822,11 @@ IMPLEMENTATION
                     "cpuid;"
                     "xchg{l} {%%}ebx, %k1;"
                     : "=a"(info[0]), "=&r"(info[1]), "=c"(info[2]), "=d"(info[3]) : "a"(fid), "c"(0)
-                );
+               );
             #else
                 __asm__ __volatile__ (
                     "cpuid" : "=a"(info[0]), "=b"(info[1]), "=c"(info[2]), "=d"(info[3]) : "a"(fid), "c"(0)
-                );
+               );
             #endif
         }
 
@@ -5837,7 +5837,7 @@ IMPLEMENTATION
 
             __asm__ __volatile__ (
                 "xgetbv" : "=a"(lo), "=d"(hi) : "c"(reg)
-            );
+           );
 
             return ((ma_uint64)hi << 32) | (ma_uint64)lo;
         }
@@ -6074,7 +6074,7 @@ static MA_INLINE ma_uint32 ma_swap_endian_uint32(ma_uint32 n)
             #else
                 "rev %[out], %[in]" : [out]"=r"(r) : [in]"r"(n)
             #endif
-            );
+           );
             return r;
         #else
             return __builtin_bswap32(n);
@@ -7241,7 +7241,7 @@ static MA_INLINE void ma_copy_memory_64(void* dst, const void* src, ma_uint64 si
         MA_COPY_MEMORY(dst, src, (size_t)bytesToCopyNow);  /* Safe cast to size_t. */
 
         sizeInBytes -= bytesToCopyNow;
-        dst = (      void*)((      ma_uint8*)dst + bytesToCopyNow);
+        dst = (     void*)((     ma_uint8*)dst + bytesToCopyNow);
         src = (const void*)((const ma_uint8*)src + bytesToCopyNow);
     }
 #endif
@@ -7626,21 +7626,21 @@ typedef unsigned char      c89atomic_flag;
     #define c89atomic_memory_order_seq_cst  5
     #if _MSC_VER >= 1400
         #include <intrin.h>
-        #define c89atomic_exchange_explicit_8( dst, src, order) (c89atomic_uint8 )_InterlockedExchange8 ((volatile char* )dst, (char )src)
+        #define c89atomic_exchange_explicit_8(dst, src, order) (c89atomic_uint8)_InterlockedExchange8 ((volatile char*)dst, (char)src)
         #define c89atomic_exchange_explicit_16(dst, src, order) (c89atomic_uint16)_InterlockedExchange16((volatile short*)dst, (short)src)
-        #define c89atomic_exchange_explicit_32(dst, src, order) (c89atomic_uint32)_InterlockedExchange  ((volatile long* )dst, (long )src)
+        #define c89atomic_exchange_explicit_32(dst, src, order) (c89atomic_uint32)_InterlockedExchange  ((volatile long*)dst, (long)src)
     #if defined(C89ATOMIC_64BIT)
         #define c89atomic_exchange_explicit_64(dst, src, order) (c89atomic_uint64)_InterlockedExchange64((volatile long long*)dst, (long long)src)
     #endif
-        #define c89atomic_fetch_add_explicit_8( dst, src, order) (c89atomic_uint8 )_InterlockedExchangeAdd8 ((volatile char* )dst, (char )src)
+        #define c89atomic_fetch_add_explicit_8(dst, src, order) (c89atomic_uint8)_InterlockedExchangeAdd8 ((volatile char*)dst, (char)src)
         #define c89atomic_fetch_add_explicit_16(dst, src, order) (c89atomic_uint16)_InterlockedExchangeAdd16((volatile short*)dst, (short)src)
-        #define c89atomic_fetch_add_explicit_32(dst, src, order) (c89atomic_uint32)_InterlockedExchangeAdd  ((volatile long* )dst, (long )src)
+        #define c89atomic_fetch_add_explicit_32(dst, src, order) (c89atomic_uint32)_InterlockedExchangeAdd  ((volatile long*)dst, (long)src)
     #if defined(C89ATOMIC_64BIT)
         #define c89atomic_fetch_add_explicit_64(dst, src, order) (c89atomic_uint64)_InterlockedExchangeAdd64((volatile long long*)dst, (long long)src)
     #endif
-        #define c89atomic_compare_and_swap_8( dst, expected, desired) (c89atomic_uint8 )_InterlockedCompareExchange8 ((volatile char*     )dst, (char     )desired, (char     )expected)
-        #define c89atomic_compare_and_swap_16(dst, expected, desired) (c89atomic_uint16)_InterlockedCompareExchange16((volatile short*    )dst, (short    )desired, (short    )expected)
-        #define c89atomic_compare_and_swap_32(dst, expected, desired) (c89atomic_uint32)_InterlockedCompareExchange  ((volatile long*     )dst, (long     )desired, (long     )expected)
+        #define c89atomic_compare_and_swap_8(dst, expected, desired) (c89atomic_uint8)_InterlockedCompareExchange8 ((volatile char*    )dst, (char    )desired, (char    )expected)
+        #define c89atomic_compare_and_swap_16(dst, expected, desired) (c89atomic_uint16)_InterlockedCompareExchange16((volatile short*   )dst, (short   )desired, (short   )expected)
+        #define c89atomic_compare_and_swap_32(dst, expected, desired) (c89atomic_uint32)_InterlockedCompareExchange  ((volatile long*    )dst, (long    )desired, (long    )expected)
         #define c89atomic_compare_and_swap_64(dst, expected, desired) (c89atomic_uint64)_InterlockedCompareExchange64((volatile long long*)dst, (long long)desired, (long long)expected)
     #if defined(C89ATOMIC_X64)
         #define c89atomic_thread_fence(order)   __faststorefence()
@@ -7759,11 +7759,11 @@ typedef unsigned char      c89atomic_flag;
     #endif
     #define c89atomic_compiler_fence()      c89atomic_thread_fence(c89atomic_memory_order_seq_cst)
     #define c89atomic_signal_fence(order)   c89atomic_thread_fence(order)
-    #define c89atomic_load_explicit_8( ptr, order) c89atomic_compare_and_swap_8 (ptr, 0, 0)
+    #define c89atomic_load_explicit_8(ptr, order) c89atomic_compare_and_swap_8 (ptr, 0, 0)
     #define c89atomic_load_explicit_16(ptr, order) c89atomic_compare_and_swap_16(ptr, 0, 0)
     #define c89atomic_load_explicit_32(ptr, order) c89atomic_compare_and_swap_32(ptr, 0, 0)
     #define c89atomic_load_explicit_64(ptr, order) c89atomic_compare_and_swap_64(ptr, 0, 0)
-    #define c89atomic_store_explicit_8( dst, src, order) (void)c89atomic_exchange_explicit_8 (dst, src, order)
+    #define c89atomic_store_explicit_8(dst, src, order) (void)c89atomic_exchange_explicit_8 (dst, src, order)
     #define c89atomic_store_explicit_16(dst, src, order) (void)c89atomic_exchange_explicit_16(dst, src, order)
     #define c89atomic_store_explicit_32(dst, src, order) (void)c89atomic_exchange_explicit_32(dst, src, order)
     #define c89atomic_store_explicit_64(dst, src, order) (void)c89atomic_exchange_explicit_64(dst, src, order)
@@ -7965,11 +7965,11 @@ typedef unsigned char      c89atomic_flag;
         (void)order;
         return oldValue;
     }
-    #define c89atomic_test_and_set_explicit_8( dst, order) c89atomic_exchange_explicit_8 (dst, 1, order)
+    #define c89atomic_test_and_set_explicit_8(dst, order) c89atomic_exchange_explicit_8 (dst, 1, order)
     #define c89atomic_test_and_set_explicit_16(dst, order) c89atomic_exchange_explicit_16(dst, 1, order)
     #define c89atomic_test_and_set_explicit_32(dst, order) c89atomic_exchange_explicit_32(dst, 1, order)
     #define c89atomic_test_and_set_explicit_64(dst, order) c89atomic_exchange_explicit_64(dst, 1, order)
-    #define c89atomic_clear_explicit_8( dst, order) c89atomic_store_explicit_8 (dst, 0, order)
+    #define c89atomic_clear_explicit_8(dst, order) c89atomic_store_explicit_8 (dst, 0, order)
     #define c89atomic_clear_explicit_16(dst, order) c89atomic_store_explicit_16(dst, 0, order)
     #define c89atomic_clear_explicit_32(dst, order) c89atomic_store_explicit_32(dst, 0, order)
     #define c89atomic_clear_explicit_64(dst, order) c89atomic_store_explicit_64(dst, 0, order)
@@ -7993,51 +7993,51 @@ typedef unsigned char      c89atomic_flag;
     #define c89atomic_is_lock_free_64(ptr)  __atomic_is_lock_free(8, ptr)
     #define c89atomic_flag_test_and_set_explicit(dst, order)        (c89atomic_flag)__atomic_test_and_set(dst, order)
     #define c89atomic_flag_clear_explicit(dst, order)               __atomic_clear(dst, order)
-    #define c89atomic_test_and_set_explicit_8( dst, order)          __atomic_exchange_n(dst, 1, order)
+    #define c89atomic_test_and_set_explicit_8(dst, order)          __atomic_exchange_n(dst, 1, order)
     #define c89atomic_test_and_set_explicit_16(dst, order)          __atomic_exchange_n(dst, 1, order)
     #define c89atomic_test_and_set_explicit_32(dst, order)          __atomic_exchange_n(dst, 1, order)
     #define c89atomic_test_and_set_explicit_64(dst, order)          __atomic_exchange_n(dst, 1, order)
-    #define c89atomic_clear_explicit_8( dst, order)                 __atomic_store_n(dst, 0, order)
+    #define c89atomic_clear_explicit_8(dst, order)                 __atomic_store_n(dst, 0, order)
     #define c89atomic_clear_explicit_16(dst, order)                 __atomic_store_n(dst, 0, order)
     #define c89atomic_clear_explicit_32(dst, order)                 __atomic_store_n(dst, 0, order)
     #define c89atomic_clear_explicit_64(dst, order)                 __atomic_store_n(dst, 0, order)
-    #define c89atomic_store_explicit_8( dst, src, order)            __atomic_store_n(dst, src, order)
+    #define c89atomic_store_explicit_8(dst, src, order)            __atomic_store_n(dst, src, order)
     #define c89atomic_store_explicit_16(dst, src, order)            __atomic_store_n(dst, src, order)
     #define c89atomic_store_explicit_32(dst, src, order)            __atomic_store_n(dst, src, order)
     #define c89atomic_store_explicit_64(dst, src, order)            __atomic_store_n(dst, src, order)
-    #define c89atomic_load_explicit_8( dst, order)                  __atomic_load_n(dst, order)
+    #define c89atomic_load_explicit_8(dst, order)                  __atomic_load_n(dst, order)
     #define c89atomic_load_explicit_16(dst, order)                  __atomic_load_n(dst, order)
     #define c89atomic_load_explicit_32(dst, order)                  __atomic_load_n(dst, order)
     #define c89atomic_load_explicit_64(dst, order)                  __atomic_load_n(dst, order)
-    #define c89atomic_exchange_explicit_8( dst, src, order)         __atomic_exchange_n(dst, src, order)
+    #define c89atomic_exchange_explicit_8(dst, src, order)         __atomic_exchange_n(dst, src, order)
     #define c89atomic_exchange_explicit_16(dst, src, order)         __atomic_exchange_n(dst, src, order)
     #define c89atomic_exchange_explicit_32(dst, src, order)         __atomic_exchange_n(dst, src, order)
     #define c89atomic_exchange_explicit_64(dst, src, order)         __atomic_exchange_n(dst, src, order)
-    #define c89atomic_compare_exchange_strong_explicit_8( dst, expected, desired, successOrder, failureOrder)   __atomic_compare_exchange_n(dst, expected, desired, 0, successOrder, failureOrder)
+    #define c89atomic_compare_exchange_strong_explicit_8(dst, expected, desired, successOrder, failureOrder)   __atomic_compare_exchange_n(dst, expected, desired, 0, successOrder, failureOrder)
     #define c89atomic_compare_exchange_strong_explicit_16(dst, expected, desired, successOrder, failureOrder)   __atomic_compare_exchange_n(dst, expected, desired, 0, successOrder, failureOrder)
     #define c89atomic_compare_exchange_strong_explicit_32(dst, expected, desired, successOrder, failureOrder)   __atomic_compare_exchange_n(dst, expected, desired, 0, successOrder, failureOrder)
     #define c89atomic_compare_exchange_strong_explicit_64(dst, expected, desired, successOrder, failureOrder)   __atomic_compare_exchange_n(dst, expected, desired, 0, successOrder, failureOrder)
-    #define c89atomic_compare_exchange_weak_explicit_8( dst, expected, desired, successOrder, failureOrder)     __atomic_compare_exchange_n(dst, expected, desired, 1, successOrder, failureOrder)
+    #define c89atomic_compare_exchange_weak_explicit_8(dst, expected, desired, successOrder, failureOrder)     __atomic_compare_exchange_n(dst, expected, desired, 1, successOrder, failureOrder)
     #define c89atomic_compare_exchange_weak_explicit_16(dst, expected, desired, successOrder, failureOrder)     __atomic_compare_exchange_n(dst, expected, desired, 1, successOrder, failureOrder)
     #define c89atomic_compare_exchange_weak_explicit_32(dst, expected, desired, successOrder, failureOrder)     __atomic_compare_exchange_n(dst, expected, desired, 1, successOrder, failureOrder)
     #define c89atomic_compare_exchange_weak_explicit_64(dst, expected, desired, successOrder, failureOrder)     __atomic_compare_exchange_n(dst, expected, desired, 1, successOrder, failureOrder)
-    #define c89atomic_fetch_add_explicit_8( dst, src, order)        __atomic_fetch_add(dst, src, order)
+    #define c89atomic_fetch_add_explicit_8(dst, src, order)        __atomic_fetch_add(dst, src, order)
     #define c89atomic_fetch_add_explicit_16(dst, src, order)        __atomic_fetch_add(dst, src, order)
     #define c89atomic_fetch_add_explicit_32(dst, src, order)        __atomic_fetch_add(dst, src, order)
     #define c89atomic_fetch_add_explicit_64(dst, src, order)        __atomic_fetch_add(dst, src, order)
-    #define c89atomic_fetch_sub_explicit_8( dst, src, order)        __atomic_fetch_sub(dst, src, order)
+    #define c89atomic_fetch_sub_explicit_8(dst, src, order)        __atomic_fetch_sub(dst, src, order)
     #define c89atomic_fetch_sub_explicit_16(dst, src, order)        __atomic_fetch_sub(dst, src, order)
     #define c89atomic_fetch_sub_explicit_32(dst, src, order)        __atomic_fetch_sub(dst, src, order)
     #define c89atomic_fetch_sub_explicit_64(dst, src, order)        __atomic_fetch_sub(dst, src, order)
-    #define c89atomic_fetch_or_explicit_8( dst, src, order)         __atomic_fetch_or(dst, src, order)
+    #define c89atomic_fetch_or_explicit_8(dst, src, order)         __atomic_fetch_or(dst, src, order)
     #define c89atomic_fetch_or_explicit_16(dst, src, order)         __atomic_fetch_or(dst, src, order)
     #define c89atomic_fetch_or_explicit_32(dst, src, order)         __atomic_fetch_or(dst, src, order)
     #define c89atomic_fetch_or_explicit_64(dst, src, order)         __atomic_fetch_or(dst, src, order)
-    #define c89atomic_fetch_xor_explicit_8( dst, src, order)        __atomic_fetch_xor(dst, src, order)
+    #define c89atomic_fetch_xor_explicit_8(dst, src, order)        __atomic_fetch_xor(dst, src, order)
     #define c89atomic_fetch_xor_explicit_16(dst, src, order)        __atomic_fetch_xor(dst, src, order)
     #define c89atomic_fetch_xor_explicit_32(dst, src, order)        __atomic_fetch_xor(dst, src, order)
     #define c89atomic_fetch_xor_explicit_64(dst, src, order)        __atomic_fetch_xor(dst, src, order)
-    #define c89atomic_fetch_and_explicit_8( dst, src, order)        __atomic_fetch_and(dst, src, order)
+    #define c89atomic_fetch_and_explicit_8(dst, src, order)        __atomic_fetch_and(dst, src, order)
     #define c89atomic_fetch_and_explicit_16(dst, src, order)        __atomic_fetch_and(dst, src, order)
     #define c89atomic_fetch_and_explicit_32(dst, src, order)        __atomic_fetch_and(dst, src, order)
     #define c89atomic_fetch_and_explicit_64(dst, src, order)        __atomic_fetch_and(dst, src, order)
@@ -8089,43 +8089,43 @@ typedef unsigned char      c89atomic_flag;
         (void)order;
         return oldValue;
     }
-    #define c89atomic_fetch_add_explicit_8( dst, src, order)        __sync_fetch_and_add(dst, src)
+    #define c89atomic_fetch_add_explicit_8(dst, src, order)        __sync_fetch_and_add(dst, src)
     #define c89atomic_fetch_add_explicit_16(dst, src, order)        __sync_fetch_and_add(dst, src)
     #define c89atomic_fetch_add_explicit_32(dst, src, order)        __sync_fetch_and_add(dst, src)
     #define c89atomic_fetch_add_explicit_64(dst, src, order)        __sync_fetch_and_add(dst, src)
-    #define c89atomic_fetch_sub_explicit_8( dst, src, order)        __sync_fetch_and_sub(dst, src)
+    #define c89atomic_fetch_sub_explicit_8(dst, src, order)        __sync_fetch_and_sub(dst, src)
     #define c89atomic_fetch_sub_explicit_16(dst, src, order)        __sync_fetch_and_sub(dst, src)
     #define c89atomic_fetch_sub_explicit_32(dst, src, order)        __sync_fetch_and_sub(dst, src)
     #define c89atomic_fetch_sub_explicit_64(dst, src, order)        __sync_fetch_and_sub(dst, src)
-    #define c89atomic_fetch_or_explicit_8( dst, src, order)         __sync_fetch_and_or(dst, src)
+    #define c89atomic_fetch_or_explicit_8(dst, src, order)         __sync_fetch_and_or(dst, src)
     #define c89atomic_fetch_or_explicit_16(dst, src, order)         __sync_fetch_and_or(dst, src)
     #define c89atomic_fetch_or_explicit_32(dst, src, order)         __sync_fetch_and_or(dst, src)
     #define c89atomic_fetch_or_explicit_64(dst, src, order)         __sync_fetch_and_or(dst, src)
-    #define c89atomic_fetch_xor_explicit_8( dst, src, order)        __sync_fetch_and_xor(dst, src)
+    #define c89atomic_fetch_xor_explicit_8(dst, src, order)        __sync_fetch_and_xor(dst, src)
     #define c89atomic_fetch_xor_explicit_16(dst, src, order)        __sync_fetch_and_xor(dst, src)
     #define c89atomic_fetch_xor_explicit_32(dst, src, order)        __sync_fetch_and_xor(dst, src)
     #define c89atomic_fetch_xor_explicit_64(dst, src, order)        __sync_fetch_and_xor(dst, src)
-    #define c89atomic_fetch_and_explicit_8( dst, src, order)        __sync_fetch_and_and(dst, src)
+    #define c89atomic_fetch_and_explicit_8(dst, src, order)        __sync_fetch_and_and(dst, src)
     #define c89atomic_fetch_and_explicit_16(dst, src, order)        __sync_fetch_and_and(dst, src)
     #define c89atomic_fetch_and_explicit_32(dst, src, order)        __sync_fetch_and_and(dst, src)
     #define c89atomic_fetch_and_explicit_64(dst, src, order)        __sync_fetch_and_and(dst, src)
-    #define c89atomic_compare_and_swap_8( dst, expected, desired)   __sync_val_compare_and_swap(dst, expected, desired)
+    #define c89atomic_compare_and_swap_8(dst, expected, desired)   __sync_val_compare_and_swap(dst, expected, desired)
     #define c89atomic_compare_and_swap_16(dst, expected, desired)   __sync_val_compare_and_swap(dst, expected, desired)
     #define c89atomic_compare_and_swap_32(dst, expected, desired)   __sync_val_compare_and_swap(dst, expected, desired)
     #define c89atomic_compare_and_swap_64(dst, expected, desired)   __sync_val_compare_and_swap(dst, expected, desired)
-    #define c89atomic_load_explicit_8( ptr, order)                  c89atomic_compare_and_swap_8 (ptr, 0, 0)
+    #define c89atomic_load_explicit_8(ptr, order)                  c89atomic_compare_and_swap_8 (ptr, 0, 0)
     #define c89atomic_load_explicit_16(ptr, order)                  c89atomic_compare_and_swap_16(ptr, 0, 0)
     #define c89atomic_load_explicit_32(ptr, order)                  c89atomic_compare_and_swap_32(ptr, 0, 0)
     #define c89atomic_load_explicit_64(ptr, order)                  c89atomic_compare_and_swap_64(ptr, 0, 0)
-    #define c89atomic_store_explicit_8( dst, src, order)            (void)c89atomic_exchange_explicit_8 (dst, src, order)
+    #define c89atomic_store_explicit_8(dst, src, order)            (void)c89atomic_exchange_explicit_8 (dst, src, order)
     #define c89atomic_store_explicit_16(dst, src, order)            (void)c89atomic_exchange_explicit_16(dst, src, order)
     #define c89atomic_store_explicit_32(dst, src, order)            (void)c89atomic_exchange_explicit_32(dst, src, order)
     #define c89atomic_store_explicit_64(dst, src, order)            (void)c89atomic_exchange_explicit_64(dst, src, order)
-    #define c89atomic_test_and_set_explicit_8( dst, order)          c89atomic_exchange_explicit_8 (dst, 1, order)
+    #define c89atomic_test_and_set_explicit_8(dst, order)          c89atomic_exchange_explicit_8 (dst, 1, order)
     #define c89atomic_test_and_set_explicit_16(dst, order)          c89atomic_exchange_explicit_16(dst, 1, order)
     #define c89atomic_test_and_set_explicit_32(dst, order)          c89atomic_exchange_explicit_32(dst, 1, order)
     #define c89atomic_test_and_set_explicit_64(dst, order)          c89atomic_exchange_explicit_64(dst, 1, order)
-    #define c89atomic_clear_explicit_8( dst, order)                 c89atomic_store_explicit_8 (dst, 0, order)
+    #define c89atomic_clear_explicit_8(dst, order)                 c89atomic_store_explicit_8 (dst, 0, order)
     #define c89atomic_clear_explicit_16(dst, order)                 c89atomic_store_explicit_16(dst, 0, order)
     #define c89atomic_clear_explicit_32(dst, order)                 c89atomic_store_explicit_32(dst, 0, order)
     #define c89atomic_clear_explicit_64(dst, order)                 c89atomic_store_explicit_64(dst, 0, order)
@@ -8193,13 +8193,13 @@ c89atomic_bool c89atomic_compare_exchange_strong_explicit_64(volatile c89atomic_
         return 0;
     }
 }
-#define c89atomic_compare_exchange_weak_explicit_8( dst, expected, desired, successOrder, failureOrder) c89atomic_compare_exchange_strong_explicit_8 (dst, expected, desired, successOrder, failureOrder)
+#define c89atomic_compare_exchange_weak_explicit_8(dst, expected, desired, successOrder, failureOrder) c89atomic_compare_exchange_strong_explicit_8 (dst, expected, desired, successOrder, failureOrder)
 #define c89atomic_compare_exchange_weak_explicit_16(dst, expected, desired, successOrder, failureOrder) c89atomic_compare_exchange_strong_explicit_16(dst, expected, desired, successOrder, failureOrder)
 #define c89atomic_compare_exchange_weak_explicit_32(dst, expected, desired, successOrder, failureOrder) c89atomic_compare_exchange_strong_explicit_32(dst, expected, desired, successOrder, failureOrder)
 #define c89atomic_compare_exchange_weak_explicit_64(dst, expected, desired, successOrder, failureOrder) c89atomic_compare_exchange_strong_explicit_64(dst, expected, desired, successOrder, failureOrder)
 #endif
 #if !defined(C89ATOMIC_HAS_NATIVE_IS_LOCK_FREE)
-    #define c89atomic_is_lock_free_8( ptr)  1
+    #define c89atomic_is_lock_free_8(ptr)  1
     #define c89atomic_is_lock_free_16(ptr)  1
     #define c89atomic_is_lock_free_32(ptr)  1
     #if defined(C89ATOMIC_64BIT)
@@ -8233,56 +8233,56 @@ c89atomic_bool c89atomic_compare_exchange_strong_explicit_64(volatile c89atomic_
 #endif
 #define c89atomic_flag_test_and_set(ptr)                                c89atomic_flag_test_and_set_explicit(ptr, c89atomic_memory_order_seq_cst)
 #define c89atomic_flag_clear(ptr)                                       c89atomic_flag_clear_explicit(ptr, c89atomic_memory_order_seq_cst)
-#define c89atomic_test_and_set_8( ptr)                                  c89atomic_test_and_set_explicit_8 (ptr, c89atomic_memory_order_seq_cst)
+#define c89atomic_test_and_set_8(ptr)                                  c89atomic_test_and_set_explicit_8 (ptr, c89atomic_memory_order_seq_cst)
 #define c89atomic_test_and_set_16(ptr)                                  c89atomic_test_and_set_explicit_16(ptr, c89atomic_memory_order_seq_cst)
 #define c89atomic_test_and_set_32(ptr)                                  c89atomic_test_and_set_explicit_32(ptr, c89atomic_memory_order_seq_cst)
 #define c89atomic_test_and_set_64(ptr)                                  c89atomic_test_and_set_explicit_64(ptr, c89atomic_memory_order_seq_cst)
-#define c89atomic_clear_8( ptr)                                         c89atomic_clear_explicit_8 (ptr, c89atomic_memory_order_seq_cst)
+#define c89atomic_clear_8(ptr)                                         c89atomic_clear_explicit_8 (ptr, c89atomic_memory_order_seq_cst)
 #define c89atomic_clear_16(ptr)                                         c89atomic_clear_explicit_16(ptr, c89atomic_memory_order_seq_cst)
 #define c89atomic_clear_32(ptr)                                         c89atomic_clear_explicit_32(ptr, c89atomic_memory_order_seq_cst)
 #define c89atomic_clear_64(ptr)                                         c89atomic_clear_explicit_64(ptr, c89atomic_memory_order_seq_cst)
-#define c89atomic_store_8(  dst, src)                                   c89atomic_store_explicit_8 ( dst, src, c89atomic_memory_order_seq_cst)
-#define c89atomic_store_16( dst, src)                                   c89atomic_store_explicit_16( dst, src, c89atomic_memory_order_seq_cst)
-#define c89atomic_store_32( dst, src)                                   c89atomic_store_explicit_32( dst, src, c89atomic_memory_order_seq_cst)
-#define c89atomic_store_64( dst, src)                                   c89atomic_store_explicit_64( dst, src, c89atomic_memory_order_seq_cst)
+#define c89atomic_store_8( dst, src)                                   c89atomic_store_explicit_8 (dst, src, c89atomic_memory_order_seq_cst)
+#define c89atomic_store_16(dst, src)                                   c89atomic_store_explicit_16(dst, src, c89atomic_memory_order_seq_cst)
+#define c89atomic_store_32(dst, src)                                   c89atomic_store_explicit_32(dst, src, c89atomic_memory_order_seq_cst)
+#define c89atomic_store_64(dst, src)                                   c89atomic_store_explicit_64(dst, src, c89atomic_memory_order_seq_cst)
 #define c89atomic_store_ptr(dst, src)                                   c89atomic_store_explicit_ptr(dst, src, c89atomic_memory_order_seq_cst)
-#define c89atomic_load_8(  ptr)                                         c89atomic_load_explicit_8 ( ptr, c89atomic_memory_order_seq_cst)
-#define c89atomic_load_16( ptr)                                         c89atomic_load_explicit_16( ptr, c89atomic_memory_order_seq_cst)
-#define c89atomic_load_32( ptr)                                         c89atomic_load_explicit_32( ptr, c89atomic_memory_order_seq_cst)
-#define c89atomic_load_64( ptr)                                         c89atomic_load_explicit_64( ptr, c89atomic_memory_order_seq_cst)
+#define c89atomic_load_8( ptr)                                         c89atomic_load_explicit_8 (ptr, c89atomic_memory_order_seq_cst)
+#define c89atomic_load_16(ptr)                                         c89atomic_load_explicit_16(ptr, c89atomic_memory_order_seq_cst)
+#define c89atomic_load_32(ptr)                                         c89atomic_load_explicit_32(ptr, c89atomic_memory_order_seq_cst)
+#define c89atomic_load_64(ptr)                                         c89atomic_load_explicit_64(ptr, c89atomic_memory_order_seq_cst)
 #define c89atomic_load_ptr(ptr)                                         c89atomic_load_explicit_ptr(ptr, c89atomic_memory_order_seq_cst)
-#define c89atomic_exchange_8(  dst, src)                                c89atomic_exchange_explicit_8 ( dst, src, c89atomic_memory_order_seq_cst)
-#define c89atomic_exchange_16( dst, src)                                c89atomic_exchange_explicit_16( dst, src, c89atomic_memory_order_seq_cst)
-#define c89atomic_exchange_32( dst, src)                                c89atomic_exchange_explicit_32( dst, src, c89atomic_memory_order_seq_cst)
-#define c89atomic_exchange_64( dst, src)                                c89atomic_exchange_explicit_64( dst, src, c89atomic_memory_order_seq_cst)
+#define c89atomic_exchange_8( dst, src)                                c89atomic_exchange_explicit_8 (dst, src, c89atomic_memory_order_seq_cst)
+#define c89atomic_exchange_16(dst, src)                                c89atomic_exchange_explicit_16(dst, src, c89atomic_memory_order_seq_cst)
+#define c89atomic_exchange_32(dst, src)                                c89atomic_exchange_explicit_32(dst, src, c89atomic_memory_order_seq_cst)
+#define c89atomic_exchange_64(dst, src)                                c89atomic_exchange_explicit_64(dst, src, c89atomic_memory_order_seq_cst)
 #define c89atomic_exchange_ptr(dst, src)                                c89atomic_exchange_explicit_ptr(dst, src, c89atomic_memory_order_seq_cst)
-#define c89atomic_compare_exchange_strong_8(  dst, expected, desired)   c89atomic_compare_exchange_strong_explicit_8 ( dst, expected, desired, c89atomic_memory_order_seq_cst, c89atomic_memory_order_seq_cst)
-#define c89atomic_compare_exchange_strong_16( dst, expected, desired)   c89atomic_compare_exchange_strong_explicit_16( dst, expected, desired, c89atomic_memory_order_seq_cst, c89atomic_memory_order_seq_cst)
-#define c89atomic_compare_exchange_strong_32( dst, expected, desired)   c89atomic_compare_exchange_strong_explicit_32( dst, expected, desired, c89atomic_memory_order_seq_cst, c89atomic_memory_order_seq_cst)
-#define c89atomic_compare_exchange_strong_64( dst, expected, desired)   c89atomic_compare_exchange_strong_explicit_64( dst, expected, desired, c89atomic_memory_order_seq_cst, c89atomic_memory_order_seq_cst)
+#define c89atomic_compare_exchange_strong_8( dst, expected, desired)   c89atomic_compare_exchange_strong_explicit_8 (dst, expected, desired, c89atomic_memory_order_seq_cst, c89atomic_memory_order_seq_cst)
+#define c89atomic_compare_exchange_strong_16(dst, expected, desired)   c89atomic_compare_exchange_strong_explicit_16(dst, expected, desired, c89atomic_memory_order_seq_cst, c89atomic_memory_order_seq_cst)
+#define c89atomic_compare_exchange_strong_32(dst, expected, desired)   c89atomic_compare_exchange_strong_explicit_32(dst, expected, desired, c89atomic_memory_order_seq_cst, c89atomic_memory_order_seq_cst)
+#define c89atomic_compare_exchange_strong_64(dst, expected, desired)   c89atomic_compare_exchange_strong_explicit_64(dst, expected, desired, c89atomic_memory_order_seq_cst, c89atomic_memory_order_seq_cst)
 #define c89atomic_compare_exchange_strong_ptr(dst, expected, desired)   c89atomic_compare_exchange_strong_explicit_ptr(dst, expected, desired, c89atomic_memory_order_seq_cst, c89atomic_memory_order_seq_cst)
-#define c89atomic_compare_exchange_weak_8(  dst, expected, desired)     c89atomic_compare_exchange_weak_explicit_8 ( dst, expected, desired, c89atomic_memory_order_seq_cst, c89atomic_memory_order_seq_cst)
-#define c89atomic_compare_exchange_weak_16( dst, expected, desired)     c89atomic_compare_exchange_weak_explicit_16( dst, expected, desired, c89atomic_memory_order_seq_cst, c89atomic_memory_order_seq_cst)
-#define c89atomic_compare_exchange_weak_32( dst, expected, desired)     c89atomic_compare_exchange_weak_explicit_32( dst, expected, desired, c89atomic_memory_order_seq_cst, c89atomic_memory_order_seq_cst)
-#define c89atomic_compare_exchange_weak_64( dst, expected, desired)     c89atomic_compare_exchange_weak_explicit_64( dst, expected, desired, c89atomic_memory_order_seq_cst, c89atomic_memory_order_seq_cst)
+#define c89atomic_compare_exchange_weak_8( dst, expected, desired)     c89atomic_compare_exchange_weak_explicit_8 (dst, expected, desired, c89atomic_memory_order_seq_cst, c89atomic_memory_order_seq_cst)
+#define c89atomic_compare_exchange_weak_16(dst, expected, desired)     c89atomic_compare_exchange_weak_explicit_16(dst, expected, desired, c89atomic_memory_order_seq_cst, c89atomic_memory_order_seq_cst)
+#define c89atomic_compare_exchange_weak_32(dst, expected, desired)     c89atomic_compare_exchange_weak_explicit_32(dst, expected, desired, c89atomic_memory_order_seq_cst, c89atomic_memory_order_seq_cst)
+#define c89atomic_compare_exchange_weak_64(dst, expected, desired)     c89atomic_compare_exchange_weak_explicit_64(dst, expected, desired, c89atomic_memory_order_seq_cst, c89atomic_memory_order_seq_cst)
 #define c89atomic_compare_exchange_weak_ptr(dst, expected, desired)     c89atomic_compare_exchange_weak_explicit_ptr(dst, expected, desired, c89atomic_memory_order_seq_cst, c89atomic_memory_order_seq_cst)
-#define c89atomic_fetch_add_8( dst, src)                                c89atomic_fetch_add_explicit_8 (dst, src, c89atomic_memory_order_seq_cst)
+#define c89atomic_fetch_add_8(dst, src)                                c89atomic_fetch_add_explicit_8 (dst, src, c89atomic_memory_order_seq_cst)
 #define c89atomic_fetch_add_16(dst, src)                                c89atomic_fetch_add_explicit_16(dst, src, c89atomic_memory_order_seq_cst)
 #define c89atomic_fetch_add_32(dst, src)                                c89atomic_fetch_add_explicit_32(dst, src, c89atomic_memory_order_seq_cst)
 #define c89atomic_fetch_add_64(dst, src)                                c89atomic_fetch_add_explicit_64(dst, src, c89atomic_memory_order_seq_cst)
-#define c89atomic_fetch_sub_8( dst, src)                                c89atomic_fetch_sub_explicit_8 (dst, src, c89atomic_memory_order_seq_cst)
+#define c89atomic_fetch_sub_8(dst, src)                                c89atomic_fetch_sub_explicit_8 (dst, src, c89atomic_memory_order_seq_cst)
 #define c89atomic_fetch_sub_16(dst, src)                                c89atomic_fetch_sub_explicit_16(dst, src, c89atomic_memory_order_seq_cst)
 #define c89atomic_fetch_sub_32(dst, src)                                c89atomic_fetch_sub_explicit_32(dst, src, c89atomic_memory_order_seq_cst)
 #define c89atomic_fetch_sub_64(dst, src)                                c89atomic_fetch_sub_explicit_64(dst, src, c89atomic_memory_order_seq_cst)
-#define c89atomic_fetch_or_8( dst, src)                                 c89atomic_fetch_or_explicit_8 (dst, src, c89atomic_memory_order_seq_cst)
+#define c89atomic_fetch_or_8(dst, src)                                 c89atomic_fetch_or_explicit_8 (dst, src, c89atomic_memory_order_seq_cst)
 #define c89atomic_fetch_or_16(dst, src)                                 c89atomic_fetch_or_explicit_16(dst, src, c89atomic_memory_order_seq_cst)
 #define c89atomic_fetch_or_32(dst, src)                                 c89atomic_fetch_or_explicit_32(dst, src, c89atomic_memory_order_seq_cst)
 #define c89atomic_fetch_or_64(dst, src)                                 c89atomic_fetch_or_explicit_64(dst, src, c89atomic_memory_order_seq_cst)
-#define c89atomic_fetch_xor_8( dst, src)                                c89atomic_fetch_xor_explicit_8 (dst, src, c89atomic_memory_order_seq_cst)
+#define c89atomic_fetch_xor_8(dst, src)                                c89atomic_fetch_xor_explicit_8 (dst, src, c89atomic_memory_order_seq_cst)
 #define c89atomic_fetch_xor_16(dst, src)                                c89atomic_fetch_xor_explicit_16(dst, src, c89atomic_memory_order_seq_cst)
 #define c89atomic_fetch_xor_32(dst, src)                                c89atomic_fetch_xor_explicit_32(dst, src, c89atomic_memory_order_seq_cst)
 #define c89atomic_fetch_xor_64(dst, src)                                c89atomic_fetch_xor_explicit_64(dst, src, c89atomic_memory_order_seq_cst)
-#define c89atomic_fetch_and_8( dst, src)                                c89atomic_fetch_and_explicit_8 (dst, src, c89atomic_memory_order_seq_cst)
+#define c89atomic_fetch_and_8(dst, src)                                c89atomic_fetch_and_explicit_8 (dst, src, c89atomic_memory_order_seq_cst)
 #define c89atomic_fetch_and_16(dst, src)                                c89atomic_fetch_and_explicit_16(dst, src, c89atomic_memory_order_seq_cst)
 #define c89atomic_fetch_and_32(dst, src)                                c89atomic_fetch_and_explicit_32(dst, src, c89atomic_memory_order_seq_cst)
 #define c89atomic_fetch_and_64(dst, src)                                c89atomic_fetch_and_explicit_64(dst, src, c89atomic_memory_order_seq_cst)
@@ -10197,7 +10197,7 @@ static ma_result ma_device__handle_duplex_callback_playback(ma_device* pDevice, 
             inputFrameCount = ma_min(
                 sizeof(playbackFramesInExternalFormat) / ma_get_bytes_per_frame(pDevice->playback.format, pDevice->playback.channels),
                 sizeof(silentInputFrames)              / ma_get_bytes_per_frame(pDevice->capture.format,  pDevice->capture.channels)
-            );
+           );
 
             ma_device__on_data(pDevice, playbackFramesInExternalFormat, silentInputFrames, inputFrameCount);
         }
@@ -13659,7 +13659,7 @@ static ma_result ma_device_main_loop__wasapi(ma_device* pDevice)
                         ma_uint32 framesToProcess;
                         ma_uint32 framesProcessed;
 
-                        pRunningDeviceBufferCapture  = pMappedDeviceBufferCapture  + ((mappedDeviceBufferSizeInFramesCapture  - mappedDeviceBufferFramesRemainingCapture ) * bpfCaptureDevice);
+                        pRunningDeviceBufferCapture  = pMappedDeviceBufferCapture  + ((mappedDeviceBufferSizeInFramesCapture  - mappedDeviceBufferFramesRemainingCapture) * bpfCaptureDevice);
                         pRunningDeviceBufferPlayback = pMappedDeviceBufferPlayback + ((mappedDeviceBufferSizeInFramesPlayback - mappedDeviceBufferFramesRemainingPlayback) * bpfPlaybackDevice);
                         
                         /* There may be some data sitting in the converter that needs to be processed first. Once this is exhaused, run the data callback again. */
@@ -17842,7 +17842,7 @@ static ma_result ma_context_enumerate_devices__alsa(ma_context* pContext, ma_enu
         if ((IOID == NULL || ma_strcmp(IOID, "Output") == 0)) {
             deviceType = ma_device_type_playback;
         }
-        if ((IOID != NULL && ma_strcmp(IOID, "Input" ) == 0)) {
+        if ((IOID != NULL && ma_strcmp(IOID, "Input") == 0)) {
             deviceType = ma_device_type_capture;
         }
 
@@ -18438,7 +18438,7 @@ static ma_result ma_device_init_by_type__alsa(ma_context* pContext, const ma_dev
 
                         ma_bool32 foundDevice = MA_FALSE;
                         if ((deviceType == ma_device_type_playback && (IOID == NULL || ma_strcmp(IOID, "Output") == 0)) ||
-                            (deviceType == ma_device_type_capture  && (IOID != NULL && ma_strcmp(IOID, "Input" ) == 0))) {
+                            (deviceType == ma_device_type_capture  && (IOID != NULL && ma_strcmp(IOID, "Input") == 0))) {
                             if (ma_strcmp(NAME, deviceName) == 0) {
                                 bufferSizeScaleFactor = ma_find_default_buffer_size_scale__alsa(DESC);
                                 foundDevice = MA_TRUE;
@@ -28740,7 +28740,7 @@ OpenSL|ES Backend
 #include <SLES/OpenSLES_Android.h>
 #endif
 
-/* OpenSL|ES has one-per-application objects :( */
+/* OpenSL|ES has one-per-application objects :(*/
 SLObjectItf g_maEngineObjectSL = NULL;
 SLEngineItf g_maEngineSL = NULL;
 ma_uint32 g_maOpenSLInitCounter = 0;
@@ -31880,9 +31880,9 @@ MA_API void ma_copy_and_apply_volume_factor_pcm_frames(void* pPCMFramesOut, cons
     {
     case ma_format_u8:  ma_copy_and_apply_volume_factor_pcm_frames_u8 ((ma_uint8*)pPCMFramesOut, (const ma_uint8*)pPCMFramesIn, frameCount, channels, factor); return;
     case ma_format_s16: ma_copy_and_apply_volume_factor_pcm_frames_s16((ma_int16*)pPCMFramesOut, (const ma_int16*)pPCMFramesIn, frameCount, channels, factor); return;
-    case ma_format_s24: ma_copy_and_apply_volume_factor_pcm_frames_s24(           pPCMFramesOut,                  pPCMFramesIn, frameCount, channels, factor); return;
+    case ma_format_s24: ma_copy_and_apply_volume_factor_pcm_frames_s24(          pPCMFramesOut,                  pPCMFramesIn, frameCount, channels, factor); return;
     case ma_format_s32: ma_copy_and_apply_volume_factor_pcm_frames_s32((ma_int32*)pPCMFramesOut, (const ma_int32*)pPCMFramesIn, frameCount, channels, factor); return;
-    case ma_format_f32: ma_copy_and_apply_volume_factor_pcm_frames_f32(   (float*)pPCMFramesOut,    (const float*)pPCMFramesIn, frameCount, channels, factor); return;
+    case ma_format_f32: ma_copy_and_apply_volume_factor_pcm_frames_f32(  (float*)pPCMFramesOut,    (const float*)pPCMFramesIn, frameCount, channels, factor); return;
     default: return;    /* Do nothing. */
     }
 }
@@ -33634,26 +33634,26 @@ static MA_INLINE void ma_pcm_f32_to_s16__sse2(void* dst, const void* src, ma_uin
                 ma_dither_f32_rectangle(ditherMin, ditherMax),
                 ma_dither_f32_rectangle(ditherMin, ditherMax),
                 ma_dither_f32_rectangle(ditherMin, ditherMax)
-            );
+           );
             d1 = _mm_set_ps(
                 ma_dither_f32_rectangle(ditherMin, ditherMax),
                 ma_dither_f32_rectangle(ditherMin, ditherMax),
                 ma_dither_f32_rectangle(ditherMin, ditherMax),
                 ma_dither_f32_rectangle(ditherMin, ditherMax)
-            );
+           );
         } else {
             d0 = _mm_set_ps(
                 ma_dither_f32_triangle(ditherMin, ditherMax),
                 ma_dither_f32_triangle(ditherMin, ditherMax),
                 ma_dither_f32_triangle(ditherMin, ditherMax),
                 ma_dither_f32_triangle(ditherMin, ditherMax)
-            );
+           );
             d1 = _mm_set_ps(
                 ma_dither_f32_triangle(ditherMin, ditherMax),
                 ma_dither_f32_triangle(ditherMin, ditherMax),
                 ma_dither_f32_triangle(ditherMin, ditherMax),
                 ma_dither_f32_triangle(ditherMin, ditherMax)
-            );
+           );
         }
 
         x0 = *((__m128*)(src_f32 + i) + 0);
@@ -33738,7 +33738,7 @@ static MA_INLINE void ma_pcm_f32_to_s16__avx2(void* dst, const void* src, ma_uin
                 ma_dither_f32_rectangle(ditherMin, ditherMax),
                 ma_dither_f32_rectangle(ditherMin, ditherMax),
                 ma_dither_f32_rectangle(ditherMin, ditherMax)
-            );
+           );
             d1 = _mm256_set_ps(
                 ma_dither_f32_rectangle(ditherMin, ditherMax),
                 ma_dither_f32_rectangle(ditherMin, ditherMax),
@@ -33748,7 +33748,7 @@ static MA_INLINE void ma_pcm_f32_to_s16__avx2(void* dst, const void* src, ma_uin
                 ma_dither_f32_rectangle(ditherMin, ditherMax),
                 ma_dither_f32_rectangle(ditherMin, ditherMax),
                 ma_dither_f32_rectangle(ditherMin, ditherMax)
-            );
+           );
         } else {
             d0 = _mm256_set_ps(
                 ma_dither_f32_triangle(ditherMin, ditherMax),
@@ -33759,7 +33759,7 @@ static MA_INLINE void ma_pcm_f32_to_s16__avx2(void* dst, const void* src, ma_uin
                 ma_dither_f32_triangle(ditherMin, ditherMax),
                 ma_dither_f32_triangle(ditherMin, ditherMax),
                 ma_dither_f32_triangle(ditherMin, ditherMax)
-            );
+           );
             d1 = _mm256_set_ps(
                 ma_dither_f32_triangle(ditherMin, ditherMax),
                 ma_dither_f32_triangle(ditherMin, ditherMax),
@@ -33769,7 +33769,7 @@ static MA_INLINE void ma_pcm_f32_to_s16__avx2(void* dst, const void* src, ma_uin
                 ma_dither_f32_triangle(ditherMin, ditherMax),
                 ma_dither_f32_triangle(ditherMin, ditherMax),
                 ma_dither_f32_triangle(ditherMin, ditherMax)
-            );
+           );
         }
 
         x0 = *((__m256*)(src_f32 + i) + 0);
@@ -34182,7 +34182,7 @@ MA_API void ma_pcm_convert(void* pOut, ma_format formatOut, const void* pIn, ma_
         {
             switch (formatOut)
             {
-                case ma_format_u8:  ma_pcm_s16_to_u8( pOut, pIn, sampleCount, ditherMode); return;
+                case ma_format_u8:  ma_pcm_s16_to_u8(pOut, pIn, sampleCount, ditherMode); return;
                 case ma_format_s24: ma_pcm_s16_to_s24(pOut, pIn, sampleCount, ditherMode); return;
                 case ma_format_s32: ma_pcm_s16_to_s32(pOut, pIn, sampleCount, ditherMode); return;
                 case ma_format_f32: ma_pcm_s16_to_f32(pOut, pIn, sampleCount, ditherMode); return;
@@ -34194,7 +34194,7 @@ MA_API void ma_pcm_convert(void* pOut, ma_format formatOut, const void* pIn, ma_
         {
             switch (formatOut)
             {
-                case ma_format_u8:  ma_pcm_s24_to_u8( pOut, pIn, sampleCount, ditherMode); return;
+                case ma_format_u8:  ma_pcm_s24_to_u8(pOut, pIn, sampleCount, ditherMode); return;
                 case ma_format_s16: ma_pcm_s24_to_s16(pOut, pIn, sampleCount, ditherMode); return;
                 case ma_format_s32: ma_pcm_s24_to_s32(pOut, pIn, sampleCount, ditherMode); return;
                 case ma_format_f32: ma_pcm_s24_to_f32(pOut, pIn, sampleCount, ditherMode); return;
@@ -34206,7 +34206,7 @@ MA_API void ma_pcm_convert(void* pOut, ma_format formatOut, const void* pIn, ma_
         {
             switch (formatOut)
             {
-                case ma_format_u8:  ma_pcm_s32_to_u8( pOut, pIn, sampleCount, ditherMode); return;
+                case ma_format_u8:  ma_pcm_s32_to_u8(pOut, pIn, sampleCount, ditherMode); return;
                 case ma_format_s16: ma_pcm_s32_to_s16(pOut, pIn, sampleCount, ditherMode); return;
                 case ma_format_s24: ma_pcm_s32_to_s24(pOut, pIn, sampleCount, ditherMode); return;
                 case ma_format_f32: ma_pcm_s32_to_f32(pOut, pIn, sampleCount, ditherMode); return;
@@ -34218,7 +34218,7 @@ MA_API void ma_pcm_convert(void* pOut, ma_format formatOut, const void* pIn, ma_
         {
             switch (formatOut)
             {
-                case ma_format_u8:  ma_pcm_f32_to_u8( pOut, pIn, sampleCount, ditherMode); return;
+                case ma_format_u8:  ma_pcm_f32_to_u8(pOut, pIn, sampleCount, ditherMode); return;
                 case ma_format_s16: ma_pcm_f32_to_s16(pOut, pIn, sampleCount, ditherMode); return;
                 case ma_format_s24: ma_pcm_f32_to_s24(pOut, pIn, sampleCount, ditherMode); return;
                 case ma_format_s32: ma_pcm_f32_to_s32(pOut, pIn, sampleCount, ditherMode); return;
@@ -34500,7 +34500,7 @@ MA_API ma_result ma_biquad_process_pcm_frames(ma_biquad* pBQ, void* pFramesOut, 
     /* Note that the logic below needs to support in-place filtering. That is, it must support the case where pFramesOut and pFramesIn are the same. */
 
     if (pBQ->format == ma_format_f32) {
-        /* */ float* pY = (      float*)pFramesOut;
+        /* */ float* pY = (     float*)pFramesOut;
         const float* pX = (const float*)pFramesIn;
 
         for (n = 0; n < frameCount; n += 1) {
@@ -34509,7 +34509,7 @@ MA_API ma_result ma_biquad_process_pcm_frames(ma_biquad* pBQ, void* pFramesOut, 
             pX += pBQ->channels;
         }
     } else if (pBQ->format == ma_format_s16) {
-        /* */ ma_int16* pY = (      ma_int16*)pFramesOut;
+        /* */ ma_int16* pY = (     ma_int16*)pFramesOut;
         const ma_int16* pX = (const ma_int16*)pFramesIn;
 
         for (n = 0; n < frameCount; n += 1) {
@@ -34676,7 +34676,7 @@ MA_API ma_result ma_lpf1_process_pcm_frames(ma_lpf1* pLPF, void* pFramesOut, con
     /* Note that the logic below needs to support in-place filtering. That is, it must support the case where pFramesOut and pFramesIn are the same. */
 
     if (pLPF->format == ma_format_f32) {
-        /* */ float* pY = (      float*)pFramesOut;
+        /* */ float* pY = (     float*)pFramesOut;
         const float* pX = (const float*)pFramesIn;
 
         for (n = 0; n < frameCount; n += 1) {
@@ -34685,7 +34685,7 @@ MA_API ma_result ma_lpf1_process_pcm_frames(ma_lpf1* pLPF, void* pFramesOut, con
             pX += pLPF->channels;
         }
     } else if (pLPF->format == ma_format_s16) {
-        /* */ ma_int16* pY = (      ma_int16*)pFramesOut;
+        /* */ ma_int16* pY = (     ma_int16*)pFramesOut;
         const ma_int16* pX = (const ma_int16*)pFramesIn;
 
         for (n = 0; n < frameCount; n += 1) {
@@ -35006,7 +35006,7 @@ MA_API ma_result ma_lpf_process_pcm_frames(ma_lpf* pLPF, void* pFramesOut, const
         ma_uint32 iFrame;
 
         /*  */ if (pLPF->format == ma_format_f32) {
-            /* */ float* pFramesOutF32 = (      float*)pFramesOut;
+            /* */ float* pFramesOutF32 = (     float*)pFramesOut;
             const float* pFramesInF32  = (const float*)pFramesIn;
 
             for (iFrame = 0; iFrame < frameCount; iFrame += 1) {
@@ -35015,7 +35015,7 @@ MA_API ma_result ma_lpf_process_pcm_frames(ma_lpf* pLPF, void* pFramesOut, const
                 pFramesInF32  += pLPF->channels;
             }
         } else if (pLPF->format == ma_format_s16) {
-            /* */ ma_int16* pFramesOutS16 = (      ma_int16*)pFramesOut;
+            /* */ ma_int16* pFramesOutS16 = (     ma_int16*)pFramesOut;
             const ma_int16* pFramesInS16  = (const ma_int16*)pFramesIn;
 
             for (iFrame = 0; iFrame < frameCount; iFrame += 1) {
@@ -35182,7 +35182,7 @@ MA_API ma_result ma_hpf1_process_pcm_frames(ma_hpf1* pHPF, void* pFramesOut, con
     /* Note that the logic below needs to support in-place filtering. That is, it must support the case where pFramesOut and pFramesIn are the same. */
 
     if (pHPF->format == ma_format_f32) {
-        /* */ float* pY = (      float*)pFramesOut;
+        /* */ float* pY = (     float*)pFramesOut;
         const float* pX = (const float*)pFramesIn;
 
         for (n = 0; n < frameCount; n += 1) {
@@ -35191,7 +35191,7 @@ MA_API ma_result ma_hpf1_process_pcm_frames(ma_hpf1* pHPF, void* pFramesOut, con
             pX += pHPF->channels;
         }
     } else if (pHPF->format == ma_format_s16) {
-        /* */ ma_int16* pY = (      ma_int16*)pFramesOut;
+        /* */ ma_int16* pY = (     ma_int16*)pFramesOut;
         const ma_int16* pX = (const ma_int16*)pFramesIn;
 
         for (n = 0; n < frameCount; n += 1) {
@@ -35476,7 +35476,7 @@ MA_API ma_result ma_hpf_process_pcm_frames(ma_hpf* pHPF, void* pFramesOut, const
         ma_uint32 iFrame;
 
         /*  */ if (pHPF->format == ma_format_f32) {
-            /* */ float* pFramesOutF32 = (      float*)pFramesOut;
+            /* */ float* pFramesOutF32 = (     float*)pFramesOut;
             const float* pFramesInF32  = (const float*)pFramesIn;
 
             for (iFrame = 0; iFrame < frameCount; iFrame += 1) {
@@ -35494,7 +35494,7 @@ MA_API ma_result ma_hpf_process_pcm_frames(ma_hpf* pHPF, void* pFramesOut, const
                 pFramesInF32  += pHPF->channels;
             }
         } else if (pHPF->format == ma_format_s16) {
-            /* */ ma_int16* pFramesOutS16 = (      ma_int16*)pFramesOut;
+            /* */ ma_int16* pFramesOutS16 = (     ma_int16*)pFramesOut;
             const ma_int16* pFramesInS16  = (const ma_int16*)pFramesIn;
 
             for (iFrame = 0; iFrame < frameCount; iFrame += 1) {
@@ -35786,7 +35786,7 @@ MA_API ma_result ma_bpf_process_pcm_frames(ma_bpf* pBPF, void* pFramesOut, const
         ma_uint32 iFrame;
 
         /*  */ if (pBPF->format == ma_format_f32) {
-            /* */ float* pFramesOutF32 = (      float*)pFramesOut;
+            /* */ float* pFramesOutF32 = (     float*)pFramesOut;
             const float* pFramesInF32  = (const float*)pFramesIn;
 
             for (iFrame = 0; iFrame < frameCount; iFrame += 1) {
@@ -35800,7 +35800,7 @@ MA_API ma_result ma_bpf_process_pcm_frames(ma_bpf* pBPF, void* pFramesOut, const
                 pFramesInF32  += pBPF->channels;
             }
         } else if (pBPF->format == ma_format_s16) {
-            /* */ ma_int16* pFramesOutS16 = (      ma_int16*)pFramesOut;
+            /* */ ma_int16* pFramesOutS16 = (     ma_int16*)pFramesOut;
             const ma_int16* pFramesInS16  = (const ma_int16*)pFramesIn;
 
             for (iFrame = 0; iFrame < frameCount; iFrame += 1) {
@@ -36409,7 +36409,7 @@ static ma_result ma_linear_resampler_set_rate_internal(ma_linear_resampler* pRes
     }
 
     lpfSampleRate      = (ma_uint32)(ma_max(pResampler->config.sampleRateIn, pResampler->config.sampleRateOut));
-    lpfCutoffFrequency = (   double)(ma_min(pResampler->config.sampleRateIn, pResampler->config.sampleRateOut) * 0.5 * pResampler->config.lpfNyquistFactor);
+    lpfCutoffFrequency = (  double)(ma_min(pResampler->config.sampleRateIn, pResampler->config.sampleRateOut) * 0.5 * pResampler->config.lpfNyquistFactor);
 
     lpfConfig = ma_lpf_config_init(pResampler->config.format, pResampler->config.channels, lpfSampleRate, lpfCutoffFrequency, pResampler->config.lpfOrder);
 
@@ -36539,7 +36539,7 @@ static ma_result ma_linear_resampler_process_pcm_frames_s16_downsample(ma_linear
     MA_ASSERT(pFrameCountOut != NULL);
 
     pFramesInS16       = (const ma_int16*)pFramesIn;
-    pFramesOutS16      = (      ma_int16*)pFramesOut;
+    pFramesOutS16      = (     ma_int16*)pFramesOut;
     frameCountIn       = *pFrameCountIn;
     frameCountOut      = *pFrameCountOut;
     framesProcessedIn  = 0;
@@ -36613,7 +36613,7 @@ static ma_result ma_linear_resampler_process_pcm_frames_s16_upsample(ma_linear_r
     MA_ASSERT(pFrameCountOut != NULL);
 
     pFramesInS16       = (const ma_int16*)pFramesIn;
-    pFramesOutS16      = (      ma_int16*)pFramesOut;
+    pFramesOutS16      = (     ma_int16*)pFramesOut;
     frameCountIn       = *pFrameCountIn;
     frameCountOut      = *pFrameCountOut;
     framesProcessedIn  = 0;
@@ -36699,7 +36699,7 @@ static ma_result ma_linear_resampler_process_pcm_frames_f32_downsample(ma_linear
     MA_ASSERT(pFrameCountOut != NULL);
 
     pFramesInF32       = (const float*)pFramesIn;
-    pFramesOutF32      = (      float*)pFramesOut;
+    pFramesOutF32      = (     float*)pFramesOut;
     frameCountIn       = *pFrameCountIn;
     frameCountOut      = *pFrameCountOut;
     framesProcessedIn  = 0;
@@ -36773,7 +36773,7 @@ static ma_result ma_linear_resampler_process_pcm_frames_f32_upsample(ma_linear_r
     MA_ASSERT(pFrameCountOut != NULL);
 
     pFramesInF32       = (const float*)pFramesIn;
-    pFramesOutF32      = (      float*)pFramesOut;
+    pFramesOutF32      = (     float*)pFramesOut;
     frameCountIn       = *pFrameCountIn;
     frameCountOut      = *pFrameCountOut;
     framesProcessedIn  = 0;
@@ -36932,7 +36932,7 @@ MA_API ma_uint64 ma_linear_resampler_get_expected_output_frame_count(ma_linear_r
     used in the logic below to determine whether or not we need to add an extra output frame.
     */
     preliminaryInputFrameCountFromFrac = (pResampler->inTimeFrac + outputFrameCount*pResampler->inAdvanceFrac) / pResampler->config.sampleRateOut;
-    preliminaryInputFrameCount         = (pResampler->inTimeInt  + outputFrameCount*pResampler->inAdvanceInt ) + preliminaryInputFrameCountFromFrac;
+    preliminaryInputFrameCount         = (pResampler->inTimeInt  + outputFrameCount*pResampler->inAdvanceInt) + preliminaryInputFrameCountFromFrac;
 
     /*
     If the total number of *whole* input frames that would be required to generate our preliminary output frame count is greather than
@@ -38004,7 +38004,7 @@ static ma_result ma_channel_converter_process_pcm_frames__simple_shuffle(ma_chan
     {
         case ma_format_u8:
         {
-            /* */ ma_uint8* pFramesOutU8 = (      ma_uint8*)pFramesOut;
+            /* */ ma_uint8* pFramesOutU8 = (     ma_uint8*)pFramesOut;
             const ma_uint8* pFramesInU8  = (const ma_uint8*)pFramesIn;
 
             for (iFrame = 0; iFrame < frameCount; iFrame += 1) {
@@ -38019,7 +38019,7 @@ static ma_result ma_channel_converter_process_pcm_frames__simple_shuffle(ma_chan
 
         case ma_format_s16:
         {
-            /* */ ma_int16* pFramesOutS16 = (      ma_int16*)pFramesOut;
+            /* */ ma_int16* pFramesOutS16 = (     ma_int16*)pFramesOut;
             const ma_int16* pFramesInS16  = (const ma_int16*)pFramesIn;
 
             for (iFrame = 0; iFrame < frameCount; iFrame += 1) {
@@ -38034,7 +38034,7 @@ static ma_result ma_channel_converter_process_pcm_frames__simple_shuffle(ma_chan
 
         case ma_format_s24:
         {
-            /* */ ma_uint8* pFramesOutS24 = (      ma_uint8*)pFramesOut;
+            /* */ ma_uint8* pFramesOutS24 = (     ma_uint8*)pFramesOut;
             const ma_uint8* pFramesInS24  = (const ma_uint8*)pFramesIn;
 
             for (iFrame = 0; iFrame < frameCount; iFrame += 1) {
@@ -38052,7 +38052,7 @@ static ma_result ma_channel_converter_process_pcm_frames__simple_shuffle(ma_chan
 
         case ma_format_s32:
         {
-            /* */ ma_int32* pFramesOutS32 = (      ma_int32*)pFramesOut;
+            /* */ ma_int32* pFramesOutS32 = (     ma_int32*)pFramesOut;
             const ma_int32* pFramesInS32  = (const ma_int32*)pFramesIn;
 
             for (iFrame = 0; iFrame < frameCount; iFrame += 1) {
@@ -38067,7 +38067,7 @@ static ma_result ma_channel_converter_process_pcm_frames__simple_shuffle(ma_chan
         
         case ma_format_f32:
         {
-            /* */ float* pFramesOutF32 = (      float*)pFramesOut;
+            /* */ float* pFramesOutF32 = (     float*)pFramesOut;
             const float* pFramesInF32  = (const float*)pFramesIn;
 
             for (iFrame = 0; iFrame < frameCount; iFrame += 1) {
@@ -38099,7 +38099,7 @@ static ma_result ma_channel_converter_process_pcm_frames__simple_mono_expansion(
     {
         case ma_format_u8:
         {
-            /* */ ma_uint8* pFramesOutU8 = (      ma_uint8*)pFramesOut;
+            /* */ ma_uint8* pFramesOutU8 = (     ma_uint8*)pFramesOut;
             const ma_uint8* pFramesInU8  = (const ma_uint8*)pFramesIn;
 
             for (iFrame = 0; iFrame < frameCount; ++iFrame) {
@@ -38112,7 +38112,7 @@ static ma_result ma_channel_converter_process_pcm_frames__simple_mono_expansion(
 
         case ma_format_s16:
         {
-            /* */ ma_int16* pFramesOutS16 = (      ma_int16*)pFramesOut;
+            /* */ ma_int16* pFramesOutS16 = (     ma_int16*)pFramesOut;
             const ma_int16* pFramesInS16  = (const ma_int16*)pFramesIn;
 
             if (pConverter->channelsOut == 2) {
@@ -38132,7 +38132,7 @@ static ma_result ma_channel_converter_process_pcm_frames__simple_mono_expansion(
 
         case ma_format_s24:
         {
-            /* */ ma_uint8* pFramesOutS24 = (      ma_uint8*)pFramesOut;
+            /* */ ma_uint8* pFramesOutS24 = (     ma_uint8*)pFramesOut;
             const ma_uint8* pFramesInS24  = (const ma_uint8*)pFramesIn;
 
             for (iFrame = 0; iFrame < frameCount; ++iFrame) {
@@ -38149,7 +38149,7 @@ static ma_result ma_channel_converter_process_pcm_frames__simple_mono_expansion(
 
         case ma_format_s32:
         {
-            /* */ ma_int32* pFramesOutS32 = (      ma_int32*)pFramesOut;
+            /* */ ma_int32* pFramesOutS32 = (     ma_int32*)pFramesOut;
             const ma_int32* pFramesInS32  = (const ma_int32*)pFramesIn;
 
             for (iFrame = 0; iFrame < frameCount; ++iFrame) {
@@ -38162,7 +38162,7 @@ static ma_result ma_channel_converter_process_pcm_frames__simple_mono_expansion(
         
         case ma_format_f32:
         {
-            /* */ float* pFramesOutF32 = (      float*)pFramesOut;
+            /* */ float* pFramesOutF32 = (     float*)pFramesOut;
             const float* pFramesInF32  = (const float*)pFramesIn;
 
             if (pConverter->channelsOut == 2) {
@@ -38200,7 +38200,7 @@ static ma_result ma_channel_converter_process_pcm_frames__stereo_to_mono(ma_chan
     {
         case ma_format_u8:
         {
-            /* */ ma_uint8* pFramesOutU8 = (      ma_uint8*)pFramesOut;
+            /* */ ma_uint8* pFramesOutU8 = (     ma_uint8*)pFramesOut;
             const ma_uint8* pFramesInU8  = (const ma_uint8*)pFramesIn;
 
             for (iFrame = 0; iFrame < frameCount; ++iFrame) {
@@ -38210,7 +38210,7 @@ static ma_result ma_channel_converter_process_pcm_frames__stereo_to_mono(ma_chan
 
         case ma_format_s16:
         {
-            /* */ ma_int16* pFramesOutS16 = (      ma_int16*)pFramesOut;
+            /* */ ma_int16* pFramesOutS16 = (     ma_int16*)pFramesOut;
             const ma_int16* pFramesInS16  = (const ma_int16*)pFramesIn;
 
             for (iFrame = 0; iFrame < frameCount; ++iFrame) {
@@ -38220,7 +38220,7 @@ static ma_result ma_channel_converter_process_pcm_frames__stereo_to_mono(ma_chan
 
         case ma_format_s24:
         {
-            /* */ ma_uint8* pFramesOutS24 = (      ma_uint8*)pFramesOut;
+            /* */ ma_uint8* pFramesOutS24 = (     ma_uint8*)pFramesOut;
             const ma_uint8* pFramesInS24  = (const ma_uint8*)pFramesIn;
 
             for (iFrame = 0; iFrame < frameCount; ++iFrame) {
@@ -38232,7 +38232,7 @@ static ma_result ma_channel_converter_process_pcm_frames__stereo_to_mono(ma_chan
 
         case ma_format_s32:
         {
-            /* */ ma_int32* pFramesOutS32 = (      ma_int32*)pFramesOut;
+            /* */ ma_int32* pFramesOutS32 = (     ma_int32*)pFramesOut;
             const ma_int32* pFramesInS32  = (const ma_int32*)pFramesIn;
 
             for (iFrame = 0; iFrame < frameCount; ++iFrame) {
@@ -38242,7 +38242,7 @@ static ma_result ma_channel_converter_process_pcm_frames__stereo_to_mono(ma_chan
         
         case ma_format_f32:
         {
-            /* */ float* pFramesOutF32 = (      float*)pFramesOut;
+            /* */ float* pFramesOutF32 = (     float*)pFramesOut;
             const float* pFramesInF32  = (const float*)pFramesIn;
 
             for (iFrame = 0; iFrame < frameCount; ++iFrame) {
@@ -38276,7 +38276,7 @@ static ma_result ma_channel_converter_process_pcm_frames__weights(ma_channel_con
     {
         case ma_format_u8:
         {
-            /* */ ma_uint8* pFramesOutU8 = (      ma_uint8*)pFramesOut;
+            /* */ ma_uint8* pFramesOutU8 = (     ma_uint8*)pFramesOut;
             const ma_uint8* pFramesInU8  = (const ma_uint8*)pFramesIn;
 
             for (iFrame = 0; iFrame < frameCount; iFrame += 1) {
@@ -38293,7 +38293,7 @@ static ma_result ma_channel_converter_process_pcm_frames__weights(ma_channel_con
 
         case ma_format_s16:
         {
-            /* */ ma_int16* pFramesOutS16 = (      ma_int16*)pFramesOut;
+            /* */ ma_int16* pFramesOutS16 = (     ma_int16*)pFramesOut;
             const ma_int16* pFramesInS16  = (const ma_int16*)pFramesIn;
 
             for (iFrame = 0; iFrame < frameCount; iFrame += 1) {
@@ -38310,14 +38310,14 @@ static ma_result ma_channel_converter_process_pcm_frames__weights(ma_channel_con
 
         case ma_format_s24:
         {
-            /* */ ma_uint8* pFramesOutS24 = (      ma_uint8*)pFramesOut;
+            /* */ ma_uint8* pFramesOutS24 = (     ma_uint8*)pFramesOut;
             const ma_uint8* pFramesInS24  = (const ma_uint8*)pFramesIn;
 
             for (iFrame = 0; iFrame < frameCount; iFrame += 1) {
                 for (iChannelIn = 0; iChannelIn < pConverter->channelsIn; ++iChannelIn) {
                     for (iChannelOut = 0; iChannelOut < pConverter->channelsOut; ++iChannelOut) {
                         ma_int64 s24_O = ma_pcm_sample_s24_to_s32_no_scale(&pFramesOutS24[(iFrame*pConverter->channelsOut + iChannelOut)*3]);
-                        ma_int64 s24_I = ma_pcm_sample_s24_to_s32_no_scale(&pFramesInS24 [(iFrame*pConverter->channelsIn  + iChannelIn )*3]);
+                        ma_int64 s24_I = ma_pcm_sample_s24_to_s32_no_scale(&pFramesInS24 [(iFrame*pConverter->channelsIn  + iChannelIn)*3]);
                         ma_int64 s24   = (ma_int32)ma_clamp(s24_O + ((s24_I * pConverter->weights.s16[iChannelIn][iChannelOut]) >> MA_CHANNEL_CONVERTER_FIXED_POINT_SHIFT), -8388608, 8388607);
                         ma_pcm_sample_s32_to_s24_no_scale(s24, &pFramesOutS24[(iFrame*pConverter->channelsOut + iChannelOut)*3]);
                     }
@@ -38327,7 +38327,7 @@ static ma_result ma_channel_converter_process_pcm_frames__weights(ma_channel_con
 
         case ma_format_s32:
         {
-            /* */ ma_int32* pFramesOutS32 = (      ma_int32*)pFramesOut;
+            /* */ ma_int32* pFramesOutS32 = (     ma_int32*)pFramesOut;
             const ma_int32* pFramesInS32  = (const ma_int32*)pFramesIn;
 
             for (iFrame = 0; iFrame < frameCount; iFrame += 1) {
@@ -38344,7 +38344,7 @@ static ma_result ma_channel_converter_process_pcm_frames__weights(ma_channel_con
         
         case ma_format_f32:
         {
-            /* */ float* pFramesOutF32 = (      float*)pFramesOut;
+            /* */ float* pFramesOutF32 = (     float*)pFramesOut;
             const float* pFramesInF32  = (const float*)pFramesIn;
 
             for (iFrame = 0; iFrame < frameCount; iFrame += 1) {
@@ -43260,7 +43260,7 @@ static ma_result ma_decoder__init_data_converter(ma_decoder* pDecoder, const ma_
         pDecoder->internalFormat,     pDecoder->outputFormat, 
         pDecoder->internalChannels,   pDecoder->outputChannels,
         pDecoder->internalSampleRate, pDecoder->outputSampleRate
-    );
+   );
     ma_channel_map_copy(converterConfig.channelMapIn,  pDecoder->internalChannelMap, pDecoder->internalChannels);
     ma_channel_map_copy(converterConfig.channelMapOut, pDecoder->outputChannelMap,   pDecoder->outputChannels);
     converterConfig.channelMixMode             = pConfig->channelMixMode;
@@ -46810,7 +46810,7 @@ static DRWAV_INLINE drwav_uint32 drwav__bswap32(drwav_uint32 n)
             #else
                 "rev %[out], %[in]" : [out]"=r"(r) : [in]"r"(n)
             #endif
-            );
+           );
             return r;
         #else
             return __builtin_bswap32(n);
@@ -50411,11 +50411,11 @@ DRWAV_API drwav_bool32 drwav_fourcc_equal(const drwav_uint8* a, const char* b)
                         "cpuid;"
                         "xchg{l} {%%}ebx, %k1;"
                         : "=a"(info[0]), "=&r"(info[1]), "=c"(info[2]), "=d"(info[3]) : "a"(fid), "c"(0)
-                    );
+                   );
                 #else
                     __asm__ __volatile__ (
                         "cpuid" : "=a"(info[0]), "=b"(info[1]), "=c"(info[2]), "=d"(info[3]) : "a"(fid), "c"(0)
-                    );
+                   );
                 #endif
             }
         #else
@@ -50711,7 +50711,7 @@ static DRFLAC_INLINE drflac_uint32 drflac__swap_endian_uint32(drflac_uint32 n)
             #else
                 "rev %[out], %[in]" : [out]"=r"(r) : [in]"r"(n)
             #endif
-            );
+           );
             return r;
         #else
             return __builtin_bswap32(n);
@@ -50873,8 +50873,8 @@ static DRFLAC_INLINE drflac_uint8 drflac_crc8(drflac_uint8 crc, drflac_uint32 da
     switch (wholeBytes) {
         case 4: crc = drflac_crc8_byte(crc, (drflac_uint8)((data & (0xFF000000UL << leftoverBits)) >> (24 + leftoverBits)));
         case 3: crc = drflac_crc8_byte(crc, (drflac_uint8)((data & (0x00FF0000UL << leftoverBits)) >> (16 + leftoverBits)));
-        case 2: crc = drflac_crc8_byte(crc, (drflac_uint8)((data & (0x0000FF00UL << leftoverBits)) >> ( 8 + leftoverBits)));
-        case 1: crc = drflac_crc8_byte(crc, (drflac_uint8)((data & (0x000000FFUL << leftoverBits)) >> ( 0 + leftoverBits)));
+        case 2: crc = drflac_crc8_byte(crc, (drflac_uint8)((data & (0x0000FF00UL << leftoverBits)) >> (8 + leftoverBits)));
+        case 1: crc = drflac_crc8_byte(crc, (drflac_uint8)((data & (0x000000FFUL << leftoverBits)) >> (0 + leftoverBits)));
         case 0: if (leftoverBits > 0) crc = (drflac_uint8)((crc << leftoverBits) ^ drflac__crc8_table[(crc >> (8 - leftoverBits)) ^ (data & leftoverDataMask)]);
     }
     return crc;
@@ -50951,8 +50951,8 @@ static DRFLAC_INLINE drflac_uint16 drflac_crc16__32bit(drflac_uint16 crc, drflac
         default:
         case 4: crc = drflac_crc16_byte(crc, (drflac_uint8)((data & (0xFF000000UL << leftoverBits)) >> (24 + leftoverBits)));
         case 3: crc = drflac_crc16_byte(crc, (drflac_uint8)((data & (0x00FF0000UL << leftoverBits)) >> (16 + leftoverBits)));
-        case 2: crc = drflac_crc16_byte(crc, (drflac_uint8)((data & (0x0000FF00UL << leftoverBits)) >> ( 8 + leftoverBits)));
-        case 1: crc = drflac_crc16_byte(crc, (drflac_uint8)((data & (0x000000FFUL << leftoverBits)) >> ( 0 + leftoverBits)));
+        case 2: crc = drflac_crc16_byte(crc, (drflac_uint8)((data & (0x0000FF00UL << leftoverBits)) >> (8 + leftoverBits)));
+        case 1: crc = drflac_crc16_byte(crc, (drflac_uint8)((data & (0x000000FFUL << leftoverBits)) >> (0 + leftoverBits)));
         case 0: if (leftoverBits > 0) crc = (crc << leftoverBits) ^ drflac__crc16_table[(crc >> (16 - leftoverBits)) ^ (data & leftoverDataMask)];
     }
     return crc;
@@ -50983,10 +50983,10 @@ static DRFLAC_INLINE drflac_uint16 drflac_crc16__64bit(drflac_uint16 crc, drflac
         case 7: crc = drflac_crc16_byte(crc, (drflac_uint8)((data & (((drflac_uint64)0x00FF0000 << 32) << leftoverBits)) >> (48 + leftoverBits)));
         case 6: crc = drflac_crc16_byte(crc, (drflac_uint8)((data & (((drflac_uint64)0x0000FF00 << 32) << leftoverBits)) >> (40 + leftoverBits)));
         case 5: crc = drflac_crc16_byte(crc, (drflac_uint8)((data & (((drflac_uint64)0x000000FF << 32) << leftoverBits)) >> (32 + leftoverBits)));
-        case 4: crc = drflac_crc16_byte(crc, (drflac_uint8)((data & (((drflac_uint64)0xFF000000      ) << leftoverBits)) >> (24 + leftoverBits)));
-        case 3: crc = drflac_crc16_byte(crc, (drflac_uint8)((data & (((drflac_uint64)0x00FF0000      ) << leftoverBits)) >> (16 + leftoverBits)));
-        case 2: crc = drflac_crc16_byte(crc, (drflac_uint8)((data & (((drflac_uint64)0x0000FF00      ) << leftoverBits)) >> ( 8 + leftoverBits)));
-        case 1: crc = drflac_crc16_byte(crc, (drflac_uint8)((data & (((drflac_uint64)0x000000FF      ) << leftoverBits)) >> ( 0 + leftoverBits)));
+        case 4: crc = drflac_crc16_byte(crc, (drflac_uint8)((data & (((drflac_uint64)0xFF000000     ) << leftoverBits)) >> (24 + leftoverBits)));
+        case 3: crc = drflac_crc16_byte(crc, (drflac_uint8)((data & (((drflac_uint64)0x00FF0000     ) << leftoverBits)) >> (16 + leftoverBits)));
+        case 2: crc = drflac_crc16_byte(crc, (drflac_uint8)((data & (((drflac_uint64)0x0000FF00     ) << leftoverBits)) >> (8 + leftoverBits)));
+        case 1: crc = drflac_crc16_byte(crc, (drflac_uint8)((data & (((drflac_uint64)0x000000FF     ) << leftoverBits)) >> (0 + leftoverBits)));
         case 0: if (leftoverBits > 0) crc = (crc << leftoverBits) ^ drflac__crc16_table[(crc >> (16 - leftoverBits)) ^ (data & leftoverDataMask)];
     }
     return crc;
@@ -51405,7 +51405,7 @@ static DRFLAC_INLINE drflac_uint32 drflac__clz_lzcnt(drflac_cache_t x)
                 drflac_uint64 r;
                 __asm__ __volatile__ (
                     "lzcnt{ %1, %0| %0, %1}" : "=r"(r) : "r"(x)
-                );
+               );
                 return (drflac_uint32)r;
             }
         #elif defined(DRFLAC_X86)
@@ -51413,7 +51413,7 @@ static DRFLAC_INLINE drflac_uint32 drflac__clz_lzcnt(drflac_cache_t x)
                 drflac_uint32 r;
                 __asm__ __volatile__ (
                     "lzcnt{l %1, %0| %0, %1}" : "=r"(r) : "r"(x)
-                );
+               );
                 return r;
             }
         #elif defined(DRFLAC_ARM) && (defined(__ARM_ARCH) && __ARM_ARCH >= 5) && !defined(DRFLAC_64BIT)
@@ -51425,7 +51425,7 @@ static DRFLAC_INLINE drflac_uint32 drflac__clz_lzcnt(drflac_cache_t x)
                 #else
                     "clz %[out], %[in]" : [out]"=r"(r) : [in]"r"(x)
                 #endif
-                );
+               );
                 return r;
             }
         #else
@@ -53755,7 +53755,7 @@ static drflac_bool32 drflac__seek_to_pcm_frame__binary_search_internal(drflac* p
             pcmRangeLo = newPCMRangeLo;
             pcmRangeHi = newPCMRangeHi;
             if (pcmRangeLo <= pcmFrameIndex && pcmRangeHi >= pcmFrameIndex) {
-                if (drflac__decode_flac_frame_and_seek_forward_by_pcm_frames(pFlac, pcmFrameIndex - pFlac->currentPCMFrame) ) {
+                if (drflac__decode_flac_frame_and_seek_forward_by_pcm_frames(pFlac, pcmFrameIndex - pFlac->currentPCMFrame)) {
                     return DRFLAC_TRUE;
                 } else {
                     break;
@@ -54011,8 +54011,8 @@ static drflac_bool32 drflac__read_streaminfo(drflac_read_proc onRead, void* pUse
     pStreamInfo->minFrameSizeInPCMFrames = (drflac_uint32)((frameSizes     &  (((drflac_uint64)0x00FFFFFF << 16) << 24)) >> 40);
     pStreamInfo->maxFrameSizeInPCMFrames = (drflac_uint32)((frameSizes     &  (((drflac_uint64)0x00FFFFFF << 16) <<  0)) >> 16);
     pStreamInfo->sampleRate              = (drflac_uint32)((importantProps &  (((drflac_uint64)0x000FFFFF << 16) << 28)) >> 44);
-    pStreamInfo->channels                = (drflac_uint8 )((importantProps &  (((drflac_uint64)0x0000000E << 16) << 24)) >> 41) + 1;
-    pStreamInfo->bitsPerSample           = (drflac_uint8 )((importantProps &  (((drflac_uint64)0x0000001F << 16) << 20)) >> 36) + 1;
+    pStreamInfo->channels                = (drflac_uint8)((importantProps &  (((drflac_uint64)0x0000000E << 16) << 24)) >> 41) + 1;
+    pStreamInfo->bitsPerSample           = (drflac_uint8)((importantProps &  (((drflac_uint64)0x0000001F << 16) << 20)) >> 36) + 1;
     pStreamInfo->totalPCMFrameCount      =                ((importantProps & ((((drflac_uint64)0x0000000F << 16) << 16) | 0xFFFFFFFF)));
     DRFLAC_COPY_MEMORY(pStreamInfo->md5, md5, sizeof(md5));
     return DRFLAC_TRUE;
@@ -60103,7 +60103,7 @@ DRMP3_API void drmp3dec_f32_to_s16(const float *in, drmp3_int16 *out, size_t num
         drmp3_f4 a = DRMP3_VMUL(DRMP3_VLD(&in[i  ]), scale);
         drmp3_f4 b = DRMP3_VMUL(DRMP3_VLD(&in[i+4]), scale);
 #if DRMP3_HAVE_SSE
-        drmp3_f4 s16max = DRMP3_VSET( 32767.0f);
+        drmp3_f4 s16max = DRMP3_VSET(32767.0f);
         drmp3_f4 s16min = DRMP3_VSET(-32768.0f);
         __m128i pcm8 = _mm_packs_epi32(_mm_cvtps_epi32(_mm_max_ps(_mm_min_ps(a, s16max), s16min)),
                                         _mm_cvtps_epi32(_mm_max_ps(_mm_min_ps(b, s16max), s16min)));

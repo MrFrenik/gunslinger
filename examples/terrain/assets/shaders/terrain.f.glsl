@@ -12,8 +12,8 @@ uniform vec3 u_view_pos;
 
 float _HeightblendFactor = 10.0;
 
-vec3 light_pos = vec3( -200.0, 1000.0, 200.0 ); 
-vec3 light_col = vec3( 1.0, 1.0, 1.0 );
+vec3 light_pos = vec3(-200.0, 1000.0, 200.0); 
+vec3 light_col = vec3(1.0, 1.0, 1.0);
 vec3 amb_col = vec3(0.3, 0.3, 0.45);
 
 // {0.3f, {10, 20, 150, 255}},     // Deep Water
@@ -45,42 +45,42 @@ vec3 heightblend(vec3 input1, float height1, vec3 input2, float height2)
 
 vec3 mix_cols(vec3 c0, vec3 c1, float v0, float v1, float height)
 {
-    float blendAmount = (height - v0) * ( 1.0 / (v1 - v0 ) );
+    float blendAmount = (height - v0) * (1.0 / (v1 - v0));
     return mix(c0, c1, blendAmount);
 }
 
 // Want to mix colors as they ramp upward
-vec3 color_from_height( float height )
+vec3 color_from_height(float height)
 {
     // Normalize height between 0 and 1
     height /= max_height;
-    height = clamp( height, 0.0, 1.0 );
+    height = clamp(height, 0.0, 1.0);
     float blendAmount = 1.0;
 
     vec3 col = vec3(0.0, 0.0, 0.0);
-    if ( height < 0.07 ) 
+    if (height < 0.07) 
     {
         blendAmount = height / 0.07;
         col = mix(deep_water, shallow_water, blendAmount);
     } 
-    else if ( height >= 0.07 && height < 0.075 )  col = mix_cols(shallow_water, sand, 0.07, 0.075, height);
-    else if ( height >= 0.075 && height < 0.53 ) col = mix_cols(sand, grass, 0.35, 0.53, height);
-    else if ( height >= 0.53 && height < 0.8 ) col = mix_cols(grass, rock, 0.53, 0.8, height);
-    else if ( height >= 0.8 && height < 0.9 )  col = mix_cols(rock, rock2, 0.8, 0.9, height);
-    else if ( height >= 0.9 && height <= 1.0 )  col = mix_cols(rock2, snow, 0.9, 1.0, height);
+    else if (height >= 0.07 && height < 0.075)  col = mix_cols(shallow_water, sand, 0.07, 0.075, height);
+    else if (height >= 0.075 && height < 0.53) col = mix_cols(sand, grass, 0.35, 0.53, height);
+    else if (height >= 0.53 && height < 0.8) col = mix_cols(grass, rock, 0.53, 0.8, height);
+    else if (height >= 0.8 && height < 0.9)  col = mix_cols(rock, rock2, 0.8, 0.9, height);
+    else if (height >= 0.9 && height <= 1.0)  col = mix_cols(rock2, snow, 0.9, 1.0, height);
 
-    return clamp( col, 0.0, 1.0 );
+    return clamp(col, 0.0, 1.0);
 
-    // if ( height < 1.0 ) return mix( deep_water, rock2, height );
+    // if (height < 1.0) return mix(deep_water, rock2, height);
     // vec3 col = vec3(0.0, 0.0, 0.0);
-    // col = mix( deep_water, grass, height / max_height );    // Not sure how to mix over ranges...
-    // col = mix( col, rock2, height / max_height );
+    // col = mix(deep_water, grass, height / max_height);    // Not sure how to mix over ranges...
+    // col = mix(col, rock2, height / max_height);
     // return col;
-    // return mix( deep_water, rock2, height / max_height );
+    // return mix(deep_water, rock2, height / max_height);
     // Want to blend between regions...
-    // if ( height <= 2.0 ) return deep_water; 
-    // else if ( height <= 3.0 ) return mix(deep_water, grass, height / max_height ); 
-    // else if ( height <= 3.5 ) return mix(deep_water, grass, height); 
+    // if (height <= 2.0) return deep_water; 
+    // else if (height <= 3.0) return mix(deep_water, grass, height / max_height); 
+    // else if (height <= 3.5) return mix(deep_water, grass, height); 
     // else return rock2;
 }
 
@@ -92,35 +92,35 @@ vec3 color_from_height( float height )
 // }
 
 float
-map_range( float input_start, float input_end, float output_start, float output_end, float val )
+map_range(float input_start, float input_end, float output_start, float output_end, float val)
 {
-    float slope = ( output_end - output_start ) / ( input_end - input_start );
-    return ( output_start + ( slope * ( val - input_start ) ) );
+    float slope = (output_end - output_start) / (input_end - input_start);
+    return (output_start + (slope * (val - input_start)));
 }
 
 void main()
 {
     // Tex color
     // vec3 tex_color = texture2D(s_noise_tex, tex_coord).rgb;
-    // tex_color = mix( tex_color, texture2D( s_noise_tex, tex_coord + vec2(-1.0, -1.0) ).rgb, 0.5 );
-    // tex_color = mix( tex_color, texture2D( s_noise_tex, tex_coord + vec2(1.0, -1.0) ).rgb, 0.5 );
-    // tex_color = mix( tex_color, texture2D( s_noise_tex, tex_coord + vec2(1.0, 1.0) ).rgb, 0.5 );
-    // tex_color = mix( tex_color, texture2D( s_noise_tex, tex_coord + vec2(1.0, 0.0) ).rgb, 0.5 );
-    // tex_color = mix( tex_color, texture2D( s_noise_tex, tex_coord + vec2(0.0, 1.0) ).rgb, 0.5 );
+    // tex_color = mix(tex_color, texture2D(s_noise_tex, tex_coord + vec2(-1.0, -1.0)).rgb, 0.5);
+    // tex_color = mix(tex_color, texture2D(s_noise_tex, tex_coord + vec2(1.0, -1.0)).rgb, 0.5);
+    // tex_color = mix(tex_color, texture2D(s_noise_tex, tex_coord + vec2(1.0, 1.0)).rgb, 0.5);
+    // tex_color = mix(tex_color, texture2D(s_noise_tex, tex_coord + vec2(1.0, 0.0)).rgb, 0.5);
+    // tex_color = mix(tex_color, texture2D(s_noise_tex, tex_coord + vec2(0.0, 1.0)).rgb, 0.5);
 
     // mix the alpha of the fragment from the center? (want it to blend away from center)
-    vec3 tex_color = color_from_height( height );
+    vec3 tex_color = color_from_height(height);
 
     float alpha = 1.0;
 
     float r = 0.4;
     float dist = distance(tex_coord, vec2(0.5, 0.5));
     // tex_color = vec3(1.0, 1.0, 1.0);
-    if ( dist > r )
+    if (dist > r)
     {
         // tex_color = vec3(dist, dist, dist) * 2.0;
-        float blend = 1.0 - map_range( 0.4, 0.6, 0.0, 1.0, dist );
-        alpha = mix( 0.0, 1.0, blend );
+        float blend = 1.0 - map_range(0.4, 0.6, 0.0, 1.0, dist);
+        alpha = mix(0.0, 1.0, blend);
     }
 
     /*
@@ -133,21 +133,21 @@ void main()
         dist - 
     */
 
-    // if ( tex_coord.x <= 0.15 ) {
-    //     float blendAmount = (tex_coord.x - 0.0) / ( 0.15 - 0.0 );
-    //     alpha = mix( 0.0, 1.0, blendAmount );
+    // if (tex_coord.x <= 0.15) {
+    //     float blendAmount = (tex_coord.x - 0.0) / (0.15 - 0.0);
+    //     alpha = mix(0.0, 1.0, blendAmount);
     // }
-    // if ( tex_coord.x > 0.9 ) {
-    //     float blendAmount = 1.0 - (tex_coord.x - 0.9) / ( 1.0 - 0.9 );
-    //     alpha = mix( 0.0, 1.0, blendAmount );
+    // if (tex_coord.x > 0.9) {
+    //     float blendAmount = 1.0 - (tex_coord.x - 0.9) / (1.0 - 0.9);
+    //     alpha = mix(0.0, 1.0, blendAmount);
     // }
-    // if ( tex_coord.y <= 0.1 ) {
-    //     float blendAmount = (tex_coord.y - 0.0) / ( 0.1 - 0.0 );
-    //     alpha = mix( 0.0, 1.0, blendAmount );
+    // if (tex_coord.y <= 0.1) {
+    //     float blendAmount = (tex_coord.y - 0.0) / (0.1 - 0.0);
+    //     alpha = mix(0.0, 1.0, blendAmount);
     // }
-    // if ( tex_coord.y > 0.9 ) {
-    //     float blendAmount = 1.0 - (tex_coord.y - 0.9) / ( 1.0 - 0.9 );
-    //     alpha = mix( 0.0, 1.0, blendAmount );
+    // if (tex_coord.y > 0.9) {
+    //     float blendAmount = 1.0 - (tex_coord.y - 0.9) / (1.0 - 0.9);
+    //     alpha = mix(0.0, 1.0, blendAmount);
     // }
 
      // ambient

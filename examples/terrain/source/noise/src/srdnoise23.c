@@ -46,7 +46,7 @@
 
 #include "srdnoise23.h" /* We strictly don't need this, but play nice. */
 
-#define FASTFLOOR(x) ( ((int)(x)<=(x)) ? ((int)x) : (((int)x)-1) )
+#define FASTFLOOR(x) (((int)(x)<=(x)) ? ((int)x) : (((int)x)-1))
 
 /* Static data ---------------------- */
 
@@ -135,7 +135,7 @@ static float grad3v[16][3] = {
  * gradients-dot-residualvectors in 2D and 3D.
  */
 
-void gradrot2( int hash, float sin_t, float cos_t, float *gx, float *gy ) {
+void gradrot2(int hash, float sin_t, float cos_t, float *gx, float *gy) {
     int h = hash & 7;
     float gx0 = grad2[h][0];
     float gy0 = grad2[h][1];
@@ -144,7 +144,7 @@ void gradrot2( int hash, float sin_t, float cos_t, float *gx, float *gy ) {
     return;
 }
 
-void gradrot3( int hash, float sin_t, float cos_t, float *gx, float *gy, float *gz ) {
+void gradrot3(int hash, float sin_t, float cos_t, float *gx, float *gy, float *gz) {
     int h = hash & 15;
     float gux = grad3u[h][0];
     float guy = grad3u[h][1];
@@ -158,11 +158,11 @@ void gradrot3( int hash, float sin_t, float cos_t, float *gx, float *gy, float *
     return;
 }
 
-float graddotp2( float gx, float gy, float x, float y ) {
+float graddotp2(float gx, float gy, float x, float y) {
   return gx * x + gy * y;
 }
 
-float graddotp3( float gx, float gy, float gz, float x, float y, float z ) {
+float graddotp3(float gx, float gy, float gz, float x, float y, float z) {
   return gx * x + gy * y + gz * z;
 }
 
@@ -177,22 +177,22 @@ float graddotp3( float gx, float gy, float gz, float x, float y, float z ) {
  * If the last two arguments are not null, the analytic derivative
  * (the 2D gradient of the total noise field) is also calculated.
  */
-float srdnoise2( float x, float y, float angle, float *dnoise_dx, float *dnoise_dy )
+float srdnoise2(float x, float y, float angle, float *dnoise_dx, float *dnoise_dy)
   {
     float n0, n1, n2; /* Noise contributions from the three simplex corners */
     float gx0, gy0, gx1, gy1, gx2, gy2; /* Gradients at simplex corners */
     float sin_t, cos_t; /* Sine and cosine for the gradient rotation angle */
-    sin_t = sin( angle );
-    cos_t = cos( angle );
+    sin_t = sin(angle);
+    cos_t = cos(angle);
 
     /* Skew the input space to determine which simplex cell we're in */
-    float s = ( x + y ) * F2; /* Hairy factor for 2D */
+    float s = (x + y) * F2; /* Hairy factor for 2D */
     float xs = x + s;
     float ys = y + s;
-    int i = FASTFLOOR( xs );
-    int j = FASTFLOOR( ys );
+    int i = FASTFLOOR(xs);
+    int j = FASTFLOOR(ys);
 
-    float t = ( float ) ( i + j ) * G2;
+    float t = (float) (i + j) * G2;
     float X0 = i - t; /* Unskew the cell origin back to (x,y) space */
     float Y0 = j - t;
     float x0 = x - X0; /* The x,y distances from the cell origin */
@@ -201,7 +201,7 @@ float srdnoise2( float x, float y, float angle, float *dnoise_dx, float *dnoise_
     /* For the 2D case, the simplex shape is an equilateral triangle.
      * Determine which simplex we are in. */
     int i1, j1; /* Offsets for second (middle) corner of simplex in (i,j) coords */
-    if( x0 > y0 ) { i1 = 1; j1 = 0; } /* lower triangle, XY order: (0,0)->(1,0)->(1,1) */
+    if(x0 > y0) { i1 = 1; j1 = 0; } /* lower triangle, XY order: (0,0)->(1,0)->(1,1) */
     else { i1 = 0; j1 = 1; }      /* upper triangle, YX order: (0,0)->(0,1)->(1,1) */
 
     /* A step of (1,0) in (i,j) means a step of (1-c,-c) in (x,y), and
@@ -219,41 +219,41 @@ float srdnoise2( float x, float y, float angle, float *dnoise_dx, float *dnoise_
     /* Calculate the contribution from the three corners */
     float t0 = 0.5f - x0 * x0 - y0 * y0;
     float t20, t40;
-    if( t0 < 0.0f ) t40 = t20 = t0 = n0 = gx0 = gy0 = 0.0f; /* No influence */
+    if(t0 < 0.0f) t40 = t20 = t0 = n0 = gx0 = gy0 = 0.0f; /* No influence */
     else {
-      gradrot2( perm[ii + perm[jj]], sin_t, cos_t, &gx0, &gy0 );
+      gradrot2(perm[ii + perm[jj]], sin_t, cos_t, &gx0, &gy0);
       t20 = t0 * t0;
       t40 = t20 * t20;
-      n0 = t40 * graddotp2( gx0, gy0, x0, y0 );
+      n0 = t40 * graddotp2(gx0, gy0, x0, y0);
     }
 
     float t1 = 0.5f - x1 * x1 - y1 * y1;
     float t21, t41;
-    if( t1 < 0.0f ) t21 = t41 = t1 = n1 = gx1 = gy1 = 0.0f; /* No influence */
+    if(t1 < 0.0f) t21 = t41 = t1 = n1 = gx1 = gy1 = 0.0f; /* No influence */
     else {
-      gradrot2( perm[ii + i1 + perm[jj + j1]], sin_t, cos_t, &gx1, &gy1 );
+      gradrot2(perm[ii + i1 + perm[jj + j1]], sin_t, cos_t, &gx1, &gy1);
       t21 = t1 * t1;
       t41 = t21 * t21;
-      n1 = t41 * graddotp2( gx1, gy1, x1, y1 );
+      n1 = t41 * graddotp2(gx1, gy1, x1, y1);
     }
 
     float t2 = 0.5f - x2 * x2 - y2 * y2;
     float t22, t42;
-    if( t2 < 0.0f ) t42 = t22 = t2 = n2 = gx2 = gy2 = 0.0f; /* No influence */
+    if(t2 < 0.0f) t42 = t22 = t2 = n2 = gx2 = gy2 = 0.0f; /* No influence */
     else {
-      gradrot2( perm[ii + 1 + perm[jj + 1]], sin_t, cos_t, &gx2, &gy2 );
+      gradrot2(perm[ii + 1 + perm[jj + 1]], sin_t, cos_t, &gx2, &gy2);
       t22 = t2 * t2;
       t42 = t22 * t22;
-      n2 = t42 * graddotp2( gx2, gy2, x2, y2 );
+      n2 = t42 * graddotp2(gx2, gy2, x2, y2);
     }
 
     /* Add contributions from each corner to get the final noise value.
      * The result is scaled to return values in the interval [-1,1]. */
-    float noise = 40.0f * ( n0 + n1 + n2 );
+    float noise = 40.0f * (n0 + n1 + n2);
 
     /* Compute derivative, if requested by supplying non-null pointers
      * for the last two arguments */
-    if( ( dnoise_dx != 0 ) && ( dnoise_dy != 0 ) )
+    if((dnoise_dx != 0) && (dnoise_dy != 0))
       {
 	/*  A straight, unoptimised calculation would be like:
      *    *dnoise_dx = -8.0f * t20 * t0 * x0 * graddotp2(gx0, gy0, x0, y0) + t40 * gx0;
@@ -263,13 +263,13 @@ float srdnoise2( float x, float y, float angle, float *dnoise_dx, float *dnoise_
      *    *dnoise_dx += -8.0f * t22 * t2 * x2 * graddotp2(gx2, gy2, x2, y2) + t42 * gx2;
      *    *dnoise_dy += -8.0f * t22 * t2 * y2 * graddotp2(gx2, gy2, x2, y2) + t42 * gy2;
 	 */
-        float temp0 = t20 * t0 * graddotp2( gx0, gy0, x0, y0 );
+        float temp0 = t20 * t0 * graddotp2(gx0, gy0, x0, y0);
         *dnoise_dx = temp0 * x0;
         *dnoise_dy = temp0 * y0;
-        float temp1 = t21 * t1 * graddotp2( gx1, gy1, x1, y1 );
+        float temp1 = t21 * t1 * graddotp2(gx1, gy1, x1, y1);
         *dnoise_dx += temp1 * x1;
         *dnoise_dy += temp1 * y1;
-        float temp2 = t22 * t2 * graddotp2( gx2, gy2, x2, y2 );
+        float temp2 = t22 * t2 * graddotp2(gx2, gy2, x2, y2);
         *dnoise_dx += temp2 * x2;
         *dnoise_dy += temp2 * y2;
         *dnoise_dx *= -8.0f;
@@ -289,16 +289,16 @@ float srdnoise2( float x, float y, float angle, float *dnoise_dx, float *dnoise_
 #define F3 0.333333333
 #define G3 0.166666667
 
-float srdnoise3( float x, float y, float z, float angle,
-                 float *dnoise_dx, float *dnoise_dy, float *dnoise_dz )
+float srdnoise3(float x, float y, float z, float angle,
+                 float *dnoise_dx, float *dnoise_dy, float *dnoise_dz)
   {
     float n0, n1, n2, n3; /* Noise contributions from the four simplex corners */
     float noise;          /* Return value */
     float gx0, gy0, gz0, gx1, gy1, gz1; /* Gradients at simplex corners */
     float gx2, gy2, gz2, gx3, gy3, gz3;
     float sin_t, cos_t; /* Sine and cosine for the gradient rotation angle */
-    sin_t = sin( angle );
-    cos_t = cos( angle );
+    sin_t = sin(angle);
+    cos_t = cos(angle);
 
     /* Skew the input space to determine which simplex cell we're in */
     float s = (x+y+z)*F3; /* Very nice and simple skew factor for 3D */
@@ -360,40 +360,40 @@ float srdnoise3( float x, float y, float z, float angle,
     float t20, t40;
     if(t0 < 0.0f) n0 = t0 = t20 = t40 = gx0 = gy0 = gz0 = 0.0f;
     else {
-      gradrot3( perm[ii + perm[jj + perm[kk]]], sin_t, cos_t, &gx0, &gy0, &gz0 );
+      gradrot3(perm[ii + perm[jj + perm[kk]]], sin_t, cos_t, &gx0, &gy0, &gz0);
       t20 = t0 * t0;
       t40 = t20 * t20;
-      n0 = t40 * graddotp3( gx0, gy0, gz0, x0, y0, z0 );
+      n0 = t40 * graddotp3(gx0, gy0, gz0, x0, y0, z0);
     }
 
     float t1 = 0.5f - x1*x1 - y1*y1 - z1*z1;
     float t21, t41;
     if(t1 < 0.0f) n1 = t1 = t21 = t41 = gx1 = gy1 = gz1 = 0.0f;
     else {
-      gradrot3( perm[ii + i1 + perm[jj + j1 + perm[kk + k1]]], sin_t, cos_t, &gx1, &gy1, &gz1 );
+      gradrot3(perm[ii + i1 + perm[jj + j1 + perm[kk + k1]]], sin_t, cos_t, &gx1, &gy1, &gz1);
       t21 = t1 * t1;
       t41 = t21 * t21;
-      n1 = t41 * graddotp3( gx1, gy1, gz1, x1, y1, z1 );
+      n1 = t41 * graddotp3(gx1, gy1, gz1, x1, y1, z1);
     }
 
     float t2 = 0.5f - x2*x2 - y2*y2 - z2*z2;
     float t22, t42;
     if(t2 < 0.0f) n2 = t2 = t22 = t42 = gx2 = gy2 = gz2 = 0.0f;
     else {
-      gradrot3( perm[ii + i2 + perm[jj + j2 + perm[kk + k2]]], sin_t, cos_t, &gx2, &gy2, &gz2 );
+      gradrot3(perm[ii + i2 + perm[jj + j2 + perm[kk + k2]]], sin_t, cos_t, &gx2, &gy2, &gz2);
       t22 = t2 * t2;
       t42 = t22 * t22;
-      n2 = t42 * graddotp3( gx2, gy2, gz2, x2, y2, z2 );
+      n2 = t42 * graddotp3(gx2, gy2, gz2, x2, y2, z2);
     }
 
     float t3 = 0.5f - x3*x3 - y3*y3 - z3*z3;
     float t23, t43;
     if(t3 < 0.0f) n3 = t3 = t23 = t43 = gx3 = gy3 = gz3 = 0.0f;
     else {
-      gradrot3( perm[ii + 1 + perm[jj + 1 + perm[kk + 1]]], sin_t, cos_t, &gx3, &gy3, &gz3 );
+      gradrot3(perm[ii + 1 + perm[jj + 1 + perm[kk + 1]]], sin_t, cos_t, &gx3, &gy3, &gz3);
       t23 = t3 * t3;
       t43 = t23 * t23;
-      n3 = t43 * graddotp3( gx3, gy3, gz3, x3, y3, z3 );
+      n3 = t43 * graddotp3(gx3, gy3, gz3, x3, y3, z3);
     }
 
     /*  Add contributions from each corner to get the final noise value.
@@ -402,7 +402,7 @@ float srdnoise3( float x, float y, float z, float angle,
 
     /* Compute derivative, if requested by supplying non-null pointers
      * for the last three arguments */
-    if( ( dnoise_dx != 0 ) && ( dnoise_dy != 0 ) && ( dnoise_dz != 0 ))
+    if((dnoise_dx != 0) && (dnoise_dy != 0) && (dnoise_dz != 0))
       {
 	/*  A straight, unoptimised calculation would be like:
      *     *dnoise_dx = -8.0f * t20 * t0 * x0 * graddotp3(gx0, gy0, gz0, x0, y0, z0) + t40 * gx0;
@@ -418,19 +418,19 @@ float srdnoise3( float x, float y, float z, float angle,
      *    *dnoise_dy += -8.0f * t23 * t3 * y3 * graddotp3(gx3, gy3, gz3, x3, y3, z3) + t43 * gy3;
      *    *dnoise_dz += -8.0f * t23 * t3 * z3 * graddotp3(gx3, gy3, gz3, x3, y3, z3) + t43 * gz3;
      */
-        float temp0 = t20 * t0 * graddotp3( gx0, gy0, gz0, x0, y0, z0 );
+        float temp0 = t20 * t0 * graddotp3(gx0, gy0, gz0, x0, y0, z0);
         *dnoise_dx = temp0 * x0;
         *dnoise_dy = temp0 * y0;
         *dnoise_dz = temp0 * z0;
-        float temp1 = t21 * t1 * graddotp3( gx1, gy1, gz1, x1, y1, z1 );
+        float temp1 = t21 * t1 * graddotp3(gx1, gy1, gz1, x1, y1, z1);
         *dnoise_dx += temp1 * x1;
         *dnoise_dy += temp1 * y1;
         *dnoise_dz += temp1 * z1;
-        float temp2 = t22 * t2 * graddotp3( gx2, gy2, gz2, x2, y2, z2 );
+        float temp2 = t22 * t2 * graddotp3(gx2, gy2, gz2, x2, y2, z2);
         *dnoise_dx += temp2 * x2;
         *dnoise_dy += temp2 * y2;
         *dnoise_dz += temp2 * z2;
-        float temp3 = t23 * t3 * graddotp3( gx3, gy3, gz3, x3, y3, z3 );
+        float temp3 = t23 * t3 * graddotp3(gx3, gy3, gz3, x3, y3, z3);
         *dnoise_dx += temp3 * x3;
         *dnoise_dy += temp3 * y3;
         *dnoise_dz += temp3 * z3;

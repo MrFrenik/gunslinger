@@ -10,7 +10,7 @@ rem Include directories
 set inc=/I ..\..\..\include
 
 rem Source files
-set src_main=..\source\*.c
+set src_main=..\source\*.cpp
 
 rem All source together
 set src_all=%src_main%

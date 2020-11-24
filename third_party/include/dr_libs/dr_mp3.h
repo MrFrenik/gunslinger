@@ -2323,7 +2323,7 @@ DRMP3_API void drmp3dec_f32_to_s16(const float *in, drmp3_int16 *out, size_t num
         drmp3_f4 a = DRMP3_VMUL(DRMP3_VLD(&in[i  ]), scale);
         drmp3_f4 b = DRMP3_VMUL(DRMP3_VLD(&in[i+4]), scale);
 #if DRMP3_HAVE_SSE
-        drmp3_f4 s16max = DRMP3_VSET( 32767.0f);
+        drmp3_f4 s16max = DRMP3_VSET(32767.0f);
         drmp3_f4 s16min = DRMP3_VSET(-32768.0f);
         __m128i pcm8 = _mm_packs_epi32(_mm_cvtps_epi32(_mm_max_ps(_mm_min_ps(a, s16max), s16min)),
                                         _mm_cvtps_epi32(_mm_max_ps(_mm_min_ps(b, s16max), s16min)));

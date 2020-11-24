@@ -30,7 +30,7 @@ src=(
 	# ../source/platform/sdl/*.c
 	../source/platform/glfw/*.c
 
-	# Gfx plugin ( Again, remove from engine build )
+	# Gfx plugin (Again, remove from engine build)
 	../source/graphics/opengl/*.c
 
 	# Audio plugin

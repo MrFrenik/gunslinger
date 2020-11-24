@@ -18,9 +18,9 @@ font_t construct_font_data()
 
 	// Construct glyph information
 	const s32 glyph_width = 5, glyph_height = 7;
-	for ( u32 r = 0; r < 6; ++r ) 
+	for (u32 r = 0; r < 6; ++r) 
 	{
-		for ( u32 c = 0; c < 18; ++c ) 
+		for (u32 c = 0; c < 18; ++c) 
 		{
 			u32 idx = r * 18 + c;
 			f.glyphs[ idx ] = (font_glyph_t){ c * 5, r * 7, 5, 7 };
@@ -30,9 +30,9 @@ font_t construct_font_data()
 	return f;
 }
 
-font_glyph_t get_glyph( font_t* f, char c )
+font_glyph_t get_glyph(font_t* f, char c)
 {
-	switch ( c ) 
+	switch (c) 
 	{
 		case ' ': return f->glyphs[ 0 ];
 		case '!': return f->glyphs[ 1 ];

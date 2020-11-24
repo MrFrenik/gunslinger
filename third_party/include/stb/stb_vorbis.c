@@ -197,7 +197,7 @@ extern int stb_vorbis_decode_frame_pushdata(
          int *channels,             // place to write number of float * buffers
          float ***output,           // place to write float ** array of float * buffers
          int *samples               // place to write number of output samples
-     );
+    );
 // decode a frame of audio sample data if possible from the passed-in data block
 //
 // return value: number of bytes we used from datablock
@@ -1505,7 +1505,7 @@ static int maybe_start_packet(vorb *f)
    if (f->next_seg == -1) {
       int x = get8(f);
       if (f->eof) return FALSE; // EOF at page boundary is not an error!
-      if (0x4f != x      ) return error(f, VORBIS_missing_capture_pattern);
+      if (0x4f != x     ) return error(f, VORBIS_missing_capture_pattern);
       if (0x67 != get8(f)) return error(f, VORBIS_missing_capture_pattern);
       if (0x67 != get8(f)) return error(f, VORBIS_missing_capture_pattern);
       if (0x53 != get8(f)) return error(f, VORBIS_missing_capture_pattern);
@@ -2074,7 +2074,7 @@ static int residue_decode(vorb *f, Codebook *book, float *target, int offset, in
          if (!codebook_decode_step(f, book, target+offset+k, n-offset-k, step))
             return FALSE;
    } else {
-      for (k=0; k < n; ) {
+      for (k=0; k < n;) {
          if (!codebook_decode(f, book, target+offset, n-k))
             return FALSE;
          k += book->dimensions;
@@ -2341,8 +2341,8 @@ void inverse_mdct_slow(float *buffer, int n, vorb *f, int blocktype)
    dct_iv_slow(temp, n2);  // returns -c'-d, a-b'
 
    for (i=0; i < n4  ; ++i) buffer[i] = temp[i+n4];            // a-b'
-   for (   ; i < n3_4; ++i) buffer[i] = -temp[n3_4 - i - 1];   // b-a', c+d'
-   for (   ; i < n   ; ++i) buffer[i] = -temp[i - n3_4];       // c'+d
+   for (  ; i < n3_4; ++i) buffer[i] = -temp[n3_4 - i - 1];   // b-a', c+d'
+   for (  ; i < n   ; ++i) buffer[i] = -temp[i - n3_4];       // c'+d
 }
 #endif
 
@@ -2947,7 +2947,7 @@ void inverse_mdct_naive(float *buffer, int n)
 
    // copy and reflect spectral data
    for (k=0; k < n2; ++k) u[k] = buffer[k];
-   for (   ; k < n ; ++k) u[k] = -buffer[n - k - 1];
+   for (  ; k < n ; ++k) u[k] = -buffer[n - k - 1];
    // kernel from paper
    // step 1
    for (k=k2=k4=0; k < n4; k+=1, k2+=2, k4+=4) {
@@ -3016,9 +3016,9 @@ void inverse_mdct_naive(float *buffer, int n)
    }
    // step 7
    for (k=k2=0; k < n8; ++k, k2 += 2) {
-      v[n2 + k2 ] = ( u[n2 + k2] + u[n-2-k2] + C[k2+1]*(u[n2+k2]-u[n-2-k2]) + C[k2]*(u[n2+k2+1]+u[n-2-k2+1]))/2;
-      v[n-2 - k2] = ( u[n2 + k2] + u[n-2-k2] - C[k2+1]*(u[n2+k2]-u[n-2-k2]) - C[k2]*(u[n2+k2+1]+u[n-2-k2+1]))/2;
-      v[n2+1+ k2] = ( u[n2+1+k2] - u[n-1-k2] + C[k2+1]*(u[n2+1+k2]+u[n-1-k2]) - C[k2]*(u[n2+k2]-u[n-2-k2]))/2;
+      v[n2 + k2 ] = (u[n2 + k2] + u[n-2-k2] + C[k2+1]*(u[n2+k2]-u[n-2-k2]) + C[k2]*(u[n2+k2+1]+u[n-2-k2+1]))/2;
+      v[n-2 - k2] = (u[n2 + k2] + u[n-2-k2] - C[k2+1]*(u[n2+k2]-u[n-2-k2]) - C[k2]*(u[n2+k2+1]+u[n-2-k2+1]))/2;
+      v[n2+1+ k2] = (u[n2+1+k2] - u[n-1-k2] + C[k2+1]*(u[n2+1+k2]+u[n-1-k2]) - C[k2]*(u[n2+k2]-u[n-2-k2]))/2;
       v[n-1 - k2] = (-u[n2+1+k2] + u[n-1-k2] + C[k2+1]*(u[n2+1+k2]+u[n-1-k2]) - C[k2]*(u[n2+k2]-u[n-2-k2]))/2;
    }
    // step 8
@@ -3037,8 +3037,8 @@ void inverse_mdct_naive(float *buffer, int n)
    //     so it needs to use the "old" B values to behave correctly, or else
    //     set s to 1.0 ]]]
    for (i=0; i < n4  ; ++i) buffer[i] = s * X[i+n4];
-   for (   ; i < n3_4; ++i) buffer[i] = -s * X[n3_4 - i - 1];
-   for (   ; i < n   ; ++i) buffer[i] = -s * X[i - n3_4];
+   for (  ; i < n3_4; ++i) buffer[i] = -s * X[n3_4 - i - 1];
+   for (  ; i < n   ; ++i) buffer[i] = -s * X[i - n3_4];
 }
 #endif
 
@@ -3807,7 +3807,7 @@ static int start_decoder(vorb *f)
          if (c->sorted_codewords == NULL) return error(f, VORBIS_outofmem);
          // allocate an extra slot at the front so that c->sorted_values[-1] is defined
          // so that we can catch that case without an extra if
-         c->sorted_values    = ( int   *) setup_malloc(f, sizeof(*c->sorted_values   ) * (c->sorted_entries+1));
+         c->sorted_values    = (int   *) setup_malloc(f, sizeof(*c->sorted_values  ) * (c->sorted_entries+1));
          if (c->sorted_values == NULL) return error(f, VORBIS_outofmem);
          ++c->sorted_values;
          c->sorted_values[-1] = -1;
@@ -4364,7 +4364,7 @@ static int vorbis_search_for_page_pushdata(vorb *f, uint8 *data, int data_len)
                for (j=0; j < 22; ++j)
                   crc = crc32_update(crc, data[i+j]);
                // now process 4 0-bytes
-               for (   ; j < 26; ++j)
+               for (  ; j < 26; ++j)
                   crc = crc32_update(crc, 0);
                // len is the total number of bytes we need to scan
                n = f->page_crc_tests++;
@@ -4428,7 +4428,7 @@ int stb_vorbis_decode_frame_pushdata(
          int *channels,                   // place to write number of float * buffers
          float ***output,                 // place to write float ** array of float * buffers
          int *samples                     // place to write number of output samples
-     )
+    )
 {
    int i;
    int len,right,left;
@@ -5227,7 +5227,7 @@ static void convert_samples_short(int buf_c, short **buffer, int b_offset, int d
       int limit = buf_c < data_c ? buf_c : data_c;
       for (i=0; i < limit; ++i)
          copy_samples(buffer[i]+b_offset, data[i]+d_offset, samples);
-      for (   ; i < buf_c; ++i)
+      for (  ; i < buf_c; ++i)
          memset(buffer[i]+b_offset, 0, sizeof(short) * samples);
    }
 }
@@ -5262,7 +5262,7 @@ static void convert_channels_short_interleaved(int buf_c, short *buffer, int dat
                v = v < 0 ? -32768 : 32767;
             *buffer++ = v;
          }
-         for (   ; i < buf_c; ++i)
+         for (  ; i < buf_c; ++i)
             *buffer++ = 0;
       }
    }
@@ -5416,7 +5416,7 @@ int stb_vorbis_get_samples_float_interleaved(stb_vorbis *f, int channels, float 
       for (j=0; j < k; ++j) {
          for (i=0; i < z; ++i)
             *buffer++ = f->channel_buffers[i][f->channel_buffer_start+j];
-         for (   ; i < channels; ++i)
+         for (  ; i < channels; ++i)
             *buffer++ = 0;
       }
       n += k;
@@ -5442,7 +5442,7 @@ int stb_vorbis_get_samples_float(stb_vorbis *f, int channels, float **buffer, in
       if (k) {
          for (i=0; i < z; ++i)
             memcpy(buffer[i]+n, f->channel_buffers[i]+f->channel_buffer_start, sizeof(float)*k);
-         for (   ; i < channels; ++i)
+         for (  ; i < channels; ++i)
             memset(buffer[i]+n, 0, sizeof(float) * k);
       }
       n += k;

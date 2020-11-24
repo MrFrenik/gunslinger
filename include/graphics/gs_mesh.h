@@ -16,11 +16,11 @@ typedef struct gs_mesh_t
 } gs_mesh_t;
 
 _force_inline
-gs_mesh_t gs_mesh_t_new( gs_vertex_attribute_type* layout_data, usize layout_size, void* v_data, usize v_data_size )
+gs_mesh_t gs_mesh_t_new(gs_vertex_attribute_type* layout_data, usize layout_size, void* v_data, usize v_data_size)
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	gs_mesh_t mesh = {0};	
-	mesh.vbo = gfx->construct_vertex_buffer( layout_data, layout_size, v_data, v_data_size );
+	mesh.vbo = gfx->construct_vertex_buffer(layout_data, layout_size, v_data, v_data_size);
 	mesh.vertex_count = v_data_size / sizeof(f32);
 	return mesh;
 }

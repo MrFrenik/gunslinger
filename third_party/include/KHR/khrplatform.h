@@ -154,7 +154,7 @@ typedef uint64_t                khronos_uint64_t;
 #define KHRONOS_SUPPORT_INT64   1
 #define KHRONOS_SUPPORT_FLOAT   1
 
-#elif defined(__VMS ) || defined(__sgi)
+#elif defined(__VMS) || defined(__sgi)
 
 /*
  * Using <inttypes.h>

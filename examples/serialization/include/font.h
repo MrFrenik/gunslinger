@@ -30,6 +30,6 @@ typedef struct font_t
 
 // Font methods
 font_t construct_font_data();
-font_glyph_t get_glyph( font_t* f, char c );
+font_glyph_t get_glyph(font_t* f, char c);
 
 #endif

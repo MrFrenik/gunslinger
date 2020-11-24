@@ -19,11 +19,11 @@ typedef struct composite_pass_data_t
 
 typedef struct composite_pass_t
 {
-	_base( render_pass_i );
+	_base(render_pass_i);
 	composite_pass_data_t data;
 } composite_pass_t;
 
-// Use this to pass in parameters for the pass ( will check for this )
+// Use this to pass in parameters for the pass (will check for this)
 typedef struct composite_pass_parameters_t 
 {
 	gs_texture_t input_texture;

@@ -118,10 +118,10 @@ typedef struct gs_uniform_t
 	u32 location;
 } gs_uniform_t;
 
-// typedef gs_resource( gs_uniform ) gs_resource_uniform;
+// typedef gs_resource(gs_uniform) gs_resource_uniform;
 
 // Hash table := key: u64, val: gs_resource_uniform
-// gs_hash_table_decl( u64, gs_uniform_t, gs_hash_u64, gs_hash_key_comp_std_type );
+// gs_hash_table_decl(u64, gs_uniform_t, gs_hash_u64, gs_hash_key_comp_std_type);
 
 // Don't want to pass this around...
 typedef struct gs_shader_t
@@ -152,7 +152,7 @@ typedef struct gs_frame_buffer_t
 
 typedef struct gs_vertex_attribute_layout_desc_t
 {
-	gs_dyn_array( gs_vertex_attribute_type ) attributes;	
+	gs_dyn_array(gs_vertex_attribute_type) attributes;	
 } gs_vertex_attribute_layout_desc_t;
 
 /*================
@@ -184,8 +184,8 @@ typedef struct gs_color_t
 } gs_color_t;
 
 // From on: https://gist.github.com/fairlight1337/4935ae72bcbcc1ba5c72
-extern void gs_rgb_to_hsv( u8 r, u8 g, u8 b, f32* h, f32* s, f32* v );
-extern void gs_hsv_to_rgb( f32 h, f32 s, f32 v, u8* r, u8* g, u8* b );
+extern void gs_rgb_to_hsv(u8 r, u8 g, u8 b, f32* h, f32* s, f32* v);
+extern void gs_hsv_to_rgb(f32 h, f32 s, f32 v, u8* r, u8* g, u8* b);
 
 /*================
 // Texture
@@ -249,7 +249,7 @@ typedef struct gs_debug_draw_properties
 // Let's try something, bro
 typedef struct gs_graphics_immediate_mode_i
 {
-	void ( * draw_square )( gs_command_buffer_t*, gs_vec3 position, f32 scale );
+	void (* draw_square)(gs_command_buffer_t*, gs_vec3 position, f32 scale);
 } gs_graphics_immediate_mode_i;
 
 /*================
@@ -262,97 +262,97 @@ typedef struct gs_graphics_i
 	/*============================================================
 	// Graphics Initilization / De-Initialization
 	============================================================*/
-	gs_result ( * init )( struct gs_graphics_i* );
-	gs_result ( * shutdown )( struct gs_graphics_i* );
-	gs_result ( * update )( struct gs_graphics_i* );
+	gs_result (* init)(struct gs_graphics_i*);
+	gs_result (* shutdown)(struct gs_graphics_i*);
+	gs_result (* update)(struct gs_graphics_i*);
 
 	/*============================================================
 	// Graphics Command Buffer Ops
 	============================================================*/
-	void ( * reset_command_buffer )( gs_command_buffer_t* );
-	void ( * set_depth_enabled )( gs_command_buffer_t*, b32 );
-	void ( * set_winding_order )( gs_command_buffer_t*, gs_winding_order_type );
-	void ( * set_face_culling )( gs_command_buffer_t*, gs_face_culling_type );
-	void ( * set_blend_mode )( gs_command_buffer_t*, gs_blend_mode_type, gs_blend_mode_type );
-	void ( * set_blend_equation )( gs_command_buffer_t*, gs_blend_equation_type );
-	void ( * set_view_port)( gs_command_buffer_t*, u32 width, u32 height );
-	void ( * set_view_scissor )( gs_command_buffer_t*, u32 x, u32 y, u32 width, u32 height );
-	void ( * bind_frame_buffer )( gs_command_buffer_t*, gs_frame_buffer_t );
-	void ( * set_frame_buffer_attachment )( gs_command_buffer_t*, gs_texture_t tex, u32 idx );
-	void ( * unbind_frame_buffer )( gs_command_buffer_t* );
-	void ( * bind_shader )( gs_command_buffer_t*, gs_shader_t );
-	void ( * bind_uniform )( gs_command_buffer_t*, gs_uniform_t, void* );
-	void ( * bind_uniform_mat4 )( gs_command_buffer_t*, gs_uniform_t, gs_mat4 );
-	void ( * bind_vertex_buffer )( gs_command_buffer_t*, gs_vertex_buffer_t );
-	void ( * bind_index_buffer )( gs_command_buffer_t*, gs_index_buffer_t );
-	void ( * bind_texture )( gs_command_buffer_t*, gs_uniform_t, gs_texture_t, u32 slot );
-	void ( * bind_texture_id )( gs_command_buffer_t*, gs_uniform_t, u32 id, u32 slot );
-	void ( * update_vertex_data )( gs_command_buffer_t*, gs_vertex_buffer_t, void*, usize );
-	void ( * update_index_data )( gs_command_buffer_t*, gs_index_buffer_t, void*, usize );
-	void ( * set_view_clear )( gs_command_buffer_t*, f32* );
-	void ( * draw )( gs_command_buffer_t*, u32 start, u32 count );
-	void ( * draw_indexed )( gs_command_buffer_t*, u32 count, u32 offset );
-	void ( * submit_command_buffer )( gs_command_buffer_t* );
-	// void ( * set_uniform_buffer_sub_data )( gs_command_buffer_t*, gs_resource( gs_uniform_buffer ), void*, usize );
+	void (* reset_command_buffer)(gs_command_buffer_t*);
+	void (* set_depth_enabled)(gs_command_buffer_t*, b32);
+	void (* set_winding_order)(gs_command_buffer_t*, gs_winding_order_type);
+	void (* set_face_culling)(gs_command_buffer_t*, gs_face_culling_type);
+	void (* set_blend_mode)(gs_command_buffer_t*, gs_blend_mode_type, gs_blend_mode_type);
+	void (* set_blend_equation)(gs_command_buffer_t*, gs_blend_equation_type);
+	void (* set_view_port)(gs_command_buffer_t*, u32 width, u32 height);
+	void (* set_view_scissor)(gs_command_buffer_t*, u32 x, u32 y, u32 width, u32 height);
+	void (* bind_frame_buffer)(gs_command_buffer_t*, gs_frame_buffer_t);
+	void (* set_frame_buffer_attachment)(gs_command_buffer_t*, gs_texture_t tex, u32 idx);
+	void (* unbind_frame_buffer)(gs_command_buffer_t*);
+	void (* bind_shader)(gs_command_buffer_t*, gs_shader_t);
+	void (* bind_uniform)(gs_command_buffer_t*, gs_uniform_t, void*);
+	void (* bind_uniform_mat4)(gs_command_buffer_t*, gs_uniform_t, gs_mat4);
+	void (* bind_vertex_buffer)(gs_command_buffer_t*, gs_vertex_buffer_t);
+	void (* bind_index_buffer)(gs_command_buffer_t*, gs_index_buffer_t);
+	void (* bind_texture)(gs_command_buffer_t*, gs_uniform_t, gs_texture_t, u32 slot);
+	void (* bind_texture_id)(gs_command_buffer_t*, gs_uniform_t, u32 id, u32 slot);
+	void (* update_vertex_data)(gs_command_buffer_t*, gs_vertex_buffer_t, void*, usize);
+	void (* update_index_data)(gs_command_buffer_t*, gs_index_buffer_t, void*, usize);
+	void (* set_view_clear)(gs_command_buffer_t*, f32*);
+	void (* draw)(gs_command_buffer_t*, u32 start, u32 count);
+	void (* draw_indexed)(gs_command_buffer_t*, u32 count, u32 offset);
+	void (* submit_command_buffer)(gs_command_buffer_t*);
+	// void (* set_uniform_buffer_sub_data)(gs_command_buffer_t*, gs_resource(gs_uniform_buffer), void*, usize);
 
 	// Need to think about materials a bit, because they're assets, not raw resources.
-	void ( * bind_material_uniforms )( gs_command_buffer_t*, struct gs_material_t* );
-	void ( * bind_material_shader )( gs_command_buffer_t*, struct gs_material_t* );
+	void (* bind_material_uniforms)(gs_command_buffer_t*, struct gs_material_t*);
+	void (* bind_material_shader)(gs_command_buffer_t*, struct gs_material_t*);
 
 	/*============================================================
 	// Graphics Resource Construction
 	============================================================*/
-	gs_vertex_buffer_t ( * construct_vertex_buffer )( gs_vertex_attribute_type*, usize, void*, usize );
-	gs_shader_t ( * construct_shader )( const char* vert_src, const char* frag_src );
-	gs_uniform_t ( * construct_uniform )( gs_shader_t, const char* uniform_name, gs_uniform_type );
-	// gs_command_buffer_t*( * construct_command_buffer )();
-	gs_render_target_t ( * construct_render_target )( gs_texture_parameter_desc );	// Will eventually set this so you can have a number of targets for MRT (is this even necessary)?
-	gs_frame_buffer_t ( * construct_frame_buffer )( gs_texture_t );
-	void* ( * load_texture_data_from_file )( const char* file_path, b32 flip_vertically_on_load, gs_texture_format,
-					s32* width, s32* height, s32* num_comps );
+	gs_vertex_buffer_t (* construct_vertex_buffer)(gs_vertex_attribute_type*, usize, void*, usize);
+	gs_shader_t (* construct_shader)(const char* vert_src, const char* frag_src);
+	gs_uniform_t (* construct_uniform)(gs_shader_t, const char* uniform_name, gs_uniform_type);
+	// gs_command_buffer_t*(* construct_command_buffer)();
+	gs_render_target_t (* construct_render_target)(gs_texture_parameter_desc);	// Will eventually set this so you can have a number of targets for MRT (is this even necessary)?
+	gs_frame_buffer_t (* construct_frame_buffer)(gs_texture_t);
+	void* (* load_texture_data_from_file)(const char* file_path, b32 flip_vertically_on_load, gs_texture_format,
+					s32* width, s32* height, s32* num_comps);
 
 	// Will construct texture resource and let user free data...for no
-	gs_texture_t ( * construct_texture )( gs_texture_parameter_desc );
-	gs_texture_t ( * construct_texture_from_file )( const char* file_path, gs_texture_parameter_desc* t_desc );
-	gs_index_buffer_t ( * construct_index_buffer )( void*, usize );
-	s32 ( * texture_id )( gs_texture_t* );
+	gs_texture_t (* construct_texture)(gs_texture_parameter_desc);
+	gs_texture_t (* construct_texture_from_file)(const char* file_path, gs_texture_parameter_desc* t_desc);
+	gs_index_buffer_t (* construct_index_buffer)(void*, usize);
+	s32 (* texture_id)(gs_texture_t*);
 
 	/*============================================================
 	// Graphics Resource Free Ops
 	============================================================*/
-	void ( * free_vertex_buffer )( gs_vertex_buffer_t );
-	void ( * free_index_buffer )( gs_index_buffer_t );
-	void ( * free_shader )( gs_shader_t );
-	// void ( * free_uniform_buffer )( gs_resource( gs_uniform_buffer ) );
+	void (* free_vertex_buffer)(gs_vertex_buffer_t);
+	void (* free_index_buffer)(gs_index_buffer_t);
+	void (* free_shader)(gs_shader_t);
+	// void (* free_uniform_buffer)(gs_resource(gs_uniform_buffer));
 
 	/*============================================================
 	// Graphics Update Ops
 	============================================================*/
-	void ( * update_vertex_buffer_data )( gs_vertex_buffer_t, void*, usize );
-	void ( * update_texture_data )( gs_texture_t*, gs_texture_parameter_desc );
-	gs_uniform_type ( * uniform_type )( gs_uniform_t );
+	void (* update_vertex_buffer_data)(gs_vertex_buffer_t, void*, usize);
+	void (* update_texture_data)(gs_texture_t*, gs_texture_parameter_desc);
+	gs_uniform_type (* uniform_type)(gs_uniform_t);
 
-	void ( * set_material_uniform )( struct gs_material_t*, gs_uniform_type, const char*, void* );		// Generic method for setting uniform data
-	void ( * set_material_uniform_mat4 )( struct gs_material_t*, const char*, gs_mat4 );
-	void ( * set_material_uniform_vec4 )( struct gs_material_t*, const char*, gs_vec4 );
-	void ( * set_material_uniform_vec3 )( struct gs_material_t*, const char*, gs_vec3 );
-	void ( * set_material_uniform_vec2 )( struct gs_material_t*, const char*, gs_vec2 );
-	void ( * set_material_uniform_float )( struct gs_material_t*, const char*, f32 );
-	void ( * set_material_uniform_int )( struct gs_material_t*, const char*, s32 );
-	void ( * set_material_uniform_sampler2d )( struct gs_material_t*, const char*, gs_texture_t, u32 );
+	void (* set_material_uniform)(struct gs_material_t*, gs_uniform_type, const char*, void*);		// Generic method for setting uniform data
+	void (* set_material_uniform_mat4)(struct gs_material_t*, const char*, gs_mat4);
+	void (* set_material_uniform_vec4)(struct gs_material_t*, const char*, gs_vec4);
+	void (* set_material_uniform_vec3)(struct gs_material_t*, const char*, gs_vec3);
+	void (* set_material_uniform_vec2)(struct gs_material_t*, const char*, gs_vec2);
+	void (* set_material_uniform_float)(struct gs_material_t*, const char*, f32);
+	void (* set_material_uniform_int)(struct gs_material_t*, const char*, s32);
+	void (* set_material_uniform_sampler2d)(struct gs_material_t*, const char*, gs_texture_t, u32);
 
-	void ( * quad_batch_begin )( struct gs_quad_batch_t* );
-	void ( * quad_batch_add )( struct gs_quad_batch_t*, void* );
-	void ( * quad_batch_end )( struct gs_quad_batch_t* );
-	void ( * quad_batch_submit )( gs_command_buffer_t*, struct gs_quad_batch_t* );
+	void (* quad_batch_begin)(struct gs_quad_batch_t*);
+	void (* quad_batch_add)(struct gs_quad_batch_t*, void*);
+	void (* quad_batch_end)(struct gs_quad_batch_t*);
+	void (* quad_batch_submit)(gs_command_buffer_t*, struct gs_quad_batch_t*);
 
 	/*============================================================
 	// Graphics Debug Rendering Ops
 	============================================================*/
-	void ( * set_debug_draw_properties )( gs_command_buffer_t*, gs_debug_draw_properties );
-	void ( * draw_line )( gs_command_buffer_t*, gs_vec3 start, gs_vec3 end, gs_vec3 color );
-	void ( * draw_square )( gs_command_buffer_t*, gs_vec3 origin, f32 width, f32 height, gs_vec3 color, gs_mat4 transform );
-	void ( * submit_debug_drawing )( gs_command_buffer_t* );
+	void (* set_debug_draw_properties)(gs_command_buffer_t*, gs_debug_draw_properties);
+	void (* draw_line)(gs_command_buffer_t*, gs_vec3 start, gs_vec3 end, gs_vec3 color);
+	void (* draw_square)(gs_command_buffer_t*, gs_vec3 origin, f32 width, f32 height, gs_vec3 color, gs_mat4 transform);
+	void (* submit_debug_drawing)(gs_command_buffer_t*);
 
 	/*============================================================
 	// Graphics Immediate Mode Debug Rendering Ops
@@ -362,8 +362,8 @@ typedef struct gs_graphics_i
 	/*============================================================
 	// Graphics Utility Functions
 	============================================================*/
-	u32 (* get_byte_size_of_vertex_attribute)( gs_vertex_attribute_type type );
-	u32 (* calculate_vertex_size_in_bytes)( gs_vertex_attribute_type* layout_data, u32 count );
+	u32 (* get_byte_size_of_vertex_attribute)(gs_vertex_attribute_type type);
+	u32 (* calculate_vertex_size_in_bytes)(gs_vertex_attribute_type* layout_data, u32 count);
 
 	// Render Data 
 	void* data;
@@ -380,7 +380,7 @@ typedef struct gs_graphics_i
 ===============================*/
 
 extern gs_texture_parameter_desc gs_texture_parameter_desc_default();
-extern void* gs_load_texture_data_from_file( const char* path, b32 flip_vertically_on_load );
+extern void* gs_load_texture_data_from_file(const char* path, b32 flip_vertically_on_load);
 
 /*===============================
 // Graphics User Provided Funcs
@@ -398,7 +398,7 @@ extern struct gs_graphics_i* __gs_graphics_construct();
 
 	Want some concept of "render passes" that can be ordered with custom jobs the user or renderer can define
 	Does this require a simple job system before this can be implemented? Does a job system require a better memory 
-	management system? ( I don't think so for the latter )
+	management system? (I don't think so for the latter)
 
 	Graphics subsystem holds raw resources, such as : 
 		* texture ids
@@ -419,15 +419,15 @@ extern struct gs_graphics_i* __gs_graphics_construct();
 
 	// Will load texture into VRAM, will not store texture data in RAM, 
 	//	but will keep texture handle in slot array in graphics subsystem
-	gs_resource_handle texture = gfx->load_texture( "path/to/image.extension" );	
+	gs_resource_handle texture = gfx->load_texture("path/to/image.extension");	
 
 	// Load shader
-	gs_resource_handle shader = gfx->load_shader( gs_compute, "path/to/shader.extension" );
-	gs_resource_handle shader = gfx->load_shader( gs_default, "path/to/vertex_shader.extension", "path/to/fragment_shader.extension" );
-	gs_resource_handle shader = gfx->load_shader( gs_geometry, "path/to/vertex_shader.extension", "path/to/fragment_shader.extension", "path/to/geo_shader.extension" );
+	gs_resource_handle shader = gfx->load_shader(gs_compute, "path/to/shader.extension");
+	gs_resource_handle shader = gfx->load_shader(gs_default, "path/to/vertex_shader.extension", "path/to/fragment_shader.extension");
+	gs_resource_handle shader = gfx->load_shader(gs_geometry, "path/to/vertex_shader.extension", "path/to/fragment_shader.extension", "path/to/geo_shader.extension");
 
 	// Create render target resource
-	gs_resource_handle render_target = gfx->create_render_target( width, height, gs_render_target_flags );
+	gs_resource_handle render_target = gfx->create_render_target(width, height, gs_render_target_flags);
 
 	// For render passes, not sure what this could look like...
 
@@ -453,22 +453,22 @@ extern struct gs_graphics_i* __gs_graphics_construct();
 
 	// Could still use a macro to define these types in a "generic" way
 
-	#define gs_resource( type )\
+	#define gs_resource(type)\
 		gs_resource_#type
 
-	#define gs_declare_resource_type( type )\
-		typedef struct gs_resource( type ) {\
+	#define gs_declare_resource_type(type)\
+		typedef struct gs_resource(type) {\
 	\		u32 id;\	
-		} gs_resource( type );\
+		} gs_resource(type);\
 
-	gs_declare_resource_type( gs_texture );
-	gs_declare_resource_type( gs_shader );
+	gs_declare_resource_type(gs_texture);
+	gs_declare_resource_type(gs_shader);
 	...
 
 	void main()
 	{
 		// Get handle to texture resource (strongly typed)
-		gs_resource( gs_texture ) texture = gfx->construct_texture( ... );
+		gs_resource(gs_texture) texture = gfx->construct_texture(...);
 	}
 
 
@@ -682,7 +682,7 @@ extern struct gs_graphics_i* __gs_graphics_construct();
 
 	typedef gs_graphics_i 
 	{
-		gs_resource_handle( gs_texture ) ( * load_texture_from_file )( const char* path ); 	
+		gs_resource_handle(gs_texture) (* load_texture_from_file)(const char* path); 	
 	} gs_graphics_i;
 
 	Graphics resources are entirely render backend dependent
@@ -690,10 +690,10 @@ extern struct gs_graphics_i* __gs_graphics_construct();
 	What would a simple forward shader look like? 
 
 	// Load shader source from file
-	const char* vs = platform->load_from_file( "shader.vs" );
-	const char* fs = platform->load_from_file( "shader.fs" );
+	const char* vs = platform->load_from_file("shader.vs");
+	const char* fs = platform->load_from_file("shader.fs");
 
-	gs_resource( gs_shader ) shader = gfx->load_shader( gs_render, vs, fs );
+	gs_resource(gs_shader) shader = gfx->load_shader(gs_render, vs, fs);
 
 	// Simple triangle
 	f32 vert_data[] = 
@@ -724,74 +724,74 @@ extern struct gs_graphics_i* __gs_graphics_construct();
 	typedef struct gs_uniform_desc 
 	{
 		gs_uniform_type type;
-		gs_resource( gs_uniform ) uniform_handle; 
+		gs_resource(gs_uniform) uniform_handle; 
 	} gs_uniform_desc;
 
 	typedef struct gs_uniform_buffer 
 	{
-		gs_dyn_array( gs_uniform_desc ) uniforms;
+		gs_dyn_array(gs_uniform_desc) uniforms;
  	} gs_uniform_buffer;
 
 	typedef struct gs_pipeline_state_desc
 	{
-		gs_resource( gs_pipeline_state ) 	shader;
-		gs_resource( gs_vertex_buffer ) 	vertex_buffer;
-		gs_resource( gs_index_buffer ) 		index_buffer;
-		gs_resource( gs_uniform_buffer ) 	uniform_buffer;	
+		gs_resource(gs_pipeline_state) 	shader;
+		gs_resource(gs_vertex_buffer) 	vertex_buffer;
+		gs_resource(gs_index_buffer) 		index_buffer;
+		gs_resource(gs_uniform_buffer) 	uniform_buffer;	
 	} gs_pipeline_state_desc;
 
-	gs_resource( gs_vertex_buffer ) vertex_buffer = gfx->create_vertex_buffer( &vert_data, 4 );
-	gs_resource( gs_index_buffer ) index_buffer = gfx->create_index_buffer( &index_data, 6 );
+	gs_resource(gs_vertex_buffer) vertex_buffer = gfx->create_vertex_buffer(&vert_data, 4);
+	gs_resource(gs_index_buffer) index_buffer = gfx->create_index_buffer(&index_data, 6);
 
 	// Not sure how to create a uniform buffer object though...or how I would like to create individual uniforms?
-	gs_resource( gs_uniform ) projMatrixHandle = gfx->create_uniform_handle( shader, "projMatrix" );
-	gs_resource( gs_uniform ) viewMatrixHandle = gfx->create_uniform_handle( shader, "viewMatrix" );
-	gs_resource( gs_uniform ) modelMatrixHandle = gfx->create_uniform_handle( shader, "modelMatrix" );
+	gs_resource(gs_uniform) projMatrixHandle = gfx->create_uniform_handle(shader, "projMatrix");
+	gs_resource(gs_uniform) viewMatrixHandle = gfx->create_uniform_handle(shader, "viewMatrix");
+	gs_resource(gs_uniform) modelMatrixHandle = gfx->create_uniform_handle(shader, "modelMatrix");
 
 	gs_graphics_params_desc g_desc = {0}; 
 	g_desc.blend_state 				= gs_blend_state_default;
 	g_desc.frame_buffer 			= gs_back_buffer;
 	g_desc.stencil_state 			= gs_stencil_default;
 
-	// Create a pipeline state object ( as a resource? )
+	// Create a pipeline state object (as a resource?)
 	gs_pipeline_state_desc p_desc 	= {0};
 	p_desc.shader 					= shader;
 	p_desc.vertex_buffer 			= vertex_buffer;
 	p_desc.index_buffer 			= index_buffer;
 
 	// Create pipeline state object passing in descriptor and get resource handle back
-	gs_resource( gs_pipeline_state ) ps = gfx->create_pipeline_state( p_desc );
+	gs_resource(gs_pipeline_state) ps = gfx->create_pipeline_state(p_desc);
 
 	// Another possible api for setting parameters for the state object
-	gs_resource( gs_pipeline_state ) pso = gfx->create_pipeline_state(); 
-	gfx->set_pipeline_state_shader( pso, shader );
-	gfx->set_pipeline_state_vertex_buffer( pso, vertex_buffer );
-	gfx->set_pipeline_state_index_buffer( pso, index_buffer );
+	gs_resource(gs_pipeline_state) pso = gfx->create_pipeline_state(); 
+	gfx->set_pipeline_state_shader(pso, shader);
+	gfx->set_pipeline_state_vertex_buffer(pso, vertex_buffer);
+	gfx->set_pipeline_state_index_buffer(pso, index_buffer);
 	
 	// Construct command buffer
-	gs_render_command_buffer cb = gfx->create_command_buffer( gs_render );		// The memory for these command buffers will be recycled internally
+	gs_render_command_buffer cb = gfx->create_command_buffer(gs_render);		// The memory for these command buffers will be recycled internally
 
 	// Set pipeline state
-	gfx->set_pipeline_state( &cb, pso );
+	gfx->set_pipeline_state(&cb, pso);
 
-	// Set global graphics params for pass ( whatever these are, usually blend states )
-	gfx->set_gfx_params( &cb, gparams );
+	// Set global graphics params for pass (whatever these are, usually blend states)
+	gfx->set_gfx_params(&cb, gparams);
 
 	// Bind uniforms? These should be held within the gpu params? Or should I allow individual uniform binding such as this?
 	// Not sure about these...since they don't really make sense in explicit graphcis apis
-	gfx->bind_uniform( &cb, proj_mat_handle, gs_uniform_type_mat4, &proj_mat )
-	gfx->bind_uniform( &cb, view_mat_handle, gs_uniform_type_mat4, &view_mat );
-	gfx->bind_uniform( &cb, model_mat_handle, gs_uniform_type_mat4, &model_mat );
-	gfx->bind_uniform( &cb, texture_handle, gs_uniform_type_sampler, NULL );
+	gfx->bind_uniform(&cb, proj_mat_handle, gs_uniform_type_mat4, &proj_mat)
+	gfx->bind_uniform(&cb, view_mat_handle, gs_uniform_type_mat4, &view_mat);
+	gfx->bind_uniform(&cb, model_mat_handle, gs_uniform_type_mat4, &model_mat);
+	gfx->bind_uniform(&cb, texture_handle, gs_uniform_type_sampler, NULL);
 
 	// Draw
-    gfx->draw_indexed( &cb, 0, num_indices, 0, num_verts );
+    gfx->draw_indexed(&cb, 0, num_indices, 0, num_verts);
 
 	// Submit buffer	
-	gfx->submit_command_buffer( &cb );
+	gfx->submit_command_buffer(&cb);
 
 	// Free buffer
-	gfx->free_command_buffer( &cb );
+	gfx->free_command_buffer(&cb);
 
 */
 
@@ -833,17 +833,17 @@ extern struct gs_graphics_i* __gs_graphics_construct();
 /*
 	typedef struct gs_renderer_i 
 	{
-		void ( * render )();
+		void (* render)();
 	} gs_renderer_i;
 
 	// Some implementation of a renderer? 
 	struct gs_deferred_renderer
 	{
-		_base( gs_renderer_i );	
+		_base(gs_renderer_i);	
 	} gs_deferred_renderer;
 
 	// Record INTO the pass, right? Not sure how to architect this worth a damn...
-	void GBufferPass( gs_command_buffer* cb )
+	void GBufferPass(gs_command_buffer* cb)
 	{
 		// Want some way to order passes as well eventually, if not manually? 
 
@@ -859,7 +859,7 @@ extern struct gs_graphics_i* __gs_graphics_construct();
 
 	# Can't do deferred render pass if on mobile due to lack of MRT
 	What do you need to do a gbuffer render pass?
-		- Frame buffer with MRT ( this is already making assumptions about the rendering capabilities, btw )
+		- Frame buffer with MRT (this is already making assumptions about the rendering capabilities, btw)
 		- blend settings for state
 		- depth settings for state
 
@@ -868,14 +868,14 @@ extern struct gs_graphics_i* __gs_graphics_construct();
 
 	// These pipeline states are for renderables...so does that mean when you attach a new material or mesh to an object, you have to 
 	// recompile its pipeline state?
-	gs_resource( gs_pipeline_state )
+	gs_resource(gs_pipeline_state)
 
 	void renderer_init()
 	{
 		// Initialize gpu params, pipeline states, etc.
 
 		// Create pipeline state object passing in descriptor and get resource handle back
-		gs_resource( gs_pipeline_state ) ps = gfx->create_pipeline_state( p_desc );
+		gs_resource(gs_pipeline_state) ps = gfx->create_pipeline_state(p_desc);
 
 		// I suppose each material could have its own pipeline description... 
 		gs_pipeline_state_desc gbuffer_pipeline_desc;
@@ -904,10 +904,10 @@ extern struct gs_graphics_i* __gs_graphics_construct();
 		gs_mat4 view_mat;
 	} gs_uniform_block;
 
-	gs_resource( gs_gpu_params ) gpu_params;
-	gs_resource( gs_render_target ) render_target;
+	gs_resource(gs_gpu_params) gpu_params;
+	gs_resource(gs_render_target) render_target;
 
-	void gbuffer_pass( gs_command_buffer* cb )
+	void gbuffer_pass(gs_command_buffer* cb)
 	{
 		// Fill out the uniform block variables
 		gs_uniform_block ub;
@@ -915,22 +915,22 @@ extern struct gs_graphics_i* __gs_graphics_construct();
 		ub.view_mat = cam->get_view_matrix();
 
 		// Bind render surface & clear it
-		gfx->setRenderTarget( render_target, false, RT_NONE, cb );
-		gfx->clearRenderTarget(FBT_COLOR | FBT_DEPTH, Color::Blue, 1, 0, 0xFF, cb );
+		gfx->setRenderTarget(render_target, false, RT_NONE, cb);
+		gfx->clearRenderTarget(FBT_COLOR | FBT_DEPTH, Color::Blue, 1, 0, 0xFF, cb);
 
 		// Create a uniform block buffer for holding the uniform variables
-		gs_resource( gs_uniform_buffer ) uniform_buffer = gfx->create_param_block_buffer(sizeof(gs_uniform_block));
+		gs_resource(gs_uniform_buffer) uniform_buffer = gfx->create_param_block_buffer(sizeof(gs_uniform_block));
 		gfx->write_param_block(0, &ub, sizeof(gs_uniform_block));
 
-		// Grab renderables from scene ( not sure who manages this )
+		// Grab renderables from scene (not sure who manages this)
 		renderables = gfx->get_static_mesh_renderables_from_somewhere();
 
 		// Assign the uniform buffer & texture
-		gfx->set_gpu_params_block_buffer( gpu_params, gs_fragment, "params", ub );
-		gfx->set_gpu_params_block_buffer( gpu_params, gs_vertex, "params", ub );
+		gfx->set_gpu_params_block_buffer(gpu_params, gs_fragment, "params", ub);
+		gfx->set_gpu_params_block_buffer(gpu_params, gs_vertex, "params", ub);
 
 		// psuedo code
-		for each ( renderable in renderables )
+		for each (renderable in renderables)
 		{
 			// Bind program for renderable if different from previous
 			// Bind required textures for renderable
@@ -940,32 +940,32 @@ extern struct gs_graphics_i* __gs_graphics_construct();
 		}	
 
 		// Another possible api for setting parameters for the state object
-		gs_resource( gs_pipeline_state ) pso = gfx->create_pipeline_state(); 
-		gfx->set_pipeline_state_shader( pso, shader );
-		gfx->set_pipeline_state_vertex_buffer( pso, vertex_buffer );
-		gfx->set_pipeline_state_index_buffer( pso, index_buffer );
+		gs_resource(gs_pipeline_state) pso = gfx->create_pipeline_state(); 
+		gfx->set_pipeline_state_shader(pso, shader);
+		gfx->set_pipeline_state_vertex_buffer(pso, vertex_buffer);
+		gfx->set_pipeline_state_index_buffer(pso, index_buffer);
 		
 		// Construct command buffer
-		gs_render_command_buffer cb = gfx->create_command_buffer( gs_render );		// The memory for these command buffers will be recycled internally
+		gs_render_command_buffer cb = gfx->create_command_buffer(gs_render);		// The memory for these command buffers will be recycled internally
 
 		// Set pipeline state
-		gfx->set_pipeline_state( &cb, pso );
+		gfx->set_pipeline_state(&cb, pso);
 
-		// Set global graphics params for pass ( whatever these are, usually blend states )
-		gfx->set_gfx_params( &cb, gparams );
+		// Set global graphics params for pass (whatever these are, usually blend states)
+		gfx->set_gfx_params(&cb, gparams);
 
 		// Bind uniforms? These should be held within the PSO
 		// Not sure about these...since they don't really make sense in explicit graphcis apis
-		gfx->bind_uniform( &cb, proj_mat_handle, gs_uniform_type_mat4, &proj_mat )
-		gfx->bind_uniform( &cb, view_mat_handle, gs_uniform_type_mat4, &view_mat );
-		gfx->bind_uniform( &cb, model_mat_handle, gs_uniform_type_mat4, &model_mat );
-		gfx->bind_uniform( &cb, texture_handle, gs_uniform_type_sampler, NULL );
+		gfx->bind_uniform(&cb, proj_mat_handle, gs_uniform_type_mat4, &proj_mat)
+		gfx->bind_uniform(&cb, view_mat_handle, gs_uniform_type_mat4, &view_mat);
+		gfx->bind_uniform(&cb, model_mat_handle, gs_uniform_type_mat4, &model_mat);
+		gfx->bind_uniform(&cb, texture_handle, gs_uniform_type_sampler, NULL);
 
 		// Draw
-	    gfx->draw_indexed( &cb, 0, num_indices, 0, num_verts );
+	    gfx->draw_indexed(&cb, 0, num_indices, 0, num_verts);
 
 		// Submit buffer	
-		gfx->submit_command_buffer( &cb );
+		gfx->submit_command_buffer(&cb);
 	}
 
 	// Want to give a vertex buffer layout description (to set attributes)
@@ -984,7 +984,7 @@ extern struct gs_graphics_i* __gs_graphics_construct();
 	typedef struct gs_vertex_attribute_layout_desc
 	{
 		usize byte_size;
-		gs_dyn_array( gs_vertex_attribute_type ) decl;	
+		gs_dyn_array(gs_vertex_attribute_type) decl;	
 	} gs_vertex_attribute_layout_desc;
 
 	1---3
@@ -1050,11 +1050,11 @@ extern struct gs_graphics_i* __gs_graphics_construct();
 		gs_mat4 view;
 	} uniform_block;
 
-	gs_resource( gs_vertex_buffer ) 		g_vertex_buffer = {0};
-	gs_resource( gs_shader ) 				g_shader = {0};
-	gs_resource( gs_render_command_buffer ) g_cb = {0};
-	gs_resource( gs_uniform_buffer ) 		g_ub = {0};
-	gs_resource( gs_uniform )				g_uniform = {0};
+	gs_resource(gs_vertex_buffer) 		g_vertex_buffer = {0};
+	gs_resource(gs_shader) 				g_shader = {0};
+	gs_resource(gs_render_command_buffer) g_cb = {0};
+	gs_resource(gs_uniform_buffer) 		g_ub = {0};
+	gs_resource(gs_uniform)				g_uniform = {0};
 
 	// Should this be set as a callback to the renderer?
 	// Should user be in charge of update loop completely?
@@ -1064,29 +1064,29 @@ extern struct gs_graphics_i* __gs_graphics_construct();
 		gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 
 		// Reset render command buffer
-		gfx->reset_command_buffer( g_cb );
+		gfx->reset_command_buffer(g_cb);
 		
 		// Bind shader
-		gfx->set_shader( g_cb, g_shader );
+		gfx->set_shader(g_cb, g_shader);
 
 		// Set data for uniform block
 		uniform_block ub = (uniform_block){ cam->projection_matrix(), cam->view_matrix() };
 
 		// Upload data into uniform buffer
-		gfx->set_uniform_buffer_sub_data( g_cb, g_ub, &ub, sizeof(uniform_block) );
+		gfx->set_uniform_buffer_sub_data(g_cb, g_ub, &ub, sizeof(uniform_block));
 
 		// Bind constant uniform
 		f32 red[4] = { 1.0f, 0.f, 0.f, 1.f };
-		gfx->set_uniform( g_cb, g_uniform, &red );
+		gfx->set_uniform(g_cb, g_uniform, &red);
 
 		// Bind vertex buffer
-		gfx->set_vertex_buffer( g_cb, g_vertex_buffer );
+		gfx->set_vertex_buffer(g_cb, g_vertex_buffer);
 
 		// Draw
-		gfx->draw( g_cb, 0, 3 );
+		gfx->draw(g_cb, 0, 3);
 
 		// Submit/Flush command buffer
-		gfx->submit_command_buffer( g_cb );
+		gfx->submit_command_buffer(g_cb);
 	}
 
 	void app_init()
@@ -1100,22 +1100,22 @@ extern struct gs_graphics_i* __gs_graphics_construct();
 
 		// Construct layout description format for our mesh data
 		gs_vertex_buffer_layout_desc v_desc;
-		gfx->push_vertex_attribute( &v_desc, gs_attribute_float3 );
+		gfx->push_vertex_attribute(&v_desc, gs_attribute_float3);
 
 		// Construct vertex buffer
-		g_vertex_buffer = gfx->construct_buffer( gs_vertex_buffer, v_desc, vert_data, sizeof(vert_data) );
+		g_vertex_buffer = gfx->construct_buffer(gs_vertex_buffer, v_desc, vert_data, sizeof(vert_data));
 
-		// This is a little ehh...We'll just do it for now ( eventually, this will go into a pipeline state object to emulate explicit api ) 
-		g_shader = gfx->construct_shader( gs_render, vs_source, fs_source );
+		// This is a little ehh...We'll just do it for now (eventually, this will go into a pipeline state object to emulate explicit api) 
+		g_shader = gfx->construct_shader(gs_render, vs_source, fs_source);
 
 		// Construct command buffer to use for rendering
-		g_cb = gfx->construct_command_buffer( gs_render_command_buffer );
+		g_cb = gfx->construct_command_buffer(gs_render_command_buffer);
 
 		// Construct uniform buffer binding handle
-		g_ub = gfx->construct_uniform_buffer( g_shader, "ub_matrices" );
+		g_ub = gfx->construct_uniform_buffer(g_shader, "ub_matrices");
 
 		// Construct uniform handle for individual/constant/push uniform
-		g_uniform = gfx->construct_uniform( g_shader, "u_color" );
+		g_uniform = gfx->construct_uniform(g_shader, "u_color");
 	}
 
 	// Example program showing rendering a simple triangle to screen
@@ -1136,21 +1136,21 @@ extern struct gs_graphics_i* __gs_graphics_construct();
 		...
 
 		// Handle to internal texture atlas resource
-		gs_resource( gs_texture ) atlas;
+		gs_resource(gs_texture) atlas;
 	} gs_font;
 
 
-	// Debug drawing ( for lines / shapes / primitives / etc. )
+	// Debug drawing (for lines / shapes / primitives / etc.)
 
 	// Should add this into a vertex buffer. Use some internal rendering mechanism for displaying all of this data.
 	// It'll get drawn on top of all other passes? Or the user can determine when to submit? I suppose it doesn't really matter...
 	// Or, could just draw this as a single draw call? I don't like that option.
-	gfx->draw_line( start, end, color );
+	gfx->draw_line(start, end, color);
 
 	...
 
 	// Could this be what I want?
-	gfx->submit_debug_drawing( cb_handle );
+	gfx->submit_debug_drawing(cb_handle);
 
 	// Want to throw all debug drawing ops into a vertex buffer for a single draw call
 	// Want the ability to do 3d rendering as well as 2d rendering for it
@@ -1161,8 +1161,8 @@ extern struct gs_graphics_i* __gs_graphics_construct();
 	struct debug_drawing_internal_data {
 		gs_mat4 view_matrix;
 		gs_mat4 proj_matrix;
-		gs_resource( gs_vertex_buffer ) vbo;
-		gs_dyn_array( f32 ) vertex_data; 
+		gs_resource(gs_vertex_buffer) vbo;
+		gs_dyn_array(f32) vertex_data; 
 	};
 
 	struct debug_properties props = {
@@ -1174,11 +1174,11 @@ extern struct gs_graphics_i* __gs_graphics_construct();
 	// for primitive drawing. Abstracting the bore of having to code all of that yourself. A particular shader 
 	// is needed for drawing, the vertex layout needs to be understood correctly.
 
-	gfx->set_debug_properties( cb_handle, props );
-	gfx->draw_line( cb_handle, start, end, color );
-	gfx->draw_cube( cb_handle, aabb, model_matrix, color );
-	gfx->draw_square( cb_handle, origin, extents, color );
-	gfx->submit_debug_rendering( cb_handle );
+	gfx->set_debug_properties(cb_handle, props);
+	gfx->draw_line(cb_handle, start, end, color);
+	gfx->draw_cube(cb_handle, aabb, model_matrix, color);
+	gfx->draw_square(cb_handle, origin, extents, color);
+	gfx->submit_debug_rendering(cb_handle);
 
 	// Graphics update
 	Debug Rendering...

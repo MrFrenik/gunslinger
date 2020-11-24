@@ -10,18 +10,18 @@ extern "C" {
 #include "common/gs_containers.h"
 #include "common/gs_util.h"
 
-#if ( defined __APPLE__ || defined _APPLE )
+#if (defined __APPLE__ || defined _APPLE)
 
 	#define GS_PLATFORM_APPLE
 
-#elif ( defined _WIN32 || defined _WIN64 )
+#elif (defined _WIN32 || defined _WIN64)
 
 	#define GS_PLATFORM_WIN
 	#include <windows.h>
 
 	#define WIN32_LEAN_AND_MEAN
 
-#elif ( defined linux || defined _linux || defined __linux__ )
+#elif (defined linux || defined _linux || defined __linux__)
 
 	#define GS_PLATFORM_LINUX
 
@@ -80,7 +80,7 @@ typedef void* gs_platform_window_ptr;
 typedef u32 gs_resource_handle;
 
 // Declare slot array
-gs_slot_array_decl( gs_platform_window_ptr );
+gs_slot_array_decl(gs_platform_window_ptr);
 
 typedef enum gs_platform_cursor
 {
@@ -293,8 +293,8 @@ typedef struct gs_platform_settings
 	gs_platform_video_settings video;
 } gs_platform_settings;
 
-typedef void ( * dropped_files_callback_t )( void*, s32 count, const char** file_paths );
-typedef void ( * window_close_callback_t )( void* );
+typedef void (* dropped_files_callback_t)(void*, s32 count, const char** file_paths);
+typedef void (* window_close_callback_t)(void*);
 
 // General API for platform
 typedef struct gs_platform_i
@@ -302,82 +302,82 @@ typedef struct gs_platform_i
 	/*============================================================
 	// Platform Initilization / De-Initialization
 	============================================================*/
-	gs_result ( * init )( struct gs_platform_i* );
-	gs_result ( * shutdown )( struct gs_platform_i* );
+	gs_result (* init)(struct gs_platform_i*);
+	gs_result (* shutdown)(struct gs_platform_i*);
 
 	/*============================================================
 	// Platform Util
 	============================================================*/
-	void 	( * sleep )( f32 ms );	// Sleeps platform for time in ms
-	f64 	( * elapsed_time )(); 	// Returns time in ms since initialization of platform
+	void 	(* sleep)(f32 ms);	// Sleeps platform for time in ms
+	f64 	(* elapsed_time)(); 	// Returns time in ms since initialization of platform
 
 	/*============================================================
 	// Platform Video
 	============================================================*/
-	void ( * enable_vsync )( b32 enabled );
+	void (* enable_vsync)(b32 enabled);
 
 	/*============================================================
 	// Platform UUID
 	============================================================*/
-	struct gs_uuid 	( * generate_uuid )();
-	void 			( * uuid_to_string )( char* temp_buffer, const struct gs_uuid* uuid ); // Expects a temp buffer with at leat 32 bytes
-	u32 			( * hash_uuid )( const struct gs_uuid* uuid );
+	struct gs_uuid 	(* generate_uuid)();
+	void 			(* uuid_to_string)(char* temp_buffer, const struct gs_uuid* uuid); // Expects a temp buffer with at leat 32 bytes
+	u32 			(* hash_uuid)(const struct gs_uuid* uuid);
 
 	/*============================================================
 	// Platform Input
 	============================================================*/
-	gs_result ( * process_input )();
+	gs_result (* process_input)();
 
-	void ( * update_input )();
-	void ( * press_key )( gs_platform_keycode code );
-	void ( * release_key )( gs_platform_keycode code );
-	b32 ( * was_key_down )( gs_platform_keycode code );
-	b32 ( * key_pressed )( gs_platform_keycode code );
-	b32 ( * key_down )( gs_platform_keycode code );
-	b32 ( * key_released )( gs_platform_keycode code );
+	void (* update_input)();
+	void (* press_key)(gs_platform_keycode code);
+	void (* release_key)(gs_platform_keycode code);
+	b32 (* was_key_down)(gs_platform_keycode code);
+	b32 (* key_pressed)(gs_platform_keycode code);
+	b32 (* key_down)(gs_platform_keycode code);
+	b32 (* key_released)(gs_platform_keycode code);
 
-	void ( * press_mouse_button )( gs_platform_mouse_button_code code );
-	void ( * release_mouse_button )( gs_platform_mouse_button_code code );
-	b32 ( * was_mouse_down )( gs_platform_mouse_button_code code );
-	b32 ( * mouse_pressed )( gs_platform_mouse_button_code code );
-	b32 ( * mouse_down )( gs_platform_mouse_button_code code );
-	b32 ( * mouse_released )( gs_platform_mouse_button_code code );
-	void ( * set_mouse_position )( gs_resource_handle, f64, f64 );	
+	void (* press_mouse_button)(gs_platform_mouse_button_code code);
+	void (* release_mouse_button)(gs_platform_mouse_button_code code);
+	b32 (* was_mouse_down)(gs_platform_mouse_button_code code);
+	b32 (* mouse_pressed)(gs_platform_mouse_button_code code);
+	b32 (* mouse_down)(gs_platform_mouse_button_code code);
+	b32 (* mouse_released)(gs_platform_mouse_button_code code);
+	void (* set_mouse_position)(gs_resource_handle, f64, f64);	
 
-	gs_vec2 ( * mouse_delta )();
-	gs_vec2 ( * mouse_position )();
-	void ( * mouse_position_x_y )( f32* x, f32* y );
-	void ( * mouse_wheel )( f32* x, f32* y );
-	b32 (* mouse_moved )();
+	gs_vec2 (* mouse_delta)();
+	gs_vec2 (* mouse_position)();
+	void (* mouse_position_x_y)(f32* x, f32* y);
+	void (* mouse_wheel)(f32* x, f32* y);
+	b32 (* mouse_moved)();
 
 	/*============================================================
 	// Platform Window
 	============================================================*/
-	gs_resource_handle 		( * create_window )( const char* title, u32 width, u32 height );
-	void* 					( * create_window_internal )( const char* title, u32 width, u32 height );
-	void 					( * window_swap_buffer )( gs_resource_handle handle );
-	gs_vec2 				( * window_size )( gs_resource_handle handle );
-	void 					( * set_window_size )( gs_resource_handle handle, s32 width, s32 height );
-	void 					( * window_size_w_h )( gs_resource_handle handle, s32* width, s32* height );
-	void 					( * set_cursor )( gs_resource_handle handle, gs_platform_cursor cursor );
-	gs_resource_handle 		( *main_window )();
-	void 					( * set_dropped_files_callback )( gs_resource_handle, dropped_files_callback_t );
-	void 					( * set_window_close_callback )( gs_resource_handle, window_close_callback_t );
-	void* 					( *raw_window_handle )( gs_resource_handle );		// Do not call unless you know what you're doing	
-	gs_vec2 				( * frame_buffer_size )( gs_resource_handle handle );
-	void 					( * frame_buffer_size_w_h )( gs_resource_handle handle, s32* w, s32* h );
+	gs_resource_handle 		(* create_window)(const char* title, u32 width, u32 height);
+	void* 					(* create_window_internal)(const char* title, u32 width, u32 height);
+	void 					(* window_swap_buffer)(gs_resource_handle handle);
+	gs_vec2 				(* window_size)(gs_resource_handle handle);
+	void 					(* set_window_size)(gs_resource_handle handle, s32 width, s32 height);
+	void 					(* window_size_w_h)(gs_resource_handle handle, s32* width, s32* height);
+	void 					(* set_cursor)(gs_resource_handle handle, gs_platform_cursor cursor);
+	gs_resource_handle 		(*main_window)();
+	void 					(* set_dropped_files_callback)(gs_resource_handle, dropped_files_callback_t);
+	void 					(* set_window_close_callback)(gs_resource_handle, window_close_callback_t);
+	void* 					(*raw_window_handle)(gs_resource_handle);		// Do not call unless you know what you're doing	
+	gs_vec2 				(* frame_buffer_size)(gs_resource_handle handle);
+	void 					(* frame_buffer_size_w_h)(gs_resource_handle handle, s32* w, s32* h);
 
 	/*============================================================
 	// Platform File IO
 	============================================================*/
 
 	// Will return a null buffer if file does not exist or allocation fails
-	char* 		( * read_file_contents )( const char* file_path, const char* mode, s32* sz );
-	gs_result   ( * write_file_contents )( const char* file_path, const char* mode, void* data, usize data_type_size, usize data_size );
-	gs_result 	( * write_str_to_file )( const char* contents, const char* mode, usize sz, const char* output_path );
-	b32 		( * file_exists )( const char* file_path );
-	s32 		( * file_size_in_bytes )( const char* file_path );
-	void 		( * file_extension )( char* buffer, usize buffer_sz, const char* file_path );
+	char* 		(* read_file_contents)(const char* file_path, const char* mode, s32* sz);
+	gs_result   (* write_file_contents)(const char* file_path, const char* mode, void* data, usize data_type_size, usize data_size);
+	gs_result 	(* write_str_to_file)(const char* contents, const char* mode, usize sz, const char* output_path);
+	b32 		(* file_exists)(const char* file_path);
+	s32 		(* file_size_in_bytes)(const char* file_path);
+	void 		(* file_extension)(char* buffer, usize buffer_sz, const char* file_path);
 
 	// Settings for platform, including video, audio
 	gs_platform_settings settings;
@@ -389,8 +389,8 @@ typedef struct gs_platform_i
 	gs_platform_input input;
 
 	// For now, just keep a window here as main window...
-	gs_slot_array( gs_platform_window_ptr ) windows;
-	gs_dyn_array( gs_resource_handle ) active_window_handles;
+	gs_slot_array(gs_platform_window_ptr) windows;
+	gs_dyn_array(gs_resource_handle) active_window_handles;
 
 	// Cursors
 	void* cursors[ gs_platform_cursor_count ];
@@ -409,59 +409,59 @@ extern struct gs_platform_i* gs_platform_construct();
 
 void __gs_default_init_platform();
 
-void __gs_verify_platform_correctness( struct gs_platform_i* platform );
+void __gs_verify_platform_correctness(struct gs_platform_i* platform);
 
 /*============================
 // Platform Input
 ============================*/
 
-void __gs_platform_update_input( );
+void __gs_platform_update_input();
 
-b32 __gs_platform_was_key_down( gs_platform_keycode code );
+b32 __gs_platform_was_key_down(gs_platform_keycode code);
 
-b32 __gs_platform_key_down( gs_platform_keycode code );
+b32 __gs_platform_key_down(gs_platform_keycode code);
 
-b32 __gs_platform_key_pressed( gs_platform_keycode code );
+b32 __gs_platform_key_pressed(gs_platform_keycode code);
 
-b32 __gs_platform_key_released( gs_platform_keycode code );
+b32 __gs_platform_key_released(gs_platform_keycode code);
 
-b32 __gs_platform_was_mouse_down( gs_platform_mouse_button_code code );
+b32 __gs_platform_was_mouse_down(gs_platform_mouse_button_code code);
 
-void __gs_platform_press_mouse_button( gs_platform_mouse_button_code code );
+void __gs_platform_press_mouse_button(gs_platform_mouse_button_code code);
 
-void __gs_platform_release_mouse_button( gs_platform_mouse_button_code code );
+void __gs_platform_release_mouse_button(gs_platform_mouse_button_code code);
 
-b32 __gs_platform_mouse_down( gs_platform_mouse_button_code code );
+b32 __gs_platform_mouse_down(gs_platform_mouse_button_code code);
 
-b32 __gs_platform_mouse_pressed( gs_platform_mouse_button_code code );
+b32 __gs_platform_mouse_pressed(gs_platform_mouse_button_code code);
 
-b32 __gs_platform_mouse_released( gs_platform_mouse_button_code code );
+b32 __gs_platform_mouse_released(gs_platform_mouse_button_code code);
 
 gs_vec2 __gs_platform_mouse_delta();
 
 gs_vec2 __gs_platform_mouse_position();
 
-void __gs_platform_mouse_position_x_y( f32* x, f32* y );
+void __gs_platform_mouse_position_x_y(f32* x, f32* y);
 
-void __gs_platform_mouse_wheel( f32* x, f32* y );
+void __gs_platform_mouse_wheel(f32* x, f32* y);
 
-void __gs_platform_press_key( gs_platform_keycode code );
+void __gs_platform_press_key(gs_platform_keycode code);
 
-void __gs_platform_release_key( gs_platform_keycode code );
+void __gs_platform_release_key(gs_platform_keycode code);
 
 /*============================
 // Platform Window
 ============================*/
-gs_resource_handle __gs_platform_create_window( const char* title, u32 width, u32 height );
+gs_resource_handle __gs_platform_create_window(const char* title, u32 width, u32 height);
 gs_resource_handle __gs_platform_main_window();
 
 /*============================
 // Platform File IO
 ============================*/
-b32 __gs_platform_file_exists( const char* file_path );
-char* __gs_platform_read_file_contents_into_string_null_term( const char* file_path, const char* mode, s32* sz );
-gs_result __gs_platform_write_str_to_file( const char* contents, const char* mode, usize sz, const char* output_path );
-void __gs_platform_file_extension( char* buffer, usize buffer_sz, const char* file_path );
+b32 __gs_platform_file_exists(const char* file_path);
+char* __gs_platform_read_file_contents_into_string_null_term(const char* file_path, const char* mode, s32* sz);
+gs_result __gs_platform_write_str_to_file(const char* contents, const char* mode, usize sz, const char* output_path);
+void __gs_platform_file_extension(char* buffer, usize buffer_sz, const char* file_path);
 
 /*============================
 // Platform Util
@@ -469,9 +469,9 @@ void __gs_platform_file_extension( char* buffer, usize buffer_sz, const char* fi
 
 struct gs_uuid __gs_platform_generate_uuid();
 
-void __gs_platform_uuid_to_string( char* temp_buffer, const struct gs_uuid* uuid ); // Expects a temp buffer with at leat 32 bytes
+void __gs_platform_uuid_to_string(char* temp_buffer, const struct gs_uuid* uuid); // Expects a temp buffer with at leat 32 bytes
 
-u32 __gs_platform_hash_uuid( const struct gs_uuid* uuid );
+u32 __gs_platform_hash_uuid(const struct gs_uuid* uuid);
 
 
 #ifdef __cplusplus

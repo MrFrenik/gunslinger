@@ -13,7 +13,7 @@
 #define __window_from_handle(platform, handle)\
 	((SDL_Window*)(gs_slot_array_get((platform)->windows, (handle))))
 
-gs_result sdl_platform_init(struct gs_platform_i* platform )
+gs_result sdl_platform_init(struct gs_platform_i* platform)
 {
 	gs_println("Initializing SDL");
 

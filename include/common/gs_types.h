@@ -5,7 +5,7 @@
 extern "C" {
 #endif
 
-#include <stdlib.h>		// malloc, realloc, free ( for now )
+#include <stdlib.h>		// malloc, realloc, free (for now)
 #include <stdint.h>		// standard types
 #include <limits.h>		// INT32_MAX, UINT32_MAX
 #include <string.h> 	// memset
@@ -17,9 +17,9 @@ extern "C" {
 #define _local_persist 		static
 #define _global 			static
 
- #if ( defined _WIN32 || defined _WIN64 )
+ #if (defined _WIN32 || defined _WIN64)
 	#define _force_inline 		static __forceinline
-#elif ( defined __APPLE__ || defined _APPLE )
+#elif (defined __APPLE__ || defined _APPLE)
 	#define _force_inline 		static __attribute__((always_inline))
 #else
 	#define _force_inline 		_inline
@@ -29,17 +29,17 @@ extern "C" {
 // Resource Declarations
 ============================================================*/
 
-#define gs_resource( type )\
+#define gs_resource(type)\
 	gs_resource_##type
 
 // Strongly typed declarations for resource handles (slot array handles)
-#define gs_declare_resource_type( type )\
-	typedef struct gs_resource( type ) {\
+#define gs_declare_resource_type(type)\
+	typedef struct gs_resource(type) {\
 		u32 id;\
-	} gs_resource( type );\
+	} gs_resource(type);\
 
-#define gs_resource_invalid( type )\
-	(gs_resource( type )){ u32_max }
+#define gs_resource_invalid(type)\
+	(gs_resource(type)){ u32_max }
 
 /*============================================================
 // Result

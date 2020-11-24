@@ -11,7 +11,7 @@ _global gs_uniform_t u_proj = {0};
 
 const char* v_src = "\n"
 "#version 330 core\n"
-"layout( location = 0 ) in vec3 a_pos;\n"
+"layout(location = 0) in vec3 a_pos;\n"
 "uniform mat4 u_model;\n"
 "uniform mat4 u_view;\n"
 "uniform mat4 u_proj;\n"
@@ -33,9 +33,9 @@ const char* f_src = "\n"
 gs_result app_init();		// Use to init your application
 gs_result app_update();		// Use to update your application
 
-int main( int argc, char** argv )
+int main(int argc, char** argv)
 {
-	gs_application_desc app = {0};
+	gs_application_desc_t app = {0};
 	app.window_title 		= "Simple Cube";
 	app.window_width 		= 800;
 	app.window_height 		= 600;
@@ -43,19 +43,19 @@ int main( int argc, char** argv )
 	app.update 				= &app_update;
 
 	// Construct internal instance of our engine
-	gs_engine* engine = gs_engine_construct( app );
+	gs_engine_t* engine = gs_engine_construct(app);
 
 	// Run the internal engine loop until completion
 	gs_result res = engine->run();
 
 	// Check result of engine after exiting loop
-	if ( res != gs_result_success ) 
+	if (res != gs_result_success) 
 	{
-		gs_println( "Error: Engine did not successfully finish running." );
+		gs_println("Error: Engine did not successfully finish running.");
 		return -1;
 	}
 
-	gs_println( "Gunslinger exited successfully." );
+	gs_println("Gunslinger exited successfully.");
 
 	return 0;	
 }
@@ -66,17 +66,17 @@ gs_result app_init()
 	// Cache instance of graphics api from engine
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 
-	// Construct command buffer ( the command buffer is used to allow for immediate drawing at any point in our program )
+	// Construct command buffer (the command buffer is used to allow for immediate drawing at any point in our program)
 	g_cb = gs_command_buffer_new();
 
 	// Construct shader from our source above
-	g_shader = gfx->construct_shader( v_src, f_src );
+	g_shader = gfx->construct_shader(v_src, f_src);
 
 	// Construct uniform for shader
-	u_color = gfx->construct_uniform( g_shader, "u_color", gs_uniform_type_vec4 );
-	u_view = gfx->construct_uniform( g_shader, "u_view", gs_uniform_type_mat4 );
-	u_model = gfx->construct_uniform( g_shader, "u_model", gs_uniform_type_mat4 );
-	u_proj = gfx->construct_uniform( g_shader, "u_proj", gs_uniform_type_mat4 );
+	u_color = gfx->construct_uniform(g_shader, "u_color", gs_uniform_type_vec4);
+	u_view = gfx->construct_uniform(g_shader, "u_view", gs_uniform_type_mat4);
+	u_model = gfx->construct_uniform(g_shader, "u_model", gs_uniform_type_mat4);
+	u_proj = gfx->construct_uniform(g_shader, "u_proj", gs_uniform_type_mat4);
 
 	// Vertex data layout for our mesh (for this shader, it's a single float3 attribute for position)
 	gs_vertex_attribute_type layout[] = {
@@ -129,7 +129,7 @@ gs_result app_init()
         -0.5f,  0.5f, -0.5f
     };
 	// Construct vertex buffer
-	g_vbo = gfx->construct_vertex_buffer( layout, sizeof(layout), v_data, sizeof(v_data) );
+	g_vbo = gfx->construct_vertex_buffer(layout, sizeof(layout), v_data, sizeof(v_data));
 
 	return gs_result_success;
 }
@@ -137,13 +137,13 @@ gs_result app_init()
 gs_result app_update()
 {
 	// Grab global instance of engine
-	gs_engine* engine = gs_engine_instance();
+	gs_engine_t* engine = gs_engine_instance();
 
 	// Platform api 
 	gs_platform_i* platform = engine->ctx.platform;
 
 	// If we press the escape key, exit the application
-	if ( platform->key_pressed( gs_keycode_esc ) )
+	if (platform->key_pressed(gs_keycode_esc))
 	{
 		return gs_result_success;
 	}
@@ -162,22 +162,22 @@ gs_result app_update()
 	gs_command_buffer_t* cb = &g_cb;
 
 	// Main window size
-	gs_vec2 ws = platform->window_size( platform->main_window() );
-	gs_vec2 fbs = platform->frame_buffer_size( platform->main_window() );
+	gs_vec2 ws = platform->window_size(platform->main_window());
+	gs_vec2 fbs = platform->frame_buffer_size(platform->main_window());
 
 	// Set clear color and clear screen
 	f32 clear_color[4] = { 0.2f, 0.2f, 0.2f, 1.f };
-	gfx->set_view_clear( cb, clear_color );
-	gfx->set_view_port( cb, fbs.x, fbs.y );
-	gfx->set_depth_enabled( cb, true );
-	gfx->set_face_culling( cb, gs_face_culling_disabled );
+	gfx->set_view_clear(cb, clear_color);
+	gfx->set_view_port(cb, fbs.x, fbs.y);
+	gfx->set_depth_enabled(cb, true);
+	gfx->set_face_culling(cb, gs_face_culling_disabled);
 
 	// Bind shader
-	gfx->bind_shader( cb, g_shader );
+	gfx->bind_shader(cb, g_shader);
 
 	// Bind uniform for triangle color
 	f32 color[4] = { sin(t * 0.001f), cos(t * 0.002f), 0.1f, 1.f };
-	gfx->bind_uniform( cb, u_color, &color );
+	gfx->bind_uniform(cb, u_color, &color);
 
 	// Create model/view/projection matrices
 	gs_mat4 view_mtx = gs_mat4_mul(gs_mat4_rotate(15.f, (gs_vec3){1.f, 0.f, 0.f}),
@@ -186,18 +186,18 @@ gs_result app_update()
 	gs_mat4 model_mtx = gs_mat4_rotate(t * 0.01f, (gs_vec3){0.f, 1.f, 0.f});
 
 	// Bind matrix uniforms
-	gfx->bind_uniform_mat4( cb, u_proj, proj_mtx );
-	gfx->bind_uniform_mat4( cb, u_view, view_mtx );
-	gfx->bind_uniform_mat4( cb, u_model, model_mtx );
+	gfx->bind_uniform_mat4(cb, u_proj, proj_mtx);
+	gfx->bind_uniform_mat4(cb, u_view, view_mtx);
+	gfx->bind_uniform_mat4(cb, u_model, model_mtx);
 
 	// Bind vertex buffer
-	gfx->bind_vertex_buffer( cb, g_vbo );
+	gfx->bind_vertex_buffer(cb, g_vbo);
 
 	// Draw
-	gfx->draw( cb, 0, 36 );
+	gfx->draw(cb, 0, 36);
 
 	// Submit command buffer for rendering
-	gfx->submit_command_buffer( cb );
+	gfx->submit_command_buffer(cb);
 
 	return gs_result_in_progress;
 }

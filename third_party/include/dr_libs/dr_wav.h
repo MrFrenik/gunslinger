@@ -1210,7 +1210,7 @@ static DRWAV_INLINE drwav_uint32 drwav__bswap32(drwav_uint32 n)
             #else
                 "rev %[out], %[in]" : [out]"=r"(r) : [in]"r"(n)
             #endif
-            );
+           );
             return r;
         #else
             return __builtin_bswap32(n);
