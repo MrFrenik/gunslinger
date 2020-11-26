@@ -9,6 +9,7 @@ extern "C" {
 #include "common/gs_containers.h"
 #include "math/gs_math.h"
 #include "serialize/gs_byte_buffer.h"
+#include "graphics/gs_camera.h"
 
 // Forward Decls
 struct gs_material_i;
@@ -216,8 +217,8 @@ typedef struct gs_texture_t
 
 typedef enum gs_matrix_mode
 {
-	gs_matrix_model,
-	gs_matrix_view_proj
+	gs_matrix_mode_model,
+	gs_matrix_mode_view_proj
 } gs_matrix_mode;
 
 typedef struct gs_graphics_immediate_draw_i
@@ -237,7 +238,7 @@ typedef struct gs_graphics_immediate_draw_i
 
 	// Matrices
 	void (* push_matrix)(gs_command_buffer_t* cb, gs_matrix_mode mode, gs_mat4 mat);
-	void (* pop_matrix)(gs_command_buffer_t* cb);
+	void (* pop_matrix)(gs_command_buffer_t* cb, gs_matrix_mode mode);
 
 	// Rect
 	void (* draw_rect)(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_color_t color);
@@ -257,12 +258,14 @@ typedef struct gs_graphics_immediate_draw_i
 
 	// Cube
 	void (* draw_box)(gs_command_buffer_t* cb, gs_vec3 origin, gs_vec3 half_extents, gs_color_t color);
+	void (* draw_box_ext)(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t color);
 
 	// Path
 	// void (* draw_path)(gs_command_buffer_t* cb, gs_vec3* points);
 
 	// Camera
-	// void (* set_camera)(gs_command_buffer_t* cb, struct gs_camera_t* camera, gs_vec2 ws);
+	void (* push_camera)(gs_command_buffer_t* cb, gs_camera_t camera);
+	void (* pop_camera)(gs_command_buffer_t* cb);
 
 	// Submit
 	void (* submit)(gs_command_buffer_t* cb);
@@ -405,6 +408,9 @@ void __gs_draw_triangle_3d_ext(gs_command_buffer_t* cb, gs_vec3 a, gs_vec3 b, gs
 void __gs_draw_triangle_2d(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_vec2 c, gs_color_t color);
 void __gs_draw_rect_2d(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_color_t color);
 void __gs_draw_box(gs_command_buffer_t* cb, gs_vec3 origin, gs_vec3 half_extents, gs_color_t color);
+void __gs_draw_box_ext(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t color);
+void __gs_push_camera(gs_command_buffer_t* cb, gs_camera_t camera);
+void __gs_pop_camera(gs_command_buffer_t* cb);
 
 /*
 	What are the responsibilities here? 

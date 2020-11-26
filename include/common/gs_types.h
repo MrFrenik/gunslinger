@@ -5,6 +5,7 @@
 extern "C" {
 #endif
 
+#include <stdarg.h>		// valist
 #include <stdlib.h>		// malloc, realloc, free (for now)
 #include <stdint.h>		// standard types
 #include <limits.h>		// INT32_MAX, UINT32_MAX
@@ -109,6 +110,12 @@ gs_color_t gs_color_ctor(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 #define gs_color_red 	gs_color(255, 0, 0, 255)
 #define gs_color_green 	gs_color(0, 255, 0, 255)
 #define gs_color_blue 	gs_color(0, 0, 255, 255)
+
+_force_inline 
+gs_color_t gs_color_alpha(gs_color_t c, uint8_t a)
+{
+	return gs_color(c.r, c.g, c.b, a); 
+}
 
 /*============================================================
 // Primitives

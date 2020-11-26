@@ -1,5 +1,7 @@
 #include "graphics/gs_graphics.h"
 #include "graphics/gs_material.h"
+#include "graphics/gs_camera.h"
+#include "platform/gs_platform.h"
 #include "base/gs_engine.h"
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -208,8 +210,14 @@ void __gs_draw_triangle_2d(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_vec
 	);
 }
 
-void __gs_draw_rect_3d(gs_command_buffer_t* cb, gs_vec3 a, gs_vec3 b, gs_vec3 c, gs_vec3 d, gs_color_t color)
+// Draw a plane
+void __gs_draw_rect_3d(gs_command_buffer_t* cb, gs_vec3 p, gs_vec3 n, gs_color_t color)
 {
+	// Most intuitive way to draw a plane?
+	// 3 points? 2 points (corners) and a normal?
+	// Normal with a transformation matrix? (applied to a rect)
+	// How to do da plane?
+	// point, normal, scale?
 }
 
 void __gs_draw_rect_2d(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_color_t color)
@@ -235,11 +243,176 @@ void __gs_draw_rect_2d(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_color_t
 
 void __gs_draw_box(gs_command_buffer_t* cb, gs_vec3 origin, gs_vec3 half_extents, gs_color_t color)
 {
-	// Need cube vertices
-	
+	f32 width = half_extents.x;
+	f32 height = half_extents.y;
+	f32 length = half_extents.z;
+	f32 x = origin.x;
+	f32 y = origin.y;
+	f32 z = origin.z;
+
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gfx->immediate.begin_shape(cb);
+	{
+		gfx->immediate.color_ubv(cb, color);
+
+        // Front face
+        gfx->immediate.vertex_3f(cb, x - width/2, y - height/2, z + length/2);  // Bottom Left
+        gfx->immediate.vertex_3f(cb, x + width/2, y - height/2, z + length/2);  // Bottom Right
+        gfx->immediate.vertex_3f(cb, x - width/2, y + height/2, z + length/2);  // Top Left
+
+        gfx->immediate.vertex_3f(cb, x + width/2, y + height/2, z + length/2);  // Top Right
+        gfx->immediate.vertex_3f(cb, x - width/2, y + height/2, z + length/2);  // Top Left
+        gfx->immediate.vertex_3f(cb, x + width/2, y - height/2, z + length/2);  // Bottom Right
+
+        
+        // Back face
+        gfx->immediate.vertex_3f(cb, x - width/2, y - height/2, z - length/2);  // Bottom Left
+        gfx->immediate.vertex_3f(cb, x - width/2, y + height/2, z - length/2);  // Top Left
+        gfx->immediate.vertex_3f(cb, x + width/2, y - height/2, z - length/2);  // Bottom Right
+
+        gfx->immediate.vertex_3f(cb, x + width/2, y + height/2, z - length/2);  // Top Right
+        gfx->immediate.vertex_3f(cb, x + width/2, y - height/2, z - length/2);  // Bottom Right
+        gfx->immediate.vertex_3f(cb, x - width/2, y + height/2, z - length/2);  // Top Left
+
+        // Top face
+        gfx->immediate.vertex_3f(cb, x - width/2, y + height/2, z - length/2);  // Top Left
+        gfx->immediate.vertex_3f(cb, x - width/2, y + height/2, z + length/2);  // Bottom Left
+        gfx->immediate.vertex_3f(cb, x + width/2, y + height/2, z + length/2);  // Bottom Right
+
+        gfx->immediate.vertex_3f(cb, x + width/2, y + height/2, z - length/2);  // Top Right
+        gfx->immediate.vertex_3f(cb, x - width/2, y + height/2, z - length/2);  // Top Left
+        gfx->immediate.vertex_3f(cb, x + width/2, y + height/2, z + length/2);  // Bottom Right
+
+        // Bottom face
+        gfx->immediate.vertex_3f(cb, x - width/2, y - height/2, z - length/2);  // Top Left
+        gfx->immediate.vertex_3f(cb, x + width/2, y - height/2, z + length/2);  // Bottom Right
+        gfx->immediate.vertex_3f(cb, x - width/2, y - height/2, z + length/2);  // Bottom Left
+
+        gfx->immediate.vertex_3f(cb, x + width/2, y - height/2, z - length/2);  // Top Right
+        gfx->immediate.vertex_3f(cb, x + width/2, y - height/2, z + length/2);  // Bottom Right
+        gfx->immediate.vertex_3f(cb, x - width/2, y - height/2, z - length/2);  // Top Left
+
+        // Right face
+        gfx->immediate.vertex_3f(cb, x + width/2, y - height/2, z - length/2);  // Bottom Right
+        gfx->immediate.vertex_3f(cb, x + width/2, y + height/2, z - length/2);  // Top Right
+        gfx->immediate.vertex_3f(cb, x + width/2, y + height/2, z + length/2);  // Top Left
+
+        gfx->immediate.vertex_3f(cb, x + width/2, y - height/2, z + length/2);  // Bottom Left
+        gfx->immediate.vertex_3f(cb, x + width/2, y - height/2, z - length/2);  // Bottom Right
+        gfx->immediate.vertex_3f(cb, x + width/2, y + height/2, z + length/2);  // Top Left
+
+        // Left face
+        gfx->immediate.vertex_3f(cb, x - width/2, y - height/2, z - length/2);  // Bottom Right
+        gfx->immediate.vertex_3f(cb, x - width/2, y + height/2, z + length/2);  // Top Left
+        gfx->immediate.vertex_3f(cb, x - width/2, y + height/2, z - length/2);  // Top Right
+
+        gfx->immediate.vertex_3f(cb, x - width/2, y - height/2, z + length/2);  // Bottom Left
+        gfx->immediate.vertex_3f(cb, x - width/2, y + height/2, z + length/2);  // Top Left
+        gfx->immediate.vertex_3f(cb, x - width/2, y - height/2, z - length/2);  // Bottom Right
+
+	}
+	gfx->immediate.end_shape(cb);
+
 }
 
+void __gs_draw_box_ext(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t color)
+{
+	f32 width = 0.5f;
+	f32 height = 0.5f;
+	f32 length = 0.5f;
+	f32 x = 0.f;
+	f32 y = 0.f;
+	f32 z = 0.f;
 
+	// Preapply matrix transformations to all verts
+	gs_mat4 mat = gs_vqs_to_mat4(&xform);
+
+	gs_vec3 v0 = gs_v4_to_v3(gs_mat4_mul_vec4(mat, gs_v4(x - width/2, y - height/2, z + length/2, 1.f)));
+	gs_vec3 v1 = gs_v4_to_v3(gs_mat4_mul_vec4(mat, gs_v4(x + width/2, y - height/2, z + length/2, 1.f)));
+	gs_vec3 v2 = gs_v4_to_v3(gs_mat4_mul_vec4(mat, gs_v4(x - width/2, y + height/2, z + length/2, 1.f)));
+	gs_vec3 v3 = gs_v4_to_v3(gs_mat4_mul_vec4(mat, gs_v4(x + width/2, y + height/2, z + length/2, 1.f)));
+	gs_vec3 v4 = gs_v4_to_v3(gs_mat4_mul_vec4(mat, gs_v4(x - width/2, y - height/2, z - length/2, 1.f)));
+	gs_vec3 v5 = gs_v4_to_v3(gs_mat4_mul_vec4(mat, gs_v4(x - width/2, y + height/2, z - length/2, 1.f)));
+	gs_vec3 v6 = gs_v4_to_v3(gs_mat4_mul_vec4(mat, gs_v4(x + width/2, y - height/2, z - length/2, 1.f)));
+	gs_vec3 v7 = gs_v4_to_v3(gs_mat4_mul_vec4(mat, gs_v4(x + width/2, y + height/2, z - length/2, 1.f)));
+
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gfx->immediate.begin_shape(cb);
+	{
+		gfx->immediate.color_ubv(cb, color);
+		
+        // Front face
+        gfx->immediate.vertex_3fv(cb, v0);  // Bottom Left
+        gfx->immediate.vertex_3fv(cb, v1);  // Bottom Right
+        gfx->immediate.vertex_3fv(cb, v2);  // Top Left
+
+        gfx->immediate.vertex_3fv(cb, v3);  // Top Right
+        gfx->immediate.vertex_3fv(cb, v2);  // Top Left
+        gfx->immediate.vertex_3fv(cb, v1);  // Bottom Right
+        
+        // Back face
+        gfx->immediate.vertex_3fv(cb, v4);  // Bottom Left
+        gfx->immediate.vertex_3fv(cb, v5);  // Top Left
+        gfx->immediate.vertex_3fv(cb, v6);  // Bottom Right
+
+        gfx->immediate.vertex_3fv(cb, v7);  // Top Right
+        gfx->immediate.vertex_3fv(cb, v6);  // Bottom Right
+        gfx->immediate.vertex_3fv(cb, v5);  // Top Left
+
+        // Top face
+        gfx->immediate.vertex_3fv(cb, v5);  // Top Left
+        gfx->immediate.vertex_3fv(cb, v2);  // Bottom Left
+        gfx->immediate.vertex_3fv(cb, v3);  // Bottom Right
+
+        gfx->immediate.vertex_3fv(cb, v7);  // Top Right
+        gfx->immediate.vertex_3fv(cb, v5);  // Top Left
+        gfx->immediate.vertex_3fv(cb, v3);  // Bottom Right
+
+        // Bottom face
+        gfx->immediate.vertex_3fv(cb, v4);  // Top Left
+        gfx->immediate.vertex_3fv(cb, v1);  // Bottom Right
+        gfx->immediate.vertex_3fv(cb, v0);  // Bottom Left
+
+        gfx->immediate.vertex_3fv(cb, v6);  // Top Right
+        gfx->immediate.vertex_3fv(cb, v1);  // Bottom Right
+        gfx->immediate.vertex_3fv(cb, v4);  // Top Left
+
+        // Right face
+        gfx->immediate.vertex_3fv(cb, v6);  // Bottom Right
+        gfx->immediate.vertex_3fv(cb, v7);  // Top Right
+        gfx->immediate.vertex_3fv(cb, v3);  // Top Left
+
+        gfx->immediate.vertex_3fv(cb, v1);  // Bottom Left
+        gfx->immediate.vertex_3fv(cb, v6);  // Bottom Right
+        gfx->immediate.vertex_3fv(cb, v3);  // Top Left
+
+        // Left face
+        gfx->immediate.vertex_3fv(cb, v4);  // Bottom Right
+        gfx->immediate.vertex_3fv(cb, v2);  // Top Left
+        gfx->immediate.vertex_3fv(cb, v5);  // Top Right
+
+        gfx->immediate.vertex_3fv(cb, v0);  // Bottom Left
+        gfx->immediate.vertex_3fv(cb, v2);  // Top Left
+        gfx->immediate.vertex_3fv(cb, v4);  // Bottom Right
+
+	}
+	gfx->immediate.end_shape(cb);
+}
+
+void __gs_push_camera(gs_command_buffer_t* cb, gs_camera_t camera)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	// Just grab main window for now. Will need to grab top of viewport stack in future
+	gs_platform_i* p = gs_engine_instance()->ctx.platform;
+	gs_vec2 ws = p->window_size(p->main_window());	
+	gfx->immediate.push_matrix(cb, gs_matrix_mode_view_proj, gs_camera_get_view_projection(&camera, ws.x, ws.y));
+}
+
+void __gs_pop_camera(gs_command_buffer_t* cb)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gfx->immediate.pop_matrix(cb, gs_matrix_mode_view_proj);
+}
 
 
 

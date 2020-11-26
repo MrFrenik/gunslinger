@@ -17,6 +17,10 @@ extern "C" {
 #define gs_v3(...)	gs_vec3_ctor(__VA_ARGS__)
 #define gs_v4(...)	gs_vec4_ctor(__VA_ARGS__)
 
+#define gs_x_axis 	gs_v3(1.f, 0.f, 0.f)
+#define gs_y_axis 	gs_v3(0.f, 1.f, 0.f)
+#define gs_z_axis 	gs_v3(0.f, 0.f, 1.f)
+
 /*================================================================================
 // Useful Common Functions
 ================================================================================*/
@@ -373,6 +377,16 @@ gs_vec4_dist(gs_vec4 v0, gs_vec4 v1)
 	f32 dz = (v0.z - v1.z);
 	f32 dw = (v0.w - v1.w);
 	return (sqrt(dx * dx + dy * dy + dz * dz + dw * dw));
+}
+
+/*================================================================================
+// Useful Vector Functions
+================================================================================*/
+
+_inline
+gs_vec3 gs_v4_to_v3(gs_vec4 v) 
+{
+	return gs_v3(v.x, v.y, v.z);
 }
 
 /*================================================================================
@@ -803,6 +817,20 @@ gs_quat_mul(gs_quat q0, gs_quat q1)
 		q0.w * q1.z + q1.w * q0.z + q0.x * q1.y - q1.x * q0.y,
 		q0.w * q1.w - q0.x * q1.x - q0.y * q1.y - q0.z * q1.z
 	);
+}
+
+_inline 
+gs_quat gs_quat_mul_list(u32 count, ...)
+{
+	va_list ap;
+	gs_quat q = gs_quat_default();
+	va_start(ap, count);
+	for (u32 i = 0; i < count; ++i)
+	{
+		q = gs_quat_mul(q, va_arg(ap, gs_quat));
+	}
+	va_end(ap);
+	return q;
 }
 
 _inline gs_quat 

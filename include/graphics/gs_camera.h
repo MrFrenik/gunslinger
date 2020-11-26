@@ -28,6 +28,7 @@ typedef struct gs_camera_t
 } gs_camera_t;
 
 gs_camera_t gs_camera_default();
+gs_camera_t gs_camera_perspective();
 gs_mat4 gs_camera_get_view(gs_camera_t* cam);
 gs_mat4 gs_camera_get_projection(gs_camera_t* cam, s32 view_width, s32 view_height);
 gs_mat4 gs_camera_get_view_projection(gs_camera_t* cam, s32 view_width, s32 view_height);

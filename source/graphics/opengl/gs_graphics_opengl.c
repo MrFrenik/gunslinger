@@ -41,6 +41,24 @@ _inline void gs_mat4_debug_print(gs_mat4* mat)
 			 );
 }
 
+gs_mat4 __gs_default_view_proj_mat()
+{
+	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+	gs_vec2 ws = platform->window_size(platform->main_window());
+	gs_vec2 hws = gs_vec2_scale(ws, 0.5f);
+	gs_camera_t cam = gs_camera_default();
+	cam.transform.position = gs_vec3_add(cam.transform.position, gs_v3(hws.x, hws.y, 1.f));
+	f32 l = -ws.x / 2.f; 
+	f32 r = ws.x / 2.f;
+	f32 b = ws.y / 2.f;
+	f32 t = -ws.y / 2.f;
+	gs_mat4 ortho = gs_mat4_transpose(gs_mat4_ortho(
+		l, r, b, t, 0.01f, 1000.f
+	));
+	ortho = gs_mat4_mul(ortho, gs_camera_get_view(&cam));
+	return ortho;
+}
+
 typedef enum gs_opengl_op_code
 {
 	gs_opengl_op_bind_shader = 0,
@@ -68,6 +86,8 @@ typedef enum gs_opengl_op_code
 	// Debug/Immediate
 	gs_opengl_op_immediate_begin,
 	gs_opengl_op_immediate_end,
+	gs_opengl_op_immediate_push_matrix,
+	gs_opengl_op_immediate_pop_matrix,
 	gs_opengl_op_immediate_begin_shape,
 	gs_opengl_op_immediate_end_shape,
 	gs_opengl_op_immediate_color_ubv,
@@ -89,6 +109,10 @@ typedef struct immediate_drawing_internal_data_t
 	u32 texture_id;										// Id of currently bound texture unit
 	gs_color_t color;
 	gs_dyn_array(immediate_vertex_data_t) vertex_data;
+
+	// Push matrix, for now, will just set
+	gs_mat4 vp_matrix;
+	gs_mat4 model_matrix;
 
 	// Stacks
 	gs_dyn_array(gs_mat4) vp_matrix_stack;
@@ -222,6 +246,9 @@ immediate_drawing_internal_data_t construct_immediate_drawing_internal_data_t()
 	data.model_matrix_stack = gs_dyn_array_new(gs_mat4);
 	data.vp_matrix_stack = gs_dyn_array_new(gs_mat4);
 	data.viewport_stack = gs_dyn_array_new(gs_vec2);
+
+	data.model_matrix = gs_mat4_identity();
+	data.vp_matrix = __gs_default_view_proj_mat();
 
 	return data;
 }
@@ -659,24 +686,6 @@ typedef struct vert_t
 	gfx->submit(cb);
 */
 
-gs_mat4 __gs_default_view_proj_mat()
-{
-	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
-	gs_vec2 ws = platform->window_size(platform->main_window());
-	gs_vec2 hws = gs_vec2_scale(ws, 0.5f);
-	gs_camera_t cam = gs_camera_default();
-	cam.transform.position = gs_vec3_add(cam.transform.position, gs_v3(hws.x, hws.y, 0.f));
-	f32 l = -ws.x / 2.f; 
-	f32 r = ws.x / 2.f;
-	f32 b = ws.y / 2.f;
-	f32 t = -ws.y / 2.f;
-	gs_mat4 ortho = gs_mat4_transpose(gs_mat4_ortho(
-		l, r, b, t, -1.f, 1.f
-	));
-	ortho = gs_mat4_mul(ortho, gs_camera_get_view(&cam));
-	return ortho;
-}
-
 /*====================
 // Immediate Utilties
 ==================-=*/
@@ -711,10 +720,17 @@ void opengl_immediate_end(gs_command_buffer_t* cb)
 
 void opengl_immediate_push_matrix(gs_command_buffer_t* cb, gs_matrix_mode mode, gs_mat4 mat)
 {
+	__push_command(cb, gs_opengl_op_immediate_push_matrix, {
+		gs_byte_buffer_write(&cb->commands, u32, (u32)mode);
+		gs_byte_buffer_write(&cb->commands, gs_mat4, mat);
+	});
 }
 
-void opengl_immediate_pop_matrix(gs_command_buffer_t* cb)
+void opengl_immediate_pop_matrix(gs_command_buffer_t* cb, gs_matrix_mode mode)
 {
+	__push_command(cb, gs_opengl_op_immediate_pop_matrix, {
+		gs_byte_buffer_write(&cb->commands, u32, (u32)mode);
+	});
 }
 
 void opengl_immediate_begin_shape(gs_command_buffer_t* cb)
@@ -785,14 +801,53 @@ void gs_end()
 	data->color = gs_color_white;
 }
 
-void gs_vert3fv(gs_vec3 v)
+void gs_push_matrix_uniform()
 {
-	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
-	immediate_vertex_data_t vert;
-	vert.color = data->color;
-	vert.position = v;
-	gs_dyn_array_push(data->vertex_data, vert);
+	immediate_drawing_internal_data_t* _data = __get_opengl_immediate_data();
+	gs_mat4 mvp = gs_mat4_mul(_data->vp_matrix, _data->model_matrix);
+	glUniformMatrix4fv(_data->u_mvp.location, 1, false, (f32*)(mvp.elements));
 }
+
+#define gs_push_matrix(mode, mat)\
+do {\
+	immediate_drawing_internal_data_t* _data = __get_opengl_immediate_data();\
+	switch(mode) {\
+		case gs_matrix_mode_model:\
+		{\
+			_data->model_matrix = mat;\
+		} break;\
+		case gs_matrix_mode_view_proj:\
+		{\
+			_data->vp_matrix = mat;\
+		} break;\
+	}\
+	gs_push_matrix_uniform();\
+} while(0)
+
+#define gs_pop_matrix(mode)\
+do {\
+	immediate_drawing_internal_data_t* _data = __get_opengl_immediate_data();\
+	switch(mode) {\
+		case gs_matrix_mode_model:\
+		{\
+			_data->model_matrix = gs_mat4_identity();\
+		} break;\
+		case gs_matrix_mode_view_proj:\
+		{\
+			_data->vp_matrix = __gs_default_view_proj_mat();\
+		} break;\
+	}\
+	gs_push_matrix_uniform();\
+} while(0)
+
+#define gs_vert3fv(v)\
+do {\
+	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();\
+	immediate_vertex_data_t vert;\
+	vert.color = data->color;\
+	vert.position = v;\
+	gs_dyn_array_push(data->vertex_data, vert);\
+} while (0)
 
 void gs_color4ubv(gs_color_t c)
 {
@@ -818,6 +873,9 @@ void opengl_immediate_submit_vertex_data()
 	// Unbind buffer and array
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
+
+	// Clear buffer
+	gs_dyn_array_clear(data->vertex_data);
 }
 
 /*================
@@ -1152,6 +1210,25 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 				// gs_mat4 ortho = __gs_default_view_proj_mat();
 				// gs_dyn_array_push(data->matrix_stack, ortho);
 				// gs_dyn_array_push(data->viewport_stack, ws);
+			} break;
+
+
+			case gs_opengl_op_immediate_push_matrix:
+			{
+				gs_matrix_mode mode = (gs_matrix_mode)gs_byte_buffer_read(&cb->commands, u32);
+				gs_mat4 mat = gs_byte_buffer_read(&cb->commands, gs_mat4);
+				// Flush data
+				opengl_immediate_submit_vertex_data();
+				gs_push_matrix(mode, mat);
+			} break;
+
+			case gs_opengl_op_immediate_pop_matrix:
+			{
+				gs_matrix_mode mode = (gs_matrix_mode)gs_byte_buffer_read(&cb->commands, u32);
+				// Flush data
+				opengl_immediate_submit_vertex_data();
+				// Then pop matrix
+				gs_pop_matrix(mode);
 			} break;
 
 			case gs_opengl_op_immediate_end:
@@ -1984,11 +2061,17 @@ struct gs_graphics_i* __gs_graphics_construct()
 	============================================================*/
 	gfx->immediate.begin 				= &opengl_immediate_begin;
 	gfx->immediate.end 					= &opengl_immediate_end;
+	gfx->immediate.push_matrix 			= &opengl_immediate_push_matrix;
+	gfx->immediate.pop_matrix 			= &opengl_immediate_pop_matrix;
+	gfx->immediate.push_camera 			= &__gs_push_camera;
+	gfx->immediate.pop_camera 			= &__gs_pop_camera;
+
 	gfx->immediate.draw_line 			= &__gs_draw_line_2d;
 	gfx->immediate.draw_triangle 		= &__gs_draw_triangle_2d;
 	gfx->immediate.draw_triangle_ext 	= &__gs_draw_triangle_3d_ext;
 	gfx->immediate.draw_rect 			= &__gs_draw_rect_2d;
 	gfx->immediate.draw_box 			= &__gs_draw_box;
+	gfx->immediate.draw_box_ext 		= &__gs_draw_box_ext;
 
 	gfx->immediate.begin_shape 			= &opengl_immediate_begin_shape;
 	gfx->immediate.end_shape 			= &opengl_immediate_end_shape;

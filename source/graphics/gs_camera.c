@@ -16,6 +16,13 @@ gs_camera_t gs_camera_default()
 	return cam;
 }
 
+gs_camera_t gs_camera_perspective()
+{
+	gs_camera_t cam = gs_camera_default();
+	cam.proj_type = gs_projection_type_perspective;
+	return cam;
+}
+
 gs_vec3 gs_camera_forward(gs_camera_t* cam)
 {
 	return (gs_quat_rotate(cam->transform.rotation, (gs_vec3){0.0f, 0.0f, -1.0f}));

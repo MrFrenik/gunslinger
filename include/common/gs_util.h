@@ -7,7 +7,6 @@ extern "C" {
 
 #include "common/gs_types.h"
 
-#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 
