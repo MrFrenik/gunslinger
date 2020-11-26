@@ -6,6 +6,8 @@
 #include "graphics/gs_graphics.h"
 #include "graphics/gs_material.h"
 #include "graphics/gs_quad_batch.h"
+#include "graphics/gs_camera.h"
+#include "platform/gs_platform.h"
 
 #include <glad/glad.h>
 
@@ -61,27 +63,37 @@ typedef enum gs_opengl_op_code
 	gs_opengl_op_update_index_data,
 	gs_opengl_op_set_frame_buffer_attachment,
 	gs_opengl_op_draw,
-	gs_opengl_op_immediate_draw_square,
-	gs_opengl_op_debug_draw_line,
-	gs_opengl_op_debug_draw_square,
-	gs_opengl_op_debug_draw_submit,
-	gs_opengl_op_debug_set_properties,
-	gs_opengl_draw_indexed
+	gs_opengl_draw_indexed,
+
+	// Debug/Immediate
+	gs_opengl_op_immediate_begin,
+	gs_opengl_op_immediate_end,
+	gs_opengl_op_immediate_begin_shape,
+	gs_opengl_op_immediate_end_shape,
+	gs_opengl_op_immediate_color_ubv,
+	gs_opengl_op_immediate_vertex_3fv
 } gs_opengl_op_code;
 
-// Internally
-typedef struct debug_drawing_internal_data 
+typedef struct immediate_vertex_data_t
 {
-	gs_mat4 view_mat;
-	gs_mat4 proj_mat;
+	gs_vec3 position;
+	gs_color_t color;
+} immediate_vertex_data_t;
+
+// Internally
+typedef struct immediate_drawing_internal_data_t 
+{
 	gs_shader_t shader;
-	gs_uniform_t u_proj;
-	gs_uniform_t u_view;
-	gs_dyn_array(f32) line_vertex_data; 
-	gs_dyn_array(f32) quad_vertex_data;
-	gs_vertex_buffer_t quad_vbo;
-	gs_vertex_buffer_t line_vbo;
-} debug_drawing_internal_data;
+	gs_uniform_t u_mvp;
+	gs_vertex_buffer_t vbo;
+	u32 texture_id;										// Id of currently bound texture unit
+	gs_color_t color;
+	gs_dyn_array(immediate_vertex_data_t) vertex_data;
+
+	// Stacks
+	gs_dyn_array(gs_mat4) matrix_stack;
+	gs_dyn_array(gs_vec2) viewport_stack;
+} immediate_drawing_internal_data_t;
 
 typedef gs_command_buffer_t command_buffer_t;
 typedef gs_texture_t texture_t;
@@ -96,38 +108,37 @@ typedef gs_frame_buffer_t frame_buffer_t;
 // Define render resource data structure
 typedef struct opengl_render_data_t
 {
-	debug_drawing_internal_data 					debug_data;
+	immediate_drawing_internal_data_t immediate_data;
 } opengl_render_data_t;
 
-// _global const char* debug_shader_v_src = "\n"
-// "#version 330 core\n"
-// "layout (location = 0) in vec3 a_position;\n"
-// "layout (location = 1) in vec3 a_color;\n"
-// "uniform mat4 u_proj;\n"
-// "uniform mat4 u_view;\n"
-// "out vec3 f_color;\n"
-// "void main() {\n"
-// " gl_Position = u_proj * u_view * vec4(a_position, 1.0);\n"
-// " f_color = a_color;\n"
-// "}";
+_global const char* immediate_shader_v_src = "\n"
+"#version 330 core\n"
+"layout (location = 0) in vec3 a_position;\n"
+"layout (location = 1) in vec4 a_color;\n"
+"uniform mat4 u_mvp;\n"
+"out vec4 f_color;\n"
+"void main() {\n"
+" gl_Position = u_mvp * vec4(a_position, 1.0);\n"
+" f_color = a_color;\n"
+"}";
 
-// _global const char* debug_shader_f_src = "\n"
-// "#version 330 core\n"
-// "in vec3 f_color;\n"
-// "out vec4 frag_color;\n"
-// "void main() {\n"
-// " frag_color = vec4(f_color, 1.0);\n"
-// "}";
+_global const char* immediate_shader_f_src = "\n"
+"#version 330 core\n"
+"in vec4 f_color;\n"
+"out vec4 frag_color;\n"
+"void main() {\n"
+" frag_color = f_color;\n"
+"}";
 
 #define __get_opengl_data_internal()\
 	(opengl_render_data_t*)(gs_engine_instance()->ctx.graphics->data)
 
-#define __get_command_buffer_internal(data, cb)\
-	(gs_slot_array_get_ptr(data->command_buffers, cb.id))
+#define __get_opengl_immediate_data()\
+	 (&(__get_opengl_data_internal())->immediate_data);
 
 // Forward Decls;
 void __reset_command_buffer_internal(command_buffer_t* cb);
-debug_drawing_internal_data construct_debug_drawing_internal_data();
+immediate_drawing_internal_data_t construct_immediate_drawing_internal_data_t();
 gs_texture_t opengl_construct_texture(gs_texture_parameter_desc desc);
 
 /*============================================================
@@ -155,12 +166,12 @@ gs_result opengl_init(struct gs_graphics_i* gfx)
 	gfx->data = data;
 
 	// Initialize data
-	data->debug_data 			= construct_debug_drawing_internal_data();
+	data->immediate_data = construct_immediate_drawing_internal_data_t();
 
 	// Init all default opengl state here before frame begins
 	opengl_init_default_state();
 
-	// Print some debug info
+	// Print some immediate info
 	gs_println("OpenGL::Vendor = %s", glGetString(GL_VENDOR)) ;
 	gs_println("OpenGL::Renderer = %s", glGetString(GL_RENDERER)) ;
 	gs_println("OpenGL::Version = %s", glGetString(GL_VERSION)) ;
@@ -176,12 +187,6 @@ gs_result opengl_update(struct gs_graphics_i* gfx)
 {
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
-	// For now, just go through all command buffers and reset them
-	// gs_for_range_i(gs_dyn_array_size(data->command_buffers.data))
-	// {
-	// 	__reset_command_buffer_internal(&data->command_buffers.data[ i ]);
-	// }
-
 	return gs_result_in_progress;
 }
 
@@ -191,35 +196,30 @@ gs_result opengl_shutdown(struct gs_graphics_i* gfx)
 	return gs_result_success;
 }
 
-debug_drawing_internal_data construct_debug_drawing_internal_data()
+immediate_drawing_internal_data_t construct_immediate_drawing_internal_data_t()
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 
-	debug_drawing_internal_data data = {0};
-	data.line_vertex_data = gs_dyn_array_new(f32);
-	data.quad_vertex_data = gs_dyn_array_new(f32);
+	immediate_drawing_internal_data_t data = gs_default_val();
 
 	// Construct shader
-	// data.shader = gfx->construct_shader(debug_shader_v_src, debug_shader_f_src);
-
-	/*
-	// Construct uniforms
-	data.u_proj = gfx->construct_uniform(data.shader, "u_proj", gs_uniform_type_mat4);
-	data.u_view = gfx->construct_uniform(data.shader, "u_view", gs_uniform_type_mat4);
-	*/
+	data.shader = gfx->construct_shader(immediate_shader_v_src, immediate_shader_f_src);
 
 	// Vertex data layout
 	gs_vertex_attribute_type vertex_layout[] = {
 		gs_vertex_attribute_float3,	// Position
-		gs_vertex_attribute_float3  // Color
+		gs_vertex_attribute_byte4  // Color
 	};
 
 	// Construct vertex buffer objects
-	data.line_vbo = gfx->construct_vertex_buffer(vertex_layout, sizeof(vertex_layout), NULL, 0);
+	data.vbo = gfx->construct_vertex_buffer(vertex_layout, sizeof(vertex_layout), NULL, 0);
+	data.vertex_data = gs_dyn_array_new(immediate_vertex_data_t);
 
-	// Construct default matrix data to be used
-	data.view_mat = gs_mat4_identity();
-	data.proj_mat = gs_mat4_identity();
+	data.u_mvp = gfx->construct_uniform(data.shader, "u_mvp", gs_uniform_type_mat4);
+
+	// Construct stacks
+	data.matrix_stack = gs_dyn_array_new(gs_mat4);
+	data.viewport_stack = gs_dyn_array_new(gs_vec2);
 
 	return data;
 }
@@ -517,52 +517,6 @@ void opengl_draw(gs_command_buffer_t* cb, u32 start, u32 count)
 	});
 }
 
-void opengl_set_debug_draw_properties(gs_command_buffer_t* cb, gs_debug_draw_properties props)
-{
-	__push_command(cb, gs_opengl_op_debug_set_properties, {
-
-		// Write view
-		gs_byte_buffer_write(&cb->commands, gs_mat4, props.view_mat);
-		// Write proj
-		gs_byte_buffer_write(&cb->commands, gs_mat4, props.proj_mat);
-	});
-}
-
-// Yeah, don't like this...Because it takes control away from the user completely.
-// Maybe user has ability to add as much as they want into the debug buffer and then can control when to submit it? Hmm...
-void opengl_draw_line(gs_command_buffer_t* cb, gs_vec3 start, gs_vec3 end, gs_vec3 color)
-{
-	__push_command(cb, gs_opengl_op_debug_draw_line, {
-
-		// Write start position
-		gs_byte_buffer_write(&cb->commands, gs_vec3, start);
-		// Write end position
-		gs_byte_buffer_write(&cb->commands, gs_vec3, end);
-		// Write color
-		gs_byte_buffer_write(&cb->commands, gs_vec3, color);
-	});
-}
-
-void opengl_draw_square(gs_command_buffer_t* cb, gs_vec3 origin, f32 width, f32 height, gs_vec3 color, gs_mat4 model)
-{
-	__push_command(cb, gs_opengl_op_debug_draw_square, {
-
-		gs_byte_buffer_write(&cb->commands, gs_vec3, origin);
-		gs_byte_buffer_write(&cb->commands, f32, width);
-		gs_byte_buffer_write(&cb->commands, f32, height);
-		gs_byte_buffer_write(&cb->commands, gs_vec3, color);
-		gs_byte_buffer_write(&cb->commands, gs_mat4, model);
-	});
-}
-
-void opengl_submit_debug_drawing(gs_command_buffer_t* cb)
-{
-	__push_command(cb, gs_opengl_op_debug_draw_submit, {
-
-		// Nothing...
-	});
-}
-
 void opengl_update_index_data_command(gs_command_buffer_t* cb, 
 	gs_index_buffer_t ib, void* i_data, usize i_size)
 {
@@ -574,7 +528,6 @@ void opengl_update_index_data_command(gs_command_buffer_t* cb,
 		gs_byte_buffer_write(&cb->commands, u32, i_size);
 		gs_byte_buffer_bulk_write(&cb->commands, i_data, i_size);
 	});
-
 }
 
 void opengl_update_vertex_data_command(gs_command_buffer_t* cb, gs_vertex_buffer_t vb, 
@@ -591,7 +544,7 @@ void opengl_update_vertex_data_command(gs_command_buffer_t* cb, gs_vertex_buffer
 	});
 } 
 
-#define __gfx_add_debug_line_internal(data, start, end, color)\
+#define __gfx_add_immediate_line_internal(data, start, end, color)\
 do {\
 gs_dyn_array_push(data, start.x);\
 gs_dyn_array_push(data, start.y);\
@@ -691,16 +644,179 @@ typedef struct vert_t
 	color_t color;
 } vert_t;
 
+/*
+	gfx->set_view_port(cb, fs);
+	gfx->set_view_clear(cb, clear_color);
+	gfx->immediate.begin(cb);
+	{
+		gfx->immediate.draw_line(cb, ...);
+	}
+	gfx->immediate.end(cb);
+
+	// Final submit
+	gfx->submit(cb);
+*/
+
+gs_mat4 __gs_default_view_proj_mat()
+{
+	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+	gs_vec2 ws = platform->window_size(platform->main_window());
+	gs_vec2 hws = gs_vec2_scale(ws, 0.5f);
+	gs_camera_t cam = gs_camera_default();
+	cam.transform.position = gs_vec3_add(cam.transform.position, gs_v3(hws.x, hws.y, 0.f));
+	f32 l = -ws.x / 2.f; 
+	f32 r = ws.x / 2.f;
+	f32 b = ws.y / 2.f;
+	f32 t = -ws.y / 2.f;
+	gs_mat4 ortho = gs_mat4_transpose(gs_mat4_ortho(
+		l, r, b, t, -1.f, 1.f
+	));
+	ortho = gs_mat4_mul(ortho, gs_camera_get_view(&cam));
+	return ortho;
+}
+
+/*====================
+// Immediate Utilties
+==================-=*/
+
+// What does this do? Binds debug shader and sets default uniform values.
+void opengl_immediate_begin(gs_command_buffer_t* cb)
+{
+	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
+	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+	gs_vec2 ws = platform->window_size(platform->main_window());
+	gs_vec2 fbs = platform->frame_buffer_size(platform->main_window());
+
+	opengl_set_view_port(cb, fbs.x, fbs.y);
+	opengl_set_face_culling(cb, gs_face_culling_disabled);
+	opengl_set_depth_enabled(cb, false);
+
+	// Bind shader command
+	opengl_bind_shader(cb, data->shader);
+	opengl_bind_uniform_mat4(cb, data->u_mvp, __gs_default_view_proj_mat());	// Bind mvp matrix uniform
+
+	__push_command(cb, gs_opengl_op_immediate_begin, {
+		// Nothing...
+	});
+}
+
+void opengl_immediate_end(gs_command_buffer_t* cb)
+{
+	__push_command(cb, gs_opengl_op_immediate_end, {
+		// Nothing...
+	});
+}
+
+void opengl_immediate_begin_shape(gs_command_buffer_t* cb)
+{
+	__push_command(cb, gs_opengl_op_immediate_begin_shape, {
+	});
+}
+
+void opengl_immediate_end_shape(gs_command_buffer_t* cb)
+{
+	__push_command(cb, gs_opengl_op_immediate_end_shape, {
+	});
+}
+
+void opengl_immediate_color_ubv(gs_command_buffer_t* cb, gs_color_t color)
+{
+	// This should push a vertex color onto the op stack
+	__push_command(cb, gs_opengl_op_immediate_color_ubv, {
+		gs_byte_buffer_write(&cb->commands, gs_color_t, color);
+	});
+}
+
+void opengl_immediate_vertex_3fv(gs_command_buffer_t* cb, gs_vec3 v)
+{
+	__push_command(cb, gs_opengl_op_immediate_vertex_3fv, {
+		gs_byte_buffer_write(&cb->commands, gs_vec3, v);
+	});
+}
+
+void opengl_immediate_color_ub(gs_command_buffer_t* cb, u8 r, u8 g, u8 b, u8 a)
+{
+	opengl_immediate_color_ubv(cb, gs_color(r, g, b, a));
+}
+
+void opengl_immediate_color_4f(gs_command_buffer_t* cb, f32 r, f32 g, f32 b, f32 a)
+{
+	opengl_immediate_color_ub(cb, (u8)(r * 255.f), (u8)(g * 255.f), (u8)(b * 255.f), (u8)(a * 255.f));
+}
+
+void opengl_immediate_color_4v(gs_command_buffer_t* cb, gs_vec4 v)
+{
+	opengl_immediate_color_ub(cb, (u8)(v.x * 255.f), (u8)(v.y * 255.f), (u8)(v.z * 255.f), (u8)(v.w * 255.f));
+}
+
+void opengl_immediate_vertex_2fv(gs_command_buffer_t* cb, gs_vec2 v)
+{
+	opengl_immediate_vertex_3fv(cb, gs_v3(v.x, v.y, 0.f));
+}
+
+void opengl_immediate_vertex_3f(gs_command_buffer_t* cb, f32 x, f32 y, f32 z)
+{
+	opengl_immediate_vertex_3fv(cb, gs_v3(x, y, z));
+}
+
+void opengl_immediate_vertex_2f(gs_command_buffer_t* cb, f32 x, f32 y)
+{
+	opengl_immediate_vertex_3f(cb, x, y, 0.f);
+}
+
+// Immediate Ops
+void gs_begin() 
+{
+}
+
+void gs_end()
+{
+	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
+	data->color = gs_color_white;
+}
+
+void gs_vert3fv(gs_vec3 v)
+{
+	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
+	immediate_vertex_data_t vert;
+	vert.color = data->color;
+	vert.position = v;
+	gs_dyn_array_push(data->vertex_data, vert);
+}
+
+void gs_color4ubv(gs_color_t c)
+{
+	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
+	data->color = c;
+}
+
+// Push vertex data util for immediate mode data
+void opengl_immediate_submit_vertex_data()
+{
+	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
+	u32 vao = data->vbo.vao;
+	u32 vbo = data->vbo.vbo;
+	u32 count = gs_dyn_array_size(data->vertex_data);
+	usize sz = count * sizeof(immediate_vertex_data_t);
+
+	// Final submit
+	glBindVertexArray(vao);	
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferData(GL_ARRAY_BUFFER, sz, data->vertex_data, GL_STATIC_DRAW);
+	glDrawArrays(GL_TRIANGLES, 0, count);
+
+	// Unbind buffer and array
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindVertexArray(0);
+}
+
+/*================
+// Submit Function
+=================*/
+
 // For now, just rip through command buffer. Later on, will add all command buffers into a queue to be processed on rendering thread.
 void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 {
-	// Get data from graphics api
-	opengl_render_data_t* data = __get_opengl_data_internal();
-
-	// Grab command buffer ptr from command buffer slot array
-	// command_buffer_t* cb = __get_command_buffer_internal(data, cb);
-
-	// Read through all commands
 	/*
 		// Structure of command: 
 			- Op code
@@ -1006,125 +1122,53 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 
 			} break;
 
-			case gs_opengl_op_debug_draw_line: 
+			/*===============
+			// Immediate Mode
+			===============*/
+
+			case gs_opengl_op_immediate_begin:
 			{
-				// Push back vertices into local debug line drawing data buffer
+				// Push any necessary state here
+				// Clear previous vertex data
+				immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
+				gs_dyn_array_clear(data->vertex_data);
 
-				// Read start position
-				gs_vec3 start = gs_byte_buffer_read(&cb->commands, gs_vec3);
-				// Read end position
-				gs_vec3 end = gs_byte_buffer_read(&cb->commands, gs_vec3);
-				// Read color
-				gs_vec3 color = gs_byte_buffer_read(&cb->commands, gs_vec3);
+				// Clear stacks
+				gs_dyn_array_clear(data->matrix_stack);
+				gs_dyn_array_clear(data->viewport_stack);
 
-				// Add line data
-				__gfx_add_debug_line_internal(data->debug_data.line_vertex_data, start, end, color);
+				// Default stacks
+				// gs_mat4 ortho = __gs_default_view_proj_mat();
+				// gs_dyn_array_push(data->matrix_stack, ortho);
+				// gs_dyn_array_push(data->viewport_stack, ws);
 			} break;
 
-			case gs_opengl_op_debug_draw_square: 
+			case gs_opengl_op_immediate_end:
 			{
-				gs_vec3 origin = gs_byte_buffer_read(&cb->commands, gs_vec3);
-				f32 w = gs_byte_buffer_read(&cb->commands, f32);
-				f32 h = gs_byte_buffer_read(&cb->commands, f32);
-				gs_vec3 color = gs_byte_buffer_read(&cb->commands, gs_vec3);
-				gs_mat4 model = gs_byte_buffer_read(&cb->commands, gs_mat4);
-
-				gs_vec3 tl = gs_mat4_mul_vec3(model, origin);
-				gs_vec3 tr = gs_mat4_mul_vec3(model, (gs_vec3){ origin.x + w, origin.y });
-				gs_vec3 bl = gs_mat4_mul_vec3(model, (gs_vec3){ origin.x, origin.y + h });
-				gs_vec3 br = gs_mat4_mul_vec3(model, (gs_vec3){ origin.x + w, origin.y + h });
-
-				// Four lines, don'tcha know?
-				__gfx_add_debug_line_internal(data->debug_data.line_vertex_data, tl, tr, color);	
-				__gfx_add_debug_line_internal(data->debug_data.line_vertex_data, tr, br, color);	
-				__gfx_add_debug_line_internal(data->debug_data.line_vertex_data, br, bl, color);	
-				__gfx_add_debug_line_internal(data->debug_data.line_vertex_data, bl, tl, color);
+				// Time to draw da data
+				opengl_immediate_submit_vertex_data();
 			} break;
 
-			case gs_opengl_op_debug_set_properties: 
+			case gs_opengl_op_immediate_begin_shape:
 			{
-				// Read view
-				gs_mat4 view = gs_byte_buffer_read(&cb->commands, gs_mat4);
-				// Read proj
-				gs_mat4 proj = gs_byte_buffer_read(&cb->commands, gs_mat4);
+				gs_begin();
+			} break;
 
-				data->debug_data.view_mat = view;  
-				data->debug_data.proj_mat = proj;
-
-				// gs_timed_action(10, 
-				// {
-				// 	gs_mat4_debug_print(&data->debug_data.proj_mat);
-				// });
-			}
-
-			case gs_opengl_op_debug_draw_submit: 
+			case gs_opengl_op_immediate_end_shape:
 			{
-				// Construct all line vertex data from debug data buffer
-				// Vertex count is line_vertex_data_array_size / size of single vertex = array_size / (sizeof(f32) * 6)
-				/*
-				usize vertex_data_size = gs_dyn_array_size(data->debug_data.line_vertex_data) * sizeof(f32);
-				u32 vert_count = (vertex_data_size) / (sizeof(f32) * 6);
+				gs_begin();
+			} break;
 
-				// Bind shader program
-				shader_t s = gs_slot_array_get(data->shaders, data->debug_data.shader.id);
-				glUseProgram(s.program_id);
+			case gs_opengl_op_immediate_vertex_3fv:
+			{
+				gs_vec3 v = gs_byte_buffer_read(&cb->commands, gs_vec3);
+				gs_vert3fv(v);
+			} break;
 
-				// Bind uniforms
-				// Let's just create an ortho projection real quirk...
-			    s32 width = 800, height = 600;
-				// gs_platform_window_width_height(gs_engine_instance()->ctx.window, &width, &height);
-			    // glViewport(0, 0, width, height);
-			    f32 L = 0.0f;
-			    f32 R = 0.0f + width;
-			    f32 T = 0.0f;
-			    f32 B = 0.0f + height;
-			    const f32 ortho_mat_2[4][4] =
-			    {
-			        { 2.0f/(R-L),   0.0f,         0.0f,   0.0f },
-			        { 0.0f,         2.0f/(T-B),   0.0f,   0.0f },
-			        { 0.0f,         0.0f,        -1.0f,   0.0f },
-			        { (R+L)/(L-R),  (T+B)/(B-T),  0.0f,   1.0f },
-			    };
-
-			    gs_mat4 vm = gs_mat4_identity();
-
-				uniform_t proj = gs_slot_array_get(data->uniforms, data->debug_data.u_proj.id);
-				uniform_t view = gs_slot_array_get(data->uniforms, data->debug_data.u_view.id);
-
-				// gs_timed_action(10, 
-				// {
-				// 	gs_println("after");
-				// 	gs_mat4_debug_print(&data->debug_data.proj_mat);
-				// });
-
-				glUniformMatrix4fv(proj.location, 1, false, (f32*)(data->debug_data.proj_mat.elements));
-				glUniformMatrix4fv(view.location, 1, false, (f32*)(data->debug_data.view_mat.elements));
-
-				// glUniformMatrix4fv(proj.location, 1, false, (f32*)(ortho_mat_2));
-				// glUniformMatrix4fv(view.location, 1, false, (f32*)(vm.elements));
-
-				// Bind vertex data
-				vertex_buffer_t vb = gs_slot_array_get(data->vertex_buffers, data->debug_data.line_vbo.id);
-				glBindVertexArray(vb.vao);
-				// Upload data
-				glBindBuffer(GL_ARRAY_BUFFER, vb.vbo);
-				glBufferData(GL_ARRAY_BUFFER, vertex_data_size, data->debug_data.line_vertex_data, GL_STATIC_DRAW);
-				// glBufferSubData(GL_ARRAY_BUFFER, 0, vertex_data_size, (f32*)data->debug_data.line_vertex_data);
-
-				// Draw data
-				glDrawArrays(GL_LINES, 0, vert_count);
-
-				// Unbind data
-				glBindVertexArray(0);
-				glUseProgram(0);
-				*/
-
-				// Reset all debug data
-				// data->debug_data.view_mat = gs_mat4_identity();
-				// data->debug_data.proj_mat = gs_mat4_identity();
-
-				// Flush vertex data
-				gs_dyn_array_clear(data->debug_data.line_vertex_data);
+			case gs_opengl_op_immediate_color_ubv:
+			{
+				gs_color_t v = gs_byte_buffer_read(&cb->commands, gs_color_t);
+				gs_color4ubv(v);
 			} break;
 
 			default:
@@ -1142,25 +1186,6 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 	// Reset default opengl state
 	opengl_init_default_state();
 }
-
-// gs_command_buffer_t* opengl_construct_command_buffer()
-// {
-// 	opengl_render_data_t* data = __get_opengl_data_internal();
-
-// 	// Construct new command buffer, then insert into slot array
-// 	u32 cb = gs_slot_array_insert(data->command_buffers, (command_buffer_t){0});
-// 	command_buffer_t* cb = gs_slot_array_get_ptr(data->command_buffers, cb);
-
-// 	// Initialize command buffer 
-// 	cb->num_commands = 0;
-// 	cb->commands = gs_byte_buffer_new();
-
-// 	// Set resource handle
-// 	gs_command_buffer_t* handle = {0};
-// 	handle.id = cb;
-
-// 	return handle;
-// }
 
 u32 get_byte_size_of_vertex_attribute(gs_vertex_attribute_type type)
 {
@@ -1225,10 +1250,7 @@ gs_vertex_buffer_t opengl_construct_vertex_buffer(gs_vertex_attribute_type* layo
 {
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
-	// Construct new vertex buffer, then insert into slot array
-	// u32 vb_handle = gs_slot_array_insert(data->vertex_buffers, (vertex_buffer_t){0});
-	// vertex_buffer_t* vb = gs_slot_array_get_ptr(data->vertex_buffers, vb_handle);
-	gs_vertex_buffer_t vb = {0};
+	gs_vertex_buffer_t vb = gs_default_val();
 
 	// Create and bind vertex array
 	glGenVertexArrays(1, (u32*)&vb.vao);
@@ -1336,7 +1358,7 @@ gs_index_buffer_t opengl_construct_index_buffer(void* indices, usize sz)
 {
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
-	gs_index_buffer_t ib = {0};
+	gs_index_buffer_t ib = gs_default_val();
 
 	glGenBuffers(1, &ib.ibo);
   	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ib.ibo);
@@ -1468,80 +1490,53 @@ void opengl_set_material_uniform(gs_material_t* mat, gs_uniform_type type, const
 
 void opengl_set_material_uniform_mat4(gs_material_t* mat, const char* name, gs_mat4 val)
 {
-	// gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
-	// opengl_render_data_t* __data = __get_opengl_data_internal();
-	// gs_material_t* mat = gs_slot_array_get_ptr(__data->materials, mat_handle.id);
 	gs_uniform_block_type(mat4) u_block = (gs_uniform_block_type(mat4)){ val };
 	gs_engine_instance()->ctx.graphics->material_i->set_uniform(mat, gs_uniform_type_mat4, name, &u_block);
 }
 
 void opengl_set_material_uniform_vec4(gs_material_t* mat, const char* name, gs_vec4 val)
 {
-	// gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
-	// opengl_render_data_t* __data = __get_opengl_data_internal();
-	// gs_material_t* mat = gs_slot_array_get_ptr(__data->materials, mat_handle.id);
 	gs_uniform_block_type(vec4) u_block = (gs_uniform_block_type(vec4)){ val };
 	gs_engine_instance()->ctx.graphics->material_i->set_uniform(mat, gs_uniform_type_vec4, name, &u_block);
 }
 
 void opengl_set_material_uniform_vec3(gs_material_t* mat, const char* name, gs_vec3 val)
 {
-	// gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
-	// opengl_render_data_t* __data = __get_opengl_data_internal();
-	// gs_material_t* mat = gs_slot_array_get_ptr(__data->materials, mat_handle.id);
 	gs_uniform_block_type(vec3) u_block = (gs_uniform_block_type(vec3)){ val };
 	gs_engine_instance()->ctx.graphics->material_i->set_uniform(mat, gs_uniform_type_vec3, name, &u_block);
 }
 
 void opengl_set_material_uniform_vec2(gs_material_t* mat, const char* name, gs_vec2 val)
 {
-	// gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
-	// opengl_render_data_t* __data = __get_opengl_data_internal();
-	// gs_material_t* mat = gs_slot_array_get_ptr(__data->materials, mat_handle.id);
 	gs_uniform_block_type(vec2) u_block = (gs_uniform_block_type(vec2)){ val };
 	gs_engine_instance()->ctx.graphics->material_i->set_uniform(mat, gs_uniform_type_vec2, name, &u_block);
 }
 
 void opengl_set_material_uniform_float(gs_material_t* mat, const char* name, f32 val)
 {
-	// gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
-	// opengl_render_data_t* __data = __get_opengl_data_internal();
-	// gs_material_t* mat = gs_slot_array_get_ptr(__data->materials, mat_handle.id);
 	gs_uniform_block_type(float) u_block = (gs_uniform_block_type(float)){ val };
 	gs_engine_instance()->ctx.graphics->material_i->set_uniform(mat, gs_uniform_type_float, name, &u_block);
 }
 
 void opengl_set_material_uniform_int(gs_material_t* mat, const char* name, s32 val)
 {
-	// gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
-	// opengl_render_data_t* __data = __get_opengl_data_internal();
-	// gs_material_t* mat = gs_slot_array_get_ptr(__data->materials, mat_handle.id);
 	gs_uniform_block_type(int) u_block = (gs_uniform_block_type(int)){ val };
 	gs_engine_instance()->ctx.graphics->material_i->set_uniform(mat, gs_uniform_type_int, name, &u_block);
 }
 
 void opengl_set_material_uniform_sampler2d(gs_material_t* mat, const char* name, gs_texture_t val, u32 slot)
 {
-	// gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
-	// opengl_render_data_t* __data = __get_opengl_data_internal();
-	// gs_material_t* mat = gs_slot_array_get_ptr(__data->materials, mat_handle.id);
 	gs_uniform_block_type(texture_sampler) u_block = (gs_uniform_block_type(texture_sampler)){ val.id, slot };
 	gs_engine_instance()->ctx.graphics->material_i->set_uniform(mat, gs_uniform_type_sampler2d, name, &u_block);
 }
 
 void opengl_bind_material_shader(gs_command_buffer_t* cb, gs_material_t* mat)
 {
-	// gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
-	// opengl_render_data_t* data = __get_opengl_data_internal();
-	// gs_material_t* mat = gs_slot_array_get_ptr(data->materials, mat_handle.id);
 	gs_engine_instance()->ctx.graphics->bind_shader(cb, mat->shader);
 }
 
 void opengl_bind_material_uniforms(gs_command_buffer_t* cb, gs_material_t* mat)
 {
-	// gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
-	// opengl_render_data_t* data = __get_opengl_data_internal();
-	// gs_material_t* mat = gs_slot_array_get_ptr(data->materials, mat_handle.id);
 	gs_engine_instance()->ctx.graphics->material_i->bind_uniforms(cb, mat);
 }
 
@@ -1550,7 +1545,7 @@ gs_shader_t opengl_construct_shader(const char* vert_src, const char* frag_src)
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
 	// Shader to fill out
-	gs_shader_t s = {0};
+	gs_shader_t s = gs_default_val();
 
 	// Construct vertex program
 	s.program_id = glCreateProgram();
@@ -1570,18 +1565,6 @@ gs_shader_t opengl_construct_shader(const char* vert_src, const char* frag_src)
 	// Link shaders once compiled
 	opengl_link_shaders(s.program_id, vert_id, frag_id);
 
-	// Construct hash table for uniforms
-	// s.uniforms = gs_hash_table_new(u64, gs_uniform_t);
-
-	// Push shader into slot array
-	// u32 s_handle = gs_slot_array_insert(data->shaders, s);
-
-	// Set resource handle
-	// gs_resource(gs_shader) handle = {0};
-	// handle.id = s_handle;
-
-	// return handle;
-
 	return s;
 }
 
@@ -1590,7 +1573,7 @@ gs_uniform_t opengl_construct_uniform(gs_shader_t s, const char* uniform_name, g
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
 	// Uniform to fill out
-	uniform_t u = {0};
+	uniform_t u = gs_default_val();
 
 	// Grab location of uniform
 	u32 location = glGetUniformLocation(s.program_id, uniform_name);
@@ -1612,7 +1595,7 @@ gs_frame_buffer_t opengl_construct_frame_buffer(gs_texture_t tex)
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
 	// Render target to create
-	frame_buffer_t fb = {0};
+	frame_buffer_t fb = gs_default_val();
 
 	// Construct and bind frame buffer
 	glGenFramebuffers(1, &fb.fbo);
@@ -1643,7 +1626,7 @@ gs_render_target_t opengl_construct_render_target(gs_texture_parameter_desc t_de
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
 	// Render target to create
-	render_target_t target = {0};
+	render_target_t target = gs_default_val();
 
 	gs_texture_t tex = opengl_construct_texture(t_desc);
 	target.tex_id = tex.id;
@@ -1656,7 +1639,7 @@ gs_texture_t opengl_construct_texture(gs_texture_parameter_desc desc)
 	opengl_render_data_t* data = __get_opengl_data_internal();
 
 	// Texture to fill out
-	texture_t tex = {0};
+	texture_t tex = gs_default_val();
 
 	gs_texture_format texture_format = desc.texture_format;
 	u32 width = desc.width;
@@ -1742,7 +1725,7 @@ void* opengl_load_texture_data_from_file(const char* file_path, b32 flip_vertica
 	stbi_set_flip_vertically_on_load(flip_vertically_on_load);
 
 	// Load in texture data using stb for now
-	char temp_file_extension_buffer[ 16 ] = {0}; 
+	char temp_file_extension_buffer[ 16 ] = gs_default_val(); 
 	gs_util_get_file_extension(temp_file_extension_buffer, sizeof(temp_file_extension_buffer), file_path);
 
 	// Load texture data
@@ -1776,7 +1759,7 @@ gs_texture_t opengl_construct_texture_from_file(const char* file_path, gs_textur
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	opengl_render_data_t* data = __get_opengl_data_internal();
-	gs_texture_t tex = {0};
+	gs_texture_t tex = gs_default_val();
 
 	if (t_desc) 
 	{
@@ -1986,12 +1969,24 @@ struct gs_graphics_i* __gs_graphics_construct()
 	gfx->quad_batch_submit 				= &opengl_quad_batch_submit;
 
 	/*============================================================
-	// Graphics Debug Rendering Ops
+	// Graphics immediate Drawing Utilities
 	============================================================*/
-	gfx->set_debug_draw_properties = &opengl_set_debug_draw_properties;
-	gfx->draw_line = &opengl_draw_line;
-	gfx->draw_square = &opengl_draw_square;
-	gfx->submit_debug_drawing = &opengl_submit_debug_drawing;
+	gfx->immediate.begin 				= &opengl_immediate_begin;
+	gfx->immediate.end 					= &opengl_immediate_end;
+	gfx->immediate.draw_line 			= &__gs_draw_line_2d;
+	gfx->immediate.draw_triangle 		= &__gs_draw_triangle_2d;
+	gfx->immediate.draw_triangle_ext 	= &__gs_draw_triangle_3d_ext;
+	gfx->immediate.draw_rect 			= &__gs_draw_rect_2d;
+
+	gfx->immediate.begin_shape 			= &opengl_immediate_begin_shape;
+	gfx->immediate.end_shape 			= &opengl_immediate_end_shape;
+	gfx->immediate.color_ub 			= &opengl_immediate_color_ub;
+	gfx->immediate.color_ubv 			= &opengl_immediate_color_ubv;
+	gfx->immediate.color_4f 			= &opengl_immediate_color_4f;
+	gfx->immediate.vertex_3fv 			= &opengl_immediate_vertex_3fv;
+	gfx->immediate.vertex_3f 			= &opengl_immediate_vertex_3f;
+	gfx->immediate.vertex_2fv 			= &opengl_immediate_vertex_2fv;
+	gfx->immediate.vertex_2f 			= &opengl_immediate_vertex_2f;
 
 	/*============================================================
 	// Graphics Utility Function

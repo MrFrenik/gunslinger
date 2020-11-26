@@ -80,6 +80,7 @@ __gs_byte_buffer_func(gs_vec4);
 __gs_byte_buffer_func(gs_quat);
 __gs_byte_buffer_func(gs_mat4);
 __gs_byte_buffer_func(gs_vqs);
+__gs_byte_buffer_func(gs_color_t);
 
 #ifdef __cplusplus
 }

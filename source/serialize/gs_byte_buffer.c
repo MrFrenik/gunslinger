@@ -1,4 +1,5 @@
 #include "serialize/gs_byte_buffer.h"
+#include "common/gs_types.h"
 #include "common/gs_util.h"
 
 void gs_byte_buffer_init(gs_byte_buffer* buffer)
@@ -175,6 +176,7 @@ __gs_byte_buffer_read_func(gs_vec4);
 __gs_byte_buffer_read_func(gs_quat);
 __gs_byte_buffer_read_func(gs_mat4);
 __gs_byte_buffer_read_func(gs_vqs);
+__gs_byte_buffer_read_func(gs_color_t);
 
 
 

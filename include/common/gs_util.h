@@ -20,7 +20,7 @@ extern "C" {
 	gs_printf("assertion failed: (%s), function %s, file %s, line %d.\n", #x, __func__, __FILE__, __LINE__);\
 	abort();\
 }
-
+	
 #if defined (__cplusplus)
 	#define gs_default_val() {}
 #else

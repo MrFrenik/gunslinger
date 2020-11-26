@@ -53,6 +53,63 @@ typedef enum
 	gs_result_failure
 } gs_result;
 
+/*================
+// Color
+=================*/
+
+#define gs_hsv(...) gs_hsv_ctor(__VA_ARGS__)
+#define gs_color(...) gs_color_ctor(__VA_ARGS__)
+
+typedef struct gs_hsv_t
+{
+	union 
+	{
+		float hsv[3];
+		struct 
+		{
+			float h, s, v;
+		};
+	};
+} gs_hsv_t;
+
+_force_inline
+gs_hsv_t gs_hsv_ctor(float h, float s, float v)
+{
+	gs_hsv_t hsv;
+	hsv.h = h;
+	hsv.s = s;
+	hsv.v = v;
+	return hsv;
+}
+
+typedef struct gs_color_t
+{
+	union 
+	{
+		uint8_t rgba[4];
+		struct 
+		{
+			uint8_t r, g, b, a;
+		};
+	};
+} gs_color_t;
+
+_force_inline
+gs_color_t gs_color_ctor(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+{
+	gs_color_t color;
+	color.r = r;
+	color.g = g;
+	color.b = b;
+	color.a = a;
+	return color;
+}
+
+#define gs_color_white 	gs_color(255, 255, 255, 255)
+#define gs_color_red 	gs_color(255, 0, 0, 255)
+#define gs_color_green 	gs_color(0, 255, 0, 255)
+#define gs_color_blue 	gs_color(0, 0, 255, 255)
+
 /*============================================================
 // Primitives
 ============================================================*/
@@ -88,6 +145,7 @@ typedef const char* 	const_str;
 #define s32_max			INT32_MAX
 #define f32_max 		FLT_MAX
 #define f32_min 		FLT_MIN
+
 
 #ifdef __cplusplus
 }

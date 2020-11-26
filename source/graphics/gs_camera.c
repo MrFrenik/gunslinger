@@ -2,6 +2,20 @@
 #include "platform/gs_platform.h"
 #include "base/gs_engine.h"
 
+gs_camera_t gs_camera_default()
+{
+	// Construct default camera parameters
+	gs_camera_t cam = gs_default_val();
+	cam.transform = gs_vqs_default();
+	cam.transform.position = (gs_vec3){0.f, 0.f, -1.f};
+	cam.fov = 60.f;
+	cam.near_plane = 0.1f;
+	cam.far_plane = 1000.f;
+	cam.ortho_scale = 1.f;
+	cam.proj_type = gs_projection_type_orthographic;
+	return cam;
+}
+
 gs_vec3 gs_camera_forward(gs_camera_t* cam)
 {
 	return (gs_quat_rotate(cam->transform.rotation, (gs_vec3){0.0f, 0.0f, -1.0f}));
@@ -34,7 +48,7 @@ gs_vec3 gs_camera_left(gs_camera_t* cam)
 
 gs_vec3 gs_camera_unproject(gs_camera_t* cam, gs_vec3 coords, s32 view_width, s32 view_height)
 {
-	gs_vec3 wc = {0};
+	gs_vec3 wc = gs_default_val();
 
 	// Get inverse of view projection from camera
 	gs_mat4 inverse_vp = gs_mat4_inverse(gs_camera_get_view_projection(cam, view_width, view_height));	

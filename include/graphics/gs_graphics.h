@@ -5,6 +5,7 @@
 extern "C" {
 #endif
 
+#include "common/gs_types.h"
 #include "common/gs_containers.h"
 #include "math/gs_math.h"
 #include "serialize/gs_byte_buffer.h"
@@ -15,6 +16,7 @@ struct gs_uniform_block_i;
 struct gs_quad_batch_i;
 struct gs_material_t;
 struct gs_quad_batch_t;
+struct gs_camera_t;
 
 typedef enum gs_shader_program_type
 {
@@ -155,34 +157,6 @@ typedef struct gs_vertex_attribute_layout_desc_t
 	gs_dyn_array(gs_vertex_attribute_type) attributes;	
 } gs_vertex_attribute_layout_desc_t;
 
-/*================
-// Color
-=================*/
-
-typedef struct gs_hsv_t
-{
-	union 
-	{
-		f32 hsv[3];
-		struct 
-		{
-			f32 h, s, v;
-		};
-	};
-} gs_hsv_t;
-
-typedef struct gs_color_t
-{
-	union 
-	{
-		u8 rgba[4];
-		struct 
-		{
-			u8 r, g, b, a;
-		};
-	};
-} gs_color_t;
-
 // From on: https://gist.github.com/fairlight1337/4935ae72bcbcc1ba5c72
 extern void gs_rgb_to_hsv(u8 r, u8 g, u8 b, f32* h, f32* s, f32* v);
 extern void gs_hsv_to_rgb(f32 h, f32 s, f32 v, u8* r, u8* g, u8* b);
@@ -240,18 +214,50 @@ typedef struct gs_texture_t
 	gs_texture_format texture_format;
 } gs_texture_t;
 
-typedef struct gs_debug_draw_properties
+typedef struct gs_graphics_immediate_draw_i
 {
-	gs_mat4 view_mat;
-	gs_mat4 proj_mat;
-} gs_debug_draw_properties;
+	void (* begin)(gs_command_buffer_t* cb);
+	void (* end)(gs_command_buffer_t* cb);
+	void (* begin_shape)(gs_command_buffer_t* cb);	
+	void (* end_shape)(gs_command_buffer_t* cb);	
+	void (* color_ub)(gs_command_buffer_t* cb, u8 r, u8 g, u8 b, u8 a);
+	void (* color_ubv)(gs_command_buffer_t* cb, gs_color_t c);
+	void (* color_4f)(gs_command_buffer_t* cb, f32 r, f32 g, f32 b, f32 a);
+	void (* color_4fv)(gs_command_buffer_t* cb, gs_vec4 v);
+	void (* vertex_3f)(gs_command_buffer_t* cb, f32 x, f32 y, f32 z);
+	void (* vertex_3fv)(gs_command_buffer_t* cb, gs_vec3 v);
+	void (* vertex_2f)(gs_command_buffer_t* cb, f32 x, f32 y);
+	void (* vertex_2fv)(gs_command_buffer_t* cb, gs_vec2 v);
 
-// Let's try something, bro
-typedef struct gs_graphics_immediate_mode_i
-{
-	void (* draw_square)(gs_command_buffer_t*, gs_vec3 position, f32 scale);
-} gs_graphics_immediate_mode_i;
+	// Matrices
+	// void (* push_matrix)(gs_command_buffer_t* cb, gs_mat4 mat);
+	// void (* pop_matrix)(gs_command_buffer_t* cb);
 
+	// Rect
+	void (* draw_rect)(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_color_t color);
+	// void (* draw_rect_lines_ext)(gs_command_buffer_t* cb, gs_vec3 a, gs_vec3 b, gs_vqs xform, gs_color_t color);
+	// void (* draw_rect_filled_ext)(gs_command_buffer_t* cb, gs_vec3 a, gs_vec3 b, gs_vqs xform, gs_color_t color);
+
+	// Circle
+	// void (* draw_circle)(gs_command_buffer_t* cb, gs_vec3 position, f32 radius, gs_color_t color, b32 filled);
+	// void (* draw_cirlce_ext)(gs_command_buffer_t* cb, gs_vec3 position, f32 radius, gs_vqs xform, gs_color_t color, b32 filled);
+
+	// Triangle
+	void (* draw_triangle)(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_vec2 c, gs_color_t color);
+	void (* draw_triangle_ext)(gs_command_buffer_t* cb, gs_vec3 a, gs_vec3 b, gs_vec3 c, gs_mat4 xform, gs_color_t color);
+
+	// Line
+	void (* draw_line)(gs_command_buffer_t* cb, gs_vec2 start, gs_vec2 end, f32 thickness, gs_color_t color);
+
+	// Path
+	// void (* draw_path)(gs_command_buffer_t* cb, gs_vec3* points);
+
+	// Camera
+	// void (* set_camera)(gs_command_buffer_t* cb, struct gs_camera_t* camera, gs_vec2 ws);
+
+	// Submit
+	void (* submit)(gs_command_buffer_t* cb);
+} gs_graphics_immediate_draw_i;
 /*================
 // Graphics API
 =================*/
@@ -347,17 +353,9 @@ typedef struct gs_graphics_i
 	void (* quad_batch_submit)(gs_command_buffer_t*, struct gs_quad_batch_t*);
 
 	/*============================================================
-	// Graphics Debug Rendering Ops
-	============================================================*/
-	void (* set_debug_draw_properties)(gs_command_buffer_t*, gs_debug_draw_properties);
-	void (* draw_line)(gs_command_buffer_t*, gs_vec3 start, gs_vec3 end, gs_vec3 color);
-	void (* draw_square)(gs_command_buffer_t*, gs_vec3 origin, f32 width, f32 height, gs_vec3 color, gs_mat4 transform);
-	void (* submit_debug_drawing)(gs_command_buffer_t*);
-
-	/*============================================================
 	// Graphics Immediate Mode Debug Rendering Ops
 	============================================================*/
-	gs_graphics_immediate_mode_i immediate;
+	gs_graphics_immediate_draw_i immediate;
 
 	/*============================================================
 	// Graphics Utility Functions
@@ -387,6 +385,16 @@ extern void* gs_load_texture_data_from_file(const char* path, b32 flip_verticall
 ===============================*/
 
 extern struct gs_graphics_i* __gs_graphics_construct();
+
+/*===============================
+// Immediate Mode Drawing
+===============================*/
+void __gs_draw_line_3d(gs_command_buffer_t* cb, gs_vec3 start, gs_vec3 end, gs_vec3 normal, f32 thickness, gs_color_t color);
+void __gs_draw_line_2d(gs_command_buffer_t* cb, gs_vec2 s, gs_vec2 e, f32 thickness, gs_color_t color);
+void __gs_draw_triangle_3d(gs_command_buffer_t* cb, gs_vec3 a, gs_vec3 b, gs_vec3 c, gs_color_t color);
+void __gs_draw_triangle_3d_ext(gs_command_buffer_t* cb, gs_vec3 a, gs_vec3 b, gs_vec3 c, gs_mat4 m, gs_color_t color);
+void __gs_draw_triangle_2d(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_vec2 c, gs_color_t color);
+void __gs_draw_rect_2d(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_color_t color);
 
 /*
 	What are the responsibilities here? 
@@ -748,13 +756,13 @@ extern struct gs_graphics_i* __gs_graphics_construct();
 	gs_resource(gs_uniform) viewMatrixHandle = gfx->create_uniform_handle(shader, "viewMatrix");
 	gs_resource(gs_uniform) modelMatrixHandle = gfx->create_uniform_handle(shader, "modelMatrix");
 
-	gs_graphics_params_desc g_desc = {0}; 
+	gs_graphics_params_desc g_desc = gs_default_val(); 
 	g_desc.blend_state 				= gs_blend_state_default;
 	g_desc.frame_buffer 			= gs_back_buffer;
 	g_desc.stencil_state 			= gs_stencil_default;
 
 	// Create a pipeline state object (as a resource?)
-	gs_pipeline_state_desc p_desc 	= {0};
+	gs_pipeline_state_desc p_desc 	= gs_default_val();
 	p_desc.shader 					= shader;
 	p_desc.vertex_buffer 			= vertex_buffer;
 	p_desc.index_buffer 			= index_buffer;
@@ -1050,11 +1058,11 @@ extern struct gs_graphics_i* __gs_graphics_construct();
 		gs_mat4 view;
 	} uniform_block;
 
-	gs_resource(gs_vertex_buffer) 		g_vertex_buffer = {0};
-	gs_resource(gs_shader) 				g_shader = {0};
-	gs_resource(gs_render_command_buffer) g_cb = {0};
-	gs_resource(gs_uniform_buffer) 		g_ub = {0};
-	gs_resource(gs_uniform)				g_uniform = {0};
+	gs_resource(gs_vertex_buffer) 		g_vertex_buffer = gs_default_val();
+	gs_resource(gs_shader) 				g_shader = gs_default_val();
+	gs_resource(gs_render_command_buffer) g_cb = gs_default_val();
+	gs_resource(gs_uniform_buffer) 		g_ub = gs_default_val();
+	gs_resource(gs_uniform)				g_uniform = gs_default_val();
 
 	// Should this be set as a callback to the renderer?
 	// Should user be in charge of update loop completely?

@@ -430,6 +430,15 @@ gs_mat4_mul(gs_mat4 m0, gs_mat4 m1)
 }
 
 _inline
+void gs_mat4_set_elements(gs_mat4* m, f32* elements, u32 count)
+{
+	for (u32 i = 0; i < count; ++i)
+	{
+		m->elements[i] = elements[i];
+	}
+}
+
+_inline
 gs_mat4 gs_mat4_transpose(gs_mat4 m)
 {
 	gs_mat4 t = gs_mat4_identity();
