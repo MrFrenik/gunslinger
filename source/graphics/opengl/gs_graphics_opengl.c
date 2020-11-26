@@ -92,7 +92,7 @@ typedef struct immediate_drawing_internal_data_t
 
 	// Stacks
 	gs_dyn_array(gs_mat4) vp_matrix_stack;
-	gs_dyn_array(gs_mat4) model_matrix_stack
+	gs_dyn_array(gs_mat4) model_matrix_stack;
 	gs_dyn_array(gs_vec2) viewport_stack;
 } immediate_drawing_internal_data_t;
 
@@ -219,7 +219,8 @@ immediate_drawing_internal_data_t construct_immediate_drawing_internal_data_t()
 	data.u_mvp = gfx->construct_uniform(data.shader, "u_mvp", gs_uniform_type_mat4);
 
 	// Construct stacks
-	data.matrix_stack = gs_dyn_array_new(gs_mat4);
+	data.model_matrix_stack = gs_dyn_array_new(gs_mat4);
+	data.vp_matrix_stack = gs_dyn_array_new(gs_mat4);
 	data.viewport_stack = gs_dyn_array_new(gs_vec2);
 
 	return data;
@@ -1143,7 +1144,8 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 				gs_dyn_array_clear(data->vertex_data);
 
 				// Clear stacks
-				gs_dyn_array_clear(data->matrix_stack);
+				gs_dyn_array_clear(data->model_matrix_stack);
+				gs_dyn_array_clear(data->vp_matrix_stack);
 				gs_dyn_array_clear(data->viewport_stack);
 
 				// Default stacks

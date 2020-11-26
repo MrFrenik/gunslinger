@@ -214,7 +214,7 @@ typedef struct gs_texture_t
 	gs_texture_format texture_format;
 } gs_texture_t;
 
-typedef struct gs_matrix_mode
+typedef enum gs_matrix_mode
 {
 	gs_matrix_model,
 	gs_matrix_view_proj
@@ -404,6 +404,7 @@ void __gs_draw_triangle_3d(gs_command_buffer_t* cb, gs_vec3 a, gs_vec3 b, gs_vec
 void __gs_draw_triangle_3d_ext(gs_command_buffer_t* cb, gs_vec3 a, gs_vec3 b, gs_vec3 c, gs_mat4 m, gs_color_t color);
 void __gs_draw_triangle_2d(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_vec2 c, gs_color_t color);
 void __gs_draw_rect_2d(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_color_t color);
+void __gs_draw_box(gs_command_buffer_t* cb, gs_vec3 origin, gs_vec3 half_extents, gs_color_t color);
 
 /*
 	What are the responsibilities here? 
