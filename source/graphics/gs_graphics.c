@@ -233,6 +233,12 @@ void __gs_draw_rect_2d(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_color_t
 	gfx->immediate.end_shape(cb);
 }
 
+void __gs_draw_box(gs_command_buffer_t* cb, gs_vec3 origin, gs_vec3 half_extents, gs_color_t color)
+{
+	// Need cube vertices
+	
+}
+
 
 
 

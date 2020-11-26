@@ -214,6 +214,12 @@ typedef struct gs_texture_t
 	gs_texture_format texture_format;
 } gs_texture_t;
 
+typedef struct gs_matrix_mode
+{
+	gs_matrix_model,
+	gs_matrix_view_proj
+} gs_matrix_mode;
+
 typedef struct gs_graphics_immediate_draw_i
 {
 	void (* begin)(gs_command_buffer_t* cb);
@@ -230,8 +236,8 @@ typedef struct gs_graphics_immediate_draw_i
 	void (* vertex_2fv)(gs_command_buffer_t* cb, gs_vec2 v);
 
 	// Matrices
-	// void (* push_matrix)(gs_command_buffer_t* cb, gs_mat4 mat);
-	// void (* pop_matrix)(gs_command_buffer_t* cb);
+	void (* push_matrix)(gs_command_buffer_t* cb, gs_matrix_mode mode, gs_mat4 mat);
+	void (* pop_matrix)(gs_command_buffer_t* cb);
 
 	// Rect
 	void (* draw_rect)(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_color_t color);
@@ -248,6 +254,9 @@ typedef struct gs_graphics_immediate_draw_i
 
 	// Line
 	void (* draw_line)(gs_command_buffer_t* cb, gs_vec2 start, gs_vec2 end, f32 thickness, gs_color_t color);
+
+	// Cube
+	void (* draw_box)(gs_command_buffer_t* cb, gs_vec3 origin, gs_vec3 half_extents, gs_color_t color);
 
 	// Path
 	// void (* draw_path)(gs_command_buffer_t* cb, gs_vec3* points);

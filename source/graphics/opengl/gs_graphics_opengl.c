@@ -91,7 +91,8 @@ typedef struct immediate_drawing_internal_data_t
 	gs_dyn_array(immediate_vertex_data_t) vertex_data;
 
 	// Stacks
-	gs_dyn_array(gs_mat4) matrix_stack;
+	gs_dyn_array(gs_mat4) vp_matrix_stack;
+	gs_dyn_array(gs_mat4) model_matrix_stack
 	gs_dyn_array(gs_vec2) viewport_stack;
 } immediate_drawing_internal_data_t;
 
@@ -705,6 +706,14 @@ void opengl_immediate_end(gs_command_buffer_t* cb)
 	__push_command(cb, gs_opengl_op_immediate_end, {
 		// Nothing...
 	});
+}
+
+void opengl_immediate_push_matrix(gs_command_buffer_t* cb, gs_matrix_mode mode, gs_mat4 mat)
+{
+}
+
+void opengl_immediate_pop_matrix(gs_command_buffer_t* cb)
+{
 }
 
 void opengl_immediate_begin_shape(gs_command_buffer_t* cb)
@@ -1977,6 +1986,7 @@ struct gs_graphics_i* __gs_graphics_construct()
 	gfx->immediate.draw_triangle 		= &__gs_draw_triangle_2d;
 	gfx->immediate.draw_triangle_ext 	= &__gs_draw_triangle_3d_ext;
 	gfx->immediate.draw_rect 			= &__gs_draw_rect_2d;
+	gfx->immediate.draw_box 			= &__gs_draw_box;
 
 	gfx->immediate.begin_shape 			= &opengl_immediate_begin_shape;
 	gfx->immediate.end_shape 			= &opengl_immediate_end_shape;
