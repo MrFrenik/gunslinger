@@ -792,7 +792,7 @@ void opengl_immediate_vertex_2f(gs_command_buffer_t* cb, f32 x, f32 y)
 }
 
 // Immediate Ops
-void gs_begin() 
+void gs_begin(gs_draw_mode mode) 
 {
 }
 
