@@ -89,11 +89,17 @@ gs_result app_update()
 		gfx->immediate.end(cb);
 
 		/*==========
-		// Cube
+		// 3D
 		==========*/
 		gfx->immediate.push_camera(cb, gs_camera_perspective());
 		{
-			// Transform for cube
+			// Want to abstract these into a default "3d state"
+			gfx->set_depth_enabled(cb, true);
+			gfx->set_face_culling(cb, gs_face_culling_back);
+
+			/*==========
+			// Box
+			==========*/
 			gs_vqs xform = gs_vqs_default();
 			xform.position = gs_v3(0.f, 0.f, -20.f);
 			xform.scale = gs_vec3_scale(gs_v3(1.f, 1.f, 1.f), 10.f);
@@ -103,15 +109,46 @@ gs_result app_update()
 				gs_quat_angle_axis(_t * 0.0001f, gs_x_axis),
 				gs_quat_angle_axis(_t * 0.0005f, gs_z_axis)
 			);
-			
 			gfx->immediate.draw_box_ext(cb, xform, gs_color_alpha(gs_color_white, 50));
+
+			// // Rotation
+			xform.rotation = gs_quat_mul(
+				xform.rotation, 
+				gs_quat_angle_axis(_t * 0.001f, gs_z_axis)
+			);
+			gfx->immediate.push_matrix(cb, gs_matrix_model);
+				gfx->immediate.mat_mul(cb, gs_quat_to_mat4(xform.rotation));
+				gfx->immediate.draw_box(cb, gs_v3(5.f, 5.f, -20.f), gs_v3(2.f, 2.f, 2.f), gs_color_white);
+			gfx->immediate.pop_matrix(cb);
+
+			/*==========
+			// Sphere
+			==========*/
+			// Draw sphere rotating around box
+			gfx->immediate.draw_sphere(
+				cb, 
+				gs_v3(cosf(_t * 0.001f) * 10, 0.f, sinf(_t * 0.001f) * 10 - 25.f), 
+				2.f, 
+				gs_color_alpha(gs_color_orange, 255)
+			);
 		}
 		gfx->immediate.pop_camera(cb);
+
+		// Back to 2d state
+		gfx->set_depth_enabled(cb, false);
+		gfx->set_face_culling(cb, gs_face_culling_disabled);
 
 		/*===========
 		// Triangles
 		===========*/
-		gfx->immediate.draw_triangle(cb, gs_v2(200.f, 200.f), gs_v2(150.f, 250.f), gs_v2(250.f, 250.f), gs_color_blue);
+		// Rotate triangle
+		gfx->immediate.push_matrix(cb, gs_matrix_model);
+			gs_mat4 rot = gs_quat_to_mat4(gs_quat_angle_axis(_t * 0.001f, gs_z_axis));
+			gs_mat4 trans = gs_mat4_translate(gs_v3(200.f, 200.f, 0.f));
+			gfx->immediate.mat_mul(cb, trans);
+			gfx->immediate.mat_mul(cb, rot);
+			gfx->immediate.draw_triangle(cb, gs_v2(0.f, 0.f), gs_v2(150.f, 250.f), gs_v2(250.f, 250.f), gs_color_blue);
+		gfx->immediate.pop_matrix(cb);
 
 		/*===========
 		// Rects

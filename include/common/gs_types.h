@@ -110,6 +110,7 @@ gs_color_t gs_color_ctor(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 #define gs_color_red 	gs_color(255, 0, 0, 255)
 #define gs_color_green 	gs_color(0, 255, 0, 255)
 #define gs_color_blue 	gs_color(0, 0, 255, 255)
+#define gs_color_orange gs_color(255, 100, 0, 255)
 
 _force_inline 
 gs_color_t gs_color_alpha(gs_color_t c, uint8_t a)

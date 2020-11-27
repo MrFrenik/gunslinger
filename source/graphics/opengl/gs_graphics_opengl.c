@@ -88,6 +88,7 @@ typedef enum gs_opengl_op_code
 	gs_opengl_op_immediate_end_drawing,
 	gs_opengl_op_immediate_push_matrix,
 	gs_opengl_op_immediate_pop_matrix,
+	gs_opengl_op_immediate_mat_mul,
 	gs_opengl_op_immediate_begin,
 	gs_opengl_op_immediate_end,
 	gs_opengl_op_immediate_color_ubv,
@@ -118,6 +119,7 @@ typedef struct immediate_drawing_internal_data_t
 	gs_dyn_array(gs_mat4) vp_matrix_stack;
 	gs_dyn_array(gs_mat4) model_matrix_stack;
 	gs_dyn_array(gs_vec2) viewport_stack;
+	gs_dyn_array(gs_matrix_mode) matrix_modes;
 } immediate_drawing_internal_data_t;
 
 typedef gs_command_buffer_t command_buffer_t;
@@ -246,6 +248,7 @@ immediate_drawing_internal_data_t construct_immediate_drawing_internal_data_t()
 	data.model_matrix_stack = gs_dyn_array_new(gs_mat4);
 	data.vp_matrix_stack = gs_dyn_array_new(gs_mat4);
 	data.viewport_stack = gs_dyn_array_new(gs_vec2);
+	data.matrix_modes = gs_dyn_array_new(gs_matrix_mode);
 
 	data.model_matrix = gs_mat4_identity();
 	data.vp_matrix = __gs_default_view_proj_mat();
@@ -718,18 +721,23 @@ void opengl_immediate_end_drawing(gs_command_buffer_t* cb)
 	});
 }
 
-void opengl_immediate_push_matrix(gs_command_buffer_t* cb, gs_matrix_mode mode, gs_mat4 mat)
+void opengl_immediate_push_matrix(gs_command_buffer_t* cb, gs_matrix_mode mode)
 {
 	__push_command(cb, gs_opengl_op_immediate_push_matrix, {
 		gs_byte_buffer_write(&cb->commands, u32, (u32)mode);
-		gs_byte_buffer_write(&cb->commands, gs_mat4, mat);
 	});
 }
 
-void opengl_immediate_pop_matrix(gs_command_buffer_t* cb, gs_matrix_mode mode)
+void opengl_immediate_pop_matrix(gs_command_buffer_t* cb)
 {
 	__push_command(cb, gs_opengl_op_immediate_pop_matrix, {
-		gs_byte_buffer_write(&cb->commands, u32, (u32)mode);
+	});
+}
+
+void opengl_immediate_mat_mul(gs_command_buffer_t* cb, gs_mat4 m)
+{
+	__push_command(cb, gs_opengl_op_immediate_mat_mul, {
+		gs_byte_buffer_write(&cb->commands, gs_mat4, m);
 	});
 }
 
@@ -798,6 +806,7 @@ void gs_begin(gs_draw_mode mode)
 
 void gs_end()
 {
+	// Need to pop current state and restore preivous state
 	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
 	data->color = gs_color_white;
 }
@@ -805,40 +814,49 @@ void gs_end()
 void gs_push_matrix_uniform()
 {
 	immediate_drawing_internal_data_t* _data = __get_opengl_immediate_data();
-	gs_mat4 mvp = gs_mat4_mul(_data->vp_matrix, _data->model_matrix);
+	gs_mat4 mvp = gs_dyn_array_back(_data->vp_matrix_stack);
 	glUniformMatrix4fv(_data->u_mvp.location, 1, false, (f32*)(mvp.elements));
 }
 
-#define gs_push_matrix(mode, mat)\
+#define gs_push_matrix(mode)\
 do {\
 	immediate_drawing_internal_data_t* _data = __get_opengl_immediate_data();\
+	gs_dyn_array_push(_data->matrix_modes, mode);\
 	switch(mode) {\
-		case gs_matrix_mode_model:\
+		case gs_matrix_model:\
 		{\
-			_data->model_matrix = mat;\
+			gs_dyn_array_push(_data->model_matrix_stack, gs_mat4_identity());\
 		} break;\
-		case gs_matrix_mode_view_proj:\
+		case gs_matrix_vp:\
 		{\
-			_data->vp_matrix = mat;\
+			gs_dyn_array_push(_data->vp_matrix_stack, gs_mat4_identity());\
+			gs_push_matrix_uniform();\
 		} break;\
 	}\
-	gs_push_matrix_uniform();\
 } while(0)
 
-#define gs_pop_matrix(mode)\
+#define gs_pop_matrix()\
 do {\
 	immediate_drawing_internal_data_t* _data = __get_opengl_immediate_data();\
-	switch(mode) {\
-		case gs_matrix_mode_model:\
-		{\
-			_data->model_matrix = gs_mat4_identity();\
-		} break;\
-		case gs_matrix_mode_view_proj:\
-		{\
-			_data->vp_matrix = __gs_default_view_proj_mat();\
-		} break;\
+	if (!gs_dyn_array_empty(_data->matrix_modes)) {\
+		gs_matrix_mode mode = gs_dyn_array_back(_data->matrix_modes);\
+		/* Flush data if necessary */\
+		if (mode == gs_matrix_vp) {\
+			opengl_immediate_submit_vertex_data();\
+		}\
+		gs_dyn_array_pop(_data->matrix_modes);\
+		switch(mode) {\
+			case gs_matrix_model:\
+			{\
+				gs_dyn_array_pop(_data->model_matrix_stack);\
+			} break;\
+			case gs_matrix_vp:\
+			{\
+				gs_dyn_array_pop(_data->vp_matrix_stack);\
+				gs_push_matrix_uniform();\
+			} break;\
+		}\
 	}\
-	gs_push_matrix_uniform();\
 } while(0)
 
 #define gs_vert3fv(v)\
@@ -847,6 +865,15 @@ do {\
 	immediate_vertex_data_t vert;\
 	vert.color = data->color;\
 	vert.position = v;\
+	/*Check if it's necessary to transform vert by model matrix stack*/\
+	gs_for_range_i(gs_dyn_array_size(data->model_matrix_stack))\
+	{\
+		gs_vec4 v = gs_mat4_mul_vec4(\
+			data->model_matrix_stack[i],\
+			gs_v4(vert.position.x, vert.position.y, vert.position.z, 1.f)\
+		);\
+		vert.position = gs_v4_to_v3(v);\
+	}\
 	gs_dyn_array_push(data->vertex_data, vert);\
 } while (0)
 
@@ -1206,11 +1233,11 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 				gs_dyn_array_clear(data->model_matrix_stack);
 				gs_dyn_array_clear(data->vp_matrix_stack);
 				gs_dyn_array_clear(data->viewport_stack);
+				gs_dyn_array_clear(data->matrix_modes);
 
 				// Default stacks
-				// gs_mat4 ortho = __gs_default_view_proj_mat();
-				// gs_dyn_array_push(data->matrix_stack, ortho);
-				// gs_dyn_array_push(data->viewport_stack, ws);
+				gs_mat4 ortho = __gs_default_view_proj_mat();
+				gs_dyn_array_push(data->vp_matrix_stack, ortho);
 			} break;
 
 			case gs_opengl_op_immediate_end_drawing:
@@ -1233,19 +1260,40 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 			case gs_opengl_op_immediate_push_matrix:
 			{
 				gs_matrix_mode mode = (gs_matrix_mode)gs_byte_buffer_read(&cb->commands, u32);
-				gs_mat4 mat = gs_byte_buffer_read(&cb->commands, gs_mat4);
-				// Flush data
-				opengl_immediate_submit_vertex_data();
-				gs_push_matrix(mode, mat);
+
+				if (mode == gs_matrix_vp) {
+					opengl_immediate_submit_vertex_data();
+				}
+
+				gs_push_matrix(mode);
 			} break;
 
 			case gs_opengl_op_immediate_pop_matrix:
 			{
-				gs_matrix_mode mode = (gs_matrix_mode)gs_byte_buffer_read(&cb->commands, u32);
-				// Flush data
-				opengl_immediate_submit_vertex_data();
 				// Then pop matrix
-				gs_pop_matrix(mode);
+				gs_pop_matrix();
+			} break;
+
+			case gs_opengl_op_immediate_mat_mul:
+			{
+				// If we're applying this to the vp matrix, need to update the uniform
+				immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
+				if (!gs_dyn_array_empty(data->matrix_modes)) {
+					gs_mat4 m = gs_byte_buffer_read(&cb->commands, gs_mat4);
+					switch (gs_dyn_array_back(data->matrix_modes)) {
+						case gs_matrix_vp:
+						{
+							gs_mat4* mm = &gs_dyn_array_back(data->vp_matrix_stack);
+							*mm = gs_mat4_mul(*mm, m);
+							gs_push_matrix_uniform();
+						} break;
+						case gs_matrix_model:
+						{
+							gs_mat4* mm = &gs_dyn_array_back(data->model_matrix_stack);
+							*mm = gs_mat4_mul(*mm, m);
+						} break;
+					}
+				}
 			} break;
 
 			case gs_opengl_op_immediate_vertex_3fv:
@@ -2066,6 +2114,7 @@ struct gs_graphics_i* __gs_graphics_construct()
 	gfx->immediate.end 					= &opengl_immediate_end;
 	gfx->immediate.push_matrix 			= &opengl_immediate_push_matrix;
 	gfx->immediate.pop_matrix 			= &opengl_immediate_pop_matrix;
+	gfx->immediate.mat_mul 				= &opengl_immediate_mat_mul;
 	gfx->immediate.push_camera 			= &__gs_push_camera;
 	gfx->immediate.pop_camera 			= &__gs_pop_camera;
 
@@ -2075,6 +2124,7 @@ struct gs_graphics_i* __gs_graphics_construct()
 	gfx->immediate.draw_rect 			= &__gs_draw_rect_2d;
 	gfx->immediate.draw_box 			= &__gs_draw_box;
 	gfx->immediate.draw_box_ext 		= &__gs_draw_box_ext;
+	gfx->immediate.draw_sphere 			= &__gs_draw_sphere;
 
 	gfx->immediate.color_ub 			= &opengl_immediate_color_ub;
 	gfx->immediate.color_ubv 			= &opengl_immediate_color_ubv;

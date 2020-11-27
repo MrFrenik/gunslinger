@@ -217,8 +217,8 @@ typedef struct gs_texture_t
 
 typedef enum gs_matrix_mode
 {
-	gs_matrix_mode_model,
-	gs_matrix_mode_view_proj
+	gs_matrix_model,
+	gs_matrix_vp
 } gs_matrix_mode;
 
 typedef enum gs_draw_mode
@@ -244,8 +244,9 @@ typedef struct gs_graphics_immediate_draw_i
 	void (* vertex_2fv)(gs_command_buffer_t* cb, gs_vec2 v);
 
 	// Matrices
-	void (* push_matrix)(gs_command_buffer_t* cb, gs_matrix_mode mode, gs_mat4 mat);
-	void (* pop_matrix)(gs_command_buffer_t* cb, gs_matrix_mode mode);
+	void (* push_matrix)(gs_command_buffer_t* cb, gs_matrix_mode mode);
+	void (* pop_matrix)(gs_command_buffer_t* cb);
+	void (* mat_mul)(gs_command_buffer_t* cb, gs_mat4 m);
 
 	// Rect
 	void (* draw_rect)(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_color_t color);
@@ -266,6 +267,9 @@ typedef struct gs_graphics_immediate_draw_i
 	// Cube
 	void (* draw_box)(gs_command_buffer_t* cb, gs_vec3 origin, gs_vec3 half_extents, gs_color_t color);
 	void (* draw_box_ext)(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t color);
+
+	// Sphere	
+	void (* draw_sphere)(gs_command_buffer_t* cb, gs_vec3 center, f32 radius, gs_color_t color);
 
 	// Path
 	// void (* draw_path)(gs_command_buffer_t* cb, gs_vec3* points);
@@ -416,6 +420,7 @@ void __gs_draw_triangle_2d(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_vec
 void __gs_draw_rect_2d(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_color_t color);
 void __gs_draw_box(gs_command_buffer_t* cb, gs_vec3 origin, gs_vec3 half_extents, gs_color_t color);
 void __gs_draw_box_ext(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t color);
+void __gs_draw_sphere(gs_command_buffer_t* cb, gs_vec3 center, f32 radius, gs_color_t color);
 void __gs_push_camera(gs_command_buffer_t* cb, gs_camera_t camera);
 void __gs_pop_camera(gs_command_buffer_t* cb);
 

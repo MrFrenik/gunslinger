@@ -246,68 +246,73 @@ void __gs_draw_box(gs_command_buffer_t* cb, gs_vec3 origin, gs_vec3 half_extents
 	f32 width = half_extents.x;
 	f32 height = half_extents.y;
 	f32 length = half_extents.z;
-	f32 x = origin.x;
-	f32 y = origin.y;
-	f32 z = origin.z;
+	f32 x = 0.f;
+	f32 y = 0.f;
+	f32 z = 0.f;
 
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	gfx->immediate.begin(cb, gs_triangles);
 	{
 		gfx->immediate.color_ubv(cb, color);
+		gfx->immediate.push_matrix(cb, gs_matrix_model);
+		{
+			gfx->immediate.mat_mul(cb, gs_mat4_translate(origin));
 
-        // Front face
-        gfx->immediate.vertex_3f(cb, x - width/2, y - height/2, z + length/2);  // Bottom Left
-        gfx->immediate.vertex_3f(cb, x + width/2, y - height/2, z + length/2);  // Bottom Right
-        gfx->immediate.vertex_3f(cb, x - width/2, y + height/2, z + length/2);  // Top Left
+	        // Front face
+	        gfx->immediate.vertex_3f(cb, x - width/2, y - height/2, z + length/2);  // Bottom Left
+	        gfx->immediate.vertex_3f(cb, x + width/2, y - height/2, z + length/2);  // Bottom Right
+	        gfx->immediate.vertex_3f(cb, x - width/2, y + height/2, z + length/2);  // Top Left
 
-        gfx->immediate.vertex_3f(cb, x + width/2, y + height/2, z + length/2);  // Top Right
-        gfx->immediate.vertex_3f(cb, x - width/2, y + height/2, z + length/2);  // Top Left
-        gfx->immediate.vertex_3f(cb, x + width/2, y - height/2, z + length/2);  // Bottom Right
-        
-        // Back face
-        gfx->immediate.vertex_3f(cb, x - width/2, y - height/2, z - length/2);  // Bottom Left
-        gfx->immediate.vertex_3f(cb, x - width/2, y + height/2, z - length/2);  // Top Left
-        gfx->immediate.vertex_3f(cb, x + width/2, y - height/2, z - length/2);  // Bottom Right
+	        gfx->immediate.vertex_3f(cb, x + width/2, y + height/2, z + length/2);  // Top Right
+	        gfx->immediate.vertex_3f(cb, x - width/2, y + height/2, z + length/2);  // Top Left
+	        gfx->immediate.vertex_3f(cb, x + width/2, y - height/2, z + length/2);  // Bottom Right
+	        
+	        // Back face
+	        gfx->immediate.vertex_3f(cb, x - width/2, y - height/2, z - length/2);  // Bottom Left
+	        gfx->immediate.vertex_3f(cb, x - width/2, y + height/2, z - length/2);  // Top Left
+	        gfx->immediate.vertex_3f(cb, x + width/2, y - height/2, z - length/2);  // Bottom Right
 
-        gfx->immediate.vertex_3f(cb, x + width/2, y + height/2, z - length/2);  // Top Right
-        gfx->immediate.vertex_3f(cb, x + width/2, y - height/2, z - length/2);  // Bottom Right
-        gfx->immediate.vertex_3f(cb, x - width/2, y + height/2, z - length/2);  // Top Left
+	        gfx->immediate.vertex_3f(cb, x + width/2, y + height/2, z - length/2);  // Top Right
+	        gfx->immediate.vertex_3f(cb, x + width/2, y - height/2, z - length/2);  // Bottom Right
+	        gfx->immediate.vertex_3f(cb, x - width/2, y + height/2, z - length/2);  // Top Left
 
-        // Top face
-        gfx->immediate.vertex_3f(cb, x - width/2, y + height/2, z - length/2);  // Top Left
-        gfx->immediate.vertex_3f(cb, x - width/2, y + height/2, z + length/2);  // Bottom Left
-        gfx->immediate.vertex_3f(cb, x + width/2, y + height/2, z + length/2);  // Bottom Right
+	        // Top face
+	        gfx->immediate.vertex_3f(cb, x - width/2, y + height/2, z - length/2);  // Top Left
+	        gfx->immediate.vertex_3f(cb, x - width/2, y + height/2, z + length/2);  // Bottom Left
+	        gfx->immediate.vertex_3f(cb, x + width/2, y + height/2, z + length/2);  // Bottom Right
 
-        gfx->immediate.vertex_3f(cb, x + width/2, y + height/2, z - length/2);  // Top Right
-        gfx->immediate.vertex_3f(cb, x - width/2, y + height/2, z - length/2);  // Top Left
-        gfx->immediate.vertex_3f(cb, x + width/2, y + height/2, z + length/2);  // Bottom Right
+	        gfx->immediate.vertex_3f(cb, x + width/2, y + height/2, z - length/2);  // Top Right
+	        gfx->immediate.vertex_3f(cb, x - width/2, y + height/2, z - length/2);  // Top Left
+	        gfx->immediate.vertex_3f(cb, x + width/2, y + height/2, z + length/2);  // Bottom Right
 
-        // Bottom face
-        gfx->immediate.vertex_3f(cb, x - width/2, y - height/2, z - length/2);  // Top Left
-        gfx->immediate.vertex_3f(cb, x + width/2, y - height/2, z + length/2);  // Bottom Right
-        gfx->immediate.vertex_3f(cb, x - width/2, y - height/2, z + length/2);  // Bottom Left
+	        // Bottom face
+	        gfx->immediate.vertex_3f(cb, x - width/2, y - height/2, z - length/2);  // Top Left
+	        gfx->immediate.vertex_3f(cb, x + width/2, y - height/2, z + length/2);  // Bottom Right
+	        gfx->immediate.vertex_3f(cb, x - width/2, y - height/2, z + length/2);  // Bottom Left
 
-        gfx->immediate.vertex_3f(cb, x + width/2, y - height/2, z - length/2);  // Top Right
-        gfx->immediate.vertex_3f(cb, x + width/2, y - height/2, z + length/2);  // Bottom Right
-        gfx->immediate.vertex_3f(cb, x - width/2, y - height/2, z - length/2);  // Top Left
+	        gfx->immediate.vertex_3f(cb, x + width/2, y - height/2, z - length/2);  // Top Right
+	        gfx->immediate.vertex_3f(cb, x + width/2, y - height/2, z + length/2);  // Bottom Right
+	        gfx->immediate.vertex_3f(cb, x - width/2, y - height/2, z - length/2);  // Top Left
 
-        // Right face
-        gfx->immediate.vertex_3f(cb, x + width/2, y - height/2, z - length/2);  // Bottom Right
-        gfx->immediate.vertex_3f(cb, x + width/2, y + height/2, z - length/2);  // Top Right
-        gfx->immediate.vertex_3f(cb, x + width/2, y + height/2, z + length/2);  // Top Left
+	        // Right face
+	        gfx->immediate.vertex_3f(cb, x + width/2, y - height/2, z - length/2);  // Bottom Right
+	        gfx->immediate.vertex_3f(cb, x + width/2, y + height/2, z - length/2);  // Top Right
+	        gfx->immediate.vertex_3f(cb, x + width/2, y + height/2, z + length/2);  // Top Left
 
-        gfx->immediate.vertex_3f(cb, x + width/2, y - height/2, z + length/2);  // Bottom Left
-        gfx->immediate.vertex_3f(cb, x + width/2, y - height/2, z - length/2);  // Bottom Right
-        gfx->immediate.vertex_3f(cb, x + width/2, y + height/2, z + length/2);  // Top Left
+	        gfx->immediate.vertex_3f(cb, x + width/2, y - height/2, z + length/2);  // Bottom Left
+	        gfx->immediate.vertex_3f(cb, x + width/2, y - height/2, z - length/2);  // Bottom Right
+	        gfx->immediate.vertex_3f(cb, x + width/2, y + height/2, z + length/2);  // Top Left
 
-        // Left face
-        gfx->immediate.vertex_3f(cb, x - width/2, y - height/2, z - length/2);  // Bottom Right
-        gfx->immediate.vertex_3f(cb, x - width/2, y + height/2, z + length/2);  // Top Left
-        gfx->immediate.vertex_3f(cb, x - width/2, y + height/2, z - length/2);  // Top Right
+	        // Left face
+	        gfx->immediate.vertex_3f(cb, x - width/2, y - height/2, z - length/2);  // Bottom Right
+	        gfx->immediate.vertex_3f(cb, x - width/2, y + height/2, z + length/2);  // Top Left
+	        gfx->immediate.vertex_3f(cb, x - width/2, y + height/2, z - length/2);  // Top Right
 
-        gfx->immediate.vertex_3f(cb, x - width/2, y - height/2, z + length/2);  // Bottom Left
-        gfx->immediate.vertex_3f(cb, x - width/2, y + height/2, z + length/2);  // Top Left
-        gfx->immediate.vertex_3f(cb, x - width/2, y - height/2, z - length/2);  // Bottom Right
+	        gfx->immediate.vertex_3f(cb, x - width/2, y - height/2, z + length/2);  // Bottom Left
+	        gfx->immediate.vertex_3f(cb, x - width/2, y + height/2, z + length/2);  // Top Left
+	        gfx->immediate.vertex_3f(cb, x - width/2, y - height/2, z - length/2);  // Bottom Right
+		}
+		gfx->immediate.pop_matrix(cb);
 
 	}
 	gfx->immediate.end(cb);
@@ -325,76 +330,137 @@ void __gs_draw_box_ext(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t color)
 	// Preapply matrix transformations to all verts
 	gs_mat4 mat = gs_vqs_to_mat4(&xform);
 
-	gs_vec3 v0 = gs_v4_to_v3(gs_mat4_mul_vec4(mat, gs_v4(x - width/2, y - height/2, z + length/2, 1.f)));
-	gs_vec3 v1 = gs_v4_to_v3(gs_mat4_mul_vec4(mat, gs_v4(x + width/2, y - height/2, z + length/2, 1.f)));
-	gs_vec3 v2 = gs_v4_to_v3(gs_mat4_mul_vec4(mat, gs_v4(x - width/2, y + height/2, z + length/2, 1.f)));
-	gs_vec3 v3 = gs_v4_to_v3(gs_mat4_mul_vec4(mat, gs_v4(x + width/2, y + height/2, z + length/2, 1.f)));
-	gs_vec3 v4 = gs_v4_to_v3(gs_mat4_mul_vec4(mat, gs_v4(x - width/2, y - height/2, z - length/2, 1.f)));
-	gs_vec3 v5 = gs_v4_to_v3(gs_mat4_mul_vec4(mat, gs_v4(x - width/2, y + height/2, z - length/2, 1.f)));
-	gs_vec3 v6 = gs_v4_to_v3(gs_mat4_mul_vec4(mat, gs_v4(x + width/2, y - height/2, z - length/2, 1.f)));
-	gs_vec3 v7 = gs_v4_to_v3(gs_mat4_mul_vec4(mat, gs_v4(x + width/2, y + height/2, z - length/2, 1.f)));
+	gs_vec3 v0 = gs_v3(x - width/2, y - height/2, z + length/2);
+	gs_vec3 v1 = gs_v3(x + width/2, y - height/2, z + length/2);
+	gs_vec3 v2 = gs_v3(x - width/2, y + height/2, z + length/2);
+	gs_vec3 v3 = gs_v3(x + width/2, y + height/2, z + length/2);
+	gs_vec3 v4 = gs_v3(x - width/2, y - height/2, z - length/2);
+	gs_vec3 v5 = gs_v3(x - width/2, y + height/2, z - length/2);
+	gs_vec3 v6 = gs_v3(x + width/2, y - height/2, z - length/2);
+	gs_vec3 v7 = gs_v3(x + width/2, y + height/2, z - length/2);
 
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	gfx->immediate.begin(cb, gs_triangles);
 	{
-		gfx->immediate.color_ubv(cb, color);
-		
-        // Front face
-        gfx->immediate.vertex_3fv(cb, v0);  // Bottom Left
-        gfx->immediate.vertex_3fv(cb, v1);  // Bottom Right
-        gfx->immediate.vertex_3fv(cb, v2);  // Top Left
+		gfx->immediate.push_matrix(cb, gs_matrix_model);
+		{
+    		gfx->immediate.mat_mul(cb, mat);
+			gfx->immediate.color_ubv(cb, color);
+			
+	        // Front face
+	        gfx->immediate.vertex_3fv(cb, v0);  // Bottom Left
+	        gfx->immediate.vertex_3fv(cb, v1);  // Bottom Right
+	        gfx->immediate.vertex_3fv(cb, v2);  // Top Left
 
-        gfx->immediate.vertex_3fv(cb, v3);  // Top Right
-        gfx->immediate.vertex_3fv(cb, v2);  // Top Left
-        gfx->immediate.vertex_3fv(cb, v1);  // Bottom Right
-        
-        // Back face
-        gfx->immediate.vertex_3fv(cb, v4);  // Bottom Left
-        gfx->immediate.vertex_3fv(cb, v5);  // Top Left
-        gfx->immediate.vertex_3fv(cb, v6);  // Bottom Right
+	        gfx->immediate.vertex_3fv(cb, v3);  // Top Right
+	        gfx->immediate.vertex_3fv(cb, v2);  // Top Left
+	        gfx->immediate.vertex_3fv(cb, v1);  // Bottom Right
+	        
+	        // Back face
+	        gfx->immediate.vertex_3fv(cb, v4);  // Bottom Left
+	        gfx->immediate.vertex_3fv(cb, v5);  // Top Left
+	        gfx->immediate.vertex_3fv(cb, v6);  // Bottom Right
 
-        gfx->immediate.vertex_3fv(cb, v7);  // Top Right
-        gfx->immediate.vertex_3fv(cb, v6);  // Bottom Right
-        gfx->immediate.vertex_3fv(cb, v5);  // Top Left
+	        gfx->immediate.vertex_3fv(cb, v7);  // Top Right
+	        gfx->immediate.vertex_3fv(cb, v6);  // Bottom Right
+	        gfx->immediate.vertex_3fv(cb, v5);  // Top Left
 
-        // Top face
-        gfx->immediate.vertex_3fv(cb, v5);  // Top Left
-        gfx->immediate.vertex_3fv(cb, v2);  // Bottom Left
-        gfx->immediate.vertex_3fv(cb, v3);  // Bottom Right
+	        // Top face
+	        gfx->immediate.vertex_3fv(cb, v5);  // Top Left
+	        gfx->immediate.vertex_3fv(cb, v2);  // Bottom Left
+	        gfx->immediate.vertex_3fv(cb, v3);  // Bottom Right
 
-        gfx->immediate.vertex_3fv(cb, v7);  // Top Right
-        gfx->immediate.vertex_3fv(cb, v5);  // Top Left
-        gfx->immediate.vertex_3fv(cb, v3);  // Bottom Right
+	        gfx->immediate.vertex_3fv(cb, v7);  // Top Right
+	        gfx->immediate.vertex_3fv(cb, v5);  // Top Left
+	        gfx->immediate.vertex_3fv(cb, v3);  // Bottom Right
 
-        // Bottom face
-        gfx->immediate.vertex_3fv(cb, v4);  // Top Left
-        gfx->immediate.vertex_3fv(cb, v1);  // Bottom Right
-        gfx->immediate.vertex_3fv(cb, v0);  // Bottom Left
+	        // Bottom face
+	        gfx->immediate.vertex_3fv(cb, v4);  // Top Left
+	        gfx->immediate.vertex_3fv(cb, v1);  // Bottom Right
+	        gfx->immediate.vertex_3fv(cb, v0);  // Bottom Left
 
-        gfx->immediate.vertex_3fv(cb, v6);  // Top Right
-        gfx->immediate.vertex_3fv(cb, v1);  // Bottom Right
-        gfx->immediate.vertex_3fv(cb, v4);  // Top Left
+	        gfx->immediate.vertex_3fv(cb, v6);  // Top Right
+	        gfx->immediate.vertex_3fv(cb, v1);  // Bottom Right
+	        gfx->immediate.vertex_3fv(cb, v4);  // Top Left
 
-        // Right face
-        gfx->immediate.vertex_3fv(cb, v6);  // Bottom Right
-        gfx->immediate.vertex_3fv(cb, v7);  // Top Right
-        gfx->immediate.vertex_3fv(cb, v3);  // Top Left
+	        // Right face
+	        gfx->immediate.vertex_3fv(cb, v6);  // Bottom Right
+	        gfx->immediate.vertex_3fv(cb, v7);  // Top Right
+	        gfx->immediate.vertex_3fv(cb, v3);  // Top Left
 
-        gfx->immediate.vertex_3fv(cb, v1);  // Bottom Left
-        gfx->immediate.vertex_3fv(cb, v6);  // Bottom Right
-        gfx->immediate.vertex_3fv(cb, v3);  // Top Left
+	        gfx->immediate.vertex_3fv(cb, v1);  // Bottom Left
+	        gfx->immediate.vertex_3fv(cb, v6);  // Bottom Right
+	        gfx->immediate.vertex_3fv(cb, v3);  // Top Left
 
-        // Left face
-        gfx->immediate.vertex_3fv(cb, v4);  // Bottom Right
-        gfx->immediate.vertex_3fv(cb, v2);  // Top Left
-        gfx->immediate.vertex_3fv(cb, v5);  // Top Right
+	        // Left face
+	        gfx->immediate.vertex_3fv(cb, v4);  // Bottom Right
+	        gfx->immediate.vertex_3fv(cb, v2);  // Top Left
+	        gfx->immediate.vertex_3fv(cb, v5);  // Top Right
 
-        gfx->immediate.vertex_3fv(cb, v0);  // Bottom Left
-        gfx->immediate.vertex_3fv(cb, v2);  // Top Left
-        gfx->immediate.vertex_3fv(cb, v4);  // Bottom Right
-
+	        gfx->immediate.vertex_3fv(cb, v0);  // Bottom Left
+	        gfx->immediate.vertex_3fv(cb, v2);  // Top Left
+	        gfx->immediate.vertex_3fv(cb, v4);  // Bottom Right
+		}
+		gfx->immediate.pop_matrix(cb);
 	}
 	gfx->immediate.end(cb);
+}
+
+void __gs_draw_sphere(gs_command_buffer_t* cb, gs_vec3 center, f32 radius, gs_color_t color)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+
+    s32 rings  = 16;
+    s32 slices = 16;
+
+    // Deg to rad
+    const f32 deg2rad = gs_pi / 180.f;
+
+    gfx->immediate.begin(cb, gs_triangles);
+    {
+    	gs_vqs xform = gs_vqs_default();
+    	xform.position = center;
+    	xform.scale = gs_v3(radius, radius, radius);
+
+    	gfx->immediate.push_matrix(cb, gs_matrix_model);
+    	{
+    		gfx->immediate.mat_mul(cb, gs_vqs_to_mat4(&xform));
+			gfx->immediate.color_ubv(cb, color);
+			{
+		        for (s32 i = 0; i < (rings + 2); i++)
+		        {
+		            for (s32 j = 0; j < slices; j++)
+		            {
+		                gfx->immediate.vertex_3f(cb, cosf(deg2rad*(270+(180/(rings + 1))*i))*sinf(deg2rad*(j*360/slices)),
+		                           sinf(deg2rad*(270+(180/(rings + 1))*i)),
+		                           cosf(deg2rad*(270+(180/(rings + 1))*i))*cosf(deg2rad*(j*360/slices)));
+
+		                gfx->immediate.vertex_3f(cb, cosf(deg2rad*(270+(180/(rings + 1))*(i+1)))*sinf(deg2rad*((j+1)*360/slices)),
+		                           sinf(deg2rad*(270+(180/(rings + 1))*(i+1))),
+		                           cosf(deg2rad*(270+(180/(rings + 1))*(i+1)))*cosf(deg2rad*((j+1)*360/slices)));
+
+		                gfx->immediate.vertex_3f(cb, cosf(deg2rad*(270+(180/(rings + 1))*(i+1)))*sinf(deg2rad*(j*360/slices)),
+		                           sinf(deg2rad*(270+(180/(rings + 1))*(i+1))),
+		                           cosf(deg2rad*(270+(180/(rings + 1))*(i+1)))*cosf(deg2rad*(j*360/slices)));
+
+		                gfx->immediate.vertex_3f(cb, cosf(deg2rad*(270+(180/(rings + 1))*i))*sinf(deg2rad*(j*360/slices)),
+		                           sinf(deg2rad*(270+(180/(rings + 1))*i)),
+		                           cosf(deg2rad*(270+(180/(rings + 1))*i))*cosf(deg2rad*(j*360/slices)));
+
+		                gfx->immediate.vertex_3f(cb, cosf(deg2rad*(270+(180/(rings + 1))*(i)))*sinf(deg2rad*((j+1)*360/slices)),
+		                           sinf(deg2rad*(270+(180/(rings + 1))*(i))),
+		                           cosf(deg2rad*(270+(180/(rings + 1))*(i)))*cosf(deg2rad*((j+1)*360/slices)));
+
+		                gfx->immediate.vertex_3f(cb, cosf(deg2rad*(270+(180/(rings + 1))*(i+1)))*sinf(deg2rad*((j+1)*360/slices)),
+		                           sinf(deg2rad*(270+(180/(rings + 1))*(i+1))),
+		                           cosf(deg2rad*(270+(180/(rings + 1))*(i+1)))*cosf(deg2rad*((j+1)*360/slices)));
+		            }
+		        }
+			}
+		}
+        gfx->immediate.pop_matrix(cb);
+    }
+    gfx->immediate.end(cb);
 }
 
 void __gs_push_camera(gs_command_buffer_t* cb, gs_camera_t camera)
@@ -403,13 +469,14 @@ void __gs_push_camera(gs_command_buffer_t* cb, gs_camera_t camera)
 	// Just grab main window for now. Will need to grab top of viewport stack in future
 	gs_platform_i* p = gs_engine_instance()->ctx.platform;
 	gs_vec2 ws = p->window_size(p->main_window());	
-	gfx->immediate.push_matrix(cb, gs_matrix_mode_view_proj, gs_camera_get_view_projection(&camera, ws.x, ws.y));
+	gfx->immediate.push_matrix(cb, gs_matrix_vp);
+	gfx->immediate.mat_mul(cb, gs_camera_get_view_projection(&camera, ws.x, ws.y));
 }
 
 void __gs_pop_camera(gs_command_buffer_t* cb)
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
-	gfx->immediate.pop_matrix(cb, gs_matrix_mode_view_proj);
+	gfx->immediate.pop_matrix(cb);
 }
 
 
