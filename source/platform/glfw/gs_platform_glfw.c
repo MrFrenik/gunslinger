@@ -61,15 +61,15 @@ gs_result glfw_platform_init(struct gs_platform_i* platform)
 	}
 
     // Construct cursors
-    platform->cursors[ (u32)gs_platform_cursor_arrow ] 		= glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
-    platform->cursors[ (u32)gs_platform_cursor_ibeam ] 		= glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
-    platform->cursors[ (u32)gs_platform_cursor_size_nw_se ] = glfwCreateStandardCursor(GLFW_CROSSHAIR_CURSOR);
-    platform->cursors[ (u32)gs_platform_cursor_size_ne_sw ] = glfwCreateStandardCursor(GLFW_CROSSHAIR_CURSOR);
-    platform->cursors[ (u32)gs_platform_cursor_size_ns ] 	= glfwCreateStandardCursor(GLFW_VRESIZE_CURSOR);
-    platform->cursors[ (u32)gs_platform_cursor_size_we ] 	= glfwCreateStandardCursor(GLFW_HRESIZE_CURSOR);
-    platform->cursors[ (u32)gs_platform_cursor_size_all ] 	= glfwCreateStandardCursor(GLFW_CROSSHAIR_CURSOR);
-    platform->cursors[ (u32)gs_platform_cursor_hand ] 		= glfwCreateStandardCursor(GLFW_HAND_CURSOR);
-    platform->cursors[ (u32)gs_platform_cursor_no ] 		= glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
+    platform->cursors[(u32)gs_platform_cursor_arrow] 		= glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
+    platform->cursors[(u32)gs_platform_cursor_ibeam] 		= glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
+    platform->cursors[(u32)gs_platform_cursor_size_nw_se] = glfwCreateStandardCursor(GLFW_CROSSHAIR_CURSOR);
+    platform->cursors[(u32)gs_platform_cursor_size_ne_sw] = glfwCreateStandardCursor(GLFW_CROSSHAIR_CURSOR);
+    platform->cursors[(u32)gs_platform_cursor_size_ns] 	= glfwCreateStandardCursor(GLFW_VRESIZE_CURSOR);
+    platform->cursors[(u32)gs_platform_cursor_size_we] 	= glfwCreateStandardCursor(GLFW_HRESIZE_CURSOR);
+    platform->cursors[(u32)gs_platform_cursor_size_all] 	= glfwCreateStandardCursor(GLFW_CROSSHAIR_CURSOR);
+    platform->cursors[(u32)gs_platform_cursor_hand] 		= glfwCreateStandardCursor(GLFW_HAND_CURSOR);
+    platform->cursors[(u32)gs_platform_cursor_no] 		= glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
 
 	return gs_result_success;
 }
@@ -290,7 +290,6 @@ void __glfw_mouse_cursor_position_callback(GLFWwindow* window, f64 x, f64 y)
 	struct gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 	platform->input.mouse.position = (gs_vec2){x, y};
 	platform->input.mouse.moved_this_frame = true;
-	// glfwSetCursorPos(window, x, y);
 }
 
 void __glfw_mouse_scroll_wheel_callback(GLFWwindow* window, f64 x, f64 y)
@@ -422,7 +421,7 @@ void glfw_set_cursor(gs_resource_handle handle, gs_platform_cursor cursor)
 {
 	struct gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 	GLFWwindow* win = __window_from_handle(platform, handle);
-	GLFWcursor* cp = ((GLFWcursor*)platform->cursors[ (u32)cursor ]); 
+	GLFWcursor* cp = ((GLFWcursor*)platform->cursors[(u32)cursor]); 
 	glfwSetCursor(win, cp);
 }
 

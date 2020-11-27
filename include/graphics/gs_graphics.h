@@ -221,12 +221,19 @@ typedef enum gs_matrix_mode
 	gs_matrix_mode_view_proj
 } gs_matrix_mode;
 
+typedef enum gs_draw_mode
+{
+	gs_lines,
+	gs_triangles,
+	gs_quads
+} gs_draw_mode;
+
 typedef struct gs_graphics_immediate_draw_i
 {
-	void (* begin)(gs_command_buffer_t* cb);
+	void (* begin_drawing)(gs_command_buffer_t* cb);
+	void (* end_drawing)(gs_command_buffer_t* cb);
+	void (* begin)(gs_command_buffer_t* cb, gs_draw_mode mode);
 	void (* end)(gs_command_buffer_t* cb);
-	void (* begin_shape)(gs_command_buffer_t* cb);	
-	void (* end_shape)(gs_command_buffer_t* cb);	
 	void (* color_ub)(gs_command_buffer_t* cb, u8 r, u8 g, u8 b, u8 a);
 	void (* color_ubv)(gs_command_buffer_t* cb, gs_color_t c);
 	void (* color_4f)(gs_command_buffer_t* cb, f32 r, f32 g, f32 b, f32 a);

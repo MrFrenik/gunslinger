@@ -84,12 +84,12 @@ typedef enum gs_opengl_op_code
 	gs_opengl_draw_indexed,
 
 	// Debug/Immediate
-	gs_opengl_op_immediate_begin,
-	gs_opengl_op_immediate_end,
+	gs_opengl_op_immediate_begin_drawing,
+	gs_opengl_op_immediate_end_drawing,
 	gs_opengl_op_immediate_push_matrix,
 	gs_opengl_op_immediate_pop_matrix,
-	gs_opengl_op_immediate_begin_shape,
-	gs_opengl_op_immediate_end_shape,
+	gs_opengl_op_immediate_begin,
+	gs_opengl_op_immediate_end,
 	gs_opengl_op_immediate_color_ubv,
 	gs_opengl_op_immediate_vertex_3fv
 } gs_opengl_op_code;
@@ -691,7 +691,7 @@ typedef struct vert_t
 ==================-=*/
 
 // What does this do? Binds debug shader and sets default uniform values.
-void opengl_immediate_begin(gs_command_buffer_t* cb)
+void opengl_immediate_begin_drawing(gs_command_buffer_t* cb)
 {
 	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
@@ -706,14 +706,14 @@ void opengl_immediate_begin(gs_command_buffer_t* cb)
 	opengl_bind_shader(cb, data->shader);
 	opengl_bind_uniform_mat4(cb, data->u_mvp, __gs_default_view_proj_mat());	// Bind mvp matrix uniform
 
-	__push_command(cb, gs_opengl_op_immediate_begin, {
+	__push_command(cb, gs_opengl_op_immediate_begin_drawing, {
 		// Nothing...
 	});
 }
 
-void opengl_immediate_end(gs_command_buffer_t* cb)
+void opengl_immediate_end_drawing(gs_command_buffer_t* cb)
 {
-	__push_command(cb, gs_opengl_op_immediate_end, {
+	__push_command(cb, gs_opengl_op_immediate_end_drawing, {
 		// Nothing...
 	});
 }
@@ -733,15 +733,16 @@ void opengl_immediate_pop_matrix(gs_command_buffer_t* cb, gs_matrix_mode mode)
 	});
 }
 
-void opengl_immediate_begin_shape(gs_command_buffer_t* cb)
+void opengl_immediate_begin(gs_command_buffer_t* cb, gs_draw_mode mode)
 {
-	__push_command(cb, gs_opengl_op_immediate_begin_shape, {
+	__push_command(cb, gs_opengl_op_immediate_begin, {
+		gs_byte_buffer_write(&cb->commands, u32, (u32)mode);
 	});
 }
 
-void opengl_immediate_end_shape(gs_command_buffer_t* cb)
+void opengl_immediate_end(gs_command_buffer_t* cb)
 {
-	__push_command(cb, gs_opengl_op_immediate_end_shape, {
+	__push_command(cb, gs_opengl_op_immediate_end, {
 	});
 }
 
@@ -1194,7 +1195,7 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 			// Immediate Mode
 			===============*/
 
-			case gs_opengl_op_immediate_begin:
+			case gs_opengl_op_immediate_begin_drawing:
 			{
 				// Push any necessary state here
 				// Clear previous vertex data
@@ -1212,6 +1213,22 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 				// gs_dyn_array_push(data->viewport_stack, ws);
 			} break;
 
+			case gs_opengl_op_immediate_end_drawing:
+			{
+				// Time to draw da data
+				opengl_immediate_submit_vertex_data();
+			} break;
+
+			case gs_opengl_op_immediate_begin:
+			{
+				gs_draw_mode mode = (gs_draw_mode)gs_byte_buffer_read(&cb->commands, u32);
+				gs_begin(mode);
+			} break;
+
+			case gs_opengl_op_immediate_end:
+			{
+				gs_end();
+			} break;
 
 			case gs_opengl_op_immediate_push_matrix:
 			{
@@ -1229,22 +1246,6 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 				opengl_immediate_submit_vertex_data();
 				// Then pop matrix
 				gs_pop_matrix(mode);
-			} break;
-
-			case gs_opengl_op_immediate_end:
-			{
-				// Time to draw da data
-				opengl_immediate_submit_vertex_data();
-			} break;
-
-			case gs_opengl_op_immediate_begin_shape:
-			{
-				gs_begin();
-			} break;
-
-			case gs_opengl_op_immediate_end_shape:
-			{
-				gs_begin();
 			} break;
 
 			case gs_opengl_op_immediate_vertex_3fv:
@@ -1304,7 +1305,7 @@ u32 calculate_vertex_size_in_bytes(gs_vertex_attribute_type* layout_data, u32 co
 
 	gs_for_range_i(count)
 	{
-		gs_vertex_attribute_type type = layout_data[ i ];
+		gs_vertex_attribute_type type = layout_data[i];
 		sz += get_byte_size_of_vertex_attribute(type);
 	}
 
@@ -1327,7 +1328,7 @@ s32 get_byte_offest(gs_vertex_attribute_type* layout_data, u32 index)
 	// Calculate total offset up to this point
 	for (u32 i = 0; i < index; ++i)
 	{ 
-		total_offset += get_byte_size_of_vertex_attribute(layout_data[ i ]);
+		total_offset += get_byte_size_of_vertex_attribute(layout_data[i]);
 	} 
 
 	return total_offset;
@@ -1355,7 +1356,7 @@ gs_vertex_buffer_t opengl_construct_vertex_buffer(gs_vertex_attribute_type* layo
 	// Bind vertex attrib pointers for vao using layout descriptor
 	gs_for_range_i(layout_count)
 	{
-		gs_vertex_attribute_type type = layout_data[ i ];
+		gs_vertex_attribute_type type = layout_data[i];
 		u32 byte_offset = get_byte_offest(layout_data, i);
 
 		switch (type)
@@ -1691,7 +1692,7 @@ gs_frame_buffer_t opengl_construct_frame_buffer(gs_texture_t tex)
 
 	// Set list of buffers to draw for this framebuffer 
 	// This will need to be changed, I think, but when and where?
-	GLenum draw_buffers[ 1 ] = { GL_COLOR_ATTACHMENT0 };
+	GLenum draw_buffers[1] = { GL_COLOR_ATTACHMENT0 };
 	glDrawBuffers(1, draw_buffers);
 
 	// Idx is 0, for now
@@ -1813,7 +1814,7 @@ void* opengl_load_texture_data_from_file(const char* file_path, b32 flip_vertica
 	stbi_set_flip_vertically_on_load(flip_vertically_on_load);
 
 	// Load in texture data using stb for now
-	char temp_file_extension_buffer[ 16 ] = gs_default_val(); 
+	char temp_file_extension_buffer[16] = gs_default_val(); 
 	gs_util_get_file_extension(temp_file_extension_buffer, sizeof(temp_file_extension_buffer), file_path);
 
 	// Load texture data
@@ -2059,6 +2060,8 @@ struct gs_graphics_i* __gs_graphics_construct()
 	/*============================================================
 	// Graphics immediate Drawing Utilities
 	============================================================*/
+	gfx->immediate.begin_drawing 		= &opengl_immediate_begin_drawing;
+	gfx->immediate.end_drawing 			= &opengl_immediate_end_drawing;
 	gfx->immediate.begin 				= &opengl_immediate_begin;
 	gfx->immediate.end 					= &opengl_immediate_end;
 	gfx->immediate.push_matrix 			= &opengl_immediate_push_matrix;
@@ -2073,8 +2076,6 @@ struct gs_graphics_i* __gs_graphics_construct()
 	gfx->immediate.draw_box 			= &__gs_draw_box;
 	gfx->immediate.draw_box_ext 		= &__gs_draw_box_ext;
 
-	gfx->immediate.begin_shape 			= &opengl_immediate_begin_shape;
-	gfx->immediate.end_shape 			= &opengl_immediate_end_shape;
 	gfx->immediate.color_ub 			= &opengl_immediate_color_ub;
 	gfx->immediate.color_ubv 			= &opengl_immediate_color_ubv;
 	gfx->immediate.color_4f 			= &opengl_immediate_color_4f;

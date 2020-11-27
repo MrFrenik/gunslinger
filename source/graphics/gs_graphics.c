@@ -160,7 +160,7 @@ void __gs_draw_line_3d(gs_command_buffer_t* cb, gs_vec3 start, gs_vec3 end, gs_v
 	gs_vec3 bl = gs_vec3_add(end, cross);	// 2
 	gs_vec3 br = gs_vec3_sub(end, cross);	// 3
 
-	gfx->immediate.begin_shape(cb);
+	gfx->immediate.begin(cb, gs_triangles);
 	{
 		gfx->immediate.color_ubv(cb, color);
 		gfx->immediate.vertex_3fv(cb, tl);
@@ -170,7 +170,7 @@ void __gs_draw_line_3d(gs_command_buffer_t* cb, gs_vec3 start, gs_vec3 end, gs_v
 		gfx->immediate.vertex_3fv(cb, tr);
 		gfx->immediate.vertex_3fv(cb, br);
 	}
-	gfx->immediate.end_shape(cb);
+	gfx->immediate.end(cb);
 }
 
 void __gs_draw_line_2d(gs_command_buffer_t* cb, gs_vec2 s, gs_vec2 e, f32 thickness, gs_color_t color)
@@ -181,14 +181,14 @@ void __gs_draw_line_2d(gs_command_buffer_t* cb, gs_vec2 s, gs_vec2 e, f32 thickn
 void __gs_draw_triangle_3d(gs_command_buffer_t* cb, gs_vec3 a, gs_vec3 b, gs_vec3 c, gs_color_t color)
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
-	gfx->immediate.begin_shape(cb);
+	gfx->immediate.begin(cb, gs_triangles);
 	{
 		gfx->immediate.color_ubv(cb, color);
 		gfx->immediate.vertex_3fv(cb, a);
 		gfx->immediate.vertex_3fv(cb, b);
 		gfx->immediate.vertex_3fv(cb, c);
 	}
-	gfx->immediate.end_shape(cb);
+	gfx->immediate.end(cb);
 }
 
 void __gs_draw_triangle_3d_ext(gs_command_buffer_t* cb, gs_vec3 a, gs_vec3 b, gs_vec3 c, gs_mat4 m, gs_color_t color)
@@ -228,7 +228,7 @@ void __gs_draw_rect_2d(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_color_t
 	gs_vec3 br = gs_v3(b.x, b.y, 0.f); 
 
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
-	gfx->immediate.begin_shape(cb);
+	gfx->immediate.begin(cb, gs_triangles);
 	{
 		gfx->immediate.color_ubv(cb, color);
 		gfx->immediate.vertex_3fv(cb, tl);
@@ -238,7 +238,7 @@ void __gs_draw_rect_2d(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_color_t
 		gfx->immediate.vertex_3fv(cb, tr);
 		gfx->immediate.vertex_3fv(cb, br);
 	}
-	gfx->immediate.end_shape(cb);
+	gfx->immediate.end(cb);
 }
 
 void __gs_draw_box(gs_command_buffer_t* cb, gs_vec3 origin, gs_vec3 half_extents, gs_color_t color)
@@ -251,7 +251,7 @@ void __gs_draw_box(gs_command_buffer_t* cb, gs_vec3 origin, gs_vec3 half_extents
 	f32 z = origin.z;
 
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
-	gfx->immediate.begin_shape(cb);
+	gfx->immediate.begin(cb, gs_triangles);
 	{
 		gfx->immediate.color_ubv(cb, color);
 
@@ -263,7 +263,6 @@ void __gs_draw_box(gs_command_buffer_t* cb, gs_vec3 origin, gs_vec3 half_extents
         gfx->immediate.vertex_3f(cb, x + width/2, y + height/2, z + length/2);  // Top Right
         gfx->immediate.vertex_3f(cb, x - width/2, y + height/2, z + length/2);  // Top Left
         gfx->immediate.vertex_3f(cb, x + width/2, y - height/2, z + length/2);  // Bottom Right
-
         
         // Back face
         gfx->immediate.vertex_3f(cb, x - width/2, y - height/2, z - length/2);  // Bottom Left
@@ -311,8 +310,7 @@ void __gs_draw_box(gs_command_buffer_t* cb, gs_vec3 origin, gs_vec3 half_extents
         gfx->immediate.vertex_3f(cb, x - width/2, y - height/2, z - length/2);  // Bottom Right
 
 	}
-	gfx->immediate.end_shape(cb);
-
+	gfx->immediate.end(cb);
 }
 
 void __gs_draw_box_ext(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t color)
@@ -337,7 +335,7 @@ void __gs_draw_box_ext(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t color)
 	gs_vec3 v7 = gs_v4_to_v3(gs_mat4_mul_vec4(mat, gs_v4(x + width/2, y + height/2, z - length/2, 1.f)));
 
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
-	gfx->immediate.begin_shape(cb);
+	gfx->immediate.begin(cb, gs_triangles);
 	{
 		gfx->immediate.color_ubv(cb, color);
 		
@@ -396,7 +394,7 @@ void __gs_draw_box_ext(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t color)
         gfx->immediate.vertex_3fv(cb, v4);  // Bottom Right
 
 	}
-	gfx->immediate.end_shape(cb);
+	gfx->immediate.end(cb);
 }
 
 void __gs_push_camera(gs_command_buffer_t* cb, gs_camera_t camera)

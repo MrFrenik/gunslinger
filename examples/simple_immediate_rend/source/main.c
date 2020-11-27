@@ -74,10 +74,23 @@ gs_result app_update()
 	// Elapsed run time of program
 	const f32 _t = platform->elapsed_time();
 
-	// Immediate drawing begin
-	gfx->immediate.begin(cb);
+	gfx->immediate.begin_drawing(cb);	// Maybe don't need to do this?
 	{
-		// Push 3d camera
+		/*========================
+		// Push Vertices Directly
+		========================*/
+		gfx->immediate.begin(cb, gs_triangles);
+		{
+			gfx->immediate.color_ubv(cb, gs_color_white);
+			gfx->immediate.vertex_3fv(cb, gs_v3(100.f, 100.f, 0.f));
+			gfx->immediate.vertex_3fv(cb, gs_v3(150.f, 100.f, 0.f));
+			gfx->immediate.vertex_3fv(cb, gs_v3(150.f, 150.f, 0.f));
+		}
+		gfx->immediate.end(cb);
+
+		/*==========
+		// Cube
+		==========*/
 		gfx->immediate.push_camera(cb, gs_camera_perspective());
 		{
 			// Transform for cube
@@ -95,15 +108,24 @@ gs_result app_update()
 		}
 		gfx->immediate.pop_camera(cb);
 
-		// Simple triangle
+		/*===========
+		// Triangles
+		===========*/
 		gfx->immediate.draw_triangle(cb, gs_v2(200.f, 200.f), gs_v2(150.f, 250.f), gs_v2(250.f, 250.f), gs_color_blue);
 
-		// Draw cross hair around mouse using lines
+		/*===========
+		// Rects
+		===========*/
+		gfx->immediate.draw_rect(cb, gs_v2(500.f, 500.f), gs_v2(600.f, 550.f), gs_color(0.f, 1.f, 0.f, 1.f));
+
+		/*==========
+		// Lines
+		==========*/
 		gs_vec2 mp = platform->mouse_position();
 		gfx->immediate.draw_line(cb, gs_v2(mp.x, 0.f), gs_v2(mp.x, ws.y), 1.f, gs_color_red);
 		gfx->immediate.draw_line(cb, gs_v2(0.f, mp.y), gs_v2(ws.x, mp.y), 1.f, gs_color_red);
 	} 
-	gfx->immediate.end(cb);
+	gfx->immediate.end_drawing(cb);
 
 	// Submit command buffer for rendering
 	gfx->submit_command_buffer(cb);

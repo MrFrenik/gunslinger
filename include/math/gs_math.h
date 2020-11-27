@@ -83,8 +83,14 @@ gs_map_range(f32 input_start, f32 input_end, f32 output_start, f32 output_end, f
 
 typedef struct 
 {
-	f32 x;
-	f32 y;
+	union 
+	{
+		f32 xy[2];
+		struct 
+		{
+			f32 x, y;
+		};
+	};
 } gs_vec2;
 
 _inline gs_vec2 
@@ -188,9 +194,14 @@ b32 gs_vec2_equal(gs_vec2 a, gs_vec2 b)
 
 typedef struct
 {
-	f32 x;
-	f32 y;
-	f32 z;
+	union 
+	{
+		f32 xyz[3];
+		struct 
+		{
+			f32 x, y, z;
+		};
+	};
 } gs_vec3;
 
 _inline gs_vec3 
@@ -298,10 +309,14 @@ _inline void gs_vec3_scale_ip(gs_vec3* vp, f32 s)
 
 typedef struct
 {
-	f32 x;
-	f32 y;
-	f32 z;
-	f32 w;
+	union 
+	{
+		f32 xyzw[4];
+		struct 
+		{
+			f32 x, y, z, w;
+		};
+	};
 } gs_vec4;
 
 _inline gs_vec4 
@@ -407,10 +422,10 @@ gs_mat4_diag(f32 val)
 {
 	gs_mat4 m;
 	memset(m.elements, 0, sizeof(m.elements));
-	m.elements[ 0 + 0 * 4 ] = val;
-	m.elements[ 1 + 1 * 4 ] = val;
-	m.elements[ 2 + 2 * 4 ] = val;
-	m.elements[ 3 + 3 * 4 ] = val;
+	m.elements[0 + 0 * 4] = val;
+	m.elements[1 + 1 * 4] = val;
+	m.elements[2 + 2 * 4] = val;
+	m.elements[3 + 3 * 4] = val;
 	return m;
 }
 
@@ -434,9 +449,9 @@ gs_mat4_mul(gs_mat4 m0, gs_mat4 m1)
 			f32 sum = 0.0f;
 			for (u32 e = 0; e < 4; ++e)
 			{
-				sum += m0.elements[ x + e * 4 ] * m1.elements[ e + y * 4 ];
+				sum += m0.elements[x + e * 4] * m1.elements[e + y * 4];
 			}
-			m_res.elements[ x + y * 4 ] = sum;
+			m_res.elements[x + y * 4] = sum;
 		}
 	}
 
@@ -458,28 +473,28 @@ gs_mat4 gs_mat4_transpose(gs_mat4 m)
 	gs_mat4 t = gs_mat4_identity();
 
 	// First row
-	t.elements[ 0 * 4 + 0 ] = m.elements[ 0 * 4 + 0 ];
-	t.elements[ 1 * 4 + 0 ] = m.elements[ 0 * 4 + 1 ];
-	t.elements[ 2 * 4 + 0 ] = m.elements[ 0 * 4 + 2 ];
-	t.elements[ 3 * 4 + 0 ] = m.elements[ 0 * 4 + 3 ];
+	t.elements[0 * 4 + 0] = m.elements[0 * 4 + 0];
+	t.elements[1 * 4 + 0] = m.elements[0 * 4 + 1];
+	t.elements[2 * 4 + 0] = m.elements[0 * 4 + 2];
+	t.elements[3 * 4 + 0] = m.elements[0 * 4 + 3];
 
 	// Second row
-	t.elements[ 0 * 4 + 1 ] = m.elements[ 1 * 4 + 0 ];
-	t.elements[ 1 * 4 + 1 ] = m.elements[ 1 * 4 + 1 ];
-	t.elements[ 2 * 4 + 1 ] = m.elements[ 1 * 4 + 2 ];
-	t.elements[ 3 * 4 + 1 ] = m.elements[ 1 * 4 + 3 ];
+	t.elements[0 * 4 + 1] = m.elements[1 * 4 + 0];
+	t.elements[1 * 4 + 1] = m.elements[1 * 4 + 1];
+	t.elements[2 * 4 + 1] = m.elements[1 * 4 + 2];
+	t.elements[3 * 4 + 1] = m.elements[1 * 4 + 3];
 
 	// Third row
-	t.elements[ 0 * 4 + 2 ] = m.elements[ 2 * 4 + 0 ];
-	t.elements[ 1 * 4 + 2 ] = m.elements[ 2 * 4 + 1 ];
-	t.elements[ 2 * 4 + 2 ] = m.elements[ 2 * 4 + 2 ];
-	t.elements[ 3 * 4 + 2 ] = m.elements[ 2 * 4 + 3 ];
+	t.elements[0 * 4 + 2] = m.elements[2 * 4 + 0];
+	t.elements[1 * 4 + 2] = m.elements[2 * 4 + 1];
+	t.elements[2 * 4 + 2] = m.elements[2 * 4 + 2];
+	t.elements[3 * 4 + 2] = m.elements[2 * 4 + 3];
 
 	// Fourth row
-	t.elements[ 0 * 4 + 3 ] = m.elements[ 3 * 4 + 0 ];
-	t.elements[ 1 * 4 + 3 ] = m.elements[ 3 * 4 + 1 ];
-	t.elements[ 2 * 4 + 3 ] = m.elements[ 3 * 4 + 2 ];
-	t.elements[ 3 * 4 + 3 ] = m.elements[ 3 * 4 + 3 ];
+	t.elements[0 * 4 + 3] = m.elements[3 * 4 + 0];
+	t.elements[1 * 4 + 3] = m.elements[3 * 4 + 1];
+	t.elements[2 * 4 + 3] = m.elements[3 * 4 + 2];
+	t.elements[3 * 4 + 3] = m.elements[3 * 4 + 3];
 
 	return t;
 }
@@ -626,14 +641,14 @@ gs_mat4_ortho(f32 l, f32 r, f32 b, f32 t, f32 n, f32 f)
 	gs_mat4 m_res = gs_mat4_identity();		
 
 	// Main diagonal
-	m_res.elements[ 0 + 0 * 4 ] = 2.0f / (r - l);
-	m_res.elements[ 1 + 1 * 4 ] = 2.0f / (t - b);
-	m_res.elements[ 2 + 2 * 4 ] = -2.0f / (f - n);
+	m_res.elements[0 + 0 * 4] = 2.0f / (r - l);
+	m_res.elements[1 + 1 * 4] = 2.0f / (t - b);
+	m_res.elements[2 + 2 * 4] = -2.0f / (f - n);
 
 	// Last column
-	m_res.elements[ 0 + 3 * 4 ] = -(r + l) / (r - l);
-	m_res.elements[ 1 + 3 * 4 ] = -(t + b) / (t - b);
-	m_res.elements[ 2 + 3 * 4 ] = -(f + n) / (f - n);
+	m_res.elements[0 + 3 * 4] = -(r + l) / (r - l);
+	m_res.elements[1 + 3 * 4] = -(t + b) / (t - b);
+	m_res.elements[2 + 3 * 4] = -(f + n) / (f - n);
 
 	return m_res;
 }
@@ -649,11 +664,11 @@ gs_mat4_perspective(f32 fov, f32 asp_ratio, f32 n, f32 f)
 	f32 b = (n + f) / (n - f);
 	f32 c = (2.0f * n * f) / (n - f);
 
-	m_res.elements[ 0 + 0 * 4 ] = a;
-	m_res.elements[ 1 + 1 * 4 ] = q;
-	m_res.elements[ 2 + 2 * 4 ] = b;
-	m_res.elements[ 2 + 3 * 4 ] = c;
-	m_res.elements[ 3 + 2 * 4 ] = -1.0f;
+	m_res.elements[0 + 0 * 4] = a;
+	m_res.elements[1 + 1 * 4] = q;
+	m_res.elements[2 + 2 * 4] = b;
+	m_res.elements[2 + 3 * 4] = c;
+	m_res.elements[3 + 2 * 4] = -1.0f;
 
 	return m_res;
 }
@@ -663,9 +678,9 @@ gs_mat4_translate(const gs_vec3 v)
 {
 	gs_mat4 m_res = gs_mat4_identity();
 
-	m_res.elements[ 0 + 4 * 3 ] = v.x;
-	m_res.elements[ 1 + 4 * 3 ] = v.y;
-	m_res.elements[ 2 + 4 * 3 ] = v.z;
+	m_res.elements[0 + 4 * 3] = v.x;
+	m_res.elements[1 + 4 * 3] = v.y;
+	m_res.elements[2 + 4 * 3] = v.z;
 
 	return m_res;
 }
@@ -674,9 +689,9 @@ _inline gs_mat4
 gs_mat4_scale(const gs_vec3 v)
 {
 	gs_mat4 m_res = gs_mat4_identity();
-	m_res.elements[ 0 + 0 * 4 ] = v.x;
-	m_res.elements[ 1 + 1 * 4 ] = v.y;
-	m_res.elements[ 2 + 2 * 4 ] = v.z;
+	m_res.elements[0 + 0 * 4] = v.x;
+	m_res.elements[1 + 1 * 4] = v.y;
+	m_res.elements[2 + 2 * 4] = v.z;
 	return m_res;
 }
 
@@ -693,19 +708,19 @@ _inline gs_mat4 gs_mat4_rotate(f32 angle, gs_vec3 axis)
 	f32 z = axis.z;
 
 	//First column
-	m_res.elements[ 0 + 0 * 4 ] = x * x * (1 - c) + c;	
-	m_res.elements[ 1 + 0 * 4 ] = x * y * (1 - c) + z * s;	
-	m_res.elements[ 2 + 0 * 4 ] = x * z * (1 - c) - y * s;	
+	m_res.elements[0 + 0 * 4] = x * x * (1 - c) + c;	
+	m_res.elements[1 + 0 * 4] = x * y * (1 - c) + z * s;	
+	m_res.elements[2 + 0 * 4] = x * z * (1 - c) - y * s;	
 	
 	//Second column
-	m_res.elements[ 0 + 1 * 4 ] = x * y * (1 - c) - z * s;	
-	m_res.elements[ 1 + 1 * 4 ] = y * y * (1 - c) + c;	
-	m_res.elements[ 2 + 1 * 4 ] = y * z * (1 - c) + x * s;	
+	m_res.elements[0 + 1 * 4] = x * y * (1 - c) - z * s;	
+	m_res.elements[1 + 1 * 4] = y * y * (1 - c) + c;	
+	m_res.elements[2 + 1 * 4] = y * z * (1 - c) + x * s;	
 	
 	//Third column
-	m_res.elements[ 0 + 2 * 4 ] = x * z * (1 - c) + y * s;	
-	m_res.elements[ 1 + 2 * 4 ] = y * z * (1 - c) - x * s;	
-	m_res.elements[ 2 + 2 * 4 ] = z * z * (1 - c) + c;	
+	m_res.elements[0 + 2 * 4] = x * z * (1 - c) + y * s;	
+	m_res.elements[1 + 2 * 4] = y * z * (1 - c) - x * s;	
+	m_res.elements[2 + 2 * 4] = z * z * (1 - c) + c;	
 
 	return m_res;
 }
@@ -718,21 +733,21 @@ gs_mat4_look_at(gs_vec3 position, gs_vec3 target, gs_vec3 up)
 	gs_vec3 u = gs_vec3_cross(s, f);
 
 	gs_mat4 m_res = gs_mat4_identity();
-	m_res.elements[ 0 * 4 + 0 ] = s.x;
-	m_res.elements[ 1 * 4 + 0 ] = s.y;
-	m_res.elements[ 2 * 4 + 0 ] = s.z;
+	m_res.elements[0 * 4 + 0] = s.x;
+	m_res.elements[1 * 4 + 0] = s.y;
+	m_res.elements[2 * 4 + 0] = s.z;
 
-	m_res.elements[ 0 * 4 + 1 ] = u.x;
-	m_res.elements[ 1 * 4 + 1 ] = u.y;
-	m_res.elements[ 2 * 4 + 1 ] = u.z;
+	m_res.elements[0 * 4 + 1] = u.x;
+	m_res.elements[1 * 4 + 1] = u.y;
+	m_res.elements[2 * 4 + 1] = u.z;
 
-	m_res.elements[ 0 * 4 + 2 ] = -f.x;
-	m_res.elements[ 1 * 4 + 2 ] = -f.y;
-	m_res.elements[ 2 * 4 + 2 ] = -f.z;
+	m_res.elements[0 * 4 + 2] = -f.x;
+	m_res.elements[1 * 4 + 2] = -f.y;
+	m_res.elements[2 * 4 + 2] = -f.z;
 
-	m_res.elements[ 3 * 4 + 0 ] = -gs_vec3_dot(s, position);;
-	m_res.elements[ 3 * 4 + 1 ] = -gs_vec3_dot(u, position);
-	m_res.elements[ 3 * 4 + 2 ] = gs_vec3_dot(f, position); 
+	m_res.elements[3 * 4 + 0] = -gs_vec3_dot(s, position);;
+	m_res.elements[3 * 4 + 1] = -gs_vec3_dot(u, position);
+	m_res.elements[3 * 4 + 2] = gs_vec3_dot(f, position); 
 
 	return m_res;
 }
@@ -768,10 +783,14 @@ gs_vec4 gs_mat4_mul_vec4(gs_mat4 m, gs_vec4 v)
 
 typedef struct
 {
-	f32 x;
-	f32 y;
-	f32 z;
-	f32 w;
+	union 
+	{
+		f32 xyzw[4];
+		struct 
+		{
+			f32 x, y, z, w;
+		};
+	};
 } gs_quat;
 
 _inline
@@ -977,17 +996,17 @@ _inline gs_mat4 gs_quat_to_mat4(gs_quat _q)
 	f32 wy = q.w * q.y;
 	f32 wz = q.w * q.z;
 
-	mat.elements[ 0 * 4 + 0 ] = 1.0f - 2.0f * (yy + zz);
-	mat.elements[ 1 * 4 + 0 ] = 2.0f * (xy - wz);
-	mat.elements[ 2 * 4 + 0 ] = 2.0f * (xz + wy);
+	mat.elements[0 * 4 + 0] = 1.0f - 2.0f * (yy + zz);
+	mat.elements[1 * 4 + 0] = 2.0f * (xy - wz);
+	mat.elements[2 * 4 + 0] = 2.0f * (xz + wy);
 
-	mat.elements[ 0 * 4 + 1 ] = 2.0f * (xy + wz);
-	mat.elements[ 1 * 4 + 1 ] = 1.0f - 2.0f * (xx + zz);
-	mat.elements[ 2 * 4 + 1 ] = 2.0f * (yz - wx);
+	mat.elements[0 * 4 + 1] = 2.0f * (xy + wz);
+	mat.elements[1 * 4 + 1] = 1.0f - 2.0f * (xx + zz);
+	mat.elements[2 * 4 + 1] = 2.0f * (yz - wx);
 
-	mat.elements[ 0 * 4 + 2 ] = 2.0f * (xz - wy);
-	mat.elements[ 1 * 4 + 2 ] = 2.0f * (yz + wx);
-	mat.elements[ 2 * 4 + 2 ] = 1.0f - 2.0f * (xx + yy);
+	mat.elements[0 * 4 + 2] = 2.0f * (xz - wy);
+	mat.elements[1 * 4 + 2] = 2.0f * (yz + wx);
+	mat.elements[2 * 4 + 2] = 1.0f - 2.0f * (xx + yy);
 
 	return mat;
 }
@@ -1056,7 +1075,7 @@ gs_vqs gs_vqs_default()
 
 // AbsScale	= ParentScale * LocalScale
 // AbsRot	= LocalRot * ParentRot
-// AbsTrans	= ParentPos + [ ParentRot * (ParentScale * LocalPos) ]
+// AbsTrans	= ParentPos + [ParentRot * (ParentScale * LocalPos)]
 _inline gs_vqs gs_vqs_absolute_transform(const gs_vqs* local, const gs_vqs* parent)
 {
 	// Normalized rotations

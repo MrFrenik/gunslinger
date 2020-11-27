@@ -11,16 +11,16 @@
 */
 
 // Globals
-_global gs_shader_t 		g_shader = {0};
-_global gs_uniform_t 		u_model = {0};
-_global gs_uniform_t 		u_view = {0};
-_global gs_uniform_t 		u_proj = {0};
-_global gs_uniform_t 		u_tex = {0};
-_global gs_index_buffer_t 	g_ibo = {0};
-_global gs_vertex_buffer_t 	g_vbo = {0};
-_global gs_command_buffer_t g_cb = {0};
-_global gs_texture_t 		g_tex = {0};
-_global gs_camera_t 		g_camera = {0};
+_global gs_shader_t 		g_shader = gs_default_val();
+_global gs_uniform_t 		u_model = gs_default_val();
+_global gs_uniform_t 		u_view = gs_default_val();
+_global gs_uniform_t 		u_proj = gs_default_val();
+_global gs_uniform_t 		u_tex = gs_default_val();
+_global gs_index_buffer_t 	g_ibo = gs_default_val();
+_global gs_vertex_buffer_t 	g_vbo = gs_default_val();
+_global gs_command_buffer_t g_cb = gs_default_val();
+_global gs_texture_t 		g_tex = gs_default_val();
+_global gs_camera_t 		g_camera = gs_default_val();
 
 const char* v_src = "\n"
 "#version 330 core\n"
@@ -53,7 +53,7 @@ gs_result app_shutdown();	// Use to shutdown your appliaction
 
 int main(int argc, char** argv)
 {
-	gs_application_desc_t app = {0};
+	gs_application_desc_t app = gs_default_val();
 	app.window_title 		= "Simple Texture";
 	app.window_width 		= 800;
 	app.window_height 		= 600;
