@@ -247,6 +247,14 @@ typedef struct gs_graphics_immediate_draw_i
 	void (* push_matrix)(gs_command_buffer_t* cb, gs_matrix_mode mode);
 	void (* pop_matrix)(gs_command_buffer_t* cb);
 	void (* mat_mul)(gs_command_buffer_t* cb, gs_mat4 m);
+	void (* mat_rotatef)(gs_command_buffer_t* cb, f32 rad, f32 x, f32 y, f32 z);
+	void (* mat_rotatev)(gs_command_buffer_t* cb, f32 rad, gs_vec3 v);
+	void (* mat_rotateq)(gs_command_buffer_t* cb, gs_quat q);
+	void (* mat_transf)(gs_command_buffer_t* cb, f32 x, f32 y, f32 z);
+	void (* mat_transv)(gs_command_buffer_t* cb, gs_vec3);
+	void (* mat_scalef)(gs_command_buffer_t* cb, f32 x, f32 y, f32 z);
+	void (* mat_scalev)(gs_command_buffer_t* cb, gs_vec3);
+	void (* mat_mul_vqs)(gs_command_buffer_t* cb, gs_vqs xform);
 
 	// Rect
 	void (* draw_rect)(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_color_t color);
@@ -423,6 +431,14 @@ void __gs_draw_box_ext(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t color);
 void __gs_draw_sphere(gs_command_buffer_t* cb, gs_vec3 center, f32 radius, gs_color_t color);
 void __gs_push_camera(gs_command_buffer_t* cb, gs_camera_t camera);
 void __gs_pop_camera(gs_command_buffer_t* cb);
+void __gs_mat_rotatef(gs_command_buffer_t* cb, f32 rad, f32 x, f32 y, f32 z);
+void __gs_mat_rotatev(gs_command_buffer_t* cb, f32 rad, gs_vec3 v);
+void __gs_mat_rotateq(gs_command_buffer_t* cb, gs_quat q);
+void __gs_mat_transf(gs_command_buffer_t* cb, f32 x, f32 y, f32 z);
+void __gs_mat_transv(gs_command_buffer_t* cb, gs_vec3 v);
+void __gs_mat_scalef(gs_command_buffer_t* cb, f32 x, f32 y, f32 z);
+void __gs_mat_scalev(gs_command_buffer_t* cb, gs_vec3 v);
+void __gs_mat_mul_vqs(gs_command_buffer_t* cb, gs_vqs xform);
 
 /*
 	What are the responsibilities here? 

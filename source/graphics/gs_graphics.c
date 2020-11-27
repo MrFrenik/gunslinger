@@ -479,7 +479,53 @@ void __gs_pop_camera(gs_command_buffer_t* cb)
 	gfx->immediate.pop_matrix(cb);
 }
 
+void __gs_mat_rotatef(gs_command_buffer_t* cb, f32 rad, f32 x, f32 y, f32 z)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gfx->immediate.mat_mul(cb, gs_mat4_rotate(rad, gs_v3(x, y, z)));
+}
 
+void __gs_mat_rotatev(gs_command_buffer_t* cb, f32 rad, gs_vec3 v)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gfx->immediate.mat_mul(cb, gs_mat4_rotate(rad, v));
+}
+
+void __gs_mat_rotateq(gs_command_buffer_t* cb, gs_quat q)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gfx->immediate.mat_mul(cb, gs_quat_to_mat4(q));
+}
+
+void __gs_mat_transf(gs_command_buffer_t* cb, f32 x, f32 y, f32 z)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gfx->immediate.mat_mul(cb, gs_mat4_translate(gs_v3(x, y, z)));
+}
+
+void __gs_mat_transv(gs_command_buffer_t* cb, gs_vec3 v)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gfx->immediate.mat_mul(cb, gs_mat4_translate(v));
+}
+
+void __gs_mat_scalef(gs_command_buffer_t* cb, f32 x, f32 y, f32 z)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gfx->immediate.mat_mul(cb, gs_mat4_scale(gs_v3(x, y, z)));
+}
+
+void __gs_mat_scalev(gs_command_buffer_t* cb, gs_vec3 v)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gfx->immediate.mat_mul(cb, gs_mat4_scale(v));
+}
+
+void __gs_mat_mul_vqs(gs_command_buffer_t* cb, gs_vqs xform)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gfx->immediate.mat_mul(cb, gs_vqs_to_mat4(&xform));
+}
 
 
 

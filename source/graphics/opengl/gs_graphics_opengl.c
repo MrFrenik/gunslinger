@@ -2117,6 +2117,14 @@ struct gs_graphics_i* __gs_graphics_construct()
 	gfx->immediate.mat_mul 				= &opengl_immediate_mat_mul;
 	gfx->immediate.push_camera 			= &__gs_push_camera;
 	gfx->immediate.pop_camera 			= &__gs_pop_camera;
+	gfx->immediate.mat_rotatef 			= &__gs_mat_rotatef;
+	gfx->immediate.mat_rotatev 			= &__gs_mat_rotatev;
+	gfx->immediate.mat_rotateq 			= &__gs_mat_rotateq;
+	gfx->immediate.mat_transf 			= &__gs_mat_transf;
+	gfx->immediate.mat_transv 			= &__gs_mat_transv;
+	gfx->immediate.mat_scalef 			= &__gs_mat_scalef;
+	gfx->immediate.mat_scalev 			= &__gs_mat_scalev;
+	gfx->immediate.mat_mul_vqs 			= &__gs_mat_mul_vqs;
 
 	gfx->immediate.draw_line 			= &__gs_draw_line_2d;
 	gfx->immediate.draw_triangle 		= &__gs_draw_triangle_2d;
