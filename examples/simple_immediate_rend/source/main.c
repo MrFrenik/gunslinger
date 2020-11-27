@@ -145,7 +145,7 @@ gs_result app_update()
 		gfx->immediate.push_matrix(cb, gs_matrix_model);
 			gfx->immediate.mat_transf(cb, 200.f, 200.f, 0.f);
 			gfx->immediate.mat_rotateq(cb, gs_quat_angle_axis(_t * 0.001f, gs_z_axis));
-			gfx->immediate.mat_scalef(cb, 200c.f, 200c.f, 1.f);
+			gfx->immediate.mat_scalef(cb, 200.f, 200.f, 1.f);
 			gfx->immediate.draw_triangle(cb, gs_v2(0.f, 0.f), gs_v2(1.f, 1.f), gs_v2(0.f, 1.f), gs_color_blue);
 		gfx->immediate.pop_matrix(cb);
 
