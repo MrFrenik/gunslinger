@@ -50,6 +50,7 @@ gs_result app_update()
 	gs_engine_t* engine = gs_engine_instance();
 	gs_graphics_i* gfx = engine->ctx.graphics;
 	gs_platform_i* platform = engine->ctx.platform;
+	gs_graphics_immediate_draw_i* id = &gfx->immediate;
 	gs_command_buffer_t* cb = &g_cb;
 
 	// Get framebuffer and window sizes
@@ -57,7 +58,7 @@ gs_result app_update()
 	const gs_vec2 ws = platform->window_size(platform->main_window());
 
 	// If we press the escape key, exit the application
-	if (engine->ctx.platform->key_pressed(gs_keycode_esc))
+	if (platform->key_pressed(gs_keycode_esc))
 	{
 		return gs_result_success;
 	}
@@ -74,24 +75,24 @@ gs_result app_update()
 	// Elapsed run time of program
 	const f32 _t = platform->elapsed_time();
 
-	gfx->immediate.begin_drawing(cb);	// Maybe don't need to do this?
+	id->begin_drawing(cb);	// Maybe don't need to do this?
 	{
 		/*========================
 		// Push Vertices Directly
 		========================*/
-		gfx->immediate.begin(cb, gs_triangles);
+		id->begin(cb, gs_triangles);
 		{
-			gfx->immediate.color_ubv(cb, gs_color_white);
-			gfx->immediate.vertex_3fv(cb, gs_v3(100.f, 100.f, 0.f));
-			gfx->immediate.vertex_3fv(cb, gs_v3(150.f, 100.f, 0.f));
-			gfx->immediate.vertex_3fv(cb, gs_v3(150.f, 150.f, 0.f));
+			id->color_ubv(cb, gs_color_white);
+			id->vertex_3fv(cb, gs_v3(100.f, 100.f, 0.f));
+			id->vertex_3fv(cb, gs_v3(150.f, 100.f, 0.f));
+			id->vertex_3fv(cb, gs_v3(150.f, 150.f, 0.f));
 		}
-		gfx->immediate.end(cb);
+		id->end(cb);
 
 		/*==========
 		// 3D
 		==========*/
-		gfx->immediate.push_camera(cb, gs_camera_perspective());
+		id->push_camera(cb, gs_camera_perspective());
 		{
 			// Want to abstract these into a default "3d state"
 			gfx->set_depth_enabled(cb, true);
@@ -109,30 +110,30 @@ gs_result app_update()
 				gs_quat_angle_axis(_t * 0.0001f, gs_x_axis),
 				gs_quat_angle_axis(_t * 0.0005f, gs_z_axis)
 			);
-			gfx->immediate.draw_box_ext(cb, xform, gs_color_alpha(gs_color_white, 50));
+			id->draw_box_ext(cb, xform, gs_color_alpha(gs_color_white, 50));
 
 			// // Rotation
 			xform.rotation = gs_quat_mul(
 				xform.rotation, 
 				gs_quat_angle_axis(_t * 0.001f, gs_z_axis)
 			);
-			gfx->immediate.push_matrix(cb, gs_matrix_model);
-				gfx->immediate.mat_mul(cb, gs_quat_to_mat4(xform.rotation));
-				gfx->immediate.draw_box(cb, gs_v3(5.f, 5.f, -20.f), gs_v3(2.f, 2.f, 2.f), gs_color_white);
-			gfx->immediate.pop_matrix(cb);
+			id->push_matrix(cb, gs_matrix_model);
+				id->mat_mul(cb, gs_quat_to_mat4(xform.rotation));
+				id->draw_box(cb, gs_v3(5.f, 5.f, -20.f), gs_v3(2.f, 2.f, 2.f), gs_color_white);
+			id->pop_matrix(cb);
 
 			/*==========
 			// Sphere
 			==========*/
 			// Draw sphere rotating around box
-			gfx->immediate.draw_sphere(
+			id->draw_sphere(
 				cb, 
 				gs_v3(cosf(_t * 0.001f) * 10, 0.f, sinf(_t * 0.001f) * 10 - 25.f), 
 				2.f, 
 				gs_color_alpha(gs_color_orange, 255)
 			);
 		}
-		gfx->immediate.pop_camera(cb);
+		id->pop_camera(cb);
 
 		// Back to 2d state
 		gfx->set_depth_enabled(cb, false);
@@ -142,26 +143,26 @@ gs_result app_update()
 		// Triangles
 		===========*/
 		// Transformed triangle
-		gfx->immediate.push_matrix(cb, gs_matrix_model);
-			gfx->immediate.mat_transf(cb, 200.f, 200.f, 0.f);
-			gfx->immediate.mat_rotateq(cb, gs_quat_angle_axis(_t * 0.001f, gs_z_axis));
-			gfx->immediate.mat_scalef(cb, 200.f, 200.f, 1.f);
-			gfx->immediate.draw_triangle(cb, gs_v2(0.f, 0.f), gs_v2(1.f, 1.f), gs_v2(0.f, 1.f), gs_color_blue);
-		gfx->immediate.pop_matrix(cb);
+		id->push_matrix(cb, gs_matrix_model);
+			id->mat_transf(cb, 200.f, 200.f, 0.f);
+			id->mat_rotateq(cb, gs_quat_angle_axis(_t * 0.001f, gs_z_axis));
+			id->mat_scalef(cb, 200.f, 200.f, 1.f);
+			id->draw_triangle(cb, gs_v2(0.f, 0.f), gs_v2(1.f, 1.f), gs_v2(0.f, 1.f), gs_color_blue);
+		id->pop_matrix(cb);
 
 		/*===========
 		// Rects
 		===========*/
-		gfx->immediate.draw_rect(cb, gs_v2(500.f, 500.f), gs_v2(600.f, 550.f), gs_color(0.f, 1.f, 0.f, 1.f));
+		id->draw_rect(cb, gs_v2(500.f, 500.f), gs_v2(600.f, 550.f), gs_color(0.f, 1.f, 0.f, 1.f));
 
 		/*==========
 		// Lines
 		==========*/
 		gs_vec2 mp = platform->mouse_position();
-		gfx->immediate.draw_line(cb, gs_v2(mp.x, 0.f), gs_v2(mp.x, ws.y), 1.f, gs_color_red);
-		gfx->immediate.draw_line(cb, gs_v2(0.f, mp.y), gs_v2(ws.x, mp.y), 1.f, gs_color_red);
+		id->draw_line(cb, gs_v2(mp.x, 0.f), gs_v2(mp.x, ws.y), 1.f, gs_color_red);
+		id->draw_line(cb, gs_v2(0.f, mp.y), gs_v2(ws.x, mp.y), 1.f, gs_color_red);
 	} 
-	gfx->immediate.end_drawing(cb);
+	id->end_drawing(cb);
 
 	// Submit command buffer for rendering
 	gfx->submit_command_buffer(cb);

@@ -215,6 +215,15 @@ typedef struct gs_texture_t
 	gs_texture_format texture_format;
 } gs_texture_t;
 
+/*================
+// Font
+=================*/
+
+typedef struct gs_font_t
+{
+	gs_texture_t texture;
+} gs_font_t;
+
 typedef enum gs_matrix_mode
 {
 	gs_matrix_model,
