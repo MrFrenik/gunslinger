@@ -54,6 +54,36 @@ void* gs_load_texture_data_from_file(const char* file_path, b32 flip_vertically_
 	return texture_data;
 }
 
+gs_font_t __gs_construct_font_from_file(const char* file_path, f32 point_size)
+{
+	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gs_font_t f = gs_default_val();
+
+	u8 temp_bitmap[512*512];
+	char* ttf = platform->read_file_contents(file_path, "rb", NULL);
+   	s32 v = stbtt_BakeFontBitmap((u8*)ttf, 0, point_size, temp_bitmap, 512, 512, 32, 96, (stbtt_bakedchar*)f.glyphs); // no guarantee this fits!
+
+   	gs_texture_parameter_desc desc = gs_texture_parameter_desc_default();
+   	desc.data = temp_bitmap;
+   	desc.texture_format = gs_texture_format_a8;
+   	desc.min_filter = gs_linear;
+
+   	// Generate atlas texture for bitmap with bitmap data
+   	f.texture = gfx->construct_texture(desc);
+
+   	if (v == 0) {
+	   	gs_println("Font Failed to Load: %s, %d", file_path, v);
+   	}
+   	else {
+	   	gs_println("Font Successfully Load: %s, %d", file_path, v);
+   	}
+
+   	gs_free(ttf);
+
+	return f;
+}
+
 void gs_rgb_to_hsv(u8 r, u8 g, u8 b, f32* h, f32* s, f32* v)
 {
 	f32 fR = (f32)r / 255.f; 

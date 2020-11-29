@@ -170,7 +170,9 @@ typedef enum gs_texture_format
 {
 	gs_texture_format_rgba8,
 	gs_texture_format_rgb8,
-	gs_texture_format_rgba16f
+	gs_texture_format_rgba16f,
+	gs_texture_format_a8,
+	gs_texture_format_r8
 } gs_texture_format;
 
 typedef enum gs_texture_wrapping
@@ -219,10 +221,25 @@ typedef struct gs_texture_t
 // Font
 =================*/
 
+// This directly maps to stbtt_bakedchar but gets around having to 
+// explicitly include the library in this header file. Internally, will be able to directly convert between 
+// the two.
+typedef struct gs_baked_char_t
+{
+   u16 x0,y0,x1,y1; 		// coordinates of bbox in bitmap
+   f32 xoff,yoff,xadvance;
+} gs_baked_char_t;
+
 typedef struct gs_font_t
 {
+	void* font_info;
+	gs_baked_char_t glyphs[96];
 	gs_texture_t texture;
 } gs_font_t;
+
+/*=======================-==
+// Immediate Mode Rendering
+==========================*/
 
 typedef enum gs_matrix_mode
 {
@@ -363,6 +380,8 @@ typedef struct gs_graphics_i
 	gs_index_buffer_t (* construct_index_buffer)(void*, usize);
 	s32 (* texture_id)(gs_texture_t*);
 
+	gs_font_t (* construct_font_from_file)(const char* file_path, f32 point_size);
+
 	/*============================================================
 	// Graphics Resource Free Ops
 	============================================================*/
@@ -419,6 +438,7 @@ typedef struct gs_graphics_i
 
 extern gs_texture_parameter_desc gs_texture_parameter_desc_default();
 extern void* gs_load_texture_data_from_file(const char* path, b32 flip_vertically_on_load);
+extern gs_font_t __gs_construct_font_from_file(const char* path, f32 point_size);
 
 /*===============================
 // Graphics User Provided Funcs

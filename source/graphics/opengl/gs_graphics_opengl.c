@@ -1789,6 +1789,8 @@ gs_texture_t opengl_construct_texture(gs_texture_parameter_desc desc)
 	// Construct texture based on appropriate format
 	switch(texture_format) 
 	{
+		case gs_texture_format_a8: 		glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, width, height, 0, GL_ALPHA, GL_UNSIGNED_BYTE, desc.data); break;
+		case gs_texture_format_r8: 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, desc.data); break;
 		case gs_texture_format_rgb8: 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, desc.data); break;
 		case gs_texture_format_rgba8: 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, desc.data); break;
 		case gs_texture_format_rgba16f: glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, desc.data); break;
@@ -1939,6 +1941,8 @@ void opengl_update_texture_data(gs_texture_t* tex, gs_texture_parameter_desc t_d
 	// Construct texture based on appropriate format
 	switch(texture_format) 
 	{
+		case gs_texture_format_r8: 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, t_desc.data); break;
+		case gs_texture_format_a8: 		glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, width, height, 0, GL_ALPHA, GL_UNSIGNED_BYTE, t_desc.data); break;
 		case gs_texture_format_rgb8: 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, t_desc.data); break;
 		case gs_texture_format_rgba8: 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, t_desc.data); break;
 		case gs_texture_format_rgba16f: glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, t_desc.data); break;
@@ -2072,7 +2076,7 @@ struct gs_graphics_i* __gs_graphics_construct()
 	// gs_resource(gs_uniform_buffer)(* construct_uniform_buffer)(gs_resource(gs_shader), const char* uniform_name);
 	// gfx->construct_material 					= &opengl_construct_material;
 	// gfx->construct_quad_batch 					= &opengl_construct_quad_batch;
-
+	gfx->construct_font_from_file 				= &__gs_construct_font_from_file;
 	/*============================================================
 	// Graphics Ops
 	============================================================*/
