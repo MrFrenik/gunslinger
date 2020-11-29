@@ -112,13 +112,10 @@ gs_result app_update()
 			);
 			id->draw_box_ext(cb, xform, gs_color_alpha(gs_color_white, 50));
 
-			// // Rotation
-			xform.rotation = gs_quat_mul(
-				xform.rotation, 
-				gs_quat_angle_axis(_t * 0.001f, gs_z_axis)
-			);
+			// Draw cube with push matrix for rotation
 			id->push_matrix(cb, gs_matrix_model);
-				id->mat_mul(cb, gs_quat_to_mat4(xform.rotation));
+				gs_mat4 rot = gs_quat_to_mat4(gs_quat_mul(xform.rotation, gs_quat_angle_axis(_t * 0.0001f, gs_z_axis)));
+				id->mat_mul(cb, rot);
 				id->draw_box(cb, gs_v3(5.f, 5.f, -20.f), gs_v3(2.f, 2.f, 2.f), gs_color_white);
 			id->pop_matrix(cb);
 
