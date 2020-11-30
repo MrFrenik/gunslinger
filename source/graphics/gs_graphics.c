@@ -60,13 +60,40 @@ gs_font_t __gs_construct_font_from_file(const char* file_path, f32 point_size)
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	gs_font_t f = gs_default_val();
 
-	u8 temp_bitmap[512*512];
+	stbtt_fontinfo font = gs_default_val();
 	char* ttf = platform->read_file_contents(file_path, "rb", NULL);
-   	s32 v = stbtt_BakeFontBitmap((u8*)ttf, 0, point_size, temp_bitmap, 512, 512, 32, 96, (stbtt_bakedchar*)f.glyphs); // no guarantee this fits!
+	const u32 w = 512;
+	const u32 h = 512;
+	const u32 num_comps = 4;
+	u8* alpha_bitmap = gs_malloc(w * h);
+	u8* flipmap = gs_malloc(w * h * num_comps);
+	memset(alpha_bitmap, 0, w * h);
+	memset(flipmap, 0, w * h * num_comps);
+   	s32 v = stbtt_BakeFontBitmap((u8*)ttf, 0, point_size, alpha_bitmap, w, h, 32, 96, (stbtt_bakedchar*)f.glyphs); // no guarantee this fits!
+
+   	// Flip texture
+   	u32 r = h - 1;
+   	for (u32 i = 0; i < h; ++i)
+   	{
+   		for (u32 j = 0; j < w; ++j)
+   		{
+   			u32 i0 = i * w + j;
+   			u32 i1 = r * w * num_comps + j * num_comps;
+   			u8 a = alpha_bitmap[i0];
+   			flipmap[i1 + 0] = 255;
+   			flipmap[i1 + 1] = 255;
+   			flipmap[i1 + 2] = 255;
+   			flipmap[i1 + 3] = a;
+   		}
+   		r--;
+   	}
 
    	gs_texture_parameter_desc desc = gs_texture_parameter_desc_default();
-   	desc.data = temp_bitmap;
-   	desc.texture_format = gs_texture_format_a8;
+   	desc.width = w;
+   	desc.height = h;
+   	desc.num_comps = num_comps;
+   	desc.data = flipmap;
+   	desc.texture_format = gs_texture_format_rgba8;
    	desc.min_filter = gs_linear;
 
    	// Generate atlas texture for bitmap with bitmap data
@@ -80,6 +107,8 @@ gs_font_t __gs_construct_font_from_file(const char* file_path, f32 point_size)
    	}
 
    	gs_free(ttf);
+   	gs_free(alpha_bitmap);
+   	gs_free(flipmap);
 
 	return f;
 }
@@ -260,15 +289,32 @@ void __gs_draw_rect_2d(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_color_t
 	gs_vec3 bl = gs_v3(a.x, b.y, 0.f);
 	gs_vec3 br = gs_v3(b.x, b.y, 0.f); 
 
+	gs_vec2 tl_uv = gs_v2(0.f, 1.f);
+	gs_vec2 tr_uv = gs_v2(1.f, 1.f);
+	gs_vec2 bl_uv = gs_v2(0.f, 0.f);
+	gs_vec2 br_uv = gs_v2(1.f, 0.f);
+
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	gfx->immediate.begin(cb, gs_triangles);
 	{
 		gfx->immediate.color_ubv(cb, color);
+
+		gfx->immediate.texcoord_2fv(cb, tl_uv);
 		gfx->immediate.vertex_3fv(cb, tl);
+
+		gfx->immediate.texcoord_2fv(cb, br_uv);
 		gfx->immediate.vertex_3fv(cb, br);
+
+		gfx->immediate.texcoord_2fv(cb, bl_uv);
 		gfx->immediate.vertex_3fv(cb, bl);
+
+		gfx->immediate.texcoord_2fv(cb, tl_uv);
 		gfx->immediate.vertex_3fv(cb, tl);
+
+		gfx->immediate.texcoord_2fv(cb, tr_uv);
 		gfx->immediate.vertex_3fv(cb, tr);
+
+		gfx->immediate.texcoord_2fv(cb, br_uv);
 		gfx->immediate.vertex_3fv(cb, br);
 	}
 	gfx->immediate.end(cb);
@@ -494,6 +540,62 @@ void __gs_draw_sphere(gs_command_buffer_t* cb, gs_vec3 center, f32 radius, gs_co
         gfx->immediate.pop_matrix(cb);
     }
     gfx->immediate.end(cb);
+}
+
+void __gs_draw_rect_2d_textured(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, u32 texture_id, gs_color_t color)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gfx->immediate.enable_texture_2d(cb, texture_id);
+	gfx->immediate.draw_rect(cb, a, b, color);
+}
+
+void __gs_draw_text(gs_command_buffer_t* cb, gs_vec2 pos, const char* text, gs_font_t* ft, gs_color_t color)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gfx->immediate.begin(cb, gs_triangles);
+	{
+		gfx->immediate.enable_texture_2d(cb, ft->texture.id);
+		gfx->immediate.color_ubv(cb, color);
+		while (text[0] != '\0')
+		{
+			char c = text[0];
+			if (c >= 32 && c < 128) 
+			{
+				stbtt_aligned_quad q = gs_default_val();
+				stbtt_GetBakedQuad((stbtt_bakedchar*)ft->glyphs, ft->texture.width, ft->texture.height, c - 32, &pos.x, &pos.y, &q, 1);
+
+				gs_vec3 v0 = gs_v3(q.x0, q.y0, 0.f);	// TL
+				gs_vec3 v1 = gs_v3(q.x1, q.y0, 0.f);	// TR
+				gs_vec3 v2 = gs_v3(q.x0, q.y1, 0.f);	// BL
+				gs_vec3 v3 = gs_v3(q.x1, q.y1, 0.f);	// BR
+
+				gs_vec2 uv0 = gs_v2(q.s0, 1.f - q.t0);	// TL
+				gs_vec2 uv1 = gs_v2(q.s1, 1.f - q.t0);	// TR
+				gs_vec2 uv2 = gs_v2(q.s0, 1.f - q.t1);	// BL
+				gs_vec2 uv3 = gs_v2(q.s1, 1.f - q.t1);	// BR
+
+				gfx->immediate.texcoord_2fv(cb, uv0); 
+				gfx->immediate.vertex_3fv(cb, v0);
+
+		        gfx->immediate.texcoord_2fv(cb, uv3); 
+				gfx->immediate.vertex_3fv(cb, v3); 
+
+		        gfx->immediate.texcoord_2fv(cb, uv2); 
+				gfx->immediate.vertex_3fv(cb, v2); 
+
+				gfx->immediate.texcoord_2fv(cb, uv0); 
+				gfx->immediate.vertex_3fv(cb, v0);
+
+		        gfx->immediate.texcoord_2fv(cb, uv1); 
+				gfx->immediate.vertex_3fv(cb, v1); 
+
+		        gfx->immediate.texcoord_2fv(cb, uv3); 
+				gfx->immediate.vertex_3fv(cb, v3); 
+			}
+			text++;
+		}
+	}
+	gfx->immediate.end(cb);
 }
 
 void __gs_push_camera(gs_command_buffer_t* cb, gs_camera_t camera)

@@ -255,17 +255,20 @@ char* __gs_platform_read_file_contents_into_string_null_term(const char* file_pa
 {
 	char* buffer = 0;
 	FILE* fp = fopen(file_path, mode);
-	s32 _sz = 0;
+	usize _sz = 0;
 	if (fp)
 	{
 		_sz = __gs_platform_file_size_in_bytes(file_path);
+		// fseek(fp, 0, SEEK_END);
+		// _sz = ftell(fp);
+		// fseek(fp, 0, SEEK_SET);
 		buffer = (char*)gs_malloc(_sz);
 		if (buffer)
 		{
 			fread(buffer, 1, _sz, fp);
 		}
 		fclose(fp);
-		buffer[_sz] = '\0';
+		// buffer[_sz] = '\0';
 	}
 	if (sz)
 		*sz = _sz;

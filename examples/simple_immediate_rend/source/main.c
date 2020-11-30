@@ -2,6 +2,7 @@
 
 // Globals
 _global gs_command_buffer_t g_cb = gs_default_val();
+_global gs_font_t 			g_font = gs_default_val();
 
 // Forward Decls.
 gs_result app_init();		// Use to init your application
@@ -39,6 +40,10 @@ gs_result app_init()
 {
 	// Construct command buffer (the command buffer is used to allow for immediate drawing at any point in our program)
 	g_cb = gs_command_buffer_new();
+
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	
+	g_font = gfx->construct_font_from_file("./assets/font.ttf", 32.f);
 
 	return gs_result_success;
 }
@@ -158,6 +163,11 @@ gs_result app_update()
 		gs_vec2 mp = platform->mouse_position();
 		id->draw_line(cb, gs_v2(mp.x, 0.f), gs_v2(mp.x, ws.y), 1.f, gs_color_red);
 		id->draw_line(cb, gs_v2(0.f, mp.y), gs_v2(ws.x, mp.y), 1.f, gs_color_red);
+
+		/*==========
+		// Text
+		==========*/
+		id->draw_text(cb, gs_v2(300.f, 500.f), "Here's a line of Text.", &g_font, gs_color_white);
 	} 
 	id->end_drawing(cb);
 

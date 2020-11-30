@@ -86,29 +86,37 @@ typedef enum gs_opengl_op_code
 	// Debug/Immediate
 	gs_opengl_op_immediate_begin_drawing,
 	gs_opengl_op_immediate_end_drawing,
+	gs_opengl_op_immediate_enable_texture_2d,
+	gs_opengl_op_immediate_disable_texture_2d,
 	gs_opengl_op_immediate_push_matrix,
 	gs_opengl_op_immediate_pop_matrix,
 	gs_opengl_op_immediate_mat_mul,
 	gs_opengl_op_immediate_begin,
 	gs_opengl_op_immediate_end,
 	gs_opengl_op_immediate_color_ubv,
+	gs_opengl_op_immediate_texcoord_2fv,
 	gs_opengl_op_immediate_vertex_3fv
 } gs_opengl_op_code;
 
 typedef struct immediate_vertex_data_t
 {
 	gs_vec3 position;
+	gs_vec2 texcoord;
 	gs_color_t color;
 } immediate_vertex_data_t;
 
 // Internally
 typedef struct immediate_drawing_internal_data_t 
 {
+	// Bound this all up into a state object, then create stack of states
 	gs_shader_t shader;
+	gs_texture_t default_texture;
 	gs_uniform_t u_mvp;
+	gs_uniform_t u_tex;
 	gs_vertex_buffer_t vbo;
-	u32 texture_id;										// Id of currently bound texture unit
+	u32 tex_id;										// Id of currently bound texture unit (-1 if not enabled)
 	gs_color_t color;
+	gs_vec2 texcoord;
 	gs_dyn_array(immediate_vertex_data_t) vertex_data;
 
 	// Push matrix, for now, will just set
@@ -141,20 +149,25 @@ typedef struct opengl_render_data_t
 _global const char* immediate_shader_v_src = "\n"
 "#version 330 core\n"
 "layout (location = 0) in vec3 a_position;\n"
-"layout (location = 1) in vec4 a_color;\n"
+"layout (location = 1) in vec2 a_texcoord;\n"
+"layout (location = 2) in vec4 a_color;\n"
 "uniform mat4 u_mvp;\n"
 "out vec4 f_color;\n"
+"out vec2 f_uv;\n"
 "void main() {\n"
 " gl_Position = u_mvp * vec4(a_position, 1.0);\n"
 " f_color = a_color;\n"
+" f_uv = a_texcoord;\n"
 "}";
 
 _global const char* immediate_shader_f_src = "\n"
 "#version 330 core\n"
 "in vec4 f_color;\n"
+"in vec2 f_uv;\n"
 "out vec4 frag_color;\n"
+"uniform sampler2D u_tex;\n"
 "void main() {\n"
-" frag_color = f_color;\n"
+" frag_color = f_color * texture(u_tex, f_uv);\n"
 "}";
 
 #define __get_opengl_data_internal()\
@@ -232,10 +245,20 @@ immediate_drawing_internal_data_t construct_immediate_drawing_internal_data_t()
 	// Construct shader
 	data.shader = gfx->construct_shader(immediate_shader_v_src, immediate_shader_f_src);
 
+	// Construct default texture
+	u8 white[2 * 2 * 4];
+	memset(white, 255, 2 * 2 * 4);
+	gs_texture_parameter_desc desc = gs_texture_parameter_desc_default();
+	desc.data = white;
+	desc.width = 2;
+	desc.height = 2;
+	data.default_texture = gfx->construct_texture(desc);
+
 	// Vertex data layout
 	gs_vertex_attribute_type vertex_layout[] = {
 		gs_vertex_attribute_float3,	// Position
-		gs_vertex_attribute_byte4  // Color
+		gs_vertex_attribute_float2,	// UV
+		gs_vertex_attribute_byte4  	// Color
 	};
 
 	// Construct vertex buffer objects
@@ -243,6 +266,7 @@ immediate_drawing_internal_data_t construct_immediate_drawing_internal_data_t()
 	data.vertex_data = gs_dyn_array_new(immediate_vertex_data_t);
 
 	data.u_mvp = gfx->construct_uniform(data.shader, "u_mvp", gs_uniform_type_mat4);
+	data.u_tex = gfx->construct_uniform(data.shader, "u_tex", gs_uniform_type_sampler2d);
 
 	// Construct stacks
 	data.model_matrix_stack = gs_dyn_array_new(gs_mat4);
@@ -267,12 +291,6 @@ void __reset_command_buffer_internal(command_buffer_t* cb)
 
 void opengl_reset_command_buffer(gs_command_buffer_t* cb)
 {
-	// Get data from graphics api
-	opengl_render_data_t* data = __get_opengl_data_internal();
-
-	// Grab command buffer ptr from command buffer slot array
-	// command_buffer_t* cb = __get_command_buffer_internal(data, cb);
-
 	__reset_command_buffer_internal(cb);
 }
 
@@ -290,11 +308,6 @@ do {\
 void opengl_set_frame_buffer_attachment(gs_command_buffer_t* cb, gs_texture_t t, u32 idx)
 {
 	__push_command(cb, gs_opengl_op_set_frame_buffer_attachment, {
-
-		// Grab texture from handle
-		// texture_t t = gs_slot_array_get(__data->textures, t_handle.id);
-
-		// Push back commands
 		gs_byte_buffer_write(&cb->commands, u32, t.id);
 		gs_byte_buffer_write(&cb->commands, u32, idx);
 	});
@@ -303,11 +316,6 @@ void opengl_set_frame_buffer_attachment(gs_command_buffer_t* cb, gs_texture_t t,
 void opengl_bind_frame_buffer(gs_command_buffer_t* cb, gs_frame_buffer_t fb)
 {
 	__push_command(cb, gs_opengl_op_bind_frame_buffer, {
-
-		// Grab shader from handle
-		// frame_buffer_t fb = gs_slot_array_get(__data->frame_buffers, fb_handle.id);
-
-		// Push back commands
 		gs_byte_buffer_write(&cb->commands, u32, fb.fbo);
 	});
 }
@@ -315,19 +323,14 @@ void opengl_bind_frame_buffer(gs_command_buffer_t* cb, gs_frame_buffer_t fb)
 void opengl_unbind_frame_buffer(gs_command_buffer_t* cb)
 {
 	__push_command(cb, gs_opengl_op_unbind_frame_buffer, {
-
+		// Nothing...
 	});
 }
 
 void opengl_bind_shader(gs_command_buffer_t* cb, gs_shader_t s)
 {
 	__push_command(cb, gs_opengl_op_bind_shader, {
-
-		// Grab shader from handle
-		// shader_t s = gs_slot_array_get(__data->shaders, s_handle.id);
-
-		// Construct command packet for binding shader
-		gs_byte_buffer_write(&cb->commands, u32, s.program_id);
+		 gs_byte_buffer_write(&cb->commands, u32, s.program_id);
 	});
 }
 
@@ -337,9 +340,6 @@ void opengl_bind_shader(gs_command_buffer_t* cb, gs_shader_t s)
 void opengl_bind_uniform(gs_command_buffer_t* cb, gs_uniform_t u, void* u_data)
 {
 	__push_command(cb, gs_opengl_op_bind_uniform, {
-
-		// Grab uniform from handle
-		// uniform_t u = gs_slot_array_get(__data->uniforms, u_handle.id);
 
 		// Write out uniform location
 		gs_byte_buffer_write(&cb->commands, u32, (u32)u.location);
@@ -370,9 +370,6 @@ void opengl_bind_uniform_mat4(gs_command_buffer_t* cb, gs_uniform_t u, gs_mat4 v
 {
 	__push_command(cb, gs_opengl_op_bind_uniform, {
 
-		// Grab uniform from handle
-		// uniform_t u = gs_slot_array_get(__data->uniforms, u_handle.id);
-
 		if (u.type != gs_uniform_type_mat4) {
 			return;	
 		}
@@ -389,9 +386,6 @@ void opengl_bind_uniform_mat4(gs_command_buffer_t* cb, gs_uniform_t u, gs_mat4 v
 void opengl_bind_texture_id(gs_command_buffer_t* cb, gs_uniform_t u, u32 id, u32 slot)
 {
 	__push_command(cb, gs_opengl_op_bind_texture, {
-
-		// Grab uniform from handle
-		// uniform_t u = gs_slot_array_get(__data->uniforms, u_handle.id);
 
 		// Cannot pass in uniform of wrong type
 		if (u.type != gs_uniform_type_sampler2d)
@@ -412,22 +406,8 @@ void opengl_bind_texture_id(gs_command_buffer_t* cb, gs_uniform_t u, u32 id, u32
 void opengl_bind_texture(gs_command_buffer_t* cb, gs_uniform_t u, 
 		gs_texture_t tex, u32 tex_unit)
 {
-	__push_command(cb, gs_opengl_op_bind_texture, {
-
-		// Cannot pass in uniform of wrong type
-		if (u.type != gs_uniform_type_sampler2d)
-		{
-			gs_println("opengl_bind_texture: Must be of uniform type 'gs_uniform_type_sampler2d'");
-			gs_assert(false);
-		}
-
-		// Write out id
-		gs_byte_buffer_write(&cb->commands, u32, tex.id);
-		// Write tex unit location
-		gs_byte_buffer_write(&cb->commands, u32, tex_unit);
-		// Write out uniform location
-		gs_byte_buffer_write(&cb->commands, u32, (u32)u.location);
-	});
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gfx->bind_texture_id(cb, u, tex.id, tex_unit);
 }
 
 void opengl_bind_vertex_buffer(gs_command_buffer_t* cb, gs_vertex_buffer_t vb)
@@ -696,18 +676,20 @@ typedef struct vert_t
 // What does this do? Binds debug shader and sets default uniform values.
 void opengl_immediate_begin_drawing(gs_command_buffer_t* cb)
 {
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 	gs_vec2 ws = platform->window_size(platform->main_window());
 	gs_vec2 fbs = platform->frame_buffer_size(platform->main_window());
 
-	opengl_set_view_port(cb, fbs.x, fbs.y);
-	opengl_set_face_culling(cb, gs_face_culling_disabled);
-	opengl_set_depth_enabled(cb, false);
+	gfx->set_view_port(cb, fbs.x, fbs.y);
+	gfx->set_face_culling(cb, gs_face_culling_disabled);
+	gfx->set_depth_enabled(cb, false);
 
 	// Bind shader command
-	opengl_bind_shader(cb, data->shader);
-	opengl_bind_uniform_mat4(cb, data->u_mvp, __gs_default_view_proj_mat());	// Bind mvp matrix uniform
+	gfx->bind_shader(cb, data->shader);
+	gfx->bind_uniform_mat4(cb, data->u_mvp, __gs_default_view_proj_mat());	// Bind mvp matrix uniform
+	gfx->bind_texture(cb, data->u_tex, data->default_texture, 0);
 
 	__push_command(cb, gs_opengl_op_immediate_begin_drawing, {
 		// Nothing...
@@ -719,6 +701,26 @@ void opengl_immediate_end_drawing(gs_command_buffer_t* cb)
 	__push_command(cb, gs_opengl_op_immediate_end_drawing, {
 		// Nothing...
 	});
+}
+
+void opengl_immediate_enable_texture_2d(gs_command_buffer_t* cb, u32 id)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
+	__push_command(cb, gs_opengl_op_immediate_enable_texture_2d, {
+		gs_byte_buffer_write(&cb->commands, u32, id);
+	});
+	gfx->bind_texture_id(cb, data->u_tex, id, 0);
+}
+
+void opengl_immediate_disable_texture_2d(gs_command_buffer_t* cb)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
+	__push_command(cb, gs_opengl_op_immediate_disable_texture_2d, {
+		// Nothing...
+	});
+	gfx->bind_texture_id(cb, data->u_tex, data->default_texture.id, 0);
 }
 
 void opengl_immediate_push_matrix(gs_command_buffer_t* cb, gs_matrix_mode mode)
@@ -767,6 +769,18 @@ void opengl_immediate_vertex_3fv(gs_command_buffer_t* cb, gs_vec3 v)
 	__push_command(cb, gs_opengl_op_immediate_vertex_3fv, {
 		gs_byte_buffer_write(&cb->commands, gs_vec3, v);
 	});
+}
+
+void opengl_immediate_texcoord_2fv(gs_command_buffer_t* cb, gs_vec2 v)
+{
+	__push_command(cb, gs_opengl_op_immediate_texcoord_2fv, {
+		gs_byte_buffer_write(&cb->commands, gs_vec2, v);
+	});
+}
+
+void opengl_immediate_texcoord_2f(gs_command_buffer_t* cb, f32 s, f32 t)
+{
+	opengl_immediate_texcoord_2fv(cb, gs_v2(s, t));
 }
 
 void opengl_immediate_color_ub(gs_command_buffer_t* cb, u8 r, u8 g, u8 b, u8 a)
@@ -859,23 +873,30 @@ do {\
 	}\
 } while(0)
 
-#define gs_vert3fv(v)\
-do {\
-	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();\
-	immediate_vertex_data_t vert;\
-	vert.color = data->color;\
-	vert.position = v;\
-	/*Check if it's necessary to transform vert by model matrix stack*/\
-	gs_for_range_i(gs_dyn_array_size(data->model_matrix_stack))\
-	{\
-		gs_vec4 v = gs_mat4_mul_vec4(\
-			data->model_matrix_stack[i],\
-			gs_v4(vert.position.x, vert.position.y, vert.position.z, 1.f)\
-		);\
-		vert.position = gs_v4_to_v3(v);\
-	}\
-	gs_dyn_array_push(data->vertex_data, vert);\
-} while (0)
+void gs_vert3fv(gs_vec3 v)
+{
+	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
+	immediate_vertex_data_t vert;
+	vert.color = data->color;
+	vert.texcoord = data->texcoord;
+	vert.position = v;
+	/*Check if it's necessary to transform vert by model matrix stack*/
+	gs_for_range_i(gs_dyn_array_size(data->model_matrix_stack))
+	{
+		gs_vec4 v = gs_mat4_mul_vec4(
+			data->model_matrix_stack[i],
+			gs_v4(vert.position.x, vert.position.y, vert.position.z, 1.f)
+		);
+		vert.position = gs_v4_to_v3(v);
+	}
+	gs_dyn_array_push(data->vertex_data, vert);
+}
+
+void gs_texcoord2fv(gs_vec2 v)
+{
+	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
+	data->texcoord = v;
+}
 
 void gs_color4ubv(gs_color_t c)
 {
@@ -1238,12 +1259,32 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 				// Default stacks
 				gs_mat4 ortho = __gs_default_view_proj_mat();
 				gs_dyn_array_push(data->vp_matrix_stack, ortho);
+
+				data->tex_id = data->default_texture.id;
 			} break;
 
 			case gs_opengl_op_immediate_end_drawing:
 			{
 				// Time to draw da data
 				opengl_immediate_submit_vertex_data();
+			} break;
+
+			case gs_opengl_op_immediate_enable_texture_2d:
+			{
+				// If current texture doesn't equal new texture, then submit vertex data
+				immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
+				u32 tex_id = gs_byte_buffer_read(&cb->commands, u32);
+				if (data->tex_id != tex_id) {
+					opengl_immediate_submit_vertex_data();
+				}
+				data->tex_id = tex_id;
+			} break;
+
+			case gs_opengl_op_immediate_disable_texture_2d:
+			{
+				immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
+				opengl_immediate_submit_vertex_data();
+				data->tex_id = data->default_texture.id;
 			} break;
 
 			case gs_opengl_op_immediate_begin:
@@ -1300,6 +1341,12 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 			{
 				gs_vec3 v = gs_byte_buffer_read(&cb->commands, gs_vec3);
 				gs_vert3fv(v);
+			} break;
+
+			case gs_opengl_op_immediate_texcoord_2fv:
+			{
+				gs_vec2 v = gs_byte_buffer_read(&cb->commands, gs_vec2);
+				gs_texcoord2fv(v);
 			} break;
 
 			case gs_opengl_op_immediate_color_ubv:
@@ -2119,6 +2166,9 @@ struct gs_graphics_i* __gs_graphics_construct()
 	gfx->immediate.push_matrix 			= &opengl_immediate_push_matrix;
 	gfx->immediate.pop_matrix 			= &opengl_immediate_pop_matrix;
 	gfx->immediate.mat_mul 				= &opengl_immediate_mat_mul;
+	gfx->immediate.enable_texture_2d 	= &opengl_immediate_enable_texture_2d;
+	gfx->immediate.disable_texture_2d 	= &opengl_immediate_disable_texture_2d;
+
 	gfx->immediate.push_camera 			= &__gs_push_camera;
 	gfx->immediate.pop_camera 			= &__gs_pop_camera;
 	gfx->immediate.mat_rotatef 			= &__gs_mat_rotatef;
@@ -2137,6 +2187,8 @@ struct gs_graphics_i* __gs_graphics_construct()
 	gfx->immediate.draw_box 			= &__gs_draw_box;
 	gfx->immediate.draw_box_ext 		= &__gs_draw_box_ext;
 	gfx->immediate.draw_sphere 			= &__gs_draw_sphere;
+	gfx->immediate.draw_rect_textured 	= &__gs_draw_rect_2d_textured;
+	gfx->immediate.draw_text 			= &__gs_draw_text;
 
 	gfx->immediate.color_ub 			= &opengl_immediate_color_ub;
 	gfx->immediate.color_ubv 			= &opengl_immediate_color_ubv;
@@ -2145,6 +2197,8 @@ struct gs_graphics_i* __gs_graphics_construct()
 	gfx->immediate.vertex_3f 			= &opengl_immediate_vertex_3f;
 	gfx->immediate.vertex_2fv 			= &opengl_immediate_vertex_2fv;
 	gfx->immediate.vertex_2f 			= &opengl_immediate_vertex_2f;
+	gfx->immediate.texcoord_2f 			= &opengl_immediate_texcoord_2f;
+	gfx->immediate.texcoord_2fv 		= &opengl_immediate_texcoord_2fv;
 
 	/*============================================================
 	// Graphics Utility Function

@@ -47,8 +47,8 @@ rem Link options
 set l_options=/EHsc /link /SUBSYSTEM:CONSOLE /NODEFAULTLIB:msvcrt.lib
 
 rem Compile library objects
-cl /c /MP /FS /Ox /W1 %src_all% %inc% /EHsc
-rem cl /c /Zi /MP /FS /Od /DEBUG:FULL /W1 %src_all% %inc% /EHsc
+rem cl /c /MP /FS /Ox /W1 %src_all% %inc% /EHsc
+cl /c /Zi /MP /FS /Od /DEBUG:FULL /W1 %src_all% %inc% /EHsc
 
 rem Compile library
 lib *.obj /out:Gunslinger.lib
