@@ -816,13 +816,14 @@ void opengl_immediate_vertex_2f(gs_command_buffer_t* cb, f32 x, f32 y)
 // Immediate Ops
 void gs_begin(gs_draw_mode mode) 
 {
+	// Need to pop current state and restore preivous state
+	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
+	data->color = gs_color_white;
+	data->texcoord = gs_v2(0.f, 0.f);
 }
 
 void gs_end()
 {
-	// Need to pop current state and restore preivous state
-	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
-	data->color = gs_color_white;
 }
 
 void gs_push_matrix_uniform()
@@ -1283,7 +1284,9 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 			case gs_opengl_op_immediate_disable_texture_2d:
 			{
 				immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
-				opengl_immediate_submit_vertex_data();
+				if (data->tex_id != data->default_texture.id) {
+					opengl_immediate_submit_vertex_data();
+				}
 				data->tex_id = data->default_texture.id;
 			} break;
 
@@ -1956,7 +1959,7 @@ gs_texture_t opengl_construct_texture_from_file(const char* file_path, gs_textur
 		// Finish constructing texture resource from descriptor and return handle
 		tex = opengl_construct_texture(*t_desc);
 
-		gs_free(t_desc->data);
+		// gs_free(t_desc->data);
 	}
 	else
 	{
@@ -1968,7 +1971,7 @@ gs_texture_t opengl_construct_texture_from_file(const char* file_path, gs_textur
 		// Finish constructing texture resource from descriptor and return handle
 		tex = opengl_construct_texture(desc);
 
-		gs_free(desc.data);
+		// gs_free(desc.data);
 	}
 
 	return tex;

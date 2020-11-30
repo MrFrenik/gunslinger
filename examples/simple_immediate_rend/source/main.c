@@ -3,6 +3,7 @@
 // Globals
 _global gs_command_buffer_t g_cb = gs_default_val();
 _global gs_font_t 			g_font = gs_default_val();
+_global gs_texture_t 		g_texture = gs_default_val();
 
 // Forward Decls.
 gs_result app_init();		// Use to init your application
@@ -42,8 +43,12 @@ gs_result app_init()
 	g_cb = gs_command_buffer_new();
 
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
-	
+
 	g_font = gfx->construct_font_from_file("./assets/font.ttf", 32.f);
+
+	gs_texture_parameter_desc_t desc = gs_texture_parameter_desc_default();	
+	g_texture = gfx->construct_texture_from_file("./assets/gs.png", &desc);
+	gs_free(desc.data);
 
 	return gs_result_success;
 }
@@ -156,6 +161,7 @@ gs_result app_update()
 		// Rects
 		===========*/
 		id->draw_rect(cb, gs_v2(500.f, 500.f), gs_v2(600.f, 550.f), gs_color(0.f, 1.f, 0.f, 1.f));
+		id->draw_rect_textured(cb, gs_v2(600.f, 400.f), gs_v2(750.f, 550.f), g_texture.id, gs_color_green);
 
 		/*==========
 		// Lines

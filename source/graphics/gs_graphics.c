@@ -225,6 +225,7 @@ void __gs_draw_line_3d(gs_command_buffer_t* cb, gs_vec3 start, gs_vec3 end, gs_v
 	gfx->immediate.begin(cb, gs_triangles);
 	{
 		gfx->immediate.color_ubv(cb, color);
+		gfx->immediate.disable_texture_2d(cb);
 		gfx->immediate.vertex_3fv(cb, tl);
 		gfx->immediate.vertex_3fv(cb, br);
 		gfx->immediate.vertex_3fv(cb, bl);
@@ -246,6 +247,7 @@ void __gs_draw_triangle_3d(gs_command_buffer_t* cb, gs_vec3 a, gs_vec3 b, gs_vec
 	gfx->immediate.begin(cb, gs_triangles);
 	{
 		gfx->immediate.color_ubv(cb, color);
+		gfx->immediate.disable_texture_2d(cb);
 		gfx->immediate.vertex_3fv(cb, a);
 		gfx->immediate.vertex_3fv(cb, b);
 		gfx->immediate.vertex_3fv(cb, c);
@@ -282,7 +284,7 @@ void __gs_draw_rect_3d(gs_command_buffer_t* cb, gs_vec3 p, gs_vec3 n, gs_color_t
 	// point, normal, scale?
 }
 
-void __gs_draw_rect_2d(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_color_t color)
+void __gs_draw_rect_2d_impl(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_color_t color)
 {
 	gs_vec3 tl = gs_v3(a.x, a.y, 0.f);
 	gs_vec3 tr = gs_v3(b.x, a.y, 0.f);
@@ -320,6 +322,20 @@ void __gs_draw_rect_2d(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_color_t
 	gfx->immediate.end(cb);
 }
 
+void __gs_draw_rect_2d(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_color_t color)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gfx->immediate.disable_texture_2d(cb);
+	__gs_draw_rect_2d_impl(cb, a, b, color);
+}
+
+void __gs_draw_rect_2d_textured(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, u32 texture_id, gs_color_t color)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gfx->immediate.enable_texture_2d(cb, texture_id);
+	__gs_draw_rect_2d_impl(cb, a, b, color);
+}
+
 void __gs_draw_box(gs_command_buffer_t* cb, gs_vec3 origin, gs_vec3 half_extents, gs_color_t color)
 {
 	f32 width = half_extents.x;
@@ -333,6 +349,7 @@ void __gs_draw_box(gs_command_buffer_t* cb, gs_vec3 origin, gs_vec3 half_extents
 	gfx->immediate.begin(cb, gs_triangles);
 	{
 		gfx->immediate.color_ubv(cb, color);
+		gfx->immediate.disable_texture_2d(cb);
 		gfx->immediate.push_matrix(cb, gs_matrix_model);
 		{
 			gfx->immediate.mat_mul(cb, gs_mat4_translate(origin));
@@ -425,6 +442,7 @@ void __gs_draw_box_ext(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t color)
 		{
     		gfx->immediate.mat_mul(cb, mat);
 			gfx->immediate.color_ubv(cb, color);
+    		gfx->immediate.disable_texture_2d(cb);
 			
 	        // Front face
 	        gfx->immediate.vertex_3fv(cb, v0);  // Bottom Left
@@ -503,6 +521,7 @@ void __gs_draw_sphere(gs_command_buffer_t* cb, gs_vec3 center, f32 radius, gs_co
 
     	gfx->immediate.push_matrix(cb, gs_matrix_model);
     	{
+    		gfx->immediate.disable_texture_2d(cb);
     		gfx->immediate.mat_mul(cb, gs_vqs_to_mat4(&xform));
 			gfx->immediate.color_ubv(cb, color);
 			{
@@ -540,13 +559,6 @@ void __gs_draw_sphere(gs_command_buffer_t* cb, gs_vec3 center, f32 radius, gs_co
         gfx->immediate.pop_matrix(cb);
     }
     gfx->immediate.end(cb);
-}
-
-void __gs_draw_rect_2d_textured(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, u32 texture_id, gs_color_t color)
-{
-	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
-	gfx->immediate.enable_texture_2d(cb, texture_id);
-	gfx->immediate.draw_rect(cb, a, b, color);
 }
 
 void __gs_draw_text(gs_command_buffer_t* cb, gs_vec2 pos, const char* text, gs_font_t* ft, gs_color_t color)
