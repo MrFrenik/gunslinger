@@ -322,6 +322,8 @@ typedef struct gs_graphics_immediate_draw_i
 
 	// Submit
 	void (* submit)(gs_command_buffer_t* cb);
+
+	u32 draw_call_count;
 } gs_graphics_immediate_draw_i;
 /*================
 // Graphics API
@@ -429,6 +431,7 @@ typedef struct gs_graphics_i
 	============================================================*/
 	u32 (* get_byte_size_of_vertex_attribute)(gs_vertex_attribute_type type);
 	u32 (* calculate_vertex_size_in_bytes)(gs_vertex_attribute_type* layout_data, u32 count);
+	gs_vec2 (* text_dimensions)(gs_command_buffer_t* cb, const char* text, gs_font_t* ft);
 
 	// Render Data 
 	void* data;
@@ -437,7 +440,6 @@ typedef struct gs_graphics_i
 	struct gs_material_i* 		material_i;
 	struct gs_uniform_block_i* 	uniform_i;
 	struct gs_quad_batch_i* 	quad_batch_i;
-
 } gs_graphics_i;
 
 /*===============================
@@ -447,6 +449,7 @@ typedef struct gs_graphics_i
 extern gs_texture_parameter_desc gs_texture_parameter_desc_default();
 extern void* gs_load_texture_data_from_file(const char* path, b32 flip_vertically_on_load);
 extern gs_font_t __gs_construct_font_from_file(const char* path, f32 point_size);
+extern gs_vec2 __gs_text_dimensions(gs_command_buffer_t* cb, const char* text, gs_font_t* ft);
 
 /*===============================
 // Graphics User Provided Funcs

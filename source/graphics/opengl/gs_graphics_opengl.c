@@ -225,8 +225,6 @@ gs_result opengl_init(struct gs_graphics_i* gfx)
 
 gs_result opengl_update(struct gs_graphics_i* gfx)
 {
-	opengl_render_data_t* data = __get_opengl_data_internal();
-
 	return gs_result_in_progress;
 }
 
@@ -926,6 +924,8 @@ void opengl_immediate_submit_vertex_data()
 
 	// Clear buffer
 	gs_dyn_array_clear(data->vertex_data);
+
+	gs_engine_instance()->ctx.graphics->immediate.draw_call_count++;
 }
 
 /*================
@@ -1268,6 +1268,7 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 			{
 				// Time to draw da data
 				opengl_immediate_submit_vertex_data();
+				gs_engine_instance()->ctx.graphics->immediate.draw_call_count = 0;
 			} break;
 
 			case gs_opengl_op_immediate_enable_texture_2d:
@@ -2208,6 +2209,7 @@ struct gs_graphics_i* __gs_graphics_construct()
 	============================================================*/
 	gfx->get_byte_size_of_vertex_attribute	= &get_byte_size_of_vertex_attribute;
 	gfx->calculate_vertex_size_in_bytes 	= &calculate_vertex_size_in_bytes;
+	gfx->text_dimensions 					= &__gs_text_dimensions;
 
 	/*============================================================
 	// Graphics Utility APIs

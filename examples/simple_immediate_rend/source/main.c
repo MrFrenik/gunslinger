@@ -78,7 +78,7 @@ gs_result app_update()
 	================*/
 
 	// Set clear color and clear screen
-	f32 clear_color[4] = { 0.2f, 0.2f, 0.2f, 1.f };
+	f32 clear_color[4] = {0.2f, 0.2f, 0.2f, 1.f};
 	gfx->set_view_clear(cb, clear_color);
 	gfx->set_view_port(cb, fbs.x, fbs.y);
 
@@ -92,6 +92,7 @@ gs_result app_update()
 		========================*/
 		id->begin(cb, gs_triangles);
 		{
+			id->disable_texture_2d(cb);
 			id->color_ubv(cb, gs_color_white);
 			id->vertex_3fv(cb, gs_v3(100.f, 100.f, 0.f));
 			id->vertex_3fv(cb, gs_v3(150.f, 100.f, 0.f));
@@ -128,6 +129,11 @@ gs_result app_update()
 				id->mat_mul(cb, rot);
 				id->draw_box(cb, gs_v3(5.f, 5.f, -20.f), gs_v3(2.f, 2.f, 2.f), gs_color_white);
 			id->pop_matrix(cb);
+
+			id->begin(cb, gs_lines);
+			{
+			}
+			id->end(cb);
 
 			/*==========
 			// Sphere
@@ -173,7 +179,12 @@ gs_result app_update()
 		/*==========
 		// Text
 		==========*/
-		id->draw_text(cb, gs_v2(300.f, 500.f), "Here's a line of Text.", &g_font, gs_color_white);
+		s8 buffer[256];
+		memset(buffer, 0, 256);
+		gs_snprintf(buffer, 256, "Frame: %.2f ms", platform->time.frame);
+		gs_vec2 td = gfx->text_dimensions(cb, buffer, &g_font);
+		id->draw_rect(cb, gs_v2(300.f, 500.f), gs_v2(300.f + td.x, 500.f - td.y), gs_color_red);
+		id->draw_text(cb, gs_v2(300.f, 500.f), buffer, &g_font, gs_color_white);
 	} 
 	id->end_drawing(cb);
 

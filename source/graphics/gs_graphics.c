@@ -113,6 +113,25 @@ gs_font_t __gs_construct_font_from_file(const char* file_path, f32 point_size)
 	return f;
 }
 
+gs_vec2 __gs_text_dimensions(gs_command_buffer_t* cb, const char* text, gs_font_t* ft)
+{
+	gs_vec2 pos = gs_v2(0.f, 0.f);
+	gs_vec2 dims = gs_v2(pos.x, pos.y);
+	while (text[0] != '\0')
+	{
+		char c = text[0];
+		if (c >= 32 && c < 128) 
+		{
+			stbtt_aligned_quad q = gs_default_val();
+			stbtt_GetBakedQuad((stbtt_bakedchar*)ft->glyphs, ft->texture.width, ft->texture.height, c - 32, &pos.x, &pos.y, &q, 1);
+			dims.x = pos.x;
+			dims.y = gs_max(dims.y, (q.y1 - q.y0));
+		}
+		text++;
+	}
+	return dims;
+}
+
 void gs_rgb_to_hsv(u8 r, u8 g, u8 b, f32* h, f32* s, f32* v)
 {
 	f32 fR = (f32)r / 255.f; 
@@ -673,8 +692,6 @@ void __gs_mat_mul_vqs(gs_command_buffer_t* cb, gs_vqs xform)
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	gfx->immediate.mat_mul(cb, gs_vqs_to_mat4(&xform));
 }
-
-
 
 
 
