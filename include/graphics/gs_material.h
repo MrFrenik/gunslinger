@@ -17,7 +17,7 @@ gs_hash_table_decl(u64, gs_uniform_t, gs_hash_u64, gs_hash_key_comp_std_type);
 
 typedef struct gs_uniform_block_t
 {
-	gs_byte_buffer data;
+	gs_byte_buffer_t data;
 	gs_hash_table(u64, u32) offset_lookup_table;
 	gs_hash_table(u64, gs_uniform_t) uniforms;
 	u32 count;

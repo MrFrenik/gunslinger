@@ -26,7 +26,7 @@ extern const char* __gs_default_quad_batch_frag_src();
 
 typedef struct gs_quad_batch_t
 {
-	gs_byte_buffer raw_vertex_data;
+	gs_byte_buffer_t raw_vertex_data;
 	gs_mesh_t mesh;
 	struct gs_material_t* material;			// Pointer to a material instance
 } gs_quad_batch_t;

@@ -69,7 +69,7 @@ void __gs_uniform_block_t_bind_uniforms(gs_command_buffer_t* cb, gs_uniform_bloc
 		gs_uniform_t uniform;
 		gs_byte_buffer_bulk_read(&u_block->data, &uniform, sizeof(gs_uniform_t));
 		// Grab data size
-		usize sz = gs_byte_buffer_read(&u_block->data, usize);
+		usize sz; gs_byte_buffer_read(&u_block->data, usize, &sz);
 		// Grab type
 		gs_uniform_type type = uniform.type;
 

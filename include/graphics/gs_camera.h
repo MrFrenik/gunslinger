@@ -41,6 +41,8 @@ gs_vec3 gs_camera_left(gs_camera_t* cam);
 gs_vec3 gs_camera_unproject(gs_camera_t* cam, gs_vec3 coords, s32 view_width, s32 view_height);
 void gs_camera_offset_orientation(gs_camera_t* cam, f32 yaw, f32 picth);
 
+// TODO: Implement world_to_screen and screen_to_world
+
 #ifdef __cplusplus
 }
 #endif 	// c++

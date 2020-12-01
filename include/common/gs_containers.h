@@ -717,7 +717,7 @@ gs_slot_array_find_next_available_index(gs_slot_array_base* sa)
 typedef struct gs_command_buffer_t
 {
 	u32 num_commands;
-	gs_byte_buffer commands;
+	gs_byte_buffer_t commands;
 } gs_command_buffer_t;
 
 _force_inline

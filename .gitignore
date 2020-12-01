@@ -45,3 +45,4 @@ examples/rewind/proc/win/compile_win_cl.bat
 examples/rewind/proc/osx/compile_osx_gcc.sh
 examples/rewind/proc/linux/compile_linux_gcc.sh
 examples/simple_texture/bin/.vs/SimpleTexture/v15/.suo
+*.sqlite-journal

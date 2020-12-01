@@ -958,20 +958,20 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 	gs_for_range_i(num_commands)
 	{
 		// Read in op code of command
-		gs_opengl_op_code op_code = (gs_opengl_op_code)gs_byte_buffer_read(&cb->commands, u32);
+		gs_byte_buffer_readc(&cb->commands, gs_opengl_op_code, op_code);
 
 		switch (op_code)
 		{
 			case gs_opengl_op_set_frame_buffer_attachment: 
 			{
-				u32 t_id = gs_byte_buffer_read(&cb->commands, u32);
-				u32 idx  = gs_byte_buffer_read(&cb->commands, u32);
+				gs_byte_buffer_readc(&cb->commands, u32, t_id);
+				gs_byte_buffer_readc(&cb->commands, u32, idx);
 				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + idx, GL_TEXTURE_2D, t_id, 0);
 			} break;
 
 			case gs_opengl_op_bind_frame_buffer: 
 			{
-				u32 fbo = gs_byte_buffer_read(&cb->commands, u32);
+				gs_byte_buffer_readc(&cb->commands, u32, fbo);
 				glBindFramebuffer(GL_FRAMEBUFFER, fbo);
 			} break;
 
@@ -983,9 +983,9 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 			case gs_opengl_op_draw:
 			{
 				// Read start
-				u32 start = gs_byte_buffer_read(&cb->commands, u32);
+				gs_byte_buffer_readc(&cb->commands, u32, start);
 				// Read count
-				u32 count = gs_byte_buffer_read(&cb->commands, u32);
+				gs_byte_buffer_readc(&cb->commands, u32, count);
 
 				// Draw (this assumes a vao is set, which is not correct)...for now, will assume
 				// glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -995,8 +995,8 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 			case gs_opengl_draw_indexed:
 			{
 				// Read count and offest
-				u32 count = gs_byte_buffer_read(&cb->commands, u32);
-				u32 offset = gs_byte_buffer_read(&cb->commands, u32);
+				gs_byte_buffer_readc(&cb->commands, u32, count);
+				gs_byte_buffer_readc(&cb->commands, u32, offset);
 
 				glDrawElements(GL_TRIANGLES, count, GL_UNSIGNED_INT, int_2_void_p(offset));
 			} break;
@@ -1004,7 +1004,7 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 			case gs_opengl_op_set_view_clear: 
 			{
 				// Read color from buffer (as vec4)
-				gs_vec4 col = gs_byte_buffer_read(&cb->commands, gs_vec4);
+				gs_byte_buffer_readc(&cb->commands, gs_vec4, col);
 				// Set clear color
 				glClearColor(col.x, col.y, col.z, col.w);
 				// Clear screen
@@ -1013,10 +1013,10 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 
 			case gs_opengl_op_set_view_scissor: 
 			{
-				u32 x = gs_byte_buffer_read(&cb->commands, u32);
-				u32 y = gs_byte_buffer_read(&cb->commands, u32);
-				u32 w = gs_byte_buffer_read(&cb->commands, u32);
-				u32 h = gs_byte_buffer_read(&cb->commands, u32);
+				gs_byte_buffer_readc(&cb->commands, u32, x);
+				gs_byte_buffer_readc(&cb->commands, u32, y);
+				gs_byte_buffer_readc(&cb->commands, u32, w);
+				gs_byte_buffer_readc(&cb->commands, u32, h);
 
 				if (x == 0 && y == 0 && w == 0 && h == 0)
 				{
@@ -1032,9 +1032,9 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 			case gs_opengl_op_set_view_port: 
 			{
 				// Read width from buffer
-				u32 width = gs_byte_buffer_read(&cb->commands, u32);
+				gs_byte_buffer_readc(&cb->commands, u32, width);
 				// Read height from buffer
-				u32 height = gs_byte_buffer_read(&cb->commands, u32);
+				gs_byte_buffer_readc(&cb->commands, u32, height);
 				// Set viewport
 				glViewport(0, 0, (s32)width, (s32)height);
 
@@ -1043,7 +1043,7 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 			case gs_opengl_op_set_depth_enabled: 
 			{
 				// Read color from buffer (as vec4)
-				b32 enabled = gs_byte_buffer_read(&cb->commands, b32);
+				b32 enabled; gs_byte_buffer_read(&cb->commands, b32, &enabled);
 				// Clear screen
 				if (enabled) {
 					glEnable(GL_DEPTH_TEST);
@@ -1054,13 +1054,13 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 
 			case gs_opengl_op_set_winding_order: 
 			{
-				gs_winding_order_type type = (gs_winding_order_type)gs_byte_buffer_read(&cb->commands, u32);
+				gs_winding_order_type type; gs_byte_buffer_read(&cb->commands, gs_winding_order_type, &type);
 				glFrontFace(__get_opengl_winding_order(type));
 			} break;			
 
 			case gs_opengl_op_set_face_culling: 
 			{
-				gs_face_culling_type type =	(gs_face_culling_type)gs_byte_buffer_read(&cb->commands, u32);
+				gs_face_culling_type type; gs_byte_buffer_read(&cb->commands, gs_face_culling_type, &type);
 
 				if (type == gs_face_culling_disabled) {
 
@@ -1075,16 +1075,16 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 			case gs_opengl_op_set_blend_equation:
 			{
 				// Read blend mode for blend equation
-				gs_blend_equation_type eq = gs_byte_buffer_read(&cb->commands, u32);
+				gs_blend_equation_type eq; gs_byte_buffer_read(&cb->commands, gs_blend_equation_type, &eq);
 				glBlendEquation(__get_opengl_blend_equation(eq));
 			} break;
 
 			case gs_opengl_op_set_blend_mode: 
 			{
 				// Read blend mode for source
-				gs_blend_mode_type src = (gs_blend_mode_type)gs_byte_buffer_read(&cb->commands, u32);
+				gs_blend_mode_type src; gs_byte_buffer_read(&cb->commands, gs_blend_mode_type, &src);
 				// Read blend mode for destination
-				gs_blend_mode_type dst = (gs_blend_mode_type)gs_byte_buffer_read(&cb->commands, u32);
+				gs_blend_mode_type dst; gs_byte_buffer_read(&cb->commands, gs_blend_mode_type, &dst);
 
 				// Enabling and disabling blend states
 				if (src == gs_blend_mode_disabled || dst == gs_blend_mode_disabled) {
@@ -1101,11 +1101,11 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 			case gs_opengl_op_bind_texture:
 			{
 				// Write out id
-				u32 tex_id = gs_byte_buffer_read(&cb->commands, u32);
+				u32 tex_id; gs_byte_buffer_read(&cb->commands, u32, &tex_id);
 				// Write tex unit location
-				u32 tex_unit = gs_byte_buffer_read(&cb->commands, u32);
+				u32 tex_unit; gs_byte_buffer_read(&cb->commands, u32, &tex_unit);
 				// Write out uniform location
-				u32 location = gs_byte_buffer_read(&cb->commands, u32);
+				u32 location; gs_byte_buffer_read(&cb->commands, u32, &location);
 
 				// Activate texture unit
 				glActiveTexture(GL_TEXTURE0 + tex_unit);
@@ -1118,7 +1118,7 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 			case gs_opengl_op_bind_vertex_buffer:
 			{
 				// Read out vao
-				u32 vao = gs_byte_buffer_read(&cb->commands, u32);
+				gs_byte_buffer_readc(&cb->commands, u32, vao);
 
 				// Bind vao
 				glBindVertexArray(vao);
@@ -1127,7 +1127,7 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 			case gs_opengl_op_bind_index_buffer:
 			{
 				// Read out vao
-				u32 ibo = gs_byte_buffer_read(&cb->commands, u32);
+				gs_byte_buffer_readc(&cb->commands, u32, ibo);
 
 				// Bind vao
 				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
@@ -1136,7 +1136,7 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 			case gs_opengl_op_bind_shader: 
 			{
 				// Read in shader id
-				u32 program_id = gs_byte_buffer_read(&cb->commands, u32);
+				gs_byte_buffer_readc(&cb->commands, u32, program_id);
 				// Bind program
 				glUseProgram(program_id);
 			} break;
@@ -1144,52 +1144,52 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 			case gs_opengl_op_bind_uniform:
 			{
 				// Read in uniform location
-				u32 location = gs_byte_buffer_read(&cb->commands, u32);
+				gs_byte_buffer_readc(&cb->commands, u32, location);
 				// Read in uniform type
-				gs_uniform_type type = (gs_uniform_type)gs_byte_buffer_read(&cb->commands, u32);
+				gs_byte_buffer_readc(&cb->commands, gs_uniform_type, type);
 
 				// Read and bind val
 				switch (type)
 				{
 					case gs_uniform_type_float:
 					{
-						f32 val = gs_byte_buffer_read(&cb->commands, f32);
+						f32 val; gs_byte_buffer_read(&cb->commands, f32, &val);
 						glUniform1f(location, val);
 					} break;
 
 					case gs_uniform_type_int: 
 					{
-						s32 val = gs_byte_buffer_read(&cb->commands, s32);
+						s32 val; gs_byte_buffer_read(&cb->commands, s32, &val);
 						glUniform1i(location, val);
 					} break;
 
 					case gs_uniform_type_vec2:
 					{
-						gs_vec2 val = gs_byte_buffer_read(&cb->commands, gs_vec2);
+						gs_vec2 val; gs_byte_buffer_read(&cb->commands, gs_vec2, &val);
 						glUniform2f(location, val.x, val.y);
 					} break;
 
 					case gs_uniform_type_vec3:
 					{
-						gs_vec3 val = gs_byte_buffer_read(&cb->commands, gs_vec3);
+						gs_vec3 val; gs_byte_buffer_read(&cb->commands, gs_vec3, &val);
 						glUniform3f(location, val.x, val.y, val.z);
 					} break;
 
 					case gs_uniform_type_vec4:
 					{
-						gs_vec4 val = gs_byte_buffer_read(&cb->commands, gs_vec4);
+						gs_vec4 val; gs_byte_buffer_read(&cb->commands, gs_vec4, &val);
 						glUniform4f(location, val.x, val.y, val.z, val.w);
 					} break;
 
 					case gs_uniform_type_mat4:
 					{
-						gs_mat4 val = gs_byte_buffer_read(&cb->commands, gs_mat4);
+						gs_mat4 val; gs_byte_buffer_read(&cb->commands, gs_mat4, &val);
 						glUniformMatrix4fv(location, 1, false, (f32*)(val.elements));
 					} break;
 
 					case gs_uniform_type_sampler2d:
 					{
-						u32 val = gs_byte_buffer_read(&cb->commands, u32);
+						u32 val; gs_byte_buffer_read(&cb->commands, u32, &val);
 						glUniform1i(location, val);
 					} break;
 
@@ -1205,8 +1205,8 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 			case gs_opengl_op_update_index_data:
 			{
 				// Write out vao/vbo
-				u32 ibo = gs_byte_buffer_read(&cb->commands, u32);
-				u32 data_size = gs_byte_buffer_read(&cb->commands, u32);
+				u32 ibo; gs_byte_buffer_read(&cb->commands, u32, &ibo);
+				u32 data_size; gs_byte_buffer_read(&cb->commands, u32, &data_size);
 
 				void* tmp_data = gs_malloc(data_size);
 				memset(tmp_data, 0, data_size);
@@ -1224,9 +1224,9 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 			case gs_opengl_op_update_vertex_data: 
 			{
 				// Read in vao
-				u32 vao = gs_byte_buffer_read(&cb->commands, u32);
-				u32 vbo = gs_byte_buffer_read(&cb->commands, u32);
-				u32 data_size = gs_byte_buffer_read(&cb->commands, u32);
+				gs_byte_buffer_readc(&cb->commands, u32, vao);
+				gs_byte_buffer_readc(&cb->commands, u32, vbo);
+				u32 data_size; gs_byte_buffer_read(&cb->commands, u32, &data_size);
 
 				// Read in data for vertices
 				void* tmp_data = gs_malloc(data_size);
@@ -1284,7 +1284,7 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 			{
 				// If current texture doesn't equal new texture, then submit vertex data
 				immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
-				u32 tex_id = gs_byte_buffer_read(&cb->commands, u32);
+				u32 tex_id; gs_byte_buffer_read(&cb->commands, u32, &tex_id);
 				if (data->tex_id != tex_id) {
 					opengl_immediate_submit_vertex_data();
 				}
@@ -1302,7 +1302,7 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 
 			case gs_opengl_op_immediate_begin:
 			{
-				gs_draw_mode mode = (gs_draw_mode)gs_byte_buffer_read(&cb->commands, u32);
+				gs_draw_mode mode; gs_byte_buffer_read(&cb->commands, gs_draw_mode, &mode);
 				gs_begin(mode);
 			} break;
 
@@ -1313,7 +1313,7 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 
 			case gs_opengl_op_immediate_push_matrix:
 			{
-				gs_matrix_mode mode = (gs_matrix_mode)gs_byte_buffer_read(&cb->commands, u32);
+				gs_matrix_mode mode; gs_byte_buffer_read(&cb->commands, gs_matrix_mode, &mode);
 
 				if (mode == gs_matrix_vp) {
 					opengl_immediate_submit_vertex_data();
@@ -1333,7 +1333,7 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 				// If we're applying this to the vp matrix, need to update the uniform
 				immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
 				if (!gs_dyn_array_empty(data->matrix_modes)) {
-					gs_mat4 m = gs_byte_buffer_read(&cb->commands, gs_mat4);
+					gs_mat4 m; gs_byte_buffer_read(&cb->commands, gs_mat4, &m);
 					switch (gs_dyn_array_back(data->matrix_modes)) {
 						case gs_matrix_vp:
 						{
@@ -1352,19 +1352,19 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 
 			case gs_opengl_op_immediate_vertex_3fv:
 			{
-				gs_vec3 v = gs_byte_buffer_read(&cb->commands, gs_vec3);
+				gs_vec3 v; gs_byte_buffer_read(&cb->commands, gs_vec3, &v);
 				gs_vert3fv(v);
 			} break;
 
 			case gs_opengl_op_immediate_texcoord_2fv:
 			{
-				gs_vec2 v = gs_byte_buffer_read(&cb->commands, gs_vec2);
+				gs_vec2 v; gs_byte_buffer_read(&cb->commands, gs_vec2, &v);
 				gs_texcoord2fv(v);
 			} break;
 
 			case gs_opengl_op_immediate_color_ubv:
 			{
-				gs_color_t v = gs_byte_buffer_read(&cb->commands, gs_color_t);
+				gs_color_t v; gs_byte_buffer_read(&cb->commands, gs_color_t, &v);
 				gs_color4ubv(v);
 			} break;
 

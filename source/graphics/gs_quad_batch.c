@@ -117,7 +117,7 @@ void __gs_quad_batch_default_add(gs_quad_batch_t* qb, void* quad_info_data)
 void __gs_quad_batch_default_end(gs_quad_batch_t* batch)
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
-	gfx->update_vertex_buffer_data(batch->mesh.vbo, batch->raw_vertex_data.buffer, batch->raw_vertex_data.size);
+	gfx->update_vertex_buffer_data(batch->mesh.vbo, batch->raw_vertex_data.data, batch->raw_vertex_data.size);
 }
 
 void __gs_quad_batch_default_free(gs_quad_batch_t* batch)
