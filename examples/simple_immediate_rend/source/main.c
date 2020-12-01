@@ -121,19 +121,7 @@ gs_result app_update()
 				gs_quat_angle_axis(_t * 0.0001f, gs_x_axis),
 				gs_quat_angle_axis(_t * 0.0005f, gs_z_axis)
 			);
-			id->draw_box_ext(cb, xform, gs_color_alpha(gs_color_white, 50));
-
-			// Draw cube with push matrix for rotation
-			id->push_matrix(cb, gs_matrix_model);
-				gs_mat4 rot = gs_quat_to_mat4(gs_quat_mul(xform.rotation, gs_quat_angle_axis(_t * 0.0001f, gs_z_axis)));
-				id->mat_mul(cb, rot);
-				id->draw_box(cb, gs_v3(5.f, 5.f, -20.f), gs_v3(2.f, 2.f, 2.f), gs_color_white);
-			id->pop_matrix(cb);
-
-			id->begin(cb, gs_lines);
-			{
-			}
-			id->end(cb);
+			id->draw_box_vqs(cb, xform, gs_color_alpha(gs_color_white, 50));
 
 			/*==========
 			// Sphere
@@ -145,6 +133,36 @@ gs_result app_update()
 				2.f, 
 				gs_color_alpha(gs_color_orange, 255)
 			);
+
+			/*==========
+			// 3D Lines
+			==========*/
+			gs_for_range_i(20)
+			{
+				f32 s = (sin(_t * 0.001f) * 0.5f + 0.5f) * 0.5f * i;
+				xform.scale = gs_v3_s(10.f + s);
+				id->draw_box_lines_vqs(cb, xform, gs_color_white);
+			}
+
+			// Draw 3d lines to represent the forward, up, right local axis of box
+			id->push_matrix(cb, gs_matrix_model);
+
+				xform.scale = gs_v3_s(5.f);
+				id->mat_mul_vqs(cb, xform);
+
+				// Z axis
+				id->draw_line_3d(cb, gs_v3_s(0.f), gs_z_axis, gs_color_blue);
+				id->draw_line_3d(cb, gs_v3_s(0.f), gs_vec3_scale(gs_z_axis, -1.f), gs_color_blue);
+
+				// X axis
+				id->draw_line_3d(cb, gs_v3_s(0.f), gs_x_axis, gs_color_red);
+				id->draw_line_3d(cb, gs_v3_s(0.f), gs_vec3_scale(gs_x_axis, -1.f), gs_color_red);
+
+				// Y axis
+				id->draw_line_3d(cb, gs_v3_s(0.f), gs_y_axis, gs_color_green);
+				id->draw_line_3d(cb, gs_v3_s(0.f), gs_vec3_scale(gs_y_axis, -1.f), gs_color_green);
+			id->pop_matrix(cb);
+
 		}
 		id->pop_camera(cb);
 
@@ -153,33 +171,35 @@ gs_result app_update()
 		gfx->set_face_culling(cb, gs_face_culling_disabled);
 
 		/*===========
-		// Triangles
-		===========*/
-		// Transformed triangle
-		id->push_matrix(cb, gs_matrix_model);
-			id->mat_transf(cb, 200.f, 200.f, 0.f);
-			id->mat_rotateq(cb, gs_quat_angle_axis(_t * 0.001f, gs_z_axis));
-			id->mat_scalef(cb, 200.f, 200.f, 1.f);
-			id->draw_triangle(cb, gs_v2(0.f, 0.f), gs_v2(1.f, 1.f), gs_v2(0.f, 1.f), gs_color_blue);
-		id->pop_matrix(cb);
-
-		/*===========
 		// Rects
 		===========*/
 		id->draw_rect(cb, gs_v2(500.f, 500.f), gs_v2(600.f, 550.f), gs_color(0.f, 1.f, 0.f, 1.f));
 		id->draw_rect_textured(cb, gs_v2(600.f, 400.f), gs_v2(750.f, 550.f), g_texture.id, gs_color_green);
 
-		/*==========
-		// Lines
-		==========*/
+		/*=====================
+		// 2D Lines (Thickness)
+		======================*/
 		gs_vec2 mp = platform->mouse_position();
-		id->draw_line(cb, gs_v2(mp.x, 0.f), gs_v2(mp.x, ws.y), 1.f, gs_color_red);
-		id->draw_line(cb, gs_v2(0.f, mp.y), gs_v2(ws.x, mp.y), 1.f, gs_color_red);
+		id->draw_line_ext(cb, gs_v2(mp.x, 0.f), gs_v2(mp.x, ws.y), 3.f, gs_color_red);
+		id->draw_line_ext(cb, gs_v2(0.f, mp.y), gs_v2(ws.x, mp.y), 3.f, gs_color_red);
+
+		/*===========
+		// Triangles
+		===========*/
+		// Transformed triangle
+		id->push_matrix(cb, gs_matrix_model);
+			id->mat_transf(cb, mp.x, mp.y, 0.f);
+			id->mat_rotateq(cb, gs_quat_angle_axis(_t * 0.001f, gs_z_axis));
+			id->mat_scalef(cb, 80.f, 80.f, 1.f);
+			f32 a0 = gs_deg_to_rad(30.f);
+			f32 a1 = gs_deg_to_rad(60.f);
+			id->draw_triangle(cb, gs_v2(0.f, 0.f), gs_v2(cos(a0), sin(a0)), gs_v2(cos(a1), sin(a1)), gs_color_blue);
+		id->pop_matrix(cb);
 
 		/*==========
 		// Text
 		==========*/
-		s8 buffer[256];
+		char buffer[256];
 		memset(buffer, 0, 256);
 		gs_snprintf(buffer, 256, "Frame: %.2f ms", platform->time.frame);
 		gs_vec2 td = gfx->text_dimensions(cb, buffer, &g_font);

@@ -17,6 +17,10 @@ extern "C" {
 #define gs_v3(...)	gs_vec3_ctor(__VA_ARGS__)
 #define gs_v4(...)	gs_vec4_ctor(__VA_ARGS__)
 
+#define gs_v2_s(s)  gs_vec2_ctor((s), (s))
+#define gs_v3_s(s)  gs_vec3_ctor((s), (s), (s))
+#define gs_v4_s(s)  gs_vec4_ctor((s), (s), (s), (s))
+
 #define gs_x_axis 	gs_v3(1.f, 0.f, 0.f)
 #define gs_y_axis 	gs_v3(0.f, 1.f, 0.f)
 #define gs_z_axis 	gs_v3(0.f, 0.f, 1.f)

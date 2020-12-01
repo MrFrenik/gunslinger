@@ -117,11 +117,8 @@ typedef struct immediate_drawing_internal_data_t
 	u32 tex_id;										// Id of currently bound texture unit (-1 if not enabled)
 	gs_color_t color;
 	gs_vec2 texcoord;
+	gs_draw_mode draw_mode;
 	gs_dyn_array(immediate_vertex_data_t) vertex_data;
-
-	// Push matrix, for now, will just set
-	gs_mat4 vp_matrix;
-	gs_mat4 model_matrix;
 
 	// Stacks
 	gs_dyn_array(gs_mat4) vp_matrix_stack;
@@ -180,6 +177,7 @@ _global const char* immediate_shader_f_src = "\n"
 void __reset_command_buffer_internal(command_buffer_t* cb);
 immediate_drawing_internal_data_t construct_immediate_drawing_internal_data_t();
 gs_texture_t opengl_construct_texture(gs_texture_parameter_desc desc);
+void opengl_immediate_submit_vertex_data();
 
 /*============================================================
 // Graphics Initilization / De-Initialization
@@ -271,9 +269,7 @@ immediate_drawing_internal_data_t construct_immediate_drawing_internal_data_t()
 	data.vp_matrix_stack = gs_dyn_array_new(gs_mat4);
 	data.viewport_stack = gs_dyn_array_new(gs_vec2);
 	data.matrix_modes = gs_dyn_array_new(gs_matrix_mode);
-
-	data.model_matrix = gs_mat4_identity();
-	data.vp_matrix = __gs_default_view_proj_mat();
+	data.draw_mode = gs_triangles;
 
 	return data;
 }
@@ -816,6 +812,10 @@ void gs_begin(gs_draw_mode mode)
 {
 	// Need to pop current state and restore preivous state
 	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
+	if (data->draw_mode != mode) {
+		opengl_immediate_submit_vertex_data();
+	}
+	data->draw_mode = mode;
 	data->color = gs_color_white;
 	data->texcoord = gs_v2(0.f, 0.f);
 }
@@ -912,11 +912,19 @@ void opengl_immediate_submit_vertex_data()
 	u32 count = gs_dyn_array_size(data->vertex_data);
 	usize sz = count * sizeof(immediate_vertex_data_t);
 
+	u32 mode;
+	switch (data->draw_mode) {
+		case gs_lines: mode = GL_LINES; break;
+		case gs_quads: mode = GL_QUADS; break;
+		case gs_triangles: mode = GL_TRIANGLES; break;
+		default: mode = GL_TRIANGLES;
+	}
+
 	// Final submit
 	glBindVertexArray(vao);	
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glBufferData(GL_ARRAY_BUFFER, sz, data->vertex_data, GL_STATIC_DRAW);
-	glDrawArrays(GL_TRIANGLES, 0, count);
+	glDrawArrays(mode, 0, count);
 
 	// Unbind buffer and array
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -1262,6 +1270,7 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 				gs_dyn_array_push(data->vp_matrix_stack, ortho);
 
 				data->tex_id = data->default_texture.id;
+				data->draw_mode = gs_triangles;
 			} break;
 
 			case gs_opengl_op_immediate_end_drawing:
@@ -2185,11 +2194,14 @@ struct gs_graphics_i* __gs_graphics_construct()
 	gfx->immediate.mat_mul_vqs 			= &__gs_mat_mul_vqs;
 
 	gfx->immediate.draw_line 			= &__gs_draw_line_2d;
+	gfx->immediate.draw_line_ext 		= &__gs_draw_line_2d_ext;
+	gfx->immediate.draw_line_3d 		= &__gs_draw_line_3d;
 	gfx->immediate.draw_triangle 		= &__gs_draw_triangle_2d;
 	gfx->immediate.draw_triangle_ext 	= &__gs_draw_triangle_3d_ext;
 	gfx->immediate.draw_rect 			= &__gs_draw_rect_2d;
 	gfx->immediate.draw_box 			= &__gs_draw_box;
-	gfx->immediate.draw_box_ext 		= &__gs_draw_box_ext;
+	gfx->immediate.draw_box_vqs 		= &__gs_draw_box_vqs;
+	gfx->immediate.draw_box_lines_vqs 	= &__gs_draw_box_lines_vqs;
 	gfx->immediate.draw_sphere 			= &__gs_draw_sphere;
 	gfx->immediate.draw_rect_textured 	= &__gs_draw_rect_2d_textured;
 	gfx->immediate.draw_text 			= &__gs_draw_text;

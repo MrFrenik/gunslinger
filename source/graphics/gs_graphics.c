@@ -120,7 +120,7 @@ gs_vec2 __gs_text_dimensions(gs_command_buffer_t* cb, const char* text, gs_font_
 	while (text[0] != '\0')
 	{
 		char c = text[0];
-		if (c >= 32 && c < 128) 
+		if (c >= 32 && c <= 127) 
 		{
 			stbtt_aligned_quad q = gs_default_val();
 			stbtt_GetBakedQuad((stbtt_bakedchar*)ft->glyphs, ft->texture.width, ft->texture.height, c - 32, &pos.x, &pos.y, &q, 1);
@@ -229,7 +229,7 @@ void gs_hsv_to_rgb(f32 h, f32 s, f32 v, u8* r, u8* g, u8* b)
 
 // Line as a quad (not sure about this, actually)
 // Might want to use GL_LINES instead
-void __gs_draw_line_3d(gs_command_buffer_t* cb, gs_vec3 start, gs_vec3 end, gs_vec3 normal, f32 thickness, gs_color_t color)
+void __gs_draw_line_3d_ext(gs_command_buffer_t* cb, gs_vec3 start, gs_vec3 end, gs_vec3 normal, f32 thickness, gs_color_t color)
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 
@@ -255,9 +255,28 @@ void __gs_draw_line_3d(gs_command_buffer_t* cb, gs_vec3 start, gs_vec3 end, gs_v
 	gfx->immediate.end(cb);
 }
 
-void __gs_draw_line_2d(gs_command_buffer_t* cb, gs_vec2 s, gs_vec2 e, f32 thickness, gs_color_t color)
+// Thickness line
+void __gs_draw_line_2d_ext(gs_command_buffer_t* cb, gs_vec2 s, gs_vec2 e, f32 thickness, gs_color_t color)
 {
-	__gs_draw_line_3d(cb, gs_v3(s.x, s.y, 0.f), gs_v3(e.x, e.y, 0.f), gs_v3(0.f, 0.f, -1.f), thickness, color);
+	__gs_draw_line_3d_ext(cb, gs_v3(s.x, s.y, 0.f), gs_v3(e.x, e.y, 0.f), gs_v3(0.f, 0.f, -1.f), thickness, color);
+}
+
+void __gs_draw_line_3d(gs_command_buffer_t* cb, gs_vec3 s, gs_vec3 e, gs_color_t color)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gfx->immediate.begin(cb, gs_lines);
+	{
+		gfx->immediate.color_ubv(cb, color);
+		gfx->immediate.disable_texture_2d(cb);
+		gfx->immediate.vertex_3fv(cb, s);
+		gfx->immediate.vertex_3fv(cb, e);
+	}
+	gfx->immediate.end(cb);
+}
+
+void __gs_draw_line_2d(gs_command_buffer_t* cb, gs_vec2 s, gs_vec2 e, gs_color_t color)
+{
+	__gs_draw_line_3d(cb, gs_v3(s.x, s.y, 0.f), gs_v3(e.x, e.y, 0.f), color);
 }
 
 void __gs_draw_triangle_3d(gs_command_buffer_t* cb, gs_vec3 a, gs_vec3 b, gs_vec3 c, gs_color_t color)
@@ -433,7 +452,81 @@ void __gs_draw_box(gs_command_buffer_t* cb, gs_vec3 origin, gs_vec3 half_extents
 	gfx->immediate.end(cb);
 }
 
-void __gs_draw_box_ext(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t color)
+void __gs_draw_box_lines_vqs(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t color)
+{
+	// Draw individual 3d lines using vqs
+	f32 width = 0.5f;
+	f32 height = 0.5f;
+	f32 length = 0.5f;
+	f32 x = 0.f;
+	f32 y = 0.f;
+	f32 z = 0.f;
+
+	// Preapply matrix transformations to all verts
+	gs_mat4 mat = gs_vqs_to_mat4(&xform);
+
+	gs_vec3 v0 = gs_v3(x - width/2, y - height/2, z + length/2);
+	gs_vec3 v1 = gs_v3(x + width/2, y - height/2, z + length/2);
+	gs_vec3 v2 = gs_v3(x - width/2, y + height/2, z + length/2);
+	gs_vec3 v3 = gs_v3(x + width/2, y + height/2, z + length/2);
+	gs_vec3 v4 = gs_v3(x - width/2, y - height/2, z - length/2);
+	gs_vec3 v5 = gs_v3(x - width/2, y + height/2, z - length/2);
+	gs_vec3 v6 = gs_v3(x + width/2, y - height/2, z - length/2);
+	gs_vec3 v7 = gs_v3(x + width/2, y + height/2, z - length/2);
+
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gfx->immediate.begin(cb, gs_lines);
+	{
+		gfx->immediate.push_matrix(cb, gs_matrix_model);
+		{
+    		gfx->immediate.mat_mul(cb, mat);
+			gfx->immediate.color_ubv(cb, color);
+    		gfx->immediate.disable_texture_2d(cb);
+
+    		// Draw 3d rect in various orientations (for ease of use)
+
+    		// Front face
+    		gfx->immediate.draw_line_3d(cb, v0, v1, color);
+    		gfx->immediate.draw_line_3d(cb, v1, v3, color);
+    		gfx->immediate.draw_line_3d(cb, v3, v2, color);
+    		gfx->immediate.draw_line_3d(cb, v2, v0, color);
+
+    		// Back face
+    		gfx->immediate.draw_line_3d(cb, v4, v6, color);
+    		gfx->immediate.draw_line_3d(cb, v6, v7, color);
+    		gfx->immediate.draw_line_3d(cb, v7, v5, color);
+    		gfx->immediate.draw_line_3d(cb, v5, v4, color);
+
+    		// Right face
+    		gfx->immediate.draw_line_3d(cb, v1, v6, color);
+    		gfx->immediate.draw_line_3d(cb, v6, v7, color);
+    		gfx->immediate.draw_line_3d(cb, v7, v3, color);
+    		gfx->immediate.draw_line_3d(cb, v3, v1, color);
+
+    		// Left face
+    		gfx->immediate.draw_line_3d(cb, v4, v6, color);
+    		gfx->immediate.draw_line_3d(cb, v6, v1, color);
+    		gfx->immediate.draw_line_3d(cb, v1, v0, color);
+    		gfx->immediate.draw_line_3d(cb, v0, v4, color);
+
+    		// Bottom face
+    		gfx->immediate.draw_line_3d(cb, v5, v7, color);
+    		gfx->immediate.draw_line_3d(cb, v7, v3, color);
+    		gfx->immediate.draw_line_3d(cb, v3, v2, color);
+    		gfx->immediate.draw_line_3d(cb, v2, v5, color);
+
+    		// Top face
+    		gfx->immediate.draw_line_3d(cb, v0, v4, color);
+    		gfx->immediate.draw_line_3d(cb, v4, v5, color);
+    		gfx->immediate.draw_line_3d(cb, v5, v2, color);
+    		gfx->immediate.draw_line_3d(cb, v2, v0, color);
+    	}
+    	gfx->immediate.pop_matrix(cb);
+    }
+    gfx->immediate.end(cb);
+}
+
+void __gs_draw_box_vqs(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t color)
 {
 	f32 width = 0.5f;
 	f32 height = 0.5f;
@@ -590,7 +683,7 @@ void __gs_draw_text(gs_command_buffer_t* cb, gs_vec2 pos, const char* text, gs_f
 		while (text[0] != '\0')
 		{
 			char c = text[0];
-			if (c >= 32 && c < 128) 
+			if (c >= 32 && c <= 127) 
 			{
 				stbtt_aligned_quad q = gs_default_val();
 				stbtt_GetBakedQuad((stbtt_bakedchar*)ft->glyphs, ft->texture.width, ft->texture.height, c - 32, &pos.x, &pos.y, &q, 1);
