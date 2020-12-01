@@ -295,6 +295,7 @@ typedef struct gs_graphics_immediate_draw_i
 	// Circle
 	// void (* draw_circle)(gs_command_buffer_t* cb, gs_vec3 position, f32 radius, gs_color_t color, b32 filled);
 	// void (* draw_cirlce_ext)(gs_command_buffer_t* cb, gs_vec3 position, f32 radius, gs_vqs xform, gs_color_t color, b32 filled);
+	void (* draw_circle_sector)(gs_command_buffer_t* cb, gs_vec2 center, f32 radius, s32 start_angle, s32 end_angle, s32 segments, gs_color_t color);
 
 	// Triangle
 	void (* draw_triangle)(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_vec2 c, gs_color_t color);
@@ -473,6 +474,7 @@ void __gs_draw_line_2d(gs_command_buffer_t* cb, gs_vec2 s, gs_vec2 e, gs_color_t
 void __gs_draw_triangle_3d(gs_command_buffer_t* cb, gs_vec3 a, gs_vec3 b, gs_vec3 c, gs_color_t color);
 void __gs_draw_triangle_3d_ext(gs_command_buffer_t* cb, gs_vec3 a, gs_vec3 b, gs_vec3 c, gs_mat4 m, gs_color_t color);
 void __gs_draw_triangle_2d(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_vec2 c, gs_color_t color);
+void __gs_draw_circle_sector(gs_command_buffer_t* cb, gs_vec2 center, f32 radius, s32 start_angle, s32 end_angle, s32 segments, gs_color_t color);
 void __gs_draw_rect_2d(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_color_t color);
 void __gs_draw_rect_2d_textured(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, u32 texture_id, gs_color_t color);
 void __gs_draw_box(gs_command_buffer_t* cb, gs_vec3 origin, gs_vec3 half_extents, gs_color_t color);

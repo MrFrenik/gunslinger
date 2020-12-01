@@ -172,6 +172,15 @@ gs_result app_update()
 				gs_color_alpha(gs_color_white, 255)
 			);
 
+			/*===========
+			// Circle
+			===========*/
+			id->push_matrix(cb, gs_matrix_model); {
+				gfx->set_face_culling(cb, gs_face_culling_disabled);
+				id->mat_mul_vqs(cb, xform);
+				id->draw_circle_sector(cb, gs_v2(0.f, 0.f), 1.f, 0.f, 360.f, 32, gs_color_green);
+			}
+			id->pop_matrix(cb);
 		}
 		id->pop_camera(cb);
 

@@ -11,6 +11,14 @@
 #include <stb/stb_image_write.h>
 #include <stb/stb_image.h>
 
+// Error rate to calculate how many segments we need to draw a smooth circle,
+// taken from https://stackoverflow.com/a/2244088
+#ifndef smooth_circle_error_rate
+    #define smooth_circle_error_rate  0.5f
+#endif
+
+const f32 deg2rad = gs_pi / 180.f;
+
 gs_texture_parameter_desc gs_texture_parameter_desc_default()
 {
 	gs_texture_parameter_desc desc = {0};
@@ -634,15 +642,16 @@ void __gs_draw_box_lines_vqs(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t c
     gfx->immediate.end(cb);
 }
 
+/*=========
+// Sphere
+=========*/
+
 void __gs_draw_sphere(gs_command_buffer_t* cb, gs_vec3 center, f32 radius, gs_color_t color)
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 
     s32 rings  = 16;
     s32 slices = 16;
-
-    // Deg to rad
-    const f32 deg2rad = gs_pi / 180.f;
 
     gfx->immediate.begin(cb, gs_triangles);
     {
@@ -700,45 +709,42 @@ void __gs_draw_sphere_lines_vqs(gs_command_buffer_t* cb, gs_vqs xform, gs_color_
 	const s32 slices = 16;
     s32 numVertex = (rings + 2) * slices * 6;
 
-    // Deg to rad
-    const f32 deg2rad = gs_pi / 180.f;
+	gfx->immediate.begin(cb, gs_lines);
+	{
+		gfx->immediate.color_ubv(cb, color);
+	    gfx->immediate.push_matrix(cb, gs_matrix_model);
+	    {
+	    	gfx->immediate.mat_mul_vqs(cb, xform);
+            gs_for_range_i(rings + 2)
+            {
+            	gs_for_range_j(slices)
+                {
+                    gfx->immediate.vertex_3f(cb, cosf(deg2rad*(270+(180/(rings + 1))*i))*sinf(deg2rad*(j*360/slices)),
+                               sinf(deg2rad*(270+(180/(rings + 1))*i)),
+                               cosf(deg2rad*(270+(180/(rings + 1))*i))*cosf(deg2rad*(j*360/slices)));
+                    gfx->immediate.vertex_3f(cb, cosf(deg2rad*(270+(180/(rings + 1))*(i+1)))*sinf(deg2rad*((j+1)*360/slices)),
+                               sinf(deg2rad*(270+(180/(rings + 1))*(i+1))),
+                               cosf(deg2rad*(270+(180/(rings + 1))*(i+1)))*cosf(deg2rad*((j+1)*360/slices)));
 
-    	gfx->immediate.begin(cb, gs_lines);
-    	{
-			gfx->immediate.color_ubv(cb, color);
-		    gfx->immediate.push_matrix(cb, gs_matrix_model);
-		    {
-		    	gfx->immediate.mat_mul_vqs(cb, xform);
-	            gs_for_range_i(rings + 2)
-	            {
-	            	gs_for_range_j(slices)
-	                {
-	                    gfx->immediate.vertex_3f(cb, cosf(deg2rad*(270+(180/(rings + 1))*i))*sinf(deg2rad*(j*360/slices)),
-	                               sinf(deg2rad*(270+(180/(rings + 1))*i)),
-	                               cosf(deg2rad*(270+(180/(rings + 1))*i))*cosf(deg2rad*(j*360/slices)));
-	                    gfx->immediate.vertex_3f(cb, cosf(deg2rad*(270+(180/(rings + 1))*(i+1)))*sinf(deg2rad*((j+1)*360/slices)),
-	                               sinf(deg2rad*(270+(180/(rings + 1))*(i+1))),
-	                               cosf(deg2rad*(270+(180/(rings + 1))*(i+1)))*cosf(deg2rad*((j+1)*360/slices)));
+                    gfx->immediate.vertex_3f(cb, cosf(deg2rad*(270+(180/(rings + 1))*(i+1)))*sinf(deg2rad*((j+1)*360/slices)),
+                               sinf(deg2rad*(270+(180/(rings + 1))*(i+1))),
+                               cosf(deg2rad*(270+(180/(rings + 1))*(i+1)))*cosf(deg2rad*((j+1)*360/slices)));
+                    gfx->immediate.vertex_3f(cb, cosf(deg2rad*(270+(180/(rings + 1))*(i+1)))*sinf(deg2rad*(j*360/slices)),
+                               sinf(deg2rad*(270+(180/(rings + 1))*(i+1))),
+                               cosf(deg2rad*(270+(180/(rings + 1))*(i+1)))*cosf(deg2rad*(j*360/slices)));
 
-	                    gfx->immediate.vertex_3f(cb, cosf(deg2rad*(270+(180/(rings + 1))*(i+1)))*sinf(deg2rad*((j+1)*360/slices)),
-	                               sinf(deg2rad*(270+(180/(rings + 1))*(i+1))),
-	                               cosf(deg2rad*(270+(180/(rings + 1))*(i+1)))*cosf(deg2rad*((j+1)*360/slices)));
-	                    gfx->immediate.vertex_3f(cb, cosf(deg2rad*(270+(180/(rings + 1))*(i+1)))*sinf(deg2rad*(j*360/slices)),
-	                               sinf(deg2rad*(270+(180/(rings + 1))*(i+1))),
-	                               cosf(deg2rad*(270+(180/(rings + 1))*(i+1)))*cosf(deg2rad*(j*360/slices)));
-
-	                    gfx->immediate.vertex_3f(cb, cosf(deg2rad*(270+(180/(rings + 1))*(i+1)))*sinf(deg2rad*(j*360/slices)),
-	                               sinf(deg2rad*(270+(180/(rings + 1))*(i+1))),
-	                               cosf(deg2rad*(270+(180/(rings + 1))*(i+1)))*cosf(deg2rad*(j*360/slices)));
-	                    gfx->immediate.vertex_3f(cb, cosf(deg2rad*(270+(180/(rings + 1))*i))*sinf(deg2rad*(j*360/slices)),
-	                               sinf(deg2rad*(270+(180/(rings + 1))*i)),
-	                               cosf(deg2rad*(270+(180/(rings + 1))*i))*cosf(deg2rad*(j*360/slices)));
-	                }
-	            }
-		    }
-		    gfx->immediate.pop_matrix(cb);
-    	}
-        gfx->immediate.end(cb);
+                    gfx->immediate.vertex_3f(cb, cosf(deg2rad*(270+(180/(rings + 1))*(i+1)))*sinf(deg2rad*(j*360/slices)),
+                               sinf(deg2rad*(270+(180/(rings + 1))*(i+1))),
+                               cosf(deg2rad*(270+(180/(rings + 1))*(i+1)))*cosf(deg2rad*(j*360/slices)));
+                    gfx->immediate.vertex_3f(cb, cosf(deg2rad*(270+(180/(rings + 1))*i))*sinf(deg2rad*(j*360/slices)),
+                               sinf(deg2rad*(270+(180/(rings + 1))*i)),
+                               cosf(deg2rad*(270+(180/(rings + 1))*i))*cosf(deg2rad*(j*360/slices)));
+                }
+            }
+	    }
+	    gfx->immediate.pop_matrix(cb);
+	}
+    gfx->immediate.end(cb);
 }
 
 // Draw sphere wires
@@ -750,6 +756,63 @@ void __gs_draw_sphere_lines(gs_command_buffer_t* cb, gs_vec3 center, f32 radius,
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	gfx->immediate.draw_sphere_lines_vqs(cb, xform, color);
 }
+
+/*=========
+// Circle
+=========*/
+
+void __gs_draw_circle_sector_impl(gs_command_buffer_t* cb, gs_vec2 center, f32 radius, s32 start_angle, s32 end_angle, s32 segments, gs_color_t color)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+
+    if (radius <= 0.0f) {
+    	radius = 0.1f;
+    }
+
+    // Function expects (end_angle > start_angle)
+    if (end_angle < start_angle) {
+        // Swap values
+        s32 tmp = start_angle;
+        start_angle = end_angle;
+        end_angle = tmp;
+    }
+
+    if (segments < 4) {
+        // Calculate the maximum angle between segments based on the error rate (usually 0.5f)
+        f32 th = acosf(2*powf(1 - smooth_circle_error_rate/radius, 2) - 1);
+        segments = (s32)((end_angle - start_angle)*ceilf(2*gs_pi/th)/360);
+        if (segments <= 0) {
+        	segments = 4;
+        }
+    }
+
+    f32 step = (f32)(end_angle - start_angle)/(f32)segments;
+    f32 angle = (f32)start_angle;
+
+    gfx->immediate.begin(cb, gs_triangles);
+    {
+	    gfx->immediate.color_ubv(cb, color);
+		gs_for_range_i(segments)
+	    {
+	        gfx->immediate.vertex_2f(cb, center.x, center.y);
+	        gfx->immediate.vertex_2f(cb, center.x + sinf(deg2rad*angle)*radius, center.y + cosf(deg2rad*angle)*radius);
+	        gfx->immediate.vertex_2f(cb, center.x + sinf(deg2rad*(angle + step))*radius, center.y + cosf(deg2rad*(angle + step))*radius);
+	        angle += step;
+	    }
+    }
+    gfx->immediate.end(cb);
+}
+
+void __gs_draw_circle_sector(gs_command_buffer_t* cb, gs_vec2 center, f32 radius, s32 start_angle, s32 end_angle, s32 segments, gs_color_t color)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gfx->immediate.disable_texture_2d(cb);
+	__gs_draw_circle_sector_impl(cb, center, radius, start_angle, end_angle, segments, color);
+}
+
+/*=========
+// Text
+=========*/
 
 void __gs_draw_text(gs_command_buffer_t* cb, gs_vec2 pos, const char* text, gs_font_t* ft, gs_color_t color)
 {
@@ -799,6 +862,10 @@ void __gs_draw_text(gs_command_buffer_t* cb, gs_vec2 pos, const char* text, gs_f
 	}
 	gfx->immediate.end(cb);
 }
+
+/*============
+// Matrix Ops
+============*/
 
 void __gs_push_camera(gs_command_buffer_t* cb, gs_camera_t camera)
 {

@@ -2208,6 +2208,7 @@ struct gs_graphics_i* __gs_graphics_construct()
 	gfx->immediate.draw_sphere_lines_vqs = &__gs_draw_sphere_lines_vqs;
 	gfx->immediate.draw_rect_textured 	= &__gs_draw_rect_2d_textured;
 	gfx->immediate.draw_text 			= &__gs_draw_text;
+	gfx->immediate.draw_circle_sector 	= &__gs_draw_circle_sector;
 
 	gfx->immediate.color_ub 			= &opengl_immediate_color_ub;
 	gfx->immediate.color_ubv 			= &opengl_immediate_color_ubv;
