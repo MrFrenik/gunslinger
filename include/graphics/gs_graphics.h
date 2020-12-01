@@ -308,10 +308,13 @@ typedef struct gs_graphics_immediate_draw_i
 	// Cube
 	void (* draw_box)(gs_command_buffer_t* cb, gs_vec3 origin, gs_vec3 half_extents, gs_color_t color);
 	void (* draw_box_vqs)(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t color);
+	void (* draw_box_textured_vqs)(gs_command_buffer_t* cb, gs_vqs xform, u32 tex_id, gs_color_t color);
 	void (* draw_box_lines_vqs)(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t color);
 
 	// Sphere	
 	void (* draw_sphere)(gs_command_buffer_t* cb, gs_vec3 center, f32 radius, gs_color_t color);
+	void (* draw_sphere_lines)(gs_command_buffer_t* cb, gs_vec3 center, f32 radius, gs_color_t color);
+	void (* draw_sphere_lines_vqs)(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t color);
 
 	// Path
 	// void (* draw_path)(gs_command_buffer_t* cb, gs_vec3* points);
@@ -474,8 +477,11 @@ void __gs_draw_rect_2d(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_color_t
 void __gs_draw_rect_2d_textured(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, u32 texture_id, gs_color_t color);
 void __gs_draw_box(gs_command_buffer_t* cb, gs_vec3 origin, gs_vec3 half_extents, gs_color_t color);
 void __gs_draw_box_vqs(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t color);
+void __gs_draw_box_textured_vqs(gs_command_buffer_t* cb, gs_vqs xform, u32 tex_id, gs_color_t color);
 void __gs_draw_box_lines_vqs(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t color);
 void __gs_draw_sphere(gs_command_buffer_t* cb, gs_vec3 center, f32 radius, gs_color_t color);
+void __gs_draw_sphere_lines(gs_command_buffer_t* cb, gs_vec3 center, f32 radius, gs_color_t color);
+void __gs_draw_sphere_lines_vqs(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t color);
 void __gs_draw_text(gs_command_buffer_t* cb, gs_vec2 pos, const char* text, gs_font_t* ft, gs_color_t color);
 void __gs_push_camera(gs_command_buffer_t* cb, gs_camera_t camera);
 void __gs_pop_camera(gs_command_buffer_t* cb);

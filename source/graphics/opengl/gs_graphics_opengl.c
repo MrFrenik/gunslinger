@@ -2201,8 +2201,11 @@ struct gs_graphics_i* __gs_graphics_construct()
 	gfx->immediate.draw_rect 			= &__gs_draw_rect_2d;
 	gfx->immediate.draw_box 			= &__gs_draw_box;
 	gfx->immediate.draw_box_vqs 		= &__gs_draw_box_vqs;
+	gfx->immediate.draw_box_textured_vqs = &__gs_draw_box_textured_vqs;
 	gfx->immediate.draw_box_lines_vqs 	= &__gs_draw_box_lines_vqs;
 	gfx->immediate.draw_sphere 			= &__gs_draw_sphere;
+	gfx->immediate.draw_sphere_lines 	= &__gs_draw_sphere_lines;
+	gfx->immediate.draw_sphere_lines_vqs = &__gs_draw_sphere_lines_vqs;
 	gfx->immediate.draw_rect_textured 	= &__gs_draw_rect_2d_textured;
 	gfx->immediate.draw_text 			= &__gs_draw_text;
 

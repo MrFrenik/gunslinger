@@ -367,11 +367,105 @@ void __gs_draw_rect_2d(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_color_t
 	__gs_draw_rect_2d_impl(cb, a, b, color);
 }
 
-void __gs_draw_rect_2d_textured(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, u32 texture_id, gs_color_t color)
+void __gs_draw_rect_2d_textured(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, u32 tex_id, gs_color_t color)
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
-	gfx->immediate.enable_texture_2d(cb, texture_id);
+	gfx->immediate.enable_texture_2d(cb, tex_id);
 	__gs_draw_rect_2d_impl(cb, a, b, color);
+}
+
+void __gs_draw_box_vqs_impl(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t color)
+{
+	f32 width = 0.5f;
+	f32 height = 0.5f;
+	f32 length = 0.5f;
+	f32 x = 0.f;
+	f32 y = 0.f;
+	f32 z = 0.f;
+
+	// Preapply matrix transformations to all verts
+	gs_mat4 mat = gs_vqs_to_mat4(&xform);
+
+	gs_vec3 v0 = gs_v3(x - width/2, y - height/2, z + length/2);
+	gs_vec3 v1 = gs_v3(x + width/2, y - height/2, z + length/2);
+	gs_vec3 v2 = gs_v3(x - width/2, y + height/2, z + length/2);
+	gs_vec3 v3 = gs_v3(x + width/2, y + height/2, z + length/2);
+	gs_vec3 v4 = gs_v3(x - width/2, y - height/2, z - length/2);
+	gs_vec3 v5 = gs_v3(x - width/2, y + height/2, z - length/2);
+	gs_vec3 v6 = gs_v3(x + width/2, y - height/2, z - length/2);
+	gs_vec3 v7 = gs_v3(x + width/2, y + height/2, z - length/2);
+
+	gs_vec2 uv0 = gs_v2(0.f, 0.f);
+	gs_vec2 uv1 = gs_v2(1.f, 0.f);
+	gs_vec2 uv2 = gs_v2(0.f, 1.f);
+	gs_vec2 uv3 = gs_v2(1.f, 1.f);
+
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gfx->immediate.begin(cb, gs_triangles);
+	{
+		gfx->immediate.push_matrix(cb, gs_matrix_model);
+		{
+    		gfx->immediate.mat_mul(cb, mat);
+			gfx->immediate.color_ubv(cb, color);
+			
+	        // Front face
+	        gfx->immediate.texcoord_2fv(cb, uv0); gfx->immediate.vertex_3fv(cb, v0);  // Bottom Left
+	        gfx->immediate.texcoord_2fv(cb, uv1); gfx->immediate.vertex_3fv(cb, v1);  // Bottom Right
+	        gfx->immediate.texcoord_2fv(cb, uv2); gfx->immediate.vertex_3fv(cb, v2);  // Top Left
+
+	        gfx->immediate.texcoord_2fv(cb, uv3); gfx->immediate.vertex_3fv(cb, v3);  // Top Right
+	        gfx->immediate.texcoord_2fv(cb, uv2); gfx->immediate.vertex_3fv(cb, v2);  // Top Left
+	        gfx->immediate.texcoord_2fv(cb, uv1); gfx->immediate.vertex_3fv(cb, v1);  // Bottom Right
+	        
+	        // Back face
+	        gfx->immediate.texcoord_2fv(cb, uv0); gfx->immediate.vertex_3fv(cb, v6);  // Bottom Left
+	        gfx->immediate.texcoord_2fv(cb, uv3); gfx->immediate.vertex_3fv(cb, v5);  // Top Left
+	        gfx->immediate.texcoord_2fv(cb, uv2); gfx->immediate.vertex_3fv(cb, v7);  // Bottom Right
+
+	        gfx->immediate.texcoord_2fv(cb, uv0); gfx->immediate.vertex_3fv(cb, v6);  // Top Right
+	        gfx->immediate.texcoord_2fv(cb, uv1); gfx->immediate.vertex_3fv(cb, v4);  // Bottom Right
+	        gfx->immediate.texcoord_2fv(cb, uv3); gfx->immediate.vertex_3fv(cb, v5);  // Top Left
+
+	        // Top face
+	        gfx->immediate.texcoord_2fv(cb, uv0); gfx->immediate.vertex_3fv(cb, v7);  // Top Left
+	        gfx->immediate.texcoord_2fv(cb, uv3); gfx->immediate.vertex_3fv(cb, v2);  // Bottom Left
+	        gfx->immediate.texcoord_2fv(cb, uv2); gfx->immediate.vertex_3fv(cb, v3);  // Bottom Right
+
+	        gfx->immediate.texcoord_2fv(cb, uv0); gfx->immediate.vertex_3fv(cb, v7);  // Top Right
+	        gfx->immediate.texcoord_2fv(cb, uv1); gfx->immediate.vertex_3fv(cb, v5);  // Top Left
+	        gfx->immediate.texcoord_2fv(cb, uv3); gfx->immediate.vertex_3fv(cb, v2);  // Bottom Right
+
+	        // Bottom face
+	        gfx->immediate.texcoord_2fv(cb, uv0); gfx->immediate.vertex_3fv(cb, v4);  // Top Left
+	        gfx->immediate.texcoord_2fv(cb, uv3); gfx->immediate.vertex_3fv(cb, v1);  // Bottom Right
+	        gfx->immediate.texcoord_2fv(cb, uv2); gfx->immediate.vertex_3fv(cb, v0);  // Bottom Left
+
+	        gfx->immediate.texcoord_2fv(cb, uv0); gfx->immediate.vertex_3fv(cb, v4);  // Top Right
+	        gfx->immediate.texcoord_2fv(cb, uv1); gfx->immediate.vertex_3fv(cb, v6);  // Bottom Right
+	        gfx->immediate.texcoord_2fv(cb, uv3); gfx->immediate.vertex_3fv(cb, v1);  // Top Left
+
+	        // Right face
+	        gfx->immediate.texcoord_2fv(cb, uv0); gfx->immediate.vertex_3fv(cb, v1);  // Bottom Right
+	        gfx->immediate.texcoord_2fv(cb, uv3); gfx->immediate.vertex_3fv(cb, v7);  // Top Right
+	        gfx->immediate.texcoord_2fv(cb, uv2); gfx->immediate.vertex_3fv(cb, v3);  // Top Left
+
+	        gfx->immediate.texcoord_2fv(cb, uv0); gfx->immediate.vertex_3fv(cb, v1);  // Bottom Left
+	        gfx->immediate.texcoord_2fv(cb, uv1); gfx->immediate.vertex_3fv(cb, v6);  // Bottom Right
+	        gfx->immediate.texcoord_2fv(cb, uv3); gfx->immediate.vertex_3fv(cb, v7);  // Top Left
+
+	        // Left face
+	        gfx->immediate.texcoord_2fv(cb, uv0); gfx->immediate.vertex_3fv(cb, v4);  // Bottom Right
+	        gfx->immediate.texcoord_2fv(cb, uv3); gfx->immediate.vertex_3fv(cb, v2);  // Top Left
+	        gfx->immediate.texcoord_2fv(cb, uv2); gfx->immediate.vertex_3fv(cb, v5);  // Top Right
+
+	        gfx->immediate.texcoord_2fv(cb, uv0); gfx->immediate.vertex_3fv(cb, v4);  // Bottom Left
+	        gfx->immediate.texcoord_2fv(cb, uv1); gfx->immediate.vertex_3fv(cb, v0);  // Top Left
+	        gfx->immediate.texcoord_2fv(cb, uv3); gfx->immediate.vertex_3fv(cb, v2);  // Bottom Right
+		}
+		gfx->immediate.pop_matrix(cb);
+	}
+	gfx->immediate.end(cb);
+
 }
 
 void __gs_draw_box(gs_command_buffer_t* cb, gs_vec3 origin, gs_vec3 half_extents, gs_color_t color)
@@ -452,6 +546,20 @@ void __gs_draw_box(gs_command_buffer_t* cb, gs_vec3 origin, gs_vec3 half_extents
 	gfx->immediate.end(cb);
 }
 
+void __gs_draw_box_vqs(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t color)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gfx->immediate.disable_texture_2d(cb);
+	__gs_draw_box_vqs_impl(cb, xform, color);
+}
+
+void __gs_draw_box_textured_vqs(gs_command_buffer_t* cb, gs_vqs xform, u32 tex_id, gs_color_t color)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gfx->immediate.enable_texture_2d(cb, tex_id);
+	__gs_draw_box_vqs_impl(cb, xform, color);
+}
+
 void __gs_draw_box_lines_vqs(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t color)
 {
 	// Draw individual 3d lines using vqs
@@ -526,95 +634,6 @@ void __gs_draw_box_lines_vqs(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t c
     gfx->immediate.end(cb);
 }
 
-void __gs_draw_box_vqs(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t color)
-{
-	f32 width = 0.5f;
-	f32 height = 0.5f;
-	f32 length = 0.5f;
-	f32 x = 0.f;
-	f32 y = 0.f;
-	f32 z = 0.f;
-
-	// Preapply matrix transformations to all verts
-	gs_mat4 mat = gs_vqs_to_mat4(&xform);
-
-	gs_vec3 v0 = gs_v3(x - width/2, y - height/2, z + length/2);
-	gs_vec3 v1 = gs_v3(x + width/2, y - height/2, z + length/2);
-	gs_vec3 v2 = gs_v3(x - width/2, y + height/2, z + length/2);
-	gs_vec3 v3 = gs_v3(x + width/2, y + height/2, z + length/2);
-	gs_vec3 v4 = gs_v3(x - width/2, y - height/2, z - length/2);
-	gs_vec3 v5 = gs_v3(x - width/2, y + height/2, z - length/2);
-	gs_vec3 v6 = gs_v3(x + width/2, y - height/2, z - length/2);
-	gs_vec3 v7 = gs_v3(x + width/2, y + height/2, z - length/2);
-
-	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
-	gfx->immediate.begin(cb, gs_triangles);
-	{
-		gfx->immediate.push_matrix(cb, gs_matrix_model);
-		{
-    		gfx->immediate.mat_mul(cb, mat);
-			gfx->immediate.color_ubv(cb, color);
-    		gfx->immediate.disable_texture_2d(cb);
-			
-	        // Front face
-	        gfx->immediate.vertex_3fv(cb, v0);  // Bottom Left
-	        gfx->immediate.vertex_3fv(cb, v1);  // Bottom Right
-	        gfx->immediate.vertex_3fv(cb, v2);  // Top Left
-
-	        gfx->immediate.vertex_3fv(cb, v3);  // Top Right
-	        gfx->immediate.vertex_3fv(cb, v2);  // Top Left
-	        gfx->immediate.vertex_3fv(cb, v1);  // Bottom Right
-	        
-	        // Back face
-	        gfx->immediate.vertex_3fv(cb, v4);  // Bottom Left
-	        gfx->immediate.vertex_3fv(cb, v5);  // Top Left
-	        gfx->immediate.vertex_3fv(cb, v6);  // Bottom Right
-
-	        gfx->immediate.vertex_3fv(cb, v7);  // Top Right
-	        gfx->immediate.vertex_3fv(cb, v6);  // Bottom Right
-	        gfx->immediate.vertex_3fv(cb, v5);  // Top Left
-
-	        // Top face
-	        gfx->immediate.vertex_3fv(cb, v5);  // Top Left
-	        gfx->immediate.vertex_3fv(cb, v2);  // Bottom Left
-	        gfx->immediate.vertex_3fv(cb, v3);  // Bottom Right
-
-	        gfx->immediate.vertex_3fv(cb, v7);  // Top Right
-	        gfx->immediate.vertex_3fv(cb, v5);  // Top Left
-	        gfx->immediate.vertex_3fv(cb, v3);  // Bottom Right
-
-	        // Bottom face
-	        gfx->immediate.vertex_3fv(cb, v4);  // Top Left
-	        gfx->immediate.vertex_3fv(cb, v1);  // Bottom Right
-	        gfx->immediate.vertex_3fv(cb, v0);  // Bottom Left
-
-	        gfx->immediate.vertex_3fv(cb, v6);  // Top Right
-	        gfx->immediate.vertex_3fv(cb, v1);  // Bottom Right
-	        gfx->immediate.vertex_3fv(cb, v4);  // Top Left
-
-	        // Right face
-	        gfx->immediate.vertex_3fv(cb, v6);  // Bottom Right
-	        gfx->immediate.vertex_3fv(cb, v7);  // Top Right
-	        gfx->immediate.vertex_3fv(cb, v3);  // Top Left
-
-	        gfx->immediate.vertex_3fv(cb, v1);  // Bottom Left
-	        gfx->immediate.vertex_3fv(cb, v6);  // Bottom Right
-	        gfx->immediate.vertex_3fv(cb, v3);  // Top Left
-
-	        // Left face
-	        gfx->immediate.vertex_3fv(cb, v4);  // Bottom Right
-	        gfx->immediate.vertex_3fv(cb, v2);  // Top Left
-	        gfx->immediate.vertex_3fv(cb, v5);  // Top Right
-
-	        gfx->immediate.vertex_3fv(cb, v0);  // Bottom Left
-	        gfx->immediate.vertex_3fv(cb, v2);  // Top Left
-	        gfx->immediate.vertex_3fv(cb, v4);  // Bottom Right
-		}
-		gfx->immediate.pop_matrix(cb);
-	}
-	gfx->immediate.end(cb);
-}
-
 void __gs_draw_sphere(gs_command_buffer_t* cb, gs_vec3 center, f32 radius, gs_color_t color)
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
@@ -671,6 +690,65 @@ void __gs_draw_sphere(gs_command_buffer_t* cb, gs_vec3 center, f32 radius, gs_co
         gfx->immediate.pop_matrix(cb);
     }
     gfx->immediate.end(cb);
+}
+
+void __gs_draw_sphere_lines_vqs(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t color)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+
+	const s32 rings = 16;
+	const s32 slices = 16;
+    s32 numVertex = (rings + 2) * slices * 6;
+
+    // Deg to rad
+    const f32 deg2rad = gs_pi / 180.f;
+
+    	gfx->immediate.begin(cb, gs_lines);
+    	{
+			gfx->immediate.color_ubv(cb, color);
+		    gfx->immediate.push_matrix(cb, gs_matrix_model);
+		    {
+		    	gfx->immediate.mat_mul_vqs(cb, xform);
+	            gs_for_range_i(rings + 2)
+	            {
+	            	gs_for_range_j(slices)
+	                {
+	                    gfx->immediate.vertex_3f(cb, cosf(deg2rad*(270+(180/(rings + 1))*i))*sinf(deg2rad*(j*360/slices)),
+	                               sinf(deg2rad*(270+(180/(rings + 1))*i)),
+	                               cosf(deg2rad*(270+(180/(rings + 1))*i))*cosf(deg2rad*(j*360/slices)));
+	                    gfx->immediate.vertex_3f(cb, cosf(deg2rad*(270+(180/(rings + 1))*(i+1)))*sinf(deg2rad*((j+1)*360/slices)),
+	                               sinf(deg2rad*(270+(180/(rings + 1))*(i+1))),
+	                               cosf(deg2rad*(270+(180/(rings + 1))*(i+1)))*cosf(deg2rad*((j+1)*360/slices)));
+
+	                    gfx->immediate.vertex_3f(cb, cosf(deg2rad*(270+(180/(rings + 1))*(i+1)))*sinf(deg2rad*((j+1)*360/slices)),
+	                               sinf(deg2rad*(270+(180/(rings + 1))*(i+1))),
+	                               cosf(deg2rad*(270+(180/(rings + 1))*(i+1)))*cosf(deg2rad*((j+1)*360/slices)));
+	                    gfx->immediate.vertex_3f(cb, cosf(deg2rad*(270+(180/(rings + 1))*(i+1)))*sinf(deg2rad*(j*360/slices)),
+	                               sinf(deg2rad*(270+(180/(rings + 1))*(i+1))),
+	                               cosf(deg2rad*(270+(180/(rings + 1))*(i+1)))*cosf(deg2rad*(j*360/slices)));
+
+	                    gfx->immediate.vertex_3f(cb, cosf(deg2rad*(270+(180/(rings + 1))*(i+1)))*sinf(deg2rad*(j*360/slices)),
+	                               sinf(deg2rad*(270+(180/(rings + 1))*(i+1))),
+	                               cosf(deg2rad*(270+(180/(rings + 1))*(i+1)))*cosf(deg2rad*(j*360/slices)));
+	                    gfx->immediate.vertex_3f(cb, cosf(deg2rad*(270+(180/(rings + 1))*i))*sinf(deg2rad*(j*360/slices)),
+	                               sinf(deg2rad*(270+(180/(rings + 1))*i)),
+	                               cosf(deg2rad*(270+(180/(rings + 1))*i))*cosf(deg2rad*(j*360/slices)));
+	                }
+	            }
+		    }
+		    gfx->immediate.pop_matrix(cb);
+    	}
+        gfx->immediate.end(cb);
+}
+
+// Draw sphere wires
+void __gs_draw_sphere_lines(gs_command_buffer_t* cb, gs_vec3 center, f32 radius, gs_color_t color)
+{
+	gs_vqs xform = gs_vqs_default();
+	xform.position = center;
+	xform.scale = gs_v3_s(radius);
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gfx->immediate.draw_sphere_lines_vqs(cb, xform, color);
 }
 
 void __gs_draw_text(gs_command_buffer_t* cb, gs_vec2 pos, const char* text, gs_font_t* ft, gs_color_t color)
