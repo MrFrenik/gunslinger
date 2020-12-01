@@ -810,6 +810,13 @@ void __gs_draw_circle_sector(gs_command_buffer_t* cb, gs_vec2 center, f32 radius
 	__gs_draw_circle_sector_impl(cb, center, radius, start_angle, end_angle, segments, color);
 }
 
+void __gs_draw_circle(gs_command_buffer_t* cb, gs_vec2 center, f32 radius, s32 segments, gs_color_t color)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gfx->immediate.disable_texture_2d(cb);
+	__gs_draw_circle_sector_impl(cb, center, radius, 0.f, 360.f, segments, color);
+}
+
 /*=========
 // Text
 =========*/

@@ -86,6 +86,9 @@ typedef enum gs_opengl_op_code
 	// Debug/Immediate
 	gs_opengl_op_immediate_begin_drawing,
 	gs_opengl_op_immediate_end_drawing,
+	gs_opengl_op_immediate_push_state,
+	gs_opengl_op_immediate_pop_state,
+	gs_opengl_op_immediate_push_state_attr,
 	gs_opengl_op_immediate_enable_texture_2d,
 	gs_opengl_op_immediate_disable_texture_2d,
 	gs_opengl_op_immediate_push_matrix,
@@ -121,6 +124,7 @@ typedef struct immediate_drawing_internal_data_t
 	gs_dyn_array(immediate_vertex_data_t) vertex_data;
 
 	// Stacks
+	gs_dyn_array(gs_pipeline_state_t) state_stack;
 	gs_dyn_array(gs_mat4) vp_matrix_stack;
 	gs_dyn_array(gs_mat4) model_matrix_stack;
 	gs_dyn_array(gs_vec2) viewport_stack;
@@ -178,6 +182,38 @@ void __reset_command_buffer_internal(command_buffer_t* cb);
 immediate_drawing_internal_data_t construct_immediate_drawing_internal_data_t();
 gs_texture_t opengl_construct_texture(gs_texture_parameter_desc desc);
 void opengl_immediate_submit_vertex_data();
+
+// Gfx Ops
+void opengl_set_view_port(gs_command_buffer_t* cb, u32 width, u32 height);
+void opengl_set_view_clear(gs_command_buffer_t* cb, f32* col);
+void opengl_set_winding_order(gs_command_buffer_t* cb, gs_winding_order_type type);
+void opengl_set_face_culling(gs_command_buffer_t* cb, gs_face_culling_type type);
+void opengl_set_blend_equation(gs_command_buffer_t* cb, gs_blend_equation_type eq);
+void opengl_set_blend_mode(gs_command_buffer_t* cb, gs_blend_mode_type src, gs_blend_mode_type dst);
+void opengl_set_view_scissor(gs_command_buffer_t* cb, u32 x, u32 y, u32 w, u32 h);
+void opengl_set_depth_enabled(gs_command_buffer_t* cb, b32 enable);
+void opengl_bind_shader(gs_command_buffer_t* cb, gs_shader_t s);
+
+gs_pipeline_state_t gs_pipeline_state_default()
+{
+	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
+	gs_platform_i* p = gs_engine_instance()->ctx.platform;
+
+	// Create default opengl pipeline state
+	gs_pipeline_state_t state = gs_default_val();
+	state.blend_func_src = gs_blend_mode_src_alpha;
+	state.blend_func_dst = gs_blend_mode_one_minus_src_alpha;
+	state.blend_equation = gs_blend_equation_add;
+	state.depth_enabled  = false;
+	state.winding_order  = gs_winding_order_ccw;
+	state.face_culling 	 = gs_face_culling_disabled;
+	state.view_scissor 	 = gs_v4_s(0.f);
+	state.viewport 	 	 = p->frame_buffer_size(p->main_window()); 
+	state.clear_color 	 = gs_v4(0.1f, 0.1f, 0.1f, 1.f);
+	state.shader 		 = data->shader;
+
+	return state;
+}
 
 /*============================================================
 // Graphics Initilization / De-Initialization
@@ -241,7 +277,7 @@ immediate_drawing_internal_data_t construct_immediate_drawing_internal_data_t()
 	// Construct shader
 	data.shader = gfx->construct_shader(immediate_shader_v_src, immediate_shader_f_src);
 
-	// Construct default texture
+	// Construct default white texture
 	u8 white[2 * 2 * 4];
 	memset(white, 255, 2 * 2 * 4);
 	gs_texture_parameter_desc desc = gs_texture_parameter_desc_default();
@@ -269,6 +305,7 @@ immediate_drawing_internal_data_t construct_immediate_drawing_internal_data_t()
 	data.vp_matrix_stack = gs_dyn_array_new(gs_mat4);
 	data.viewport_stack = gs_dyn_array_new(gs_vec2);
 	data.matrix_modes = gs_dyn_array_new(gs_matrix_mode);
+	data.state_stack = gs_dyn_array_new(gs_pipeline_state_t);
 	data.draw_mode = gs_triangles;
 
 	return data;
@@ -298,6 +335,23 @@ do {\
 	/* Increase command count for command buffer */\
 	cb->num_commands++;\
 } while (0)
+
+void opengl_set_pipeline_state(gs_command_buffer_t* cb, gs_pipeline_state_t state)
+{
+	if (gs_vec4_len(state.view_scissor)) {
+		gs_vec4* vs = &state.view_scissor;
+		opengl_set_view_scissor(cb, vs->x, vs->y, vs->z, vs->w);
+	}
+
+	opengl_set_view_port(cb, state.viewport.x, state.viewport.y);
+	opengl_set_view_clear(cb, (f32*)state.clear_color.xyzw);
+	opengl_set_winding_order(cb, state.winding_order);
+	opengl_set_face_culling(cb, state.face_culling);
+	opengl_set_blend_equation(cb, state.blend_equation);
+	opengl_set_blend_mode(cb, state.blend_func_src, state.blend_func_dst);
+	opengl_set_depth_enabled(cb, state.depth_enabled);
+	opengl_bind_shader(cb, state.shader);
+}
 
 void opengl_set_frame_buffer_attachment(gs_command_buffer_t* cb, gs_texture_t t, u32 idx)
 {
@@ -672,16 +726,12 @@ void opengl_immediate_begin_drawing(gs_command_buffer_t* cb)
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
-	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
-	gs_vec2 ws = platform->window_size(platform->main_window());
-	gs_vec2 fbs = platform->frame_buffer_size(platform->main_window());
 
-	gfx->set_view_port(cb, fbs.x, fbs.y);
-	gfx->set_face_culling(cb, gs_face_culling_disabled);
-	gfx->set_depth_enabled(cb, false);
+	// Create new pipeline state, then set
+	gs_pipeline_state_t state = gs_pipeline_state_default();
+	gfx->immediate.push_state(cb, state);
 
 	// Bind shader command
-	gfx->bind_shader(cb, data->shader);
 	gfx->bind_uniform_mat4(cb, data->u_mvp, __gs_default_view_proj_mat());	// Bind mvp matrix uniform
 	gfx->bind_texture(cb, data->u_tex, data->default_texture, 0);
 
@@ -695,6 +745,56 @@ void opengl_immediate_end_drawing(gs_command_buffer_t* cb)
 	__push_command(cb, gs_opengl_op_immediate_end_drawing, {
 		// Nothing...
 	});
+}
+
+void opengl_immediate_push_state(gs_command_buffer_t* cb, gs_pipeline_state_t state)
+{
+	__push_command(cb, gs_opengl_op_immediate_push_state, {
+		gs_byte_buffer_write(&cb->commands, gs_pipeline_state_t, state);
+	});
+}
+
+void opengl_immediate_pop_state(gs_command_buffer_t* cb)
+{
+	__push_command(cb, gs_opengl_op_immediate_pop_state, {
+	});
+}
+
+// Will think about a way to handle this better for setting multiple items at once
+void opengl_immediate_push_state_attr(gs_command_buffer_t* cb, gs_pipeline_state_attr_type type, ...)
+{
+	// This isn't correct, since it's looking too early in the frame...
+	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
+	gs_pipeline_state_t state = gs_dyn_array_back(data->state_stack);
+
+	__push_command(cb, gs_opengl_op_immediate_push_state_attr, 
+	{
+		gs_byte_buffer_write(&cb->commands, gs_pipeline_state_attr_type, type);
+
+		va_list ap;
+		const s32 count = 1;
+		va_start(ap, type);
+		switch (type)
+		{
+			case gs_blend_func_src: gs_byte_buffer_write(&cb->commands, gs_blend_mode_type, va_arg(ap, gs_blend_mode_type)); break;
+			case gs_blend_func_dst: gs_byte_buffer_write(&cb->commands, gs_blend_mode_type, va_arg(ap, gs_blend_mode_type)); break;
+			case gs_blend_equation: gs_byte_buffer_write(&cb->commands, gs_blend_equation_type, va_arg(ap, gs_blend_equation_type)); break;
+			case gs_depth_enabled: 	gs_byte_buffer_write(&cb->commands, b32, va_arg(ap, b32)); break;
+			case gs_winding_order: 	gs_byte_buffer_write(&cb->commands, gs_winding_order_type, va_arg(ap, gs_winding_order_type)); break;
+			case gs_face_culling: 	gs_byte_buffer_write(&cb->commands, gs_face_culling_type, va_arg(ap, gs_face_culling_type)); break;
+			case gs_viewport: 		gs_byte_buffer_write(&cb->commands, gs_vec2, va_arg(ap, gs_vec2)); break;
+			case gs_clear_color: 	gs_byte_buffer_write(&cb->commands, gs_vec4, va_arg(ap, gs_vec4)); break;
+			case gs_view_scissor: 	gs_byte_buffer_write(&cb->commands, gs_vec4, va_arg(ap, gs_vec4)); break;
+			case gs_shader: 		gs_byte_buffer_write(&cb->commands, gs_shader_t, va_arg(ap, gs_shader_t)); break;
+		}
+		va_end(ap);
+	});
+}
+
+// Pop previous state
+void opengl_pop_start_attr(gs_command_buffer_t* cb)
+{
+	opengl_immediate_pop_state(cb);
 }
 
 void opengl_immediate_enable_texture_2d(gs_command_buffer_t* cb, u32 id)
@@ -903,13 +1003,149 @@ void gs_color4ubv(gs_color_t c)
 	data->color = c;
 }
 
+void gs_set_view_clear(gs_vec4 col)
+{
+	// Set clear color
+	glClearColor(col.x, col.y, col.z, col.w);
+	// Clear screen
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
+void gs_set_view_scissor(s32 x, s32 y, s32 w, s32 h)
+{
+	if (x == 0 && y == 0 && w == 0 && h == 0)
+	{
+		glDisable(GL_SCISSOR_TEST);	
+	}
+	else 
+	{
+		glEnable(GL_SCISSOR_TEST);
+		glScissor((s32)x, (s32)y, (usize)w, (usize)h);	
+	}
+}
+
+void gs_set_viewport(s32 width, s32 height)
+{
+	// Set viewport
+	glViewport(0, 0, (s32)width, (s32)height);
+}
+
+void gs_set_depth_enabled(b32 enabled)
+{
+	// Clear screen
+	switch (enabled)
+	{
+		case true: glEnable(GL_DEPTH_TEST); break;
+		case false: glDisable(GL_DEPTH_TEST); break;
+	}
+}
+
+void gs_set_winding_order(gs_winding_order_type type)
+{
+	glFrontFace(__get_opengl_winding_order(type));
+}
+
+
+void gs_set_face_culling(gs_face_culling_type type)
+{
+	switch(type)
+	{
+		case gs_face_culling_disabled: glDisable(GL_CULL_FACE); break;
+		default:
+		{
+			glEnable(GL_CULL_FACE);
+			glCullFace(__get_opengl_cull_face(type));
+		} break;
+	}
+}
+
+void gs_set_blend_equation(gs_blend_equation_type type)
+{
+	glBlendEquation(__get_opengl_blend_equation(type));
+}
+
+void gs_set_blend_mode(gs_blend_mode_type src, gs_blend_mode_type dst)
+{
+	if (src == gs_blend_mode_disabled || dst == gs_blend_mode_disabled) 
+	{
+		glDisable(GL_BLEND);
+	} 
+	else 
+	{
+		glEnable(GL_BLEND);
+		glBlendFunc(__get_opengl_blend_mode(src), __get_opengl_blend_mode(dst));	
+	}
+}
+
+#define gs_bind_texture(tex_unit, tex_id, location)\
+do {\
+	glActiveTexture(GL_TEXTURE0 + tex_unit);\
+	glBindTexture(GL_TEXTURE_2D, tex_id);\
+	glUniform1i(location, tex_unit);\
+} while(0)
+
+#define gs_bind_index_buffer(ibo)\
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+
+#define gs_bind_vertex_buffer(vao)\
+	glBindVertexArray(vao);
+
+#define gs_bind_shader(program_id)\
+	glUseProgram(program_id);
+
+void gs_set_state(gs_pipeline_state_t state)
+{
+	gs_set_blend_mode(state.blend_func_src, state.blend_func_dst);
+	gs_set_blend_equation(state.blend_equation);
+	gs_set_depth_enabled(state.depth_enabled);
+	gs_set_winding_order(state.winding_order);
+	gs_set_face_culling(state.face_culling);
+	gs_set_viewport(state.viewport.x, state.viewport.y);
+	gs_set_view_clear(state.clear_color);
+	gs_set_view_scissor(state.view_scissor.x, state.view_scissor.y, state.view_scissor.z, state.view_scissor.w);
+	gs_bind_shader(state.shader.program_id);
+}
+
+void opengl_immediate_push_top_state(gs_pipeline_state_t state)
+{
+	// Submit previous vertex data
+	opengl_immediate_submit_vertex_data();
+
+	// Push new state and set
+	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
+	gs_dyn_array_push(data->state_stack, state);
+	gs_set_state(state);
+}
+
+void opengl_immediate_pop_top_state()
+{
+	// Submit previous vertex data
+	opengl_immediate_submit_vertex_data();
+
+	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
+	if (!gs_dyn_array_empty(data->state_stack))
+	{
+		gs_dyn_array_pop(data->state_stack);
+	}
+	if (gs_dyn_array_empty(data->state_stack))
+	{
+		gs_dyn_array_push(data->state_stack, gs_pipeline_state_default());
+	}
+	gs_set_state(gs_dyn_array_back(data->state_stack));
+}
+
 // Push vertex data util for immediate mode data
 void opengl_immediate_submit_vertex_data()
 {
 	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
+	u32 count = gs_dyn_array_size(data->vertex_data);
+
+	if (!count) {
+		return;
+	}
+
 	u32 vao = data->vbo.vao;
 	u32 vbo = data->vbo.vbo;
-	u32 count = gs_dyn_array_size(data->vertex_data);
 	usize sz = count * sizeof(immediate_vertex_data_t);
 
 	u32 mode;
@@ -932,8 +1168,6 @@ void opengl_immediate_submit_vertex_data()
 
 	// Clear buffer
 	gs_dyn_array_clear(data->vertex_data);
-
-	gs_engine_instance()->ctx.graphics->immediate.draw_call_count++;
 }
 
 /*================
@@ -982,13 +1216,8 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 
 			case gs_opengl_op_draw:
 			{
-				// Read start
 				gs_byte_buffer_readc(&cb->commands, u32, start);
-				// Read count
 				gs_byte_buffer_readc(&cb->commands, u32, count);
-
-				// Draw (this assumes a vao is set, which is not correct)...for now, will assume
-				// glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 				glDrawArrays(GL_TRIANGLES, start, count);
 			} break;
 
@@ -997,18 +1226,13 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 				// Read count and offest
 				gs_byte_buffer_readc(&cb->commands, u32, count);
 				gs_byte_buffer_readc(&cb->commands, u32, offset);
-
 				glDrawElements(GL_TRIANGLES, count, GL_UNSIGNED_INT, int_2_void_p(offset));
 			} break;
 
 			case gs_opengl_op_set_view_clear: 
 			{
-				// Read color from buffer (as vec4)
 				gs_byte_buffer_readc(&cb->commands, gs_vec4, col);
-				// Set clear color
-				glClearColor(col.x, col.y, col.z, col.w);
-				// Clear screen
-				glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+				gs_set_view_clear(col);
 			} break;
 
 			case gs_opengl_op_set_view_scissor: 
@@ -1017,135 +1241,77 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 				gs_byte_buffer_readc(&cb->commands, u32, y);
 				gs_byte_buffer_readc(&cb->commands, u32, w);
 				gs_byte_buffer_readc(&cb->commands, u32, h);
-
-				if (x == 0 && y == 0 && w == 0 && h == 0)
-				{
-					glDisable(GL_SCISSOR_TEST);	
-				}
-				else 
-				{
-					glEnable(GL_SCISSOR_TEST);
-					glScissor((s32)x, (s32)y, (usize)w, (usize)h);	
-				}
+				gs_set_view_scissor(x, y, w, h);
 			} break;
 
 			case gs_opengl_op_set_view_port: 
 			{
-				// Read width from buffer
 				gs_byte_buffer_readc(&cb->commands, u32, width);
-				// Read height from buffer
 				gs_byte_buffer_readc(&cb->commands, u32, height);
-				// Set viewport
-				glViewport(0, 0, (s32)width, (s32)height);
-
+				gs_set_viewport(width, height);
 			} break;
 
 			case gs_opengl_op_set_depth_enabled: 
 			{
-				// Read color from buffer (as vec4)
-				b32 enabled; gs_byte_buffer_read(&cb->commands, b32, &enabled);
-				// Clear screen
-				if (enabled) {
-					glEnable(GL_DEPTH_TEST);
-				} else {
-					glDisable(GL_DEPTH_TEST);
-				}
+				gs_byte_buffer_readc(&cb->commands, b32, enabled);
+				gs_set_depth_enabled(enabled);
 			} break;
 
 			case gs_opengl_op_set_winding_order: 
 			{
-				gs_winding_order_type type; gs_byte_buffer_read(&cb->commands, gs_winding_order_type, &type);
-				glFrontFace(__get_opengl_winding_order(type));
+				gs_byte_buffer_readc(&cb->commands, gs_winding_order_type, type);
+				gs_set_winding_order(type);
 			} break;			
 
 			case gs_opengl_op_set_face_culling: 
 			{
-				gs_face_culling_type type; gs_byte_buffer_read(&cb->commands, gs_face_culling_type, &type);
-
-				if (type == gs_face_culling_disabled) {
-
-					glDisable(GL_CULL_FACE);
-				} else {
-
-					glEnable(GL_CULL_FACE);	
-					glCullFace(__get_opengl_cull_face(type));
-				}
+				gs_byte_buffer_readc(&cb->commands, gs_face_culling_type, type);
+				gs_set_face_culling(type);
 			} break;
 
 			case gs_opengl_op_set_blend_equation:
 			{
-				// Read blend mode for blend equation
-				gs_blend_equation_type eq; gs_byte_buffer_read(&cb->commands, gs_blend_equation_type, &eq);
-				glBlendEquation(__get_opengl_blend_equation(eq));
+				gs_byte_buffer_readc(&cb->commands, gs_blend_equation_type, type);
+				gs_set_blend_equation(type);
 			} break;
 
 			case gs_opengl_op_set_blend_mode: 
 			{
-				// Read blend mode for source
-				gs_blend_mode_type src; gs_byte_buffer_read(&cb->commands, gs_blend_mode_type, &src);
-				// Read blend mode for destination
-				gs_blend_mode_type dst; gs_byte_buffer_read(&cb->commands, gs_blend_mode_type, &dst);
-
-				// Enabling and disabling blend states
-				if (src == gs_blend_mode_disabled || dst == gs_blend_mode_disabled) {
-					glDisable(GL_BLEND);
-				} else {
-					glEnable(GL_BLEND);
-					GLenum sfactor = __get_opengl_blend_mode(src);
-					GLenum dfactor = __get_opengl_blend_mode(dst);
-					glBlendFunc(sfactor, dfactor);	
-				}
-
+				gs_byte_buffer_readc(&cb->commands, gs_blend_mode_type, src);
+				gs_byte_buffer_readc(&cb->commands, gs_blend_mode_type, dst);
+				gs_set_blend_mode(src, dst);
 			} break;
 
 			case gs_opengl_op_bind_texture:
 			{
-				// Write out id
-				u32 tex_id; gs_byte_buffer_read(&cb->commands, u32, &tex_id);
-				// Write tex unit location
-				u32 tex_unit; gs_byte_buffer_read(&cb->commands, u32, &tex_unit);
-				// Write out uniform location
-				u32 location; gs_byte_buffer_read(&cb->commands, u32, &location);
-
-				// Activate texture unit
-				glActiveTexture(GL_TEXTURE0 + tex_unit);
-				// Bind texture
-				glBindTexture(GL_TEXTURE_2D, tex_id);
-				// Bind uniform
-				glUniform1i(location, tex_unit);
+				gs_byte_buffer_readc(&cb->commands, u32, tex_id);
+				gs_byte_buffer_readc(&cb->commands, u32, tex_unit);
+				gs_byte_buffer_readc(&cb->commands, u32, location);
+				gs_bind_texture(tex_unit, tex_id, location);
 			} break;
 
 			case gs_opengl_op_bind_vertex_buffer:
 			{
-				// Read out vao
 				gs_byte_buffer_readc(&cb->commands, u32, vao);
-
-				// Bind vao
-				glBindVertexArray(vao);
+				gs_bind_vertex_buffer(vao);
 			} break;
 
 			case gs_opengl_op_bind_index_buffer:
 			{
 				// Read out vao
 				gs_byte_buffer_readc(&cb->commands, u32, ibo);
-
-				// Bind vao
-				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+				gs_bind_index_buffer(ibo);
 			} break;
 
 			case gs_opengl_op_bind_shader: 
 			{
-				// Read in shader id
 				gs_byte_buffer_readc(&cb->commands, u32, program_id);
-				// Bind program
-				glUseProgram(program_id);
+				gs_bind_shader(program_id);
 			} break;
 
 			case gs_opengl_op_bind_uniform:
 			{
-				// Read in uniform location
 				gs_byte_buffer_readc(&cb->commands, u32, location);
-				// Read in uniform type
 				gs_byte_buffer_readc(&cb->commands, gs_uniform_type, type);
 
 				// Read and bind val
@@ -1153,43 +1319,43 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 				{
 					case gs_uniform_type_float:
 					{
-						f32 val; gs_byte_buffer_read(&cb->commands, f32, &val);
+						gs_byte_buffer_readc(&cb->commands, f32, val);
 						glUniform1f(location, val);
 					} break;
 
 					case gs_uniform_type_int: 
 					{
-						s32 val; gs_byte_buffer_read(&cb->commands, s32, &val);
+						gs_byte_buffer_readc(&cb->commands, s32, val);
 						glUniform1i(location, val);
 					} break;
 
 					case gs_uniform_type_vec2:
 					{
-						gs_vec2 val; gs_byte_buffer_read(&cb->commands, gs_vec2, &val);
+						gs_byte_buffer_readc(&cb->commands, gs_vec2, val);
 						glUniform2f(location, val.x, val.y);
 					} break;
 
 					case gs_uniform_type_vec3:
 					{
-						gs_vec3 val; gs_byte_buffer_read(&cb->commands, gs_vec3, &val);
+						gs_byte_buffer_readc(&cb->commands, gs_vec3, val);
 						glUniform3f(location, val.x, val.y, val.z);
 					} break;
 
 					case gs_uniform_type_vec4:
 					{
-						gs_vec4 val; gs_byte_buffer_read(&cb->commands, gs_vec4, &val);
+						gs_byte_buffer_readc(&cb->commands, gs_vec4, val);
 						glUniform4f(location, val.x, val.y, val.z, val.w);
 					} break;
 
 					case gs_uniform_type_mat4:
 					{
-						gs_mat4 val; gs_byte_buffer_read(&cb->commands, gs_mat4, &val);
+						gs_byte_buffer_readc(&cb->commands, gs_mat4, val);
 						glUniformMatrix4fv(location, 1, false, (f32*)(val.elements));
 					} break;
 
 					case gs_uniform_type_sampler2d:
 					{
-						u32 val; gs_byte_buffer_read(&cb->commands, u32, &val);
+						gs_byte_buffer_readc(&cb->commands, u32, val);
 						glUniform1i(location, val);
 					} break;
 
@@ -1205,8 +1371,8 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 			case gs_opengl_op_update_index_data:
 			{
 				// Write out vao/vbo
-				u32 ibo; gs_byte_buffer_read(&cb->commands, u32, &ibo);
-				u32 data_size; gs_byte_buffer_read(&cb->commands, u32, &data_size);
+				gs_byte_buffer_readc(&cb->commands, u32, ibo);
+				gs_byte_buffer_readc(&cb->commands, u32, data_size);
 
 				void* tmp_data = gs_malloc(data_size);
 				memset(tmp_data, 0, data_size);
@@ -1264,6 +1430,7 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 				gs_dyn_array_clear(data->vp_matrix_stack);
 				gs_dyn_array_clear(data->viewport_stack);
 				gs_dyn_array_clear(data->matrix_modes);
+				gs_dyn_array_clear(data->state_stack);
 
 				// Default stacks
 				gs_mat4 ortho = __gs_default_view_proj_mat();
@@ -1277,7 +1444,41 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 			{
 				// Time to draw da data
 				opengl_immediate_submit_vertex_data();
-				gs_engine_instance()->ctx.graphics->immediate.draw_call_count = 0;
+			} break;
+
+			case gs_opengl_op_immediate_push_state:
+			{
+				gs_byte_buffer_readc(&cb->commands, gs_pipeline_state_t, state);
+				opengl_immediate_push_top_state(state);
+			} break;
+
+			case gs_opengl_op_immediate_pop_state:
+			{
+				// Push back new state, then submit vertex data
+				opengl_immediate_pop_top_state();
+			} break;
+
+			case gs_opengl_op_immediate_push_state_attr:
+			{
+				immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
+				gs_byte_buffer_readc(&cb->commands, gs_pipeline_state_attr_type, type);
+
+				// Update last state
+				gs_pipeline_state_t state = gs_dyn_array_back(data->state_stack);
+				switch (type)
+				{
+					case gs_blend_func_src: gs_byte_buffer_read(&cb->commands, gs_blend_mode_type, &state.blend_func_src); break;
+					case gs_blend_func_dst: gs_byte_buffer_read(&cb->commands, gs_blend_mode_type, &state.blend_func_dst); break;
+					case gs_blend_equation: gs_byte_buffer_read(&cb->commands, gs_blend_equation_type, &state.blend_equation); break;
+					case gs_depth_enabled: 	gs_byte_buffer_read(&cb->commands, b32, &state.depth_enabled); break;
+					case gs_winding_order: 	gs_byte_buffer_read(&cb->commands, gs_winding_order_type, &state.winding_order); break;
+					case gs_face_culling: 	gs_byte_buffer_read(&cb->commands, gs_face_culling_type, &state.face_culling); break;
+					case gs_viewport: 		gs_byte_buffer_read(&cb->commands, gs_vec2, &state.viewport); break;
+					case gs_clear_color: 	gs_byte_buffer_read(&cb->commands, gs_vec4, &state.clear_color); break;
+					case gs_view_scissor: 	gs_byte_buffer_read(&cb->commands, gs_vec4, &state.view_scissor); break;
+					case gs_shader: 		gs_byte_buffer_read(&cb->commands, gs_shader_t, &state.shader); break;
+				}
+				opengl_immediate_push_top_state(state);
 			} break;
 
 			case gs_opengl_op_immediate_enable_texture_2d:
@@ -2089,6 +2290,7 @@ struct gs_graphics_i* __gs_graphics_construct()
 	// Graphics Command Buffer Ops
 	============================================================*/
 	gfx->reset_command_buffer 			= &opengl_reset_command_buffer;
+	gfx->set_pipeline_state 			= &opengl_set_pipeline_state;
 	gfx->bind_shader	      			= &opengl_bind_shader;
 	gfx->bind_vertex_buffer 			= &opengl_bind_vertex_buffer;
 	gfx->bind_index_buffer 				= &opengl_bind_index_buffer;
@@ -2176,6 +2378,10 @@ struct gs_graphics_i* __gs_graphics_construct()
 	gfx->immediate.end_drawing 			= &opengl_immediate_end_drawing;
 	gfx->immediate.begin 				= &opengl_immediate_begin;
 	gfx->immediate.end 					= &opengl_immediate_end;
+	gfx->immediate.push_state 			= &opengl_immediate_push_state;
+	gfx->immediate.pop_state 			= &opengl_immediate_pop_state;
+	gfx->immediate.push_state_attr 		= &opengl_immediate_push_state_attr;
+	gfx->immediate.pop_state_attr		= &opengl_pop_start_attr;
 	gfx->immediate.push_matrix 			= &opengl_immediate_push_matrix;
 	gfx->immediate.pop_matrix 			= &opengl_immediate_pop_matrix;
 	gfx->immediate.mat_mul 				= &opengl_immediate_mat_mul;
@@ -2209,6 +2415,7 @@ struct gs_graphics_i* __gs_graphics_construct()
 	gfx->immediate.draw_rect_textured 	= &__gs_draw_rect_2d_textured;
 	gfx->immediate.draw_text 			= &__gs_draw_text;
 	gfx->immediate.draw_circle_sector 	= &__gs_draw_circle_sector;
+	gfx->immediate.draw_circle 			= &__gs_draw_circle;
 
 	gfx->immediate.color_ub 			= &opengl_immediate_color_ub;
 	gfx->immediate.color_ubv 			= &opengl_immediate_color_ubv;

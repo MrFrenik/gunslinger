@@ -106,6 +106,7 @@ gs_color_t gs_color_ctor(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 	return color;
 }
 
+#define gs_color_black 	gs_color(0, 0, 0, 255)
 #define gs_color_white 	gs_color(255, 255, 255, 255)
 #define gs_color_red 	gs_color(255, 0, 0, 255)
 #define gs_color_green 	gs_color(0, 255, 0, 255)

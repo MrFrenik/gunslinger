@@ -63,8 +63,7 @@ gs_result app_update()
 	gs_graphics_immediate_draw_i* id = &gfx->immediate;
 	gs_command_buffer_t* cb = &g_cb;
 
-	// Get framebuffer and window sizes
-	const gs_vec2 fbs = platform->frame_buffer_size(platform->main_window());
+	// Get window sizes
 	const gs_vec2 ws = platform->window_size(platform->main_window());
 
 	// If we press the escape key, exit the application
@@ -76,11 +75,6 @@ gs_result app_update()
 	/*===============
 	// Render scene
 	================*/
-
-	// Set clear color and clear screen
-	f32 clear_color[4] = {0.2f, 0.2f, 0.2f, 1.f};
-	gfx->set_view_clear(cb, clear_color);
-	gfx->set_view_port(cb, fbs.x, fbs.y);
 
 	// Elapsed run time of program
 	const f32 _t = platform->elapsed_time();
@@ -103,12 +97,12 @@ gs_result app_update()
 		/*==========
 		// 3D
 		==========*/
+		gs_pipeline_state_t state = gs_pipeline_state_default();
+		state.depth_enabled = true;
+		state.face_culling = gs_face_culling_back;
+		id->push_state(cb, state);
 		id->push_camera(cb, gs_camera_perspective());
 		{
-			// Want to abstract these into a default "3d state"
-			gfx->set_depth_enabled(cb, true);
-			gfx->set_face_culling(cb, gs_face_culling_back);
-
 			/*==========
 			// Box
 			==========*/
@@ -152,16 +146,16 @@ gs_result app_update()
 			/*==========
 			// Sphere
 			==========*/
+			// Draw sphere rotating around box
 			f32 r = 2.f;
 			xform.position = gs_v3(cosf(_t * 0.001f) * 10, 0.f, sinf(_t * 0.001f) * 10 - 25.f);
 			xform.scale = gs_v3_s(r); 
 			xform.rotation = gs_quat_mul(xform.rotation, gs_quat_angle_axis(_t * 0.001f, gs_z_axis));
-			// Draw sphere rotating around box
 			id->draw_sphere(
 				cb, 
 				xform.position,
 				r,
-				gs_color_alpha(gs_color_purple, 255)
+				gs_color_alpha(gs_color_red, 255)
 			);
 
 			// Draw sphere lines
@@ -175,14 +169,19 @@ gs_result app_update()
 			/*===========
 			// Circle
 			===========*/
-			id->push_matrix(cb, gs_matrix_model); {
-				gfx->set_face_culling(cb, gs_face_culling_disabled);
-				id->mat_mul_vqs(cb, xform);
-				id->draw_circle_sector(cb, gs_v2(0.f, 0.f), 1.f, 0.f, 360.f, 32, gs_color_green);
-			}
-			id->pop_matrix(cb);
+			// id->push_state_attr(cb, gs_face_culling, gs_face_culling_disabled);
+			// {
+			// 	id->push_matrix(cb, gs_matrix_model); 
+			// 	{
+			// 		id->mat_mul_vqs(cb, xform);
+			// 		id->draw_circle(cb, gs_v2(0.f, 0.f), 1.f, 32, gs_color_green);
+			// 	}
+			// 	id->pop_matrix(cb);
+			// }
+			// id->pop_state_attr(cb);
 		}
 		id->pop_camera(cb);
+		id->pop_state(cb);
 
 		// Back to 2d state
 		gfx->set_depth_enabled(cb, false);

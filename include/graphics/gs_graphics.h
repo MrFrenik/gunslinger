@@ -237,9 +237,25 @@ typedef struct gs_font_t
 	gs_texture_t texture;
 } gs_font_t;
 
-/*=======================-==
+/*==========================
 // Immediate Mode Rendering
 ==========================*/
+
+typedef struct gs_pipeline_state_t
+{
+	gs_blend_mode_type blend_func_src;
+	gs_blend_mode_type blend_func_dst;
+	gs_blend_equation_type blend_equation;
+	b32 depth_enabled;
+	gs_winding_order_type winding_order;
+	gs_face_culling_type face_culling;
+	gs_vec2 viewport;
+	gs_vec4 clear_color;
+	gs_vec4 view_scissor;
+	gs_shader_t shader;
+} gs_pipeline_state_t;
+
+extern gs_pipeline_state_t gs_pipeline_state_default();
 
 typedef enum gs_matrix_mode
 {
@@ -254,12 +270,37 @@ typedef enum gs_draw_mode
 	gs_quads
 } gs_draw_mode;
 
+typedef enum gs_pipeline_state_attr_type
+{
+	gs_blend_func_src,
+	gs_blend_func_dst,
+	gs_blend_equation,
+	gs_depth_enabled,
+	gs_winding_order,
+	gs_face_culling,
+	gs_viewport,
+	gs_clear_color,
+	gs_view_scissor,
+	gs_shader		
+} gs_pipeline_state_attr_type;
+
 typedef struct gs_graphics_immediate_draw_i
 {
+	// Main begin/end drawing functions
 	void (* begin_drawing)(gs_command_buffer_t* cb);
 	void (* end_drawing)(gs_command_buffer_t* cb);
+
+	// Begin new shape declaration
 	void (* begin)(gs_command_buffer_t* cb, gs_draw_mode mode);
 	void (* end)(gs_command_buffer_t* cb);
+
+	// State
+	void (* push_state)(gs_command_buffer_t* cb, gs_pipeline_state_t state);
+	void (* pop_state)(gs_command_buffer_t* cb);
+	void (* push_state_attr)(gs_command_buffer_t* cb, gs_pipeline_state_attr_type type, ...);
+	void (* pop_state_attr)(gs_command_buffer_t* cb);
+
+	// Vertex attribute ops
 	void (* enable_texture_2d)(gs_command_buffer_t* cb, u32 id);
 	void (* disable_texture_2d)(gs_command_buffer_t* cb);
 	void (* texcoord_2f)(gs_command_buffer_t* cb, f32 s, f32 t);
@@ -293,8 +334,7 @@ typedef struct gs_graphics_immediate_draw_i
 	// void (* draw_rect_filled_ext)(gs_command_buffer_t* cb, gs_vec3 a, gs_vec3 b, gs_vqs xform, gs_color_t color);
 
 	// Circle
-	// void (* draw_circle)(gs_command_buffer_t* cb, gs_vec3 position, f32 radius, gs_color_t color, b32 filled);
-	// void (* draw_cirlce_ext)(gs_command_buffer_t* cb, gs_vec3 position, f32 radius, gs_vqs xform, gs_color_t color, b32 filled);
+	void (* draw_circle)(gs_command_buffer_t* cb, gs_vec2 center, f32 radius, s32 segments, gs_color_t color);
 	void (* draw_circle_sector)(gs_command_buffer_t* cb, gs_vec2 center, f32 radius, s32 start_angle, s32 end_angle, s32 segments, gs_color_t color);
 
 	// Triangle
@@ -317,9 +357,6 @@ typedef struct gs_graphics_immediate_draw_i
 	void (* draw_sphere_lines)(gs_command_buffer_t* cb, gs_vec3 center, f32 radius, gs_color_t color);
 	void (* draw_sphere_lines_vqs)(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t color);
 
-	// Path
-	// void (* draw_path)(gs_command_buffer_t* cb, gs_vec3* points);
-
 	// Text
 	void (* draw_text)(gs_command_buffer_t* cb, gs_vec2 pos, const char* text, gs_font_t* ft, gs_color_t color);
 
@@ -329,8 +366,6 @@ typedef struct gs_graphics_immediate_draw_i
 
 	// Submit
 	void (* submit)(gs_command_buffer_t* cb);
-
-	u32 draw_call_count;
 } gs_graphics_immediate_draw_i;
 /*================
 // Graphics API
@@ -350,6 +385,7 @@ typedef struct gs_graphics_i
 	// Graphics Command Buffer Ops
 	============================================================*/
 	void (* reset_command_buffer)(gs_command_buffer_t*);
+	void (* set_pipeline_state)(gs_command_buffer_t* cb, gs_pipeline_state_t state);
 	void (* set_depth_enabled)(gs_command_buffer_t*, b32);
 	void (* set_winding_order)(gs_command_buffer_t*, gs_winding_order_type);
 	void (* set_face_culling)(gs_command_buffer_t*, gs_face_culling_type);
@@ -474,6 +510,7 @@ void __gs_draw_line_2d(gs_command_buffer_t* cb, gs_vec2 s, gs_vec2 e, gs_color_t
 void __gs_draw_triangle_3d(gs_command_buffer_t* cb, gs_vec3 a, gs_vec3 b, gs_vec3 c, gs_color_t color);
 void __gs_draw_triangle_3d_ext(gs_command_buffer_t* cb, gs_vec3 a, gs_vec3 b, gs_vec3 c, gs_mat4 m, gs_color_t color);
 void __gs_draw_triangle_2d(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_vec2 c, gs_color_t color);
+void __gs_draw_circle(gs_command_buffer_t* cb, gs_vec2 center, f32 radius, s32 segments, gs_color_t color);
 void __gs_draw_circle_sector(gs_command_buffer_t* cb, gs_vec2 center, f32 radius, s32 start_angle, s32 end_angle, s32 segments, gs_color_t color);
 void __gs_draw_rect_2d(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_color_t color);
 void __gs_draw_rect_2d_textured(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, u32 texture_id, gs_color_t color);
