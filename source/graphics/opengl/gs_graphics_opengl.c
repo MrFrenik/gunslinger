@@ -765,7 +765,6 @@ void opengl_immediate_push_state_attr(gs_command_buffer_t* cb, gs_pipeline_state
 {
 	// This isn't correct, since it's looking too early in the frame...
 	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
-	gs_pipeline_state_t state = gs_dyn_array_back(data->state_stack);
 
 	__push_command(cb, gs_opengl_op_immediate_push_state_attr, 
 	{
@@ -1154,7 +1153,7 @@ void opengl_immediate_submit_vertex_data()
 		case gs_quads: mode = GL_QUADS; break;
 		case gs_triangles: mode = GL_TRIANGLES; break;
 		default: mode = GL_TRIANGLES;
-	}
+	} 
 
 	// Final submit
 	glBindVertexArray(vao);	
@@ -1422,17 +1421,9 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 			{
 				// Push any necessary state here
 				// Clear previous vertex data
-				immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
-				gs_dyn_array_clear(data->vertex_data);
-
-				// Clear stacks
-				gs_dyn_array_clear(data->model_matrix_stack);
-				gs_dyn_array_clear(data->vp_matrix_stack);
-				gs_dyn_array_clear(data->viewport_stack);
-				gs_dyn_array_clear(data->matrix_modes);
-				gs_dyn_array_clear(data->state_stack);
 
 				// Default stacks
+				immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
 				gs_mat4 ortho = __gs_default_view_proj_mat();
 				gs_dyn_array_push(data->vp_matrix_stack, ortho);
 
@@ -1444,6 +1435,16 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 			{
 				// Time to draw da data
 				opengl_immediate_submit_vertex_data();
+
+				immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
+				gs_dyn_array_clear(data->vertex_data);
+
+				// Clear stacks
+				gs_dyn_array_clear(data->model_matrix_stack);
+				gs_dyn_array_clear(data->vp_matrix_stack);
+				gs_dyn_array_clear(data->viewport_stack);
+				gs_dyn_array_clear(data->matrix_modes);
+				gs_dyn_array_clear(data->state_stack);
 			} break;
 
 			case gs_opengl_op_immediate_push_state:
