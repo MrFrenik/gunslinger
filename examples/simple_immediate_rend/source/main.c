@@ -82,16 +82,85 @@ gs_result app_update()
 
 		gfx->immediate.begin_3d(cb);
 		{
-			gs_vqs xform = (gs_vqs){gs_v3(0.f, 0.f, -20.f), gs_quat_angle_axis(_t * 0.001f, gs_y_axis), gs_v3_s(10.f)};
+			gs_quat rot = gs_quat_mul_list(
+				3,
+				gs_quat_angle_axis(_t * 0.0001f, gs_x_axis),
+				gs_quat_angle_axis(_t * 0.0001f, gs_y_axis),
+				gs_quat_angle_axis(_t * 0.0005f, gs_z_axis)
+			);
+			gs_vqs xform = (gs_vqs){gs_v3(0.f, 0.f, -20.f), rot, gs_v3_s((sinf(_t * 0.001f) * 0.5f + 0.5f) * 5.f)};
 			gfx->immediate.draw_box_textured_vqs(cb, xform, g_texture.id, gs_color_white);
+
+			gfx->immediate.push_state_attr(cb, gs_face_culling, gs_face_culling_disabled);
+			gfx->immediate.push_matrix(cb, gs_matrix_model);
+			{
+				gs_vqs x0 = xform;
+				x0.scale = gs_v3_s(1.f);
+				gfx->immediate.mat_mul_vqs(cb, x0);
+				gfx->immediate.draw_line_ext(cb, gs_v2(0.f, 0.f), gs_v2(0.f, 10.f), 0.1f, gs_color_red);
+				gfx->immediate.draw_line_ext(cb, gs_v2(0.f, 0.f), gs_v2(10.f, 0.f), 0.1f, gs_color_green);
+				gfx->immediate.mat_rotateq(cb, gs_quat_angle_axis(gs_deg_to_rad(90.f), gs_x_axis));
+				gfx->immediate.draw_line_ext(cb, gs_v2(0.f, 0.f), gs_v2(0.f, 10.f), 0.1f, gs_color_blue);
+			}
+			gfx->immediate.pop_matrix(cb);
+
+			gfx->immediate.push_matrix(cb, gs_matrix_model);
+			{
+				gs_vqs x0 = xform;
+				x0.scale = gs_vec3_scale(x0.scale, 0.5f);	
+				gfx->immediate.mat_mul_vqs(cb, x0);
+				gfx->immediate.draw_sphere_lines(cb, gs_v3(0.f, 0.f, 0.f), 1.f, gs_color_purple);
+			}
+			gfx->immediate.pop_matrix(cb);
+
+			// Children 
+			gs_vec3 positions[3] = {
+				gs_v3(0.f, 1.f, 0.f),
+				gs_v3(1.f, 0.f, 0.f),
+				gs_v3(0.f, 0.f, 1.f)
+			};
+
+			gs_color_t colors[3] = {
+				gs_color_red,
+				gs_color_green,
+				gs_color_blue
+			};
+
+			gs_for_range_i(3)
+			{
+				gfx->immediate.push_matrix(cb, gs_matrix_model);
+				{
+					gs_vqs local = gs_vqs_default();
+					local.position = positions[i];
+					local.scale = gs_v3_s(0.5f);
+					gfx->immediate.mat_mul_vqs(cb, gs_vqs_absolute_transform(&local, &xform));
+					gfx->immediate.draw_sphere_lines(cb, gs_v3(0.f, 0.f, 0.f), 1.f, colors[i]);
+				}
+				gfx->immediate.pop_matrix(cb);
+			}
+
+			// Children 
+			gs_vec3 tri_positions[3] = {
+				gs_v3(0.f, 2.f, 0.f),
+				gs_v3(2.f, 0.f, 0.f),
+				gs_v3(0.f, 0.f, 2.f)
+			};
+
+			gs_for_range_i(3)
+			{
+				gfx->immediate.push_matrix(cb, gs_matrix_model);
+				{
+					gs_vqs local = gs_vqs_default();
+					local.position = tri_positions[i];
+					local.scale = gs_v3_s(2.f);
+					local.rotation = gs_quat_angle_axis(_t * 0.01f, gs_y_axis);
+					gfx->immediate.mat_mul_vqs(cb, gs_vqs_absolute_transform(&local, &xform));
+					gfx->immediate.draw_triangle(cb, gs_v2(0.f, 0.f), gs_v2(1.f, 0.f), gs_v2(0.f, 1.f), gs_color_orange);
+				}
+				gfx->immediate.pop_matrix(cb);
+			}
 		}
 		gfx->immediate.end_3d(cb);
-		
-		gfx->immediate.begin_2d(cb);
-		{
-			gfx->immediate.draw_line(cb, gs_v2(0.f, 0.f), gs_v2(500.f, 500.f), gs_color_red);
-		}
-		gfx->immediate.end_2d(cb);
 	} 
 	gfx->immediate.end_drawing(cb);
 
@@ -100,3 +169,10 @@ gs_result app_update()
 
 	return gs_result_in_progress;
 }
+
+
+
+
+
+
+
