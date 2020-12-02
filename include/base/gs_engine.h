@@ -33,6 +33,7 @@ typedef struct gs_application_desc_t
 	f32 frame_rate;
 	b32 enable_vsync;
 	b32 is_running;
+	void* user_data;
 } gs_application_desc_t;
 
 // What would the context necessarily hold? Some container of all subsystems? 
@@ -54,6 +55,12 @@ typedef struct gs_engine_t
 
 gs_engine_t* gs_engine_construct(gs_application_desc_t app_desc);
 gs_engine_t* gs_engine_instance();
+
+#define gs_engine_subsystem(T)\
+	gs_engine_instance()->ctx.##T
+
+#define gs_engine_user_data(T)\
+	(T*)(gs_engine_instance()->ctx.app.user_data)
 
 #ifdef __cplusplus
 }

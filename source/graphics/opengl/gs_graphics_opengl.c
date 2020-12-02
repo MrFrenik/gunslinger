@@ -112,12 +112,12 @@ typedef struct immediate_vertex_data_t
 typedef struct immediate_drawing_internal_data_t 
 {
 	// Bound this all up into a state object, then create stack of states
-	gs_shader_t shader;
+	gs_shader_t default_shader;
 	gs_texture_t default_texture;
 	gs_uniform_t u_mvp;
 	gs_uniform_t u_tex;
 	gs_vertex_buffer_t vbo;
-	u32 tex_id;										// Id of currently bound texture unit (-1 if not enabled)
+	u32 tex_id;
 	gs_color_t color;
 	gs_vec2 texcoord;
 	gs_draw_mode draw_mode;
@@ -2403,8 +2403,10 @@ struct gs_graphics_i* __gs_graphics_construct()
 	gfx->immediate.draw_triangle_ext 	= &__gs_draw_triangle_3d_ext;
 	gfx->immediate.draw_rect 			= &__gs_draw_rect_2d;
 	gfx->immediate.draw_box 			= &__gs_draw_box;
+	gfx->immediate.draw_box_textured 	= &__gs_draw_box_textured;
 	gfx->immediate.draw_box_vqs 		= &__gs_draw_box_vqs;
 	gfx->immediate.draw_box_textured_vqs = &__gs_draw_box_textured_vqs;
+	gfx->immediate.draw_box_lines 		= &__gs_draw_box_lines;
 	gfx->immediate.draw_box_lines_vqs 	= &__gs_draw_box_lines_vqs;
 	gfx->immediate.draw_sphere 			= &__gs_draw_sphere;
 	gfx->immediate.draw_sphere_lines 	= &__gs_draw_sphere_lines;

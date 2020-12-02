@@ -492,6 +492,10 @@ gs_snprintf
     va_end(args);
 }
 
+#define gs_snprintfc(name, size, fmt, ...)\
+	char name[size] = gs_default_val();\
+	gs_snprintf(name, size, fmt, __VA_ARGS__);
+
 _force_inline u32 
 gs_hash_u32(u32 x) 
 {
