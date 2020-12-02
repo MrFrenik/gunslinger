@@ -209,7 +209,6 @@ gs_pipeline_state_t gs_pipeline_state_default()
 	state.face_culling 	 = gs_face_culling_disabled;
 	state.view_scissor 	 = gs_v4_s(0.f);
 	state.viewport 	 	 = p->frame_buffer_size(p->main_window()); 
-	state.clear_color 	 = gs_v4(0.1f, 0.1f, 0.1f, 1.f);
 	state.shader 		 = data->shader;
 
 	return state;
@@ -344,7 +343,6 @@ void opengl_set_pipeline_state(gs_command_buffer_t* cb, gs_pipeline_state_t stat
 	}
 
 	opengl_set_view_port(cb, state.viewport.x, state.viewport.y);
-	opengl_set_view_clear(cb, (f32*)state.clear_color.xyzw);
 	opengl_set_winding_order(cb, state.winding_order);
 	opengl_set_face_culling(cb, state.face_culling);
 	opengl_set_blend_equation(cb, state.blend_equation);
@@ -704,19 +702,6 @@ typedef struct vert_t
 	color_t color;
 } vert_t;
 
-/*
-	gfx->set_view_port(cb, fs);
-	gfx->set_view_clear(cb, clear_color);
-	gfx->immediate.begin(cb);
-	{
-		gfx->immediate.draw_line(cb, ...);
-	}
-	gfx->immediate.end(cb);
-
-	// Final submit
-	gfx->submit(cb);
-*/
-
 /*====================
 // Immediate Utilties
 ==================-=*/
@@ -760,6 +745,15 @@ void opengl_immediate_pop_state(gs_command_buffer_t* cb)
 	});
 }
 
+void opengl_immediate_clear(gs_command_buffer_t* cb, f32 r, f32 g, f32 b, f32 a)
+{
+	__push_command(cb, gs_opengl_op_set_view_clear, 
+	{
+		gs_vec4 c = (gs_vec4){r, g, b, a};
+		gs_byte_buffer_write(&cb->commands, gs_vec4, c);
+	});
+}
+
 // Will think about a way to handle this better for setting multiple items at once
 void opengl_immediate_push_state_attr(gs_command_buffer_t* cb, gs_pipeline_state_attr_type type, ...)
 {
@@ -782,7 +776,6 @@ void opengl_immediate_push_state_attr(gs_command_buffer_t* cb, gs_pipeline_state
 			case gs_winding_order: 	gs_byte_buffer_write(&cb->commands, gs_winding_order_type, va_arg(ap, gs_winding_order_type)); break;
 			case gs_face_culling: 	gs_byte_buffer_write(&cb->commands, gs_face_culling_type, va_arg(ap, gs_face_culling_type)); break;
 			case gs_viewport: 		gs_byte_buffer_write(&cb->commands, gs_vec2, va_arg(ap, gs_vec2)); break;
-			case gs_clear_color: 	gs_byte_buffer_write(&cb->commands, gs_vec4, va_arg(ap, gs_vec4)); break;
 			case gs_view_scissor: 	gs_byte_buffer_write(&cb->commands, gs_vec4, va_arg(ap, gs_vec4)); break;
 			case gs_shader: 		gs_byte_buffer_write(&cb->commands, gs_shader_t, va_arg(ap, gs_shader_t)); break;
 		}
@@ -1044,7 +1037,6 @@ void gs_set_winding_order(gs_winding_order_type type)
 	glFrontFace(__get_opengl_winding_order(type));
 }
 
-
 void gs_set_face_culling(gs_face_culling_type type)
 {
 	switch(type)
@@ -1100,7 +1092,6 @@ void gs_set_state(gs_pipeline_state_t state)
 	gs_set_winding_order(state.winding_order);
 	gs_set_face_culling(state.face_culling);
 	gs_set_viewport(state.viewport.x, state.viewport.y);
-	gs_set_view_clear(state.clear_color);
 	gs_set_view_scissor(state.view_scissor.x, state.view_scissor.y, state.view_scissor.z, state.view_scissor.w);
 	gs_bind_shader(state.shader.program_id);
 }
@@ -1475,7 +1466,6 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 					case gs_winding_order: 	gs_byte_buffer_read(&cb->commands, gs_winding_order_type, &state.winding_order); break;
 					case gs_face_culling: 	gs_byte_buffer_read(&cb->commands, gs_face_culling_type, &state.face_culling); break;
 					case gs_viewport: 		gs_byte_buffer_read(&cb->commands, gs_vec2, &state.viewport); break;
-					case gs_clear_color: 	gs_byte_buffer_read(&cb->commands, gs_vec4, &state.clear_color); break;
 					case gs_view_scissor: 	gs_byte_buffer_read(&cb->commands, gs_vec4, &state.view_scissor); break;
 					case gs_shader: 		gs_byte_buffer_read(&cb->commands, gs_shader_t, &state.shader); break;
 				}
@@ -2379,6 +2369,7 @@ struct gs_graphics_i* __gs_graphics_construct()
 	gfx->immediate.end_drawing 			= &opengl_immediate_end_drawing;
 	gfx->immediate.begin 				= &opengl_immediate_begin;
 	gfx->immediate.end 					= &opengl_immediate_end;
+	gfx->immediate.clear 				= &opengl_immediate_clear;
 	gfx->immediate.push_state 			= &opengl_immediate_push_state;
 	gfx->immediate.pop_state 			= &opengl_immediate_pop_state;
 	gfx->immediate.push_state_attr 		= &opengl_immediate_push_state_attr;
@@ -2388,6 +2379,11 @@ struct gs_graphics_i* __gs_graphics_construct()
 	gfx->immediate.mat_mul 				= &opengl_immediate_mat_mul;
 	gfx->immediate.enable_texture_2d 	= &opengl_immediate_enable_texture_2d;
 	gfx->immediate.disable_texture_2d 	= &opengl_immediate_disable_texture_2d;
+
+	gfx->immediate.begin_3d				= &__gs_begin_3d;
+	gfx->immediate.end_3d 				= &__gs_end_3d;
+	gfx->immediate.begin_2d 			= &__gs_begin_2d;
+	gfx->immediate.end_2d 				= &__gs_end_2d;
 
 	gfx->immediate.push_camera 			= &__gs_push_camera;
 	gfx->immediate.pop_camera 			= &__gs_pop_camera;

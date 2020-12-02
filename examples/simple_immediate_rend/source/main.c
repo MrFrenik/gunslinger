@@ -44,10 +44,10 @@ gs_result app_init()
 
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 
-	g_font = gfx->construct_font_from_file("./../assets/font.ttf", 32.f);
+	g_font = gfx->construct_font_from_file("./assets/font.ttf", 32.f);
 
 	gs_texture_parameter_desc_t desc = gs_texture_parameter_desc_default();	
-	g_texture = gfx->construct_texture_from_file("./../assets/gs.png", &desc);
+	g_texture = gfx->construct_texture_from_file("./assets/gs.png", &desc);
 	gs_free(desc.data);
 
 	return gs_result_success;
@@ -60,11 +60,7 @@ gs_result app_update()
 	gs_engine_t* engine = gs_engine_instance();
 	gs_graphics_i* gfx = engine->ctx.graphics;
 	gs_platform_i* platform = engine->ctx.platform;
-	gs_graphics_immediate_draw_i* id = &gfx->immediate;
 	gs_command_buffer_t* cb = &g_cb;
-
-	// Get window sizes
-	const gs_vec2 ws = platform->window_size(platform->main_window());
 
 	// If we press the escape key, exit the application
 	if (platform->key_pressed(gs_keycode_esc))
@@ -79,35 +75,25 @@ gs_result app_update()
 	// Elapsed run time of program
 	const f32 _t = platform->elapsed_time();
 
-	id->begin_drawing(cb);	// Maybe don't need to do this?
+	gfx->immediate.begin_drawing(cb);
 	{
-		/*==========
-		// 3D
-		==========*/
-		gs_pipeline_state_t state = gs_pipeline_state_default();
-		state.depth_enabled = true;
-		state.face_culling = gs_face_culling_back;
-		id->push_state(cb, state);
-		id->push_camera(cb, gs_camera_perspective());
+		// Clear screen
+		gfx->immediate.clear(cb, 0.1f, 0.1f, 0.1f, 1.f);
+
+		gfx->immediate.begin_3d(cb);
 		{
-			/*==========
-			// Box
-			==========*/
-			gs_vqs xform = gs_vqs_default();
-			xform.position = gs_v3(0.f, 0.f, -20.f);
-			xform.scale = gs_vec3_scale(gs_v3(1.f, 1.f, 1.f), 10.f);
-			xform.rotation = gs_quat_mul_list(
-				3,
-				gs_quat_angle_axis(_t * 0.001f, gs_y_axis),
-				gs_quat_angle_axis(_t * 0.0001f, gs_x_axis),
-				gs_quat_angle_axis(_t * 0.0005f, gs_z_axis)
-			);
-			id->draw_box_textured_vqs(cb, xform, g_texture.id, gs_color_white); 
+			gs_vqs xform = (gs_vqs){gs_v3(0.f, 0.f, -20.f), gs_quat_angle_axis(_t * 0.001f, gs_y_axis), gs_v3_s(10.f)};
+			gfx->immediate.draw_box_textured_vqs(cb, xform, g_texture.id, gs_color_white);
 		}
-		id->pop_camera(cb);
-		id->pop_state(cb); 
+		gfx->immediate.end_3d(cb);
+		
+		gfx->immediate.begin_2d(cb);
+		{
+			gfx->immediate.draw_line(cb, gs_v2(0.f, 0.f), gs_v2(500.f, 500.f), gs_color_red);
+		}
+		gfx->immediate.end_2d(cb);
 	} 
-	id->end_drawing(cb);
+	gfx->immediate.end_drawing(cb);
 
 	// Submit command buffer for rendering
 	gfx->submit_command_buffer(cb);

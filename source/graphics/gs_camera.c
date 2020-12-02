@@ -115,6 +115,7 @@ gs_mat4 gs_camera_get_projection(gs_camera_t* cam, s32 view_width, s32 view_heig
 			proj_mat = gs_mat4_perspective(cam->fov, (f32)view_width / (f32)view_height, cam->near_plane, cam->far_plane);
 		} break;
 
+		// Don't like this...
 		case gs_projection_type_orthographic:
 		{
 			f32 _ar = (f32)view_width / (f32)view_height;

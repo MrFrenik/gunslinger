@@ -890,6 +890,62 @@ void __gs_pop_camera(gs_command_buffer_t* cb)
 	gfx->immediate.pop_matrix(cb);
 }
 
+gs_camera_t __gs_begin_3d(gs_command_buffer_t* cb)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+
+	gs_pipeline_state_t state = gs_pipeline_state_default();
+	state.depth_enabled = true;
+	state.face_culling = gs_face_culling_back;
+
+	gs_camera_t c = gs_camera_perspective();
+
+	gfx->immediate.push_state(cb, state);
+	gfx->immediate.push_camera(cb, c);
+
+	return c;
+}
+
+void __gs_end_3d(gs_command_buffer_t* cb)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gfx->immediate.pop_camera(cb);
+	gfx->immediate.pop_state(cb);
+}
+
+gs_camera_t __gs_begin_2d(gs_command_buffer_t* cb)
+{
+	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+
+	gs_vec2 ws = platform->window_size(platform->main_window());
+	gs_vec2 hws = gs_vec2_scale(ws, 0.5f);
+	gs_camera_t c = gs_camera_default();
+	c.transform.position = gs_vec3_add(c.transform.position, gs_v3(hws.x, hws.y, 1.f));
+
+	f32 l = -ws.x / 2.f; 
+	f32 r = ws.x / 2.f;
+	f32 b = ws.y / 2.f;
+	f32 t = -ws.y / 2.f;
+	gs_mat4 ortho = gs_mat4_transpose(gs_mat4_ortho(
+		l, r, b, t, 0.01f, 1000.f
+	));
+	ortho = gs_mat4_mul(ortho, gs_camera_get_view(&c));
+
+	gfx->immediate.push_state(cb, gs_pipeline_state_default());
+	gfx->immediate.push_matrix(cb, gs_matrix_vp);
+	gfx->immediate.mat_mul(cb, ortho);
+
+	return c;
+}
+
+void __gs_end_2d(gs_command_buffer_t* cb)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gfx->immediate.pop_camera(cb);
+	gfx->immediate.pop_state(cb);
+}
+
 void __gs_mat_rotatef(gs_command_buffer_t* cb, f32 rad, f32 x, f32 y, f32 z)
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;

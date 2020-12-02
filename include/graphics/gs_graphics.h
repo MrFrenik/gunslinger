@@ -250,7 +250,6 @@ typedef struct gs_pipeline_state_t
 	gs_winding_order_type winding_order;
 	gs_face_culling_type face_culling;
 	gs_vec2 viewport;
-	gs_vec4 clear_color;
 	gs_vec4 view_scissor;
 	gs_shader_t shader;
 } gs_pipeline_state_t;
@@ -279,7 +278,6 @@ typedef enum gs_pipeline_state_attr_type
 	gs_winding_order,
 	gs_face_culling,
 	gs_viewport,
-	gs_clear_color,
 	gs_view_scissor,
 	gs_shader		
 } gs_pipeline_state_attr_type;
@@ -290,6 +288,8 @@ typedef struct gs_graphics_immediate_draw_i
 	void (* begin_drawing)(gs_command_buffer_t* cb);
 	void (* end_drawing)(gs_command_buffer_t* cb);
 
+	void (* clear)(gs_command_buffer_t* cb, f32 r, f32 g, f32 b, f32 a);
+
 	// Begin new shape declaration
 	void (* begin)(gs_command_buffer_t* cb, gs_draw_mode mode);
 	void (* end)(gs_command_buffer_t* cb);
@@ -299,6 +299,11 @@ typedef struct gs_graphics_immediate_draw_i
 	void (* pop_state)(gs_command_buffer_t* cb);
 	void (* push_state_attr)(gs_command_buffer_t* cb, gs_pipeline_state_attr_type type, ...);
 	void (* pop_state_attr)(gs_command_buffer_t* cb);
+
+	gs_camera_t (* begin_3d)(gs_command_buffer_t* cb);
+	void (* end_3d)(gs_command_buffer_t* cb);
+	gs_camera_t (* begin_2d)(gs_command_buffer_t* cb);
+	void (* end_2d)(gs_command_buffer_t* cb);
 
 	// Vertex attribute ops
 	void (* enable_texture_2d)(gs_command_buffer_t* cb, u32 id);
@@ -532,6 +537,10 @@ void __gs_mat_transv(gs_command_buffer_t* cb, gs_vec3 v);
 void __gs_mat_scalef(gs_command_buffer_t* cb, f32 x, f32 y, f32 z);
 void __gs_mat_scalev(gs_command_buffer_t* cb, gs_vec3 v);
 void __gs_mat_mul_vqs(gs_command_buffer_t* cb, gs_vqs xform);
+gs_camera_t __gs_begin_3d(gs_command_buffer_t* cb);
+void __gs_end_3d(gs_command_buffer_t* cb);
+gs_camera_t __gs_begin_2d(gs_command_buffer_t* cb);
+void __gs_end_2d(gs_command_buffer_t* cb);
 
 /*
 	What are the responsibilities here? 
