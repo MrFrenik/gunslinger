@@ -53,8 +53,8 @@ typedef struct gs_engine_t
 	gs_result (* shutdown)();
 } gs_engine_t;
 
-gs_engine_t* gs_engine_construct(gs_application_desc_t app_desc);
-gs_engine_t* gs_engine_instance();
+extern gs_engine_t* gs_engine_construct(gs_application_desc_t app_desc);
+extern gs_engine_t* gs_engine_instance();
 
 #define gs_engine_subsystem(T)\
 	(gs_engine_instance()->ctx.T)

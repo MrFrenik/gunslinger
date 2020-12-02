@@ -108,6 +108,17 @@ typedef struct immediate_vertex_data_t
 	gs_color_t color;
 } immediate_vertex_data_t;
 
+/*
+	
+*/
+
+// Internal resources for uniform block internally? So that *those* are kept internal, yet materials are just wrappers?
+// Could keep data sizes significantly lowered.
+// Can I hold an internal resource pool for materials? Don't like it.
+// Ease of use for end user? draw_renderable(cb, &renderable);
+// Does the pipeline state hold onto a uniform block?
+// Lot of potential transferred data moving around
+
 // Internally
 typedef struct immediate_drawing_internal_data_t 
 {
