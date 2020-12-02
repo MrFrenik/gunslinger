@@ -209,7 +209,7 @@ gs_pipeline_state_t gs_pipeline_state_default()
 	state.face_culling 	 = gs_face_culling_disabled;
 	state.view_scissor 	 = gs_v4_s(0.f);
 	state.viewport 	 	 = p->frame_buffer_size(p->main_window()); 
-	state.shader 		 = data->shader;
+	state.shader 		 = data->default_shader;
 
 	return state;
 }
@@ -274,7 +274,7 @@ immediate_drawing_internal_data_t construct_immediate_drawing_internal_data_t()
 	immediate_drawing_internal_data_t data = gs_default_val();
 
 	// Construct shader
-	data.shader = gfx->construct_shader(immediate_shader_v_src, immediate_shader_f_src);
+	data.default_shader = gfx->construct_shader(immediate_shader_v_src, immediate_shader_f_src);
 
 	// Construct default white texture
 	u8 white[2 * 2 * 4];
@@ -296,8 +296,8 @@ immediate_drawing_internal_data_t construct_immediate_drawing_internal_data_t()
 	data.vbo = gfx->construct_vertex_buffer(vertex_layout, sizeof(vertex_layout), NULL, 0);
 	data.vertex_data = gs_dyn_array_new(immediate_vertex_data_t);
 
-	data.u_mvp = gfx->construct_uniform(data.shader, "u_mvp", gs_uniform_type_mat4);
-	data.u_tex = gfx->construct_uniform(data.shader, "u_tex", gs_uniform_type_sampler2d);
+	data.u_mvp = gfx->construct_uniform(data.default_shader, "u_mvp", gs_uniform_type_mat4);
+	data.u_tex = gfx->construct_uniform(data.default_shader, "u_tex", gs_uniform_type_sampler2d);
 
 	// Construct stacks
 	data.model_matrix_stack = gs_dyn_array_new(gs_mat4);
