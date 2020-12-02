@@ -788,7 +788,7 @@ void __gs_draw_sphere_impl(gs_command_buffer_t* cb, gs_vec3 center, f32 radius, 
 
 void __gs_draw_sphere(gs_command_buffer_t* cb, gs_vec3 center, f32 radius, gs_color_t color)
 {
-	gs_graphics_i* gfx = gs_engine_subsystem(graphics);
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	gfx->immediate.disable_texture_2d(cb);
 	__gs_draw_sphere_impl(cb, center, radius, color);
 }

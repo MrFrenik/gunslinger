@@ -57,7 +57,7 @@ gs_engine_t* gs_engine_construct(gs_application_desc_t app_desc);
 gs_engine_t* gs_engine_instance();
 
 #define gs_engine_subsystem(T)\
-	gs_engine_instance()->ctx.##T
+	(gs_engine_instance()->ctx.T)
 
 #define gs_engine_user_data(T)\
 	(T*)(gs_engine_instance()->ctx.app.user_data)
