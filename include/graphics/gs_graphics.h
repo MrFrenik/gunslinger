@@ -1423,6 +1423,119 @@ void __gs_end_2d(gs_command_buffer_t* cb);
 	}
 
 	What would a deferred rendering pass look like? Would be implicit, I believe...
+
+	render pipelines
+
+	// Each pipeline state holds a reference to a uniform block
+	typedef struct gs_render_pipeline_state_t
+	{
+	} gs_render_pipeline_state_t;
+
+	// Are they transient? I suppose they could be...
+
+	// Uniform buffer objects are better...just push down to opengl 3.3
+	gs_render_pipeline_state_t state = gfx->construct_render_pipeline_state(); 	// By default, constructing a NEW pipeline state will construct a new ubo
+	state.draw_mode = mode;
+	state.vertex_buffer = vbo;
+	state.index_buffer = ibo;
+	state.params = params;
+
+	// Actual render loop example
+	{
+		gfx->push_state(cb, state);
+		{
+			gfx->set_state_uniform(cb, "uniform_name", gs_uniform_type_mat4, mat);
+			gfx->set_state_uniform(cb, "uniform_name", gs_uniform_type_mat4, mat);
+			gfx->set_state_draw_mode(cb, mode);
+
+			gs_for_range_i(buffers) 
+			{
+				gfx->set_vertex_buffer(cb, buffers[i].vbo);
+				gfx->set_index_buffer(cb, buffers[i].ibo);
+
+				// Draw sets all state parameters currently set then submits draw call
+				gfx->draw_indexed(cb, ...);
+			}
+
+			// What does this do? It just submits immediate vertex data to the backend.
+			// Depending on the shader set, this *might* not render correctly.
+			// Requires a very particular setup.
+			// So unless these push/pop states, can't guarantee that they'll always work.
+		}
+		gfx->pop_state(cb);
+
+		gfx->set_state(cb, state);
+		gfx->set_state_uniform(cb);	// Affects currently bound state. Could be default state, if none set.
+		gfx->set_state_params(cb);
+		gfx->draw(cb);
+		gfx->flush(cb);
+
+		// Perhaps certain pipeline states could be created?
+		// And these states have certain features that can be filled out? Like function pointers?
+		// User data as well?
+
+		// Grab copies of default states
+		gs_render_pipeline_state_t state_2d = gfx->render_pipeline_2d();	// Just don't like these being so specific and in the graphics api
+		gs_render_pipeline_state_t state_3d = gfx->render_pipeline_3d();
+
+		// I might need to make a specific rendering pipeline separate to handle this.
+		// So have the states, but then create an example that has immediate mode rendering outside of the main graphics library.
+		// I think that might be the better way to handle this.
+
+		gfx->set_state(cb, state_2d);
+		{
+			gfx->draw_line(cb, ...);
+			gfx->draw_textured_rect(...);
+		}
+		gfx->flush(cb);
+
+		// Goofy helper function (creates transient render pipeline state and sets to active state)
+		gfx->set_state(cb, gfx->construct_render_pipeline_state_transient());				// Just create a new transient state on the stack with this call
+		gfx->set_state_uniform(cb, gs_vp_default_name, gs_default_3d_camera_view_proj());
+		gfx->push_matrix(cb, mat_model);
+			gs_mat4 mat = gs_mat_mul_list(...);
+			gfx->set_state_uniform(cb, gs_model_default_name, mat);
+			gfx->draw_line();
+		gfx->pop_matrix(cb);
+		gfx->draw_line();
+		gfx->flush(cb);
+
+		// Now in default state, can draw these things regularly
+		gfx->push_state(cb, gs_graphics_default_3d_state());		// Does this create a new state, with a new uniform buffer? Can they be transient?
+		{
+			gs_mat4_mat = gs_mat_stack(
+				4,
+				...,
+				...,
+				...
+			);
+
+			// This is then enclosed within the state, so will pop off with it
+			gfx->set_state_uniform(cb, gs_default_model_matrix_uniform_name, gs_uniform_type_mat4, mat); // Going to be an issue with shared uniform blocks
+
+			// Of course, these aren't expected to work for all states.
+			gfx->draw_line(cb);
+			gfx->draw_box(cb);
+			gfx->draw_text(cb);
+		}
+		gfx->pop_state(cb);		// Pop state will flush the immediate vertex buffer
+
+		// Final submit of buffer for render
+		gfx->submit_command_buffer(cb);
+
+		// Submitting command buffer also resets ALL default pipeline states
+	}
+
+	rapi.setGraphicsPipeline(pipelineStates[entryIdx], cb);
+    rapi.setGpuParams(gpuParams[entryIdx], cb);
+    rapi.setVertexBuffers(0, &vertexBuffers[entryIdx], 1, cb);
+    rapi.setIndexBuffer(indexBuffers[entryIdx], cb);
+    rapi.setVertexDeclaration(vertexDeclarations[entryIdx], cb);
+    rapi.setDrawOperation(DOT_TRIANGLE_LIST, cb);
+    rapi.drawIndexed(0, numIndices[entryIdx], 0, numVertices[entryIdx], 0, cb);
+
+	// Setting individual uniforms
+	gfx->set_uniform(state.uniform_block, "", val);
 */
 
 

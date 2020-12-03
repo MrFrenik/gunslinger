@@ -81,7 +81,7 @@ typedef enum gs_opengl_op_code
 	gs_opengl_op_update_index_data,
 	gs_opengl_op_set_frame_buffer_attachment,
 	gs_opengl_op_draw,
-	gs_opengl_draw_indexed,
+	gs_opengl_op_draw_indexed,
 
 	// Debug/Immediate
 	gs_opengl_op_immediate_begin_drawing,
@@ -107,10 +107,6 @@ typedef struct immediate_vertex_data_t
 	gs_vec2 texcoord;
 	gs_color_t color;
 } immediate_vertex_data_t;
-
-/*
-	
-*/
 
 // Internal resources for uniform block internally? So that *those* are kept internal, yet materials are just wrappers?
 // Could keep data sizes significantly lowered.
@@ -242,10 +238,79 @@ gs_pipeline_state_t gs_pipeline_state_default()
 	return state;
 }
 
+// Push/Pop camera doesn't really make sense now... you'd have to explicitly set view projection matrices with uniform blocks
+
+/* 
+	// Default 3d state pipeline?
+	gs_pipeline_state_t state_3d = gs_pipeline_state_default();
+	state_3d.uniform_block = ... construct new block (this is too much for the user, honestly)...
+
+	gfx->clear(cb);
+
+
+	Default 3d pipeline state
+	Default 2d pipeline state
+
+	// How is this *any* different from just setting shaders directly? Am I taking that away now?
+
+	bind the shader, then can you set uniforms for it?
+
+	gfx->clear();
+
+	gfx->bind_state(state);
+
+	gfx->push_state(state);
+	{
+	}
+	gfx->pop_state(state);
+
+	gfx->draw_line();
+
+	// If you create this 
+	gs_pipeline_state_t state_3d = gs_pipeline_state_default_3d();
+
+	// How can the user "easily" set cameras using this?
+
+	// Set uniforms for this state, which will include camera stuff... get rid of push/pop matrix stuff, at least view/projection?
+
+	gfx->push_state(state_3d);
+
+	gfx->set_state_uniform(""); -> sets uniform value for currently set state? Not a huge fan of this.
+
+	gfx->push_default_state(gs_state_3d);
+	{
+		// Can you alter the camera in here now? How would you move the camera?
+	}
+	gfx->pop_state();
+*/
+
+/*
+	gfx->clear();
+
+	gs_pipeline_state_t state = gs_pipeline_state_default();
+
+	// Push/pop matrices...how is that going to work now?
+
+	gfx->push_state(cb, state);
+		gfx->push_state_attr(cb, attr);
+		{
+		}
+		gfx->pop_state_attr(cb);
+
+		// This doesn't really do much now, because it assumes that a view projection matrix would be present, which isn't the case
+		// for a shader. Unless you pre-multiply verts?
+
+		gfx->push_camera();
+		gfx->pop_camera();
+	gfx->pop_state(cb);
+*/
+
 /*============================================================
 // Graphics Initilization / De-Initialization
 ============================================================*/
 
+// Won't do this in the future. Will upload a pipeline state instead.
+// Also, will just use pipeline states to make transition to other apis easier.
 void opengl_init_default_state()
 {
 	// Need to add blend states
@@ -592,7 +657,7 @@ void opengl_set_depth_enabled(gs_command_buffer_t* cb, b32 enable)
 
 void opengl_draw_indexed(gs_command_buffer_t* cb, u32 count, u32 offset)
 {
-	__push_command(cb, gs_opengl_draw_indexed, {
+	__push_command(cb, gs_opengl_op_draw_indexed, {
 
 		// Write count and offset
 		gs_byte_buffer_write(&cb->commands, u32, count);
@@ -636,23 +701,7 @@ void opengl_update_vertex_data_command(gs_command_buffer_t* cb, gs_vertex_buffer
 		gs_byte_buffer_write(&cb->commands, u32, v_size);
 		gs_byte_buffer_bulk_write(&cb->commands, v_data, v_size);
 	});
-} 
-
-#define __gfx_add_immediate_line_internal(data, start, end, color)\
-do {\
-gs_dyn_array_push(data, start.x);\
-gs_dyn_array_push(data, start.y);\
-gs_dyn_array_push(data, start.z);\
-gs_dyn_array_push(data, color.x);\
-gs_dyn_array_push(data, color.y);\
-gs_dyn_array_push(data, color.z);\
-gs_dyn_array_push(data, end.x);\
-gs_dyn_array_push(data, end.y);\
-gs_dyn_array_push(data, end.z);\
-gs_dyn_array_push(data, color.x);\
-gs_dyn_array_push(data, color.y);\
-gs_dyn_array_push(data, color.z);\
-} while (0)	
+}
 
 GLenum __get_opengl_blend_mode(gs_blend_mode_type mode)
 {
@@ -1247,7 +1296,7 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 				glDrawArrays(GL_TRIANGLES, start, count);
 			} break;
 
-			case gs_opengl_draw_indexed:
+			case gs_opengl_op_draw_indexed:
 			{
 				// Read count and offest
 				gs_byte_buffer_readc(&cb->commands, u32, count);

@@ -316,7 +316,7 @@ void __gs_uniform_block_t_set_uniform_from_shader(gs_resource(gs_uniform_block_t
 		{ 
 			va_list ap;
 			va_start(ap, name);
-			gs_uniform_block_type(float) data = (gs_uniform_block_type(float)){va_arg(ap, float)};
+			gs_uniform_block_type(float) data = (gs_uniform_block_type(float)){(float)va_arg(ap, double)};
 			va_end(ap);
 			uapi->set_uniform(u_block_h, uniform, name, &data, sizeof(gs_uniform_block_type(float)));
 		} break;
