@@ -14,6 +14,8 @@
 #include <stb/stb_image_write.h>
 #include <stb/stb_image.h>
 
+s32 g_int = 3;
+
 /*============================================================
 // Graphics Resource Declarations
 ============================================================*/
@@ -63,7 +65,7 @@ typedef enum gs_opengl_op_code
 {
 	gs_opengl_op_bind_shader = 0,
 	gs_opengl_op_set_view_clear,
-	gs_opengl_op_set_view_port,
+	gs_opengl_op_set_viewport,
 	gs_opengl_op_set_view_scissor,
 	gs_opengl_op_set_depth_enabled,
 	gs_opengl_op_set_face_culling,
@@ -204,7 +206,7 @@ gs_texture_t opengl_construct_texture(gs_texture_parameter_desc desc);
 void opengl_immediate_submit_vertex_data();
 
 // Gfx Ops
-void opengl_set_view_port(gs_command_buffer_t* cb, u32 width, u32 height);
+void opengl_set_viewport(gs_command_buffer_t* cb, u32 x, u32 y, u32 width, u32 height);
 void opengl_set_view_clear(gs_command_buffer_t* cb, f32* col);
 void opengl_set_winding_order(gs_command_buffer_t* cb, gs_winding_order_type type);
 void opengl_set_face_culling(gs_command_buffer_t* cb, gs_face_culling_type type);
@@ -218,6 +220,7 @@ gs_pipeline_state_t gs_pipeline_state_default()
 {
 	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
 	gs_platform_i* p = gs_engine_instance()->ctx.platform;
+	gs_vec2 fbs = p->frame_buffer_size(p->main_window());
 
 	// Create default opengl pipeline state
 	gs_pipeline_state_t state = gs_default_val();
@@ -228,7 +231,7 @@ gs_pipeline_state_t gs_pipeline_state_default()
 	state.winding_order  = gs_winding_order_ccw;
 	state.face_culling 	 = gs_face_culling_disabled;
 	state.view_scissor 	 = gs_v4_s(0.f);
-	state.viewport 	 	 = p->frame_buffer_size(p->main_window()); 
+	state.viewport 	 	 = gs_v4(0.f, 0.f, fbs.x, fbs.y); 
 	state.shader 		 = data->default_shader;
 	state.vbo  			 = data->default_vbo;
 	state.ibo 	 		 = data->default_ibo;
@@ -443,7 +446,7 @@ void opengl_set_pipeline_state(gs_command_buffer_t* cb, gs_pipeline_state_t stat
 		opengl_set_view_scissor(cb, vs->x, vs->y, vs->z, vs->w);
 	}
 
-	opengl_set_view_port(cb, state.viewport.x, state.viewport.y);
+	opengl_set_viewport(cb, state.viewport.x, state.viewport.y, state.viewport.z, state.viewport.w);
 	opengl_set_winding_order(cb, state.winding_order);
 	opengl_set_face_culling(cb, state.face_culling);
 	opengl_set_blend_equation(cb, state.blend_equation);
@@ -586,13 +589,13 @@ void opengl_set_view_scissor(gs_command_buffer_t* cb, u32 x, u32 y, u32 w, u32 h
 	});
 }
 
-void opengl_set_view_port(gs_command_buffer_t* cb, u32 width, u32 height)
+void opengl_set_viewport(gs_command_buffer_t* cb, u32 x, u32 y, u32 width, u32 height)
 {
-	__push_command(cb, gs_opengl_op_set_view_port, {
+	__push_command(cb, gs_opengl_op_set_viewport, {
 
-		// Write width into buffer
+		gs_byte_buffer_write(&cb->commands, u32, x);
+		gs_byte_buffer_write(&cb->commands, u32, y);
 		gs_byte_buffer_write(&cb->commands, u32, width);
-		// Write height into buffer
 		gs_byte_buffer_write(&cb->commands, u32, height);
 	});
 }
@@ -1101,10 +1104,10 @@ void gs_set_view_scissor(s32 x, s32 y, s32 w, s32 h)
 	}
 }
 
-void gs_set_viewport(s32 width, s32 height)
+void gs_set_viewport(s32 x, s32 y, s32 width, s32 height)
 {
 	// Set viewport
-	glViewport(0, 0, (s32)width, (s32)height);
+	glViewport(x, y, (s32)width, (s32)height);
 }
 
 void gs_set_depth_enabled(b32 enabled)
@@ -1176,7 +1179,7 @@ void gs_set_state(gs_pipeline_state_t state)
 	gs_set_depth_enabled(state.depth_enabled);
 	gs_set_winding_order(state.winding_order);
 	gs_set_face_culling(state.face_culling);
-	gs_set_viewport(state.viewport.x, state.viewport.y);
+	gs_set_viewport(state.viewport.x, state.viewport.y, state.viewport.z, state.viewport.w);
 	gs_set_view_scissor(state.view_scissor.x, state.view_scissor.y, state.view_scissor.z, state.view_scissor.w);
 	gs_bind_shader(state.shader.program_id);
 }
@@ -1319,11 +1322,13 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 				gs_set_view_scissor(x, y, w, h);
 			} break;
 
-			case gs_opengl_op_set_view_port: 
+			case gs_opengl_op_set_viewport: 
 			{
+				gs_byte_buffer_readc(&cb->commands, u32, x);
+				gs_byte_buffer_readc(&cb->commands, u32, y);
 				gs_byte_buffer_readc(&cb->commands, u32, width);
 				gs_byte_buffer_readc(&cb->commands, u32, height);
-				gs_set_viewport(width, height);
+				gs_set_viewport(x, y, width, height);
 			} break;
 
 			case gs_opengl_op_set_depth_enabled: 
@@ -2167,16 +2172,6 @@ gs_texture_t opengl_construct_texture(gs_texture_parameter_desc desc)
 	return tex;
 }
 
-gs_uniform_type opengl_uniform_type(gs_uniform_t u)
-{
-	return u.type;
-}
-
-s32 opengl_texture_id(gs_texture_t* tex)
-{
-	return tex->id;
-} 
-
 void* opengl_load_texture_data_from_file(const char* file_path, b32 flip_vertically_on_load, 
 				gs_texture_format texture_format, s32* width, s32* height, s32* num_comps)
 	{
@@ -2361,7 +2356,7 @@ struct gs_graphics_i* __gs_graphics_construct()
 	gfx->unbind_frame_buffer 			= &opengl_unbind_frame_buffer;
 	gfx->set_frame_buffer_attachment 	= &opengl_set_frame_buffer_attachment;
 	gfx->set_view_clear 				= &opengl_set_view_clear;
-	gfx->set_view_port 					= &opengl_set_view_port;
+	gfx->set_viewport 					= &opengl_set_viewport;
 	gfx->set_view_scissor 				= &opengl_set_view_scissor;
 	gfx->set_depth_enabled 				= &opengl_set_depth_enabled;
 	gfx->set_blend_mode 				= &opengl_set_blend_mode;
@@ -2401,8 +2396,6 @@ struct gs_graphics_i* __gs_graphics_construct()
 	/*============================================================
 	// Graphics Ops
 	============================================================*/
-	gfx->texture_id 							= &opengl_texture_id;
-	gfx->uniform_type 							= &opengl_uniform_type;
 
 	/*============================================================
 	// Graphics Resource Free Ops

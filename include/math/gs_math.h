@@ -21,6 +21,8 @@ extern "C" {
 #define gs_v3_s(s)  gs_vec3_ctor((s), (s), (s))
 #define gs_v4_s(s)  gs_vec4_ctor((s), (s), (s), (s))
 
+#define gs_v4_xy_v(x, y, v) gs_vec4_ctor((x), (y), (v).x, (v).y)
+
 #define gs_x_axis 	gs_v3(1.f, 0.f, 0.f)
 #define gs_y_axis 	gs_v3(0.f, 1.f, 0.f)
 #define gs_z_axis 	gs_v3(0.f, 0.f, 1.f)

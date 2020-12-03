@@ -76,13 +76,6 @@ typedef enum gs_shader_language_type
 	gs_glsl = 0x00
 } gs_shader_language_type;
 
-typedef struct gs_shader_program_desc
-{
-	gs_shader_program_type 		type;
-	gs_shader_language_type 	language;
-	const char* 				source;
-} gs_shader_program_desc;
-
 typedef enum gs_uniform_type
 {
 	gs_uniform_type_float = 0,
@@ -281,6 +274,7 @@ typedef struct gs_baked_char_t
    f32 xoff,yoff,xadvance;
 } gs_baked_char_t;
 
+// This makes this tricky, because it would be nice to have a caching system for internal resources.
 typedef struct gs_font_t
 {
 	void* font_info;
@@ -318,28 +312,95 @@ typedef enum gs_pipeline_state_attr_type
 	gs_shader		
 } gs_pipeline_state_attr_type;
 
+typedef struct gs_pipeline_shader_stage_desc_t
+{
+	gs_shader_program_type 		type;
+	gs_shader_language_type 	language;
+	const char* 				source;
+} gs_pipeline_shader_stage_desc_t;
+
+typedef struct gs_viewport_state_desc_t
+{
+	f32 x, y, width, height;
+} gs_viewport_state_desc_t;
+
+typedef struct gs_view_scissor_state_desc_t
+{
+	f32 x, y, width, height;
+} gs_view_scissor_state_desc_t;
+
+// Return handle to a pipeline state
 typedef struct gs_pipeline_state_t
 {
-	gs_blend_mode_type blend_func_src;
-	gs_blend_mode_type blend_func_dst;
-	gs_blend_equation_type blend_equation;
-	b32 depth_enabled;
-	gs_winding_order_type winding_order;
-	gs_face_culling_type face_culling;
-	gs_vec2 viewport;
-	gs_vec4 view_scissor;
-	gs_vertex_buffer_t vbo;
-	gs_index_buffer_t ibo;
-	gs_shader_t shader;								// The shader to be bound
-	gs_resource(gs_uniform_block_t) uniforms;		// All the uniforms to be bound
-	gs_draw_mode draw_mode;
+	gs_blend_mode_type 				blend_func_src;
+	gs_blend_mode_type 				blend_func_dst;
+	gs_blend_equation_type 			blend_equation;
+	b32 							depth_enabled;
+	gs_winding_order_type 			winding_order;
+	gs_face_culling_type 			face_culling;
+	gs_draw_mode 					draw_mode;
+	gs_vec4 						viewport;
+	gs_vec4 						view_scissor;
+	gs_vertex_buffer_t 				vbo;
+	gs_index_buffer_t 				ibo;
+	gs_frame_buffer_t 				fbo;
+	gs_vec4 						clear_color;
+	u32 							clear_bit;
+	gs_shader_t 					shader;								
+	gs_resource(gs_uniform_block_t) uniforms;
 } gs_pipeline_state_t;
 
+typedef struct gs_render_pipeline_state_desc_t
+{
+	gs_blend_mode_type 				blend_func_src;
+	gs_blend_mode_type 				blend_func_dst;
+	gs_blend_equation_type 			blend_equation;
+	b32 							depth_enabled;
+	gs_winding_order_type 			winding_order;
+	gs_face_culling_type 			face_culling;
+	gs_draw_mode 					draw_mode;
+	gs_vec4 						viewport;
+	gs_vec4 						view_scissor;
+	gs_vertex_buffer_t 				vbo;
+	gs_index_buffer_t 				ibo;
+	gs_frame_buffer_t 				fbo;
+	gs_vec4 						clear_color;
+	u32 							clear_bit;
+	gs_shader_t 					shader;
+} gs_render_pipeline_state_desc_t;
+
 extern gs_pipeline_state_t gs_pipeline_state_default();
+// extern gs_render_pipeline_state_desc_t gs_render_pipeline_state_desc_default();
+// extern gs_resource(gs_render_pipeline_state_t) gs_construct_render_pipeline_state(gs_render_pipeline_state_desc_t desc);
+
+/*
+	gs_resource(gs_pipeline_state_t) state = gfx->construct_pipeline_state(desc);
+
+	// Rendering loop
+	gfx->set_pipeline_state(cb, state);
+	gfx->set_pipeline_clear_color(cb, color);
+	gfx->set_pipeline_clear_bit(cb, bit);
+	gfx->set_pipeline_state_uniform(cb, "u_vp", gs_uniform_type_mat4, model_mat); // for now, not worried if this is possible in the future for vulkan
+	gfx->set_pipeline_state_uniform(cb, "u_model", gs_uniform_type_mat4, vp_mat);
+	gfx->draw_instanced(cb, ...);
+
+	gfx->set_pipeline_state(cb, ...);
+		...
+	gfx->flush_pipeline_state(cb);
+
+	gfx->submit_command_buffer(cb);
+
+*/
 
 /*==========================
 // Immediate Mode Rendering
 ==========================*/
+
+typedef enum gs_graphics_immediate_mode
+{
+	gs_immediate_mode_2d,
+	gs_immediate_mode_3d
+} gs_graphics_immediate_mode;
 
 typedef struct gs_graphics_immediate_draw_i
 {
@@ -394,8 +455,6 @@ typedef struct gs_graphics_immediate_draw_i
 	// Rect
 	void (* draw_rect)(gs_command_buffer_t* cb, f32 x0, f32 y0, f32 x1, f32 y1, gs_color_t color);
 	void (* draw_rect_textured)(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, u32 tex_id, gs_color_t color);
-	// void (* draw_rect_lines_ext)(gs_command_buffer_t* cb, gs_vec3 a, gs_vec3 b, gs_vqs xform, gs_color_t color);
-	// void (* draw_rect_filled_ext)(gs_command_buffer_t* cb, gs_vec3 a, gs_vec3 b, gs_vqs xform, gs_color_t color);
 
 	// Circle
 	void (* draw_circle)(gs_command_buffer_t* cb, gs_vec2 center, f32 radius, s32 segments, gs_color_t color);
@@ -433,9 +492,98 @@ typedef struct gs_graphics_immediate_draw_i
 	// Submit
 	void (* submit)(gs_command_buffer_t* cb);
 } gs_graphics_immediate_draw_i;
+
 /*================
 // Graphics API
 =================*/
+
+// // Uniform buffer objects are better...just push down to opengl 3.3
+// gs_render_pipeline_state_t state = gfx->construct_render_pipeline_state(); 	// By default, constructing a NEW pipeline state will construct a new ubo
+// state.draw_mode = mode;
+// state.vertex_buffer = vbo;
+// state.index_buffer = ibo;
+// state.params = params;
+// state.uniform_block = block;
+
+// // Actual render loop example
+// {
+// 	gfx->set_state(cb, state);
+// 	{
+// 		gfx->set_state_uniform(cb, "uniform_name", gs_uniform_type_mat4, mat);
+// 		gfx->set_state_uniform(cb, "uniform_name", gs_uniform_type_mat4, mat);
+// 		gfx->set_state_draw_mode(cb, mode);
+
+// 		gs_for_range_i(buffers) 
+// 		{
+// 			gfx->set_vertex_buffer(cb, buffers[i].vbo);
+// 			gfx->set_index_buffer(cb, buffers[i].ibo);
+
+// 			// Draw sets all state parameters currently set then submits draw call (inefficient)
+// 			gfx->draw_indexed(cb, ...);
+// 		}
+
+// 		// What does this do? It just submits immediate vertex data to the backend.
+// 		// Depending on the shader set, this *might* not render correctly.
+// 		// Requires a very particular setup.
+// 		// So unless these push/pop states, can't guarantee that they'll always work.
+// 	}
+// 	gfx->flush_state(cb);
+/*
+	gs_pipeline_state_params_t params = {0};
+	params.depth_enabled = false;
+	params.face_culling = ...;
+	params.winding_order = ...;
+	params.vertex_buffer = ...;
+	params.index_buffer = ...;
+	params.shader = ...;
+	params.clear_bit = ...;
+	params.clear_color = ...;
+	params.frame_buffer = ...;
+
+	gfx->set_pipeline_state_params(cb, params);
+
+	// This is assuming a bound pipeline state
+	rapi.setGraphicsPipeline(pipelineStates[entryIdx], cb); -> binds relevant state
+    rapi.setGpuParams(gpuParams[entryIdx], cb);
+    rapi.setVertexBuffers(0, &vertexBuffers[entryIdx], 1, cb);
+    rapi.setIndexBuffer(indexBuffers[entryIdx], cb);
+    rapi.setVertexDeclaration(vertexDeclarations[entryIdx], cb);
+    rapi.setDrawOperation(DOT_TRIANGLE_LIST, cb);
+    rapi.drawIndexed(0, numIndices[entryIdx], 0, numVertices[entryIdx], 0, cb);
+
+	// Render Loop
+
+	// Bind state, which will include making clears, setting up frame buffer, binding uniforms, etc.
+	// I don't understand. What's the difference between this and that and this and that and...
+	gfx->set_pipeline_state(cb, state);
+	{
+		gs_for_range_i(gs_dyn_array_size(models))
+		{		
+			// Issues change flag for pipeline (to rebind on next draw call submitted?)
+			gfx->bind_vertex_buffer(cb, models[i].vbo);
+			gfx->bind_index_buffer(cb, models[i].ibo, cb);
+			gfx->set_vertex_decl(cb, decl); // Interesting...
+			gfx->set_draw_operation(cb, mode);
+			gfx->draw_indexed(cb, 0, indices, 0, verts, 0);
+			gfx->bind_pipeline_state_uniform(cb, state, "u_model", gs_uniform_type_mat4, models[i].model_mtx); (will set data and bind, simple)
+			gfx->draw();
+		}
+	}
+	gfx->set_pipeline_state(cb, 0);	// Reset to default state
+
+	gs_graphics_immediate_draw_i* imm = &gfx->immediate_i;
+	imm->begin_drawing(cb, );
+
+	gs_resource(gs_pipeline_state_t) state = gfx->construct_render_pipeline_state();
+	gfx->set_pipeline_state_params(cb, params);
+	gfx->set_pipeline_state_uniform(cb, state, name, type);
+
+	gfx->set_pipeline_state_uniform(cb, state, name, type);	-> should this then be done before? is it even necessary?
+	gfx->set_pipeline_state(cb, state); 	// Just sets internally? Or actively binds all uniforms/state/etc.
+
+	gfx->set_pipeline_state_uniform(cb, state, name, type);
+	gfx->bind_pipeline_state(cb, state);
+*/
 
 // This will not be abstracted, however the renderer absolutely could be 
 typedef struct gs_graphics_i
@@ -450,14 +598,23 @@ typedef struct gs_graphics_i
 	/*============================================================
 	// Graphics Command Buffer Ops
 	============================================================*/
-	void (* reset_command_buffer)(gs_command_buffer_t*);
+
+	// Sets internal pipeline state to be used for rendering
 	void (* set_pipeline_state)(gs_command_buffer_t* cb, gs_pipeline_state_t state);
+
+	// Sets value of uniform in block for set pipeline state (could be individual uniform or block type)
+	void (* set_pipeline_state_uniform)(gs_command_buffer_t* cb, const char* name, gs_uniform_type type, ...);
+
+	// Fully flushes pipeline (binds all properties and submits draws...doesn't make sense, actually)
+	void (* submit_pipeline_state)(gs_command_buffer_t* cb);
+
+	void (* reset_command_buffer)(gs_command_buffer_t*);
 	void (* set_depth_enabled)(gs_command_buffer_t*, b32);
 	void (* set_winding_order)(gs_command_buffer_t*, gs_winding_order_type);
 	void (* set_face_culling)(gs_command_buffer_t*, gs_face_culling_type);
 	void (* set_blend_mode)(gs_command_buffer_t*, gs_blend_mode_type, gs_blend_mode_type);
 	void (* set_blend_equation)(gs_command_buffer_t*, gs_blend_equation_type);
-	void (* set_view_port)(gs_command_buffer_t*, u32 width, u32 height);
+	void (* set_viewport)(gs_command_buffer_t*, u32 x, u32 y, u32 width, u32 height);
 	void (* set_view_scissor)(gs_command_buffer_t*, u32 x, u32 y, u32 width, u32 height);
 	void (* bind_frame_buffer)(gs_command_buffer_t*, gs_frame_buffer_t);
 	void (* set_frame_buffer_attachment)(gs_command_buffer_t*, gs_texture_t tex, u32 idx);
@@ -487,7 +644,6 @@ typedef struct gs_graphics_i
 	gs_vertex_buffer_t (* construct_vertex_buffer)(gs_vertex_attribute_type*, usize, void*, usize);
 	gs_shader_t (* construct_shader)(const char* vert_src, const char* frag_src);
 	gs_uniform_t (* construct_uniform)(gs_shader_t, const char* uniform_name, gs_uniform_type);
-	// gs_command_buffer_t*(* construct_command_buffer)();
 	gs_render_target_t (* construct_render_target)(gs_texture_parameter_desc);	// Will eventually set this so you can have a number of targets for MRT (is this even necessary)?
 	gs_frame_buffer_t (* construct_frame_buffer)(gs_texture_t);
 	void* (* load_texture_data_from_file)(const char* file_path, b32 flip_vertically_on_load, gs_texture_format,
@@ -497,8 +653,8 @@ typedef struct gs_graphics_i
 	gs_texture_t (* construct_texture)(gs_texture_parameter_desc);
 	gs_texture_t (* construct_texture_from_file)(const char* file_path, gs_texture_parameter_desc* t_desc);
 	gs_index_buffer_t (* construct_index_buffer)(void*, usize);
-	s32 (* texture_id)(gs_texture_t*);
 
+	// These need to be placed into a particular cache for fonts (slot array) which then can be responsible for handling data.
 	gs_font_t (* construct_font_from_file)(const char* file_path, f32 point_size);
 
 	/*============================================================
@@ -514,7 +670,6 @@ typedef struct gs_graphics_i
 	============================================================*/
 	void (* update_vertex_buffer_data)(gs_vertex_buffer_t, void*, usize);
 	void (* update_texture_data)(gs_texture_t*, gs_texture_parameter_desc);
-	gs_uniform_type (* uniform_type)(gs_uniform_t);
 
 	void (* set_material_uniform)(struct gs_material_t*, gs_uniform_type, const char*, void*);		// Generic method for setting uniform data
 	void (* set_material_uniform_mat4)(struct gs_material_t*, const char*, gs_mat4);
@@ -1356,7 +1511,6 @@ void __gs_end_2d(gs_command_buffer_t* cb);
 		gs_resource(gs_texture) atlas;
 	} gs_font;
 
-
 	// Debug drawing (for lines / shapes / primitives / etc.)
 
 	// Should add this into a vertex buffer. Use some internal rendering mechanism for displaying all of this data.
@@ -1391,10 +1545,19 @@ void __gs_end_2d(gs_command_buffer_t* cb);
 	// for primitive drawing. Abstracting the bore of having to code all of that yourself. A particular shader 
 	// is needed for drawing, the vertex layout needs to be understood correctly.
 
+	immediate->begin_3d();
+	{
+	}
+	immediate->end_3d();
+
+	gfx->set_state(cb, gfx->immediate_state_3d());
+		gfx->draw_line();
+	gfx->flush_state();
+
 	gfx->set_debug_properties(cb_handle, props);
-	gfx->draw_line(cb_handle, start, end, color);
-	gfx->draw_cube(cb_handle, aabb, model_matrix, color);
-	gfx->draw_square(cb_handle, origin, extents, color);
+		gfx->draw_line(cb_handle, start, end, color);
+		gfx->draw_cube(cb_handle, aabb, model_matrix, color);
+		gfx->draw_square(cb_handle, origin, extents, color);
 	gfx->submit_debug_rendering(cb_handle);
 
 	// Graphics update
@@ -1416,6 +1579,12 @@ void __gs_end_2d(gs_command_buffer_t* cb);
 
 		// Do debug drawing
 	}
+
+	What a life to live - working for some woke, multi-national corporation that uses degnerate social issues as a signal solely to 
+	extract more wealth for itself from everyone else. Don't you dare question it, of course - just produce more goods for the 
+	leech to sell to mindless consumers, who are unaware just how their participation is feeding into their purposelessness, 
+	their all-encompassing nihilism and total lack of self ownership. Take back control of your life. Stop being a mindless zombie for 
+	large corporations and governments that see you as nothing more than meat for the grinder.
 
 	struct gs_render_pass
 	{
@@ -1439,10 +1608,11 @@ void __gs_end_2d(gs_command_buffer_t* cb);
 	state.vertex_buffer = vbo;
 	state.index_buffer = ibo;
 	state.params = params;
+	state.uniform_block = block;
 
 	// Actual render loop example
 	{
-		gfx->push_state(cb, state);
+		gfx->set_state(cb, state);
 		{
 			gfx->set_state_uniform(cb, "uniform_name", gs_uniform_type_mat4, mat);
 			gfx->set_state_uniform(cb, "uniform_name", gs_uniform_type_mat4, mat);
@@ -1462,7 +1632,7 @@ void __gs_end_2d(gs_command_buffer_t* cb);
 			// Requires a very particular setup.
 			// So unless these push/pop states, can't guarantee that they'll always work.
 		}
-		gfx->pop_state(cb);
+		gfx->flush_state(cb);
 
 		gfx->set_state(cb, state);
 		gfx->set_state_uniform(cb);	// Affects currently bound state. Could be default state, if none set.
@@ -1475,8 +1645,8 @@ void __gs_end_2d(gs_command_buffer_t* cb);
 		// User data as well?
 
 		// Grab copies of default states
-		gs_render_pipeline_state_t state_2d = gfx->render_pipeline_2d();	// Just don't like these being so specific and in the graphics api
-		gs_render_pipeline_state_t state_3d = gfx->render_pipeline_3d();
+		gs_render_pipeline_state_t state_2d = gfx->immediate.render_pipeline_2d();	// Just don't like these being so specific and in the graphics api
+		gs_render_pipeline_state_t state_3d = gfx->immediate.render_pipeline_3d();
 
 		// I might need to make a specific rendering pipeline separate to handle this.
 		// So have the states, but then create an example that has immediate mode rendering outside of the main graphics library.
@@ -1525,6 +1695,36 @@ void __gs_end_2d(gs_command_buffer_t* cb);
 
 		// Submitting command buffer also resets ALL default pipeline states
 	}
+
+	// Immediate mode rendering api provided (for debugging and "hand holding" mainly)
+	graphics_immediate_i* imm = &gfx->immediate_i;
+	imm->begin_drawing(cb, gs_immediate_mode_2d);
+	{
+		imm->push_camera(cb, imm->camera_3d());
+		{
+			imm->push_matrix(cb, ...);
+				imm->mat_transf(cb, ...);
+				imm->mat_rotateq(cb, ...);
+				imm->draw_box(cb, ...);
+				imm->draw_mesh(cb, ...);
+			imm->pop_matrix(cb);
+		}
+		imm->pop_camera(cb);
+		imm->draw_line(cb, ...);
+	}
+	imm->end_drawing(cb);
+
+	// In the backend, this gets called...
+	imm->begin_drawing(cb, gs_immediate_mode_2d);	--> 
+
+	gfx->set_state(cb, gfx->immediate->default_state);
+	gs_mat4 vp_mat = {0};
+	switch (mode)
+	{
+		case gs_immediate_mode_2d: vp_mat = gfx->immediate->default_vp_mat_ortho(); break;
+		case gs_immediate_mode_3d: vp_mat = gfx->immediate->default_vp_mat_persp(); break;
+	}
+	gfx->set_state_uniform(cb, gfx->immediate->vp_matrix_name, gs_uniform_type_mat4, gfx->immediate->default_vp_orth_matrix());
 
 	rapi.setGraphicsPipeline(pipelineStates[entryIdx], cb);
     rapi.setGpuParams(gpuParams[entryIdx], cb);
