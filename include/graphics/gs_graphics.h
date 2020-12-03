@@ -261,11 +261,12 @@ typedef struct gs_uniform_block_i
 {
 	gs_resource(gs_uniform_block_t) (* construct)();
 	void (* set_uniform)(gs_resource(gs_uniform_block_t) u_block, gs_uniform_t uniform, const char* name, void* data, usize data_size);
+	void (* set_uniform_from_shader)(gs_resource(gs_uniform_block_t) u_block_h, gs_shader_t shader, gs_uniform_type type, const char* name, ...);
 	void (* bind_uniforms)(gs_command_buffer_t* cb, gs_resource(gs_uniform_block_t) u_block);
 	gs_slot_array(gs_uniform_block_t) uniform_blocks;
 } gs_uniform_block_i;
 
-gs_uniform_block_i __gs_uniform_block_i_new();
+extern gs_uniform_block_i __gs_uniform_block_i_new();
 
 /*================
 // Font
@@ -287,9 +288,22 @@ typedef struct gs_font_t
 	gs_texture_t texture;
 } gs_font_t;
 
-/*==========================
-// Immediate Mode Rendering
-==========================*/
+/*================
+// Pipeline State
+================*/
+
+typedef enum gs_matrix_mode
+{
+	gs_matrix_model,
+	gs_matrix_vp
+} gs_matrix_mode;
+
+typedef enum gs_draw_mode
+{
+	gs_lines,
+	gs_triangles,
+	gs_quads
+} gs_draw_mode;
 
 typedef enum gs_pipeline_state_attr_type
 {
@@ -314,23 +328,18 @@ typedef struct gs_pipeline_state_t
 	gs_face_culling_type face_culling;
 	gs_vec2 viewport;
 	gs_vec4 view_scissor;
-	gs_shader_t shader;
+	gs_vertex_buffer_t vbo;
+	gs_index_buffer_t ibo;
+	gs_shader_t shader;								// The shader to be bound
+	gs_resource(gs_uniform_block_t) uniforms;		// All the uniforms to be bound
+	gs_draw_mode draw_mode;
 } gs_pipeline_state_t;
 
 extern gs_pipeline_state_t gs_pipeline_state_default();
 
-typedef enum gs_matrix_mode
-{
-	gs_matrix_model,
-	gs_matrix_vp
-} gs_matrix_mode;
-
-typedef enum gs_draw_mode
-{
-	gs_lines,
-	gs_triangles,
-	gs_quads
-} gs_draw_mode;
+/*==========================
+// Immediate Mode Rendering
+==========================*/
 
 typedef struct gs_graphics_immediate_draw_i
 {

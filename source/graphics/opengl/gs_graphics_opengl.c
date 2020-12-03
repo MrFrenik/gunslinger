@@ -119,27 +119,40 @@ typedef struct immediate_vertex_data_t
 // Does the pipeline state hold onto a uniform block?
 // Lot of potential transferred data moving around
 
+/*
+	In the beginning, all stack is cleared.
+	For submitting a command buffer, you add data onto the stack.
+	Clear all data after final submit of buffer. (so that means all stacks are completely localized within a submit command and state won't "leak")
+*/
+
 // Internally
 typedef struct immediate_drawing_internal_data_t 
 {
 	// Bound this all up into a state object, then create stack of states
-	gs_shader_t default_shader;
-	gs_texture_t default_texture;
+	gs_shader_t 					default_shader;
+	gs_texture_t 					default_texture;
+	gs_vertex_buffer_t 				default_vbo;
+	gs_index_buffer_t 				default_ibo;
+	gs_resource(gs_uniform_block_t) default_uniforms;
+
+	// Get rid of these (uniform block information for default state)
 	gs_uniform_t u_mvp;
 	gs_uniform_t u_tex;
-	gs_vertex_buffer_t vbo;
 	u32 tex_id;
-	gs_color_t color;
+
+	gs_color_t color;			// How can I simplify these?
 	gs_vec2 texcoord;
 	gs_draw_mode draw_mode;
+
+	// Being able to dynamically push custom vertex data based on a declaration would be nice
 	gs_dyn_array(immediate_vertex_data_t) vertex_data;
 
 	// Stacks
-	gs_dyn_array(gs_pipeline_state_t) state_stack;
-	gs_dyn_array(gs_mat4) vp_matrix_stack;
-	gs_dyn_array(gs_mat4) model_matrix_stack;
-	gs_dyn_array(gs_vec2) viewport_stack;
-	gs_dyn_array(gs_matrix_mode) matrix_modes;
+	gs_dyn_array(gs_pipeline_state_t) 	state_stack;
+	gs_dyn_array(gs_mat4) 				vp_matrix_stack;
+	gs_dyn_array(gs_mat4) 				model_matrix_stack;
+	gs_dyn_array(gs_vec2) 				viewport_stack;			// This can go away (with state stack)
+	gs_dyn_array(gs_matrix_mode) 		matrix_modes;
 } immediate_drawing_internal_data_t;
 
 typedef gs_command_buffer_t command_buffer_t;
@@ -221,6 +234,10 @@ gs_pipeline_state_t gs_pipeline_state_default()
 	state.view_scissor 	 = gs_v4_s(0.f);
 	state.viewport 	 	 = p->frame_buffer_size(p->main_window()); 
 	state.shader 		 = data->default_shader;
+	state.vbo  			 = data->default_vbo;
+	state.ibo 	 		 = data->default_ibo;
+	state.uniforms 		 = data->default_uniforms;
+	state.draw_mode 	 = gs_triangles;
 
 	return state;
 }
@@ -304,8 +321,16 @@ immediate_drawing_internal_data_t construct_immediate_drawing_internal_data_t()
 	};
 
 	// Construct vertex buffer objects
-	data.vbo = gfx->construct_vertex_buffer(vertex_layout, sizeof(vertex_layout), NULL, 0);
+	data.default_vbo = gfx->construct_vertex_buffer(vertex_layout, sizeof(vertex_layout), NULL, 0);
 	data.vertex_data = gs_dyn_array_new(immediate_vertex_data_t);
+
+	// Construct new uniform block and fill
+	data.default_uniforms = gfx->uniform_i->construct();
+	gfx->uniform_i->set_uniform_from_shader(data.default_uniforms, data.default_shader, gs_uniform_type_mat4, "u_mvp", __gs_default_view_proj_mat());
+	gfx->uniform_i->set_uniform_from_shader(data.default_uniforms, data.default_shader, gs_uniform_type_sampler2d, "u_tex", data.default_texture.id, 0);
+
+	// gfx->uniform_i->set_uniform
+	// void (* set_uniform)(gs_resource(gs_uniform_block_t) u_block, gs_uniform_t uniform, const char* name, void* data, usize data_size);
 
 	data.u_mvp = gfx->construct_uniform(data.default_shader, "u_mvp", gs_uniform_type_mat4);
 	data.u_tex = gfx->construct_uniform(data.default_shader, "u_tex", gs_uniform_type_sampler2d);
@@ -1145,8 +1170,8 @@ void opengl_immediate_submit_vertex_data()
 		return;
 	}
 
-	u32 vao = data->vbo.vao;
-	u32 vbo = data->vbo.vbo;
+	u32 vao = data->default_vbo.vao;
+	u32 vbo = data->default_vbo.vbo;
 	usize sz = count * sizeof(immediate_vertex_data_t);
 
 	u32 mode;
@@ -1850,84 +1875,67 @@ void opengl_link_shaders(u32 program_id, u32 vert_id, u32 frag_id)
 void opengl_quad_batch_begin(gs_quad_batch_t* qb)
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
-	// opengl_render_data_t* data = __get_opengl_data_internal();
-	// gs_quad_batch_t* qb = gs_slot_array_get_ptr(data->quad_batches, qb_h.id);
 	gfx->quad_batch_i->begin(qb);
 }
 
 void opengl_quad_batch_add(gs_quad_batch_t* qb, void* qb_data) 
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
-	// opengl_render_data_t* data = __get_opengl_data_internal();
-	// gs_quad_batch_t* qb = gs_slot_array_get_ptr(data->quad_batches, qb_h.id);
 	gfx->quad_batch_i->add(qb, qb_data);
 }
 
 void opengl_quad_batch_end(gs_quad_batch_t* qb) 
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
-	// opengl_render_data_t* data = __get_opengl_data_internal();
-	// gs_quad_batch_t* qb = gs_slot_array_get_ptr(data->quad_batches, qb_h.id);
 	gfx->quad_batch_i->end(qb);
 }
 
 void opengl_quad_batch_submit(gs_command_buffer_t* cb, gs_quad_batch_t* qb) 
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
-	// opengl_render_data_t* data = __get_opengl_data_internal();
-	// gs_quad_batch_t* qb = gs_slot_array_get_ptr(data->quad_batches, qb_h.id);
 	gfx->quad_batch_i->submit(cb, qb);
 }
 
 void opengl_set_material_uniform(gs_material_t* mat, gs_uniform_type type, const char* name, void* data)
 {
-	// This is ugly...but yeah
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	opengl_render_data_t* __data = __get_opengl_data_internal();
-	// gs_material_t* mat = gs_slot_array_get_ptr(__data->materials, mat_handle.id);
 	gs_engine_instance()->ctx.graphics->material_i->set_uniform(mat, type, name, data);
 }
 
 void opengl_set_material_uniform_mat4(gs_material_t* mat, const char* name, gs_mat4 val)
 {
-	gs_uniform_block_type(mat4) u_block = (gs_uniform_block_type(mat4)){ val };
-	gs_engine_instance()->ctx.graphics->material_i->set_uniform(mat, gs_uniform_type_mat4, name, &u_block);
+	gs_engine_instance()->ctx.graphics->uniform_i->set_uniform_from_shader(mat->uniforms, mat->shader, gs_uniform_type_mat4, name, val);
 }
 
 void opengl_set_material_uniform_vec4(gs_material_t* mat, const char* name, gs_vec4 val)
 {
-	gs_uniform_block_type(vec4) u_block = (gs_uniform_block_type(vec4)){ val };
-	gs_engine_instance()->ctx.graphics->material_i->set_uniform(mat, gs_uniform_type_vec4, name, &u_block);
+	gs_engine_instance()->ctx.graphics->uniform_i->set_uniform_from_shader(mat->uniforms, mat->shader, gs_uniform_type_vec4, name, val);
 }
 
 void opengl_set_material_uniform_vec3(gs_material_t* mat, const char* name, gs_vec3 val)
 {
-	gs_uniform_block_type(vec3) u_block = (gs_uniform_block_type(vec3)){ val };
-	gs_engine_instance()->ctx.graphics->material_i->set_uniform(mat, gs_uniform_type_vec3, name, &u_block);
+	gs_engine_instance()->ctx.graphics->uniform_i->set_uniform_from_shader(mat->uniforms, mat->shader, gs_uniform_type_vec3, name, val);
 }
 
 void opengl_set_material_uniform_vec2(gs_material_t* mat, const char* name, gs_vec2 val)
 {
-	gs_uniform_block_type(vec2) u_block = (gs_uniform_block_type(vec2)){ val };
-	gs_engine_instance()->ctx.graphics->material_i->set_uniform(mat, gs_uniform_type_vec2, name, &u_block);
+	gs_engine_instance()->ctx.graphics->uniform_i->set_uniform_from_shader(mat->uniforms, mat->shader, gs_uniform_type_vec2, name, val);
 }
 
 void opengl_set_material_uniform_float(gs_material_t* mat, const char* name, f32 val)
 {
-	gs_uniform_block_type(float) u_block = (gs_uniform_block_type(float)){ val };
-	gs_engine_instance()->ctx.graphics->material_i->set_uniform(mat, gs_uniform_type_float, name, &u_block);
+	gs_engine_instance()->ctx.graphics->uniform_i->set_uniform_from_shader(mat->uniforms, mat->shader, gs_uniform_type_float, name, val);
 }
 
 void opengl_set_material_uniform_int(gs_material_t* mat, const char* name, s32 val)
 {
-	gs_uniform_block_type(int) u_block = (gs_uniform_block_type(int)){ val };
-	gs_engine_instance()->ctx.graphics->material_i->set_uniform(mat, gs_uniform_type_int, name, &u_block);
+	gs_engine_instance()->ctx.graphics->uniform_i->set_uniform_from_shader(mat->uniforms, mat->shader, gs_uniform_type_int, name, val);
 }
 
 void opengl_set_material_uniform_sampler2d(gs_material_t* mat, const char* name, gs_texture_t val, u32 slot)
 {
-	gs_uniform_block_type(texture_sampler) u_block = (gs_uniform_block_type(texture_sampler)){ val.id, slot };
-	gs_engine_instance()->ctx.graphics->material_i->set_uniform(mat, gs_uniform_type_sampler2d, name, &u_block);
+	gs_engine_instance()->ctx.graphics->uniform_i->set_uniform_from_shader(mat->uniforms, mat->shader, gs_uniform_type_sampler2d, name, val.id, slot);
 }
 
 void opengl_bind_material_shader(gs_command_buffer_t* cb, gs_material_t* mat)

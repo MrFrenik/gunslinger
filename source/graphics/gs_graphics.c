@@ -235,8 +235,9 @@ void gs_hsv_to_rgb(f32 h, f32 s, f32 v, u8* r, u8* g, u8* b)
 // Uniform Block
 ======================*/
 
-gs_resource(gs_uniform_block_t) __gs_uniform_block_t_new(gs_uniform_block_i* uapi)
+gs_resource(gs_uniform_block_t) __gs_uniform_block_t_new()
 {
+	gs_uniform_block_i* uapi = gs_engine_instance()->ctx.graphics->uniform_i;
 	gs_uniform_block_t ub = {0};
 	ub.data = gs_byte_buffer_new();
 	ub.offset_lookup_table = gs_hash_table_new(u64, u32);
@@ -245,6 +246,101 @@ gs_resource(gs_uniform_block_t) __gs_uniform_block_t_new(gs_uniform_block_i* uap
 	gs_resource(gs_uniform_block_t) res = {0};
 	res.id = gs_slot_array_insert(uapi->uniform_blocks, ub);
 	return res;
+}
+
+void __gs_uniform_block_t_set_uniform_from_shader(gs_resource(gs_uniform_block_t) u_block_h, gs_shader_t shader, gs_uniform_type type, const char* name, ...)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gs_uniform_block_i* uapi = gfx->uniform_i;
+
+	// Either look for uniform or construct it
+	// Look for uniform name in uniforms
+	// Grab uniform from uniforms
+	u64 hash_id = gs_hash_str_64(name);	
+	gs_uniform_t uniform = {0};
+	gs_uniform_block_t* u_block = gs_slot_array_get_ptr(uapi->uniform_blocks, u_block_h.id);
+
+	if (!gs_hash_table_exists(u_block->offset_lookup_table, hash_id))	
+	{
+		// Construct or get existing uniform
+		uniform = gfx->construct_uniform(shader, name, type);
+
+		// Insert buffer position into offset table (which should be end)
+		gs_hash_table_insert(u_block->uniforms, hash_id, uniform);
+	}
+	else 
+	{
+		uniform = gs_hash_table_get(u_block->uniforms, hash_id);
+	}
+
+	usize sz = 0;
+	switch (type)
+	{
+		case gs_uniform_type_mat4:
+		{ 
+			va_list ap;
+			va_start(ap, name);
+			gs_uniform_block_type(mat4) data = (gs_uniform_block_type(mat4)){va_arg(ap, gs_mat4)};
+			va_end(ap);
+			uapi->set_uniform(u_block_h, uniform, name, &data, sizeof(gs_uniform_block_type(mat4)));
+		} break;
+
+		case gs_uniform_type_vec4: 
+		{
+			va_list ap;
+			va_start(ap, name);
+			gs_uniform_block_type(vec4) data = (gs_uniform_block_type(vec4)){va_arg(ap, gs_vec4)};
+			va_end(ap);
+			uapi->set_uniform(u_block_h, uniform, name, &data, sizeof(gs_uniform_block_type(vec4)));
+		} break;
+
+		case gs_uniform_type_vec3:
+		{ 
+			va_list ap;
+			va_start(ap, name);
+			gs_uniform_block_type(vec3) data = (gs_uniform_block_type(vec3)){va_arg(ap, gs_vec3)};
+			va_end(ap);
+			uapi->set_uniform(u_block_h, uniform, name, &data, sizeof(gs_uniform_block_type(vec3)));
+		} break;
+
+		case gs_uniform_type_vec2:
+		{
+			va_list ap;
+			va_start(ap, name);
+			gs_uniform_block_type(vec2) data = (gs_uniform_block_type(vec2)){va_arg(ap, gs_vec2)};
+			va_end(ap);
+			uapi->set_uniform(u_block_h, uniform, name, &data, sizeof(gs_uniform_block_type(vec2)));
+		} break;
+
+		case gs_uniform_type_float:
+		{ 
+			va_list ap;
+			va_start(ap, name);
+			gs_uniform_block_type(float) data = (gs_uniform_block_type(float)){va_arg(ap, float)};
+			va_end(ap);
+			uapi->set_uniform(u_block_h, uniform, name, &data, sizeof(gs_uniform_block_type(float)));
+		} break;
+
+		case gs_uniform_type_int: 
+		{
+			va_list ap;
+			va_start(ap, name);
+			gs_uniform_block_type(int) data = (gs_uniform_block_type(int)){va_arg(ap, int)};
+			va_end(ap);
+			uapi->set_uniform(u_block_h, uniform, name, &data, sizeof(gs_uniform_block_type(int)));
+		} break;
+
+		case gs_uniform_type_sampler2d: 
+		{
+			va_list ap;
+			va_start(ap, name);
+			gs_uniform_block_type(texture_sampler) data = {0};
+			data.data = va_arg(ap, u32);
+			data.slot = va_arg(ap, u32);
+			va_end(ap);
+			uapi->set_uniform(u_block_h, uniform, name, &data, sizeof(gs_uniform_block_type(texture_sampler)));
+		} break;
+	};
 }
 
 void __gs_uniform_block_t_set_uniform(gs_resource(gs_uniform_block_t) u_block_h, gs_uniform_t uniform, const char* name, void* data, usize data_size)
@@ -373,6 +469,7 @@ gs_uniform_block_i __gs_uniform_block_i_new()
 	gs_uniform_block_i api = {0};
 	api.construct = &__gs_uniform_block_t_new;
 	api.set_uniform = &__gs_uniform_block_t_set_uniform;
+	api.set_uniform_from_shader = &__gs_uniform_block_t_set_uniform_from_shader;
 	api.bind_uniforms = &__gs_uniform_block_t_bind_uniforms;
 	api.uniform_blocks = gs_slot_array_new(gs_uniform_block_t);
 	return api;	
