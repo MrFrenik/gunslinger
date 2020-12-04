@@ -20,7 +20,7 @@ set lib_d=/LIBPATH:"..\..\..\bin\"
 
 rem OS Libraries
 set os_libs= opengl32.lib kernel32.lib user32.lib ^
-shell32.lib vcruntime.lib msvcrt.lib gdi32.lib Comdlg32.lib Ole32.lib
+shell32.lib vcruntime.lib msvcrt.lib gdi32.lib Comdlg32.lib Ole32.lib Advapi32.lib 
 
 rem User Libraries
 set libs=Gunslinger.lib

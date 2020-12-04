@@ -46,6 +46,7 @@ int main(int argc, char** argv)
 gs_result app_init()
 {
 	gs_graphics_i* gfx = gs_engine_subsystem(graphics);
+	gs_platform_i* pfm = gs_engine_subsystem(platform);
 	app_data_t* data = gs_engine_user_data(app_data_t);
 	data->cb = gs_command_buffer_new();
 
@@ -162,11 +163,12 @@ gs_result app_update()
 				gfx->immediate.pop_matrix(cb);
 			}
 
+			const f32 ts = 0.004f;
 			gs_vqs local_xforms[3] = 
 			{
-				gs_vqs_ctor(gs_v3(-0.2f, 0.5f, 0.f), gs_quat_angle_axis(gs_deg_to_rad(-180.f), gs_x_axis), gs_v3_s(0.001f)),
-				gs_vqs_ctor(gs_v3(-0.1f, 0.0f, 0.5f), gs_quat_angle_axis(gs_deg_to_rad(-180.f), gs_x_axis), gs_v3_s(0.001f)),
-				gs_vqs_ctor(gs_v3( 0.5f, 0.0f, 0.f), gs_quat_angle_axis(gs_deg_to_rad(-180.f), gs_x_axis), gs_v3_s(0.001f))
+				gs_vqs_ctor(gs_v3(-0.2f, 0.5f, 0.f), gs_quat_angle_axis(gs_deg_to_rad(-180.f), gs_x_axis), gs_v3_s(ts)),
+				gs_vqs_ctor(gs_v3(-0.1f, 0.0f, 0.5f), gs_quat_angle_axis(gs_deg_to_rad(-180.f), gs_x_axis), gs_v3_s(ts)),
+				gs_vqs_ctor(gs_v3( 0.5f, 0.0f, 0.f), gs_quat_angle_axis(gs_deg_to_rad(-180.f), gs_x_axis), gs_v3_s(ts))
 			};
 
 			// Make our text a child transform of the box	
@@ -191,7 +193,7 @@ gs_result app_update()
 					gfx->immediate.push_matrix(cb, gs_matrix_model);
 					{
 						gfx->immediate.mat_mul_vqs(cb, gs_vqs_absolute_transform(&local_xforms[i], &box_xform));
-						gfx->immediate.draw_text(cb, 0.f, 0.f, buffers[i], &ad->font, gs_color_green);
+						gfx->immediate.draw_text(cb, 0.f, 0.f, buffers[i], gs_color_green);
 					}
 					gfx->immediate.pop_matrix(cb);
 				}
@@ -202,7 +204,7 @@ gs_result app_update()
 
 		gs_vec2 ws = platform->window_size(platform->main_window());
 		gs_snprintfc(fps_text, 256, "fps: %.2f", 1000.f / platform->time.frame);
-		gfx->immediate.draw_text(cb, 10.f, 50.f, fps_text, &ad->font, gs_color_white);
+		gfx->immediate.draw_text(cb, 10.f, 20.f, fps_text, gs_color_white);
 	}
 	gfx->immediate.end_drawing(cb);
 

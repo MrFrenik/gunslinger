@@ -1273,7 +1273,7 @@ void render_scene()
 		gfx->set_view_clear(cb, clear_color);
 
 		// This is to handle mac's retina high dpi for now until I fix that internally.
-		gfx->set_view_port(cb, g_texture_width, g_texture_height);
+		gfx->set_viewport(cb, 0.f, 0.f, g_texture_width, g_texture_height);
 		gfx->bind_shader(cb, g_shader);
 		gfx->bind_uniform(cb, u_flip_y, &flip_y);
 		gfx->bind_vertex_buffer(cb, g_vbo);
@@ -1318,7 +1318,7 @@ void render_scene()
 		gfx->set_depth_enabled(cb, false);
 
 		// This is to handle mac's retina high dpi for now until I fix that internally.
-		gfx->set_view_port(cb, fbs.x, fbs.y);
+		gfx->set_viewport(cb, 0.f, 0.f, fbs.x, fbs.y);
 
 		f32 t = gs_engine_instance()->ctx.platform->elapsed_time() * gs_engine_instance()->ctx.platform->time.delta * 0.001f;
 		flip_y = true;

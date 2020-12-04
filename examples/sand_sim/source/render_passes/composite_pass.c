@@ -164,7 +164,7 @@ void cp_pass(gs_command_buffer_t* cb, struct render_pass_i* _pass, void* _params
 	gfx->set_frame_buffer_attachment(cb, p->data.render_target, 0);
 
 	// Set viewport 
-	gfx->set_view_port(cb, (u32)(ws.x), (u32)(ws.y));	
+	gfx->set_viewport(cb, 0.f, 0.f, (u32)(ws.x), (u32)(ws.y));	
 
 	// Clear
 	f32 cc[4] = { 0.f, 0.f, 0.f, 1.f };

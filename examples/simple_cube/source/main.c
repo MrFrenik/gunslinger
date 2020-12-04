@@ -168,7 +168,7 @@ gs_result app_update()
 	// Set clear color and clear screen
 	f32 clear_color[4] = { 0.2f, 0.2f, 0.2f, 1.f };
 	gfx->set_view_clear(cb, clear_color);
-	gfx->set_view_port(cb, fbs.x, fbs.y);
+	gfx->set_viewport(cb, 0.f, 0.f, fbs.x, fbs.y);
 	gfx->set_depth_enabled(cb, true);
 	gfx->set_face_culling(cb, gs_face_culling_disabled);
 

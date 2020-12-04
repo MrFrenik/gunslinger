@@ -180,7 +180,7 @@ void _blur_pass(gs_command_buffer_t* cb, render_pass_i* _pass, void* _params)
 		gfx->set_frame_buffer_attachment(cb, *target, 0);
 
 		// Set viewport 
-		gfx->set_view_port(cb, (u32)(tex_size.x), (u32)(tex_size.y));	
+		gfx->set_viewport(cb, 0.f, 0.f, tex_size.x, tex_size.y);	
 		// Clear
 		f32 cc[4] = { 0.f, 0.f, 0.f, 1.f };
 		gfx->set_view_clear(cb, (f32*)&cc);

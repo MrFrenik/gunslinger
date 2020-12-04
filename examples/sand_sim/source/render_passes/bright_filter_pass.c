@@ -119,7 +119,7 @@ bright_filter_pass_t bright_filter_pass_ctor()
 	gfx->set_frame_buffer_attachment(cb, bp->data.render_target, 0);
 
 	// Set viewport 
-	gfx->set_view_port(cb, (u32)(ws.x / 8), (u32)(ws.y / 8));	
+	gfx->set_viewport(cb, 0.f, 0.f, (u32)(ws.x / 8), (u32)(ws.y / 8));	
 
 	// Clear
 	f32 cc[4] = { 0.f, 0.f, 0.f, 1.f };

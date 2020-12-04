@@ -162,6 +162,7 @@ gs_result app_update()
 
 	// Graphics api instance
 	gs_graphics_i* gfx = engine->ctx.graphics;
+	gs_command_buffer_t* cb = &g_cb;
 
 	// Main window size
 	gs_vec2 ws = platform->window_size(platform->main_window());
@@ -169,31 +170,37 @@ gs_result app_update()
 
 	// Set clear color and clear screen
 	f32 clear_color[4] = { 0.2f, 0.2f, 0.2f, 1.f };
-	gfx->set_view_clear(&g_cb, clear_color);
-	gfx->set_view_port(&g_cb, fbs.x, fbs.y);
+	gfx->set_view_clear(cb, clear_color);
+	gfx->set_viewport(cb, 0.f, 0.f, fbs.x, fbs.y);
 
 	// Bind shader
-	gfx->bind_shader(&g_cb, g_shader);
+	gfx->bind_shader(cb, g_shader);
 
 	// Bind matrix uniforms
-	gfx->bind_uniform_mat4(&g_cb, u_proj, gs_camera_get_projection(&g_camera, ws.x, ws.y));
-	gfx->bind_uniform_mat4(&g_cb, u_view, gs_camera_get_view(&g_camera));
-	gfx->bind_uniform_mat4(&g_cb, u_model, gs_mat4_identity());
+	gfx->bind_uniform_mat4(cb, u_proj, gs_camera_get_projection(&g_camera, ws.x, ws.y));
+	gfx->bind_uniform_mat4(cb, u_view, gs_camera_get_view(&g_camera));
+	gfx->bind_uniform_mat4(cb, u_model, gs_mat4_identity());
 
 	// Bind texture slot
-	gfx->bind_texture(&g_cb, u_tex, g_tex, 0);
+	gfx->bind_texture(cb, u_tex, g_tex, 0);
 
 	// Bind vertex buffer
-	gfx->bind_vertex_buffer(&g_cb, g_vbo);
+	gfx->bind_vertex_buffer(cb, g_vbo);
 
 	// Bind index buffer
-	gfx->bind_index_buffer(&g_cb, g_ibo);
+	gfx->bind_index_buffer(cb, g_ibo);
 
 	// Draw
-	gfx->draw_indexed(&g_cb, 6, 0);
+	gfx->draw_indexed(cb, 6, 0);
+
+	gfx->immediate.begin_drawing(cb); 
+	{
+		gfx->immediate.draw_text(cb, 10.f, 30.f, "Example: Simple Texture", gs_color_white);
+	}
+	gfx->immediate.end_drawing(cb);
 
 	// Submit command buffer for rendering
-	gfx->submit_command_buffer(&g_cb);
+	gfx->submit_command_buffer(cb);
 
 	return gs_result_in_progress;
 }

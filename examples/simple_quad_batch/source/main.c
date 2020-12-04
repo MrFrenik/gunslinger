@@ -131,7 +131,7 @@ gs_result app_update()
 	// Set clear color and clear screen
 	f32 clear_color[4] = { 0.2f, 0.2f, 0.2f, 1.f };
 	gfx->set_view_clear(cb, clear_color);
-	gfx->set_view_port(cb, fbs.x, fbs.y);
+	gfx->set_viewport(cb, 0.f, 0.f, fbs.x, fbs.y);
 	gfx->set_depth_enabled(cb, false);
 	gfx->set_blend_mode(cb, gs_blend_mode_src_alpha, gs_blend_mode_one_minus_src_alpha);
 
@@ -147,6 +147,12 @@ gs_result app_update()
 
 	// Need to submit quad batch
 	gfx->quad_batch_submit(cb, qb);
+
+	gfx->immediate.begin_drawing(cb);
+	{
+		gfx->immediate.draw_text(cb, 10.f, 20.f, "Example: Simple Quad Batch", gs_color_white);
+	}
+	gfx->immediate.end_drawing(cb);
 
 	// Submit command buffer for rendering
 	gfx->submit_command_buffer(cb);

@@ -480,7 +480,8 @@ typedef struct gs_graphics_immediate_draw_i
 	void (* draw_sphere_lines_vqs)(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t color);
 
 	// Text
-	void (* draw_text)(gs_command_buffer_t* cb, f32 x, f32 y, const char* text, gs_font_t* ft, gs_color_t color);
+	void (* draw_text)(gs_command_buffer_t* cb, f32 x, f32 y, const char* text, gs_color_t color);
+	void (* draw_text_ext)(gs_command_buffer_t* cb, f32 x, f32 y, const char* text, gs_font_t* ft, gs_color_t color);
 
 	// Camera
 	void (* push_camera)(gs_command_buffer_t* cb, gs_camera_t camera);
@@ -585,6 +586,11 @@ typedef struct gs_graphics_i
 	gs_resource(gs_render_pipeline_state_t) (* construct_render_pipeline_state)(gs_render_pipeline_state_desc_t desc);
 
 	/*============================================================
+	// Graphics Default Resources
+	============================================================*/
+	gs_font_t (* default_font)();
+
+	/*============================================================
 	// Graphics Resource Free Ops
 	============================================================*/
 	void (* free_vertex_buffer)(gs_vertex_buffer_t);
@@ -644,6 +650,8 @@ extern gs_texture_parameter_desc gs_texture_parameter_desc_default();
 extern void* gs_load_texture_data_from_file(const char* path, b32 flip_vertically_on_load);
 extern gs_font_t __gs_construct_font_from_file(const char* path, f32 point_size);
 extern gs_vec2 __gs_text_dimensions(gs_command_buffer_t* cb, const char* text, gs_font_t* ft);
+extern gs_font_t __gs_construct_default_font();
+extern gs_font_t __gs_get_default_font();
 
 /*===============================
 // Graphics User Provided Funcs
@@ -674,7 +682,8 @@ void __gs_draw_box_lines_vqs(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t c
 void __gs_draw_sphere(gs_command_buffer_t* cb, gs_vec3 center, f32 radius, gs_color_t color);
 void __gs_draw_sphere_lines(gs_command_buffer_t* cb, gs_vec3 center, f32 radius, gs_color_t color);
 void __gs_draw_sphere_lines_vqs(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t color);
-void __gs_draw_text(gs_command_buffer_t* cb, f32 x, f32 y, const char* text, gs_font_t* ft, gs_color_t color);
+void __gs_draw_text(gs_command_buffer_t* cb, f32 x, f32 y, const char* text, gs_color_t color);
+void __gs_draw_text_ext(gs_command_buffer_t* cb, f32 x, f32 y, const char* text, gs_font_t* ft, gs_color_t color);
 void __gs_push_camera(gs_command_buffer_t* cb, gs_camera_t camera);
 void __gs_pop_camera(gs_command_buffer_t* cb);
 void __gs_mat_rotatef(gs_command_buffer_t* cb, f32 rad, f32 x, f32 y, f32 z);

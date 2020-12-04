@@ -191,6 +191,12 @@ _global gs_shader_t 		g_default_shader 		= gs_default_val();
 _global gs_vertex_buffer_t 	g_default_vertex_buffer = gs_default_val();
 _global gs_index_buffer_t 	g_default_index_buffer 	= gs_default_val();
 _global gs_texture_t 		g_default_texture 		= gs_default_val();
+_global gs_font_t 			g_default_font 			= gs_default_val();
+
+gs_font_t __gs_get_default_font()
+{
+	return g_default_font;
+}
 
 #define __get_opengl_data_internal()\
 	(opengl_render_data_t*)(gs_engine_instance()->ctx.graphics->data)
@@ -312,6 +318,28 @@ gs_result opengl_shutdown(struct gs_graphics_i* gfx)
 	return gs_result_success;
 }
 
+void gs_reset_default_states()
+{
+	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
+	gs_graphics_i* gfx = gs_engine_subsystem(graphics);
+
+	// 2d state
+	gs_render_pipeline_state_desc_t desc_2d = gs_render_pipeline_state_desc_default();
+	gs_render_pipeline_state_t* state = gs_slot_array_get_ptr(gfx->render_pipelines, data->default_state_2d.id);
+	state->desc = desc_2d;
+	gfx->uniform_i->set_uniform_from_shader(state->uniforms, state->desc.shader, gs_uniform_type_mat4, "u_mvp", __gs_default_view_proj_mat());
+	gfx->uniform_i->set_uniform_from_shader(state->uniforms, state->desc.shader, gs_uniform_type_sampler2d, "u_tex", g_default_texture, 0);
+
+	// 3d state
+	gs_render_pipeline_state_desc_t desc_3d = gs_render_pipeline_state_desc_default();
+	desc_3d.depth_enabled = true;
+	desc_3d.face_culling = gs_face_culling_back;
+	state = gs_slot_array_get_ptr(gfx->render_pipelines, data->default_state_3d.id);
+	state->desc = desc_3d;
+	gfx->uniform_i->set_uniform_from_shader(state->uniforms, state->desc.shader, gs_uniform_type_mat4, "u_mvp", __gs_default_view_proj_mat());
+	gfx->uniform_i->set_uniform_from_shader(state->uniforms, state->desc.shader, gs_uniform_type_sampler2d, "u_tex", g_default_texture, 0);
+}
+
 immediate_drawing_internal_data_t construct_immediate_drawing_internal_data_t()
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
@@ -320,6 +348,9 @@ immediate_drawing_internal_data_t construct_immediate_drawing_internal_data_t()
 
 	// Construct shader
 	g_default_shader = gfx->construct_shader(immediate_shader_v_src, immediate_shader_f_src);
+
+	// Construct default font
+	g_default_font = __gs_construct_default_font();
 
 	// Construct default white texture
 	u8 white[2 * 2 * 4];
@@ -340,21 +371,8 @@ immediate_drawing_internal_data_t construct_immediate_drawing_internal_data_t()
 
 	// Construct and set default pipeline states
 	data.default_state_2d = gs_construct_render_pipeline_state(gs_render_pipeline_state_desc_default());
-
-	// 3d state
-	gs_render_pipeline_state_desc_t desc_3d = gs_render_pipeline_state_desc_default();
-	desc_3d.depth_enabled = true;
-	desc_3d.face_culling = gs_face_culling_back;
-	data.default_state_3d  = gs_construct_render_pipeline_state(desc_3d);
-
-	// Set pipeline state uniforms
-	gs_render_pipeline_state_t* state = gs_slot_array_get_ptr(gfx->render_pipelines, data.default_state_2d.id);
-	gfx->uniform_i->set_uniform_from_shader(state->uniforms, state->desc.shader, gs_uniform_type_mat4, "u_mvp", __gs_default_view_proj_mat());
-	gfx->uniform_i->set_uniform_from_shader(state->uniforms, state->desc.shader, gs_uniform_type_sampler2d, "u_tex", g_default_texture, 0);
-
-	state = gs_slot_array_get_ptr(gfx->render_pipelines, data.default_state_3d.id);
-	gfx->uniform_i->set_uniform_from_shader(state->uniforms, state->desc.shader, gs_uniform_type_mat4, "u_mvp", __gs_default_view_proj_mat());
-	gfx->uniform_i->set_uniform_from_shader(state->uniforms, state->desc.shader, gs_uniform_type_sampler2d, "u_tex", g_default_texture, 0);
+	data.default_state_3d = gs_construct_render_pipeline_state(gs_render_pipeline_state_desc_default());
+	gs_reset_default_states();
 
 	// Construct stacks
 	data.vertex_data 		= gs_dyn_array_new(immediate_vertex_data_t);
@@ -1606,6 +1624,9 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 				gs_dyn_array_clear(data->viewport_stack);
 				gs_dyn_array_clear(data->matrix_modes);
 				gs_dyn_array_clear(data->state_stack);
+
+				// Reset default states
+				gs_reset_default_states();
 			} break;
 
 			case gs_opengl_op_immediate_push_state:
@@ -2563,6 +2584,7 @@ struct gs_graphics_i* __gs_graphics_construct()
 	gfx->immediate.draw_sphere_lines_vqs = &__gs_draw_sphere_lines_vqs;
 	gfx->immediate.draw_rect_textured 	= &__gs_draw_rect_2d_textured;
 	gfx->immediate.draw_text 			= &__gs_draw_text;
+	gfx->immediate.draw_text_ext 		= &__gs_draw_text_ext;
 	gfx->immediate.draw_circle_sector 	= &__gs_draw_circle_sector;
 	gfx->immediate.draw_circle 			= &__gs_draw_circle;
 
@@ -2582,6 +2604,8 @@ struct gs_graphics_i* __gs_graphics_construct()
 	gfx->get_byte_size_of_vertex_attribute	= &get_byte_size_of_vertex_attribute;
 	gfx->calculate_vertex_size_in_bytes 	= &calculate_vertex_size_in_bytes;
 	gfx->text_dimensions 					= &__gs_text_dimensions;
+
+	gfx->default_font 						= &__gs_get_default_font;
 
 	/*============================================================
 	// Graphics Utility APIs

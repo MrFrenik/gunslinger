@@ -1305,7 +1305,7 @@ gs_result app_update()
 	f32 clear_color[4] = { 0.1f, 0.1f, 0.1f, 1.f };
 	gfx->set_view_clear(cb, clear_color);
 
-	gfx->set_view_port(cb, fbs.x, fbs.y);
+	gfx->set_viewport(cb, 0.f, 0.f, fbs.x, fbs.y);
 	gfx->set_depth_enabled(cb, false);
 	gfx->set_blend_mode(cb, gs_blend_mode_src_alpha, gs_blend_mode_one_minus_src_alpha);
 
