@@ -47,6 +47,7 @@ int main(int argc, char** argv)
 	app.window_title 		= "Simple Immediate Rendering";
 	app.window_width 		= 800;
 	app.window_height 		= 600;
+	app.window_flags 		= gs_window_flags_resizable;
 	app.init 				= &app_init;
 	app.update 				= &app_update;
 	app.shutdown 			= &app_shutdown;
@@ -95,6 +96,7 @@ gs_result app_update()
 
 	// Elapsed run time of program
 	const f32 _t = platform->elapsed_time();
+	const gs_vec2 ws = platform->window_size(platform->main_window());
 
 	// If we press the escape key, exit the application
 	if (platform->key_pressed(gs_keycode_esc))
@@ -120,6 +122,15 @@ gs_result app_update()
 	gfx->immediate.begin_drawing(cb);
 	{
 		gfx->immediate.clear(cb, 0.1f, 0.1f, 0.1f, 1.f);
+
+		// Draw 2d textured rect
+		for (s32 i = -5; i < 5; ++i)
+		{
+			f32 uv = (sinf(_t * i * 0.0001f) * 0.5f + 0.5f) * (10.f + i);
+			gs_vec2 s = gs_v2(i * 200.f, (ws.y - 200.f) * 0.5f);
+			gs_vec2 e = gs_v2(s.x + 200.f, s.y + 200.f);
+			gfx->immediate.draw_rect_textured_ext(cb, s.x, s.y, e.x, e.y, 0.f, 0.f, uv, uv, ad->texture.id, gs_color_white);
+		}
 
 		gs_camera_t cam = gfx->immediate.begin_3d(cb);
 		{
@@ -229,7 +240,6 @@ gs_result app_update()
 		}
 		gfx->immediate.end_3d(cb);
 
-		gs_vec2 ws = platform->window_size(platform->main_window());
 		gs_snprintfc(fps_text, 256, "fps: %.2f", 1000.f / platform->time.frame);
 		gfx->immediate.draw_text(cb, 10.f, 20.f, fps_text, gs_color_white);
 	}
