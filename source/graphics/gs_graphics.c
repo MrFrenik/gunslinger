@@ -1269,16 +1269,9 @@ void __gs_pop_camera(gs_command_buffer_t* cb)
 gs_camera_t __gs_begin_3d(gs_command_buffer_t* cb)
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
-
-	gs_pipeline_state_t state = gs_pipeline_state_default();
-	state.depth_enabled = true;
-	state.face_culling = gs_face_culling_back;
-
 	gs_camera_t c = gs_camera_perspective();
-
-	gfx->immediate.push_state(cb, state);
+	gfx->immediate.push_state(cb, gfx->immediate.default_pipeline_state(gs_immediate_mode_3d));
 	gfx->immediate.push_camera(cb, c);
-
 	return c;
 }
 
@@ -1308,7 +1301,7 @@ gs_camera_t __gs_begin_2d(gs_command_buffer_t* cb)
 	));
 	ortho = gs_mat4_mul(ortho, gs_camera_get_view(&c));
 
-	gfx->immediate.push_state(cb, gs_pipeline_state_default());
+	gfx->immediate.push_state(cb, gfx->immediate.default_pipeline_state(gs_immediate_mode_2d));
 	gfx->immediate.push_matrix(cb, gs_matrix_vp);
 	gfx->immediate.mat_mul(cb, ortho);
 

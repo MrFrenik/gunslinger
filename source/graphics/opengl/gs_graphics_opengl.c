@@ -127,30 +127,24 @@ typedef struct immediate_vertex_data_t
 typedef struct immediate_drawing_internal_data_t 
 {
 	// Bound this all up into a state object, then create stack of states
-	gs_shader_t 					default_shader;
-	gs_texture_t 					default_texture;
-	gs_vertex_buffer_t 				default_vbo;
-	gs_index_buffer_t 				default_ibo;
-	gs_resource(gs_uniform_block_t) default_uniforms;
+	gs_resource(gs_render_pipeline_state_t) default_state_2d;
+	gs_resource(gs_render_pipeline_state_t) default_state_3d;
 
-	// Get rid of these (uniform block information for default state)
-	gs_uniform_t u_mvp;
-	gs_uniform_t u_tex;
-	u32 tex_id;
-
-	gs_color_t color;			// How can I simplify these?
+	// Current vertex state attributes
+	gs_color_t color;
 	gs_vec2 texcoord;
+	u32 tex_id;
 	gs_draw_mode draw_mode;
 
 	// Being able to dynamically push custom vertex data based on a declaration would be nice
 	gs_dyn_array(immediate_vertex_data_t) vertex_data;
 
 	// Stacks
-	gs_dyn_array(gs_pipeline_state_t) 	state_stack;
-	gs_dyn_array(gs_mat4) 				vp_matrix_stack;
-	gs_dyn_array(gs_mat4) 				model_matrix_stack;
-	gs_dyn_array(gs_vec2) 				viewport_stack;			// This can go away (with state stack)
-	gs_dyn_array(gs_matrix_mode) 		matrix_modes;
+	gs_dyn_array(gs_render_pipeline_state_t) 	state_stack;
+	gs_dyn_array(gs_mat4) 						vp_matrix_stack;
+	gs_dyn_array(gs_mat4) 						model_matrix_stack;
+	gs_dyn_array(gs_vec2) 						viewport_stack;			// This can go away (with state stack)
+	gs_dyn_array(gs_matrix_mode) 				matrix_modes;
 } immediate_drawing_internal_data_t;
 
 typedef gs_command_buffer_t command_buffer_t;
@@ -193,6 +187,11 @@ _global const char* immediate_shader_f_src = "\n"
 " frag_color = f_color * texture(u_tex, f_uv);\n"
 "}";
 
+_global gs_shader_t 		g_default_shader 		= gs_default_val();
+_global gs_vertex_buffer_t 	g_default_vertex_buffer = gs_default_val();
+_global gs_index_buffer_t 	g_default_index_buffer 	= gs_default_val();
+_global gs_texture_t 		g_default_texture 		= gs_default_val();
+
 #define __get_opengl_data_internal()\
 	(opengl_render_data_t*)(gs_engine_instance()->ctx.graphics->data)
 
@@ -216,14 +215,15 @@ void opengl_set_view_scissor(gs_command_buffer_t* cb, u32 x, u32 y, u32 w, u32 h
 void opengl_set_depth_enabled(gs_command_buffer_t* cb, b32 enable);
 void opengl_bind_shader(gs_command_buffer_t* cb, gs_shader_t s);
 
-gs_pipeline_state_t gs_pipeline_state_default()
+gs_render_pipeline_state_desc_t gs_render_pipeline_state_desc_default()
 {
-	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
 	gs_platform_i* p = gs_engine_instance()->ctx.platform;
+	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
 	gs_vec2 fbs = p->frame_buffer_size(p->main_window());
 
-	// Create default opengl pipeline state
-	gs_pipeline_state_t state = gs_default_val();
+	gs_render_pipeline_state_desc_t state = gs_default_val();
+
+	// Grab description from internal data and copy
 	state.blend_func_src = gs_blend_mode_src_alpha;
 	state.blend_func_dst = gs_blend_mode_one_minus_src_alpha;
 	state.blend_equation = gs_blend_equation_add;
@@ -232,81 +232,28 @@ gs_pipeline_state_t gs_pipeline_state_default()
 	state.face_culling 	 = gs_face_culling_disabled;
 	state.view_scissor 	 = gs_v4_s(0.f);
 	state.viewport 	 	 = gs_v4(0.f, 0.f, fbs.x, fbs.y); 
-	state.shader 		 = data->default_shader;
-	state.vbo  			 = data->default_vbo;
-	state.ibo 	 		 = data->default_ibo;
-	state.uniforms 		 = data->default_uniforms;
+	state.shader 		 = g_default_shader;
+	state.vbo  			 = g_default_vertex_buffer;
+	state.ibo 	 		 = g_default_index_buffer;
 	state.draw_mode 	 = gs_triangles;
+	state.clear_color	 = gs_v4(0.f, 0.f, 0.f, 1.f);
+	state.clear_bit		 = gs_clear_all;
 
 	return state;
 }
 
-// Push/Pop camera doesn't really make sense now... you'd have to explicitly set view projection matrices with uniform blocks
+gs_resource(gs_render_pipeline_state_t) gs_construct_render_pipeline_state(gs_render_pipeline_state_desc_t desc)
+{
+	gs_graphics_i* gfx = gs_engine_subsystem(graphics);
 
-/* 
-	// Default 3d state pipeline?
-	gs_pipeline_state_t state_3d = gs_pipeline_state_default();
-	state_3d.uniform_block = ... construct new block (this is too much for the user, honestly)...
+	gs_render_pipeline_state_t state = gs_default_val();
+	state.desc 		= desc;
+	state.uniforms 	= gfx->uniform_i->construct();
 
-	gfx->clear(cb);
-
-
-	Default 3d pipeline state
-	Default 2d pipeline state
-
-	// How is this *any* different from just setting shaders directly? Am I taking that away now?
-
-	bind the shader, then can you set uniforms for it?
-
-	gfx->clear();
-
-	gfx->bind_state(state);
-
-	gfx->push_state(state);
-	{
-	}
-	gfx->pop_state(state);
-
-	gfx->draw_line();
-
-	// If you create this 
-	gs_pipeline_state_t state_3d = gs_pipeline_state_default_3d();
-
-	// How can the user "easily" set cameras using this?
-
-	// Set uniforms for this state, which will include camera stuff... get rid of push/pop matrix stuff, at least view/projection?
-
-	gfx->push_state(state_3d);
-
-	gfx->set_state_uniform(""); -> sets uniform value for currently set state? Not a huge fan of this.
-
-	gfx->push_default_state(gs_state_3d);
-	{
-		// Can you alter the camera in here now? How would you move the camera?
-	}
-	gfx->pop_state();
-*/
-
-/*
-	gfx->clear();
-
-	gs_pipeline_state_t state = gs_pipeline_state_default();
-
-	// Push/pop matrices...how is that going to work now?
-
-	gfx->push_state(cb, state);
-		gfx->push_state_attr(cb, attr);
-		{
-		}
-		gfx->pop_state_attr(cb);
-
-		// This doesn't really do much now, because it assumes that a view projection matrix would be present, which isn't the case
-		// for a shader. Unless you pre-multiply verts?
-
-		gfx->push_camera();
-		gfx->pop_camera();
-	gfx->pop_state(cb);
-*/
+	gs_resource(gs_render_pipeline_state_t) s = gs_default_val();
+	s.id = gs_slot_array_insert(gfx->render_pipelines, state);
+	return s;
+}
 
 /*============================================================
 // Graphics Initilization / De-Initialization
@@ -333,6 +280,8 @@ gs_result opengl_init(struct gs_graphics_i* gfx)
 
 	// Set data
 	gfx->data = data;
+
+	gfx->render_pipelines = gs_slot_array_new(gs_render_pipeline_state_t);
 
 	// Initialize data
 	data->immediate_data = construct_immediate_drawing_internal_data_t();
@@ -370,7 +319,7 @@ immediate_drawing_internal_data_t construct_immediate_drawing_internal_data_t()
 	immediate_drawing_internal_data_t data = gs_default_val();
 
 	// Construct shader
-	data.default_shader = gfx->construct_shader(immediate_shader_v_src, immediate_shader_f_src);
+	g_default_shader = gfx->construct_shader(immediate_shader_v_src, immediate_shader_f_src);
 
 	// Construct default white texture
 	u8 white[2 * 2 * 4];
@@ -379,37 +328,42 @@ immediate_drawing_internal_data_t construct_immediate_drawing_internal_data_t()
 	desc.data = white;
 	desc.width = 2;
 	desc.height = 2;
-	data.default_texture = gfx->construct_texture(desc);
+	g_default_texture = gfx->construct_texture(desc);
 
-	// Vertex data layout
+	// Construct default vertex buffer
 	gs_vertex_attribute_type vertex_layout[] = {
 		gs_vertex_attribute_float3,	// Position
 		gs_vertex_attribute_float2,	// UV
 		gs_vertex_attribute_byte4  	// Color
 	};
+	g_default_vertex_buffer = gfx->construct_vertex_buffer(vertex_layout, sizeof(vertex_layout), NULL, 0);
 
-	// Construct vertex buffer objects
-	data.default_vbo = gfx->construct_vertex_buffer(vertex_layout, sizeof(vertex_layout), NULL, 0);
-	data.vertex_data = gs_dyn_array_new(immediate_vertex_data_t);
+	// Construct and set default pipeline states
+	data.default_state_2d = gs_construct_render_pipeline_state(gs_render_pipeline_state_desc_default());
 
-	// Construct new uniform block and fill
-	data.default_uniforms = gfx->uniform_i->construct();
-	gfx->uniform_i->set_uniform_from_shader(data.default_uniforms, data.default_shader, gs_uniform_type_mat4, "u_mvp", __gs_default_view_proj_mat());
-	gfx->uniform_i->set_uniform_from_shader(data.default_uniforms, data.default_shader, gs_uniform_type_sampler2d, "u_tex", data.default_texture.id, 0);
+	// 3d state
+	gs_render_pipeline_state_desc_t desc_3d = gs_render_pipeline_state_desc_default();
+	desc_3d.depth_enabled = true;
+	desc_3d.face_culling = gs_face_culling_back;
+	data.default_state_3d  = gs_construct_render_pipeline_state(desc_3d);
 
-	// gfx->uniform_i->set_uniform
-	// void (* set_uniform)(gs_resource(gs_uniform_block_t) u_block, gs_uniform_t uniform, const char* name, void* data, usize data_size);
+	// Set pipeline state uniforms
+	gs_render_pipeline_state_t* state = gs_slot_array_get_ptr(gfx->render_pipelines, data.default_state_2d.id);
+	gfx->uniform_i->set_uniform_from_shader(state->uniforms, state->desc.shader, gs_uniform_type_mat4, "u_mvp", __gs_default_view_proj_mat());
+	gfx->uniform_i->set_uniform_from_shader(state->uniforms, state->desc.shader, gs_uniform_type_sampler2d, "u_tex", g_default_texture, 0);
 
-	data.u_mvp = gfx->construct_uniform(data.default_shader, "u_mvp", gs_uniform_type_mat4);
-	data.u_tex = gfx->construct_uniform(data.default_shader, "u_tex", gs_uniform_type_sampler2d);
+	state = gs_slot_array_get_ptr(gfx->render_pipelines, data.default_state_3d.id);
+	gfx->uniform_i->set_uniform_from_shader(state->uniforms, state->desc.shader, gs_uniform_type_mat4, "u_mvp", __gs_default_view_proj_mat());
+	gfx->uniform_i->set_uniform_from_shader(state->uniforms, state->desc.shader, gs_uniform_type_sampler2d, "u_tex", g_default_texture, 0);
 
 	// Construct stacks
+	data.vertex_data 		= gs_dyn_array_new(immediate_vertex_data_t);
 	data.model_matrix_stack = gs_dyn_array_new(gs_mat4);
-	data.vp_matrix_stack = gs_dyn_array_new(gs_mat4);
-	data.viewport_stack = gs_dyn_array_new(gs_vec2);
-	data.matrix_modes = gs_dyn_array_new(gs_matrix_mode);
-	data.state_stack = gs_dyn_array_new(gs_pipeline_state_t);
-	data.draw_mode = gs_triangles;
+	data.vp_matrix_stack 	= gs_dyn_array_new(gs_mat4);
+	data.viewport_stack 	= gs_dyn_array_new(gs_vec2);
+	data.matrix_modes 		= gs_dyn_array_new(gs_matrix_mode);
+	data.state_stack 		= gs_dyn_array_new(gs_render_pipeline_state_t);
+	data.draw_mode 			= gs_triangles;
 
 	return data;
 }
@@ -439,20 +393,26 @@ do {\
 	cb->num_commands++;\
 } while (0)
 
-void opengl_set_pipeline_state(gs_command_buffer_t* cb, gs_pipeline_state_t state)
+void opengl_set_pipeline_state(gs_command_buffer_t* cb, gs_resource(gs_render_pipeline_state_t) state_h)
 {
-	if (gs_vec4_len(state.view_scissor)) {
-		gs_vec4* vs = &state.view_scissor;
+	gs_graphics_i* gfx = gs_engine_subsystem(graphics);
+
+	gs_render_pipeline_state_t* state = gs_slot_array_get_ptr(gfx->render_pipelines, state_h.id);
+
+	if (gs_vec4_len(state->desc.view_scissor)) {
+		gs_vec4* vs = &state->desc.view_scissor;
 		opengl_set_view_scissor(cb, vs->x, vs->y, vs->z, vs->w);
 	}
 
-	opengl_set_viewport(cb, state.viewport.x, state.viewport.y, state.viewport.z, state.viewport.w);
-	opengl_set_winding_order(cb, state.winding_order);
-	opengl_set_face_culling(cb, state.face_culling);
-	opengl_set_blend_equation(cb, state.blend_equation);
-	opengl_set_blend_mode(cb, state.blend_func_src, state.blend_func_dst);
-	opengl_set_depth_enabled(cb, state.depth_enabled);
-	opengl_bind_shader(cb, state.shader);
+	opengl_set_viewport(cb, state->desc.viewport.x, state->desc.viewport.y, state->desc.viewport.z, state->desc.viewport.w);
+	opengl_set_winding_order(cb, state->desc.winding_order);
+	opengl_set_face_culling(cb, state->desc.face_culling);
+	opengl_set_blend_equation(cb, state->desc.blend_equation);
+	opengl_set_blend_mode(cb, state->desc.blend_func_src, state->desc.blend_func_dst);
+	opengl_set_depth_enabled(cb, state->desc.depth_enabled);
+	opengl_bind_shader(cb, state->desc.shader);
+
+	// Bind uniforms from state as well
 }
 
 void opengl_set_frame_buffer_attachment(gs_command_buffer_t* cb, gs_texture_t t, u32 idx)
@@ -794,19 +754,29 @@ typedef struct vert_t
 // Immediate Utilties
 ==================-=*/
 
+gs_resource(gs_render_pipeline_state_t) opengl_default_pipeline_state(gs_graphics_immediate_mode mode)
+{
+	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
+	switch (mode)
+	{
+		default:
+		case gs_immediate_mode_2d: return data->default_state_2d; break;
+		case gs_immediate_mode_3d: return data->default_state_3d; break;
+	}
+}
+
 // What does this do? Binds debug shader and sets default uniform values.
 void opengl_immediate_begin_drawing(gs_command_buffer_t* cb)
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
 
-	// Create new pipeline state, then set
-	gs_pipeline_state_t state = gs_pipeline_state_default();
+	gs_resource(gs_render_pipeline_state_t) state = data->default_state_2d;
 	gfx->immediate.push_state(cb, state);
 
 	// Bind shader command
-	gfx->bind_uniform_mat4(cb, data->u_mvp, __gs_default_view_proj_mat());	// Bind mvp matrix uniform
-	gfx->bind_texture(cb, data->u_tex, data->default_texture, 0);
+	// gfx->bind_uniform_mat4(cb, data->u_mvp, __gs_default_view_proj_mat());	// Bind mvp matrix uniform
+	// gfx->bind_texture(cb, data->u_tex, data->default_texture, 0);
 
 	__push_command(cb, gs_opengl_op_immediate_begin_drawing, {
 		// Nothing...
@@ -820,10 +790,10 @@ void opengl_immediate_end_drawing(gs_command_buffer_t* cb)
 	});
 }
 
-void opengl_immediate_push_state(gs_command_buffer_t* cb, gs_pipeline_state_t state)
+void opengl_immediate_push_state(gs_command_buffer_t* cb, gs_resource(gs_render_pipeline_state_t) state)
 {
 	__push_command(cb, gs_opengl_op_immediate_push_state, {
-		gs_byte_buffer_write(&cb->commands, gs_pipeline_state_t, state);
+		gs_byte_buffer_write(&cb->commands, gs_resource(gs_render_pipeline_state_t), state);
 	});
 }
 
@@ -884,7 +854,10 @@ void opengl_immediate_enable_texture_2d(gs_command_buffer_t* cb, u32 id)
 	__push_command(cb, gs_opengl_op_immediate_enable_texture_2d, {
 		gs_byte_buffer_write(&cb->commands, u32, id);
 	});
-	gfx->bind_texture_id(cb, data->u_tex, id, 0);
+	// gfx->bind_texture_id(cb, data->u_tex, id, 0);
+
+	// Set the uniform for the top state active.
+	// How do I handle this? Would have to pass the uniform
 }
 
 void opengl_immediate_disable_texture_2d(gs_command_buffer_t* cb)
@@ -894,7 +867,7 @@ void opengl_immediate_disable_texture_2d(gs_command_buffer_t* cb)
 	__push_command(cb, gs_opengl_op_immediate_disable_texture_2d, {
 		// Nothing...
 	});
-	gfx->bind_texture_id(cb, data->u_tex, data->default_texture.id, 0);
+	// gfx->bind_texture_id(cb, data->u_tex, data->default_texture.id, 0);
 }
 
 void opengl_immediate_push_matrix(gs_command_buffer_t* cb, gs_matrix_mode mode)
@@ -1006,9 +979,13 @@ void gs_end()
 
 void gs_push_matrix_uniform()
 {
+	gs_graphics_i* gfx = gs_engine_subsystem(graphics);
 	immediate_drawing_internal_data_t* _data = __get_opengl_immediate_data();
 	gs_mat4 mvp = gs_dyn_array_back(_data->vp_matrix_stack);
-	glUniformMatrix4fv(_data->u_mvp.location, 1, false, (f32*)(mvp.elements));
+
+	// Just set the uniform value for top state
+	gs_render_pipeline_state_t state = gs_dyn_array_back(_data->state_stack);
+	gfx->uniform_i->set_uniform_from_shader(state.uniforms, state.desc.shader, gs_uniform_type_mat4, "u_mvp", mvp);
 }
 
 #define gs_push_matrix(mode)\
@@ -1163,6 +1140,24 @@ do {\
 	glUniform1i(location, tex_unit);\
 } while(0)
 
+#define gs_bind_uniform_float(location, val)\
+	glUniform1f((location), (val));
+
+#define gs_bind_uniform_int(location, val)\
+	glUniform1i((location), (val));
+
+#define gs_bind_uniform_vec2(location, val)\
+	glUniform2f((location), (val).x, (val).y);
+
+#define gs_bind_uniform_vec3(location, val)\
+	glUniform3f((location), (val).x, (val).y, (val).z);
+
+#define gs_bind_uniform_vec4(location, val)\
+	glUniform4f((location), (val).x, (val).y, (val).z, (val).w);
+
+#define gs_bind_uniform_mat4(location, val)\
+	glUniformMatrix4fv((location), 1, false, (f32*)((val).elements));
+
 #define gs_bind_index_buffer(ibo)\
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
 
@@ -1172,19 +1167,19 @@ do {\
 #define gs_bind_shader(program_id)\
 	glUseProgram(program_id);
 
-void gs_set_state(gs_pipeline_state_t state)
+void gs_set_state(gs_render_pipeline_state_t state)
 {
-	gs_set_blend_mode(state.blend_func_src, state.blend_func_dst);
-	gs_set_blend_equation(state.blend_equation);
-	gs_set_depth_enabled(state.depth_enabled);
-	gs_set_winding_order(state.winding_order);
-	gs_set_face_culling(state.face_culling);
-	gs_set_viewport(state.viewport.x, state.viewport.y, state.viewport.z, state.viewport.w);
-	gs_set_view_scissor(state.view_scissor.x, state.view_scissor.y, state.view_scissor.z, state.view_scissor.w);
-	gs_bind_shader(state.shader.program_id);
+	gs_set_blend_mode(state.desc.blend_func_src, state.desc.blend_func_dst);
+	gs_set_blend_equation(state.desc.blend_equation);
+	gs_set_depth_enabled(state.desc.depth_enabled);
+	gs_set_winding_order(state.desc.winding_order);
+	gs_set_face_culling(state.desc.face_culling);
+	gs_set_viewport(state.desc.viewport.x, state.desc.viewport.y, state.desc.viewport.z, state.desc.viewport.w);
+	gs_set_view_scissor(state.desc.view_scissor.x, state.desc.view_scissor.y, state.desc.view_scissor.z, state.desc.view_scissor.w);
+	gs_bind_shader(state.desc.shader.program_id);
 }
 
-void opengl_immediate_push_top_state(gs_pipeline_state_t state)
+void opengl_immediate_push_top_state(gs_render_pipeline_state_t state)
 {
 	// Submit previous vertex data
 	opengl_immediate_submit_vertex_data();
@@ -1195,11 +1190,13 @@ void opengl_immediate_push_top_state(gs_pipeline_state_t state)
 	gs_set_state(state);
 }
 
+// This all needs to change.
 void opengl_immediate_pop_top_state()
 {
 	// Submit previous vertex data
 	opengl_immediate_submit_vertex_data();
 
+	gs_graphics_i* gfx = gs_engine_subsystem(graphics);
 	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
 	if (!gs_dyn_array_empty(data->state_stack))
 	{
@@ -1207,14 +1204,92 @@ void opengl_immediate_pop_top_state()
 	}
 	if (gs_dyn_array_empty(data->state_stack))
 	{
-		gs_dyn_array_push(data->state_stack, gs_pipeline_state_default());
+		gs_render_pipeline_state_t state = gs_slot_array_get(gfx->render_pipelines, 
+			gfx->immediate.default_pipeline_state(gs_immediate_mode_2d).id);
+		gs_dyn_array_push(data->state_stack, state);
 	}
 	gs_set_state(gs_dyn_array_back(data->state_stack));
+}
+
+// This is temporary to set manually from state
+void gs_bind_uniform_block(gs_resource(gs_uniform_block_t) uniforms)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gs_uniform_block_t* u_block = gs_slot_array_get_ptr(gfx->uniform_i->uniform_blocks, uniforms.id);
+
+	// Set data to beginning
+	gs_byte_buffer_seek_to_beg(&u_block->data);
+
+	// Rip through uniforms, determine size, then bind accordingly
+	gs_for_range_i(u_block->count)
+	{
+		// Grab uniform
+		gs_uniform_t uniform;
+		gs_byte_buffer_bulk_read(&u_block->data, &uniform, sizeof(gs_uniform_t));
+		// Grab data size
+		usize sz; gs_byte_buffer_read(&u_block->data, usize, &sz);
+		// Grab type
+		gs_uniform_type type = uniform.type;
+
+		// Grab data based on type and bind
+		switch (type)
+		{
+			case gs_uniform_type_sampler2d:
+			{
+				gs_uniform_block_type(texture_sampler) value = gs_default_val();
+				gs_byte_buffer_bulk_read(&u_block->data, &value, sz);
+				gs_bind_texture(value.slot, value.data, uniform.location);
+			} break;
+
+			case gs_uniform_type_mat4:
+			{
+				gs_uniform_block_type(mat4) value = gs_default_val();
+				gs_byte_buffer_bulk_read(&u_block->data, &value, sz);
+				gs_bind_uniform_mat4(uniform.location, value.data);
+			} break;
+
+			case gs_uniform_type_vec4:
+			{
+				gs_uniform_block_type(vec4) value = gs_default_val();
+				gs_byte_buffer_bulk_read(&u_block->data, &value, sz);
+				gs_bind_uniform_vec4(uniform.location, value.data);
+			} break;
+
+			case gs_uniform_type_vec3:
+			{
+				gs_uniform_block_type(vec3) value = gs_default_val();
+				gs_byte_buffer_bulk_read(&u_block->data, &value, sz);
+				gs_bind_uniform_vec3(uniform.location, value.data);
+			} break;
+
+			case gs_uniform_type_vec2:
+			{
+				gs_uniform_block_type(vec2) value = gs_default_val();
+				gs_byte_buffer_bulk_read(&u_block->data, &value, sz);
+				gs_bind_uniform_vec2(uniform.location, value.data);
+			} break;
+
+			case gs_uniform_type_float:
+			{
+				gs_uniform_block_type(float) value = gs_default_val();
+				gs_byte_buffer_bulk_read(&u_block->data, &value, sz);
+				gs_bind_uniform_float(uniform.location, value.data);
+			} break;
+
+			case gs_uniform_type_int:
+			{
+				gs_uniform_block_type(int) value = gs_default_val();
+				gs_byte_buffer_bulk_read(&u_block->data, &value, sz);
+				gs_bind_uniform_int(uniform.location, value.data);
+			} break;
+ 		}
+	}
 }
 
 // Push vertex data util for immediate mode data
 void opengl_immediate_submit_vertex_data()
 {
+	gs_graphics_i* gfx = gs_engine_subsystem(graphics);
 	immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
 	u32 count = gs_dyn_array_size(data->vertex_data);
 
@@ -1222,8 +1297,13 @@ void opengl_immediate_submit_vertex_data()
 		return;
 	}
 
-	u32 vao = data->default_vbo.vao;
-	u32 vbo = data->default_vbo.vbo;
+	// Bind current state uniforms
+	gs_assert(!gs_dyn_array_empty(data->state_stack));
+	gs_render_pipeline_state_t* state = &gs_dyn_array_back(data->state_stack);
+	gs_bind_uniform_block(state->uniforms);
+
+	u32 vao = g_default_vertex_buffer.vao;
+	u32 vbo = g_default_vertex_buffer.vbo;
 	usize sz = count * sizeof(immediate_vertex_data_t);
 
 	u32 mode;
@@ -1508,7 +1588,7 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 				gs_mat4 ortho = __gs_default_view_proj_mat();
 				gs_dyn_array_push(data->vp_matrix_stack, ortho);
 
-				data->tex_id = data->default_texture.id;
+				data->tex_id = g_default_texture.id;
 				data->draw_mode = gs_triangles;
 			} break;
 
@@ -1530,7 +1610,8 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 
 			case gs_opengl_op_immediate_push_state:
 			{
-				gs_byte_buffer_readc(&cb->commands, gs_pipeline_state_t, state);
+				gs_byte_buffer_readc(&cb->commands, gs_resource(gs_render_pipeline_state_t), state_h);
+				gs_render_pipeline_state_t state = gs_slot_array_get(gs_engine_subsystem(graphics)->render_pipelines, state_h.id);
 				opengl_immediate_push_top_state(state);
 			} break;
 
@@ -1546,18 +1627,18 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 				gs_byte_buffer_readc(&cb->commands, gs_pipeline_state_attr_type, type);
 
 				// Update last state
-				gs_pipeline_state_t state = gs_dyn_array_back(data->state_stack);
+				gs_render_pipeline_state_t state = gs_dyn_array_back(data->state_stack);
 				switch (type)
 				{
-					case gs_blend_func_src: gs_byte_buffer_read(&cb->commands, gs_blend_mode_type, &state.blend_func_src); break;
-					case gs_blend_func_dst: gs_byte_buffer_read(&cb->commands, gs_blend_mode_type, &state.blend_func_dst); break;
-					case gs_blend_equation: gs_byte_buffer_read(&cb->commands, gs_blend_equation_type, &state.blend_equation); break;
-					case gs_depth_enabled: 	gs_byte_buffer_read(&cb->commands, b32, &state.depth_enabled); break;
-					case gs_winding_order: 	gs_byte_buffer_read(&cb->commands, gs_winding_order_type, &state.winding_order); break;
-					case gs_face_culling: 	gs_byte_buffer_read(&cb->commands, gs_face_culling_type, &state.face_culling); break;
-					case gs_viewport: 		gs_byte_buffer_read(&cb->commands, gs_vec2, &state.viewport); break;
-					case gs_view_scissor: 	gs_byte_buffer_read(&cb->commands, gs_vec4, &state.view_scissor); break;
-					case gs_shader: 		gs_byte_buffer_read(&cb->commands, gs_shader_t, &state.shader); break;
+					case gs_blend_func_src: gs_byte_buffer_read(&cb->commands, gs_blend_mode_type, &state.desc.blend_func_src); break;
+					case gs_blend_func_dst: gs_byte_buffer_read(&cb->commands, gs_blend_mode_type, &state.desc.blend_func_dst); break;
+					case gs_blend_equation: gs_byte_buffer_read(&cb->commands, gs_blend_equation_type, &state.desc.blend_equation); break;
+					case gs_depth_enabled: 	gs_byte_buffer_read(&cb->commands, b32, &state.desc.depth_enabled); break;
+					case gs_winding_order: 	gs_byte_buffer_read(&cb->commands, gs_winding_order_type, &state.desc.winding_order); break;
+					case gs_face_culling: 	gs_byte_buffer_read(&cb->commands, gs_face_culling_type, &state.desc.face_culling); break;
+					case gs_viewport: 		gs_byte_buffer_read(&cb->commands, gs_vec2, &state.desc.viewport); break;
+					case gs_view_scissor: 	gs_byte_buffer_read(&cb->commands, gs_vec4, &state.desc.view_scissor); break;
+					case gs_shader: 		gs_byte_buffer_read(&cb->commands, gs_shader_t, &state.desc.shader); break;
 				}
 				opengl_immediate_push_top_state(state);
 			} break;
@@ -1565,21 +1646,28 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 			case gs_opengl_op_immediate_enable_texture_2d:
 			{
 				// If current texture doesn't equal new texture, then submit vertex data
+				gs_graphics_i* gfx = gs_engine_subsystem(graphics);
 				immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
 				u32 tex_id; gs_byte_buffer_read(&cb->commands, u32, &tex_id);
 				if (data->tex_id != tex_id) {
 					opengl_immediate_submit_vertex_data();
 				}
 				data->tex_id = tex_id;
+
+				// Bind new uniform for top state (u_tex)
+				gs_render_pipeline_state_t state = gs_dyn_array_back(data->state_stack);
+				gfx->uniform_i->set_uniform_from_shader(state.uniforms, state.desc.shader, gs_uniform_type_sampler2d, "u_tex", tex_id, 0);
 			} break;
 
 			case gs_opengl_op_immediate_disable_texture_2d:
 			{
+				gs_graphics_i* gfx = gs_engine_subsystem(graphics);
 				immediate_drawing_internal_data_t* data = __get_opengl_immediate_data();
-				if (data->tex_id != data->default_texture.id) {
+				if (data->tex_id != g_default_texture.id) {
 					opengl_immediate_submit_vertex_data();
 				}
-				data->tex_id = data->default_texture.id;
+				gs_render_pipeline_state_t state = gs_dyn_array_back(data->state_stack);
+				gfx->uniform_i->set_uniform_from_shader(state.uniforms, state.desc.shader, gs_uniform_type_sampler2d, "u_tex", g_default_texture.id, 0);
 			} break;
 
 			case gs_opengl_op_immediate_begin:
@@ -2428,6 +2516,7 @@ struct gs_graphics_i* __gs_graphics_construct()
 	============================================================*/
 	gfx->immediate.begin_drawing 		= &opengl_immediate_begin_drawing;
 	gfx->immediate.end_drawing 			= &opengl_immediate_end_drawing;
+	gfx->immediate.default_pipeline_state = &opengl_default_pipeline_state;
 	gfx->immediate.begin 				= &opengl_immediate_begin;
 	gfx->immediate.end 					= &opengl_immediate_end;
 	gfx->immediate.clear 				= &opengl_immediate_clear;
@@ -2507,3 +2596,8 @@ struct gs_graphics_i* __gs_graphics_construct()
 
 	return gfx;
 }
+
+
+
+
+
