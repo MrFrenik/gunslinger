@@ -322,7 +322,12 @@ gs_result glfw_process_input(struct gs_platform_input* input)
 
 void* glfw_create_window(const char* title, u32 width, u32 height)
 {
-    // GLFWwindow* window = glfwCreateWindow(width, height, title, glfwGetPrimaryMonitor(), NULL);
+	// Grab window hints from application desc
+	u32 window_hints = gs_engine_instance()->ctx.app.window_flags;
+
+	// Set whether or not the screen is resizable
+    glfwWindowHint(GLFW_RESIZABLE, (window_hints & gs_window_flags_resizable) == gs_window_flags_resizable);
+
     GLFWwindow* window = glfwCreateWindow(width, height, title, NULL, NULL);
     if (window == NULL)
     {

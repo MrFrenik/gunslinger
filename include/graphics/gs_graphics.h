@@ -451,7 +451,11 @@ typedef struct gs_graphics_immediate_draw_i
 
 	// Rect
 	void (* draw_rect)(gs_command_buffer_t* cb, f32 x0, f32 y0, f32 x1, f32 y1, gs_color_t color);
+	void (* draw_rectv)(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_color_t color);
 	void (* draw_rect_textured)(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, u32 tex_id, gs_color_t color);
+	void (* draw_rect_textured_ext)(gs_command_buffer_t* cb, f32 x0, f32 y0, f32 x1, f32 y1, 
+		f32 u0, f32 v0, f32 u1, f32 v1, u32 tex_id, gs_color_t color);
+	void (* draw_rect_lines)(gs_command_buffer_t* cb, f32 x0, f32 y0, f32 x1, f32 y1, gs_color_t color);
 
 	// Circle
 	void (* draw_circle)(gs_command_buffer_t* cb, gs_vec2 center, f32 radius, s32 segments, gs_color_t color);
@@ -672,7 +676,11 @@ void __gs_draw_triangle_2d(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_vec
 void __gs_draw_circle(gs_command_buffer_t* cb, gs_vec2 center, f32 radius, s32 segments, gs_color_t color);
 void __gs_draw_circle_sector(gs_command_buffer_t* cb, gs_vec2 center, f32 radius, s32 start_angle, s32 end_angle, s32 segments, gs_color_t color);
 void __gs_draw_rect_2d(gs_command_buffer_t* cb, f32 x0, f32 y0, f32 x1, f32 y1, gs_color_t color);
+void __gs_draw_rect_2dv(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_color_t color);
 void __gs_draw_rect_2d_textured(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, u32 texture_id, gs_color_t color);
+void __gs_draw_rect_2d_textured_ext(gs_command_buffer_t* cb, f32 x0, f32 y0, f32 x1, f32 y1, 
+	f32 u0, f32 v0, f32 u1, f32 v1, u32 tex_id, gs_color_t color);
+void __gs_draw_rect_2d_lines(gs_command_buffer_t* cb, f32 x0, f32 y0, f32 x1, f32 y1, gs_color_t color);
 void __gs_draw_box(gs_command_buffer_t* cb, gs_vec3 origin, gs_vec3 half_extents, gs_color_t color);
 void __gs_draw_box_textured(gs_command_buffer_t* cb, gs_vec3 origin, gs_vec3 half_extents, u32 tex_id, gs_color_t color);
 void __gs_draw_box_vqs(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t color);

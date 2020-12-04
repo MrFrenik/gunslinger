@@ -577,17 +577,17 @@ void __gs_draw_rect_3d(gs_command_buffer_t* cb, gs_vec3 p, gs_vec3 n, gs_color_t
 	// point, normal, scale?
 }
 
-void __gs_draw_rect_2d_impl(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_color_t color)
+void __gs_draw_rect_2d_impl(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_vec2 uv0, gs_vec2 uv1, gs_color_t color)
 {
 	gs_vec3 tl = gs_v3(a.x, a.y, 0.f);
 	gs_vec3 tr = gs_v3(b.x, a.y, 0.f);
 	gs_vec3 bl = gs_v3(a.x, b.y, 0.f);
 	gs_vec3 br = gs_v3(b.x, b.y, 0.f); 
 
-	gs_vec2 tl_uv = gs_v2(0.f, 1.f);
-	gs_vec2 tr_uv = gs_v2(1.f, 1.f);
-	gs_vec2 bl_uv = gs_v2(0.f, 0.f);
-	gs_vec2 br_uv = gs_v2(1.f, 0.f);
+	gs_vec2 tl_uv = gs_v2(uv0.x, uv1.y);
+	gs_vec2 tr_uv = gs_v2(uv1.x, uv1.y);
+	gs_vec2 bl_uv = gs_v2(uv0.x, uv0.y);
+	gs_vec2 br_uv = gs_v2(uv1.x, uv0.y);
 
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	gfx->immediate.begin(cb, gs_triangles);
@@ -615,18 +615,48 @@ void __gs_draw_rect_2d_impl(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_co
 	gfx->immediate.end(cb);
 }
 
+void __gs_draw_rect_2d_lines_impl(gs_command_buffer_t* cb, f32 x0, f32 y0, f32 x1, f32 y1, gs_color_t color)
+{
+	__gs_draw_line_2d(cb, x0, y0, x1, y0, color);	// tl -> tr
+	__gs_draw_line_2d(cb, x1, y0, x1, y1, color);	// tr -> br
+	__gs_draw_line_2d(cb, x1, y1, x0, y1, color);	// br -> bl
+	__gs_draw_line_2d(cb, x0, y1, x0, y0, color);	// bl -> tl
+}
+
+void __gs_draw_rect_2d_lines(gs_command_buffer_t* cb, f32 x0, f32 y0, f32 x1, f32 y1, gs_color_t color)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gfx->immediate.disable_texture_2d(cb);
+	__gs_draw_rect_2d_lines_impl(cb, x0, y0, x1, y1, color);
+}
+
 void __gs_draw_rect_2d(gs_command_buffer_t* cb, f32 x0, f32 y0, f32 x1, f32 y1, gs_color_t color)
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	gfx->immediate.disable_texture_2d(cb);
-	__gs_draw_rect_2d_impl(cb, gs_v2(x0, y0), gs_v2(x1, y1), color);
+	__gs_draw_rect_2d_impl(cb, gs_v2(x0, y0), gs_v2(x1, y1), gs_v2(0.f, 0.f), gs_v2(1.f, 1.f), color);
+}
+
+void __gs_draw_rect_2dv(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, gs_color_t color)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gfx->immediate.disable_texture_2d(cb);
+	__gs_draw_rect_2d_impl(cb, a, b, gs_v2(0.f, 0.f), gs_v2(1.f, 1.f), color);
 }
 
 void __gs_draw_rect_2d_textured(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, u32 tex_id, gs_color_t color)
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	gfx->immediate.enable_texture_2d(cb, tex_id);
-	__gs_draw_rect_2d_impl(cb, a, b, color);
+	__gs_draw_rect_2d_impl(cb, a, b, gs_v2(0.f, 0.f), gs_v2(0.f, 0.f), color);
+}
+
+void __gs_draw_rect_2d_textured_ext(gs_command_buffer_t* cb, f32 x0, f32 y0, f32 x1, f32 y1, 
+	f32 u0, f32 v0, f32 u1, f32 v1, u32 tex_id, gs_color_t color)
+{
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gfx->immediate.enable_texture_2d(cb, tex_id);
+	__gs_draw_rect_2d_impl(cb, gs_v2(x0, y0), gs_v2(x1, y1), gs_v2(u0, v0), gs_v2(u1, v1), color);
 }
 
 void __gs_draw_box_vqs_impl(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t color)

@@ -2573,6 +2573,10 @@ struct gs_graphics_i* __gs_graphics_construct()
 	gfx->immediate.draw_triangle 		= &__gs_draw_triangle_2d;
 	gfx->immediate.draw_triangle_ext 	= &__gs_draw_triangle_3d_ext;
 	gfx->immediate.draw_rect 			= &__gs_draw_rect_2d;
+	gfx->immediate.draw_rectv 			= &__gs_draw_rect_2dv;
+	gfx->immediate.draw_rect_textured 	= &__gs_draw_rect_2d_textured;
+	gfx->immediate.draw_rect_textured_ext = &__gs_draw_rect_2d_textured_ext;
+	gfx->immediate.draw_rect_lines 		= &__gs_draw_rect_2d_lines;
 	gfx->immediate.draw_box 			= &__gs_draw_box;
 	gfx->immediate.draw_box_textured 	= &__gs_draw_box_textured;
 	gfx->immediate.draw_box_vqs 		= &__gs_draw_box_vqs;
@@ -2582,7 +2586,6 @@ struct gs_graphics_i* __gs_graphics_construct()
 	gfx->immediate.draw_sphere 			= &__gs_draw_sphere;
 	gfx->immediate.draw_sphere_lines 	= &__gs_draw_sphere_lines;
 	gfx->immediate.draw_sphere_lines_vqs = &__gs_draw_sphere_lines_vqs;
-	gfx->immediate.draw_rect_textured 	= &__gs_draw_rect_2d_textured;
 	gfx->immediate.draw_text 			= &__gs_draw_text;
 	gfx->immediate.draw_text_ext 		= &__gs_draw_text_ext;
 	gfx->immediate.draw_circle_sector 	= &__gs_draw_circle_sector;

@@ -24,6 +24,9 @@ gs_engine_t* gs_engine_construct(gs_application_desc_t app_desc)
 		// Construct instance
 		gs_engine_instance_g = gs_malloc_init(gs_engine_t);
 
+		// Set application description for engine
+		gs_engine_instance_g->ctx.app = app_desc;
+
 		// Initialize the meta class registry
 		// Want a way to add user meta class information as well as the engine's (haven't considered how that looks yet)
 		// gs_meta_class_registry_init(&gs_engine_instance_g->ctx.registry);
@@ -64,7 +67,6 @@ gs_engine_t* gs_engine_construct(gs_application_desc_t app_desc)
 		gs_engine_instance_g->ctx.audio->init(gs_engine_instance_g->ctx.audio);
 
 		// Default application context
-		gs_engine_instance_g->ctx.app = app_desc;
 		gs_engine_instance_g->ctx.app.update = app_desc.update == NULL ? &__gs_default_app_update : app_desc.update;
 		gs_engine_instance_g->ctx.app.shutdown = app_desc.shutdown == NULL ? &__gs_default_app_shutdown : app_desc.shutdown;
 

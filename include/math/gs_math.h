@@ -1152,14 +1152,40 @@ _inline gs_ray gs_ray_ctor(gs_vec3 pt, gs_vec3 dir)
 // Plane
 ================================================================================*/
 
-typedef struct 
+typedef struct gs_plane_t
 {
-	f32 a;
-	f32 b;
-	f32 c;
-	f32 d;
-} gs_plane;
+	union
+	{
+		gs_vec3 n;
+		struct 
+		{
+			f32 a;
+			f32 b;
+			f32 c;
+		};
+	};
 
+	f32 d;
+} gs_plane_t;
+
+/*================================================================================
+// Utils
+================================================================================*/
+
+/*
+	min is top left of rect,
+	max is bottom right
+*/
+typedef struct gs_rect_t
+{
+	gs_vec2 min;
+	gs_vec2 max;
+} gs_rect_t;
+
+// b32 gs_rect_vs_rect(gs_rect_t a, gs_rect_t b)
+// {
+
+// }
 
 #ifdef __cplusplus
 }
