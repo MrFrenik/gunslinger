@@ -1,3 +1,19 @@
+
+/*================================================================
+	* Copyright: 2020 John Jackson
+	* simple_cube
+
+	The purpose of this example is to demonstrate how to explicitly construct a 
+	GPU resources to use for your application to render a cube.
+
+	Included: 
+		* Construct vertex/index buffers from user defined declarations
+		* Construct shaders from source
+		* Rendering via command buffers
+
+	Press `esc` to exit the application.
+================================================================*/
+
 #include <gs.h>
 
 // Globals

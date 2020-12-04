@@ -1,6 +1,8 @@
-#include <gs.h>
 
-/*
+/*================================================================
+	* Copyright: 2020 John Jackson
+	* custom_quad_batch
+
 	Custom Quad Batch Example
 
 	Quad Batch API
@@ -36,11 +38,11 @@
 	The fragment shader will blend color, colortwo and then multiply that into a passed in texture for the final fragment color.
 	We'll also use a custom uniform variable for alpha, 'u_alpha', which will be controlled by the platform time to fade
 		the batch in and out.
-*/
 
-/*=================================
-// Custom Quad Batch Implementation
-=================================*/
+	Press `esc` to exit the application.
+=================================================================*/
+
+#include <gs.h>
 
 const char* quad_batch_custom_vert_src ="\n"
 	"#version 330 core\n"

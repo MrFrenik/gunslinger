@@ -1,11 +1,17 @@
+
+/*================================================================
+	* Copyright: 2020 John Jackson
+	* imgui
+
+	* Simple c++ imgui/glfw example
+
+	Press `esc` to exit the application.
+=================================================================*/
+
 #include <gs.h>
 #include <imgui/imgui_impl_glfw.h>
 #include <imgui/imgui_impl_opengl3.h>
 #include <GLFW/glfw3.h>
-
-/*
-	Simple c++ imgui example
-*/
 
 // Forward Decls.
 gs_result app_init();

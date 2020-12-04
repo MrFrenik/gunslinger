@@ -1,3 +1,13 @@
+
+/*================================================================
+	* Copyright: 2020 John Jackson
+	* sand_sim
+
+	* (Noita) Sand simulation demo. Shown in video: https://www.youtube.com/watch?v=VLZjd_Y1gJ8
+
+	Press `esc` to exit the application.
+=================================================================*/
+
 #include <gs.h>
 
 #include "render_pass/blur_pass.h"

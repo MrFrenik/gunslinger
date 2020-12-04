@@ -1,3 +1,13 @@
+
+/*================================================================
+	* Copyright: 2020 John Jackson
+	* terrain
+
+	Dynamic heightmap terrain demo.
+
+	Press `esc` to exit the application.
+================================================================*/
+
 #include <gs.h>
 
 #include "sdnoise1234.h"

@@ -1,3 +1,18 @@
+
+/*================================================================
+	* Copyright: 2020 John Jackson
+	* simple_audio
+
+	Simple audio example. Demonstrates how to load raw audio data
+		from disk (.mp3), construct an internal resource and then 
+		use audio instances to play audio at runtime.
+
+	Demonstrates how to play, pause, restart, stop, control volume
+	of audio, as well as get runtime data for the playing instance.
+
+	Press `esc` to exit the application.
+=================================================================*/
+
 #include <gs.h>
 
 // Forward Decls.

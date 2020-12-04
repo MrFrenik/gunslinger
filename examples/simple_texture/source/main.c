@@ -1,14 +1,20 @@
 #include <gs.h>
 
-/*
-	Simple Texture - 
+/*================================================================
+	* Copyright: 2020 John Jackson
+	* simple_texture
 
-	The purpose of this example is to demonstrate how to load textures from file and construct a GPU texture resource to use
-		for your application.
+	The purpose of this example is to demonstrate how to load textures from file and 
+	explicitly construct a GPU resources to use for your application.
 
-	There is also code to demonstrate how to construct a camera and manipulate it as well. Look for "Camera Update" section, 
-		in the'app_update' function.
-*/
+	Included: 
+		* Constructing textures via tetxure despcriptors 
+		* Construct vertex/index buffers from user defined declarations
+		* Construct shaders from source
+		* Rendering via command buffers
+
+	Press `esc` to exit the application.
+=================================================================*/
 
 // Globals
 _global gs_shader_t 		g_shader = gs_default_val();
@@ -193,6 +199,7 @@ gs_result app_update()
 	// Draw
 	gfx->draw_indexed(cb, 6, 0);
 
+	// Do some debug drawing using immediate mode
 	gfx->immediate.begin_drawing(cb); 
 	{
 		gfx->immediate.draw_text(cb, 10.f, 30.f, "Example: Simple Texture", gs_color_white);

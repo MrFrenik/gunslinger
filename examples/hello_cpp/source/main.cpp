@@ -1,8 +1,16 @@
-#include <gs.h>
 
-/*
-	Simple c++ example
-*/
+/*================================================================
+	* Copyright: 2020 John Jackson
+	* HellGS
+
+	A Bare bones c++ application for getting started using `gunslinger`.
+	Creates an appplication context, an engine context, and then 
+	opens a main window for you using the rendering context.
+
+	Press `esc` to exit the application.
+=================================================================*/
+
+#include <gs.h>
 
 // Forward Decls.
 gs_result app_update();		// Use to update your application

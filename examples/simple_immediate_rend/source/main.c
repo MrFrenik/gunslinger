@@ -1,3 +1,30 @@
+
+/*================================================================
+	* Copyright: 2020 John Jackson
+	* simple_immediate_rendering
+
+	The purpose of this example is to demonstrate how to use the 
+	immediate mode rendering api for the graphics subsystem.
+	Perfect for debug drawing, uis, and even small games.
+
+	Included: 
+		* Pushing/Popping rendering pipeline states
+		* Matrix Operations (model/view_projection)
+		* Draw Text
+		* Draw various 2d primitives: 
+			* Line (with/without thickness)
+			* Triangle
+			* Circle
+		* Draw various 3d primitives: 
+			* Sphere
+			* Box
+			* 3d Line
+		* Set draw modes
+		* Push vertices directly into immediate buffer for custom shapes
+
+	Press `esc` to exit the application.
+================================================================*/
+
 #include <gs.h>
 
 typedef struct app_data_t 
@@ -163,7 +190,7 @@ gs_result app_update()
 				gfx->immediate.pop_matrix(cb);
 			}
 
-			const f32 ts = 0.004f;
+			const f32 ts = 0.001f;
 			gs_vqs local_xforms[3] = 
 			{
 				gs_vqs_ctor(gs_v3(-0.2f, 0.5f, 0.f), gs_quat_angle_axis(gs_deg_to_rad(-180.f), gs_x_axis), gs_v3_s(ts)),
@@ -193,7 +220,7 @@ gs_result app_update()
 					gfx->immediate.push_matrix(cb, gs_matrix_model);
 					{
 						gfx->immediate.mat_mul_vqs(cb, gs_vqs_absolute_transform(&local_xforms[i], &box_xform));
-						gfx->immediate.draw_text(cb, 0.f, 0.f, buffers[i], gs_color_green);
+						gfx->immediate.draw_text_ext(cb, 0.f, 0.f, buffers[i], &ad->font, gs_color_green);
 					}
 					gfx->immediate.pop_matrix(cb);
 				}

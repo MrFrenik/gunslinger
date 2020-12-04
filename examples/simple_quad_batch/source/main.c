@@ -1,8 +1,21 @@
 #include <gs.h>
 
-/*
-	Simple Quad Batch - Using default definitions
-*/
+/*================================================================
+	* Copyright: 2020 John Jackson
+	* simple_quad_batch
+
+	The purpose of this example is to demonstrate how to construct
+	and rennder a simple quad batch using the default quad batch
+	api provided in the graphics subsystem.
+
+	Included: 
+		* Constructing a new quad batch
+		* Adding quad batch info into the batch
+		* Setting up uniforms for the default quad batch material
+		* Submitting the quad batch to be rendered
+
+	Press `esc` to exit the application.
+================================================================*/
 
 // Globals
 _global gs_command_buffer_t g_cb = {0};

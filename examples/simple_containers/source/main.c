@@ -1,3 +1,19 @@
+
+/*================================================================
+	* Copyright: 2020 John Jackson
+	* simple_containers
+
+	Simple example demonstrating how to use various included 
+	container types core to the gunslinger library.
+
+	Included: 
+		Dynamic Array -> gs_dyn_array
+		Hash Table    -> gs_hash_table
+		Slot Array    -> gs_slot_array
+
+	Press `esc` to exit the application.
+=================================================================*/
+
 #include <gs.h>
 
 // Forward Decls.

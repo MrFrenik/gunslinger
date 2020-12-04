@@ -1,3 +1,24 @@
+
+/*================================================================
+	* Copyright: 2020 John Jackson
+	* serialization
+
+	Custom Byte Buffer / Binary Serialization example
+
+	Shown in video: https://www.youtube.com/watch?v=GXdT8twQxxI
+
+	The purpose of this example is to demonstrate how to serialize arbitrary data to disk using a custom byte buffer implementation.
+	A simple pixel art editor is thrown in to demonstrate some of these ideas in practice.
+
+	Libraries used : 
+	{
+		* Nuklear UI: https://github.com/Immediate-Mode-UI/Nuklear
+		* TinyFileDialog: https://github.com/native-toolkit/tinyfiledialogs
+	}
+
+	Press `esc` to exit the application.
+=================================================================*/
+
 #include <gs.h>
 
 #include "font.h"
@@ -20,20 +41,6 @@
 #define MAX_VERTEX_BUFFER 512 * 1024
 #define MAX_ELEMENT_BUFFER 128 * 1024
 
-/*=======================================================================================================================================
-
-	Custom Byte Buffer / Binary Serialization example
-
-	The purpose of this example is to demonstrate how to serialize arbitrary data to disk using a custom byte buffer implementation.
-	A simple pixel art editor is thrown in to demonstrate some of these ideas in practice.
-
-	Libraries used : 
-	{
-		* Nuklear UI: https://github.com/Immediate-Mode-UI/Nuklear
-		* TinyFileDialog: https://github.com/native-toolkit/tinyfiledialogs
-	} 
-
-========================================================================================================================================*/
 
 //================================================================
 
