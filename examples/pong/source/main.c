@@ -6,13 +6,18 @@
 	* Simple pong game, using immediate mode rendering
 	* Sounds from: https://freesound.org/people/NoiseCollector/
 
+	// TODO(john): Post processing (scan-lines to give off "crtv effect", possible screen bending)
+	Reference: https://clemz.io/article-retro-shaders-webgl.html
+
 	Press `esc` to exit the application.
 =================================================================*/
 
 #include <gs.h>
 
-// TODO(john): Post processing (scan-lines to give off "crtv effect", possible screen bending)
-
+/*=======================
+// Constants and Defines
+========================
+*/
 #define paddle_width	20.f
 #define paddle_height 	80.f
 #define paddle_speed 	5.f
@@ -28,6 +33,10 @@
 #define window_size()\
 	((gs_engine_subsystem(platform))->window_size((gs_engine_subsystem(platform))->main_window()))
 
+/*=========
+// Paddles
+==========*/
+
 typedef enum paddle_side {
 	paddle_left, 
 	paddle_right,
@@ -38,11 +47,19 @@ typedef struct paddle_t {
 	gs_vec2 position;
 } paddle_t;
 
+/*=========
+// Ball
+==========*/
+
 typedef struct ball_t {
 	gs_vec2 position;
 	gs_vec2 velocity;
 	f32 speed_modifier;
 } ball_t;
+
+/*============
+// Game Data 
+============*/
 
 typedef struct game_data_t {
 	gs_command_buffer_t cb;
@@ -52,6 +69,7 @@ typedef struct game_data_t {
 	gs_font_t font;
 	gs_audio_source_t* ball_hit_src;
 	gs_audio_source_t* score_src;
+	b32 hit;
 } game_data_t;
 
 // Forward Decls.
@@ -60,11 +78,12 @@ gs_result app_init();
 gs_rect_t get_paddle_rect(paddle_t paddle);
 gs_rect_t get_ball_rect(ball_t ball);
 gs_rect_t get_field_dims();
-void init_ball();
+void init_ball(ball_t* ball);
 void update_paddles();
 void update_ball();
 void play_ball_hit_sound();
 void play_score_sound();
+void draw_game();
 
 int main(int argc, char** argv)
 {
@@ -99,10 +118,9 @@ gs_result app_init()
 
 	// Initialize paddles
 	gs_vec2 pd = paddle_dims;
-	f32 xoffset = 10.f;
 	gs_vec2 ws = window_size();
-	gd->paddles[paddle_left].position 	= gs_v2(xoffset + pd.x, 300.f);
-	gd->paddles[paddle_right].position 	= gs_v2(ws.x - 2.f * pd.x - xoffset, 300.f);
+	gd->paddles[paddle_left].position 	= gs_v2(pd.x * 2.f, 300.f);
+	gd->paddles[paddle_right].position 	= gs_v2(ws.x - 3.f * pd.x, 300.f);
 
 	// Initialize ball
 	init_ball(&gd->ball);
@@ -117,38 +135,52 @@ gs_result app_init()
 	gd->ball_hit_src = audio->load_audio_source_from_file("./assets/ball_hit.wav");
 	gd->score_src 	 = audio->load_audio_source_from_file("./assets/score.wav");
 
-
 	return gs_result_success;
 }
 
 gs_result app_update()
 {
-	gs_graphics_i* gfx = gs_engine_subsystem(graphics);
 	gs_platform_i* platform = gs_engine_subsystem(platform);
-	game_data_t* gd = gs_engine_user_data(game_data_t);
-	gs_graphics_immediate_draw_i* id = &gfx->immediate;
-	gs_command_buffer_t* cb = &gd->cb;
 
 	if (platform->key_pressed(gs_keycode_esc)) {
 		return gs_result_success;
 	}
 
-	const gs_vec2 ws = window_size();
-
 	// Update game
 	update_paddles();
 	update_ball();
+	draw_game();
+	
+	// Otherwise, continue
+	return gs_result_in_progress;
+}
+
+void draw_game()
+{
+	// Cache necessary apis and game data
+	gs_graphics_i* gfx = gs_engine_subsystem(graphics);
+	game_data_t* gd = gs_engine_user_data(game_data_t);
+	gs_graphics_immediate_draw_i* id = &gfx->immediate;
+	gs_command_buffer_t* cb = &gd->cb;
+	const gs_vec2 ws = window_size();
 
 	id->begin_drawing(cb);
 	{
-		id->clear(cb, 0.1f, 0.1f, 0.1f, 1.f);
+		// If we hit last frame, then flash the screen briefly with a lighter clear color
+		if (gd->hit) {
+			gd->hit = false;
+			id->clear(cb, 0.2f, 0.2f, 0.2f, 1.f);
+		}
+		else {
+			id->clear(cb, 0.1f, 0.1f, 0.1f, 1.f);
+		}
 
-		// Draw game field
+		// Game field
 		const f32 rect_x = 10.f;
 		const f32 rect_y = 10.f;
 		id->draw_rect_lines(cb, rect_x, rect_y, ws.x - rect_x, ws.y - rect_y, gs_color_white);
 
-		// Draw dividing line (series of rects from mid screen)
+		// Dividing line (series of rects from mid screen)
 		const f32 y_offset = 5.f;
 		gs_vec2 div_dim = gs_v2(5.f, 10.f);
 		s32 num_steps = (ws.y - rect_y * 2.f) / (div_dim.y + y_offset);
@@ -159,7 +191,7 @@ gs_result app_update()
 			id->draw_rectv(cb, a, b, gs_color_alpha(gs_color_white, 100));
 		}
 
-		// Draw paddles
+		// Paddles
 		gs_for_range_i(paddle_side_count)
 		{
 			gs_vec2 a = gd->paddles[i].position;
@@ -167,7 +199,7 @@ gs_result app_update()
 			id->draw_rectv(cb, a, b, gs_color_white);
 		}
 
-		// Draw ball
+		// Ball
 		{
 			gs_vec2 a = gd->ball.position;
 			gs_vec2 b = gs_v2(a.x + ball_width, a.y + ball_height);
@@ -178,22 +210,18 @@ gs_result app_update()
 		gs_vec2 td = gfx->text_dimensions("Pong", &gd->font);
 		id->draw_text_ext(cb, (ws.x - td.x) * 0.5f, 75.f, "Pong", &gd->font, gs_color_white);
 
-		// Score 0
-		gs_snprintfc(score_buf_0, 256, "%zu", gd->score[paddle_left]);
-		td = gfx->text_dimensions(score_buf_0, &gd->font);
-		id->draw_text_ext(cb, (ws.x - td.x) * 0.5f - 75.f, 150.f, score_buf_0, &gd->font, gs_color_white);
-
-		gs_snprintfc(score_buf_1, 256, "%zu", gd->score[paddle_right]);
-		td = gfx->text_dimensions(score_buf_1, &gd->font);
-		id->draw_text_ext(cb, (ws.x - td.x) * 0.5f + 75.f, 150.f, score_buf_1, &gd->font, gs_color_white);
-
+		// Scores
+		gs_for_range_i(paddle_side_count) 
+		{
+			gs_snprintfc(score_buf, 256, "%zu", gd->score[i]);
+			td = gfx->text_dimensions(score_buf, &gd->font);
+			id->draw_text_ext(cb, (ws.x - td.x) * 0.5f - 75.f + 150.f * i, 150.f, score_buf, &gd->font, gs_color_white);
+		}
 	}
 	id->end_drawing(cb);
 
+	// Final submit of command buffer for drawing to screen
 	gfx->submit_command_buffer(cb);
-
-	// Otherwise, continue
-	return gs_result_in_progress;
 }
 
 gs_rect_t get_paddle_rect(paddle_t paddle)
@@ -311,6 +339,7 @@ void update_ball()
 	if (need_ball_reset) {
 		play_score_sound();
 		init_ball(&gd->ball);
+		gd->hit = true;
 	}
 }
 
