@@ -212,7 +212,7 @@ void print_slot_array(gs_slot_array(object_t)* sa)
 	{
 		object_t* obj = it.data;
 		object_to_str(obj, buffer, 256);
-		gs_println("\t%s", buffer);
+		gs_println("\t%s, %zu", buffer, it.cur_idx);
 	}
 
 	gs_printf(" ]\n");

@@ -35,17 +35,29 @@ void ma_audio_commit(ma_device* device, void* output, const void* input, ma_uint
 
 	memset(output, 0, frame_count * device->playback.channels * ma_get_bytes_per_sample(device->playback.format));
 
+	// Only destroy 32 at a time
+	u32 destroy_count = 0;
+	u32 ids_to_destroy[32];
+
 	ma_mutex_lock(&ma->lock);
 	{
-		for (u32 i = 0; i < gs_slot_array_size(__data->instances); ++i)
+		for 
+		(
+			gs_slot_array_iter(gs_audio_instance_data_t) it = gs_slot_array_iter_new(__data->instances);
+			gs_slot_array_iter_valid(__data->instances, it);
+			gs_slot_array_iter_advance(__data->instances, it)
+		)
 		{
-			gs_audio_instance_data_t* inst = &__data->instances.data[ i ];
+			gs_audio_instance_data_t* inst = it.data;
 
 			// Get raw audio source from instance
 			gs_audio_source_t* src = inst->src;
 
 			// Easy out if the instance is not playing currently or the source is invalid
 			if (!inst->playing || !src) {
+				if (inst->persistent != true && destroy_count < 32) {
+					ids_to_destroy[destroy_count++] = it.cur_idx;
+				}
 				continue;
 			}
 
@@ -122,7 +134,6 @@ void ma_audio_commit(ma_device* device, void* output, const void* input, ma_uint
 	            {
 	                if(inst->loop)
 	                {
-	                    // inst->sample_position -= src->sample_count;
 	                    inst->sample_position = 0;
 	                }
 	                else
@@ -130,11 +141,20 @@ void ma_audio_commit(ma_device* device, void* output, const void* input, ma_uint
 	                	// Need to destroy the instance at this point...
 	                    inst->playing = false;
 	                    inst->sample_position = 0;
+
+						if (inst->persistent != true && destroy_count < 32) {
+							ids_to_destroy[destroy_count++] = it.cur_idx;
+						}
+
 	                    break;
 	                }
 	            }
-
 			}
+		}
+
+		gs_for_range_i(destroy_count) 
+		{
+			gs_slot_array_erase(__data->instances, ids_to_destroy[i]);
 		}
 	}
 	ma_mutex_unlock(&ma->lock);
