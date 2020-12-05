@@ -207,8 +207,10 @@ void draw_game()
 		}
 
 		// Title
-		gs_vec2 td = gfx->text_dimensions("Pong", &gd->font);
-		id->draw_text_ext(cb, (ws.x - td.x) * 0.5f, 75.f, "Pong", &gd->font, gs_color_white);
+		gs_vec2 td = gfx->text_dimensions("Po", &gd->font);
+		id->draw_text_ext(cb, (ws.x - td.x) * 0.5f - 50.f, 75.f, "Po", &gd->font, gs_color_white);
+		td = gfx->text_dimensions("ng", &gd->font);
+		id->draw_text_ext(cb, (ws.x - td.x) * 0.5f + 60.f, 75.f, "ng", &gd->font, gs_color_white);
 
 		// Scores
 		gs_for_range_i(paddle_side_count) 
@@ -262,6 +264,11 @@ void update_paddles()
 	gs_platform_i* platform = gs_engine_subsystem(platform);
 	gs_vec2 ws = window_size();
 	game_data_t* gd = gs_engine_user_data(game_data_t);
+
+	// Clamp x position to screen
+	gs_vec2 pd = paddle_dims;
+	gd->paddles[paddle_left].position.x 	= pd.x * 2.f;
+	gd->paddles[paddle_right].position.x 	= ws.x - 3.f * pd.x;
 
 	// Left paddle movement
 	f32* y = &gd->paddles[paddle_left].position.y;
