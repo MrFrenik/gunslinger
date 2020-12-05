@@ -242,15 +242,6 @@ gs_rect_t get_ball_rect(ball_t ball)
 	return rect;
 }
 
-gs_rect_t get_field_rect()
-{
-	gs_vec2 ws = window_size();
-	gs_rect_t rect = {0};
-	rect.min = gs_v2(game_field_x, game_field_y);
-	rect.max = gs_vec2_sub(gs_v2(ws.x, ws.y), rect.min);
-	return rect;
-}
-
 void init_ball(ball_t* ball)
 {
 	gs_vec2 ws = window_size();
