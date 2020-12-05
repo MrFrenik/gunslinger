@@ -632,7 +632,7 @@ typedef struct gs_graphics_i
 	============================================================*/
 	u32 (* get_byte_size_of_vertex_attribute)(gs_vertex_attribute_type type);
 	u32 (* calculate_vertex_size_in_bytes)(gs_vertex_attribute_type* layout_data, u32 count);
-	gs_vec2 (* text_dimensions)(gs_command_buffer_t* cb, const char* text, gs_font_t* ft);
+	gs_vec2 (* text_dimensions)(const char* text, gs_font_t* ft);
 
 	// Render Data 
 	void* data;
@@ -653,7 +653,7 @@ typedef struct gs_graphics_i
 extern gs_texture_parameter_desc gs_texture_parameter_desc_default();
 extern void* gs_load_texture_data_from_file(const char* path, b32 flip_vertically_on_load);
 extern gs_font_t __gs_construct_font_from_file(const char* path, f32 point_size);
-extern gs_vec2 __gs_text_dimensions(gs_command_buffer_t* cb, const char* text, gs_font_t* ft);
+extern gs_vec2 __gs_text_dimensions(const char* text, gs_font_t* ft);
 extern gs_font_t __gs_construct_default_font();
 extern gs_font_t __gs_get_default_font();
 

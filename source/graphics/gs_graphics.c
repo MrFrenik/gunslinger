@@ -124,7 +124,7 @@ gs_font_t __gs_construct_font_from_file(const char* file_path, f32 point_size)
 	return f;
 }
 
-gs_vec2 __gs_text_dimensions(gs_command_buffer_t* cb, const char* text, gs_font_t* ft)
+gs_vec2 __gs_text_dimensions(const char* text, gs_font_t* ft)
 {
 	gs_vec2 pos = gs_v2(0.f, 0.f);
 	gs_vec2 dims = gs_v2(pos.x, pos.y);

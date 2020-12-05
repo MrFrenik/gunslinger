@@ -1182,10 +1182,19 @@ typedef struct gs_rect_t
 	gs_vec2 max;
 } gs_rect_t;
 
-// b32 gs_rect_vs_rect(gs_rect_t a, gs_rect_t b)
-// {
+_force_inline
+b32 gs_rect_vs_rect(gs_rect_t a, gs_rect_t b)
+{
+	if ( a.max.x > b.min.x && 
+		 a.max.y > b.min.y && 
+		 a.min.x < b.max.x && 
+		 a.min.y < b.max.y )
+	{
+		return true;
+	}
 
-// }
+	return false;
+}
 
 #ifdef __cplusplus
 }
