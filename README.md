@@ -6,18 +6,18 @@ A simple c99 framework for multimedia applications
 
 **NOTE(john)**: For all platforms, make certain you are in the `root` directory for `gunslinger` when attempting to build.
 
-**windows**: 
+**windows (MSVC)**: 
   - You'll need to have Visual Studio 2015/2017. (Note: Currently 2019 is having compile issues that are being tracked down).
   - From start menu, search for "x64 Native Tool Command Prompt for {Insert your Version Here}"
   - Navigate to where you have `gunslinger` repo placed
   - In the **root** directory for `gunslinger`, run `proc\win\compile_win_cl.bat`
   - This will build the library and place it in `gunslinger\bin`
 
-**osx**: 
+**osx (GCC)**: 
   - From terminal, run `bash ./proc/osx/compile_osx_gcc.sh`
   - This will build the library and place it in `gunslinger/bin`
 
-**linux**: 
+**linux (GCC)**: 
   - From terminal, run `bash ./proc/linux/compile_linux_gcc.sh`
   - This will build the library and place it in `gunslinger/bin`
 
