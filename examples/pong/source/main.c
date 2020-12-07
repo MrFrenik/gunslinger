@@ -5,6 +5,7 @@
 
 	* Simple pong game, using immediate mode rendering
 	* Sounds from: https://freesound.org/people/NoiseCollector/
+	* Font from: http://www.mattlag.com/bitfonts/
 
 	// TODO(john): Post processing (scan-lines to give off "crtv effect", possible screen bending)
 	Reference: https://clemz.io/article-retro-shaders-webgl.html
@@ -81,8 +82,7 @@ gs_rect_t get_field_dims();
 void init_ball(ball_t* ball);
 void update_paddles();
 void update_ball();
-void play_ball_hit_sound();
-void play_score_sound();
+void play_sound(gs_audio_source_t* src, f32 volume);
 void draw_game();
 
 int main(int argc, char** argv)
@@ -331,28 +331,20 @@ void update_ball()
 	if (need_pos_reset) {
 		gd->ball.position.y += gd->ball.velocity.y * ball_speed * gd->ball.speed_modifier;
 		gd->ball.position.x += gd->ball.velocity.x * ball_speed * gd->ball.speed_modifier;
-		play_ball_hit_sound();
+		play_sound(gd->ball_hit_src, 0.5f);
 	}
 
 	if (need_ball_reset) {
-		play_score_sound();
+		play_sound(gd->score_src, 0.5f);
 		init_ball(&gd->ball);
 		gd->hit = true;
 	}
 }
 
-void play_ball_hit_sound()
+void play_sound(gs_audio_source_t* src, f32 vol)
 {
 	gs_audio_i* audio = gs_engine_subsystem(audio);
-	game_data_t* gd = gs_engine_user_data(game_data_t);
-	audio->play_source(gd->ball_hit_src, 0.5f);
-}
-
-void play_score_sound()
-{
-	gs_audio_i* audio = gs_engine_subsystem(audio);
-	game_data_t* gd = gs_engine_user_data(game_data_t);
-	audio->play_source(gd->score_src, 0.5f);
+	audio->play_source(src, vol);
 }
 
 
