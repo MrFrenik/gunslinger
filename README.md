@@ -7,7 +7,7 @@ A simple c99 framework for multimedia applications
 **NOTE(john)**: For all platforms, make certain you are in the `root` directory for `gunslinger` when attempting to build.
 
 **windows**: 
-  - You'll need to have Visual Studio 2015 or greater.
+  - You'll need to have Visual Studio 2015/2017. (Note: Currently 2019 is having compile issues that are being tracked down).
   - From start menu, search for "x64 Native Tool Command Prompt for {Insert your Version Here}"
   - Navigate to where you have `gunslinger` repo placed
   - In the **root** directory for `gunslinger`, run `proc\win\compile_win_cl.bat`
