@@ -8,8 +8,10 @@
 #include <stb/stb.h>
 
 #define STB_IMAGE_IMPLEMENTATION
-#include <stb/stb_image_write.h>
 #include <stb/stb_image.h>
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb/stb_image_write.h>
 
 #define STB_TRUETYPE_IMPLEMENTATION
 #include <stb/stb_truetype.h>
@@ -648,7 +650,7 @@ void __gs_draw_rect_2d_textured(gs_command_buffer_t* cb, gs_vec2 a, gs_vec2 b, u
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	gfx->immediate.enable_texture_2d(cb, tex_id);
-	__gs_draw_rect_2d_impl(cb, a, b, gs_v2(0.f, 0.f), gs_v2(0.f, 0.f), color);
+	__gs_draw_rect_2d_impl(cb, a, b, gs_v2(0.f, 0.f), gs_v2(1.f, 1.f), color);
 }
 
 void __gs_draw_rect_2d_textured_ext(gs_command_buffer_t* cb, f32 x0, f32 y0, f32 x1, f32 y1, 
