@@ -857,7 +857,7 @@ void gs_command_buffer_free(gs_command_buffer_t* cb)
 	cache.insert(&(cache), (val));
 
 #define gs_resource_cache_erase(_c, h)\
-	gs_slot_array_erase((_c).cache, (h.id))
+	gs_slot_array_erase((_c).cache, (h).id)
 
 #define gs_resource_cache_get(_c, h)\
 	(gs_slot_array_get((_c).cache, (h).id).data)
