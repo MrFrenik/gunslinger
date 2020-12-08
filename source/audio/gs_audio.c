@@ -96,7 +96,7 @@ gs_result __gs_audio_update_internal(struct gs_audio_i* audio)
 		gs_audio_instance_data_t* inst = &__data->instances.data[ i ];
 
 		// Get raw audio source from instance
-		gs_audio_source_t* src = gs_resource_cache_get_ptr(audio->audio_cache, inst->src.id);
+		gs_audio_source_t* src = gs_resource_cache_get_ptr(audio->audio_cache, inst->src);
 
 		// Easy out if the instance is not playing currently or the source is invalid
 		if (!inst->playing || !src) {
@@ -238,9 +238,7 @@ gs_resource(gs_audio_source_t) __gs_load_audio_source_from_file(const char* file
 		gs_println("SUCCESS: Audio source loaded: %s", file_name);
 
 		// Add to resource cache
-		gs_resource(gs_audio_source_t) handle = gs_default_val();
-		handle.id = gs_resource_cache_insert(audio->audio_cache, source);
-		return handle;
+		return gs_resource_cache_insert(audio->audio_cache, source);
 	}
 	else
 	{
@@ -407,7 +405,7 @@ void __gs_audio_get_runtime(gs_audio_source_t* src, s32* _minutes, s32* _seconds
 s32 __gs_get_sample_count(gs_resource(gs_audio_source_t) src)
 {
  	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
- 	gs_audio_source_t* sp = gs_resource_cache_get_ptr(audio->audio_cache, src.id);
+ 	gs_audio_source_t* sp = gs_resource_cache_get_ptr(audio->audio_cache, src);
  	if (sp)
  	{
  		return sp->sample_count; 
@@ -418,7 +416,7 @@ s32 __gs_get_sample_count(gs_resource(gs_audio_source_t) src)
 s32 __gs_get_sample_rate(gs_resource(gs_audio_source_t) src)
 {
  	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
- 	gs_audio_source_t* sp = gs_resource_cache_get_ptr(audio->audio_cache, src.id);
+ 	gs_audio_source_t* sp = gs_resource_cache_get_ptr(audio->audio_cache, src);
  	if (sp)
  	{
  		return sp->sample_rate; 
@@ -429,7 +427,7 @@ s32 __gs_get_sample_rate(gs_resource(gs_audio_source_t) src)
 s32 __gs_get_num_channels(gs_resource(gs_audio_source_t) src)
 {
  	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
- 	gs_audio_source_t* sp = gs_resource_cache_get_ptr(audio->audio_cache, src.id);
+ 	gs_audio_source_t* sp = gs_resource_cache_get_ptr(audio->audio_cache, src);
  	if (sp)
  	{
  		return sp->channels; 

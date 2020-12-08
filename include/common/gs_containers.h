@@ -799,7 +799,11 @@ void gs_command_buffer_free(gs_command_buffer_t* cb)
 #define gs_resource_cache_data(T) gs_resource_data_struct_##T
 #define gs_resource_cache_new(T) gs_resource_cache_new_##T()
 
+// Resource cache should operate on gs_resource data
+
 #define gs_resource_cache_decl(T)\
+\
+	gs_resource_decl(T);\
 \
 	/* Makes it so you don't have to manually declare a slot array for the type */\
 	typedef struct gs_resource_cache_data(T)\
@@ -812,7 +816,7 @@ void gs_command_buffer_free(gs_command_buffer_t* cb)
 	typedef struct gs_resource_cache(T)\
 	{\
 		gs_slot_array(gs_resource_data_struct_##T) cache;\
-		u32 (* insert)(struct gs_resource_cache(T)* cache, T val);\
+		gs_resource(T) (* insert)(struct gs_resource_cache(T)* cache, T val);\
 	} gs_resource_cache(T);\
 \
 	gs_force_inline\
@@ -828,13 +832,16 @@ void gs_command_buffer_free(gs_command_buffer_t* cb)
 		return &dp->data;\
 	}\
 	gs_force_inline\
-	u32 gs_resource_cache_##T##_insert(struct gs_resource_cache_##T* _c, T _val)\
+	gs_resource(T) gs_resource_cache_##T##_insert(struct gs_resource_cache_##T* _c, T _val)\
 	{\
 		gs_resource_cache(T)* c = (_c);\
 		T v = (_val);\
 		gs_resource_cache_data(T) d = gs_default_val();\
 		d.data = v;\
-		return gs_slot_array_insert(c->cache, d);\
+		u32 id = gs_slot_array_insert(c->cache, d);\
+		gs_resource(T) handle;\
+		handle.id = id;\
+		return handle;\
 	}\
 \
 	gs_force_inline\
@@ -849,14 +856,14 @@ void gs_command_buffer_free(gs_command_buffer_t* cb)
 #define gs_resource_cache_insert(cache, val)\
 	cache.insert(&(cache), (val));
 
-#define gs_resource_cache_erase(_c, id)\
-	gs_slot_array_erase((_c).cache, (id))
+#define gs_resource_cache_erase(_c, h)\
+	gs_slot_array_erase((_c).cache, (h.id))
 
-#define gs_resource_cache_get(_c, id)\
-	(gs_slot_array_get((_c).cache, (id)).data)
+#define gs_resource_cache_get(_c, h)\
+	(gs_slot_array_get((_c).cache, (h).id).data)
 
-#define gs_resource_cache_get_ptr(_c, id)\
-	&(gs_slot_array_get_ptr((_c).cache, (id))->data)
+#define gs_resource_cache_get_ptr(_c, h)\
+	&(gs_slot_array_get_ptr((_c).cache, (h).id)->data)
 
 
 #ifdef __cplusplus
