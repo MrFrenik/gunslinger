@@ -39,7 +39,7 @@ src=(
 )
 
 # Build library
-gcc -c -O3 ${flags[*]} ${inc[*]} ${src[*]}
+gcc -c -O0 ${flags[*]} ${inc[*]} ${src[*]}
 ar -rcs ${proj_name}.lib *o 
 ranlib ${proj_name}.lib
 rm *.o

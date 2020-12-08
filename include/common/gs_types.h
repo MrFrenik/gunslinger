@@ -44,9 +44,17 @@ extern "C" {
 	typedef struct gs_resource(type) {\
 		u32 id;\
 	} gs_resource(type);\
+\
+	gs_force_inline\
+	gs_resource(type) gs_resource_invalid_##type()\
+	{\
+		gs_resource(type) r;\
+		r.id = u32_max;\
+		return r;\
+	}
 
 #define gs_resource_invalid(type)\
-	(gs_resource(type)){ u32_max }
+	gs_resource_invalid_##type()
 
 /*============================================================
 // Result

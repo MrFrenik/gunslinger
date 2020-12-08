@@ -96,7 +96,7 @@ gs_result __gs_audio_update_internal(struct gs_audio_i* audio)
 		gs_audio_instance_data_t* inst = &__data->instances.data[ i ];
 
 		// Get raw audio source from instance
-		gs_audio_source_t* src = inst->src;
+		gs_audio_source_t* src = gs_resource_cache_get_ptr(audio->audio_cache, inst->src.id);
 
 		// Easy out if the instance is not playing currently or the source is invalid
 		if (!inst->playing || !src) {
@@ -199,10 +199,9 @@ gs_result __gs_audio_update_internal(struct gs_audio_i* audio)
 ============================================================*/
 
 // This will allocate memory for user.
-gs_audio_source_t* __gs_load_audio_source_from_file(const char* file_name)
+gs_resource(gs_audio_source_t) __gs_load_audio_source_from_file(const char* file_name)
 {
-	gs_audio_source_t* source = gs_malloc(sizeof(gs_audio_source_t));
-	memset(source, 0, sizeof(gs_audio_source_t));
+	gs_audio_source_t source = gs_default_val();
 	b32 load_successful = false;
 
 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
@@ -212,7 +211,7 @@ gs_audio_source_t* __gs_load_audio_source_from_file(const char* file_name)
 
 	if (!platform->file_exists(file_name)) {
 		gs_println("WARNING: Could not open file: %s", file_name);
-		gs_free(source);
+		return gs_resource_invalid(gs_audio_source_t);
 	}
 
 	// Lower case and grab file ext.
@@ -222,39 +221,43 @@ gs_audio_source_t* __gs_load_audio_source_from_file(const char* file_name)
 
 	// Load OGG data
 	if (gs_string_compare_equal(file_ext, "ogg")) {
-		load_successful = __gs_load_ogg_data(file_name, source);
+		load_successful = __gs_load_ogg_data(file_name, &source);
 	}
 
 	if (gs_string_compare_equal(file_ext, "wav")) {
-		load_successful = __gs_load_wav_data(file_name, source);	
+		load_successful = __gs_load_wav_data(file_name, &source);	
 	}
 
 	if (gs_string_compare_equal(file_ext, "mp3")) {
-		load_successful = __gs_load_mp3_data(file_name, source);	
+		load_successful = __gs_load_mp3_data(file_name, &source);	
 	}
 
 	// Load raw source into memory and return handle id
 	if (load_successful)
 	{
 		gs_println("SUCCESS: Audio source loaded: %s", file_name);
-		return source;
+
+		// Add to resource cache
+		gs_resource(gs_audio_source_t) handle = gs_default_val();
+		handle.id = gs_resource_cache_insert(audio->audio_cache, source);
+		return handle;
 	}
 	else
 	{
 		gs_println("WARNING: Could not load audio source data: %s", file_name);
-		gs_free(source);
+		return gs_resource_invalid(gs_audio_source_t);
 	}
 
-	return NULL;
+	return gs_resource_invalid(gs_audio_source_t);
 }
 
 /*============================================================
 // Audio Instance Data
 ============================================================*/
 
-gs_resource(gs_audio_instance) __gs_audio_construct_instance(gs_audio_instance_data_t inst)
+gs_resource(gs_audio_instance_t) __gs_audio_construct_instance(gs_audio_instance_data_t inst)
 {
-	gs_resource(gs_audio_instance) inst_h = gs_resource_invalid(gs_audio_instance);
+	gs_resource(gs_audio_instance_t) inst_h = gs_resource_invalid(gs_audio_instance_t);
 
 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
 	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
@@ -263,19 +266,19 @@ gs_resource(gs_audio_instance) __gs_audio_construct_instance(gs_audio_instance_d
 	return inst_h;
 }
 
-void __gs_audio_play_source(gs_audio_source_t* src, f32 volume)
+void __gs_audio_play_source(gs_resource(gs_audio_source_t) src, f32 volume)
 {
 	// Construct instance data from source
 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
 	gs_audio_instance_data_t inst = gs_audio_instance_data_new(src);
 	inst.volume = gs_clamp(volume, audio->min_audio_volume, audio->max_audio_volume);
 	inst.persistent = false;
-	gs_resource(gs_audio_instance) inst_h = audio->construct_instance(inst);
+	gs_resource(gs_audio_instance_t) inst_h = audio->construct_instance(inst);
 	audio->play(inst_h);
 }
 
 // Essentially just restarts the audio instance
-void __gs_audio_play(gs_resource(gs_audio_instance) inst_h)
+void __gs_audio_play(gs_resource(gs_audio_instance_t) inst_h)
 {
 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
 	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
@@ -286,7 +289,7 @@ void __gs_audio_play(gs_resource(gs_audio_instance) inst_h)
 	}
 }
 
-void __gs_audio_pause(gs_resource(gs_audio_instance) inst_h)
+void __gs_audio_pause(gs_resource(gs_audio_instance_t) inst_h)
 {
 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
 	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
@@ -297,7 +300,7 @@ void __gs_audio_pause(gs_resource(gs_audio_instance) inst_h)
 	}
 }
 
-void __gs_audio_restart(gs_resource(gs_audio_instance) inst_h)
+void __gs_audio_restart(gs_resource(gs_audio_instance_t) inst_h)
 {
 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
 	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
@@ -309,7 +312,7 @@ void __gs_audio_restart(gs_resource(gs_audio_instance) inst_h)
 	}
 }
 
-void __gs_audio_set_instance_data(gs_resource(gs_audio_instance) inst_h, gs_audio_instance_data_t data)
+void __gs_audio_set_instance_data(gs_resource(gs_audio_instance_t) inst_h, gs_audio_instance_data_t data)
 {
 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
 	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
@@ -320,7 +323,7 @@ void __gs_audio_set_instance_data(gs_resource(gs_audio_instance) inst_h, gs_audi
 	}
 }
 
-gs_audio_instance_data_t __gs_audio_get_instance_data(gs_resource(gs_audio_instance) inst_h)
+gs_audio_instance_data_t __gs_audio_get_instance_data(gs_resource(gs_audio_instance_t) inst_h)
 {
 	gs_audio_instance_data_t data = gs_default_val();	
 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
@@ -333,7 +336,7 @@ gs_audio_instance_data_t __gs_audio_get_instance_data(gs_resource(gs_audio_insta
 	return data;
 }
 
-f32 __gs_audio_get_volume(gs_resource(gs_audio_instance) inst_h)
+f32 __gs_audio_get_volume(gs_resource(gs_audio_instance_t) inst_h)
 {
 	 gs_audio_i* audio = gs_engine_instance()->ctx.audio;
 	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
@@ -346,7 +349,7 @@ f32 __gs_audio_get_volume(gs_resource(gs_audio_instance) inst_h)
 	return 0.f;
 }
 
-void __gs_audio_set_volume(gs_resource(gs_audio_instance) inst_h, f32 vol)
+void __gs_audio_set_volume(gs_resource(gs_audio_instance_t) inst_h, f32 vol)
 {
  	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
 	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
@@ -357,7 +360,7 @@ void __gs_audio_set_volume(gs_resource(gs_audio_instance) inst_h, f32 vol)
 	}
 }
 
-void __gs_audio_stop(gs_resource(gs_audio_instance) inst_h)
+void __gs_audio_stop(gs_resource(gs_audio_instance_t) inst_h)
 {
 	// Should actually destroy a sound if it's not persistent
  	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
@@ -370,7 +373,7 @@ void __gs_audio_stop(gs_resource(gs_audio_instance) inst_h)
 	}
 }
 
-b32 __gs_audio_is_playing(gs_resource(gs_audio_instance) inst_h)
+b32 __gs_audio_is_playing(gs_resource(gs_audio_instance_t) inst_h)
 {
  	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
 	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
@@ -399,6 +402,39 @@ void __gs_audio_get_runtime(gs_audio_source_t* src, s32* _minutes, s32* _seconds
 			*_seconds = seconds;
 		}
 	}
+}
+
+s32 __gs_get_sample_count(gs_resource(gs_audio_source_t) src)
+{
+ 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
+ 	gs_audio_source_t* sp = gs_resource_cache_get_ptr(audio->audio_cache, src.id);
+ 	if (sp)
+ 	{
+ 		return sp->sample_count; 
+ 	}
+ 	return 0;
+}
+
+s32 __gs_get_sample_rate(gs_resource(gs_audio_source_t) src)
+{
+ 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
+ 	gs_audio_source_t* sp = gs_resource_cache_get_ptr(audio->audio_cache, src.id);
+ 	if (sp)
+ 	{
+ 		return sp->sample_rate; 
+ 	}
+ 	return 0;
+}
+
+s32 __gs_get_num_channels(gs_resource(gs_audio_source_t) src)
+{
+ 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
+ 	gs_audio_source_t* sp = gs_resource_cache_get_ptr(audio->audio_cache, src.id);
+ 	if (sp)
+ 	{
+ 		return sp->channels; 
+ 	}
+ 	return 0;
 }
 
 void __gs_audio_convert_to_runtime(s32 sample_count, s32 sample_rate, 
@@ -438,6 +474,8 @@ struct gs_audio_i* __gs_audio_construct()
     audio->max_audio_volume = 1.f;
     audio->min_audio_volume = 0.f;
 
+	audio->audio_cache = gs_resource_cache_new(gs_audio_source_t);
+
 	// Default internals
 	__gs_audio_set_default_functions(audio);
 
@@ -461,6 +499,9 @@ void __gs_audio_set_default_functions(struct gs_audio_i* audio)
 	audio->get_instance_data 			= &__gs_audio_get_instance_data;
 	audio->get_runtime 					= &__gs_audio_get_runtime;
 	audio->convert_to_runtime 			= &__gs_audio_convert_to_runtime;
+	audio->get_sample_count 			= &__gs_get_sample_count;
+	audio->get_sample_rate 				= &__gs_get_sample_rate;
+	audio->get_num_channels 			= &__gs_get_num_channels;
 
 	gs_audio_construct_internal(audio);
 }

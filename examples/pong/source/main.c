@@ -17,8 +17,8 @@
 
 /*=======================
 // Constants and Defines
-========================
-*/
+========================*/
+
 #define paddle_width	20.f
 #define paddle_height 	80.f
 #define paddle_speed 	5.f
@@ -68,9 +68,9 @@ typedef struct game_data_t {
 	ball_t ball;
 	u32 score[paddle_side_count];
 	gs_font_t font;
-	gs_audio_source_t* ball_hit_src;
-	gs_audio_source_t* score_src;
 	b32 hit;
+	gs_resource(gs_audio_source_t) ball_hit_handle;
+	gs_resource(gs_audio_source_t) score_handle;
 } game_data_t;
 
 // Forward Decls.
@@ -82,7 +82,7 @@ gs_rect_t get_field_dims();
 void init_ball(ball_t* ball);
 void update_paddles();
 void update_ball();
-void play_sound(gs_audio_source_t* src, f32 volume);
+void play_sound(gs_resource(gs_audio_source_t) src, f32 volume);
 void draw_game();
 
 int main(int argc, char** argv)
@@ -132,8 +132,8 @@ gs_result app_init()
 	gd->font = gfx->construct_font_from_file("./assets/bit9x9.ttf", 48.f);
 
 	// Init audio
-	gd->ball_hit_src = audio->load_audio_source_from_file("./assets/ball_hit.wav");
-	gd->score_src 	 = audio->load_audio_source_from_file("./assets/score.wav");
+	gd->ball_hit_handle = audio->load_audio_source_from_file("./assets/ball_hit.wav");
+	gd->score_handle 	= audio->load_audio_source_from_file("./assets/score.wav");
 
 	return gs_result_success;
 }
@@ -331,17 +331,17 @@ void update_ball()
 	if (need_pos_reset) {
 		gd->ball.position.y += gd->ball.velocity.y * ball_speed * gd->ball.speed_modifier;
 		gd->ball.position.x += gd->ball.velocity.x * ball_speed * gd->ball.speed_modifier;
-		play_sound(gd->ball_hit_src, 0.5f);
+		play_sound(gd->ball_hit_handle, 0.5f);
 	}
 
 	if (need_ball_reset) {
-		play_sound(gd->score_src, 0.5f);
+		play_sound(gd->score_handle, 0.5f);
 		init_ball(&gd->ball);
 		gd->hit = true;
 	}
 }
 
-void play_sound(gs_audio_source_t* src, f32 vol)
+void play_sound(gs_resource(gs_audio_source_t) src, f32 vol)
 {
 	gs_audio_i* audio = gs_engine_subsystem(audio);
 	audio->play_source(src, vol);

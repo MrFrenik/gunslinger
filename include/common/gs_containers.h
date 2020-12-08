@@ -681,19 +681,45 @@ gs_slot_array_find_next_available_index(gs_slot_array_base* sa)
 
 #define gs_slot_map_decl(k, v)\
 \
+	typedef struct gs_sm_##k##_##v##_data\
+	{\
+		v data;\
+	} gs_sm_##k##_##v##_data;\
+\
+	gs_force_inline\
+	gs_sm_##k##_##v##_data gs_sm_##k##_##v##_data_new(v _val)\
+	{\
+		v val = (_val);\
+		gs_sm_##k##_##v##_data d = gs_default_val();\
+		d.data = val;\
+		return d;\
+	}\
+\
+	gs_slot_array_decl(gs_sm_##k##_##v##_data);\
 	typedef struct gs_sm_##k##_##v\
 	{\
 		gs_hash_table(k, u32) indirection_map;\
-		gs_slot_array(v) slot_array;\
+		gs_slot_array(gs_sm_##k##_##v##_data) slot_array;\
 		void (* insert_func)(struct gs_sm_##k##_##v*, k, v);\
 	} gs_sm_##k##_##v;\
+\
+	gs_force_inline\
+	void gs_sm_##k##_##v##_insert_func(struct gs_sm_##k##_##v* _s, k _k, v _v)\
+	{\
+		v val = (_v);\
+		k key = (_k);\
+		struct gs_sm_##k##_##v* s = (_s);\
+		u32 idx = gs_slot_array_insert(s->slot_array, (gs_sm_##k##_##v##_data_new((val))));\
+		gs_hash_table_insert(s->indirection_map, key, idx);\
+	}\
 \
 	gs_force_inline\
 	gs_sm_##k##_##v __gs_sm_##k##_##v##_new()\
 	{\
 		gs_sm_##k##_##v sm 			= gs_default_val();\
-		sm.slot_array 				= gs_slot_array_new(v);\
+		sm.slot_array 				= gs_slot_array_new(gs_sm_##k##_##v##_data);\
 		sm.indirection_map 			= gs_hash_table_new(k, u32);\
+		sm.insert_func 				= &gs_sm_##k##_##v##_insert_func;\
 		return sm;\
 	}\
 
@@ -704,10 +730,28 @@ gs_slot_array_find_next_available_index(gs_slot_array_base* sa)
 	__gs_sm_##k##_##v##_new()
 
 #define gs_slot_map_get(s, k)\
-	gs_slot_array_get((s).slot_array, gs_hash_table_get((s).indirection_map, (k)))
+	(gs_slot_array_get((s).slot_array, gs_hash_table_get((s).indirection_map, (k)))).data
 
 #define gs_slot_map_insert(s, _k, _v)\
-	gs_hash_table_insert((s).indirection_map, (_k), gs_slot_array_insert((s).slot_array, (_v)));
+	(s).insert_func(&(s), (_k), (_v))
+
+#define gs_slot_map_iter(k, v)\
+	gs_slot_array_iter(gs_sm_##k##_##v##_data)
+
+#define gs_slot_map_iter_new(sm)\
+	(sm).slot_array.iter_new_func(&(sm).slot_array)
+
+#define gs_slot_map_iter_valid(sm, it)\
+	(sm).slot_array.iter_valid_func(&(sm).slot_array, &(it))
+
+#define gs_slot_map_iter_advance(sm, it)\
+	(sm).slot_array.iter_advance_func(&(sm).slot_array, &(it))
+
+#define gs_slot_map_iter_get(it)\
+	((it).data->data)
+
+#define gs_slot_map_iter_get_ptr(it)\
+	&((it).data->data)
 
 /*===================================
 // Command Buffer
@@ -746,6 +790,74 @@ void gs_command_buffer_free(gs_command_buffer_t* cb)
 {
 	gs_byte_buffer_free(&cb->commands);
 }
+
+/*===================================
+// Resource Cache
+===================================*/
+
+#define gs_resource_cache(T) gs_resource_cache_##T
+#define gs_resource_cache_data(T) gs_resource_data_struct_##T
+#define gs_resource_cache_new(T) gs_resource_cache_new_##T()
+
+#define gs_resource_cache_decl(T)\
+\
+	/* Makes it so you don't have to manually declare a slot array for the type */\
+	typedef struct gs_resource_cache_data(T)\
+	{\
+		T data;\
+	} gs_resource_cache_data(T);\
+\
+	gs_slot_array_decl(gs_resource_data_struct_##T);\
+\
+	typedef struct gs_resource_cache(T)\
+	{\
+		gs_slot_array(gs_resource_data_struct_##T) cache;\
+		u32 (* insert)(struct gs_resource_cache(T)* cache, T val);\
+	} gs_resource_cache(T);\
+\
+	gs_force_inline\
+	T gs_resource_cache_##T##_get(struct gs_resource_cache_##T* cache, u32 id)\
+	{\
+		return gs_slot_array_get(cache->cache, id).data;\
+	}\
+\
+	gs_force_inline\
+	T* gs_resource_cache_##T##_get_ptr(struct gs_resource_cache_##T* cache, u32 id)\
+	{\
+		gs_resource_cache_data(T)* dp = gs_slot_array_get_ptr(cache->cache, id);\
+		return &dp->data;\
+	}\
+	gs_force_inline\
+	u32 gs_resource_cache_##T##_insert(struct gs_resource_cache_##T* _c, T _val)\
+	{\
+		gs_resource_cache(T)* c = (_c);\
+		T v = (_val);\
+		gs_resource_cache_data(T) d = gs_default_val();\
+		d.data = v;\
+		return gs_slot_array_insert(c->cache, d);\
+	}\
+\
+	gs_force_inline\
+	gs_resource_cache_##T gs_resource_cache_new_##T()\
+	{\
+		gs_resource_cache_##T rc = gs_default_val();\
+		rc.cache = gs_slot_array_new(gs_resource_data_struct_##T);\
+		rc.insert = &gs_resource_cache_##T##_insert;\
+		return rc;\
+	}
+
+#define gs_resource_cache_insert(cache, val)\
+	cache.insert(&(cache), (val));
+
+#define gs_resource_cache_erase(_c, id)\
+	gs_slot_array_erase((_c).cache, (id))
+
+#define gs_resource_cache_get(_c, id)\
+	(gs_slot_array_get((_c).cache, (id)).data)
+
+#define gs_resource_cache_get_ptr(_c, id)\
+	&(gs_slot_array_get_ptr((_c).cache, (id))->data)
+
 
 #ifdef __cplusplus
 }
