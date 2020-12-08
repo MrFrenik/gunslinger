@@ -18,8 +18,8 @@
 
 #define g_window_width 		1258
 #define g_window_height 	848
-_global const s32 g_texture_width 	= g_window_width / 2;
-_global const s32 g_texture_height 	= g_window_height / 2;
+gs_global const s32 g_texture_width 	= g_window_width / 2;
+gs_global const s32 g_texture_height 	= g_window_height / 2;
 
 // 32 bit color structure
 typedef struct color_t
@@ -42,20 +42,20 @@ typedef struct particle_t
 // Should have a hash map of glyph character to glyph metric
 
 // Globals
-_global gs_vertex_buffer_t 		g_vbo = {0};
-_global gs_index_buffer_t 		g_ibo = {0};
-_global gs_command_buffer_t 	g_cb = {0};
-_global gs_shader_t 			g_shader = {0};
-_global gs_uniform_t 			u_tex = {0}; 
-_global gs_uniform_t 			u_flip_y = {0}; 
-_global gs_texture_t 			g_tex = {0};
-_global gs_texture_t 			g_tex_ui = {0};
-_global gs_texture_t 			g_rt = {0};
-_global gs_frame_buffer_t 		g_fb = {0};
-_global blur_pass_t 			g_blur_pass = {0};
-_global bright_filter_pass_t 	g_bright_pass = {0};
-_global composite_pass_t 		g_composite_pass = {0};
-_global font_t					g_font = {0};
+gs_global gs_vertex_buffer_t 		g_vbo = {0};
+gs_global gs_index_buffer_t 		g_ibo = {0};
+gs_global gs_command_buffer_t 	g_cb = {0};
+gs_global gs_shader_t 			g_shader = {0};
+gs_global gs_uniform_t 			u_tex = {0}; 
+gs_global gs_uniform_t 			u_flip_y = {0}; 
+gs_global gs_texture_t 			g_tex = {0};
+gs_global gs_texture_t 			g_tex_ui = {0};
+gs_global gs_texture_t 			g_rt = {0};
+gs_global gs_frame_buffer_t 		g_fb = {0};
+gs_global blur_pass_t 			g_blur_pass = {0};
+gs_global bright_filter_pass_t 	g_bright_pass = {0};
+gs_global composite_pass_t 		g_composite_pass = {0};
+gs_global font_t					g_font = {0};
 
 // For now, all particle information will simply be a value to determine its material id
 #define mat_id_empty (u8)0
@@ -106,35 +106,35 @@ typedef enum material_selection
 } material_selection;
 
 // Material selection for "painting" / default to sand
-_global material_selection g_material_selection = mat_sel_sand;
+gs_global material_selection g_material_selection = mat_sel_sand;
 
 // World update processing structure
-_global u8* g_world_process_update_structure = {0};	// Every particle has id associated with it? Jeezuz...
+gs_global u8* g_world_process_update_structure = {0};	// Every particle has id associated with it? Jeezuz...
 
 // World particle data structure
-_global particle_t* g_world_particle_data = {0};
+gs_global particle_t* g_world_particle_data = {0};
 
 // Texture buffers
-_global color_t* g_texture_buffer = {0};
+gs_global color_t* g_texture_buffer = {0};
 
 // UI texture buffer
-_global color_t* g_ui_buffer = {0};
+gs_global color_t* g_ui_buffer = {0};
 
 // Frame counter
-_global u32 g_frame_counter = 0;
+gs_global u32 g_frame_counter = 0;
 
 // World physics settings
-_global f32 gravity = 10.f;
+gs_global f32 gravity = 10.f;
 
-_global f32 g_selection_radius = 10.f;
+gs_global f32 g_selection_radius = 10.f;
 
-_global b32 g_show_material_selection_panel = true;
-_global b32 g_run_simulation = true;
-_global b32 g_show_frame_count = true;
-_global b32 g_use_post_processing = true;
+gs_global b32 g_show_material_selection_panel = true;
+gs_global b32 g_run_simulation = true;
+gs_global b32 g_show_frame_count = true;
+gs_global b32 g_use_post_processing = true;
 
 // Handle for main window
-_global gs_resource_handle g_window;
+gs_global gs_resource_handle g_window;
 
 const char* v_src = "\n"
 "#version 330 core\n"

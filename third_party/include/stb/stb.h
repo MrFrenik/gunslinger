@@ -6092,6 +6092,7 @@ char **stb_getopt_param(int *argc, char **argv, char *param)
 //                 Portable directory reading
 //
 
+/*
 STB_EXTERN char **stb_readdir_files  (char *dir);
 STB_EXTERN char **stb_readdir_files_mask(char *dir, char *wild);
 STB_EXTERN char **stb_readdir_subdirs(char *dir);
@@ -6191,7 +6192,7 @@ static char **readdir_raw(char *dir, int return_subdirs, char *mask)
             if (!stb_strscpy(buffer+n,name,sizeof(buffer)-n))
                break;
             // Could follow DT_LNK, but would need to check for recursive links.
-            is_subdir = !!(data->d_type & DT_DIR);
+            is_subdir = !!(data->d_name & DT_DIR);
             #endif
 
             if (is_subdir == return_subdirs) {
@@ -6278,6 +6279,7 @@ void stb_delete_directory_recursive(char *dir)
 }
 
 #endif
+*/
 
 //////////////////////////////////////////////////////////////////////////////
 //

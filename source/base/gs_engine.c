@@ -6,7 +6,7 @@
 #include "math/gs_math.h"
 
 // Global instance of gunslinger engine (...THERE CAN ONLY BE ONE)
-_global gs_engine_t* gs_engine_instance_g = {0};
+gs_global gs_engine_t* gs_engine_instance_g = {0};
 
 // Function forward declarations
 gs_result gs_engine_run();

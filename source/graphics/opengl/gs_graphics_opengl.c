@@ -29,7 +29,7 @@ s32 g_int = 3;
 
 #define int_2_void_p(i) (void*)(uintptr_t)(i)
 
-_inline void gs_mat4_debug_print(gs_mat4* mat)
+gs_inline void gs_mat4_debug_print(gs_mat4* mat)
 {
 	f32* e = mat->elements;
 	gs_println("[%.5f, %.5f, %.5f, %.5f]\n"
@@ -90,6 +90,7 @@ typedef enum gs_opengl_op_code
 	gs_opengl_op_immediate_end_drawing,
 	gs_opengl_op_immediate_push_state,
 	gs_opengl_op_immediate_pop_state,
+	gs_opengl_op_immediate_flush,
 	gs_opengl_op_immediate_push_state_attr,
 	gs_opengl_op_immediate_enable_texture_2d,
 	gs_opengl_op_immediate_disable_texture_2d,
@@ -163,7 +164,7 @@ typedef struct opengl_render_data_t
 	immediate_drawing_internal_data_t immediate_data;
 } opengl_render_data_t;
 
-_global const char* immediate_shader_v_src = "\n"
+gs_global const char* immediate_shader_v_src = "\n"
 "#version 330 core\n"
 "layout (location = 0) in vec3 a_position;\n"
 "layout (location = 1) in vec2 a_texcoord;\n"
@@ -177,7 +178,7 @@ _global const char* immediate_shader_v_src = "\n"
 " f_uv = a_texcoord;\n"
 "}";
 
-_global const char* immediate_shader_f_src = "\n"
+gs_global const char* immediate_shader_f_src = "\n"
 "#version 330 core\n"
 "in vec4 f_color;\n"
 "in vec2 f_uv;\n"
@@ -187,11 +188,11 @@ _global const char* immediate_shader_f_src = "\n"
 " frag_color = f_color * texture(u_tex, f_uv);\n"
 "}";
 
-_global gs_shader_t 		g_default_shader 		= gs_default_val();
-_global gs_vertex_buffer_t 	g_default_vertex_buffer = gs_default_val();
-_global gs_index_buffer_t 	g_default_index_buffer 	= gs_default_val();
-_global gs_texture_t 		g_default_texture 		= gs_default_val();
-_global gs_font_t 			g_default_font 			= gs_default_val();
+gs_global gs_shader_t 		g_default_shader 		= gs_default_val();
+gs_global gs_vertex_buffer_t 	g_default_vertex_buffer = gs_default_val();
+gs_global gs_index_buffer_t 	g_default_index_buffer 	= gs_default_val();
+gs_global gs_texture_t 		g_default_texture 		= gs_default_val();
+gs_global gs_font_t 			g_default_font 			= gs_default_val();
 
 gs_font_t __gs_get_default_font()
 {
@@ -804,6 +805,13 @@ void opengl_immediate_begin_drawing(gs_command_buffer_t* cb)
 void opengl_immediate_end_drawing(gs_command_buffer_t* cb)
 {
 	__push_command(cb, gs_opengl_op_immediate_end_drawing, {
+		// Nothing...
+	});
+}
+
+void opengl_immediate_flush(gs_command_buffer_t* cb)
+{
+	__push_command(cb, gs_opengl_op_immediate_flush, {
 		// Nothing...
 	});
 }
@@ -1627,6 +1635,11 @@ void opengl_submit_command_buffer(gs_command_buffer_t* cb)
 
 				// Reset default states
 				gs_reset_default_states();
+			} break;
+
+			case gs_opengl_op_immediate_flush:
+			{
+				opengl_immediate_submit_vertex_data();
 			} break;
 
 			case gs_opengl_op_immediate_push_state:
@@ -2541,6 +2554,7 @@ struct gs_graphics_i* __gs_graphics_construct()
 	gfx->immediate.begin 				= &opengl_immediate_begin;
 	gfx->immediate.end 					= &opengl_immediate_end;
 	gfx->immediate.clear 				= &opengl_immediate_clear;
+	gfx->immediate.flush 				= &opengl_immediate_flush;
 	gfx->immediate.push_state 			= &opengl_immediate_push_state;
 	gfx->immediate.pop_state 			= &opengl_immediate_pop_state;
 	gfx->immediate.push_state_attr 		= &opengl_immediate_push_state_attr;

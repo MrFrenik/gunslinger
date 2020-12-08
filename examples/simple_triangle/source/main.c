@@ -17,10 +17,10 @@
 #include <gs.h>
 
 // Globals
-_global gs_command_buffer_t g_cb = {0};
-_global gs_vertex_buffer_t g_vbo = {0};
-_global gs_shader_t g_shader = {0};
-_global gs_uniform_t u_color = {0}; 
+gs_global gs_command_buffer_t g_cb = {0};
+gs_global gs_vertex_buffer_t g_vbo = {0};
+gs_global gs_shader_t g_shader = {0};
+gs_global gs_uniform_t u_color = {0}; 
 
 const char* v_src = "\n"
 "#version 330 core\n"

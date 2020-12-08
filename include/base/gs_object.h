@@ -53,7 +53,7 @@ typedef struct gs_object
 #define gs_construct_heap(type)\
 	(type*)__gs_default_object_##type##_heap()
 
-_inline u32 __gs_type_id_impl(gs_object* obj) 
+gs_inline u32 __gs_type_id_impl(gs_object* obj) 
 {
 	gs_assert(obj->type_id != NULL);
 	return (obj->type_id());

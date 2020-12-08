@@ -68,13 +68,13 @@ const char* cp_f_src = "\n"
 "}\n";
 
 // Vertex data layout for our mesh (for this shader, it's a single float2 attribute for position)
-_global gs_vertex_attribute_type layout[] = {
+gs_global gs_vertex_attribute_type layout[] = {
 	gs_vertex_attribute_float2,
 	gs_vertex_attribute_float2
 };
 
 // Vertex data for triangle
-_global f32 cp_v_data[] = {
+gs_global f32 cp_v_data[] = {
 	// Positions  UVs
 	-1.0f, -1.0f,  0.0f, 0.0f,	// Top Left
 	 1.0f, -1.0f,  1.0f, 0.0f,	// Top Right 
@@ -82,7 +82,7 @@ _global f32 cp_v_data[] = {
 	 1.0f,  1.0f,  1.0f, 1.0f   // Bottom Right
 };
 
-_global u32 cp_i_data[] = {
+gs_global u32 cp_i_data[] = {
 	0, 2, 3,
 	3, 1, 0
 };

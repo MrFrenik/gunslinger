@@ -55,7 +55,7 @@ typedef struct gs_audio_data_t
 
 } gs_audio_data_t;
 
-_force_inline
+gs_force_inline
 gs_audio_instance_data_t gs_audio_instance_data_new(gs_audio_source_t* src)
 {
 	gs_audio_instance_data_t inst = {0};

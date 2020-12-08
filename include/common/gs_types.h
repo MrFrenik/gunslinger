@@ -14,16 +14,22 @@ extern "C" {
 #include <time.h>
 #include <ctype.h>
 
-#define _inline 			static inline
-#define _local_persist 		static
-#define _global 			static
+#ifndef gs_inline
+	#define gs_inline 			static inline
+#endif
+#ifndef gs_local_persist
+	#define gs_local_persist 	static
+#endif
+#ifndef gs_global
+	#define gs_global 			static
+#endif
 
  #if (defined _WIN32 || defined _WIN64)
-	#define _force_inline 		static __forceinline
+	#define gs_force_inline gs_inline
 #elif (defined __APPLE__ || defined _APPLE)
-	#define _force_inline 		static __attribute__((always_inline))
+	#define gs_force_inline static __attribute__((always_inline))
 #else
-	#define _force_inline 		_inline
+	#define gs_force_inline gs_inline
 #endif
 
 /*============================================================
@@ -73,7 +79,7 @@ typedef struct gs_hsv_t
 	};
 } gs_hsv_t;
 
-_force_inline
+gs_force_inline
 gs_hsv_t gs_hsv_ctor(float h, float s, float v)
 {
 	gs_hsv_t hsv;
@@ -95,7 +101,7 @@ typedef struct gs_color_t
 	};
 } gs_color_t;
 
-_force_inline
+gs_force_inline
 gs_color_t gs_color_ctor(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 {
 	gs_color_t color;
@@ -114,7 +120,7 @@ gs_color_t gs_color_ctor(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 #define gs_color_orange gs_color(255, 100, 0, 255)
 #define gs_color_purple gs_color(128, 0, 128, 255)
 
-_force_inline 
+gs_force_inline 
 gs_color_t gs_color_alpha(gs_color_t c, uint8_t a)
 {
 	return gs_color(c.r, c.g, c.b, a); 

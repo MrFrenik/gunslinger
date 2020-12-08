@@ -195,9 +195,9 @@ byte_buffer_read_from_file(byte_buffer_t* buffer, const char* path)
 
 struct pixel_frame_t;
 
-_global struct nk_glfw g_nk_glfw = {0};
-_global struct nk_context* g_nk_ctx;
-_global struct nk_colorf g_nk_color;
+gs_global struct nk_glfw g_nk_glfw = {0};
+gs_global struct nk_context* g_nk_ctx;
+gs_global struct nk_colorf g_nk_color;
 
 void nk_init_ui();
 void nk_do_ui(struct pixel_frame_t* pf);
@@ -1098,9 +1098,9 @@ void pixel_frame_render(pixel_frame_t* pf, gs_command_buffer_t* cb, gs_camera_t*
 //================================================================
 
 // Globals
-_global gs_command_buffer_t g_cb = {0};
-_global pixel_frame_t g_pixel_frame = {0};
-_global gs_camera_t g_camera = {0};
+gs_global gs_command_buffer_t g_cb = {0};
+gs_global pixel_frame_t g_pixel_frame = {0};
+gs_global gs_camera_t g_camera = {0};
 
 // Forward Decls.
 gs_result app_init();		// Use to init your application

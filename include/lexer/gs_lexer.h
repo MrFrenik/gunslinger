@@ -21,7 +21,7 @@ typedef struct
 	u32 len;
 } gs_token;
 
-_inline gs_token gs_token_invalid_token()
+gs_inline gs_token gs_token_invalid_token()
 {
 	gs_token t;
 	t.text = "";
@@ -29,32 +29,32 @@ _inline gs_token gs_token_invalid_token()
 	return t;
 }
 
-_inline b8 gs_token_compare_type(gs_token t, const char* match_type)
+gs_inline b8 gs_token_compare_type(gs_token t, const char* match_type)
 {
 	return (gs_string_compare_equal(t.type, match_type));
 }
 
-_inline b8 gs_token_compare_text(gs_token t, const char* match_text)
+gs_inline b8 gs_token_compare_text(gs_token t, const char* match_text)
 {
 	return (gs_string_compare_equal_n(t.text, match_text, t.len));
 }
 
-_inline void gs_token_print_text(gs_token t)
+gs_inline void gs_token_print_text(gs_token t)
 {
 	gs_printf("%.*s\n", t.len, t.text);
 }
 
-_inline void gs_token_debug_print(gs_token t)
+gs_inline void gs_token_debug_print(gs_token t)
 {
 	gs_printf("%s: %.*s\n", t.type, t.len, t.text);
 }
 
-_inline b8 gs_token_is_end_of_line(char c)
+gs_inline b8 gs_token_is_end_of_line(char c)
 {
 	return (c == '\n' || c == '\r');
 }
 
-_inline b8 gs_token_char_is_white_space(char c)
+gs_inline b8 gs_token_char_is_white_space(char c)
 {
 	return (
 		c == '\t' 	||
@@ -63,7 +63,7 @@ _inline b8 gs_token_char_is_white_space(char c)
 	);
 }
 
-_inline b8 gs_token_char_is_alpha(char c)
+gs_inline b8 gs_token_char_is_alpha(char c)
 {
 	return (
 		(c >= 'a' && c <= 'z') ||
@@ -71,7 +71,7 @@ _inline b8 gs_token_char_is_alpha(char c)
 	);
 }
 
-_inline b8 
+gs_inline b8 
 gs_token_char_is_numeric(char c)
 {
 	return (c >= '0' && c <= '9');
@@ -95,32 +95,32 @@ typedef struct
 	gs_lexer _base;
 } gs_lexer_c;
 
-_inline b8 gs_lexer_can_lex(gs_lexer* lex)
+gs_inline b8 gs_lexer_can_lex(gs_lexer* lex)
 {
 	char c = *lex->at;
 	return (lex->at != NULL && *(lex->at) != '\0');
 }
 
 // Assumes that container and ignore list are set
-_inline void gs_lexer_set_contents(gs_lexer* lex, const char* contents)
+gs_inline void gs_lexer_set_contents(gs_lexer* lex, const char* contents)
 {
 	lex->at = contents;
 	lex->current_token = gs_token_invalid_token();
 }
 
-_inline void gs_lexer_advance_position(gs_lexer* lex, usize advance)
+gs_inline void gs_lexer_advance_position(gs_lexer* lex, usize advance)
 {
 	lex->at += advance;
 }
 
-_inline gs_token gs_lexer_next_token(gs_lexer* lex)
+gs_inline gs_token gs_lexer_next_token(gs_lexer* lex)
 {
 	gs_token t = lex->next_token(lex);
 	lex->current_token = t;
 	return t;
 }
 
-_inline void gs_lexer_eat_whitespace(gs_lexer* lex)
+gs_inline void gs_lexer_eat_whitespace(gs_lexer* lex)
 {
 	for (;;)
 	{
@@ -161,7 +161,7 @@ _inline void gs_lexer_eat_whitespace(gs_lexer* lex)
 }
 
 // Explicit tokenizing (not using regex)
-_inline gs_token gs_lexer_c_next_token(gs_lexer* lex)
+gs_inline gs_token gs_lexer_c_next_token(gs_lexer* lex)
 {
 	// Eat all white space
 	// gs_lexer_eat_whitespace(lex);
@@ -313,17 +313,17 @@ _inline gs_token gs_lexer_c_next_token(gs_lexer* lex)
 	return t;
 }
 
-_inline gs_token gs_lexer_current_token(gs_lexer* lex)
+gs_inline gs_token gs_lexer_current_token(gs_lexer* lex)
 {
 	return lex->current_token;
 }
 
-_inline b8 gs_lexer_current_token_type_eq(gs_lexer* lex, const char* match_type)
+gs_inline b8 gs_lexer_current_token_type_eq(gs_lexer* lex, const char* match_type)
 {
 	return (gs_string_compare_equal(gs_lexer_current_token(lex).type, match_type));
 }
 
-_inline gs_token gs_lexer_peek_next_token(gs_lexer* lex)
+gs_inline gs_token gs_lexer_peek_next_token(gs_lexer* lex)
 {
 	// Store the at
 	const char* at = lex->at;
@@ -336,7 +336,7 @@ _inline gs_token gs_lexer_peek_next_token(gs_lexer* lex)
 
 // Checks to see if the token type of the next valid token matches the match_type argument
 // Will restore pointer of lex if not a match
-_inline b8 gs_lexer_require_token_text(gs_lexer* lex, const char* match_text)
+gs_inline b8 gs_lexer_require_token_text(gs_lexer* lex, const char* match_text)
 {
 	// Store current position
 	const char* at = lex->at;
@@ -364,7 +364,7 @@ _inline b8 gs_lexer_require_token_text(gs_lexer* lex, const char* match_text)
 
 // Checks to see if the token type of the next valid token matches the match_type argument
 // Will restore pointer of lex if not a match
-_inline b8 gs_lexer_require_token_type(gs_lexer* lex, const char* match_type)
+gs_inline b8 gs_lexer_require_token_type(gs_lexer* lex, const char* match_type)
 {
 	// Store current position
 	const char* at = lex->at;
@@ -390,7 +390,7 @@ _inline b8 gs_lexer_require_token_type(gs_lexer* lex, const char* match_type)
 	return false;
 }
 
-_inline b8 gs_lexer_optional_token_type(gs_lexer* lex, const char* match_type)
+gs_inline b8 gs_lexer_optional_token_type(gs_lexer* lex, const char* match_type)
 {
 	const char* at = lex->at;
 
@@ -412,7 +412,7 @@ _inline b8 gs_lexer_optional_token_type(gs_lexer* lex, const char* match_type)
 	return false;
 }
 
-_inline b8 gs_lexer_optional_token_text(gs_lexer* lex, const char* match_text)
+gs_inline b8 gs_lexer_optional_token_text(gs_lexer* lex, const char* match_text)
 {
 	const char* at = lex->at;
 
@@ -436,7 +436,7 @@ _inline b8 gs_lexer_optional_token_text(gs_lexer* lex, const char* match_text)
 
 // Advances position until lexer can no longer lex or token of type is found
 // Returns true if found, false if end of stream is found
-_inline b8 gs_lexer_find_token_type(gs_lexer* lex, const char* match_type)
+gs_inline b8 gs_lexer_find_token_type(gs_lexer* lex, const char* match_type)
 {
 	gs_token t = gs_lexer_current_token(lex);
 	while (gs_lexer_can_lex(lex))
@@ -451,7 +451,7 @@ _inline b8 gs_lexer_find_token_type(gs_lexer* lex, const char* match_type)
 	return false;
 }
 
-_inline gs_token gs_lexer_advance_before_next_token_type_occurence(gs_lexer* lex, const char* match_type)
+gs_inline gs_token gs_lexer_advance_before_next_token_type_occurence(gs_lexer* lex, const char* match_type)
 {
 	gs_token t = gs_lexer_current_token(lex);
 	gs_token peek_t = gs_lexer_peek_next_token(lex);
@@ -466,7 +466,7 @@ _inline gs_token gs_lexer_advance_before_next_token_type_occurence(gs_lexer* lex
 	return t;
 }
 
-_inline gs_lexer_c gs_lexer_c_ctor(const char* contents)
+gs_inline gs_lexer_c gs_lexer_c_ctor(const char* contents)
 {
 	gs_lexer_c lex;
 	lex._base.at = contents;

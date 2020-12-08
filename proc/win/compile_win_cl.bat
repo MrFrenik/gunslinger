@@ -26,7 +26,7 @@ set src_platform_glfw=..\source\platform\glfw\*.c
 rem TP Source
 
 rem All source together
-set src_all=%src_base% %src_graphics% %src_serialize% ^
+set src_all=%src_graphics% %src_base% %src_serialize% ^
 %src_platform% %src_platform_glfw% %src_graphics_ogl% ^
 %src_audio% %src_audio_plugin%
 
@@ -38,7 +38,7 @@ set os_libs= opengl32.lib kernel32.lib user32.lib ^
 shell32.lib vcruntime.lib msvcrt.lib gdi32.lib
 
 rem Name
-set name=Gunslinger
+set name=gunslinger
 
 rem Compile options
 set c_options=cl /MP /FS /Ox /W1 /Fe%name%.exe
@@ -47,10 +47,10 @@ rem Link options
 set l_options=/EHsc /link /SUBSYSTEM:CONSOLE /NODEFAULTLIB:msvcrt.lib
 
 rem Compile library objects
-cl /c /MP /FS /Ox /W1 %src_all% %inc% /EHsc
+cl /c /MP /GS /FS /Ox -W1 -Oi -Gm- /Ob2 /GR /Gd /MD %src_all% %inc% /EHsc
 rem cl /c /Zi /MP /FS /Od /DEBUG:FULL /W1 %src_all% %inc% /EHsc
 
 rem Compile library
-lib *.obj /out:Gunslinger.lib
+lib *.obj /out:%name%.lib
 
 popd

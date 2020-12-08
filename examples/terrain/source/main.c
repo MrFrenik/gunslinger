@@ -51,23 +51,23 @@ typedef struct terrain_mesh_data_packet_t
 } terrain_mesh_data_packet_t;
 
 // Constants
-_global f32 scale = 100.f;
-_global u32 octaves = 4;
-_global f32 persistence = 0.5f; 
-_global f32 lacunarity = 2.f;
-_global const u32 map_width = 200;
-_global const u32 map_height = 200;
+gs_global f32 scale = 100.f;
+gs_global u32 octaves = 4;
+gs_global f32 persistence = 0.5f; 
+gs_global f32 lacunarity = 2.f;
+gs_global const u32 map_width = 200;
+gs_global const u32 map_height = 200;
 
 // Globals
-_global gs_shader_t 			shader = {0};
-_global gs_texture_t 			noise_tex = {0};
-_global gs_uniform_t 			u_noise_tex = {0};
-_global gs_uniform_t			u_proj = {0};
-_global gs_uniform_t			u_view = {0};
-_global gs_uniform_t			u_model = {0};
-_global gs_uniform_t			u_view_pos = {0};
-_global model_t 				terrain_model = {0};
-_global gs_command_buffer_t 	g_cb = {0};
+gs_global gs_shader_t 			shader = {0};
+gs_global gs_texture_t 			noise_tex = {0};
+gs_global gs_uniform_t 			u_noise_tex = {0};
+gs_global gs_uniform_t			u_proj = {0};
+gs_global gs_uniform_t			u_view = {0};
+gs_global gs_uniform_t			u_model = {0};
+gs_global gs_uniform_t			u_view_pos = {0};
+gs_global model_t 				terrain_model = {0};
+gs_global gs_command_buffer_t 	g_cb = {0};
 
 // Function Forward Decls.
 gs_result app_init();		// Use to init your application

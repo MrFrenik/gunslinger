@@ -21,6 +21,7 @@ struct gs_platform_i;
 struct gs_graphics_i;
 struct gs_audio_i;
 
+// Application descriptor for user application
 typedef struct gs_application_desc_t
 {
 	gs_result (* init)();
@@ -36,7 +37,13 @@ typedef struct gs_application_desc_t
 	void* user_data;
 } gs_application_desc_t;
 
-// What would the context necessarily hold? Some container of all subsystems? 
+/*
+	Game Engine Context: 
+
+	* This is the main context for the gunslinger engine. Holds pointers to 
+		all interfaces registered with the engine, including the description 
+		for your application.
+*/
 typedef struct gs_engine_context_t
 {
 	struct gs_platform_i* 			platform;		// Main platform interface
@@ -45,7 +52,7 @@ typedef struct gs_engine_context_t
 	gs_application_desc_t 			app;
 } gs_engine_context_t;
 
-// This could be kept in an implementation file and just provide an interface to the user
+// Main engine interface
 typedef struct gs_engine_t
 {
 	gs_engine_context_t ctx;

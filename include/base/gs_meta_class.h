@@ -61,7 +61,7 @@ typedef struct
 #define gs_type_to_meta_property_str(cls)\
 	__gs_type_to_meta_property_str((#cls))
 
-_inline gs_meta_property gs_meta_property_ctor(const char* _label, gs_meta_property_type _type, u16 _offset)
+gs_inline gs_meta_property gs_meta_property_ctor(const char* _label, gs_meta_property_type _type, u16 _offset)
 {
 	gs_meta_property prop;
 	prop.label 		= _label;
@@ -70,7 +70,7 @@ _inline gs_meta_property gs_meta_property_ctor(const char* _label, gs_meta_prope
 	return prop;
 }
 
-_inline 
+gs_inline 
 const char* gs_meta_property_to_str(gs_meta_property_type type)
 {
 	switch (type)

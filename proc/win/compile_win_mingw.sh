@@ -4,7 +4,7 @@ rm -rf bin
 mkdir bin
 cd bin
 
-proj_name=Gunslinger
+proj_name=gunslinger
 proj_root_dir=$(pwd)/../
 
 flags=(
@@ -39,9 +39,9 @@ src=(
 )
 
 # Build library
-gcc -c -O0 ${flags[*]} ${inc[*]} ${src[*]} ${libs[*]}
-ar -rcs lib${proj_name}.a *o 
-ranlib lib${proj_name}.a
+gcc -c -O3 ${flags[*]} ${inc[*]} ${src[*]}
+ar -rcs ${proj_name}.lib *o 
+ranlib ${proj_name}.lib
 rm *.o
 
 cd ..

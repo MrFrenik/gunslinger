@@ -97,7 +97,7 @@ extern "C" {
 
 #define gs_malloc_init(type)	(type*)_gs_malloc_init_impl(sizeof(type))
 
-_force_inline void* 
+gs_force_inline void* 
 _gs_malloc_init_impl(usize sz)
 {
 	void* data = gs_malloc(sz);
@@ -109,7 +109,7 @@ _gs_malloc_init_impl(usize sz)
 // String Utils
 ===================================*/
 
-_force_inline u32 
+gs_force_inline u32 
 gs_string_length(const char* txt)
 {
 	u32 sz = 0;
@@ -121,7 +121,7 @@ gs_string_length(const char* txt)
 }
 
 // Expects null terminated strings
-_force_inline b8 
+gs_force_inline b8 
 gs_string_compare_equal
 (
 	const char* 	txt, 
@@ -149,7 +149,7 @@ gs_string_compare_equal
 	return true;
 }
 
-_force_inline b8 
+gs_force_inline b8 
 gs_string_compare_equal_n
 (
 	const char* txt, 
@@ -177,7 +177,7 @@ gs_string_compare_equal_n
 	return true;
 }
 
-_force_inline void
+gs_force_inline void
 gs_util_str_to_lower
 (
 	const char* src,
@@ -193,7 +193,7 @@ gs_util_str_to_lower
 	}
 }
 
-_force_inline b32
+gs_force_inline b32
 gs_util_str_is_numeric(const char* str)
 {
 	const char* at = str;
@@ -213,7 +213,7 @@ gs_util_str_is_numeric(const char* str)
 }
 
 // Will return a null buffer if file does not exist or allocation fails
-_force_inline char* 
+gs_force_inline char* 
 gs_read_file_contents_into_string_null_term
 (
 	const char* file_path, 
@@ -239,7 +239,7 @@ gs_read_file_contents_into_string_null_term
 	return buffer;
 }
 
-_force_inline b32 
+gs_force_inline b32 
 gs_util_file_exists(const char* file_path)
 {
 	FILE* fp = fopen(file_path, "r");	
@@ -251,7 +251,7 @@ gs_util_file_exists(const char* file_path)
 	return false;
 }
 
-_force_inline void 
+gs_force_inline void 
 gs_util_get_file_extension
 (
 	char* buffer,
@@ -279,7 +279,7 @@ gs_util_get_file_extension
 	}
 }
 
-_force_inline void
+gs_force_inline void
 gs_util_get_dir_from_file
 (
 	char* buffer, 
@@ -296,7 +296,7 @@ gs_util_get_dir_from_file
 	memcpy(buffer, file_path, gs_min(buffer_size, (end - file_path) + 1));
 }
 
-_force_inline void
+gs_force_inline void
 gs_util_get_file_name
 (
 	char* buffer, 
@@ -319,7 +319,7 @@ gs_util_get_file_name
 	memcpy(buffer, start, (end - start));
 }
 
-_force_inline void
+gs_force_inline void
 gs_util_string_substring
 (
 	const char* src,
@@ -348,7 +348,7 @@ gs_util_string_substring
 	}
 }
 
-_force_inline void
+gs_force_inline void
 gs_util_string_remove_character
 (
 	const char* src,
@@ -371,7 +371,7 @@ gs_util_string_remove_character
 	}
 }
 
-_force_inline void
+gs_force_inline void
 gs_util_string_replace
 (
 	const char* source_str, 
@@ -389,12 +389,12 @@ gs_util_string_replace
 		if (c == delimiter) {
 			c = replace;
 		}
-		buffer[ (at - source_str) ] = c;
+		buffer[(at - source_str)] = c;
 		at++;
 	}
 }
 
-_force_inline void 
+gs_force_inline void 
 gs_util_normalize_path
 (
 	const char* path, 
@@ -405,34 +405,30 @@ gs_util_normalize_path
 	// Normalize the path somehow...
 }
 
-_force_inline void 
-gs_printf
-(
-	const char* fmt,
-	... 
-)
-{
-	va_list args;
-	va_start (args, fmt);
-	vprintf(fmt, args);
-	va_end(args);
-}
+#ifdef __MINGW32__
+	#define gs_printf(fmt, ...) __mingw_printf(fmt, ##__VA_ARGS__)
+#else
+	gs_force_inline void 
+	gs_printf
+	(
+		const char* fmt,
+		... 
+	)
+	{
+		va_list args;
+		va_start (args, fmt);
+		vprintf(fmt, args);
+		va_end(args);
+	}
+#endif
 
-_force_inline void 
-gs_println
-(
-	const char* fmt, 
-	... 
-)
-{ 
-	va_list args;
-	va_start(args, fmt);
-	vprintf(fmt, args);
-	va_end(args);
-	gs_printf("\n");
-}
+#define gs_println(fmt, ...)\
+	do {\
+		gs_printf(fmt, ##__VA_ARGS__);\
+		gs_printf("\n");\
+	} while (0)
 
-_force_inline void 
+gs_force_inline void 
 gs_fprintf
 (
 	FILE* fp, 
@@ -446,7 +442,7 @@ gs_fprintf
 	va_end(args);
 }
 
-_force_inline void 
+gs_force_inline void 
 gs_fprintln
 (
 	FILE* fp, 
@@ -461,7 +457,7 @@ gs_fprintln
 	gs_fprintf(fp, "\n");
 }
 
-// _force_inline char* 
+// gs_force_inline char* 
 // gs_sprintf
 // (
 // 	const char* fmt, 
@@ -477,7 +473,10 @@ gs_fprintln
 // 	return ret;
 // }
 
-_force_inline void 
+#ifdef __MINGW32__
+#define gs_snprintf(name, size, fmt, ...) __mingw_snprintf(name, size, fmt, __VA_ARGS__)
+#else
+gs_force_inline void 
 gs_snprintf
 (
 	char* buffer, 
@@ -491,12 +490,13 @@ gs_snprintf
     vsnprintf(buffer, buffer_size, fmt, args);
     va_end(args);
 }
+#endif
 
 #define gs_snprintfc(name, size, fmt, ...)\
 	char name[size] = gs_default_val();\
 	gs_snprintf(name, size, fmt, __VA_ARGS__);
 
-_force_inline u32 
+gs_force_inline u32 
 gs_hash_u32(u32 x) 
 {
     x = ((x >> 16) ^ x) * 0x45d9f3b;
@@ -512,7 +512,7 @@ gs_hash_u32(u32 x)
 	    out = (out >> 16) ^ out;\
 	} while (0)	
 
-_force_inline u32 
+gs_force_inline u32 
 gs_hash_u64(u64 x)
 {
 	x = (x ^ (x >> 31) ^ (x >> 62)) * UINT64_C(0x319642b2d24d8ec3);
@@ -523,7 +523,7 @@ gs_hash_u64(u64 x)
 
 // Note(john): source: http://www.cse.yorku.ca/~oz/hash.html
 // djb2 hash by dan bernstein
-_force_inline u32 
+gs_force_inline u32 
 gs_hash_str(const char* str)
 {
     u32 hash = 5381;
@@ -535,7 +535,7 @@ gs_hash_str(const char* str)
     return hash;
 }
 
-_force_inline u64
+gs_force_inline u64
 gs_hash_str_64(const char* str)
 {
 	u32 hash1 = 5381;

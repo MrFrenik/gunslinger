@@ -20,8 +20,8 @@ gs_result app_init();		// Use to init your application
 gs_result app_update();		// Use to update your application
 
 // Resource handles for internal audio data. Since audio must run on a separate thread, this is necessary.
-_global gs_audio_source_t* 			g_src = {0};
-_global gs_handle_audio_instance 	g_inst = {0};
+gs_global gs_audio_source_t* 		g_src = {0};
+gs_global gs_handle_audio_instance 	g_inst = {0};
 
 int main(int argc, char** argv)
 {
@@ -35,10 +35,7 @@ int main(int argc, char** argv)
 	app.update 				= &app_update;
 
 	// Construct internal instance of our engine
-	gs_engine_t* engine = gs_engine_construct(app);
-
-	// Run the internal engine loop until completion
-	gs_result res = engine->run();
+	gs_result res = gs_engine_construct(app)->run();
 
 	// Check result of engine after exiting loop
 	if (res != gs_result_success) 
@@ -55,8 +52,8 @@ int main(int argc, char** argv)
 gs_result app_init()
 {
 	// Cache apis
-	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
-	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
+	gs_platform_i* platform = gs_engine_subsystem(platform);
+	gs_audio_i* audio 		= gs_engine_subsystem(audio);
 
 	// Constuct audio resource to play
 	g_src = audio->load_audio_source_from_file(platform->file_exists("./assets/cold_morning_tx.mp3") ? 

@@ -15,7 +15,7 @@ typedef struct gs_mesh_t
 	u32 vertex_count;
 } gs_mesh_t;
 
-_force_inline
+gs_force_inline
 gs_mesh_t gs_mesh_t_new(gs_vertex_attribute_type* layout_data, usize layout_size, void* v_data, usize v_data_size)
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;

@@ -409,6 +409,9 @@ typedef struct gs_graphics_immediate_draw_i
 	void (* begin)(gs_command_buffer_t* cb, gs_draw_mode mode);
 	void (* end)(gs_command_buffer_t* cb);
 
+	// Force draw vert buffer flush command
+	void (* flush)(gs_command_buffer_t* cb);
+
 	gs_resource(gs_render_pipeline_state_t) (* default_pipeline_state)(gs_graphics_immediate_mode mode);
 
 	// State

@@ -163,12 +163,12 @@ void quad_batch_custom_add(gs_quad_batch_t* qb, void* quad_batch_custom_info_dat
 =============================*/
 
 // Globals
-_global gs_command_buffer_t 	g_cb = {0};
-_global gs_texture_t 			g_tex = {0};
-_global gs_shader_t 			g_batch_shader = {0};
-_global gs_camera_t 			g_camera = {0};
-_global gs_material_t 			g_batch_mat = {0};
-_global gs_quad_batch_t 		g_batch = {0};
+gs_global gs_command_buffer_t 	g_cb = {0};
+gs_global gs_texture_t 			g_tex = {0};
+gs_global gs_shader_t 			g_batch_shader = {0};
+gs_global gs_camera_t 			g_camera = {0};
+gs_global gs_material_t 		g_batch_mat = {0};
+gs_global gs_quad_batch_t 		g_batch = {0};
 
 // Forward Decls.
 gs_result app_init();		// Use to init your application

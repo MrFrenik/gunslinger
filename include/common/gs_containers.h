@@ -37,7 +37,7 @@ typedef struct
 #define gs_dyn_array_full(arr)\
 	((gs_dyn_array_size((arr)) == gs_dyn_array_capacity((arr))))	
 
-_inline void* gs_dyn_array_resize_impl(void* arr, usize sz, usize amount) 
+gs_inline void* gs_dyn_array_resize_impl(void* arr, usize sz, usize amount) 
 {
 	usize capacity;
 
@@ -199,7 +199,7 @@ typedef enum
 	} gs_ht_##key_type##_##val_type;\
 \
 	/* Function for determining if iterator is valid (if data pointer less than capacity) */\
-	_inline b32 gs_ht_##key_type##_##val_type##_iter_valid_func(void* _ht, void* _iter)\
+	gs_inline b32 gs_ht_##key_type##_##val_type##_iter_valid_func(void* _ht, void* _iter)\
 	{\
 		gs_ht_##key_type##_##val_type* ht = (gs_ht_##key_type##_##val_type*)_ht;\
 		gs_ht_iter_##key_type##_##val_type* iter = (gs_ht_iter_##key_type##_##val_type*)_iter;\
@@ -207,7 +207,7 @@ typedef enum
 	}\
 \
 	/* Function for advancing place of iterator */\
-	_inline void gs_ht_##key_type##_##val_type##_iter_advance_func(void* _ht, void* _iter)\
+	gs_inline void gs_ht_##key_type##_##val_type##_iter_advance_func(void* _ht, void* _iter)\
 	{\
 		/* This function is wrong */\
 		gs_ht_##key_type##_##val_type* ht = (gs_ht_##key_type##_##val_type*)_ht;\
@@ -228,7 +228,7 @@ typedef enum
 		}\
 	}\
 \
-	_inline gs_ht_iter_##key_type##_##val_type gs_ht_##key_type##_##val_type##_iter_new_func(void* _ht)\
+	gs_inline gs_ht_iter_##key_type##_##val_type gs_ht_##key_type##_##val_type##_iter_new_func(void* _ht)\
 	{\
 		gs_ht_##key_type##_##val_type* ht = (gs_ht_##key_type##_##val_type*)_ht;\
 		gs_ht_iter_##key_type##_##val_type iter = gs_default_val();\
@@ -236,7 +236,7 @@ typedef enum
 		return iter;\
 	}\
 \
-	_inline u32 gs_ht_##key_type##_##val_type##_key_idx_func(void* tbl_ptr, key_type key)\
+	gs_inline u32 gs_ht_##key_type##_##val_type##_key_idx_func(void* tbl_ptr, key_type key)\
 	{\
 		gs_ht_##key_type##_##val_type* tbl = (gs_ht_##key_type##_##val_type*)tbl_ptr;\
 		u32 capacity = gs_hash_table_capacity((*tbl));\
@@ -251,7 +251,7 @@ typedef enum
 		return gs_hash_table_invalid_idx;\
 	}\
 \
-	_inline val_type gs_ht_##key_type##_##val_type##_get_func(void* tbl_ptr, key_type key)\
+	gs_inline val_type gs_ht_##key_type##_##val_type##_get_func(void* tbl_ptr, key_type key)\
 	{\
 		val_type out = gs_default_val();\
 		gs_ht_##key_type##_##val_type* tbl = (gs_ht_##key_type##_##val_type*)tbl_ptr;\
@@ -278,7 +278,7 @@ typedef enum
 		return out;\
 	}\
 \
-	_inline val_type* gs_ht_##key_type##_##val_type##_get_ptr_func(void* tbl_ptr, key_type key)\
+	gs_inline val_type* gs_ht_##key_type##_##val_type##_get_ptr_func(void* tbl_ptr, key_type key)\
 	{\
 		val_type* out = NULL;\
 		gs_ht_##key_type##_##val_type* tbl = (gs_ht_##key_type##_##val_type*)tbl_ptr;\
@@ -305,7 +305,7 @@ typedef enum
 		return out;\
 	}\
 \
-	_inline b8 gs_ht_##key_type##_##val_type##_comp_key_func(key_type k0, key_type k1)\
+	gs_inline b8 gs_ht_##key_type##_##val_type##_comp_key_func(key_type k0, key_type k1)\
 	{\
 		if (_hash_comp_key_func(k0, k1))\
 		{\
@@ -314,7 +314,7 @@ typedef enum
 		return false;\
 	}\
 \
-	_inline void gs_ht_##key_type##_##val_type##_clear_func(void* tbl_ptr)\
+	gs_inline void gs_ht_##key_type##_##val_type##_clear_func(void* tbl_ptr)\
 	{\
 		gs_ht_##key_type##_##val_type* tbl = (gs_ht_##key_type##_##val_type*)tbl_ptr;\
 		memset(tbl->data, 0, gs_dyn_array_capacity(tbl->data) * sizeof(gs_ht_entry_##key_type##_##val_type));\
@@ -322,9 +322,9 @@ typedef enum
 		tbl->data = gs_dyn_array_new(gs_ht_entry_##key_type##_##val_type);\
 	}\
 \
-	_inline void gs_ht_##key_type##_##val_type##_grow_func(void* tbl_ptr, u32 new_sz);\
+	gs_inline void gs_ht_##key_type##_##val_type##_grow_func(void* tbl_ptr, u32 new_sz);\
 \
-	_inline gs_ht_##key_type##_##val_type gs_ht_##key_type##_##val_type##_new()\
+	gs_inline gs_ht_##key_type##_##val_type gs_ht_##key_type##_##val_type##_new()\
 	{\
 		gs_ht_##key_type##_##val_type ht = gs_default_val();\
 		ht.data 						= gs_dyn_array_new(gs_ht_entry_##key_type##_##val_type);\
@@ -341,7 +341,7 @@ typedef enum
 		return ht;\
 	}\
 \
-	_inline void gs_ht_##key_type##_##val_type##_grow_func(void* tbl_ptr, u32 new_sz)\
+	gs_inline void gs_ht_##key_type##_##val_type##_grow_func(void* tbl_ptr, u32 new_sz)\
 	{\
 		gs_ht_##key_type##_##val_type* tbl = (gs_ht_##key_type##_##val_type*)tbl_ptr;\
 		gs_ht_##key_type##_##val_type new_tbl = gs_ht_##key_type##_##val_type##_new();\
@@ -510,7 +510,7 @@ gs_slot_array_base
 		void (* iter_advance_func)(struct gs_sa_##T*, gs_sa_##T##_iter*);\
 	} gs_sa_##T;\
 \
-	_inline gs_sa_##T##_iter gs_sa_##T##_iter_new_func(gs_sa_##T* s)\
+	gs_inline gs_sa_##T##_iter gs_sa_##T##_iter_new_func(gs_sa_##T* s)\
 	{\
 		/* Need to find starting place for VALID entry only */\
 		gs_sa_##T##_iter it = gs_default_val();\
@@ -526,12 +526,12 @@ gs_slot_array_base
 	}\
 \
 	/* Iterator iterates through indirection indices to grab data */\
-	_inline b32 gs_sa_##T##_iter_valid_func(gs_sa_##T* s, gs_sa_##T##_iter* it)\
+	gs_inline b32 gs_sa_##T##_iter_valid_func(gs_sa_##T* s, gs_sa_##T##_iter* it)\
 	{\
 		return (it->cur_idx < gs_dyn_array_size(s->_base.handle_indices));\
 	}\
 \
-	_inline void gs_sa_##T##_iter_advance_func(gs_sa_##T* s, gs_sa_##T##_iter* it)\
+	gs_inline void gs_sa_##T##_iter_advance_func(gs_sa_##T* s, gs_sa_##T##_iter* it)\
 	{\
 		it->cur_idx++;\
 		for (; it->cur_idx < gs_dyn_array_size(s->_base.handle_indices); ++it->cur_idx)\
@@ -545,7 +545,7 @@ gs_slot_array_base
 		it->data = &s->data[idx];\
 	}\
 \
-	_force_inline u32\
+	gs_force_inline u32\
 	gs_sa_##T##_insert_func(struct gs_sa_##T* s, T v)\
 	{\
 		u32 free_idx = gs_slot_array_find_next_available_index((gs_slot_array_base*)s);\
@@ -554,7 +554,7 @@ gs_slot_array_base
 		return free_idx;\
 	}\
 \
-	_force_inline\
+	gs_force_inline\
 	gs_sa_##T __gs_sa_##T##_new()\
 	{\
 		gs_sa_##T sa = gs_default_val();\
@@ -567,7 +567,7 @@ gs_slot_array_base
 		return sa;\
 	}\
 
-_force_inline u32
+gs_force_inline u32
 gs_slot_array_find_next_available_index(gs_slot_array_base* sa)
 {
 	/* Loop through indices, look for next available slot based on invalid index */
@@ -688,7 +688,7 @@ gs_slot_array_find_next_available_index(gs_slot_array_base* sa)
 		void (* insert_func)(struct gs_sm_##k##_##v*, k, v);\
 	} gs_sm_##k##_##v;\
 \
-	_force_inline\
+	gs_force_inline\
 	gs_sm_##k##_##v __gs_sm_##k##_##v##_new()\
 	{\
 		gs_sm_##k##_##v sm 			= gs_default_val();\
@@ -720,7 +720,7 @@ typedef struct gs_command_buffer_t
 	gs_byte_buffer_t commands;
 } gs_command_buffer_t;
 
-_force_inline
+gs_force_inline
 gs_command_buffer_t gs_command_buffer_new()
 {
 	gs_command_buffer_t cb = gs_default_val();
@@ -734,14 +734,14 @@ gs_command_buffer_t gs_command_buffer_new()
 		cb->num_commands++;\
 	} while (0)
 
-_force_inline 
+gs_force_inline 
 void gs_command_buffer_clear(gs_command_buffer_t* cb)
 {
 	cb->num_commands = 0;
 	gs_byte_buffer_clear(&cb->commands);
 }
 
-_force_inline
+gs_force_inline
 void gs_command_buffer_free(gs_command_buffer_t* cb)
 {
 	gs_byte_buffer_free(&cb->commands);
