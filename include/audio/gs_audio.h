@@ -9,7 +9,6 @@ extern "C" {
 #include "common/gs_containers.h"
 
 // Internal audio resource data
-gs_declare_resource_type(gs_audio_source_t);			// Actual resource data
 gs_declare_resource_type(gs_audio_instance_t);			// Used to instance an audio source (for multiple different instances of the same data)
 
 typedef gs_resource(gs_audio_instance_t) gs_handle_audio_instance;

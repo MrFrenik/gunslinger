@@ -803,7 +803,7 @@ void gs_command_buffer_free(gs_command_buffer_t* cb)
 
 #define gs_resource_cache_decl(T)\
 \
-	gs_resource_decl(T);\
+	gs_declare_resource_type(T);\
 \
 	/* Makes it so you don't have to manually declare a slot array for the type */\
 	typedef struct gs_resource_cache_data(T)\
