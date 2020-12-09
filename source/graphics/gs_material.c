@@ -1,17 +1,22 @@
 #include "graphics/gs_material.h"
+#include "graphics/gs_graphics.h"
 
- gs_material_t gs_material_new(gs_shader_t shader)
+gs_resource(gs_material_t) gs_material_new(gs_shader_t shader)
 {
+	gs_graphics_i* gfx = gs_engine_subsystem(graphics);
 	gs_material_t mat = {0};
 	mat.shader = shader;
-	mat.uniforms = gs_engine_instance()->ctx.graphics->uniform_i->construct();
-	return mat;
+	mat.uniforms = gfx->uniform_i->construct();
+	gs_resource(gs_material_t) handle = gs_resource_cache_insert(gfx->material_cache, mat);
+	return handle;
 }
 
-void __gs_material_i_set_uniform(gs_material_t* mat, gs_uniform_type type, const char* name, void* data)
+void __gs_material_i_set_uniform(gs_resource(gs_material_t) handle, gs_uniform_type type, const char* name, void* data)
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	gs_uniform_block_i* uapi = gfx->uniform_i;
+
+	gs_material_t* mat = gs_resource_cache_get_ptr(gfx->material_cache, handle);
 
 	// Either look for uniform or construct it
 	// Look for uniform name in uniforms
@@ -48,9 +53,11 @@ void __gs_material_i_set_uniform(gs_material_t* mat, gs_uniform_type type, const
 	uapi->set_uniform(mat->uniforms, uniform, name, data, sz);
 }
 
-void __gs_material_i_bind_uniforms(gs_command_buffer_t* cb, gs_material_t* mat)
+void __gs_material_i_bind_uniforms(gs_command_buffer_t* cb, gs_resource(gs_material_t) handle)
 {
-	gs_engine_instance()->ctx.graphics->uniform_i->bind_uniforms(cb, mat->uniforms);
+	gs_graphics_i* gfx = gs_engine_subsystem(graphics);
+	gs_material_t* mat = gs_resource_cache_get_ptr(gfx->material_cache, handle);
+	gfx->uniform_i->bind_uniforms(cb, mat->uniforms);
 }
 
 gs_material_i __gs_material_i_new()

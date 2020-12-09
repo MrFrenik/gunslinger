@@ -11,9 +11,6 @@ extern "C" {
 #include "math/gs_math.h"
 #include "serialize/gs_byte_buffer.h"
 
-// Forward declare
-struct gs_material_t;
-
 extern const char* __gs_default_quad_batch_vertex_src();
 
  #define gs_quad_batch_default_vertex_src\
@@ -28,7 +25,7 @@ typedef struct gs_quad_batch_t
 {
 	gs_byte_buffer_t raw_vertex_data;
 	gs_mesh_t mesh;
-	struct gs_material_t* material;			// Pointer to a material instance
+	gs_resource(gs_material_t) material;			// Pointer to a material instance
 } gs_quad_batch_t;
 
 /*
@@ -81,7 +78,7 @@ typedef struct gs_quad_batch_vert_into_t
 */
 typedef struct gs_quad_batch_i
 {
-	gs_quad_batch_t (* construct)(struct gs_material_t*);
+	gs_quad_batch_t (* construct)(gs_resource(gs_material_t) mat);
 	void (* begin)(gs_quad_batch_t*);
 	void (* end)(gs_quad_batch_t*);
 	void (* add)(gs_quad_batch_t*, void* quad_data);
@@ -93,7 +90,7 @@ typedef struct gs_quad_batch_i
 	gs_quad_batch_vert_info_t vert_info;
 } gs_quad_batch_i;
 
-extern gs_quad_batch_t gs_quad_batch_new(struct gs_material_t* mat);
+extern gs_quad_batch_t gs_quad_batch_new(gs_resource(gs_material_t) mat);
 extern void __gs_quad_batch_default_begin(gs_quad_batch_t* batch);
 
 typedef struct gs_default_quad_info_t

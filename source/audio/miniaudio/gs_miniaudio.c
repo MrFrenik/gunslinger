@@ -37,18 +37,18 @@ void ma_audio_commit(ma_device* device, void* output, const void* input, ma_uint
 
 	// Only destroy 32 at a time
 	u32 destroy_count = 0;
-	u32 ids_to_destroy[32];
+	gs_resource(gs_audio_instance_t) handles_to_destroy[32];
 
 	ma_mutex_lock(&ma->lock);
 	{
 		for 
 		(
-			gs_slot_array_iter(gs_audio_instance_data_t) it = gs_slot_array_iter_new(__data->instances);
-			gs_slot_array_iter_valid(__data->instances, it);
-			gs_slot_array_iter_advance(__data->instances, it)
+			gs_resource_cache_iter(gs_audio_instance_t) it = gs_resource_cache_iter_new(__data->instances);
+			gs_resource_cache_iter_valid(__data->instances, it);
+			gs_resource_cache_iter_advance(__data->instances, it)
 		)
 		{
-			gs_audio_instance_data_t* inst = it.data;
+			gs_audio_instance_data_t* inst = gs_resource_cache_iter_get_ptr(it);
 
 			// Get raw audio source from instance
 			gs_audio_source_t* src = gs_resource_cache_get_ptr(audio->audio_cache, inst->src);
@@ -56,7 +56,7 @@ void ma_audio_commit(ma_device* device, void* output, const void* input, ma_uint
 			// Easy out if the instance is not playing currently or the source is invalid
 			if (!inst->playing || !src) {
 				if (inst->persistent != true && destroy_count < 32) {
-					ids_to_destroy[destroy_count++] = it.cur_idx;
+					handles_to_destroy[destroy_count++] = (gs_resource(gs_audio_instance_t)){it.cur_idx};
 				}
 				continue;
 			}
@@ -143,7 +143,7 @@ void ma_audio_commit(ma_device* device, void* output, const void* input, ma_uint
 	                    inst->sample_position = 0;
 
 						if (inst->persistent != true && destroy_count < 32) {
-							ids_to_destroy[destroy_count++] = it.cur_idx;
+							handles_to_destroy[destroy_count++] = (gs_resource(gs_audio_instance_t)){it.cur_idx};
 						}
 
 	                    break;
@@ -154,7 +154,7 @@ void ma_audio_commit(ma_device* device, void* output, const void* input, ma_uint
 
 		gs_for_range_i(destroy_count) 
 		{
-			gs_slot_array_erase(__data->instances, ids_to_destroy[i]);
+			gs_resource_cache_erase(__data->instances, handles_to_destroy[i]);
 		}
 	}
 	ma_mutex_unlock(&ma->lock);

@@ -188,13 +188,13 @@ gs_global const char* immediate_shader_f_src = "\n"
 " frag_color = f_color * texture(u_tex, f_uv);\n"
 "}";
 
-gs_global gs_shader_t 		g_default_shader 		= gs_default_val();
-gs_global gs_vertex_buffer_t 	g_default_vertex_buffer = gs_default_val();
-gs_global gs_index_buffer_t 	g_default_index_buffer 	= gs_default_val();
-gs_global gs_texture_t 		g_default_texture 		= gs_default_val();
-gs_global gs_font_t 			g_default_font 			= gs_default_val();
+gs_global gs_shader_t 				g_default_shader 		= gs_default_val();
+gs_global gs_vertex_buffer_t 		g_default_vertex_buffer = gs_default_val();
+gs_global gs_index_buffer_t 		g_default_index_buffer 	= gs_default_val();
+gs_global gs_texture_t 				g_default_texture 		= gs_default_val();
+gs_global gs_resource(gs_font_t) 	g_default_font 			= gs_default_val();
 
-gs_font_t __gs_get_default_font()
+gs_resource(gs_font_t) __gs_get_default_font()
 {
 	return g_default_font;
 }
@@ -288,6 +288,11 @@ gs_result opengl_init(struct gs_graphics_i* gfx)
 	// Set data
 	gfx->data = data;
 
+	// Initialize all graphcis resource caches
+	gfx->font_cache 		 = gs_resource_cache_new(gs_font_t);
+	gfx->material_cache 	 = gs_resource_cache_new(gs_material_t);
+	gfx->uniform_block_cache = gs_resource_cache_new(gs_uniform_block_t);
+
 	gfx->render_pipelines = gs_slot_array_new(gs_render_pipeline_state_t);
 
 	// Initialize data
@@ -303,8 +308,6 @@ gs_result opengl_init(struct gs_graphics_i* gfx)
 
 	// Init data for utility APIs
 	gfx->quad_batch_i->shader = gfx->construct_shader(gs_quad_batch_default_vertex_src, gs_quad_batch_default_frag_src);
-
-	gfx->font_cache = gs_resource_cache_new(gs_font_t);
 
 	// Initialize all data here
 	return gs_result_success;
@@ -2074,56 +2077,64 @@ void opengl_quad_batch_submit(gs_command_buffer_t* cb, gs_quad_batch_t* qb)
 	gfx->quad_batch_i->submit(cb, qb);
 }
 
-void opengl_set_material_uniform(gs_material_t* mat, gs_uniform_type type, const char* name, void* data)
+void opengl_set_material_uniform(gs_resource(gs_material_t) mat, gs_uniform_type type, const char* name, void* data)
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	opengl_render_data_t* __data = __get_opengl_data_internal();
 	gs_engine_instance()->ctx.graphics->material_i->set_uniform(mat, type, name, data);
 }
 
-void opengl_set_material_uniform_mat4(gs_material_t* mat, const char* name, gs_mat4 val)
+void opengl_set_material_uniform_mat4(gs_resource(gs_material_t) handle, const char* name, gs_mat4 val)
 {
+	gs_material_t* mat = gs_resource_cache_get_ptr(gs_engine_subsystem(graphics)->material_cache, handle);
 	gs_engine_instance()->ctx.graphics->uniform_i->set_uniform_from_shader(mat->uniforms, mat->shader, gs_uniform_type_mat4, name, val);
 }
 
-void opengl_set_material_uniform_vec4(gs_material_t* mat, const char* name, gs_vec4 val)
+void opengl_set_material_uniform_vec4(gs_resource(gs_material_t) handle, const char* name, gs_vec4 val)
 {
+	gs_material_t* mat = gs_resource_cache_get_ptr(gs_engine_subsystem(graphics)->material_cache, handle);
 	gs_engine_instance()->ctx.graphics->uniform_i->set_uniform_from_shader(mat->uniforms, mat->shader, gs_uniform_type_vec4, name, val);
 }
 
-void opengl_set_material_uniform_vec3(gs_material_t* mat, const char* name, gs_vec3 val)
+void opengl_set_material_uniform_vec3(gs_resource(gs_material_t) handle, const char* name, gs_vec3 val)
 {
+	gs_material_t* mat = gs_resource_cache_get_ptr(gs_engine_subsystem(graphics)->material_cache, handle);
 	gs_engine_instance()->ctx.graphics->uniform_i->set_uniform_from_shader(mat->uniforms, mat->shader, gs_uniform_type_vec3, name, val);
 }
 
-void opengl_set_material_uniform_vec2(gs_material_t* mat, const char* name, gs_vec2 val)
+void opengl_set_material_uniform_vec2(gs_resource(gs_material_t) handle, const char* name, gs_vec2 val)
 {
+	gs_material_t* mat = gs_resource_cache_get_ptr(gs_engine_subsystem(graphics)->material_cache, handle);
 	gs_engine_instance()->ctx.graphics->uniform_i->set_uniform_from_shader(mat->uniforms, mat->shader, gs_uniform_type_vec2, name, val);
 }
 
-void opengl_set_material_uniform_float(gs_material_t* mat, const char* name, f32 val)
+void opengl_set_material_uniform_float(gs_resource(gs_material_t) handle, const char* name, f32 val)
 {
+	gs_material_t* mat = gs_resource_cache_get_ptr(gs_engine_subsystem(graphics)->material_cache, handle);
 	gs_engine_instance()->ctx.graphics->uniform_i->set_uniform_from_shader(mat->uniforms, mat->shader, gs_uniform_type_float, name, val);
 }
 
-void opengl_set_material_uniform_int(gs_material_t* mat, const char* name, s32 val)
+void opengl_set_material_uniform_int(gs_resource(gs_material_t) handle, const char* name, s32 val)
 {
+	gs_material_t* mat = gs_resource_cache_get_ptr(gs_engine_subsystem(graphics)->material_cache, handle);
 	gs_engine_instance()->ctx.graphics->uniform_i->set_uniform_from_shader(mat->uniforms, mat->shader, gs_uniform_type_int, name, val);
 }
 
-void opengl_set_material_uniform_sampler2d(gs_material_t* mat, const char* name, gs_texture_t val, u32 slot)
+void opengl_set_material_uniform_sampler2d(gs_resource(gs_material_t) handle, const char* name, gs_texture_t val, u32 slot)
 {
+	gs_material_t* mat = gs_resource_cache_get_ptr(gs_engine_subsystem(graphics)->material_cache, handle);
 	gs_engine_instance()->ctx.graphics->uniform_i->set_uniform_from_shader(mat->uniforms, mat->shader, gs_uniform_type_sampler2d, name, val.id, slot);
 }
 
-void opengl_bind_material_shader(gs_command_buffer_t* cb, gs_material_t* mat)
+void opengl_bind_material_shader(gs_command_buffer_t* cb, gs_resource(gs_material_t) handle)
 {
+	gs_material_t* mat = gs_resource_cache_get_ptr(gs_engine_subsystem(graphics)->material_cache, handle);
 	gs_engine_instance()->ctx.graphics->bind_shader(cb, mat->shader);
 }
 
-void opengl_bind_material_uniforms(gs_command_buffer_t* cb, gs_material_t* mat)
+void opengl_bind_material_uniforms(gs_command_buffer_t* cb, gs_resource(gs_material_t) handle)
 {
-	gs_engine_instance()->ctx.graphics->material_i->bind_uniforms(cb, mat);
+	gs_engine_instance()->ctx.graphics->material_i->bind_uniforms(cb, handle);
 }
 
 gs_shader_t opengl_construct_shader(const char* vert_src, const char* frag_src)

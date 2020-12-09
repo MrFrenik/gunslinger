@@ -8,16 +8,15 @@ extern "C" {
 #include "common/gs_types.h"
 #include "common/gs_containers.h"
 
-// Internal audio resource data
-gs_declare_resource_type(gs_audio_instance_t);			// Used to instance an audio source (for multiple different instances of the same data)
-
-typedef gs_resource(gs_audio_instance_t) gs_handle_audio_instance;
-
 typedef enum gs_audio_file_type
 {
 	gs_ogg = 0x00,
 	gs_wav	
 } gs_audio_file_type;
+
+/*==================
+// Audio Source
+==================*/
 
 typedef struct gs_audio_source_t
 {
@@ -29,6 +28,10 @@ typedef struct gs_audio_source_t
 
 gs_resource_cache_decl(gs_audio_source_t);
 
+/*=====================
+// Audio Instance Data
+=====================*/
+
 typedef struct gs_audio_instance_data_t
 {
 	gs_resource(gs_audio_source_t) src;
@@ -37,19 +40,29 @@ typedef struct gs_audio_instance_data_t
 	b32 persistent;
 	b32 playing;
 	f64 sample_position;
-	void* user_data;						// Any custom user data required for a specific internal/external usage
+	void* user_data;
 } gs_audio_instance_data_t;
 
-gs_slot_array_decl(gs_audio_instance_data_t);
+typedef struct gs_audio_instance_data_t gs_audio_instance_t;
+
+gs_resource_cache_decl(gs_audio_instance_data_t);
+gs_resource_cache_decl(gs_audio_instance_t);
+
+/*=====================
+// Internal Audio Data
+=====================*/
 
 typedef struct gs_audio_data_t
 {
-	// Other internal resource data, like audio resources
-	void* sample_out;				// Samples to actually write to hardware buffer
+	// Samples to actually write to hardware
+	void* sample_out;
+	// Amount of samples to write
     u32 sample_count_to_output;	
+    // Samples per second for hardward
     u32 samples_per_second;
 
-    gs_slot_array(gs_audio_instance_data_t) 	instances; 	// Instanced data
+    // All the registered instances to actually play
+    gs_resource_cache(gs_audio_instance_t) instances;
 
     // Any internal data required for audio API
     void* internal;

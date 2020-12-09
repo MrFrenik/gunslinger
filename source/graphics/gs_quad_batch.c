@@ -1,7 +1,7 @@
 #include "graphics/gs_quad_batch.h"
 #include "graphics/gs_material.h"
 
-gs_quad_batch_t gs_quad_batch_new(gs_material_t* mat)
+gs_quad_batch_t gs_quad_batch_new(gs_resource(gs_material_t) handle)
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
 	gs_quad_batch_i* qbi = gfx->quad_batch_i;
@@ -9,13 +9,13 @@ gs_quad_batch_t gs_quad_batch_new(gs_material_t* mat)
 	gs_quad_batch_t qb = {0};
 	qb.raw_vertex_data = gs_byte_buffer_new();
 
-	if (!mat)
+	if (handle.id == gs_resource_invalid(gs_material_t).id)
 	{
-		mat = gs_malloc_init(gs_material_t);
-		*mat = gs_material_new(qbi->shader);
+		// Terrible naming for these apis. Very confusing. Need to standardize this more.
+		handle = gfx->material_i->construct(qbi->shader);
 	}
 
-	qb.material = mat;
+	qb.material = handle;
 
 	// Calculate layout size from layout
 	void* layout = (void*)gfx->quad_batch_i->vert_info.layout;

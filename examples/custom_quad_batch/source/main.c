@@ -163,12 +163,12 @@ void quad_batch_custom_add(gs_quad_batch_t* qb, void* quad_batch_custom_info_dat
 =============================*/
 
 // Globals
-gs_global gs_command_buffer_t 	g_cb = {0};
-gs_global gs_texture_t 			g_tex = {0};
-gs_global gs_shader_t 			g_batch_shader = {0};
-gs_global gs_camera_t 			g_camera = {0};
-gs_global gs_material_t 		g_batch_mat = {0};
-gs_global gs_quad_batch_t 		g_batch = {0};
+gs_global gs_command_buffer_t 			g_cb = {0};
+gs_global gs_texture_t 					g_tex = {0};
+gs_global gs_shader_t 					g_batch_shader = {0};
+gs_global gs_camera_t 					g_camera = {0};
+gs_global gs_quad_batch_t 				g_batch = {0};
+gs_global gs_resource(gs_material_t) 	g_batch_mat = {0};
 
 // Forward Decls.
 gs_result app_init();		// Use to init your application
@@ -245,10 +245,10 @@ gs_result app_init()
 	g_batch_mat = gs_material_new(gfx->quad_batch_i->shader);
 
 	// Set texture uniform for material
-	gfx->set_material_uniform_sampler2d(&g_batch_mat, "u_tex", g_tex, 0);
+	gfx->set_material_uniform_sampler2d(g_batch_mat, "u_tex", g_tex, 0);
 
 	// Construct quad batch api and link up function pointers
-	g_batch = gs_quad_batch_new(&g_batch_mat);
+	g_batch = gs_quad_batch_new(g_batch_mat);
 
 	return gs_result_success;
 }

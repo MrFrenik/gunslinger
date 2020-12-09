@@ -796,7 +796,7 @@ void gs_command_buffer_free(gs_command_buffer_t* cb)
 ===================================*/
 
 #define gs_resource_cache(T) gs_resource_cache_##T
-#define gs_resource_cache_data(T) gs_resource_data_struct_##T
+#define gs_resource_cache_data(T) gs_resource_##T##_data
 #define gs_resource_cache_new(T) gs_resource_cache_new_##T()
 
 // Resource cache should operate on gs_resource data
@@ -806,16 +806,16 @@ void gs_command_buffer_free(gs_command_buffer_t* cb)
 	gs_declare_resource_type(T);\
 \
 	/* Makes it so you don't have to manually declare a slot array for the type */\
-	typedef struct gs_resource_cache_data(T)\
+	typedef struct gs_resource_##T##_data\
 	{\
 		T data;\
-	} gs_resource_cache_data(T);\
+	} gs_resource_##T##_data;\
 \
-	gs_slot_array_decl(gs_resource_data_struct_##T);\
+	gs_slot_array_decl(gs_resource_##T##_data);\
 \
 	typedef struct gs_resource_cache(T)\
 	{\
-		gs_slot_array(gs_resource_data_struct_##T) cache;\
+		gs_slot_array(gs_resource_##T##_data) cache;\
 		gs_resource(T) (* insert)(struct gs_resource_cache(T)* cache, T val);\
 	} gs_resource_cache(T);\
 \
@@ -848,7 +848,7 @@ void gs_command_buffer_free(gs_command_buffer_t* cb)
 	gs_resource_cache_##T gs_resource_cache_new_##T()\
 	{\
 		gs_resource_cache_##T rc = gs_default_val();\
-		rc.cache = gs_slot_array_new(gs_resource_data_struct_##T);\
+		rc.cache = gs_slot_array_new(gs_resource_##T##_data);\
 		rc.insert = &gs_resource_cache_##T##_insert;\
 		return rc;\
 	}
@@ -864,6 +864,26 @@ void gs_command_buffer_free(gs_command_buffer_t* cb)
 
 #define gs_resource_cache_get_ptr(_c, h)\
 	&(gs_slot_array_get_ptr((_c).cache, (h).id)->data)
+
+#define gs_resource_cache_iter(T)\
+	gs_sa_gs_resource_##T##_data_iter
+
+	// gs_slot_array_iter(gs_resource_##T##_data)
+
+#define gs_resource_cache_iter_new(rc)\
+	(rc).cache.iter_new_func(&(rc).cache)
+
+#define gs_resource_cache_iter_valid(rc, it)\
+	(rc).cache.iter_valid_func(&(rc).cache, &(it))
+
+#define gs_resource_cache_iter_advance(rc, it)\
+	(rc).cache.iter_advance_func(&(rc).cache, &(it))
+
+#define gs_resource_cache_iter_get(it)\
+	((it).data->data)
+
+#define gs_resource_cache_iter_get_ptr(it)\
+	&((it).data->data)
 
 
 #ifdef __cplusplus

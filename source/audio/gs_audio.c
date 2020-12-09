@@ -91,9 +91,14 @@ gs_result __gs_audio_update_internal(struct gs_audio_i* audio)
 		return gs_result_incomplete;
 	}
 
-	for (u32 i = 0; i < gs_slot_array_size(__data->instances); ++i)
+	for 
+	(
+		gs_resource_cache_iter(gs_audio_instance_t) it = gs_resource_cache_iter_new(__data->instances);
+		gs_resource_cache_iter_valid(__data->instances, it);
+		gs_resource_cache_iter_advance(__data->instances, it)
+	)
 	{
-		gs_audio_instance_data_t* inst = &__data->instances.data[ i ];
+		gs_audio_instance_data_t* inst = gs_resource_cache_iter_get_ptr(it);
 
 		// Get raw audio source from instance
 		gs_audio_source_t* src = gs_resource_cache_get_ptr(audio->audio_cache, inst->src);
@@ -255,13 +260,10 @@ gs_resource(gs_audio_source_t) __gs_load_audio_source_from_file(const char* file
 
 gs_resource(gs_audio_instance_t) __gs_audio_construct_instance(gs_audio_instance_data_t inst)
 {
-	gs_resource(gs_audio_instance_t) inst_h = gs_resource_invalid(gs_audio_instance_t);
-
 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
 	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
-	u32 id = gs_slot_array_insert(__data->instances, inst);
-	inst_h.id = id;
-	return inst_h;
+	gs_resource(gs_audio_instance_t) handle = gs_resource_cache_insert(__data->instances, inst);
+	return handle;
 }
 
 void __gs_audio_play_source(gs_resource(gs_audio_source_t) src, f32 volume)
@@ -280,7 +282,7 @@ void __gs_audio_play(gs_resource(gs_audio_instance_t) inst_h)
 {
 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
 	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
-	gs_audio_instance_data_t* inst = gs_slot_array_get_ptr(__data->instances, inst_h.id);
+	gs_audio_instance_data_t* inst = gs_resource_cache_get_ptr(__data->instances, inst_h);
 	if (inst)
 	{
 		inst->playing = true;
@@ -291,7 +293,7 @@ void __gs_audio_pause(gs_resource(gs_audio_instance_t) inst_h)
 {
 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
 	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
-	gs_audio_instance_data_t* inst = gs_slot_array_get_ptr(__data->instances, inst_h.id);
+	gs_audio_instance_data_t* inst = gs_resource_cache_get_ptr(__data->instances, inst_h);
 	if (inst)
 	{
 		inst->playing = false;
@@ -302,7 +304,7 @@ void __gs_audio_restart(gs_resource(gs_audio_instance_t) inst_h)
 {
 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
 	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
-	gs_audio_instance_data_t* inst = gs_slot_array_get_ptr(__data->instances, inst_h.id);
+	gs_audio_instance_data_t* inst = gs_resource_cache_get_ptr(__data->instances, inst_h);
 	if (inst)
 	{
 		inst->playing = true;
@@ -314,7 +316,7 @@ void __gs_audio_set_instance_data(gs_resource(gs_audio_instance_t) inst_h, gs_au
 {
 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
 	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
-	gs_audio_instance_data_t* inst = gs_slot_array_get_ptr(__data->instances, inst_h.id);
+	gs_audio_instance_data_t* inst = gs_resource_cache_get_ptr(__data->instances, inst_h);
 	if (inst)
 	{
 		*inst = data;
@@ -326,7 +328,7 @@ gs_audio_instance_data_t __gs_audio_get_instance_data(gs_resource(gs_audio_insta
 	gs_audio_instance_data_t data = gs_default_val();	
 	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
 	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
-	gs_audio_instance_data_t* inst = gs_slot_array_get_ptr(__data->instances, inst_h.id);
+	gs_audio_instance_data_t* inst = gs_resource_cache_get_ptr(__data->instances, inst_h);
 	if (inst)
 	{
 		data = *inst;
@@ -338,7 +340,7 @@ f32 __gs_audio_get_volume(gs_resource(gs_audio_instance_t) inst_h)
 {
 	 gs_audio_i* audio = gs_engine_instance()->ctx.audio;
 	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
-	gs_audio_instance_data_t* inst = gs_slot_array_get_ptr(__data->instances, inst_h.id);
+	gs_audio_instance_data_t* inst = gs_resource_cache_get_ptr(__data->instances, inst_h);
 	if (inst)
 	{
 		return inst->volume;
@@ -351,7 +353,7 @@ void __gs_audio_set_volume(gs_resource(gs_audio_instance_t) inst_h, f32 vol)
 {
  	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
 	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
-	gs_audio_instance_data_t* inst = gs_slot_array_get_ptr(__data->instances, inst_h.id);
+	gs_audio_instance_data_t* inst = gs_resource_cache_get_ptr(__data->instances, inst_h);
 	if (inst)
 	{
 		inst->volume = gs_clamp(vol, audio->min_audio_volume, audio->max_audio_volume);
@@ -363,7 +365,7 @@ void __gs_audio_stop(gs_resource(gs_audio_instance_t) inst_h)
 	// Should actually destroy a sound if it's not persistent
  	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
 	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
-	gs_audio_instance_data_t* inst = gs_slot_array_get_ptr(__data->instances, inst_h.id);
+	gs_audio_instance_data_t* inst = gs_resource_cache_get_ptr(__data->instances, inst_h);
 	if (inst)
 	{
 		inst->playing = false;
@@ -375,14 +377,15 @@ b32 __gs_audio_is_playing(gs_resource(gs_audio_instance_t) inst_h)
 {
  	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
 	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
-	gs_audio_instance_data_t* inst = gs_slot_array_get_ptr(__data->instances, inst_h.id);
+	gs_audio_instance_data_t* inst = gs_resource_cache_get_ptr(__data->instances, inst_h);
 	return (inst && inst->playing);
 }
 
-void __gs_audio_get_runtime(gs_audio_source_t* src, s32* _minutes, s32* _seconds)
+void __gs_audio_get_runtime(gs_resource(gs_audio_source_t) src_h, s32* _minutes, s32* _seconds)
 {
  	gs_audio_i* audio = gs_engine_instance()->ctx.audio;
 	gs_audio_data_t* __data = (gs_audio_data_t*)audio->data;
+	gs_audio_source_t* src = gs_resource_cache_get_ptr(audio->audio_cache, src_h);
 	if (src)
 	{
 		// Calculate total length in seconds
@@ -462,7 +465,7 @@ struct gs_audio_i* __gs_audio_construct()
     struct gs_audio_data_t* data = gs_malloc_init(struct gs_audio_data_t);
 
     data->internal = NULL;
-    data->instances = gs_slot_array_new(gs_audio_instance_data_t);
+    data->instances = gs_resource_cache_new(gs_audio_instance_t);
 
     // Set data
     audio->user_data = NULL;

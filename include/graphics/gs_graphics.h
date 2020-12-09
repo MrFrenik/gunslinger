@@ -273,15 +273,15 @@ typedef struct gs_material_t
 
 gs_resource_cache_decl(gs_material_t);
 
-extern gs_material_t gs_material_new(gs_shader_t shader);
-extern void __gs_material_i_set_uniform(gs_material_t* mat, gs_uniform_type type, const char* name, void* data);
-extern void __gs_material_i_bind_uniforms(gs_command_buffer_t* cb, gs_material_t* mat);
+extern gs_resource(gs_material_t) gs_material_new(gs_shader_t shader);
+extern void __gs_material_i_set_uniform(gs_resource(gs_material_t) mat, gs_uniform_type type, const char* name, void* data);
+extern void __gs_material_i_bind_uniforms(gs_command_buffer_t* cb, gs_resource(gs_material_t) mat);
 
 typedef struct gs_material_i
 {
-	gs_material_t (*construct)(gs_shader_t);
-	void (*set_uniform)(gs_material_t*, gs_uniform_type, const char* name, void* data);
-	void (*bind_uniforms)(gs_command_buffer_t*, gs_material_t*);
+	gs_resource(gs_material_t) (*construct)(gs_shader_t);
+	void (*set_uniform)(gs_resource(gs_material_t) mat, gs_uniform_type, const char* name, void* data);
+	void (*bind_uniforms)(gs_command_buffer_t*, gs_resource(gs_material_t));
 } gs_material_i;
 
 gs_material_i __gs_material_i_new();
@@ -515,7 +515,7 @@ typedef struct gs_graphics_immediate_draw_i
 
 	// Text
 	void (* draw_text)(gs_command_buffer_t* cb, f32 x, f32 y, const char* text, gs_color_t color);
-	void (* draw_text_ext)(gs_command_buffer_t* cb, f32 x, f32 y, const char* text, gs_font_t* ft, gs_color_t color);
+	void (* draw_text_ext)(gs_command_buffer_t* cb, f32 x, f32 y, const char* text, gs_resource(gs_font_t) ft, gs_color_t color);
 
 	// Camera
 	void (* push_camera)(gs_command_buffer_t* cb, gs_camera_t camera);
@@ -594,8 +594,8 @@ typedef struct gs_graphics_i
 	// void (* set_uniform_buffer_sub_data)(gs_command_buffer_t*, gs_resource(gs_uniform_buffer), void*, usize);
 
 	// Need to think about materials a bit, because they're assets, not raw resources.
-	void (* bind_material_uniforms)(gs_command_buffer_t*, struct gs_material_t*);
-	void (* bind_material_shader)(gs_command_buffer_t*, struct gs_material_t*);
+	void (* bind_material_uniforms)(gs_command_buffer_t*, gs_resource(gs_material_t));
+	void (* bind_material_shader)(gs_command_buffer_t*, gs_resource(gs_material_t));
 
 	/*============================================================
 	// Graphics Resource Construction
@@ -605,6 +605,8 @@ typedef struct gs_graphics_i
 	gs_uniform_t (* construct_uniform)(gs_shader_t, const char* uniform_name, gs_uniform_type);
 	gs_render_target_t (* construct_render_target)(gs_texture_parameter_desc);
 	gs_frame_buffer_t (* construct_frame_buffer)(gs_texture_t);
+
+	// Raw texture data loading from raw resource
 	void* (* load_texture_data_from_file)(const char* file_path, b32 flip_vertically_on_load, gs_texture_format,
 					s32* width, s32* height, s32* num_comps);
 
@@ -614,7 +616,7 @@ typedef struct gs_graphics_i
 	gs_index_buffer_t (* construct_index_buffer)(void*, usize);
 
 	// These need to be placed into a particular cache for fonts (slot array) which then can be responsible for handling data.
-	gs_font_t (* construct_font_from_file)(const char* file_path, f32 point_size);
+	gs_resource(gs_font_t) (* construct_font_from_file)(const char* file_path, f32 point_size);
 
 	// Used for creating render pipeline state and returns opaque handle
 	gs_resource(gs_render_pipeline_state_t) (* construct_render_pipeline_state)(gs_render_pipeline_state_desc_t desc);
@@ -622,7 +624,7 @@ typedef struct gs_graphics_i
 	/*============================================================
 	// Graphics Default Resources
 	============================================================*/
-	gs_font_t (* default_font)();
+	gs_resource(gs_font_t) (* default_font)();
 
 	/*============================================================
 	// Graphics Resource Free Ops
@@ -638,14 +640,14 @@ typedef struct gs_graphics_i
 	void (* update_vertex_buffer_data)(gs_vertex_buffer_t, void*, usize);
 	void (* update_texture_data)(gs_texture_t*, gs_texture_parameter_desc);
 
-	void (* set_material_uniform)(struct gs_material_t*, gs_uniform_type, const char*, void*);		// Generic method for setting uniform data
-	void (* set_material_uniform_mat4)(struct gs_material_t*, const char*, gs_mat4);
-	void (* set_material_uniform_vec4)(struct gs_material_t*, const char*, gs_vec4);
-	void (* set_material_uniform_vec3)(struct gs_material_t*, const char*, gs_vec3);
-	void (* set_material_uniform_vec2)(struct gs_material_t*, const char*, gs_vec2);
-	void (* set_material_uniform_float)(struct gs_material_t*, const char*, f32);
-	void (* set_material_uniform_int)(struct gs_material_t*, const char*, s32);
-	void (* set_material_uniform_sampler2d)(struct gs_material_t*, const char*, gs_texture_t, u32);
+	void (* set_material_uniform)(gs_resource(gs_material_t), gs_uniform_type, const char*, void*);		// Generic method for setting uniform data
+	void (* set_material_uniform_mat4)(gs_resource(gs_material_t), const char*, gs_mat4);
+	void (* set_material_uniform_vec4)(gs_resource(gs_material_t), const char*, gs_vec4);
+	void (* set_material_uniform_vec3)(gs_resource(gs_material_t), const char*, gs_vec3);
+	void (* set_material_uniform_vec2)(gs_resource(gs_material_t), const char*, gs_vec2);
+	void (* set_material_uniform_float)(gs_resource(gs_material_t), const char*, f32);
+	void (* set_material_uniform_int)(gs_resource(gs_material_t), const char*, s32);
+	void (* set_material_uniform_sampler2d)(gs_resource(gs_material_t), const char*, gs_texture_t, u32);
 
 	void (* quad_batch_begin)(struct gs_quad_batch_t*);
 	void (* quad_batch_add)(struct gs_quad_batch_t*, void*);
@@ -662,7 +664,7 @@ typedef struct gs_graphics_i
 	============================================================*/
 	u32 (* get_byte_size_of_vertex_attribute)(gs_vertex_attribute_type type);
 	u32 (* calculate_vertex_size_in_bytes)(gs_vertex_attribute_type* layout_data, u32 count);
-	gs_vec2 (* text_dimensions)(const char* text, gs_font_t* ft);
+	gs_vec2 (* text_dimensions)(const char* text, gs_resource(gs_font_t) ft);
 
 	// Internal Render Data (API specific)
 	void* data;
@@ -674,6 +676,11 @@ typedef struct gs_graphics_i
 	gs_resource_cache(gs_font_t) 			font_cache;
 	gs_resource_cache(gs_material_t) 		material_cache;
 	gs_resource_cache(gs_uniform_block_t)	uniform_block_cache;
+	// gs_resouce_cache(gs_texture_t) 			texture_cache;
+	// gs_resource_cache(gs_shader_t) 			shader_cache;
+	// gs_resource_cache(gs_vertex_buffer_t) 	vertex_buffer_cache;
+	// gs_resource_cache(gs_index_buffer_t) 	index_buffer_cache;
+	// gs_resource(gs_render_pipeline_state_t) render_pipeline_cache;		// Hold internal caches for everything
 
 	// Utility APIs
 	struct gs_material_i* 			material_i;
@@ -687,10 +694,10 @@ typedef struct gs_graphics_i
 
 extern gs_texture_parameter_desc gs_texture_parameter_desc_default();
 extern void* gs_load_texture_data_from_file(const char* path, b32 flip_vertically_on_load);
-extern gs_font_t __gs_construct_font_from_file(const char* path, f32 point_size);
-extern gs_vec2 __gs_text_dimensions(const char* text, gs_font_t* ft);
-extern gs_font_t __gs_construct_default_font();
-extern gs_font_t __gs_get_default_font();
+extern gs_resource(gs_font_t) __gs_construct_font_from_file(const char* path, f32 point_size);
+extern gs_vec2 __gs_text_dimensions(const char* text, gs_resource(gs_font_t) ft);
+extern gs_resource(gs_font_t) __gs_construct_default_font();
+extern gs_resource(gs_font_t) __gs_get_default_font();
 
 /*===============================
 // Graphics User Provided Funcs
@@ -726,7 +733,7 @@ void __gs_draw_sphere(gs_command_buffer_t* cb, gs_vec3 center, f32 radius, gs_co
 void __gs_draw_sphere_lines(gs_command_buffer_t* cb, gs_vec3 center, f32 radius, gs_color_t color);
 void __gs_draw_sphere_lines_vqs(gs_command_buffer_t* cb, gs_vqs xform, gs_color_t color);
 void __gs_draw_text(gs_command_buffer_t* cb, f32 x, f32 y, const char* text, gs_color_t color);
-void __gs_draw_text_ext(gs_command_buffer_t* cb, f32 x, f32 y, const char* text, gs_font_t* ft, gs_color_t color);
+void __gs_draw_text_ext(gs_command_buffer_t* cb, f32 x, f32 y, const char* text, gs_resource(gs_font_t) ft, gs_color_t color);
 void __gs_push_camera(gs_command_buffer_t* cb, gs_camera_t camera);
 void __gs_pop_camera(gs_command_buffer_t* cb);
 void __gs_mat_rotatef(gs_command_buffer_t* cb, f32 rad, f32 x, f32 y, f32 z);

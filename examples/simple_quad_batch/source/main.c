@@ -85,7 +85,7 @@ gs_result app_init()
 	g_camera.proj_type = gs_projection_type_orthographic;
 
 	// Construct quad batch api and link up function pointers
-	g_batch = gs_quad_batch_new(NULL);
+	g_batch = gs_quad_batch_new(gs_resource_invalid(gs_material_t));
 
 	// Set material texture uniform
 	gfx->set_material_uniform_sampler2d(g_batch.material, "u_tex", g_tex, 0);

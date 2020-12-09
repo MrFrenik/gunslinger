@@ -67,7 +67,7 @@ void* gs_load_texture_data_from_file(const char* file_path, b32 flip_vertically_
 	return texture_data;
 }
 
-gs_font_t __gs_construct_font_from_file(const char* file_path, f32 point_size)
+gs_resource(gs_font_t) __gs_construct_font_from_file(const char* file_path, f32 point_size)
 {
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
@@ -123,11 +123,14 @@ gs_font_t __gs_construct_font_from_file(const char* file_path, f32 point_size)
    	gs_free(alpha_bitmap);
    	gs_free(flipmap);
 
-	return f;
+   	gs_resource(gs_font_t) handle = gs_resource_cache_insert(gfx->font_cache, f);
+   	return handle;
 }
 
-gs_vec2 __gs_text_dimensions(const char* text, gs_font_t* ft)
+gs_vec2 __gs_text_dimensions(const char* text, gs_resource(gs_font_t) handle)
 {
+	gs_graphics_i* gfx = gs_engine_subsystem(graphics);
+	gs_font_t* ft = gs_resource_cache_get_ptr(gfx->font_cache, handle);
 	gs_vec2 pos = gs_v2(0.f, 0.f);
 	gs_vec2 dims = gs_v2(pos.x, pos.y);
 	while (text[0] != '\0')
@@ -1232,9 +1235,10 @@ void __gs_draw_circle(gs_command_buffer_t* cb, gs_vec2 center, f32 radius, s32 s
 // Text
 =========*/
 
-void __gs_draw_text_ext(gs_command_buffer_t* cb, f32 x, f32 y, const char* text, gs_font_t* ft, gs_color_t color)
+void __gs_draw_text_ext(gs_command_buffer_t* cb, f32 x, f32 y, const char* text, gs_resource(gs_font_t) handle, gs_color_t color)
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gs_font_t* ft = gs_resource_cache_get_ptr(gfx->font_cache, handle);
 	gfx->immediate.begin(cb, gs_triangles);
 	{
 		gfx->immediate.enable_texture_2d(cb, ft->texture.id);
@@ -1284,8 +1288,8 @@ void __gs_draw_text_ext(gs_command_buffer_t* cb, f32 x, f32 y, const char* text,
 void __gs_draw_text(gs_command_buffer_t* cb, f32 x, f32 y, const char* text, gs_color_t color)
 {
 	gs_graphics_i* gfx = gs_engine_subsystem(graphics);
-	gs_font_t ft = gfx->default_font();
-	gfx->immediate.draw_text_ext(cb, x, y, text, &ft, color);
+	gs_resource(gs_font_t) ft = gfx->default_font();
+	gfx->immediate.draw_text_ext(cb, x, y, text, ft, color);
 }
 
 /*============
@@ -1409,7 +1413,7 @@ static const char*  GetDefaultCompressedFontDataTTFBase85();
 static unsigned int Decode85Byte(char c);
 static void         Decode85(const unsigned char* src, unsigned char* dst);
 
-gs_font_t __gs_construct_default_font()
+gs_resource(gs_font_t) __gs_construct_default_font()
 {
 	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
@@ -1468,7 +1472,8 @@ gs_font_t __gs_construct_default_font()
    	gs_free(alpha_bitmap);
    	gs_free(flipmap);
 
-	return f;
+   	gs_resource(gs_font_t) handle = gs_resource_cache_insert(gfx->font_cache, f);
+   	return handle;
 }
 
 //-----------------------------------------------------------------------------

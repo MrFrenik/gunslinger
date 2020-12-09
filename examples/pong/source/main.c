@@ -68,7 +68,7 @@ typedef struct game_data_t {
 	ball_t ball;
 	u32 score[paddle_side_count];
 	b32 hit;
-	gs_font_t font;
+	gs_resource(gs_font_t) font;
 	gs_resource(gs_audio_source_t) ball_hit_handle;
 	gs_resource(gs_audio_source_t) score_handle;
 } game_data_t;
@@ -207,17 +207,17 @@ void draw_game()
 		}
 
 		// Title
-		gs_vec2 td = gfx->text_dimensions("Po", &gd->font);
-		id->draw_text_ext(cb, (ws.x - td.x) * 0.5f - 50.f, 75.f, "Po", &gd->font, gs_color_white);
-		td = gfx->text_dimensions("ng", &gd->font);
-		id->draw_text_ext(cb, (ws.x - td.x) * 0.5f + 60.f, 75.f, "ng", &gd->font, gs_color_white);
+		gs_vec2 td = gfx->text_dimensions("Po", gd->font);
+		id->draw_text_ext(cb, (ws.x - td.x) * 0.5f - 50.f, 75.f, "Po", gd->font, gs_color_white);
+		td = gfx->text_dimensions("ng", gd->font);
+		id->draw_text_ext(cb, (ws.x - td.x) * 0.5f + 60.f, 75.f, "ng", gd->font, gs_color_white);
 
 		// Scores
 		gs_for_range_i(paddle_side_count) 
 		{
 			gs_snprintfc(score_buf, 256, "%zu", gd->score[i]);
-			td = gfx->text_dimensions(score_buf, &gd->font);
-			id->draw_text_ext(cb, (ws.x - td.x) * 0.5f - 75.f + 150.f * i, 150.f, score_buf, &gd->font, gs_color_white);
+			td = gfx->text_dimensions(score_buf, gd->font);
+			id->draw_text_ext(cb, (ws.x - td.x) * 0.5f - 75.f + 150.f * i, 150.f, score_buf, gd->font, gs_color_white);
 		}
 	}
 	id->end_drawing(cb);
