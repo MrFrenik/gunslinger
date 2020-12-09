@@ -205,6 +205,11 @@ __gs_safe_truncate_u64(u64 value)
   return result;
 }
 
+#ifdef GS_PLATFORM_WIN
+#else
+	#include <sys/stat.h>
+#endif
+
 s32 __gs_platform_file_size_in_bytes(const char* file_path)
 {
 	#ifdef GS_PLATFORM_WIN
@@ -226,8 +231,6 @@ s32 __gs_platform_file_size_in_bytes(const char* file_path)
 	    return __gs_safe_truncate_u64(size.QuadPart);
 
 	#else
-
-		#include <sys/stat.h>
 
 		struct stat st;
 		stat(file_path, &st);
