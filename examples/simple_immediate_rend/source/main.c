@@ -30,7 +30,7 @@
 typedef struct app_data_t 
 {
 	gs_command_buffer_t cb;			
-	gs_font_t font;
+	gs_resource(gs_font_t) font;
 	gs_texture_t texture;
 } app_data_t;
 
@@ -231,7 +231,7 @@ gs_result app_update()
 					gfx->immediate.push_matrix(cb, gs_matrix_model);
 					{
 						gfx->immediate.mat_mul_vqs(cb, gs_vqs_absolute_transform(&local_xforms[i], &box_xform));
-						gfx->immediate.draw_text_ext(cb, 0.f, 0.f, buffers[i], &ad->font, gs_color_green);
+						gfx->immediate.draw_text_ext(cb, 0.f, 0.f, buffers[i], ad->font, gs_color_green);
 					}
 					gfx->immediate.pop_matrix(cb);
 				}
