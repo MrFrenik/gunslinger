@@ -20,7 +20,7 @@ typedef struct miniaudio_data_t
 //     u32 samples_per_second;
 
 //     gs_slot_array(gs_audio_source_t) 			sources;	// Raw source data
-//     gs_slot_array(gs_audio_instance_data_t) 	instances; 	// Instanced data
+//     gs_slot_array(gs_audio_instance_data_t) 	instance_cache; 	// Instanced data
 
 //     // Any internal data required for audio API
 //     void* internal;
@@ -43,15 +43,15 @@ void ma_audio_commit(ma_device* device, void* output, const void* input, ma_uint
 	{
 		for 
 		(
-			gs_resource_cache_iter(gs_audio_instance_t) it = gs_resource_cache_iter_new(__data->instances);
-			gs_resource_cache_iter_valid(__data->instances, it);
-			gs_resource_cache_iter_advance(__data->instances, it)
+			gs_resource_cache_iter(gs_audio_instance_t) it = gs_resource_cache_iter_new(__data->instance_cache);
+			gs_resource_cache_iter_valid(__data->instance_cache, it);
+			gs_resource_cache_iter_advance(__data->instance_cache, it)
 		)
 		{
 			gs_audio_instance_data_t* inst = gs_resource_cache_iter_get_ptr(it);
 
 			// Get raw audio source from instance
-			gs_audio_source_t* src = gs_resource_cache_get_ptr(audio->audio_cache, inst->src);
+			gs_audio_source_t* src = gs_resource_cache_get_ptr(__data->audio_cache, inst->src);
 
 			// Easy out if the instance is not playing currently or the source is invalid
 			if (!inst->playing || !src) {
@@ -154,7 +154,7 @@ void ma_audio_commit(ma_device* device, void* output, const void* input, ma_uint
 
 		gs_for_range_i(destroy_count) 
 		{
-			gs_resource_cache_erase(__data->instances, handles_to_destroy[i]);
+			gs_resource_cache_erase(__data->instance_cache, handles_to_destroy[i]);
 		}
 	}
 	ma_mutex_unlock(&ma->lock);

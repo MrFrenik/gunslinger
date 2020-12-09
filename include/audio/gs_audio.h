@@ -56,13 +56,18 @@ typedef struct gs_audio_data_t
 {
 	// Samples to actually write to hardware
 	void* sample_out;
+
 	// Amount of samples to write
     u32 sample_count_to_output;	
+
     // Samples per second for hardward
     u32 samples_per_second;
 
     // All the registered instances to actually play
-    gs_resource_cache(gs_audio_instance_t) instances;
+    gs_resource_cache(gs_audio_instance_t) instance_cache;
+
+    // All registered sources
+    gs_resource_cache(gs_audio_source_t) audio_cache;
 
     // Any internal data required for audio API
     void* internal;
@@ -87,6 +92,7 @@ typedef struct gs_audio_i
 	/*============================================================
 	// Audio Initilization / De-Initialization
 	============================================================*/
+
 	gs_result (* init)(struct gs_audio_i*);
 	gs_result (* shutdown)(struct gs_audio_i*);
 	gs_result (* update)(struct gs_audio_i*);
@@ -95,11 +101,13 @@ typedef struct gs_audio_i
 	/*============================================================
 	// Audio Source
 	============================================================*/
+
 	gs_resource(gs_audio_source_t) (* load_audio_source_from_file)(const char* file_name);
 
 	/*============================================================
 	// Audio Instance Data
 	============================================================*/
+
 	gs_resource(gs_audio_instance_t)(* construct_instance)(gs_audio_instance_data_t);
 	void (* play_source)(gs_resource(gs_audio_source_t) src, f32 volume);
 	void (* play)( gs_resource(gs_audio_instance_t));
@@ -127,9 +135,9 @@ typedef struct gs_audio_i
 
 	// All internal API specific data for audio system
 	void* data;
-	void* user_data;		// Any custom user data
 
-	gs_resource_cache(gs_audio_source_t) audio_cache;
+	// Any custom user data (for custom API implementations)
+	void* user_data;
 } gs_audio_i;
 
 // Extern internal functions
