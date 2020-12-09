@@ -304,6 +304,8 @@ gs_result opengl_init(struct gs_graphics_i* gfx)
 	// Init data for utility APIs
 	gfx->quad_batch_i->shader = gfx->construct_shader(gs_quad_batch_default_vertex_src, gs_quad_batch_default_frag_src);
 
+	gfx->font_cache = gs_resource_cache_new(gs_font_t);
+
 	// Initialize all data here
 	return gs_result_success;
 }

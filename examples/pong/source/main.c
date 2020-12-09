@@ -67,8 +67,8 @@ typedef struct game_data_t {
 	paddle_t paddles[paddle_side_count];
 	ball_t ball;
 	u32 score[paddle_side_count];
-	gs_font_t font;
 	b32 hit;
+	gs_font_t font;
 	gs_resource(gs_audio_source_t) ball_hit_handle;
 	gs_resource(gs_audio_source_t) score_handle;
 } game_data_t;

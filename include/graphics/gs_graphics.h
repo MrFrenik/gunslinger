@@ -225,7 +225,7 @@ typedef struct gs_uniform_block_t
 } gs_uniform_block_t;
 
 gs_slot_array_decl(gs_uniform_block_t);
-gs_declare_resource_type(gs_uniform_block_t);
+gs_resource_cache_decl(gs_uniform_block_t);
 
 #define __gs_uniform_data_block_uniform_decl(T, ...)\
 	typedef struct gs_uniform_data_block_##T##_t\
@@ -261,6 +261,31 @@ typedef struct gs_uniform_block_i
 
 extern gs_uniform_block_i __gs_uniform_block_i_new();
 
+/*=====================
+// Material
+======================*/
+
+typedef struct gs_material_t
+{
+	gs_shader_t shader;
+	gs_resource(gs_uniform_block_t) uniforms;
+} gs_material_t;
+
+gs_resource_cache_decl(gs_material_t);
+
+extern gs_material_t gs_material_new(gs_shader_t shader);
+extern void __gs_material_i_set_uniform(gs_material_t* mat, gs_uniform_type type, const char* name, void* data);
+extern void __gs_material_i_bind_uniforms(gs_command_buffer_t* cb, gs_material_t* mat);
+
+typedef struct gs_material_i
+{
+	gs_material_t (*construct)(gs_shader_t);
+	void (*set_uniform)(gs_material_t*, gs_uniform_type, const char* name, void* data);
+	void (*bind_uniforms)(gs_command_buffer_t*, gs_material_t*);
+} gs_material_i;
+
+gs_material_i __gs_material_i_new();
+
 /*================
 // Font
 =================*/
@@ -281,6 +306,8 @@ typedef struct gs_font_t
 	gs_baked_char_t glyphs[96];
 	gs_texture_t texture;
 } gs_font_t;
+
+gs_resource_cache_decl(gs_font_t);
 
 /*================
 // Pipeline State
@@ -637,11 +664,16 @@ typedef struct gs_graphics_i
 	u32 (* calculate_vertex_size_in_bytes)(gs_vertex_attribute_type* layout_data, u32 count);
 	gs_vec2 (* text_dimensions)(const char* text, gs_font_t* ft);
 
-	// Render Data 
+	// Internal Render Data (API specific)
 	void* data;
 
 	// NOTE(john): keep this data here just for now
 	gs_slot_array(gs_render_pipeline_state_t) render_pipelines;
+
+	// Cache pools for various resources
+	gs_resource_cache(gs_font_t) 			font_cache;
+	gs_resource_cache(gs_material_t) 		material_cache;
+	gs_resource_cache(gs_uniform_block_t)	uniform_block_cache;
 
 	// Utility APIs
 	struct gs_material_i* 			material_i;
