@@ -287,6 +287,18 @@ typedef struct gs_material_i
 gs_material_i __gs_material_i_new();
 
 /*================
+// Mesh
+=================*/
+
+typedef struct gs_submesh_t
+{
+	gs_resource(gs_vertex_buffer_t) vbo;
+	u32 draw_start;
+	u32 draw_count;
+	gs_draw_mode draw_mode;
+} gs_submesh_t;
+
+/*================
 // Font
 =================*/
 
