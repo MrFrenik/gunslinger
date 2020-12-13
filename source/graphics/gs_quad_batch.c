@@ -1,5 +1,4 @@
 #include "graphics/gs_quad_batch.h"
-#include "graphics/gs_material.h"
 
 gs_quad_batch_t gs_quad_batch_new(gs_resource(gs_material_t) handle)
 {
@@ -22,7 +21,7 @@ gs_quad_batch_t gs_quad_batch_new(gs_resource(gs_material_t) handle)
 	u32 layout_count = gs_dyn_array_size(gfx->quad_batch_i->vert_info.layout);
 
 	// The data for will be empty for now
-	qb.mesh.vbo = gfx->construct_vertex_buffer(layout, layout_count * sizeof(gs_vertex_attribute_type), NULL, 0);
+	qb.vbo = gfx->construct_vertex_buffer(layout, layout_count * sizeof(gs_vertex_attribute_type), NULL, 0);
 
 	return qb;
 }
@@ -31,7 +30,7 @@ void __gs_quad_batch_default_begin(gs_quad_batch_t* batch)
 {
 	// Reset position of vertex data
 	gs_byte_buffer_clear(&batch->raw_vertex_data);	
-	batch->mesh.vertex_count = 0;
+	batch->vertex_count = 0;
 }
 
 void __gs_quad_batch_add_raw_vert_data(gs_quad_batch_t* qb, void* data, usize data_size)
@@ -49,7 +48,7 @@ void __gs_quad_batch_add_raw_vert_data(gs_quad_batch_t* qb, void* data, usize da
 	// In here, you need to know how to read/structure your data to parse the package
 	u32 vert_count = data_size / vert_size;
 	gs_byte_buffer_bulk_write(&qb->raw_vertex_data, data, data_size);
-	qb->mesh.vertex_count += vert_count;
+	qb->vertex_count += vert_count;
 }
 
 void __gs_quad_batch_default_add(gs_quad_batch_t* qb, void* quad_info_data)
@@ -117,7 +116,7 @@ void __gs_quad_batch_default_add(gs_quad_batch_t* qb, void* quad_info_data)
 void __gs_quad_batch_default_end(gs_quad_batch_t* batch)
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
-	gfx->update_vertex_buffer_data(batch->mesh.vbo, batch->raw_vertex_data.data, batch->raw_vertex_data.size);
+	gfx->update_vertex_buffer_data(batch->vbo, batch->raw_vertex_data.data, batch->raw_vertex_data.size);
 }
 
 void __gs_quad_batch_default_free(gs_quad_batch_t* batch)
@@ -137,10 +136,10 @@ void __gs_quad_batch_default_submit(gs_command_buffer_t* cb, gs_quad_batch_t* ba
 	gfx->bind_material_uniforms(cb, batch->material);
 
 	// Bind quad batch mesh vbo
-	gfx->bind_vertex_buffer(cb, batch->mesh.vbo);
+	gfx->bind_vertex_buffer(cb, batch->vbo);
 
 	// Draw
-	gfx->draw(cb, 0, batch->mesh.vertex_count);
+	gfx->draw(cb, 0, batch->vertex_count);
 }
 
 void __gs_quad_batch_i_set_layout(gs_quad_batch_i* api, void* layout, usize layout_size)

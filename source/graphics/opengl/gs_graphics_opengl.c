@@ -4,7 +4,6 @@
 #include "common/gs_util.h"
 #include "base/gs_engine.h"
 #include "graphics/gs_graphics.h"
-#include "graphics/gs_material.h"
 #include "graphics/gs_quad_batch.h"
 #include "graphics/gs_camera.h"
 #include "platform/gs_platform.h"

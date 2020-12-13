@@ -104,6 +104,13 @@ typedef enum gs_vertex_attribute_type
 	gs_vertex_attribute_byte,
 } gs_vertex_attribute_type;
 
+typedef enum gs_draw_mode
+{
+	gs_lines,
+	gs_triangles,
+	gs_quads
+} gs_draw_mode;
+
 /*================
 // Resource Decls
 =================*/
@@ -154,6 +161,14 @@ typedef struct gs_vertex_attribute_layout_desc_t
 // From on: https://gist.github.com/fairlight1337/4935ae72bcbcc1ba5c72
 extern void gs_rgb_to_hsv(u8 r, u8 g, u8 b, f32* h, f32* s, f32* v);
 extern void gs_hsv_to_rgb(f32 h, f32 s, f32 v, u8* r, u8* g, u8* b);
+
+// Resource cache decls
+gs_resource_cache_decl(gs_uniform_t);
+gs_resource_cache_decl(gs_shader_t);
+gs_resource_cache_decl(gs_index_buffer_t);
+gs_resource_cache_decl(gs_vertex_buffer_t);
+gs_resource_cache_decl(gs_frame_buffer_t);
+gs_resource_cache_decl(gs_render_target_t);
 
 /*================
 // Texture
@@ -209,6 +224,8 @@ typedef struct gs_texture_t
 	u32 num_comps;
 	gs_texture_format texture_format;
 } gs_texture_t;
+
+gs_resource_cache_decl(gs_texture_t);
 
 /*=====================
 // Uniform Block
@@ -298,6 +315,12 @@ typedef struct gs_submesh_t
 	gs_draw_mode draw_mode;
 } gs_submesh_t;
 
+typedef struct gs_mesh_t
+{
+	gs_dyn_array(gs_submesh_t) submeshes;
+	gs_dyn_array(gs_vertex_attribute_type) vertex_decl;
+} gs_mesh_t;
+
 /*================
 // Font
 =================*/
@@ -330,13 +353,6 @@ typedef enum gs_matrix_mode
 	gs_matrix_model,
 	gs_matrix_vp
 } gs_matrix_mode;
-
-typedef enum gs_draw_mode
-{
-	gs_lines,
-	gs_triangles,
-	gs_quads
-} gs_draw_mode;
 
 typedef enum gs_pipeline_state_attr_type
 {

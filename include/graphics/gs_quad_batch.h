@@ -7,7 +7,6 @@ extern "C" {
 
 #include "base/gs_engine.h"
 #include "graphics/gs_graphics.h"
-#include "graphics/gs_mesh.h"
 #include "math/gs_math.h"
 #include "serialize/gs_byte_buffer.h"
 
@@ -24,7 +23,8 @@ extern const char* __gs_default_quad_batch_frag_src();
 typedef struct gs_quad_batch_t
 {
 	gs_byte_buffer_t raw_vertex_data;
-	gs_mesh_t mesh;
+	gs_vertex_buffer_t vbo;
+	u32 vertex_count;
 	gs_resource(gs_material_t) material;			// Pointer to a material instance
 } gs_quad_batch_t;
 

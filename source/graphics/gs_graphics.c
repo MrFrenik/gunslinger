@@ -1,8 +1,12 @@
 #include "graphics/gs_graphics.h"
-#include "graphics/gs_material.h"
 #include "graphics/gs_camera.h"
 #include "platform/gs_platform.h"
 #include "base/gs_engine.h"
+
+#define CGLTF_MALLOC 	gs_malloc 
+#define CGLTF_FREE 		gs_free
+#define CGLTF_IMPLEMENTATION
+#include "cgltf/cgltf.h"
 
 #define STB_DEFINE
 #include <stb/stb.h>
@@ -16,6 +20,10 @@
 #define STB_TRUETYPE_IMPLEMENTATION
 #include <stb/stb_truetype.h>
 
+/*====================
+// Util
+====================*/
+
 // Error rate to calculate how many segments we need to draw a smooth circle,
 // taken from https://stackoverflow.com/a/2244088
 #ifndef smooth_circle_error_rate
@@ -23,130 +31,6 @@
 #endif
 
 const f32 deg2rad = gs_pi / 180.f;
-
-gs_texture_parameter_desc gs_texture_parameter_desc_default()
-{
-	gs_texture_parameter_desc desc = {0};
-	
-	desc.texture_wrap_s 	= gs_repeat;
-	desc.texture_wrap_t 	= gs_repeat;
-	desc.min_filter 		= gs_linear;
-	desc.mag_filter 		= gs_linear;
-	desc.mipmap_filter 		= gs_linear;
-	desc.generate_mips 		= true;
-	desc.border_color[0]	= 0.f;
-	desc.border_color[1]	= 0.f;
-	desc.border_color[2]	= 0.f;
-	desc.border_color[3]	= 0.f;
-	desc.data 				= NULL;
-	desc.texture_format 	= gs_texture_format_rgba8;
-	desc.width 				= 0;
-	desc.height 			= 0;
-	desc.num_comps 			= 0;
-	desc.flip_vertically_on_load = true;
-
-	return desc;
-}
-
-void* gs_load_texture_data_from_file(const char* file_path, b32 flip_vertically_on_load)
-{
-	// Load texture data
-	stbi_set_flip_vertically_on_load(flip_vertically_on_load);
-
-	// For now, this data will always have 4 components, since STBI_rgb_alpha is being passed in as required components param
-	// Could optimize this later
-	s32 width, height, num_comps;
-	void* texture_data = stbi_load(file_path, (s32*)&width, (s32*)&height, &num_comps, STBI_rgb_alpha);
-
-	if (!texture_data)
-	{
-		gs_println("Warning: could not load texture: %s", file_path);
-		return NULL;
-	}
-
-	return texture_data;
-}
-
-gs_resource(gs_font_t) __gs_construct_font_from_file(const char* file_path, f32 point_size)
-{
-	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
-	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
-	gs_font_t f = gs_default_val();
-
-	stbtt_fontinfo font = gs_default_val();
-	char* ttf = platform->read_file_contents(file_path, "rb", NULL);
-	const u32 w = 512;
-	const u32 h = 512;
-	const u32 num_comps = 4;
-	u8* alpha_bitmap = gs_malloc(w * h);
-	u8* flipmap = gs_malloc(w * h * num_comps);
-	memset(alpha_bitmap, 0, w * h);
-	memset(flipmap, 0, w * h * num_comps);
-   	s32 v = stbtt_BakeFontBitmap((u8*)ttf, 0, point_size, alpha_bitmap, w, h, 32, 96, (stbtt_bakedchar*)f.glyphs); // no guarantee this fits!
-
-   	// Flip texture
-   	u32 r = h - 1;
-   	for (u32 i = 0; i < h; ++i)
-   	{
-   		for (u32 j = 0; j < w; ++j)
-   		{
-   			u32 i0 = i * w + j;
-   			u32 i1 = r * w * num_comps + j * num_comps;
-   			u8 a = alpha_bitmap[i0];
-   			flipmap[i1 + 0] = 255;
-   			flipmap[i1 + 1] = 255;
-   			flipmap[i1 + 2] = 255;
-   			flipmap[i1 + 3] = a;
-   		}
-   		r--;
-   	}
-
-   	gs_texture_parameter_desc desc = gs_texture_parameter_desc_default();
-   	desc.width = w;
-   	desc.height = h;
-   	desc.num_comps = num_comps;
-   	desc.data = flipmap;
-   	desc.texture_format = gs_texture_format_rgba8;
-   	desc.min_filter = gs_linear;
-
-   	// Generate atlas texture for bitmap with bitmap data
-   	f.texture = gfx->construct_texture(desc);
-
-   	if (v == 0) {
-	   	gs_println("Font Failed to Load: %s, %d", file_path, v);
-   	}
-   	else {
-	   	gs_println("Font Successfully Load: %s, %d", file_path, v);
-   	}
-
-   	gs_free(ttf);
-   	gs_free(alpha_bitmap);
-   	gs_free(flipmap);
-
-   	gs_resource(gs_font_t) handle = gs_resource_cache_insert(gfx->font_cache, f);
-   	return handle;
-}
-
-gs_vec2 __gs_text_dimensions(const char* text, gs_resource(gs_font_t) handle)
-{
-	gs_graphics_i* gfx = gs_engine_subsystem(graphics);
-	gs_font_t* ft = gs_resource_cache_get_ptr(gfx->font_cache, handle);
-	gs_vec2 pos = gs_v2(0.f, 0.f);
-	gs_vec2 dims = gs_v2(pos.x, pos.y);
-	while (text[0] != '\0')
-	{
-		char c = text[0];
-		if (c >= 32 && c <= 127) 
-		{
-			stbtt_aligned_quad q = gs_default_val();
-			stbtt_GetBakedQuad((stbtt_bakedchar*)ft->glyphs, ft->texture.width, ft->texture.height, c - 32, &pos.x, &pos.y, &q, 1);
-			dims.x = pos.x;
-			dims.y = gs_max(dims.y, (q.y1 - q.y0));
-		}
-		text++;
-	}
-	return dims;
-}
 
 void gs_rgb_to_hsv(u8 r, u8 g, u8 b, f32* h, f32* s, f32* v)
 {
@@ -237,6 +121,138 @@ void gs_hsv_to_rgb(f32 h, f32 s, f32 v, u8* r, u8* g, u8* b)
 	*r += fM;
 	*g += fM;
 	*b += fM;
+}
+
+/*====================
+// Texture
+====================*/
+
+gs_texture_parameter_desc gs_texture_parameter_desc_default()
+{
+	gs_texture_parameter_desc desc = {0};
+	
+	desc.texture_wrap_s 	= gs_repeat;
+	desc.texture_wrap_t 	= gs_repeat;
+	desc.min_filter 		= gs_linear;
+	desc.mag_filter 		= gs_linear;
+	desc.mipmap_filter 		= gs_linear;
+	desc.generate_mips 		= true;
+	desc.border_color[0]	= 0.f;
+	desc.border_color[1]	= 0.f;
+	desc.border_color[2]	= 0.f;
+	desc.border_color[3]	= 0.f;
+	desc.data 				= NULL;
+	desc.texture_format 	= gs_texture_format_rgba8;
+	desc.width 				= 0;
+	desc.height 			= 0;
+	desc.num_comps 			= 0;
+	desc.flip_vertically_on_load = true;
+
+	return desc;
+}
+
+void* gs_load_texture_data_from_file(const char* file_path, b32 flip_vertically_on_load)
+{
+	// Load texture data
+	stbi_set_flip_vertically_on_load(flip_vertically_on_load);
+
+	// For now, this data will always have 4 components, since STBI_rgb_alpha is being passed in as required components param
+	// Could optimize this later
+	s32 width, height, num_comps;
+	void* texture_data = stbi_load(file_path, (s32*)&width, (s32*)&height, &num_comps, STBI_rgb_alpha);
+
+	if (!texture_data)
+	{
+		gs_println("Warning: could not load texture: %s", file_path);
+		return NULL;
+	}
+
+	return texture_data;
+}
+
+/*====================
+// Font
+====================*/
+
+gs_resource(gs_font_t) __gs_construct_font_from_file(const char* file_path, f32 point_size)
+{
+	gs_platform_i* platform = gs_engine_instance()->ctx.platform;
+	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
+	gs_font_t f = gs_default_val();
+
+	stbtt_fontinfo font = gs_default_val();
+	char* ttf = platform->read_file_contents(file_path, "rb", NULL);
+	const u32 w = 512;
+	const u32 h = 512;
+	const u32 num_comps = 4;
+	u8* alpha_bitmap = gs_malloc(w * h);
+	u8* flipmap = gs_malloc(w * h * num_comps);
+	memset(alpha_bitmap, 0, w * h);
+	memset(flipmap, 0, w * h * num_comps);
+   	s32 v = stbtt_BakeFontBitmap((u8*)ttf, 0, point_size, alpha_bitmap, w, h, 32, 96, (stbtt_bakedchar*)f.glyphs); // no guarantee this fits!
+
+   	// Flip texture
+   	u32 r = h - 1;
+   	for (u32 i = 0; i < h; ++i)
+   	{
+   		for (u32 j = 0; j < w; ++j)
+   		{
+   			u32 i0 = i * w + j;
+   			u32 i1 = r * w * num_comps + j * num_comps;
+   			u8 a = alpha_bitmap[i0];
+   			flipmap[i1 + 0] = 255;
+   			flipmap[i1 + 1] = 255;
+   			flipmap[i1 + 2] = 255;
+   			flipmap[i1 + 3] = a;
+   		}
+   		r--;
+   	}
+
+   	gs_texture_parameter_desc desc = gs_texture_parameter_desc_default();
+   	desc.width = w;
+   	desc.height = h;
+   	desc.num_comps = num_comps;
+   	desc.data = flipmap;
+   	desc.texture_format = gs_texture_format_rgba8;
+   	desc.min_filter = gs_linear;
+
+   	// Generate atlas texture for bitmap with bitmap data
+   	f.texture = gfx->construct_texture(desc);
+
+   	if (v == 0) {
+	   	gs_println("Font Failed to Load: %s, %d", file_path, v);
+   	}
+   	else {
+	   	gs_println("Font Successfully Load: %s, %d", file_path, v);
+   	}
+
+   	gs_free(ttf);
+   	gs_free(alpha_bitmap);
+   	gs_free(flipmap);
+
+   	gs_resource(gs_font_t) handle = gs_resource_cache_insert(gfx->font_cache, f);
+   	return handle;
+}
+
+gs_vec2 __gs_text_dimensions(const char* text, gs_resource(gs_font_t) handle)
+{
+	gs_graphics_i* gfx = gs_engine_subsystem(graphics);
+	gs_font_t* ft = gs_resource_cache_get_ptr(gfx->font_cache, handle);
+	gs_vec2 pos = gs_v2(0.f, 0.f);
+	gs_vec2 dims = gs_v2(pos.x, pos.y);
+	while (text[0] != '\0')
+	{
+		char c = text[0];
+		if (c >= 32 && c <= 127) 
+		{
+			stbtt_aligned_quad q = gs_default_val();
+			stbtt_GetBakedQuad((stbtt_bakedchar*)ft->glyphs, ft->texture.width, ft->texture.height, c - 32, &pos.x, &pos.y, &q, 1);
+			dims.x = pos.x;
+			dims.y = gs_max(dims.y, (q.y1 - q.y0));
+		}
+		text++;
+	}
+	return dims;
 }
 
 /*=====================
@@ -1595,6 +1611,37 @@ static const char* GetDefaultCompressedFontDataTTFBase85()
     return proggy_clean_ttf_compressed_data_base85;
 }
 
+/*====================
+// Mesh
+====================*/
+
+void __gs_load_gltf_data_from_memory(void* buffer, usize buffer_sz, gs_mesh_t* mesh)
+{
+	// Load data into mesh
+	cgltf_options options = {0};
+	cgltf_data* data = NULL;
+	cgltf_result res = cgltf_parse(&options, buffer, buffer_sz, &data);
+
+	// Parse data into mesh, then free
+	if (res == cgltf_result_success)
+	{
+		
+		cgltf_free(data);
+	}
+}
+
+void __gs_load_gltf_data_from_file(const char* file_path, gs_mesh_t* mesh)
+{
+	gs_platform_i* platform = gs_engine_subsystem(platform);
+
+	usize sz = 0;
+	char* buffer = platform->read_file_contents(file_path, "r", &sz);
+	__gs_load_gltf_data_from_memory(buffer, sz, mesh);
+	 gs_free(buffer);
+}
+
+// Load mesh data from file
+// Construct mesh from raw data
 
 
 

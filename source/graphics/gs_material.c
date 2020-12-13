@@ -1,4 +1,4 @@
-#include "graphics/gs_material.h"
+#include "base/gs_engine.h"
 #include "graphics/gs_graphics.h"
 
 gs_resource(gs_material_t) gs_material_new(gs_shader_t shader)
