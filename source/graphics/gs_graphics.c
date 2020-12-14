@@ -1625,7 +1625,7 @@ void __gs_load_gltf_data_from_memory(void* buffer, usize buffer_sz, gs_mesh_t* m
 	// Parse data into mesh, then free
 	if (res == cgltf_result_success)
 	{
-		
+
 		cgltf_free(data);
 	}
 }
@@ -1634,7 +1634,7 @@ void __gs_load_gltf_data_from_file(const char* file_path, gs_mesh_t* mesh)
 {
 	gs_platform_i* platform = gs_engine_subsystem(platform);
 
-	usize sz = 0;
+	s32 sz = 0;
 	char* buffer = platform->read_file_contents(file_path, "r", &sz);
 	__gs_load_gltf_data_from_memory(buffer, sz, mesh);
 	 gs_free(buffer);
