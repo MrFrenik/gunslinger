@@ -1975,83 +1975,6 @@ gs_index_buffer_t opengl_construct_index_buffer(void* indices, usize sz)
 	return ib;
 }
 
-// Compiles single shader
-void opengl_compile_shader(const char* src, u32 id) 
-{
-	//Tell opengl that we want to use fileContents as the contents of the shader file
-	glShaderSource(id, 1, &src, NULL);
-
-	//Compile the shader
-	glCompileShader(id);
-
-	//Check for errors
-	GLint success = 0;
-	glGetShaderiv(id, GL_COMPILE_STATUS, &success);
-
-	if (success == GL_FALSE)
-	{
-		GLint max_len = 0;
-		glGetShaderiv(id, GL_INFO_LOG_LENGTH, &max_len);
-
-		char* log = gs_malloc(max_len);
-		memset(log, 0, max_len);
-
-		//The max_len includes the NULL character
-		glGetShaderInfoLog(id, max_len, &max_len, log);
-
-		//Provide the infolog in whatever manor you deem best.
-		//Exit with failure.
-		glDeleteShader(id); //Don't leak the shader.
-
-		gs_println("Opengl::opengl_compile_shader::FAILED_TO_COMPILE: %s\n %s", log, src);
-
-		free(log);
-		log = NULL;
-
-		gs_assert(false);
-	}
-}
-
-void opengl_link_shaders(u32 program_id, u32 vert_id, u32 frag_id)
-{
-	//Attach our shaders to our program
-	glAttachShader(program_id, vert_id);
-	glAttachShader(program_id, frag_id);
-
-	//Link our program
-	glLinkProgram(program_id);
-
-	//Create info log
-	// Error shit...
-	s32 is_linked = 0;
-	glGetProgramiv(program_id, GL_LINK_STATUS, (s32*)&is_linked);
-	if (is_linked == GL_FALSE)
-	{
-		GLint max_len = 0;
-		glGetProgramiv(program_id, GL_INFO_LOG_LENGTH, &max_len);
-
-		char* log = gs_malloc(max_len);
-		memset(log, 0, max_len);
-		glGetProgramInfoLog(program_id, max_len, &max_len, log); 
-
-		// Print error
-		gs_println("Fail To Link::opengl_link_shaders::%s");
-
-		// //We don't need the program anymore.
-		glDeleteProgram(program_id);
-
-		// //Don't leak shaders either.
-		glDeleteShader(vert_id);
-		glDeleteShader(frag_id);
-
-		free(log);
-		log = NULL;
-
-		// Just assert for now
-		gs_assert(false);
-	}
-}
-
 void opengl_quad_batch_begin(gs_quad_batch_t* qb)
 {
 	gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
@@ -2135,6 +2058,84 @@ void opengl_bind_material_uniforms(gs_command_buffer_t* cb, gs_resource(gs_mater
 {
 	gs_engine_instance()->ctx.graphics->material_i->bind_uniforms(cb, handle);
 }
+
+// Compiles single shader
+void opengl_compile_shader(const char* src, u32 id) 
+{
+	//Tell opengl that we want to use fileContents as the contents of the shader file
+	glShaderSource(id, 1, &src, NULL);
+
+	//Compile the shader
+	glCompileShader(id);
+
+	//Check for errors
+	GLint success = 0;
+	glGetShaderiv(id, GL_COMPILE_STATUS, &success);
+
+	if (success == GL_FALSE)
+	{
+		GLint max_len = 0;
+		glGetShaderiv(id, GL_INFO_LOG_LENGTH, &max_len);
+
+		char* log = gs_malloc(max_len);
+		memset(log, 0, max_len);
+
+		//The max_len includes the NULL character
+		glGetShaderInfoLog(id, max_len, &max_len, log);
+
+		//Provide the infolog in whatever manor you deem best.
+		//Exit with failure.
+		glDeleteShader(id); //Don't leak the shader.
+
+		gs_println("Opengl::opengl_compile_shader::FAILED_TO_COMPILE: %s\n %s", log, src);
+
+		free(log);
+		log = NULL;
+
+		gs_assert(false);
+	}
+}
+
+void opengl_link_shaders(u32 program_id, u32 vert_id, u32 frag_id)
+{
+	//Attach our shaders to our program
+	glAttachShader(program_id, vert_id);
+	glAttachShader(program_id, frag_id);
+
+	//Link our program
+	glLinkProgram(program_id);
+
+	//Create info log
+	// Error shit...
+	s32 is_linked = 0;
+	glGetProgramiv(program_id, GL_LINK_STATUS, (s32*)&is_linked);
+	if (is_linked == GL_FALSE)
+	{
+		GLint max_len = 0;
+		glGetProgramiv(program_id, GL_INFO_LOG_LENGTH, &max_len);
+
+		char* log = gs_malloc(max_len);
+		memset(log, 0, max_len);
+		glGetProgramInfoLog(program_id, max_len, &max_len, log); 
+
+		// Print error
+		gs_println("Fail To Link::opengl_link_shaders::%s");
+
+		// //We don't need the program anymore.
+		glDeleteProgram(program_id);
+
+		free(log);
+		log = NULL;
+
+		// Just assert for now
+		gs_assert(false);
+	}
+
+	//Don't leak shaders
+	glDeleteShader(vert_id);
+	glDeleteShader(frag_id);
+}
+
 
 gs_shader_t opengl_construct_shader(const char* vert_src, const char* frag_src)
 {
