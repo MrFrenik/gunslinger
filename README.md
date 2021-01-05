@@ -2,5 +2,3 @@
 
 A simple, header-only c99 framework for multimedia applications
 
-## How To Use
-
