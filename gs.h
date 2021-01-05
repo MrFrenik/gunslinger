@@ -19,6 +19,8 @@
 ╚═██════════════════════════════════════════════════════════════════════════════════════██═╝*/
 
 /*
+    Gunslinger is a header-only, c99 framework for multi-media applications and tools.
+
     USAGE: (IMPORTANT)
 
     =================================================================================================================
@@ -39,7 +41,13 @@
 
     ================================================================================================================
 
-    Contained within:
+    // All main interface stuff in here, then system implementations can be in separate header files
+    // All implementations will be in impl/xxx.h
+    // You can define which implementation you want to have, whether it be GLFW, Win32, Apple, or a custom impl
+    // This is just to keep everything from being in one huge file
+
+    Contained within (Contents):
+        * GS_APPLICATION
         * GS_UTIL
         * GS_CONTAINERS
         * GS_ASSET_TYPES
@@ -48,20 +56,18 @@
         * GS_GRAPHICS
         * GS_AUDIO
 
-    // All main interface stuff in here, then system implementations can be in separate header files
-    // All implementations will be in impl/xxx.h
-    // You can define which implementation you want to have, whether it be GLFW, Win32, Apple, or a custom impl
-    // This is just to keep everything from being in one huge file
-
     ================================================================================================================
 
-    Applications:
+    GS_APPLICATION:
 
     Gunslinger is a framework that expects to take flow control over your app and calls into your code
     at certain sync points. These points are 'init', 'update', and 'shutdown'. When creating your application, 
-    you provide certain information to the framework via a `gs_app_desc_t` descriptor object. 
+    you provide certain information to the framework via a `gs_app_desc_t` descriptor object. Gunslinger acts as the
+    main entry point to your application, so instead of defining "main" as you typically would for a c/c++ program, 
+    you instead implement the `gs_main` function that will be called by gunslinger. This last bit is optional and 
+    a different method for entry is covered, however this is the most convenient way to use the framework.
 
-    Basic Example Application (if using `gs_main`):
+    Basic Example Application:
 
         #define GS_IMPL
         #include "gs.h"
@@ -93,6 +99,256 @@
             return (gs_app_desc_t){0};
         }
 
+    It's also possible to define GS_NO_HIJACK_MAIN for your application. This will make it so gunslinger will not be
+    the main entry point to your application. You will instead be responsible for creating an engine instance and 
+    passing in your application description to it.
+
+        #define GS_NO_HIJACK_MAIN
+
+        int32_t main(int32_t argv, char** argc)
+        {
+            gs_app_desc_t app = {0};        // Fill this with whatever your app needs
+            gs_engine_create(app)->run();   // Create instance of engine for framework and run
+            return 0;
+       }
+
+    NOTE: 
+        Lastly, while it is possible to use gunslinger without it controlling the main application loop, this isn't recommended. 
+        Internally, gunslinger does its best to handle the boiler plate drudge work of implementing (in correct order) 
+        the various layers required for a basic hardware accelerated multi-media application program to work. This involves allocating 
+        memory for internal data structures for these layers as well initializing them in a particular order so they can inter-operate
+        as expected. If you're interested in taking care of this yourself, look at the `gs_engine_run()` function to get a feeling
+        for how this is being handled.
+
+    GS_MATH:
+
+        Gunslinger includes utilities for common graphics/game related math structures. These aren't required to be used, however they are 
+        used internally for certain function calls in various APIs. Where possible, I've tried to add as much redundancy as possible to
+        the APIs so that these structures are not required if you prefer.
+
+        * common utils:
+            - interpolation
+
+        * Vectors:
+            - gs_vec2: float[2]
+            - gs_vec3: float[3]
+            - gs_vec4: float[4]
+                * vector ops: 
+                    - dot product
+                    - normalize
+                    - add/subtract (component wise)
+                    - multiply
+                    - cross product
+                    - length
+                
+        *Quaternions:
+            - gs_quat: float[4]
+                * quaternion ops:
+                    - add/subtract/multiply
+                    - inverse
+                    - conjugate
+                    - angle/axis | axis/angle
+                    - to euler | from euler
+                    - to mat4
+
+        *Mat4x4: 
+            - gs_mat4: float[16]
+                * mat4 ops:
+                    - add/subtract/multiply
+                    - transpose
+                    - inverse
+                    - homogenous transformations:
+                        - rotation 
+                        - scale
+                        - translate
+                    - view: 
+                        - lookat
+                    - projection: 
+                        - orthographic
+                        - perspective
+
+        *VQS:
+            - gs_vqs:  gs_vec3, gs_quat, gs_vec3
+
+        (SPECIAL NOTE): 
+
+        `gs_vqs` is a transform structure that's commonly used in games/physics sims, especially with complex child/parent hierarchies. It stands for
+        `Vector-Quaternion-Scalar` to denote its internal components. Typically this encodes position, rotation (in quaternion), and a uniform scale
+        for transformation. 
+
+            gs_vqs xform = {0};
+            xform.position = gs_v3(...);
+            xform.rotation = gs_quat(...);
+            xform.scale = gs_v3(...);
+
+        This structure can then be converted into a final form float[16] mat4x4 for any typical homogenous graphics transformations:
+
+            gs_mat4 model = gs_vqs_to_mat4(&xform);
+
+        The real power in VQS transforms is the ability to easily encode parent/child hierarchies. This is done using the two functions
+        `gs_vqs_absolute_transform` and `gs_vqs_relative_transform`: 
+
+            gs_vqs parent = ...;
+            gs_vqs child =  ...; {
+
+            gs_vqs relative = gs_vqs_relative_transform(&child, &parent);   // Get relative transform with respect to parent
+            gs_vqs absolute = gs_vqs_absolute_transform(&local, &parent);   // Get absolute transform with respect to local
+
+    GS_UTIL:
+
+        basic generic utils
+
+    GS_CONTAINERS:
+
+        gs_dyn_array: 
+
+            Inspired GREATLY from Shawn Barret's "stretchy buffer" implementation. A generic, dynamic array of type T, 
+            which is defined by the user:
+
+                gs_dyn_array(float) arr = NULL;     // Dynamic array of type float
+
+            This works by using the macro `gs_dyn_array(T)`, which evaluates to `T*`. The dynamic array stores a bit of header information
+            right before the actual array in memory for a table to describe properties of the array: 
+
+                [header][actual array data]
+
+            The header is a structure of uint32_t[2]: 
+
+                typedef struct gs_array_header_t {
+                    uint32_t size;
+                    uint32_t capacity;
+                } gs_array_header_t;
+
+            The array can be randomly accessed using the [] operator, just like any regular c array. There are also provided functions for accessing 
+            information using this provided table. This dynamic structure is the baseline for all other containers provided in gunslinger.
+
+            Array Usage:
+
+                gs_dyn_array(float) arr = NULL;             // Create dynamic array of type float.
+                gs_dyn_array_push(arr, 10.f);               // Push value into back of array. Will dynamically grow/initialize on demand.
+                float v = arr[0];                           // Gets value of array data at index 0;
+                float* vp = &arr[0];                        // Gets pointer reference of array data at index 0;
+                uint32_t sz = gs_dyn_array_size(arr);       // Gets size of array. Return 0 if NULL.
+                uint32_t cap = gs_dyn_array_capacity(arr);  // Gets capacity of array. Return 0 if NULL.
+                bool is_empty = gs_dyn_array_empty(arr);    // Returns whether array is empty. Return true if NULL.
+                gs_dyn_array_reserve(arr, 10);              // Reserves internal space in the array for N, non-initialized elements.
+                gs_dyn_array_clear(arr);                    // Clears all elements. Simply sets array size to 0.
+                gs_dyn_array_free(arr);                     // Frees array data calling `gs_free` internally.
+
+        gs_hash_table: generic hash table of key:K and val:V
+
+            Inspired GREATLY from Shawn Barret's "stb_ds.h" implementation. A generic hash table of K,V which is defined 
+            by the user:
+
+                gs_hash_table(uint32_t, float) ht = NULL;       // Creates a hash table with K = uint32_t, V = float
+
+            Internally, the hash table uses a 64-bit siphash to hash generic byte data to an unsigned 64-bit key. This means it's possible to pass up
+            arbitrary data to the hash table and it will hash accordingly, such as structures:
+
+                typedef struct key_t {
+                    uint32_t id0;
+                    uint64_t id1;
+                } key_t;
+
+                gs_hash_table(key_t, float) ht = NULL;  // Create hash table with K = key_t, V = float
+
+            Inserting into the array with "complex" types is as simple as: 
+
+                key_t k = {.ido0 = 5, .id1 = 32};   // Create structure for "key"
+                gs_hash_table_insert(ht, k, 5.f);   // Insert into hash table using key
+                float v = gs_hash_table_get(ht, k); // Get data at key
+
+            It is possible to return a reference to the data using `gs_hash_table_getp()`. However, keep in mind that this comes with the
+            danger that the reference could be lost IF the internal data array grows or shrinks in between you caching the pointer 
+            and using it.
+
+                float* val = gs_hash_table_getp(ht, k);    // Cache pointer to internal data. Dangerous game.
+                gs_hash_table_insert(ht, new_key);         // At this point, your pointer could be invalidated due to growing internal array.
+
+            Iterators:
+
+            Hash Table Usage:
+
+                gs_hash_table(uint32_t, float) ht = NULL;       // Create hash table with key = uint32_t, val = float
+                gs_hash_table_insert(ht, 64, 3.145f);           // Insert key/val pair {64, 3.145f} into hash table. Will dynamically grow/init on demand. 
+                bool exists = gs_hash_table_key_exists(ht, 64); // Use to query whether or not a key exists in the table.
+                float v = gs_hash_table_get(ht, 64);            // Get value at key = 64. Will crash if not available. 
+                float* vp = gs_hash_table_get(ht, 64);          // Get pointer reference to data at key = 64. Will crash if not available. 
+                bool is_empty = gs_hash_table_empty(ht);        // Returns whether hash table is empty. Returns true if NULL.
+                uint32_t sz = gs_hash_table_size(ht);           // Get size of hash table. Returns 0 if NULL.               
+                uint32_t cap = gs_hash_table_capacity(ht);      // Get capacity of hash table. Returns 0 if NULL.
+                gs_hash_table_clear(ht);                        // Clears all elements. Sets size to 0.
+                gs_hash_table_free(ht);                         // Frees hash table internal data calling `gs_free` internally.
+
+        gs_slot_array: 
+
+            Slot arrays are internally just dynamic arrays but alleviate the issue with losing references to internal 
+            data when the arrays grow. Slot arrays therefore hold two internals arrays: 
+
+                gs_dyn_array(T)        your_data;
+                gs_dyn_array(uint32_t) indirection_array;
+
+            The indirection array takes an opaque uint32_t handle and then dereferences it to find the actual index 
+            for the data you're interested in. Just like dynamic arrays, they are NULL initialized and then 
+            allocated/initialized internally upon use:
+
+                gs_slot_array(float) arr = NULL;                    // Slot array with internal 'float' data
+                uint32_t hndl = gs_slot_array_insert(arr, 3.145f);  // Inserts your data into the slot array, returns handle to you
+                float val = gs_slot_array_get(arr, hndl);           // Returns copy of data to you using handle as lookup
+
+            It is possible to return a reference to the data using `gs_slot_array_getp()`. However, keep in mind that this comes with the
+            danger that the reference could be lost IF the internal data array grows or shrinks in between you caching the pointer 
+            and using it.
+
+                float* val = gs_slot_array_getp(arr, hndl);     // Cache pointer to internal data. Dangerous game.
+                gs_slot_array_insert(arr, 5.f);                 // At this point, your pointer could be invalidated due to growing internal array.
+
+            Slot Array Usage:
+
+                gs_slot_array(float) sa = NULL;                   // Create slot array with internal 'float' data
+                uint32_t hndl = gs_slot_array_insert(sa, 3.145);  // Insert data into slot array. Returns uint32_t handle. Init/Grow on demand.
+                float v = gs_slot_array_get(sa, hndl);            // Get data at hndl.
+                float* vp = gs_slot_array_getp(sa, hndl);         // Get pointer reference at hndl. Dangerous.
+                uint32_t sz = gs_slot_array_size(sa);             // Size of slot array. Returns 0 if NULL.
+                uint32_t cap = gs_slot_array_capacity(sa);        // Capacity of slot array. Returns 0 if NULL.
+                gs_slot_array_empty(sa);                          // Returns whether slot array is empty. Returns true if NULL.
+                gs_slot_array_clear(sa);                          // Clears array. Sets size to 0.
+                gs_slot_array_free(sa);                           // Frees array memory. Calls `gs_free` internally.
+
+        gs_slot_map:
+
+            Works exactly the same, functionally, as gs_slot_array, however allows the user to use one more layer of indirection by 
+            hashing any data as a key type. Also worth note, the slot map does not return a handle to the user. Instead, the user is 
+            expected to use the key to access data.
+
+                gs_slot_map(float, uint64_t) sm = NULL;    // Slot map with key = float, val = uint64_t
+                gs_slot_map_insert(sm, 1.f, 32);           // Insert data into slot map.
+                uint64_t v = gs_slot_map_get(sm, 1.f);     // Returns copy of data to you at key `1.f`
+
+            Like the slot array, it is possible to return a reference via pointer using `gs_slot_map_getp()`. Again, this comes with the same 
+            danger of losing references if not careful about growing the internal data. 
+
+                uint64_t* v = gs_slot_map_getp(sm, 1.f);    // Cache pointer to data
+                gs_slot_map_insert(sm, 2.f, 10);            // Possibly have just invalidated your previous pointer
+
+            Slot Map Usage:
+
+                gs_slot_map(float, uint64_t) sm = NULL;             // Create slot map with K = float, V = uint64_t
+                uint32_t hndl = gs_slot_map_insert(sm, 3.145f, 32); // Insert data into slot map. Init/Grow on demand.
+                uint64_t v = gs_slot_map_get(sm, 3.145f);           // Get data at key.
+                uint64_t* vp = gs_slot_map_getp(sm, 3.145f);        // Get pointer reference at hndl. Dangerous.
+                uint32_t sz = gs_slot_map_size(sm);                 // Size of slot map. Returns 0 if NULL.
+                uint32_t cap = gs_slot_map_capacity(sm);            // Capacity of slot map. Returns 0 if NULL.
+                gs_slot_map_empty(sm);                              // Returns whether slot map is empty. Returns true if NULL.
+                gs_slot_map_clear(sm);                              // Clears map. Sets size to 0.
+                gs_slot_map_free(sm);                               // Frees map memory. Calls `gs_free` internally.
+
+    GS_PLATFORM:
+
+    GS_AUDIO:
+
+    GS_GRAPHICS:
+
 */
 
 /*===== Gunslinger Include ======*/
@@ -123,11 +379,15 @@ extern "C" {
 ===========================================================*/
 
 #ifndef gs_inline
-    #define gs_inline               static inline
+    #define gs_inline static inline
 #endif
 
 #ifndef gs_local_persist
-    #define gs_local_persist        static
+    #define gs_local_persist static
+#endif
+
+#ifndef gs_global
+    #define gs_global static
 #endif
 
  #if (defined _WIN32 || defined _WIN64)
@@ -136,10 +396,6 @@ extern "C" {
     #define gs_force_inline static __attribute__((always_inline))
 #else
     #define gs_force_inline gs_inline
-#endif
-
-#ifndef gs_global
-    #define gs_global               static
 #endif
 
 /*===================
