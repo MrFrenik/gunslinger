@@ -19,11 +19,11 @@
 ╚═██════════════════════════════════════════════════════════════════════════════════════██═╝*/
 
 /*
-	USAGE: (IMPORTANT)
+    USAGE: (IMPORTANT)
 
-	=================================================================================================================
+    =================================================================================================================
 
-	Before including, define the gunslinger implementation like this:
+    Before including, define the gunslinger implementation like this:
 
 	      #define GS_IMPL
 
@@ -37,23 +37,62 @@
 
     (Thanks to SB for the template for this instructional message. I was too lazy to come up with my own wording.)
 
-	================================================================================================================
+    ================================================================================================================
 
-	Contained within:
-		* GS_UTIL
-		* GS_CONTAINERS
-		* GS_ASSET_TYPES
-		* GS_MATH
-		* GS_PLATFORM
-		* GS_GRAPHICS
-		* GS_AUDIO
+    Contained within:
+	    * GS_UTIL
+	    * GS_CONTAINERS
+	    * GS_ASSET_TYPES
+	    * GS_MATH
+	    * GS_PLATFORM
+	    * GS_GRAPHICS
+	    * GS_AUDIO
 
 	// All main interface stuff in here, then system implementations can be in separate header files
 	// All implementations will be in impl/xxx.h
 	// You can define which implementation you want to have, whether it be GLFW, Win32, Apple, or a custom impl
 	// This is just to keep everything from being in one huge file
 
-	TOOD(john): Give examples, descriptions
+    ================================================================================================================
+
+    Applications:
+
+    Gunslinger is a framework that expects to take flow control over your app and calls into your code
+    at certain sync points. These points are 'init', 'update', and 'shutdown'. When creating your application, 
+    you provide certain information to the framework via a `gs_app_desc_t` descriptor object. 
+
+    Basic Example Application (if using `gs_main`):
+
+        #define GS_IMPL
+        #include "gs.h"
+
+        void init() {
+            // Do your initialization	
+        }
+
+        void update() {
+            // Do your updates	
+        }
+
+        void shutdown() {
+	        // Do your shutdown
+        }
+
+        gs_app_desc_t gs_main(int32_t argc, char** argv) {
+	        return (gs_app_desc_t) {
+                .init = init,		 // Function pointer to call into your init code
+                .update = update,	 // Function pointer to call into your update code
+                .shutdown = shutdown // Function pointer to call into your shutdown code
+	        };
+        }
+
+    If you do not provide information for any of this information, defaults will be provided by the framework.
+    Therefore, it is possible to return an empty app descriptor back to the framework to run:
+
+        gs_app_desc_t gs_main(int32_t argc, char** argv) {
+	        return (gs_app_desc_t){0};
+        }
+
 */
 
 /*===== Gunslinger Include ======*/
@@ -66,29 +105,29 @@ extern "C" {
 // Defines
 ========================*/
 
-#include <stdarg.h>		// valist
-#include <stddef.h>		// ptrdiff_t
-#include <stdlib.h>		// malloc, realloc, free
-#include <stdint.h>		// standard types
-#include <limits.h>		// INT32_MAX, UINT32_MAX
+#include <stdarg.h>     // valist
+#include <stddef.h>     // ptrdiff_t
+#include <stdlib.h>     // malloc, realloc, free
+#include <stdint.h>     // standard types
+#include <limits.h>     // INT32_MAX, UINT32_MAX
 #include <string.h> 	// memset
-#include <float.h>		// FLT_MAX
-#include <stdio.h> 		// FILE
-#include <time.h>		// time
-#include <ctype.h>		// tolower
-#include <math.h>		// floor, acos, sin, sqrt, tan
-#include <assert.h>		// assert
+#include <float.h>      // FLT_MAX
+#include <stdio.h>      // FILE
+#include <time.h>       // time
+#include <ctype.h>      // tolower
+#include <math.h>       // floor, acos, sin, sqrt, tan
+#include <assert.h>     // assert
 
 /*===========================================================
 // gs_inline, gs_global, gs_local_persist, gs_force_inline
 ===========================================================*/
 
 #ifndef gs_inline
-	#define gs_inline 			static inline
+	#define gs_inline               static inline
 #endif
 
 #ifndef gs_local_persist
-	#define gs_local_persist 	static
+	#define gs_local_persist        static
 #endif
 
  #if (defined _WIN32 || defined _WIN64)
@@ -100,7 +139,7 @@ extern "C" {
 #endif
 
 #ifndef gs_global
-	#define gs_global 			static
+	#define gs_global               static
 #endif
 
 /*===================
@@ -117,43 +156,43 @@ extern "C" {
 ============================================================*/
 
 #ifndef __cplusplus
-	#define false 		0
-	#define true 		1
+        #define false     0
+        #define true      1
 #endif
 
 #ifdef __cplusplus
-	typedef bool 		b8;
+        typedef bool      b8;
 #else
-	typedef _Bool 		bool;
-	typedef bool 		b8;
+        typedef _Bool     bool;
+        typedef bool      b8;
 #endif
 
-typedef size_t		usize;
+typedef size_t            usize;
 
-typedef uint8_t 		u8;
-typedef int8_t 			s8;
-typedef uint16_t 		u16;
-typedef int16_t 		s16;
-typedef uint32_t 		u32;
-typedef int32_t			s32;
-typedef s32 			b32;
-typedef uint64_t		u64;
-typedef int64_t			s64;
-typedef float 	 		f32;
-typedef double			f64;
-typedef const char* 	const_str;
+typedef uint8_t           u8;
+typedef int8_t            s8;
+typedef uint16_t          u16;
+typedef int16_t           s16;
+typedef uint32_t          u32;
+typedef int32_t           s32;
+typedef s32               b32;
+typedef uint64_t          u64;
+typedef int64_t           s64;
+typedef float             f32;
+typedef double            f64;
+typedef const char*       const_str;
 
-typedef int32_t 		bool32_t;
-typedef float 			float32_t;
-typedef double 			float64_t;
+typedef int32_t           bool32_t;
+typedef float             float32_t;
+typedef double            float64_t;
 
-typedef bool32_t 		bool32;
+typedef bool32_t          bool32;
 
-#define uint16_max 		UINT16_MAX
-#define uint32_max		UINT32_MAX
-#define int32_max		INT32_MAX
-#define float_max 		FLT_MAX
-#define float_min 		FLT_MIN
+#define uint16_max        UINT16_MAX
+#define uint32_max        UINT32_MAX
+#define int32_max         INT32_MAX
+#define float_max         FLT_MAX
+#define float_min         FLT_MIN
 
 /*============================================================
 // gs utils
@@ -941,14 +980,14 @@ GS_API_DECL bool32_t gs_util_load_texture_data_from_file(const char* file_path, 
 // Byte Buffer
 ========================*/
 
-#define GS_BYTE_BUFFER_DEFAULT_CAPCITY 		1024
+#define GS_BYTE_BUFFER_DEFAULT_CAPCITY 	1024
 
 typedef struct gs_byte_buffer_t
 {
-	uint8_t* data;					// Buffer that actually holds all relevant byte data
-	uint32_t size;					// Current size of the stored buffer data
-	uint32_t position;				// Current read/write position in the buffer
-	uint32_t capacity;				// Current max capacity for the buffer
+	uint8_t* data;      // Buffer that actually holds all relevant byte data
+	uint32_t size;      // Current size of the stored buffer data
+	uint32_t position;  // Current read/write position in the buffer
+	uint32_t capacity;  // Current max capacity for the buffer
 } gs_byte_buffer_t;
 
 // Generic "write" function for a byte buffer
@@ -1016,10 +1055,10 @@ GS_API_DECL void gs_byte_buffer_seek_to_end(gs_byte_buffer_t* buffer);
 GS_API_DECL void gs_byte_buffer_advance_position(gs_byte_buffer_t* buffer, size_t sz);
 
 /* Desc */
-GS_API_DECL void gs_byte_buffer_write_str(gs_byte_buffer_t* buffer, const char* str);		// Expects a null terminated string
+GS_API_DECL void gs_byte_buffer_write_str(gs_byte_buffer_t* buffer, const char* str);                   // Expects a null terminated string
 
 /* Desc */
-GS_API_DECL void gs_byte_buffer_read_str(gs_byte_buffer_t* buffer, char* str);				// Expects an allocated string
+GS_API_DECL void gs_byte_buffer_read_str(gs_byte_buffer_t* buffer, char* str);                          // Expects an allocated string
 
 /* Desc */
 GS_API_DECL void gs_byte_buffer_write_bulk(gs_byte_buffer_t* buffer, void* src, size_t sz);
@@ -1028,10 +1067,10 @@ GS_API_DECL void gs_byte_buffer_write_bulk(gs_byte_buffer_t* buffer, void* src, 
 GS_API_DECL void gs_byte_buffer_read_bulk(gs_byte_buffer_t* buffer, void** dst, size_t sz);
 
 /* Desc */
-GS_API_DECL gs_result gs_byte_buffer_write_to_file(gs_byte_buffer_t* buffer, const char* output_path); 	// Assumes that the output directory exists
+GS_API_DECL gs_result gs_byte_buffer_write_to_file(gs_byte_buffer_t* buffer, const char* output_path);  // Assumes that the output directory exists
 
 /* Desc */
-GS_API_DECL gs_result gs_byte_buffer_read_from_file(gs_byte_buffer_t* buffer, const char* file_path);	// Assumes an allocated byte buffer
+GS_API_DECL gs_result gs_byte_buffer_read_from_file(gs_byte_buffer_t* buffer, const char* file_path);   // Assumes an allocated byte buffer
 
 /*===================================
 // Dynamic Array
@@ -1193,8 +1232,8 @@ void gs_dyn_array_set_data_i(void** arr, void* val, size_t val_len, uint32_t off
 	If using struct for keys, requires struct to be word-aligned.
 */
 
-#define GS_HASH_TABLE_HASH_SEED 		0x31415296
-#define GS_HASH_TABLE_INVALID_INDEX 	UINT32_MAX
+#define GS_HASH_TABLE_HASH_SEED         0x31415296
+#define GS_HASH_TABLE_INVALID_INDEX     UINT32_MAX
 
 typedef enum gs_hash_table_entry_state
 {
@@ -3133,205 +3172,205 @@ typedef struct gs_uuid_t
 
 typedef enum gs_platform_cursor
 {
-	GS_PLATFORM_CURSOR_ARROW,
-	GS_PLATFORM_CURSOR_IBEAM,
-	GS_PLATFORM_CURSOR_SIZE_NW_SE,
-	GS_PLATFORM_CURSOR_SIZE_NE_SW,
-	GS_PLATFORM_CURSOR_SIZE_NS,
-	GS_PLATFORM_CURSOR_SIZE_WE,
-	GS_PLATFORM_CURSOR_SIZE_ALL,
-	GS_PLATFORM_CURSOR_HAND,
-	GS_PLATFORM_CURSOR_NO,
-	GS_PLATFORM_CURSOR_COUNT
+    GS_PLATFORM_CURSOR_ARROW,
+    GS_PLATFORM_CURSOR_IBEAM,
+    GS_PLATFORM_CURSOR_SIZE_NW_SE,
+    GS_PLATFORM_CURSOR_SIZE_NE_SW,
+    GS_PLATFORM_CURSOR_SIZE_NS,
+    GS_PLATFORM_CURSOR_SIZE_WE,
+    GS_PLATFORM_CURSOR_SIZE_ALL,
+    GS_PLATFORM_CURSOR_HAND,
+    GS_PLATFORM_CURSOR_NO,
+    GS_PLATFORM_CURSOR_COUNT
 } gs_platform_cursor;
 
 typedef enum gs_platform_keycode
 {
-	GS_KEYCODE_A,
-	GS_KEYCODE_B,
-	GS_KEYCODE_C,
-	GS_KEYCODE_D,
-	GS_KEYCODE_E,
-	GS_KEYCODE_F,
-	GS_KEYCODE_G,
-	GS_KEYCODE_H,
-	GS_KEYCODE_I,
-	GS_KEYCODE_J,
-	GS_KEYCODE_K,
-	GS_KEYCODE_L,
-	GS_KEYCODE_M,
-	GS_KEYCODE_N,
-	GS_KEYCODE_O,
-	GS_KEYCODE_P,
-	GS_KEYCODE_Q,
-	GS_KEYCODE_R,
-	GS_KEYCODE_S,
-	GS_KEYCODE_T,
-	GS_KEYCODE_U,
-	GS_KEYCODE_V,
-	GS_KEYCODE_W,
-	GS_KEYCODE_X,
-	GS_KEYCODE_Y,
-	GS_KEYCODE_Z,
-	GS_KEYCODE_LSHIFT,
-	GS_KEYCODE_RSHIFT,
-	GS_KEYCODE_LALT,
-	GS_KEYCODE_RALT,
-	GS_KEYCODE_LCTRL,
-	GS_KEYCODE_RCTRL,
-	GS_KEYCODE_BSPACE,
-	GS_KEYCODE_BSLASH,
-	GS_KEYCODE_QMARK,
-	GS_KEYCODE_TILDE,
-	GS_KEYCODE_COMMA,
-	GS_KEYCODE_PERIOD,
-	GS_KEYCODE_ESC, 
-	GS_KEYCODE_SPACE,
-	GS_KEYCODE_LEFT,
-	GS_KEYCODE_UP,
-	GS_KEYCODE_RIGHT,
-	GS_KEYCODE_DOWN,
-	GS_KEYCODE_ZERO,
-	GS_KEYCODE_ONE,
-	GS_KEYCODE_TWO,
-	GS_KEYCODE_THREE,
-	GS_KEYCODE_FOUR,
-	GS_KEYCODE_FIVE,
-	GS_KEYCODE_SIX,
-	GS_KEYCODE_SEVEN,
-	GS_KEYCODE_EIGHT,
-	GS_KEYCODE_NINE,
-	GS_KEYCODE_NPZERO,
-	GS_KEYCODE_NPONE,
-	GS_KEYCODE_NPTWO,
-	GS_KEYCODE_NPTHREE,
-	GS_KEYCODE_NPFOUR,
-	GS_KEYCODE_NPFIVE,
-	GS_KEYCODE_NPSIX,
-	GS_KEYCODE_NPSEVEN,
-	GS_KEYCODE_NPEIGHT,
-	GS_KEYCODE_NPNINE,
-	GS_KEYCODE_CAPS,
-	GS_KEYCODE_DELETE,
-	GS_KEYCODE_END,
-	GS_KEYCODE_F1,
-	GS_KEYCODE_F2,
-	GS_KEYCODE_F3,
-	GS_KEYCODE_F4,
-	GS_KEYCODE_F5,
-	GS_KEYCODE_F6,
-	GS_KEYCODE_F7,
-	GS_KEYCODE_F8,
-	GS_KEYCODE_F9,
-	GS_KEYCODE_F10,
-	GS_KEYCODE_F11,
-	GS_KEYCODE_F12,
-	GS_KEYCODE_HOME,
-	GS_KEYCODE_PLUS,
-	GS_KEYCODE_MINUS,
-	GS_KEYCODE_LBRACKET,
-	GS_KEYCODE_RBRACKET,
-	GS_KEYCODE_SEMI_COLON,
-	GS_KEYCODE_ENTER,
-	GS_KEYCODE_INSERT,
-	GS_KEYCODE_PGUP,
-	GS_KEYCODE_PGDOWN,
-	GS_KEYCODE_NUMLOCK,
-	GS_KEYCODE_TAB,
-	GS_KEYCODE_NPMULT,
-	GS_KEYCODE_NPDIV,
-	GS_KEYCODE_NPPLUS,
-	GS_KEYCODE_NPMINUS,
-	GS_KEYCODE_NPENTER,
-	GS_KEYCODE_NPDEL,
-	GS_KEYCODE_MUTE,
-	GS_KEYCODE_VOLUP,
-	GS_KEYCODE_VOLDOWN,
-	GS_KEYCODE_PAUSE,
-	GS_KEYCODE_PRINT,
-	GS_KEYCODE_COUNT
+    GS_KEYCODE_A,
+    GS_KEYCODE_B,
+    GS_KEYCODE_C,
+    GS_KEYCODE_D,
+    GS_KEYCODE_E,
+    GS_KEYCODE_F,
+    GS_KEYCODE_G,
+    GS_KEYCODE_H,
+    GS_KEYCODE_I,
+    GS_KEYCODE_J,
+    GS_KEYCODE_K,
+    GS_KEYCODE_L,
+    GS_KEYCODE_M,
+    GS_KEYCODE_N,
+    GS_KEYCODE_O,
+    GS_KEYCODE_P,
+    GS_KEYCODE_Q,
+    GS_KEYCODE_R,
+    GS_KEYCODE_S,
+    GS_KEYCODE_T,
+    GS_KEYCODE_U,
+    GS_KEYCODE_V,
+    GS_KEYCODE_W,
+    GS_KEYCODE_X,
+    GS_KEYCODE_Y,
+    GS_KEYCODE_Z,
+    GS_KEYCODE_LSHIFT,
+    GS_KEYCODE_RSHIFT,
+    GS_KEYCODE_LALT,
+    GS_KEYCODE_RALT,
+    GS_KEYCODE_LCTRL,
+    GS_KEYCODE_RCTRL,
+    GS_KEYCODE_BSPACE,
+    GS_KEYCODE_BSLASH,
+    GS_KEYCODE_QMARK,
+    GS_KEYCODE_TILDE,
+    GS_KEYCODE_COMMA,
+    GS_KEYCODE_PERIOD,
+    GS_KEYCODE_ESC, 
+    GS_KEYCODE_SPACE,
+    GS_KEYCODE_LEFT,
+    GS_KEYCODE_UP,
+    GS_KEYCODE_RIGHT,
+    GS_KEYCODE_DOWN,
+    GS_KEYCODE_ZERO,
+    GS_KEYCODE_ONE,
+    GS_KEYCODE_TWO,
+    GS_KEYCODE_THREE,
+    GS_KEYCODE_FOUR,
+    GS_KEYCODE_FIVE,
+    GS_KEYCODE_SIX,
+    GS_KEYCODE_SEVEN,
+    GS_KEYCODE_EIGHT,
+    GS_KEYCODE_NINE,
+    GS_KEYCODE_NPZERO,
+    GS_KEYCODE_NPONE,
+    GS_KEYCODE_NPTWO,
+    GS_KEYCODE_NPTHREE,
+    GS_KEYCODE_NPFOUR,
+    GS_KEYCODE_NPFIVE,
+    GS_KEYCODE_NPSIX,
+    GS_KEYCODE_NPSEVEN,
+    GS_KEYCODE_NPEIGHT,
+    GS_KEYCODE_NPNINE,
+    GS_KEYCODE_CAPS,
+    GS_KEYCODE_DELETE,
+    GS_KEYCODE_END,
+    GS_KEYCODE_F1,
+    GS_KEYCODE_F2,
+    GS_KEYCODE_F3,
+    GS_KEYCODE_F4,
+    GS_KEYCODE_F5,
+    GS_KEYCODE_F6,
+    GS_KEYCODE_F7,
+    GS_KEYCODE_F8,
+    GS_KEYCODE_F9,
+    GS_KEYCODE_F10,
+    GS_KEYCODE_F11,
+    GS_KEYCODE_F12,
+    GS_KEYCODE_HOME,
+    GS_KEYCODE_PLUS,
+    GS_KEYCODE_MINUS,
+    GS_KEYCODE_LBRACKET,
+    GS_KEYCODE_RBRACKET,
+    GS_KEYCODE_SEMI_COLON,
+    GS_KEYCODE_ENTER,
+    GS_KEYCODE_INSERT,
+    GS_KEYCODE_PGUP,
+    GS_KEYCODE_PGDOWN,
+    GS_KEYCODE_NUMLOCK,
+    GS_KEYCODE_TAB,
+    GS_KEYCODE_NPMULT,
+    GS_KEYCODE_NPDIV,
+    GS_KEYCODE_NPPLUS,
+    GS_KEYCODE_NPMINUS,
+    GS_KEYCODE_NPENTER,
+    GS_KEYCODE_NPDEL,
+    GS_KEYCODE_MUTE,
+    GS_KEYCODE_VOLUP,
+    GS_KEYCODE_VOLDOWN,
+    GS_KEYCODE_PAUSE,
+    GS_KEYCODE_PRINT,
+    GS_KEYCODE_COUNT
 } gs_platform_keycode;
 
 typedef enum gs_platform_mouse_button_code
 {
-	GS_MOUSE_LBUTTON,
-	GS_MOUSE_RBUTTON,
-	GS_MOUSE_MBUTTON,
-	GS_MOUSE_BUTTON_CODE_COUNT
+    GS_MOUSE_LBUTTON,
+    GS_MOUSE_RBUTTON,
+    GS_MOUSE_MBUTTON,
+    GS_MOUSE_BUTTON_CODE_COUNT
 } gs_platform_mouse_button_code;
 
 typedef struct gs_platform_mouse_t
 {
-	b32 button_map[GS_MOUSE_BUTTON_CODE_COUNT];
-	b32 prev_button_map[GS_MOUSE_BUTTON_CODE_COUNT];
-	gs_vec2 position;
-	gs_vec2 prev_position;
-	gs_vec2 wheel;
-	b32 moved_this_frame;
+    b32 button_map[GS_MOUSE_BUTTON_CODE_COUNT];
+    b32 prev_button_map[GS_MOUSE_BUTTON_CODE_COUNT];
+    gs_vec2 position;
+    gs_vec2 prev_position;
+    gs_vec2 wheel;
+    b32 moved_this_frame;
 } gs_platform_mouse_t;
 
 typedef struct gs_platform_input_t
 {
-	b32 key_map[GS_KEYCODE_COUNT];
-	b32 prev_key_map[GS_KEYCODE_COUNT];
-	gs_platform_mouse_t mouse;
+    b32 key_map[GS_KEYCODE_COUNT];
+    b32 prev_key_map[GS_KEYCODE_COUNT];
+    gs_platform_mouse_t mouse;
 } gs_platform_input_t;
 
 // Enumeration of all platform type
 typedef enum gs_platform_type
 {
-	GS_PLATFORM_TYPE_UNKNOWN = 0,
-	GS_PLATFORM_TYPE_WINDOWS,
-	GS_PLATFORM_TYPE_LINUX,
-	GS_PLATFORM_TYPE_MAC
+    GS_PLATFORM_TYPE_UNKNOWN = 0,
+    GS_PLATFORM_TYPE_WINDOWS,
+    GS_PLATFORM_TYPE_LINUX,
+    GS_PLATFORM_TYPE_MAC
 } gs_platform_type;
 
 typedef enum gs_platform_video_driver_type
 {
-	GS_PLATFORM_VIDEO_DRIVER_TYPE_NONE = 0,
-	GS_PLATFORM_VIDEO_DRIVER_TYPE_OPENGL,
-	GS_PLATFORM_VIDEO_DRIVER_TYPE_OPENGLES,
-	GS_PLATFORM_VIDEO_DRIVER_TYPE_DIRECTX,
-	GS_PLATFORM_VIDEO_DRIVER_TYPE_VULKAN,
-	GS_PLATFORM_VIDEO_DRIVER_TYPE_METAL,
-	GS_PLATFORM_VIDEO_DRIVER_TYPE_SOFTWARE
+    GS_PLATFORM_VIDEO_DRIVER_TYPE_NONE = 0,
+    GS_PLATFORM_VIDEO_DRIVER_TYPE_OPENGL,
+    GS_PLATFORM_VIDEO_DRIVER_TYPE_OPENGLES,
+    GS_PLATFORM_VIDEO_DRIVER_TYPE_DIRECTX,
+    GS_PLATFORM_VIDEO_DRIVER_TYPE_VULKAN,
+    GS_PLATFORM_VIDEO_DRIVER_TYPE_METAL,
+    GS_PLATFORM_VIDEO_DRIVER_TYPE_SOFTWARE
 } gs_platform_video_driver_type;
 
 typedef enum gs_opengl_compatibility_flags
 {
-	GS_OPENGL_COMPATIBILITY_FLAGS_LEGACY 		= 0,
-	GS_OPENGL_COMPATIBILITY_FLAGS_CORE 			= 1 << 1,
-	GS_OPENGL_COMPATIBILITY_FLAGS_COMPATIBILITY = 1 << 2,
-	GS_OPENGL_COMPATIBILITY_FLAGS_FORWARD 		= 1 << 3,
-	GS_OPENGL_COMPATIBILITY_FLAGS_ES 			= 1 << 4,
+   GS_OPENGL_COMPATIBILITY_FLAGS_LEGACY        = 0,
+   GS_OPENGL_COMPATIBILITY_FLAGS_CORE          = 1 << 1,
+   GS_OPENGL_COMPATIBILITY_FLAGS_COMPATIBILITY = 1 << 2,
+   GS_OPENGL_COMPATIBILITY_FLAGS_FORWARD       = 1 << 3,
+   GS_OPENGL_COMPATIBILITY_FLAGS_ES            = 1 << 4,
 } gs_opengl_compatibility_flags;
 
 // A structure that contains OpenGL video settings
 typedef struct gs_opengl_video_settings_t 
 {
-	gs_opengl_compatibility_flags 	compability_flags;
-	uint32_t 						major_version;
-	uint32_t 						minor_version;
-	uint8_t 						multi_sampling_count;
-	void* 							ctx;
+    gs_opengl_compatibility_flags compability_flags;
+    uint32_t                      major_version;
+    uint32_t                      minor_version;
+    uint8_t                       multi_sampling_count;
+    void*                         ctx;
 } gs_opengl_video_settings_t;
 	
 typedef union gs_graphics_api_settings_t
 {
-	gs_opengl_video_settings_t 	opengl;
-	int32_t 					dummy;	
+	gs_opengl_video_settings_t opengl;
+	int32_t                    dummy;	
 } gs_graphics_api_settings_t;
 
 typedef struct gs_platform_video_settings_t
 {
-	gs_graphics_api_settings_t 		graphics;
-	gs_platform_video_driver_type 	driver;
-	b32 							vsync_enabled;
+	gs_graphics_api_settings_t      graphics;
+	gs_platform_video_driver_type   driver;
+	b32                             vsync_enabled;
 } gs_platform_video_settings_t;
 
 typedef struct gs_platform_settings_t
 {
-	gs_platform_video_settings_t video;
+    gs_platform_video_settings_t video;
 } gs_platform_settings_t;
 
 // Necessary function pointer typedefs
@@ -3344,23 +3383,23 @@ typedef void (* gs_window_close_callback_t)(void*);
 
 typedef struct gs_platform_i
 {
-	// Settings for platform, including video
-	gs_platform_settings_t settings;
+    // Settings for platform, including video
+    gs_platform_settings_t settings;
 
-	// Time
-	gs_platform_time_t time;
+    // Time
+    gs_platform_time_t time;
 
-	// Input
-	gs_platform_input_t input;
+    // Input
+    gs_platform_input_t input;
 
-	// Window data and handles
-	gs_slot_array(void*) windows;
+    // Window data and handles
+    gs_slot_array(void*) windows;
 
-	// Cursors
-	void* cursors[GS_PLATFORM_CURSOR_COUNT];
+    // Cursors
+    void* cursors[GS_PLATFORM_CURSOR_COUNT];
 
-	// Specific user data (for custom implementations)
-	void* user_data;
+    // Specific user data (for custom implementations)
+    void* user_data;
 } gs_platform_i;
 
 /*===============================================================================================
@@ -3368,72 +3407,72 @@ typedef struct gs_platform_i
 ===============================================================================================*/
 
 // Platform Init / Shutdown
-GS_API_DECL gs_platform_i* 	gs_platform_create();
-GS_API_DECL void 			gs_platform_destroy(gs_platform_i* platform);
-GS_API_DECL gs_result 		gs_platform_init(gs_platform_i* platform);		// Initialize global platform layer
-GS_API_DECL gs_result 		gs_platform_shutdown(gs_platform_i* platform);	// Shutdown gloabl platform layer
+GS_API_DECL gs_platform_i*  gs_platform_create();
+GS_API_DECL void            gs_platform_destroy(gs_platform_i* platform);
+GS_API_DECL gs_result       gs_platform_init(gs_platform_i* platform);      // Initialize global platform layer
+GS_API_DECL gs_result       gs_platform_shutdown(gs_platform_i* platform);	// Shutdown gloabl platform layer
 
 // Platform Util
-GS_API_DECL void 	gs_platform_sleep(float ms);	// Sleeps platform for time in ms
-GS_API_DECL double 	gs_platform_elapsed_time(); 	// Returns time in ms since initialization of platform
+GS_API_DECL void   gs_platform_sleep(float ms);	// Sleeps platform for time in ms
+GS_API_DECL double gs_platform_elapsed_time(); 	// Returns time in ms since initialization of platform
 
 // Platform Video
-GS_API_DECL void  gs_platform_enable_vsync(int32_t enabled);
+GS_API_DECL void gs_platform_enable_vsync(int32_t enabled);
 
 // Platform UUID
-GS_API_DECL gs_uuid_t 	gs_platform_generate_uuid();
-GS_API_DECL void 		gs_platform_uuid_to_string(char* temp_buffer, const gs_uuid_t* uuid); // Expects a temp buffer with at leat 32 bytes
-GS_API_DECL uint32_t 	gs_platform_hash_uuid(const gs_uuid_t* uuid);
+GS_API_DECL gs_uuid_t gs_platform_generate_uuid();
+GS_API_DECL void      gs_platform_uuid_to_string(char* temp_buffer, const gs_uuid_t* uuid); // Expects a temp buffer with at leat 32 bytes
+GS_API_DECL uint32_t  gs_platform_hash_uuid(const gs_uuid_t* uuid);
 
 // Platform Input
-GS_API_DECL gs_result 	gs_platform_process_input();
-GS_API_DECL void 		gs_platform_update_input();
-GS_API_DECL void 		gs_platform_press_key(gs_platform_keycode code);
-GS_API_DECL void  		gs_platform_release_key(gs_platform_keycode code);
-GS_API_DECL bool 		gs_platform_was_key_down(gs_platform_keycode code);
-GS_API_DECL bool 		gs_platform_key_pressed(gs_platform_keycode code);
-GS_API_DECL bool 		gs_platform_key_down(gs_platform_keycode code);
-GS_API_DECL bool 		gs_platform_key_released(gs_platform_keycode code);
-GS_API_DECL void  		gs_platform_press_mouse_button(gs_platform_mouse_button_code code);
-GS_API_DECL void  		gs_platform_release_mouse_button(gs_platform_mouse_button_code code);
-GS_API_DECL bool 		gs_platform_was_mouse_down(gs_platform_mouse_button_code code);
-GS_API_DECL bool 		gs_platform_mouse_pressed(gs_platform_mouse_button_code code);
-GS_API_DECL bool 		gs_platform_mouse_down(gs_platform_mouse_button_code code);
-GS_API_DECL bool 		gs_platform_mouse_released(gs_platform_mouse_button_code code);
-GS_API_DECL void  		gs_platform_set_mouse_position(uint32_t handle, float x, float y);
-GS_API_DECL gs_vec2 	gs_platform_mouse_deltav();
-GS_API_DECL void 		gs_platform_mouse_delta(float* x, float* y);
-GS_API_DECL gs_vec2 	gs_platform_mouse_positionv();
-GS_API_DECL void  		gs_platform_mouse_position(float* x, float* y);
-GS_API_DECL void  		gs_platform_mouse_wheel(float* x, float* y);
-GS_API_DECL bool 		gs_platform_mouse_moved();
+GS_API_DECL gs_result gs_platform_process_input();
+GS_API_DECL void      gs_platform_update_input();
+GS_API_DECL void      gs_platform_press_key(gs_platform_keycode code);
+GS_API_DECL void      gs_platform_release_key(gs_platform_keycode code);
+GS_API_DECL bool      gs_platform_was_key_down(gs_platform_keycode code);
+GS_API_DECL bool      gs_platform_key_pressed(gs_platform_keycode code);
+GS_API_DECL bool      gs_platform_key_down(gs_platform_keycode code);
+GS_API_DECL bool      gs_platform_key_released(gs_platform_keycode code);
+GS_API_DECL void      gs_platform_press_mouse_button(gs_platform_mouse_button_code code);
+GS_API_DECL void      gs_platform_release_mouse_button(gs_platform_mouse_button_code code);
+GS_API_DECL bool      gs_platform_was_mouse_down(gs_platform_mouse_button_code code);
+GS_API_DECL bool      gs_platform_mouse_pressed(gs_platform_mouse_button_code code);
+GS_API_DECL bool      gs_platform_mouse_down(gs_platform_mouse_button_code code);
+GS_API_DECL bool      gs_platform_mouse_released(gs_platform_mouse_button_code code);
+GS_API_DECL void      gs_platform_set_mouse_position(uint32_t handle, float x, float y);
+GS_API_DECL gs_vec2   gs_platform_mouse_deltav();
+GS_API_DECL void      gs_platform_mouse_delta(float* x, float* y);
+GS_API_DECL gs_vec2   gs_platform_mouse_positionv();
+GS_API_DECL void      gs_platform_mouse_position(float* x, float* y);
+GS_API_DECL void      gs_platform_mouse_wheel(float* x, float* y);
+GS_API_DECL bool      gs_platform_mouse_moved();
 
 // Platform Window
-GS_API_DECL uint32_t 	gs_platform_create_window(const char* title, uint32_t width, uint32_t height);
-GS_API_DECL void * 		gs_platform_create_window_internal(const char* title, uint32_t width, uint32_t height);
-GS_API_DECL void  		gs_platform_window_swap_buffer(uint32_t handle);
-GS_API_DECL gs_vec2 	gs_platform_window_sizev(uint32_t handle);
-GS_API_DECL void  		gs_platform_window_size(uint32_t handle, uint32_t* width, uint32_t* height);
-GS_API_DECL uint32_t  	gs_platform_window_width(uint32_t handle);
-GS_API_DECL uint32_t  	gs_platform_window_height(uint32_t handle);
-GS_API_DECL void  		gs_platform_set_window_size(uint32_t handle, uint32_t width, uint32_t height);
-GS_API_DECL void 		gs_platform_set_window_sizev(uint32_t handle, gs_vec2 v);
-GS_API_DECL void  		gs_platform_set_cursor(uint32_t handle, gs_platform_cursor cursor);
-GS_API_DECL uint32_t 	gs_platform_main_window();
-GS_API_DECL void  		gs_platform_set_dropped_files_callback(uint32_t handle, gs_dropped_files_callback_t cb);
-GS_API_DECL void  		gs_platform_set_window_close_callback(uint32_t handle, gs_window_close_callback_t cb);
-GS_API_DECL void * 		gs_platform_raw_window_handle(uint32_t handle);
-GS_API_DECL gs_vec2 	gs_platform_framebuffer_sizev(uint32_t handle);
-GS_API_DECL void  		gs_platform_framebuffer_size(uint32_t handle, uint32_t* w, uint32_t* h);
-GS_API_DECL uint32_t  	gs_platform_framebuffer_width(uint32_t handle);
-GS_API_DECL uint32_t  	gs_platform_framebuffer_height(uint32_t handle);
+GS_API_DECL uint32_t gs_platform_create_window(const char* title, uint32_t width, uint32_t height);
+GS_API_DECL void*    gs_platform_create_window_internal(const char* title, uint32_t width, uint32_t height);
+GS_API_DECL void  	 gs_platform_window_swap_buffer(uint32_t handle);
+GS_API_DECL gs_vec2  gs_platform_window_sizev(uint32_t handle);
+GS_API_DECL void     gs_platform_window_size(uint32_t handle, uint32_t* width, uint32_t* height);
+GS_API_DECL uint32_t gs_platform_window_width(uint32_t handle);
+GS_API_DECL uint32_t gs_platform_window_height(uint32_t handle);
+GS_API_DECL void     gs_platform_set_window_size(uint32_t handle, uint32_t width, uint32_t height);
+GS_API_DECL void     gs_platform_set_window_sizev(uint32_t handle, gs_vec2 v);
+GS_API_DECL void     gs_platform_set_cursor(uint32_t handle, gs_platform_cursor cursor);
+GS_API_DECL uint32_t gs_platform_main_window();
+GS_API_DECL void     gs_platform_set_dropped_files_callback(uint32_t handle, gs_dropped_files_callback_t cb);
+GS_API_DECL void     gs_platform_set_window_close_callback(uint32_t handle, gs_window_close_callback_t cb);
+GS_API_DECL void*    gs_platform_raw_window_handle(uint32_t handle);
+GS_API_DECL gs_vec2  gs_platform_framebuffer_sizev(uint32_t handle);
+GS_API_DECL void     gs_platform_framebuffer_size(uint32_t handle, uint32_t* w, uint32_t* h);
+GS_API_DECL uint32_t gs_platform_framebuffer_width(uint32_t handle);
+GS_API_DECL uint32_t gs_platform_framebuffer_height(uint32_t handle);
 
 // Platform File IO
-GS_API_DECL char* 		gs_platform_read_file_contents(const char* file_path, const char* mode, int32_t* sz);
-GS_API_DECL gs_result   gs_platform_write_file_contents(const char* file_path, const char* mode, void* data, size_t data_size);
-GS_API_DECL bool 		gs_platform_file_exists(const char* file_path);
-GS_API_DECL int32_t 	gs_platform_file_size_in_bytes(const char* file_path);
-GS_API_DECL void 		gs_platform_file_extension(char* buffer, size_t buffer_sz, const char* file_path);
+GS_API_DECL char*      gs_platform_read_file_contents(const char* file_path, const char* mode, int32_t* sz);
+GS_API_DECL gs_result  gs_platform_write_file_contents(const char* file_path, const char* mode, void* data, size_t data_size);
+GS_API_DECL bool       gs_platform_file_exists(const char* file_path);
+GS_API_DECL int32_t    gs_platform_file_size_in_bytes(const char* file_path);
+GS_API_DECL void       gs_platform_file_extension(char* buffer, size_t buffer_sz, const char* file_path);
 
 /*=============================
 // GS_AUDIO
@@ -3441,9 +3480,9 @@ GS_API_DECL void 		gs_platform_file_extension(char* buffer, size_t buffer_sz, co
 
 typedef enum gs_audio_file_type
 {
-	GS_OGG = 0x00,
-	GS_WAV,
-	GS_MP3	
+    GS_OGG = 0x00,
+    GS_WAV,
+    GS_MP3	
 } gs_audio_file_type;
 
 /*==================
@@ -3452,23 +3491,23 @@ typedef enum gs_audio_file_type
 
 typedef struct gs_audio_source_t
 {
-	int32_t channels;
-	int32_t sample_rate;
-	void* samples;
-	int32_t sample_count;
+    int32_t channels;
+    int32_t sample_rate;
+    void* samples;
+    int32_t sample_count;
 } gs_audio_source_t;
 
 gs_handle_decl(gs_audio_source_t);
 
 typedef struct gs_audio_instance_decl_t
 {
-	gs_handle(gs_audio_source_t) src;
-	float volume;
-	bool32_t loop;
-	bool32_t persistent;
-	bool32_t playing;
-	double sample_position;
-	void* user_data;
+    gs_handle(gs_audio_source_t) src;
+    float volume;
+    bool32_t loop;
+    bool32_t persistent;
+    bool32_t playing;
+    double sample_position;
+    void* user_data;
 } gs_audio_instance_decl_t;
 
 typedef gs_audio_instance_decl_t gs_audio_instance_t;
@@ -3480,29 +3519,29 @@ gs_handle_decl(gs_audio_instance_t);
 
 typedef struct gs_audio_i
 {
-	/* Audio source data cache */
-	gs_slot_array(gs_audio_source_t) sources;
+    /* Audio source data cache */
+    gs_slot_array(gs_audio_source_t) sources;
 
-	/* Audio instance data cache */
-	gs_slot_array(gs_audio_instance_t) instances;
+    /* Audio instance data cache */
+    gs_slot_array(gs_audio_instance_t) instances;
 
-	/* Max global volume setting */
-	float max_audio_volume;
+    /* Max global volume setting */
+    float max_audio_volume;
 
-	/* Min global volume setting */
-	float min_audio_volume;
+    /* Min global volume setting */
+    float min_audio_volume;
 
-	/* Samples to actually write to hardware */
-	void* sample_out;
+    /* Samples to actually write to hardware */
+    void* sample_out;
 
-	/* Amount of samples to write */
+    /* Amount of samples to write */
     uint32_t sample_count_to_output;	
 
     /* Samples per second for hardware */
     uint32_t samples_per_second;
 
-	/* User data for custom impl */
-	void* user_data;
+    /* User data for custom impl */
+    void* user_data;
 } gs_audio_i;
 
 /*=============================
@@ -3511,9 +3550,9 @@ typedef struct gs_audio_i
 
 /* Audio Create, Destroy, Init, Shutdown, Submit */
 GS_API_DECL gs_audio_i* gs_audio_create();
-GS_API_DECL void 		gs_audio_destroy(gs_audio_i* audio);
-GS_API_DECL gs_result 	gs_audio_init(gs_audio_i* audio);
-GS_API_DECL gs_result 	gs_audio_shutdown(gs_audio_i* audio);
+GS_API_DECL void        gs_audio_destroy(gs_audio_i* audio);
+GS_API_DECL gs_result   gs_audio_init(gs_audio_i* audio);
+GS_API_DECL gs_result   gs_audio_shutdown(gs_audio_i* audio);
 
 /* Audio create source */
 GS_API_DECL gs_handle(gs_audio_source_t) gs_audio_load_from_file(const char* file_path);
@@ -3522,26 +3561,26 @@ GS_API_DECL gs_handle(gs_audio_source_t) gs_audio_load_from_file(const char* fil
 GS_API_DECL gs_handle(gs_audio_instance_t) gs_audio_instance_create(gs_audio_instance_decl_t* decl);
 
 /* Audio play instance */
-GS_API_DECL void 		gs_audio_play_source(gs_handle(gs_audio_source_t) src, float volume);
-GS_API_DECL void 	 	gs_audio_play(gs_handle(gs_audio_instance_t) inst);
-GS_API_DECL void 	 	gs_audio_pause(gs_handle(gs_audio_instance_t) inst);
-GS_API_DECL void 	 	gs_audio_stop(gs_handle(gs_audio_instance_t) inst);
-GS_API_DECL void 	 	gs_audio_restart(gs_handle(gs_audio_instance_t) inst);
-GS_API_DECL bool32_t 	gs_audio_is_playing(gs_handle(gs_audio_instance_t) inst);
+GS_API_DECL void     gs_audio_play_source(gs_handle(gs_audio_source_t) src, float volume);
+GS_API_DECL void     gs_audio_play(gs_handle(gs_audio_instance_t) inst);
+GS_API_DECL void     gs_audio_pause(gs_handle(gs_audio_instance_t) inst);
+GS_API_DECL void     gs_audio_stop(gs_handle(gs_audio_instance_t) inst);
+GS_API_DECL void     gs_audio_restart(gs_handle(gs_audio_instance_t) inst);
+GS_API_DECL bool32_t gs_audio_is_playing(gs_handle(gs_audio_instance_t) inst);
 
 /* Audio instance data */
-GS_API_DECL void 					 gs_audio_set_instance_data(gs_handle(gs_audio_instance_t) inst, gs_audio_instance_decl_t decl);
+GS_API_DECL void                     gs_audio_set_instance_data(gs_handle(gs_audio_instance_t) inst, gs_audio_instance_decl_t decl);
 GS_API_DECL gs_audio_instance_decl_t gs_audio_get_instance_data(gs_handle(gs_audio_instance_t) inst);
-GS_API_DECL float 					 gs_audio_get_volume(gs_handle(gs_audio_instance_t) inst);
-GS_API_DECL void 					 gs_audio_set_volume(gs_handle(gs_audio_instance_t) inst, float volume);
+GS_API_DECL float                    gs_audio_get_volume(gs_handle(gs_audio_instance_t) inst);
+GS_API_DECL void                     gs_audio_set_volume(gs_handle(gs_audio_instance_t) inst, float volume);
 
 /* Audio source data */
-GS_API_DECL gs_audio_source_t* 	gs_audio_get_source_data(gs_handle(gs_audio_source_t) src);
-GS_API_DECL void 				gs_audio_get_runtime(gs_handle(gs_audio_source_t) src, int32_t* minutes, int32_t* seconds);
-GS_API_DECL void 				gs_audio_convert_to_runtime(int32_t sample_count, int32_t sample_rate, int32_t num_channels, int32_t position, int32_t* minutes_out, int32_t* seconds_out);
-GS_API_DECL int32_t 			gs_audio_get_sample_count(gs_handle(gs_audio_source_t) src);
-GS_API_DECL int32_t 			gs_audio_get_sample_rate(gs_handle(gs_audio_source_t) src);
-GS_API_DECL int32_t 			gs_audio_get_num_channels(gs_handle(gs_audio_source_t) src);
+GS_API_DECL gs_audio_source_t* gs_audio_get_source_data(gs_handle(gs_audio_source_t) src);
+GS_API_DECL void               gs_audio_get_runtime(gs_handle(gs_audio_source_t) src, int32_t* minutes, int32_t* seconds);
+GS_API_DECL void               gs_audio_convert_to_runtime(int32_t sample_count, int32_t sample_rate, int32_t num_channels, int32_t position, int32_t* minutes_out, int32_t* seconds_out);
+GS_API_DECL int32_t            gs_audio_get_sample_count(gs_handle(gs_audio_source_t) src);
+GS_API_DECL int32_t            gs_audio_get_sample_rate(gs_handle(gs_audio_source_t) src);
+GS_API_DECL int32_t            gs_audio_get_num_channels(gs_handle(gs_audio_source_t) src);
 
 /* Resource Loading */
 GS_API_DECL bool32_t gs_audio_load_ogg_data_from_file(const char* file_path, int32_t* sample_count, int32_t* channels, int32_t* sample_rate, void** samples);
@@ -3550,27 +3589,27 @@ GS_API_DECL bool32_t gs_audio_load_mp3_data_from_file(const char* file_path, int
 
 /* Short name definitions for convenience */
 #ifndef GS_NO_SHORT_NAME
-	/* Resources */
-	#define gsa_src			gs_handle(gs_audio_source_t)
-	#define gsa_inst 		gs_handle(gs_audio_instance_t)
-	#define gsa_instdecl 	gs_audio_instance_decl_t
-	/* Create */
-	#define gsa_create 		gs_audio_create
-	#define gsa_destroy 	gs_audio_destroy
-	#define gsa_init 		gs_audio_init
-	#define gsa_shutdown 	gs_audio_shutdown
-	#define gsa_submit 		gs_audio_submit
-	/* Source */
-	#define gsa_load 		gs_audio_load_from_file 	 		
-	/* Instance */
-	#define gsa_make_inst	gs_audio_instance_create
+    /* Resources */
+    #define gsa_src      gs_handle(gs_audio_source_t)
+	#define gsa_inst     gs_handle(gs_audio_instance_t)
+    #define gsa_instdecl gs_audio_instance_decl_t
+    /* Create */
+    #define gsa_create 	 gs_audio_create
+    #define gsa_destroy  gs_audio_destroy
+    #define gsa_init     gs_audio_init
+    #define gsa_shutdown gs_audio_shutdown
+    #define gsa_submit   gs_audio_submit
+    /* Source */
+    #define gsa_load     gs_audio_load_from_file 	 		
+    /* Instance */
+    #define gsa_make_inst gs_audio_instance_create
 
-	/* Audio play instance */
-	#define gsa_isplaying 	gs_audio_is_playing
-	#define gsa_play 		gs_audio_play
-	#define gsa_play_src 	gs_audio_play_source
-	#define gsa_pause 		gs_audio_pause
-	#define gsa_restart 	gs_audio_restart
+    /* Audio play instance */
+    #define gsa_isplaying gs_audio_is_playing
+    #define gsa_play      gs_audio_play
+    #define gsa_play_src  gs_audio_play_source
+    #define gsa_pause     gs_audio_pause
+    #define gsa_restart   gs_audio_restart
 #endif
 
 /*=============================
@@ -3810,15 +3849,15 @@ gs_handle_decl(gs_graphics_pipeline_t);
 typedef struct gs_graphics_shader_source_desc_t
 {
 	gs_graphics_shader_stage_type type;	// Shader stage type (vertex, fragment, tesselation, geometry, compute)
-	const char* source;					// Source for shader
+	const char* source;			// Source for shader
 } gs_graphics_shader_source_desc_t;
 
 /* Graphics Shader Desc */
 typedef struct gs_graphics_shader_desc_t
 {
 	gs_graphics_shader_source_desc_t* sources;	// Array of shader source descriptions
-	size_t size;								// Size in bytes of shader source desc array
-	const char* name;							// Optional (for logging and debugging mainly)
+	size_t size;					// Size in bytes of shader source desc array
+	const char* name;				// Optional (for logging and debugging mainly)
 } gs_graphics_shader_desc_t;
 
 /* Graphics Uniform Desc */
