@@ -3627,214 +3627,214 @@ GS_API_DECL bool32_t gs_audio_load_mp3_data_from_file(const char* file_path, int
 
 /* Useful macro for forcing enum decl to be uint32_t type with default = 0x00 for quick init */
 #define gs_enum_decl(NAME, ...)\
-	typedef enum NAME {\
-		_gs_##NAME##_default = 0x0,\
-		__VA_ARGS__,\
-		_gs_##NAME##_count,\
-		_gs_##NAME##_force_u32 = 0x7fffffff\
-	} NAME;
+    typedef enum NAME {\
+        _gs_##NAME##_default = 0x0,\
+        __VA_ARGS__,\
+        _gs_##NAME##_count,\
+        _gs_##NAME##_force_u32 = 0x7fffffff\
+    } NAME;
 
 #define gs_enum_count(NAME)\
-	_gs_##NAME##_count
+    _gs_##NAME##_count
 
 /* Shader Stage Type */
 gs_enum_decl(gs_graphics_shader_stage_type,
-	GS_GRAPHICS_SHADER_STAGE_VERTEX,
-	GS_GRAPHICS_SHADER_STAGE_FRAGMENT,
-	GS_GRAPHICS_SHADER_STAGE_COMPUTE
+    GS_GRAPHICS_SHADER_STAGE_VERTEX,
+    GS_GRAPHICS_SHADER_STAGE_FRAGMENT,
+    GS_GRAPHICS_SHADER_STAGE_COMPUTE
 );
 
 /* Blend Equation Type */
 gs_enum_decl(gs_graphics_blend_equation_type,
-	GS_GRAPHICS_BLEND_EQUATION_ADD,
-	GS_GRAPHICS_BLEND_EQUATION_SUBTRACT,
-	GS_GRAPHICS_BLEND_EQUATION_REVERSE_SUBTRACT,
-	GS_GRAPHICS_BLEND_EQUATION_MIN,
-	GS_GRAPHICS_BLEND_EQUATION_MAX
+    GS_GRAPHICS_BLEND_EQUATION_ADD,
+    GS_GRAPHICS_BLEND_EQUATION_SUBTRACT,
+    GS_GRAPHICS_BLEND_EQUATION_REVERSE_SUBTRACT,
+    GS_GRAPHICS_BLEND_EQUATION_MIN,
+    GS_GRAPHICS_BLEND_EQUATION_MAX
 );
 
 /* Winding Order Type */
 gs_enum_decl(gs_graphics_winding_order_type,
-	GS_GRAPHICS_WINDING_ORDER_CW,
-	GS_GRAPHICS_WINDING_ORDER_CCW
+    GS_GRAPHICS_WINDING_ORDER_CW,
+    GS_GRAPHICS_WINDING_ORDER_CCW
 );
 
 /* Face Culling Type */
 gs_enum_decl(gs_graphics_face_culling_type,
-	GS_GRAPHICS_FACE_CULLING_FRONT,
-	GS_GRAPHICS_FACE_CULLING_BACK,
-	GS_GRAPHICS_FACE_CULLING_FRONT_AND_BACK
+    GS_GRAPHICS_FACE_CULLING_FRONT,
+    GS_GRAPHICS_FACE_CULLING_BACK,
+    GS_GRAPHICS_FACE_CULLING_FRONT_AND_BACK
 );
 
 /* Blend Mode Type */
 gs_enum_decl(gs_graphics_blend_mode_type,
-	GS_GRAPHICS_BLEND_MODE_ZERO,
-	GS_GRAPHICS_BLEND_MODE_ONE,
-	GS_GRAPHICS_BLEND_MODE_SRC_COLOR,
-	GS_GRAPHICS_BLEND_MODE_ONE_MINUS_SRC_COLOR,
-	GS_GRAPHICS_BLEND_MODE_DST_COLOR,
-	GS_GRAPHICS_BLEND_MODE_ONE_MINUS_DST_COLOR,
-	GS_GRAPHICS_BLEND_MODE_SRC_ALPHA,
-	GS_GRAPHICS_BLEND_MODE_ONE_MINUS_SRC_ALPHA,
-	GS_GRAPHICS_BLEND_MODE_DST_ALPHA,
-	GS_GRAPHICS_BLEND_MODE_ONE_MINUS_DST_ALPHA,
-	GS_GRAPHICS_BLEND_MODE_CONSTANT_COLOR,
-	GS_GRAPHICS_BLEND_MODE_ONE_MINUS_CONSTANT_COLOR,
-	GS_GRAPHICS_BLEND_MODE_CONSTANT_ALPHA,
-	GS_GRAPHICS_BLEND_MODE_ONE_MINUS_CONSTANT_ALPHA
+    GS_GRAPHICS_BLEND_MODE_ZERO,
+    GS_GRAPHICS_BLEND_MODE_ONE,
+    GS_GRAPHICS_BLEND_MODE_SRC_COLOR,
+    GS_GRAPHICS_BLEND_MODE_ONE_MINUS_SRC_COLOR,
+    GS_GRAPHICS_BLEND_MODE_DST_COLOR,
+    GS_GRAPHICS_BLEND_MODE_ONE_MINUS_DST_COLOR,
+    GS_GRAPHICS_BLEND_MODE_SRC_ALPHA,
+    GS_GRAPHICS_BLEND_MODE_ONE_MINUS_SRC_ALPHA,
+    GS_GRAPHICS_BLEND_MODE_DST_ALPHA,
+    GS_GRAPHICS_BLEND_MODE_ONE_MINUS_DST_ALPHA,
+    GS_GRAPHICS_BLEND_MODE_CONSTANT_COLOR,
+    GS_GRAPHICS_BLEND_MODE_ONE_MINUS_CONSTANT_COLOR,
+    GS_GRAPHICS_BLEND_MODE_CONSTANT_ALPHA,
+    GS_GRAPHICS_BLEND_MODE_ONE_MINUS_CONSTANT_ALPHA
 );
 
 /* Shader Language Type */
 gs_enum_decl(gs_graphics_shader_language_type,
-	GS_GRAPHICS_SHADER_LANGUAGE_GLSL
+    GS_GRAPHICS_SHADER_LANGUAGE_GLSL
 );
 
 /* Uniform Type */
 gs_enum_decl(gs_graphics_uniform_type,
-	GS_GRAPHICS_UNIFORM_FLOAT,
-	GS_GRAPHICS_UNIFORM_INT,
-	GS_GRAPHICS_UNIFORM_VEC2,
-	GS_GRAPHICS_UNIFORM_VEC3,
-	GS_GRAPHICS_UNIFORM_VEC4,
-	GS_GRAPHICS_UNIFORM_MAT4
+    GS_GRAPHICS_UNIFORM_FLOAT,
+    GS_GRAPHICS_UNIFORM_INT,
+    GS_GRAPHICS_UNIFORM_VEC2,
+    GS_GRAPHICS_UNIFORM_VEC3,
+    GS_GRAPHICS_UNIFORM_VEC4,
+    GS_GRAPHICS_UNIFORM_MAT4
 );
 
 /* Uniform Block Usage Type */
 gs_enum_decl(gs_graphics_uniform_block_usage_type, 
-	GS_GRAPHICS_UNIFORM_BLOCK_USAGE_STATIC,				// Default of 0x00 is static
-	GS_GRAPHICS_UNIFORM_BLOCK_USAGE_PUSH_CONSTANT
+    GS_GRAPHICS_UNIFORM_BLOCK_USAGE_STATIC,				// Default of 0x00 is static
+    GS_GRAPHICS_UNIFORM_BLOCK_USAGE_PUSH_CONSTANT
 );
 
 /* Sampler Type */
 gs_enum_decl(gs_graphics_sampler_type,
-	GS_GRAPHICS_SAMPLER_2D
+    GS_GRAPHICS_SAMPLER_2D
 );
 
 /* Primitive Type */
 gs_enum_decl(gs_graphics_primitive_type,
-	GS_GRAPHICS_PRIMITIVE_LINES,
-	GS_GRAPHICS_PRIMITIVE_TRIANGLES,
-	GS_GRAPHICS_PRIMITIVE_QUADS
+    GS_GRAPHICS_PRIMITIVE_LINES,
+    GS_GRAPHICS_PRIMITIVE_TRIANGLES,
+    GS_GRAPHICS_PRIMITIVE_QUADS
 );
 
 /* Vertex Atribute Type */
 gs_enum_decl(gs_graphics_vertex_attribute_type,
-	GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT4,
-	GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3,
-	GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2,
-	GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT,
-	GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT4,
-	GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT3,
-	GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT2,
-	GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT,
-	GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE4,
-	GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE3,
-	GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE2,
-	GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE
+    GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT4,
+    GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3,
+    GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2,
+    GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT,
+    GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT4,
+    GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT3,
+    GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT2,
+    GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT,
+    GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE4,
+    GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE3,
+    GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE2,
+    GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE
 );
 
 /* Buffer Type */
 gs_enum_decl(gs_graphics_buffer_type,
-	GS_GRAPHICS_BUFFER_VERTEX,
-	GS_GRAPHICS_BUFFER_INDEX,
-	GS_GRAPHICS_BUFFER_FRAME,
-	GS_GRAPHICS_BUFFER_UNIFORM,
-	GS_GRAPHICS_BUFFER_SAMPLER
+    GS_GRAPHICS_BUFFER_VERTEX,
+    GS_GRAPHICS_BUFFER_INDEX,
+    GS_GRAPHICS_BUFFER_FRAME,
+    GS_GRAPHICS_BUFFER_UNIFORM,
+    GS_GRAPHICS_BUFFER_SAMPLER
 );
 
 /* Buffer Usage Type */
 gs_enum_decl(gs_graphics_buffer_usage_type,
-	GS_GRAPHICS_BUFFER_USAGE_STATIC,
-	GS_GRAPHICS_BUFFER_USAGE_STREAM,
-	GS_GRAPHICS_BUFFER_USAGE_DYNAMIC
+    GS_GRAPHICS_BUFFER_USAGE_STATIC,
+    GS_GRAPHICS_BUFFER_USAGE_STREAM,
+    GS_GRAPHICS_BUFFER_USAGE_DYNAMIC
 );
 
 /* Texture Format */
 gs_enum_decl(gs_graphics_texture_format_type,
-	GS_GRAPHICS_TEXTURE_FORMAT_RGBA8,
-	GS_GRAPHICS_TEXTURE_FORMAT_RGB8,
-	GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F,
-	GS_GRAPHICS_TEXTURE_FORMAT_RGBA32F,
-	GS_GRAPHICS_TEXTURE_FORMAT_A8,
-	GS_GRAPHICS_TEXTURE_FORMAT_R8,
-	GS_GRAPHICS_TEXTURE_FORMAT_DEPTH8,
-	GS_GRAPHICS_TEXTURE_FORMAT_DEPTH16,
-	GS_GRAPHICS_TEXTURE_FORMAT_DEPTH24,
-	GS_GRAPHICS_TEXTURE_FORMAT_DEPTH32F,
-	GS_GRAPHICS_TEXTURE_FORMAT_DEPTH24_STENCIL8,
-	GS_GRAPHICS_TEXTURE_FORMAT_DEPTH32F_STENCIL8,
-	GS_GRAPHICS_TEXTURE_FORMAT_STENCIL8
+    GS_GRAPHICS_TEXTURE_FORMAT_RGBA8,
+    GS_GRAPHICS_TEXTURE_FORMAT_RGB8,
+    GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F,
+    GS_GRAPHICS_TEXTURE_FORMAT_RGBA32F,
+    GS_GRAPHICS_TEXTURE_FORMAT_A8,
+    GS_GRAPHICS_TEXTURE_FORMAT_R8,
+    GS_GRAPHICS_TEXTURE_FORMAT_DEPTH8,
+    GS_GRAPHICS_TEXTURE_FORMAT_DEPTH16,
+    GS_GRAPHICS_TEXTURE_FORMAT_DEPTH24,
+    GS_GRAPHICS_TEXTURE_FORMAT_DEPTH32F,
+    GS_GRAPHICS_TEXTURE_FORMAT_DEPTH24_STENCIL8,
+    GS_GRAPHICS_TEXTURE_FORMAT_DEPTH32F_STENCIL8,
+    GS_GRAPHICS_TEXTURE_FORMAT_STENCIL8
 );
 
 /* Texture Wrapping */
 gs_enum_decl(gs_graphics_texture_wrapping_type,
-	GS_GRAPHICS_TEXTURE_WRAP_REPEAT,
-	GS_GRAPHICS_TEXTURE_WRAP_MIRRORED_REPEAT,
-	GS_GRAPHICS_TEXTURE_WRAP_CLAMP_TO_EDGE,
-	GS_GRAPHICS_TEXTURE_WRAP_CLAMP_TO_BORDER
+    GS_GRAPHICS_TEXTURE_WRAP_REPEAT,
+    GS_GRAPHICS_TEXTURE_WRAP_MIRRORED_REPEAT,
+    GS_GRAPHICS_TEXTURE_WRAP_CLAMP_TO_EDGE,
+    GS_GRAPHICS_TEXTURE_WRAP_CLAMP_TO_BORDER
 );
 
 /* Texture Filtering Type */
 gs_enum_decl(gs_graphics_texture_filtering_type,
-	GS_GRAPHICS_TEXTURE_FILTER_NEAREST,
-	GS_GRAPHICS_TEXTURE_FILTER_LINEAR
+    GS_GRAPHICS_TEXTURE_FILTER_NEAREST,
+    GS_GRAPHICS_TEXTURE_FILTER_LINEAR
 );
 
 /* Render Pass Action Flag */
 gs_enum_decl(gs_graphics_render_pass_action_flag,
-	GS_GRAPHICS_RENDER_PASS_ACTION_CLEAR_COLOR = 0x01,
-	GS_GRAPHICS_RENDER_PASS_ACTION_CLEAR_DEPTH = 0x02,
-	GS_GRAPHICS_RENDER_PASS_ACTION_CLEAR_STENCIL = 0x04,
-	GS_GRAPHICS_RENDER_PASS_ACTION_CLEAR_NONE = 0x08
+    GS_GRAPHICS_RENDER_PASS_ACTION_CLEAR_COLOR = 0x01,
+    GS_GRAPHICS_RENDER_PASS_ACTION_CLEAR_DEPTH = 0x02,
+    GS_GRAPHICS_RENDER_PASS_ACTION_CLEAR_STENCIL = 0x04,
+    GS_GRAPHICS_RENDER_PASS_ACTION_CLEAR_NONE = 0x08
 );
 
 #define GS_GRAPHICS_RENDER_PASS_ACTION_CLEAR_ALL\
-	GS_GRAPHICS_RENDER_PASS_ACTION_CLEAR_COLOR |\
-	GS_GRAPHICS_RENDER_PASS_ACTION_CLEAR_DEPTH |\
-	GS_GRAPHICS_RENDER_PASS_ACTION_CLEAR_STENCIL
+    GS_GRAPHICS_RENDER_PASS_ACTION_CLEAR_COLOR |\
+    GS_GRAPHICS_RENDER_PASS_ACTION_CLEAR_DEPTH |\
+    GS_GRAPHICS_RENDER_PASS_ACTION_CLEAR_STENCIL
 
 /* Bind Type */
 gs_enum_decl(gs_graphics_bind_type,
-	GS_GRAPHICS_BIND_VERTEX_BUFFER,
-	GS_GRAPHICS_BIND_INDEX_BUFFER,
-	GS_GRAPHICS_BIND_UNIFORM_BUFFER,
-	GS_GRAPHICS_BIND_SAMPLER_BUFFER
+    GS_GRAPHICS_BIND_VERTEX_BUFFER,
+    GS_GRAPHICS_BIND_INDEX_BUFFER,
+    GS_GRAPHICS_BIND_UNIFORM_BUFFER,
+    GS_GRAPHICS_BIND_SAMPLER_BUFFER
 );
 
 /* Depth Function Type */
 gs_enum_decl(gs_graphics_depth_func_type,		// Default value of 0x00 means depth is disabled
-	GS_GRAPHICS_DEPTH_FUNC_NEVER,
-	GS_GRAPHICS_DEPTH_FUNC_LESS,
-	GS_GRAPHICS_DEPTH_FUNC_EQUAL,
-	GS_GRAPHICS_DEPTH_FUNC_LEQUAL,
-	GS_GRAPHICS_DEPTH_FUNC_GREATER,
-	GS_GRAPHICS_DEPTH_FUNC_NOTEQUAL,
-	GS_GRAPHICS_DEPTH_FUNC_GEQUAL,
-	GS_GRAPHICS_DEPTH_FUNC_ALWAYS
+    GS_GRAPHICS_DEPTH_FUNC_NEVER,
+    GS_GRAPHICS_DEPTH_FUNC_LESS,
+    GS_GRAPHICS_DEPTH_FUNC_EQUAL,
+    GS_GRAPHICS_DEPTH_FUNC_LEQUAL,
+    GS_GRAPHICS_DEPTH_FUNC_GREATER,
+    GS_GRAPHICS_DEPTH_FUNC_NOTEQUAL,
+    GS_GRAPHICS_DEPTH_FUNC_GEQUAL,
+    GS_GRAPHICS_DEPTH_FUNC_ALWAYS
 );
 
 /* Stencil Function Type */
 gs_enum_decl(gs_graphics_stencil_func_type,
-	GS_GRAPHICS_STENCIL_FUNC_NEVER,				// Default value of 0x00 means stencil is disabled
-	GS_GRAPHICS_STENCIL_FUNC_LESS,
-	GS_GRAPHICS_STENCIL_FUNC_EQUAL,
-	GS_GRAPHICS_STENCIL_FUNC_LEQUAL,
-	GS_GRAPHICS_STENCIL_FUNC_GREATER,
-	GS_GRAPHICS_STENCIL_FUNC_NOTEQUAL,
-	GS_GRAPHICS_STENCIL_FUNC_GEQUAL,
-	GS_GRAPHICS_STENCIL_FUNC_ALWAYS
+    GS_GRAPHICS_STENCIL_FUNC_NEVER,				// Default value of 0x00 means stencil is disabled
+    GS_GRAPHICS_STENCIL_FUNC_LESS,
+    GS_GRAPHICS_STENCIL_FUNC_EQUAL,
+    GS_GRAPHICS_STENCIL_FUNC_LEQUAL,
+    GS_GRAPHICS_STENCIL_FUNC_GREATER,
+    GS_GRAPHICS_STENCIL_FUNC_NOTEQUAL,
+    GS_GRAPHICS_STENCIL_FUNC_GEQUAL,
+    GS_GRAPHICS_STENCIL_FUNC_ALWAYS
 );
 
 /* Stencil Op Type */
 gs_enum_decl(gs_graphics_stencil_op_type,		// Default value of 0x00 means keep is used
-	GS_GRAPHICS_STENCIL_OP_KEEP,
-	GS_GRAPHICS_STENCIL_OP_ZERO,
-	GS_GRAPHICS_STENCIL_OP_REPLACE,
-	GS_GRAPHICS_STENCIL_OP_INCR,
-	GS_GRAPHICS_STENCIL_OP_INCR_WRAP,
-	GS_GRAPHICS_STENCIL_OP_DECR,
-	GS_GRAPHICS_STENCIL_OP_DECR_WRAP,
-	GS_GRAPHICS_STENCIL_OP_INVERT
+    GS_GRAPHICS_STENCIL_OP_KEEP,
+    GS_GRAPHICS_STENCIL_OP_ZERO,
+    GS_GRAPHICS_STENCIL_OP_REPLACE,
+    GS_GRAPHICS_STENCIL_OP_INCR,
+    GS_GRAPHICS_STENCIL_OP_INCR_WRAP,
+    GS_GRAPHICS_STENCIL_OP_DECR,
+    GS_GRAPHICS_STENCIL_OP_DECR_WRAP,
+    GS_GRAPHICS_STENCIL_OP_INVERT
 );
 
 /* Internal Graphics Resource Handles */
@@ -3848,24 +3848,24 @@ gs_handle_decl(gs_graphics_pipeline_t);
 /* Graphics Shader Source Desc */
 typedef struct gs_graphics_shader_source_desc_t
 {
-	gs_graphics_shader_stage_type type;	// Shader stage type (vertex, fragment, tesselation, geometry, compute)
-	const char* source;			// Source for shader
+    gs_graphics_shader_stage_type type;	// Shader stage type (vertex, fragment, tesselation, geometry, compute)
+    const char* source;			// Source for shader
 } gs_graphics_shader_source_desc_t;
 
 /* Graphics Shader Desc */
 typedef struct gs_graphics_shader_desc_t
 {
-	gs_graphics_shader_source_desc_t* sources;	// Array of shader source descriptions
-	size_t size;					// Size in bytes of shader source desc array
-	const char* name;				// Optional (for logging and debugging mainly)
+    gs_graphics_shader_source_desc_t* sources;	// Array of shader source descriptions
+    size_t size;					// Size in bytes of shader source desc array
+    const char* name;				// Optional (for logging and debugging mainly)
 } gs_graphics_shader_desc_t;
 
 /* Graphics Uniform Desc */
 typedef struct gs_graphics_uniform_desc_t
 {
-	const char* name;				// Name of uniform in shader (used for opengl/es), MUST PROVIDE
-	uint32_t type;					// Type of uniform/sampler
-	uint32_t slot;					// Binding slot for textures to be bound
+    const char* name;				// Name of uniform in shader (used for opengl/es), MUST PROVIDE
+    uint32_t type;					// Type of uniform/sampler
+    uint32_t slot;					// Binding slot for textures to be bound
 } gs_graphics_uniform_desc_t;
 
 typedef gs_graphics_uniform_desc_t gs_graphics_sampler_desc_t;
@@ -3873,38 +3873,38 @@ typedef gs_graphics_uniform_desc_t gs_graphics_sampler_desc_t;
 /* Graphics Uniform Block Desc */
 typedef struct gs_graphics_uniform_block_desc_t
 {
-	gs_handle(gs_graphics_shader_t) shader; 	// Shader associated with uniforms, MUST PROVIDE
-	gs_graphics_uniform_desc_t* uniforms;		// Array of uniform descriptions
-	size_t size;								// Size in bytes of uniform description array
-	gs_graphics_shader_stage_type shader_stage; // Stage for this uniform block to applied (used for explicit renderers VK/DX12/MTL)
-	gs_graphics_uniform_block_usage_type usage; // Designates whether this block is to be applied seldomly or frequently as a push constant
-	const char* name;							// Used for debugging
+    gs_handle(gs_graphics_shader_t) shader; 	// Shader associated with uniforms, MUST PROVIDE
+    gs_graphics_uniform_desc_t* uniforms;		// Array of uniform descriptions
+    size_t size;								// Size in bytes of uniform description array
+    gs_graphics_shader_stage_type shader_stage; // Stage for this uniform block to applied (used for explicit renderers VK/DX12/MTL)
+    gs_graphics_uniform_block_usage_type usage; // Designates whether this block is to be applied seldomly or frequently as a push constant
+    const char* name;							// Used for debugging
 } gs_graphics_uniform_block_desc_t;
 
 /* Graphics Texture Desc */
 typedef struct gs_graphics_texture_desc_t
 {
-	uint32_t width;									// Width of texture in pixels
-	uint32_t height;								// Height of texture in pixels
-	gs_graphics_texture_format_type format;			// Format of texture data (rgba32, rgba8, rgba32f, r8, depth32f, etc...)
-	gs_graphics_texture_wrapping_type wrap_s;		// Wrapping type for s axis of texture
-	gs_graphics_texture_wrapping_type wrap_t;		// Wrapping type for t axis of texture
-	gs_graphics_texture_filtering_type min_filter;	// Minification filter for texture
-	gs_graphics_texture_filtering_type mag_filter;	// Magnification filter for texture
-	gs_graphics_texture_filtering_type mip_filter;	// Mip filter for texture
-	uint32_t num_mips;								// Number of mips to generate (default 0 is disable mip generation)
-	void* data;										// Texture data to upload (can be null)
-	b32 render_target;								// Default to false (not a render target)
+    uint32_t width;									// Width of texture in pixels
+    uint32_t height;								// Height of texture in pixels
+    gs_graphics_texture_format_type format;			// Format of texture data (rgba32, rgba8, rgba32f, r8, depth32f, etc...)
+    gs_graphics_texture_wrapping_type wrap_s;		// Wrapping type for s axis of texture
+    gs_graphics_texture_wrapping_type wrap_t;		// Wrapping type for t axis of texture
+    gs_graphics_texture_filtering_type min_filter;	// Minification filter for texture
+    gs_graphics_texture_filtering_type mag_filter;	// Magnification filter for texture
+    gs_graphics_texture_filtering_type mip_filter;	// Mip filter for texture
+    uint32_t num_mips;								// Number of mips to generate (default 0 is disable mip generation)
+    void* data;										// Texture data to upload (can be null)
+    b32 render_target;								// Default to false (not a render target)
 } gs_graphics_texture_desc_t;
 
 /* Graphics Buffer Desc */
 typedef struct gs_graphics_buffer_desc_t
 {
-	gs_graphics_buffer_type type;				// Type of buffer (vertex, index, frame, uniform, sampler)
-	gs_graphics_buffer_usage_type usage;		// Usage type of buffer (static, dynamic, stream, draw, read)
-	void* data;									// Array of buffer data
-	size_t size;								// Size in bytes of buffer data array
-	const char* name; 							// Name of buffer (required for sampler/uniform buffers)
+    gs_graphics_buffer_type type;				// Type of buffer (vertex, index, frame, uniform, sampler)
+    gs_graphics_buffer_usage_type usage;		// Usage type of buffer (static, dynamic, stream, draw, read)
+    void* data;									// Array of buffer data
+    size_t size;								// Size in bytes of buffer data array
+    const char* name; 							// Name of buffer (required for sampler/uniform buffers)
 } gs_graphics_buffer_desc_t;
 
 typedef gs_graphics_buffer_desc_t gs_graphics_vertex_buffer_desc_t;
@@ -3915,23 +3915,23 @@ typedef gs_graphics_buffer_desc_t gs_graphics_sampler_buffer_desc_t;
 /* Graphics Render Pass Action */
 typedef struct gs_graphics_render_pass_action_t
 {
-	gs_graphics_render_pass_action_flag flag;	// Flag to be set (clear color, clear depth, clear stencil, clear all)
-	union 
-	{
-		float color[4];								// Clear color value
-		float depth;								// Clear depth value
-		int32_t stencil;							// Clear stencil value
-	};
+    gs_graphics_render_pass_action_flag flag;	// Flag to be set (clear color, clear depth, clear stencil, clear all)
+    union 
+    {
+        float color[4];								// Clear color value
+        float depth;								// Clear depth value
+        int32_t stencil;							// Clear stencil value
+    };
 } gs_graphics_render_pass_action_t;
 
 /* Graphics Render Pass Desc */
 typedef struct gs_graphics_render_pass_desc_t
 {
-	gs_handle(gs_graphics_buffer_t) fbo; 	  // Default is set to invalid for backbuffer
-	gs_handle(gs_graphics_texture_t)* color;  // Array of color attachments to be bound (useful for MRT, if supported) 
-	size_t color_size;						  // Size of color attachment array
-	gs_handle(gs_graphics_texture_t) depth;	  // Depth attachment to be bound
-	gs_handle(gs_graphics_texture_t) stencil; // Depth attachment to be bound
+    gs_handle(gs_graphics_buffer_t) fbo; 	  // Default is set to invalid for backbuffer
+    gs_handle(gs_graphics_texture_t)* color;  // Array of color attachments to be bound (useful for MRT, if supported) 
+    size_t color_size;						  // Size of color attachment array
+    gs_handle(gs_graphics_texture_t) depth;	  // Depth attachment to be bound
+    gs_handle(gs_graphics_texture_t) stencil; // Depth attachment to be bound
 } gs_graphics_render_pass_desc_t;
 
 /* 
@@ -3941,57 +3941,57 @@ typedef struct gs_graphics_render_pass_desc_t
 /* Graphics Binding Desc */
 typedef struct gs_graphics_bind_desc_t
 {
-	gs_graphics_bind_type type;				// Type of data to bind (vertex buffer, index buffer, uniform buffer, sampler buffer)
-	gs_handle(gs_graphics_buffer_t) buffer;	// Buffer to bind (vertex, index, uniform, sampler)
-	void* data;								// Data associated with bind
-	size_t size;							// Size of data in bytes
-	uint32_t binding;						// Binding for tex units
+    gs_graphics_bind_type type;				// Type of data to bind (vertex buffer, index buffer, uniform buffer, sampler buffer)
+    gs_handle(gs_graphics_buffer_t) buffer;	// Buffer to bind (vertex, index, uniform, sampler)
+    void* data;								// Data associated with bind
+    size_t size;							// Size of data in bytes
+    uint32_t binding;						// Binding for tex units
 } gs_graphics_bind_desc_t;
 
 /* Graphics Blend State Desc */
 typedef struct gs_graphics_blend_state_desc_t
 {
-	gs_graphics_blend_equation_type func;	// Equation function to use for blend ops
-	gs_graphics_blend_mode_type src;		// Source blend mode
-	gs_graphics_blend_mode_type dst;		// Destination blend mode
+    gs_graphics_blend_equation_type func;	// Equation function to use for blend ops
+    gs_graphics_blend_mode_type src;		// Source blend mode
+    gs_graphics_blend_mode_type dst;		// Destination blend mode
 } gs_graphics_blend_state_desc_t;
 
 /* Graphics Depth State Desc */
 typedef struct gs_graphics_depth_state_desc_t
 {
-	gs_graphics_depth_func_type func;			// Function to set for depth test
+    gs_graphics_depth_func_type func;			// Function to set for depth test
 } gs_graphics_depth_state_desc_t;
 
 /* Graphics Stencil State Desc */
 typedef struct gs_graphics_stencil_state_desc_t
 {
-	gs_graphics_stencil_func_type 	func;		// Function to set for stencil test
-	uint32_t ref;								// Specifies reference val for stencil test
-	uint32_t mask;								// Specifies mask that is ANDed with both ref val and stored stencil val
-	gs_graphics_stencil_op_type 	sfail;		// Action to take when stencil test fails
-	gs_graphics_stencil_op_type 	dpfail;		// Action to take when stencil test passes but depth test fails
-	gs_graphics_stencil_op_type 	dppass;		// Action to take when both stencil test passes and either depth passes or is not enabled
+    gs_graphics_stencil_func_type   func;   // Function to set for stencil test
+    uint32_t                        ref;    // Specifies reference val for stencil test
+    uint32_t                        mask;   // Specifies mask that is ANDed with both ref val and stored stencil val
+    gs_graphics_stencil_op_type     sfail;  // Action to take when stencil test fails
+    gs_graphics_stencil_op_type     dpfail; // Action to take when stencil test passes but depth test fails
+    gs_graphics_stencil_op_type     dppass; // Action to take when both stencil test passes and either depth passes or is not enabled
 } gs_graphics_stencil_state_desc_t;
 
 /* Graphics Raster State Desc */
 typedef struct gs_graphics_raster_state_desc_t
 {
-	gs_graphics_face_culling_type face_culling;		// Face culling mode to be used (front, back, front and back)
-	gs_graphics_winding_order_type winding_order;	// Winding order mode to be used (ccw, cw)
-	gs_graphics_primitive_type primitive;			// Primitive type for drawing (lines, quads, triangles, triangle strip)
-	gs_handle(gs_graphics_shader_t) shader; 		// Shader to bind and use (might be in bindables later on, not sure)
-	size_t index_buffer_element_size; 				// Element size of index buffer (used for parsing internal data)
+    gs_graphics_face_culling_type face_culling;   // Face culling mode to be used (front, back, front and back)
+    gs_graphics_winding_order_type winding_order; // Winding order mode to be used (ccw, cw)
+    gs_graphics_primitive_type primitive;         // Primitive type for drawing (lines, quads, triangles, triangle strip)
+    gs_handle(gs_graphics_shader_t) shader;       // Shader to bind and use (might be in bindables later on, not sure)
+    size_t index_buffer_element_size;             // Element size of index buffer (used for parsing internal data)
 } gs_graphics_raster_state_desc_t;
 
 /* Graphics Pipeline Desc */
 typedef struct gs_graphics_pipeline_desc_t
 {
-	gs_graphics_blend_state_desc_t blend;		// Blend state desc for pipeline
-	gs_graphics_depth_state_desc_t depth;		// Depth state desc for pipeline
-	gs_graphics_raster_state_desc_t raster;		// Raster state desc for pipeline
-	gs_graphics_stencil_state_desc_t stencil;	// Stencil state desc for pipeline
-	gs_graphics_vertex_attribute_type* layout;	// Array of vertex attributes for layout
-	size_t size;								// Size in bytes of vertex attribute array
+    gs_graphics_blend_state_desc_t blend;      // Blend state desc for pipeline
+    gs_graphics_depth_state_desc_t depth;      // Depth state desc for pipeline
+    gs_graphics_raster_state_desc_t raster;    // Raster state desc for pipeline
+    gs_graphics_stencil_state_desc_t stencil;  // Stencil state desc for pipeline
+    gs_graphics_vertex_attribute_type* layout; // Array of vertex attributes for layout
+    size_t size;                               // Size in bytes of vertex attribute array
 } gs_graphics_pipeline_desc_t;
 
 /*==========================
@@ -4000,7 +4000,7 @@ typedef struct gs_graphics_pipeline_desc_t
 
 typedef struct gs_graphics_i
 {
-	void* user_data; // For internal use
+    void* user_data; // For internal use
 } gs_graphics_i;
 
 /*==========================
@@ -4008,17 +4008,17 @@ typedef struct gs_graphics_i
 ==========================*/
 
 /* Graphics Interface Creation / Initialization / Shutdown / Destruction */
-GS_API_DECL gs_graphics_i* 	gs_graphics_create();
-GS_API_DECL void 			gs_graphics_destroy(gs_graphics_i* graphics);
-GS_API_DECL gs_result 		gs_graphics_init(gs_graphics_i* graphics);
-GS_API_DECL gs_result 		gs_graphics_shutdown(gs_graphics_i* graphics);
+GS_API_DECL gs_graphics_i* gs_graphics_create();
+GS_API_DECL void           gs_graphics_destroy(gs_graphics_i* graphics);
+GS_API_DECL gs_result      gs_graphics_init(gs_graphics_i* graphics);
+GS_API_DECL gs_result      gs_graphics_shutdown(gs_graphics_i* graphics);
 
 /* Resource Creation */
-GS_API_DECL gs_handle(gs_graphics_texture_t) 	 	gs_graphics_texture_create(gs_graphics_texture_desc_t* desc);
-GS_API_DECL gs_handle(gs_graphics_buffer_t) 		gs_graphics_buffer_create(gs_graphics_buffer_desc_t* desc);
-GS_API_DECL gs_handle(gs_graphics_shader_t) 	 	gs_graphics_shader_create(gs_graphics_shader_desc_t* desc);
-GS_API_DECL gs_handle(gs_graphics_render_pass_t) 	gs_graphics_render_pass_create(gs_graphics_render_pass_desc_t* desc);
-GS_API_DECL gs_handle(gs_graphics_pipeline_t) 	 	gs_graphics_pipeline_create(gs_graphics_pipeline_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_texture_t)     gs_graphics_texture_create(gs_graphics_texture_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_buffer_t)      gs_graphics_buffer_create(gs_graphics_buffer_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_shader_t)      gs_graphics_shader_create(gs_graphics_shader_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_render_pass_t) gs_graphics_render_pass_create(gs_graphics_render_pass_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_pipeline_t)    gs_graphics_pipeline_create(gs_graphics_pipeline_desc_t* desc);
 
 /* Resource Destruction */
 GS_API_DECL void gs_graphics_texture_destroy(gs_handle(gs_graphics_texture_t) hndl);
@@ -4048,11 +4048,11 @@ GS_API_DECL void gs_graphics_submit_frame();
 
 #ifndef GS_NO_SHORT_NAME
 	
-	typedef gs_handle(gs_graphics_shader_t) 		gs_shader;
-	typedef gs_handle(gs_graphics_texture_t) 		gs_texture;
-	typedef gs_handle(gs_graphics_buffer_t)			gs_gfxbuffer;
-	typedef gs_handle(gs_graphics_render_pass_t)	gs_renderpass;
-	typedef gs_handle(gs_graphics_pipeline_t) 		gs_pipeline;
+typedef gs_handle(gs_graphics_shader_t)      gs_shader;
+typedef gs_handle(gs_graphics_texture_t)     gs_texture;
+typedef gs_handle(gs_graphics_buffer_t)      gs_gfxbuffer;
+typedef gs_handle(gs_graphics_render_pass_t) gs_renderpass;
+typedef gs_handle(gs_graphics_pipeline_t)    gs_pipeline;
 
 #endif
 
@@ -4063,8 +4063,8 @@ GS_API_DECL void gs_graphics_submit_frame();
 // Texture
 typedef struct gs_asset_texture_t
 {
-	gs_handle(gs_graphics_texture_t) hndl;
-	gs_graphics_texture_desc_t desc;
+    gs_handle(gs_graphics_texture_t) hndl;
+    gs_graphics_texture_desc_t desc;
 } gs_asset_texture_t;
 
 GS_API_DECL void gs_asset_texture_load_from_file(const char* path, void* out, bool32_t keep_data);
@@ -4078,9 +4078,9 @@ typedef struct gs_baked_char_t
 
 typedef struct gs_asset_font_t
 {
-	void* font_info;
-	gs_baked_char_t glyphs[96];
-	gs_asset_texture_t texture;
+    void* font_info;
+    gs_baked_char_t glyphs[96];
+    gs_asset_texture_t texture;
 } gs_asset_font_t; 
 
 GS_API_DECL void gs_asset_font_load_from_file(const char* path, void* out, uint32_t point_size);
@@ -4088,7 +4088,7 @@ GS_API_DECL void gs_asset_font_load_from_file(const char* path, void* out, uint3
 // Audio
 typedef struct gs_asset_audio_t
 {
-	gs_handle(gs_audio_source_t) hndl;
+    gs_handle(gs_audio_source_t) hndl;
 } gs_asset_audio_t;
 
 GS_API_DECL void gs_asset_audio_load_from_file(const char* path, void* out);
@@ -4100,17 +4100,17 @@ GS_API_DECL void gs_asset_audio_load_from_file(const char* path, void* out);
 // Application descriptor for user application
 typedef struct gs_app_desc_t
 {
-	void (* init)();
-	void (* update)();
-	void (* shutdown)();
-	const char* window_title;
-	uint32_t window_width;
-	uint32_t window_height;
-	uint32_t window_flags;
-	float frame_rate;
-	bool32 enable_vsync;
-	bool32 is_running;
-	void* user_data;
+    void (* init)();
+    void (* update)();
+    void (* shutdown)();
+    const char* window_title;
+    uint32_t window_width;
+    uint32_t window_height;
+    uint32_t window_flags;
+    float frame_rate;
+    bool32 enable_vsync;
+    bool32 is_running;
+    void* user_data;
 } gs_app_desc_t;
 
 /*
@@ -4122,17 +4122,17 @@ typedef struct gs_app_desc_t
 */
 typedef struct gs_engine_context_t
 {
-	gs_platform_i* platform;
-	gs_graphics_i* graphics;
-	gs_audio_i* audio;
-	gs_app_desc_t app;
+    gs_platform_i* platform;
+    gs_graphics_i* graphics;
+    gs_audio_i* audio;
+    gs_app_desc_t app;
 } gs_engine_context_t;
 
 typedef struct gs_engine_t
 {
-	gs_engine_context_t ctx;
-	gs_result (* run)();
-	gs_result (* shutdown)();
+    gs_engine_context_t ctx;
+    gs_result (* run)();
+    gs_result (* shutdown)();
 } gs_engine_t;
 
 /* Desc */
@@ -4166,24 +4166,24 @@ GS_API_DECL gs_app_desc_t gs_main(int32_t argc, char** argv);
 
 void gs_byte_buffer_init(gs_byte_buffer_t* buffer)
 {
-	buffer->data 			= gs_malloc(GS_BYTE_BUFFER_DEFAULT_CAPCITY);
-	buffer->capacity 		= GS_BYTE_BUFFER_DEFAULT_CAPCITY;
-	buffer->size 			= 0;
-	buffer->position 		= 0;
+    buffer->data     = gs_malloc(GS_BYTE_BUFFER_DEFAULT_CAPCITY);
+    buffer->capacity = GS_BYTE_BUFFER_DEFAULT_CAPCITY;
+    buffer->size     = 0;
+    buffer->position = 0;
 }
 
 gs_byte_buffer_t gs_byte_buffer_new()
 {
-	gs_byte_buffer_t buffer;
-	gs_byte_buffer_init(&buffer);
-	return buffer;
+    gs_byte_buffer_t buffer;
+    gs_byte_buffer_init(&buffer);
+    return buffer;
 }
 
 void gs_byte_buffer_free(gs_byte_buffer_t* buffer)
 {
-	if (buffer && buffer->data) {
-		gs_free(buffer->data);
-	}
+    if (buffer && buffer->data) {
+        gs_free(buffer->data);
+    }
 }
 
 void gs_byte_buffer_clear(gs_byte_buffer_t* buffer)
