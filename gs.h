@@ -1,10 +1,40 @@
-﻿
-/*================================================================
+﻿/*==============================================================================================================
     * Copyright: 2020 John Jackson 
     * Gunslinger: A simple, header-only c99 multi-media framework
     * File: gs.h
+    * Github: https://github.com/MrFrenik/gunslinger
+
     All Rights Reserved
-=================================================================*/
+
+    BSD 3-Clause License
+
+    Copyright (c) 2020 John Jackson
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions are met:
+
+    1. Redistributions of source code must retain the above copyright notice, this
+       list of conditions and the following disclaimer.
+
+    2. Redistributions in binary form must reproduce the above copyright notice,
+       this list of conditions and the following disclaimer in the documentation
+       and/or other materials provided with the distribution.
+
+    3. Neither the name of the copyright holder nor the names of its contributors may be used to 
+    endorse or promote products derived from this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+    ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIEDi
+    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+    DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+    ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+    (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+    LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+    ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+=================================================================================================================*/
 
 #ifndef __GS_INCLUDED_H__
 #define __GS_INCLUDED_H__
@@ -39,12 +69,12 @@
 
     (Thanks to SB for the template for this instructional message. I was too lazy to come up with my own wording.)
 
-    ================================================================================================================
+    NOTE: 
+        All main interface stuff in here, then system implementations can be in separate header files
+        All provided implementations will be in impl/xxx.h
+        This is just to keep everything from being in one huge file
 
-    // All main interface stuff in here, then system implementations can be in separate header files
-    // All implementations will be in impl/xxx.h
-    // You can define which implementation you want to have, whether it be GLFW, Win32, Apple, or a custom impl
-    // This is just to keep everything from being in one huge file
+    ================================================================================================================
 
     Contained within (Contents):
         * GS_APPLICATION
@@ -5196,3 +5226,68 @@ void gs_engine_quit()
 #endif // c++
 
 #endif // __GS_INCLUDED_H__
+
+
+
+
+/*
+    gltf loading
+
+    Mesh Attributes:
+        cgltf_attribute_type_invalid,
+        cgltf_attribute_type_position,
+        cgltf_attribute_type_normal,
+        cgltf_attribute_type_tangent,
+        cgltf_attribute_type_texcoord,
+        cgltf_attribute_type_color,
+        cgltf_attribute_type_joints,
+        cgltf_attribute_type_weights,
+
+    Primitive types:
+        cgltf_primitive_type_points,
+        cgltf_primitive_type_lines,
+        cgltf_primitive_type_line_loop,
+        cgltf_primitive_type_line_strip,
+        cgltf_primitive_type_triangles,
+        cgltf_primitive_type_triangle_strip,
+        cgltf_primitive_type_triangle_fan,
+
+    For each mesh: 
+        For each primitive: 
+            For each attribute:
+                Get data and push into mesh definition
+
+    Is there a way to have the user be able to specify a layout and then use that for the mesh?
+
+    Does this need to line up with a pipeline? Not necessarily, right?
+
+    // At LEAST position is required to be passed in for the layout, so maybe it's not necessary 
+    // to provide this in the layout?
+    // Can you duplicate? I don't think so...
+    gs_asset_mesh_attribute_type layout[] =
+    {
+        POSITION,
+        NORMAL,
+        TANGENT,
+        JOINTS_XXX,
+        WEIGHTS_XXX,
+        TEXCOORD_XXX,
+        COLOR_XXX
+
+    };
+
+    gs_asset_mesh_t mesh = gs_asset_load_gltf(path, layout, sizeof(layout));
+
+    // Do you HAVE to have certain attributes for a mesh to make any sense? For instance, do you HAVE to have position?
+    // What if position is NOT the first attribute layout for your vertex attribute?
+
+    // Need to fill out data for each attribute, then interleave?
+
+    ^()
+    {
+        For each mesh: 
+            For each primitive: 
+                For each attribute:
+                    Get data and push into mesh definition 
+    }
+*/
