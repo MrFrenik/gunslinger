@@ -1,9 +1,9 @@
 ﻿
 /*================================================================
-	* Copyright: 2020 John Jackson 
-	* Gunslinger: A simple, header-only c99 multi-media framework
-	* File: gs.h
-	All Rights Reserved
+    * Copyright: 2020 John Jackson 
+    * Gunslinger: A simple, header-only c99 multi-media framework
+    * File: gs.h
+    All Rights Reserved
 =================================================================*/
 
 #ifndef __GS_INCLUDED_H__
@@ -25,13 +25,13 @@
 
     Before including, define the gunslinger implementation like this:
 
-	      #define GS_IMPL
+          #define GS_IMPL
 
     in EXACTLY ONE C or C++ file that includes this header, BEFORE the
     include, like this:
 
-	      #define GS_IMPL
-	      #include "gs.h"
+          #define GS_IMPL
+          #include "gs.h"
 
     All other files should just #include "gs.h" without the #define.
 
@@ -40,18 +40,18 @@
     ================================================================================================================
 
     Contained within:
-	    * GS_UTIL
-	    * GS_CONTAINERS
-	    * GS_ASSET_TYPES
-	    * GS_MATH
-	    * GS_PLATFORM
-	    * GS_GRAPHICS
-	    * GS_AUDIO
+        * GS_UTIL
+        * GS_CONTAINERS
+        * GS_ASSET_TYPES
+        * GS_MATH
+        * GS_PLATFORM
+        * GS_GRAPHICS
+        * GS_AUDIO
 
-	// All main interface stuff in here, then system implementations can be in separate header files
-	// All implementations will be in impl/xxx.h
-	// You can define which implementation you want to have, whether it be GLFW, Win32, Apple, or a custom impl
-	// This is just to keep everything from being in one huge file
+    // All main interface stuff in here, then system implementations can be in separate header files
+    // All implementations will be in impl/xxx.h
+    // You can define which implementation you want to have, whether it be GLFW, Win32, Apple, or a custom impl
+    // This is just to keep everything from being in one huge file
 
     ================================================================================================================
 
@@ -67,30 +67,30 @@
         #include "gs.h"
 
         void init() {
-            // Do your initialization	
+            // Do your initialization   
         }
 
         void update() {
-            // Do your updates	
+            // Do your updates  
         }
 
         void shutdown() {
-	        // Do your shutdown
+            // Do your shutdown
         }
 
         gs_app_desc_t gs_main(int32_t argc, char** argv) {
-	        return (gs_app_desc_t) {
-                .init = init,		 // Function pointer to call into your init code
-                .update = update,	 // Function pointer to call into your update code
+            return (gs_app_desc_t) {
+                .init = init,        // Function pointer to call into your init code
+                .update = update,    // Function pointer to call into your update code
                 .shutdown = shutdown // Function pointer to call into your shutdown code
-	        };
+            };
         }
 
     If you do not provide information for any of this information, defaults will be provided by the framework.
     Therefore, it is possible to return an empty app descriptor back to the framework to run:
 
         gs_app_desc_t gs_main(int32_t argc, char** argv) {
-	        return (gs_app_desc_t){0};
+            return (gs_app_desc_t){0};
         }
 
 */
@@ -110,7 +110,7 @@ extern "C" {
 #include <stdlib.h>     // malloc, realloc, free
 #include <stdint.h>     // standard types
 #include <limits.h>     // INT32_MAX, UINT32_MAX
-#include <string.h> 	// memset
+#include <string.h>     // memset
 #include <float.h>      // FLT_MAX
 #include <stdio.h>      // FILE
 #include <time.h>       // time
@@ -123,23 +123,23 @@ extern "C" {
 ===========================================================*/
 
 #ifndef gs_inline
-	#define gs_inline               static inline
+    #define gs_inline               static inline
 #endif
 
 #ifndef gs_local_persist
-	#define gs_local_persist        static
+    #define gs_local_persist        static
 #endif
 
  #if (defined _WIN32 || defined _WIN64)
-	#define gs_force_inline gs_inline
+    #define gs_force_inline gs_inline
 #elif (defined __APPLE__ || defined _APPLE)
-	#define gs_force_inline static __attribute__((always_inline))
+    #define gs_force_inline static __attribute__((always_inline))
 #else
-	#define gs_force_inline gs_inline
+    #define gs_force_inline gs_inline
 #endif
 
 #ifndef gs_global
-	#define gs_global               static
+    #define gs_global               static
 #endif
 
 /*===================
@@ -204,27 +204,27 @@ typedef bool32_t          bool32;
 #define gs_array_size(__ARR) sizeof(__ARR) / sizeof(__ARR[0])
 
 #ifndef gs_assert
-	#define gs_assert assert
+    #define gs_assert assert
 #endif
-	
+    
 #if defined (__cplusplus)
-	#define gs_default_val() {}
+    #define gs_default_val() {}
 #else
-	#define gs_default_val() {0}
+    #define gs_default_val() {0}
 #endif
 
 // Helper macro for an in place for-range loop
 #define gs_for_range_i(__COUNT)\
-	for (uint32_t i = 0; i < __COUNT; ++i)
+    for (uint32_t i = 0; i < __COUNT; ++i)
 
 // Helper macro for an in place for-range loop
 #define gs_for_range_j(__COUNT)\
-	for (uint32_t j = 0; j < __COUNT; ++j)
+    for (uint32_t j = 0; j < __COUNT; ++j)
 
 #define gs_for_range(__COUNT)\
-	for(uint32_t gs_macro_token_paste(__T, __LINE__) = 0;\
-		gs_macro_token_paste(__T, __LINE__) < __COUNT;\
-		++(gs_macro_token_paste(__T, __LINE__)))
+    for(uint32_t gs_macro_token_paste(__T, __LINE__) = 0;\
+        gs_macro_token_paste(__T, __LINE__) < __COUNT;\
+        ++(gs_macro_token_paste(__T, __LINE__)))
 
 #define gs_max(A, B) ((A) > (B) ? (A) : (B))
 
@@ -245,13 +245,13 @@ typedef bool32_t          bool32;
 #define gs_macro_cat(X, Y) gs_macro_token_paste(X, Y)
 
 #define gs_timed_action(INTERVAL, ...)\
-	do {\
-		static uint32_t gs_macro_cat(gs_macro_cat(__T, __LINE__), t) = 0;\
-		if (gs_macro_cat(gs_macro_cat(__T, __LINE__), t)++ > INTERVAL) {\
-			gs_macro_cat(gs_macro_cat(__T, __LINE__), t) = 0;\
-			__VA_ARGS__\
-		}\
-	} while (0)
+    do {\
+        static uint32_t gs_macro_cat(gs_macro_cat(__T, __LINE__), t) = 0;\
+        if (gs_macro_cat(gs_macro_cat(__T, __LINE__), t)++ > INTERVAL) {\
+            gs_macro_cat(gs_macro_cat(__T, __LINE__), t) = 0;\
+            __VA_ARGS__\
+        }\
+    } while (0)
 
 #define gs_int_2_voidp(I) (void*)(uintptr_t)(I)
 
@@ -260,27 +260,27 @@ typedef bool32_t          bool32;
 ===================================*/
 
 #ifndef gs_malloc
-	#define gs_malloc(__SZ) malloc(__SZ)
+    #define gs_malloc(__SZ) malloc(__SZ)
 #endif
 
 #ifndef gs_free
-	#define gs_free(__MEM) free(__MEM)
+    #define gs_free(__MEM) free(__MEM)
 #endif
 
 #ifndef gs_realloc
-	#define gs_realloc(__MEM, __AZ)	realloc(__MEM, __AZ)
+    #define gs_realloc(__MEM, __AZ) realloc(__MEM, __AZ)
 #endif
 
 #ifndef gs_calloc
-	#define gs_calloc(__NUM, __AZ) calloc(__NUM, __AZ)
+    #define gs_calloc(__NUM, __AZ) calloc(__NUM, __AZ)
 #endif
 
 gs_force_inline 
 void* _gs_malloc_init_impl(size_t sz)
 {
-	void* data = gs_malloc(sz);
-	memset(data, 0, sz);
-	return data;
+    void* data = gs_malloc(sz);
+    memset(data, 0, sz);
+    return data;
 }
 
 #define gs_malloc_init(__TYPE) (__TYPE*)_gs_malloc_init_impl(sizeof(__TYPE))
@@ -291,10 +291,10 @@ void* _gs_malloc_init_impl(size_t sz)
 
 typedef enum gs_result
 {
-	GS_RESULT_SUCCESS,
-	GS_RESULT_IN_PROGRESS,
-	GS_RESULT_INCOMPLETE,
-	GS_RESULT_FAILURE
+    GS_RESULT_SUCCESS,
+    GS_RESULT_IN_PROGRESS,
+    GS_RESULT_INCOMPLETE,
+    GS_RESULT_FAILURE
 } gs_result;
 
 /*===================================
@@ -304,31 +304,31 @@ typedef enum gs_result
 // Useful typedefs for typesafe, internal resource handles
 
 #define gs_handle(TYPE)\
-	gs_handle_##TYPE
+    gs_handle_##TYPE
 
 #define gs_handle_decl(TYPE)\
-	typedef struct {uint32_t id;} gs_handle(TYPE);\
-	gs_force_inline\
+    typedef struct {uint32_t id;} gs_handle(TYPE);\
+    gs_force_inline\
 \
-	gs_handle(TYPE) gs_handle_invalid_##TYPE()\
-	{\
-		gs_handle(TYPE) h;\
-		h.id = UINT32_MAX;\
-		return h;\
-	}\
+    gs_handle(TYPE) gs_handle_invalid_##TYPE()\
+    {\
+        gs_handle(TYPE) h;\
+        h.id = UINT32_MAX;\
+        return h;\
+    }\
 \
-	gs_handle(TYPE) gs_handle_create_##TYPE(uint32_t id)\
-	{\
-		gs_handle(TYPE) h;\
-		h.id = id;\
-		return h;\
-	}
+    gs_handle(TYPE) gs_handle_create_##TYPE(uint32_t id)\
+    {\
+        gs_handle(TYPE) h;\
+        h.id = id;\
+        return h;\
+    }
 
 #define gs_handle_invalid(__TYPE)\
-	gs_handle_invalid_##__TYPE()
+    gs_handle_invalid_##__TYPE()
 
 #define gs_handle_create(__TYPE, __ID)\
-	gs_handle_create_##__TYPE(__ID)
+    gs_handle_create_##__TYPE(__ID)
 
 /*===================================
 // Color
@@ -339,61 +339,61 @@ typedef enum gs_result
 
 typedef struct gs_hsv_t
 {
-	union 
-	{
-		float hsv[3];
-		struct 
-		{
-			float h, s, v;
-		};
-	};
+    union 
+    {
+        float hsv[3];
+        struct 
+        {
+            float h, s, v;
+        };
+    };
 } gs_hsv_t;
 
 gs_force_inline
 gs_hsv_t gs_hsv_ctor(float h, float s, float v)
 {
-	gs_hsv_t hsv;
-	hsv.h = h;
-	hsv.s = s;
-	hsv.v = v;
-	return hsv;
+    gs_hsv_t hsv;
+    hsv.h = h;
+    hsv.s = s;
+    hsv.v = v;
+    return hsv;
 }
 
 typedef struct gs_color_t
 {
-	union 
-	{
-		uint8_t rgba[4];
-		struct 
-		{
-			uint8_t r, g, b, a;
-		};
-	};
+    union 
+    {
+        uint8_t rgba[4];
+        struct 
+        {
+            uint8_t r, g, b, a;
+        };
+    };
 } gs_color_t;
 
 gs_force_inline
 gs_color_t gs_color_ctor(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 {
-	gs_color_t color;
-	color.r = r;
-	color.g = g;
-	color.b = b;
-	color.a = a;
-	return color;
+    gs_color_t color;
+    color.r = r;
+    color.g = g;
+    color.b = b;
+    color.a = a;
+    return color;
 }
 
-#define GS_COLOR_BLACK 	gs_color(0, 0, 0, 255)
-#define GS_COLOR_WHITE 	gs_color(255, 255, 255, 255)
-#define GS_COLOR_RED 	gs_color(255, 0, 0, 255)
-#define GS_COLOR_GREEN 	gs_color(0, 255, 0, 255)
-#define GS_COLOR_BLUE 	gs_color(0, 0, 255, 255)
+#define GS_COLOR_BLACK  gs_color(0, 0, 0, 255)
+#define GS_COLOR_WHITE  gs_color(255, 255, 255, 255)
+#define GS_COLOR_RED    gs_color(255, 0, 0, 255)
+#define GS_COLOR_GREEN  gs_color(0, 255, 0, 255)
+#define GS_COLOR_BLUE   gs_color(0, 0, 255, 255)
 #define GS_COLOR_ORANGE gs_color(255, 100, 0, 255)
 #define GS_COLOR_PURPLE gs_color(128, 0, 128, 255)
 
 gs_force_inline 
 gs_color_t gs_color_alpha(gs_color_t c, uint8_t a)
 {
-	return gs_color(c.r, c.g, c.b, a); 
+    return gs_color(c.r, c.g, c.b, a); 
 }
 
 /*===================================
@@ -403,349 +403,349 @@ gs_color_t gs_color_alpha(gs_color_t c, uint8_t a)
 gs_force_inline uint32_t 
 gs_string_length(const char* txt)
 {
-	uint32_t sz = 0;
-	while (txt != NULL && txt[ sz ] != '\0') 
-	{
-		sz++;
-	}
-	return sz;
+    uint32_t sz = 0;
+    while (txt != NULL && txt[ sz ] != '\0') 
+    {
+        sz++;
+    }
+    return sz;
 }
 
 // Expects null terminated strings
 gs_force_inline b32 
 gs_string_compare_equal
 (
-	const char* 	txt, 
-	const char* 	cmp 
+    const char*     txt, 
+    const char*     cmp 
 )
 {
-	// Grab sizes of both strings
-	uint32_t a_sz = gs_string_length(txt);
-	uint32_t b_sz = gs_string_length(cmp);
+    // Grab sizes of both strings
+    uint32_t a_sz = gs_string_length(txt);
+    uint32_t b_sz = gs_string_length(cmp);
 
-	// Return false if sizes do not match
-	if (a_sz != b_sz) 
-	{
-		return false;
-	}
+    // Return false if sizes do not match
+    if (a_sz != b_sz) 
+    {
+        return false;
+    }
 
-	for(uint32_t i = 0; i < a_sz; ++i) 
-	{
-		if (*txt++ != *cmp++)
-		{
-			return false;
-		}
-	};
+    for(uint32_t i = 0; i < a_sz; ++i) 
+    {
+        if (*txt++ != *cmp++)
+        {
+            return false;
+        }
+    };
 
-	return true;
+    return true;
 }
 
 gs_force_inline b32 
 gs_string_compare_equal_n
 (
-	const char* txt, 
-	const char* cmp, 
-	uint32_t n 
+    const char* txt, 
+    const char* cmp, 
+    uint32_t n 
 )
 {
-	uint32_t a_sz = gs_string_length(txt);
-	uint32_t b_sz = gs_string_length(cmp);
+    uint32_t a_sz = gs_string_length(txt);
+    uint32_t b_sz = gs_string_length(cmp);
 
-	// Not enough characters to do operation
-	if (a_sz < n || b_sz < n)
-	{
-		return false;
-	}
+    // Not enough characters to do operation
+    if (a_sz < n || b_sz < n)
+    {
+        return false;
+    }
 
-	for (uint32_t i = 0; i < n; ++i) 
-	{
-		if (*txt++ != *cmp++)
-		{
-			return false;
-		}
-	};
+    for (uint32_t i = 0; i < n; ++i) 
+    {
+        if (*txt++ != *cmp++)
+        {
+            return false;
+        }
+    };
 
-	return true;
+    return true;
 }
 
 gs_force_inline void
 gs_util_str_to_lower
 (
-	const char* src,
-	char* buffer,
-	size_t buffer_sz
+    const char* src,
+    char* buffer,
+    size_t buffer_sz
 )
 {
-	uint32_t src_sz = gs_string_length(src);
-	uint32_t len = gs_min(src_sz, buffer_sz);
+    uint32_t src_sz = gs_string_length(src);
+    uint32_t len = gs_min(src_sz, buffer_sz);
 
-	for (uint32_t i = 0; i < len; ++i) {
-		buffer[i] = tolower(src[i]);
-	}
+    for (uint32_t i = 0; i < len; ++i) {
+        buffer[i] = tolower(src[i]);
+    }
 }
 
 gs_force_inline b32
 gs_util_str_is_numeric(const char* str)
 {
-	const char* at = str;
-	while (at && *at)
-	{
-		while (*at == '\n' || *at == '\t' || *at == ' ' || *at == '\r') at++;;
-		char c = *at++;
-		if (c >= '0' && c <= '9')
-		{
-			return false;
-		} 
-	}	
+    const char* at = str;
+    while (at && *at)
+    {
+        while (*at == '\n' || *at == '\t' || *at == ' ' || *at == '\r') at++;;
+        char c = *at++;
+        if (c >= '0' && c <= '9')
+        {
+            return false;
+        } 
+    }   
 
-	return true;
+    return true;
 }
 
 // Will return a null buffer if file does not exist or allocation fails
 gs_force_inline 
 char* gs_read_file_contents_into_string_null_term
 (
-	const char* file_path, 
-	const char* mode,
-	size_t* _sz
+    const char* file_path, 
+    const char* mode,
+    size_t* _sz
 )
 {
-	char* buffer = 0;
-	FILE* fp = fopen(file_path, mode);
-	size_t sz = 0;
-	if (fp)
-	{
-		fseek(fp, 0, SEEK_END);
-		sz = ftell(fp);
-		fseek(fp, 0, SEEK_SET);
-		buffer = (char*)gs_malloc(sz + 1);
-		if (buffer)
-		{
-			fread(buffer, 1, sz, fp);
-		}
-		fclose(fp);
-		buffer[sz] = '0';
-		if (_sz) *_sz = sz;
-	}
-	return buffer;
+    char* buffer = 0;
+    FILE* fp = fopen(file_path, mode);
+    size_t sz = 0;
+    if (fp)
+    {
+        fseek(fp, 0, SEEK_END);
+        sz = ftell(fp);
+        fseek(fp, 0, SEEK_SET);
+        buffer = (char*)gs_malloc(sz + 1);
+        if (buffer)
+        {
+            fread(buffer, 1, sz, fp);
+        }
+        fclose(fp);
+        buffer[sz] = '0';
+        if (_sz) *_sz = sz;
+    }
+    return buffer;
 }
 
 gs_force_inline 
 b32 gs_util_file_exists(const char* file_path)
 {
-	FILE* fp = fopen(file_path, "r");	
-	if (fp)
-	{
-		fclose(fp);
-		return true;
-	}
-	return false;
+    FILE* fp = fopen(file_path, "r");   
+    if (fp)
+    {
+        fclose(fp);
+        return true;
+    }
+    return false;
 }
 
 gs_force_inline 
 void gs_util_get_file_extension
 (
-	char* buffer,
-	uint32_t buffer_size,
-	const char* file_path 
+    char* buffer,
+    uint32_t buffer_size,
+    const char* file_path 
 )
 {
-	uint32_t str_len = gs_string_length(file_path);
-	const char* at = (file_path + str_len - 1);
-	while (*at != '.' && at != file_path)
-	{
-		at--;
-	}
+    uint32_t str_len = gs_string_length(file_path);
+    const char* at = (file_path + str_len - 1);
+    while (*at != '.' && at != file_path)
+    {
+        at--;
+    }
 
-	if (*at == '.')
-	{
-		at++;
-		uint32_t i = 0; 
-		while (*at)
-		{
-			char c = *at;
-			buffer[ i++ ] = *at++;
-		}
-		buffer[ i ] = '\0';
-	}
+    if (*at == '.')
+    {
+        at++;
+        uint32_t i = 0; 
+        while (*at)
+        {
+            char c = *at;
+            buffer[ i++ ] = *at++;
+        }
+        buffer[ i ] = '\0';
+    }
 }
 
 gs_force_inline 
 void gs_util_get_dir_from_file
 (
-	char* buffer, 
-	uint32_t buffer_size,
-	const char* file_path 
+    char* buffer, 
+    uint32_t buffer_size,
+    const char* file_path 
 )
 {
-	uint32_t str_len = gs_string_length(file_path);
-	const char* end = (file_path + str_len);
-	while (*end != '/' && end != file_path)
-	{
-		end--;
-	}
-	memcpy(buffer, file_path, gs_min(buffer_size, (end - file_path) + 1));
+    uint32_t str_len = gs_string_length(file_path);
+    const char* end = (file_path + str_len);
+    while (*end != '/' && end != file_path)
+    {
+        end--;
+    }
+    memcpy(buffer, file_path, gs_min(buffer_size, (end - file_path) + 1));
 }
 
 gs_force_inline 
 void gs_util_get_file_name
 (
-	char* buffer, 
-	uint32_t buffer_size,
-	const char* file_path 
+    char* buffer, 
+    uint32_t buffer_size,
+    const char* file_path 
 )
 {
-	uint32_t str_len = gs_string_length(file_path);
-	const char* end = (file_path + str_len);
-	const char* dot_at = end;
-	while (*end != '.' && end != file_path)
-	{
-		end--;
-	}
-	const char* start = end; 
-	while (*start != '/' && start != file_path)
-	{
-		start--;
-	}
-	memcpy(buffer, start, (end - start));
+    uint32_t str_len = gs_string_length(file_path);
+    const char* end = (file_path + str_len);
+    const char* dot_at = end;
+    while (*end != '.' && end != file_path)
+    {
+        end--;
+    }
+    const char* start = end; 
+    while (*start != '/' && start != file_path)
+    {
+        start--;
+    }
+    memcpy(buffer, start, (end - start));
 }
 
 gs_force_inline 
 void gs_util_string_substring
 (
-	const char* src,
-	char* dst,
-	size_t sz,
-	uint32_t start,
-	uint32_t end
+    const char* src,
+    char* dst,
+    size_t sz,
+    uint32_t start,
+    uint32_t end
 )
 {
-	uint32_t str_len = gs_string_length(src);
-	if (end > str_len) {
-		end = str_len;
-	}
-	if (start > str_len) {
-		start = str_len;
-	}
+    uint32_t str_len = gs_string_length(src);
+    if (end > str_len) {
+        end = str_len;
+    }
+    if (start > str_len) {
+        start = str_len;
+    }
 
-	const char* at = src + start;
-	const char* e = src + end;
-	uint32_t ct = 0;
-	while (at && *at != '\0' && at != e)
-	{
-		dst[ ct ] = *at;
-		at++;
-		ct++;
-	}
+    const char* at = src + start;
+    const char* e = src + end;
+    uint32_t ct = 0;
+    while (at && *at != '\0' && at != e)
+    {
+        dst[ ct ] = *at;
+        at++;
+        ct++;
+    }
 }
 
 gs_force_inline 
 void gs_util_string_remove_character
 (
-	const char* src,
-	char* buffer, 
-	uint32_t buffer_size,
-	char delimiter
+    const char* src,
+    char* buffer, 
+    uint32_t buffer_size,
+    char delimiter
 )
 {
-	uint32_t ct = 0;
-	uint32_t str_len = gs_string_length(src);
-	const char* at = src;
-	while (at && *at != '\0' && ct < buffer_size)
-	{
-		char c = *at; 
-		if (c != delimiter) {
-			buffer[ ct ] = c;
-			ct++;
-		}
-		at++;
-	}
+    uint32_t ct = 0;
+    uint32_t str_len = gs_string_length(src);
+    const char* at = src;
+    while (at && *at != '\0' && ct < buffer_size)
+    {
+        char c = *at; 
+        if (c != delimiter) {
+            buffer[ ct ] = c;
+            ct++;
+        }
+        at++;
+    }
 }
 
 gs_force_inline 
 void gs_util_string_replace
 (
-	const char* source_str, 
-	char* buffer, 
-	uint32_t buffer_size, 
-	char delimiter,
-	char replace 
+    const char* source_str, 
+    char* buffer, 
+    uint32_t buffer_size, 
+    char delimiter,
+    char replace 
 )
 {
-	uint32_t str_len = gs_string_length(source_str);
-	const char* at = source_str;
-	while (at && *at != '\0')
-	{
-		char c = *at; 
-		if (c == delimiter) {
-			c = replace;
-		}
-		buffer[(at - source_str)] = c;
-		at++;
-	}
+    uint32_t str_len = gs_string_length(source_str);
+    const char* at = source_str;
+    while (at && *at != '\0')
+    {
+        char c = *at; 
+        if (c == delimiter) {
+            c = replace;
+        }
+        buffer[(at - source_str)] = c;
+        at++;
+    }
 }
 
 gs_force_inline 
 void gs_util_normalize_path
 (
-	const char* path, 
-	char* buffer, 
-	uint32_t buffer_size 
+    const char* path, 
+    char* buffer, 
+    uint32_t buffer_size 
 )
 {
-	// Normalize the path somehow...
+    // Normalize the path somehow...
 }
 
 #ifdef __MINGW32__
-	#define gs_printf(__FMT, ...) __mingw_printf(__FMT, ##__VA_ARGS__)
+    #define gs_printf(__FMT, ...) __mingw_printf(__FMT, ##__VA_ARGS__)
 #else
-	gs_force_inline void 
-	gs_printf
-	(
-		const char* fmt,
-		... 
-	)
-	{
-		va_list args;
-		va_start (args, fmt);
-		vprintf(fmt, args);
-		va_end(args);
-	}
+    gs_force_inline void 
+    gs_printf
+    (
+        const char* fmt,
+        ... 
+    )
+    {
+        va_list args;
+        va_start (args, fmt);
+        vprintf(fmt, args);
+        va_end(args);
+    }
 #endif
 
 #define gs_println(__FMT, ...)\
-	do {\
-		gs_printf(__FMT, ##__VA_ARGS__);\
-		gs_printf("\n");\
-	} while (0)
+    do {\
+        gs_printf(__FMT, ##__VA_ARGS__);\
+        gs_printf("\n");\
+    } while (0)
 
 gs_force_inline 
 void gs_fprintf
 (
-	FILE* fp, 
-	const char* fmt, 
-	... 
+    FILE* fp, 
+    const char* fmt, 
+    ... 
 )
 {
-	va_list args;
-	va_start (args, fmt);
-	vfprintf(fp, fmt, args);
-	va_end(args);
+    va_list args;
+    va_start (args, fmt);
+    vfprintf(fp, fmt, args);
+    va_end(args);
 }
 
 gs_force_inline 
 void gs_fprintln
 (
-	FILE* fp, 
-	const char* fmt, 
-	... 
+    FILE* fp, 
+    const char* fmt, 
+    ... 
 )
 {
-	va_list args;
-	va_start(args, fmt);
-	vfprintf(fp, fmt, args);
-	va_end(args);
-	gs_fprintf(fp, "\n");
+    va_list args;
+    va_start(args, fmt);
+    vfprintf(fp, fmt, args);
+    va_end(args);
+    gs_fprintf(fp, "\n");
 }
 
 #ifdef __MINGW32__
@@ -754,13 +754,13 @@ void gs_fprintln
 gs_force_inline 
 void gs_snprintf
 (
-	char* buffer, 
-	size_t buffer_size, 
-	const char* fmt, 
-	... 
+    char* buffer, 
+    size_t buffer_size, 
+    const char* fmt, 
+    ... 
 )
 {
-	va_list args;
+    va_list args;
     va_start(args, fmt);
     vsnprintf(buffer, buffer_size, fmt, args);
     va_end(args);
@@ -768,11 +768,11 @@ void gs_snprintf
 #endif
 
 #define gs_transient_buffer(__N, __SZ)\
-	(char __N[__SZ], memset(__N, 0, __SZ))
+    (char __N[__SZ], memset(__N, 0, __SZ))
 
 #define gs_snprintfc(__NAME, __SZ, __FMT, ...)\
-	char __NAME[__SZ] = gs_default_val();\
-	gs_snprintf(__NAME, __SZ, __FMT, ## __VA_ARGS__);
+    char __NAME[__SZ] = gs_default_val();\
+    gs_snprintf(__NAME, __SZ, __FMT, ## __VA_ARGS__);
 
 gs_force_inline
 uint32_t gs_util_safe_truncate_u64(uint64_t value)
@@ -792,19 +792,19 @@ uint32_t gs_hash_uint32_t(uint32_t x)
 }
 
 #define gs_hash_u32_ip(__X, __OUT)\
-	do {\
-	    __OUT = ((__X >> 16) ^ __X) * 0x45d9f3b;\
-	    __OUT = ((__OUT >> 16) ^ __OUT) * 0x45d9f3b;\
-	    __OUT = (__OUT >> 16) ^ __OUT;\
-	} while (0)	
+    do {\
+        __OUT = ((__X >> 16) ^ __X) * 0x45d9f3b;\
+        __OUT = ((__OUT >> 16) ^ __OUT) * 0x45d9f3b;\
+        __OUT = (__OUT >> 16) ^ __OUT;\
+    } while (0) 
 
 gs_force_inline 
 uint32_t gs_hash_u64(uint64_t x)
 {
-	x = (x ^ (x >> 31) ^ (x >> 62)) * UINT64_C(0x319642b2d24d8ec3);
+    x = (x ^ (x >> 31) ^ (x >> 62)) * UINT64_C(0x319642b2d24d8ec3);
     x = (x ^ (x >> 27) ^ (x >> 54)) * UINT64_C(0x96de1b173f119089);
     x = x ^ (x >> 30) ^ (x >> 60);
-    return (uint32_t)x;	
+    return (uint32_t)x; 
 }
 
 // Note(john): source: http://www.cse.yorku.ca/~oz/hash.html
@@ -824,17 +824,17 @@ uint32_t gs_hash_str(const char* str)
 gs_force_inline 
 uint64_t gs_hash_str64(const char* str)
 {
-	uint32_t hash1 = 5381;
-	uint32_t hash2 = 52711;
-	uint32_t i = gs_string_length(str);
-	while(i--) 
-	{
-		char c = str[ i ];
-		hash1 = (hash1 * 33) ^ c;
-		hash2 = (hash2 * 33) ^ c;
-	}
+    uint32_t hash1 = 5381;
+    uint32_t hash2 = 52711;
+    uint32_t i = gs_string_length(str);
+    while(i--) 
+    {
+        char c = str[ i ];
+        hash1 = (hash1 * 33) ^ c;
+        hash2 = (hash2 * 33) ^ c;
+    }
 
-	return (hash1 >> 0) * 4096 + (hash2 >> 0);
+    return (hash1 >> 0) * 4096 + (hash2 >> 0);
 }
 
 gs_force_inline
@@ -844,7 +844,7 @@ bool gs_compare_bytes(void* b0, void* b1, size_t len)
 }
 
 // Hash generic bytes using (ripped directly from Sean Barret's stb_ds.h)
-#define GS_SIZE_T_BITS 	((sizeof(size_t)) * 8)
+#define GS_SIZE_T_BITS  ((sizeof(size_t)) * 8)
 #define GS_SIPHASH_C_ROUNDS 1
 #define GS_SIPHASH_D_ROUNDS 1
 #define gs_rotate_left(__V, __N)   (((__V) << (__N)) | ((__V) >> (GS_SIZE_T_BITS - (__N))))
@@ -980,55 +980,55 @@ GS_API_DECL bool32_t gs_util_load_texture_data_from_file(const char* file_path, 
 // Byte Buffer
 ========================*/
 
-#define GS_BYTE_BUFFER_DEFAULT_CAPCITY 	1024
+#define GS_BYTE_BUFFER_DEFAULT_CAPCITY  1024
 
 typedef struct gs_byte_buffer_t
 {
-	uint8_t* data;      // Buffer that actually holds all relevant byte data
-	uint32_t size;      // Current size of the stored buffer data
-	uint32_t position;  // Current read/write position in the buffer
-	uint32_t capacity;  // Current max capacity for the buffer
+    uint8_t* data;      // Buffer that actually holds all relevant byte data
+    uint32_t size;      // Current size of the stored buffer data
+    uint32_t position;  // Current read/write position in the buffer
+    uint32_t capacity;  // Current max capacity for the buffer
 } gs_byte_buffer_t;
 
 // Generic "write" function for a byte buffer
 #define gs_byte_buffer_write(__BB, __T, __VAL)\
 do {\
-	gs_byte_buffer_t* __BUFFER = __BB;\
-	usize __SZ = sizeof(__T);\
-	usize __TWS = __BUFFER->position + __SZ;\
-	if (__TWS >= __BUFFER->capacity)\
-	{\
-		usize __CAP = __BUFFER->capacity * 2;\
-		while(__CAP < __TWS)\
-		{\
-			__CAP *= 2;\
-		}\
-		gs_byte_buffer_resize(__BUFFER, __CAP);\
-	}\
-	*(__T*)(__BUFFER->data + __BUFFER->position) = __VAL;\
-	__BUFFER->position += __SZ;\
-	__BUFFER->size += __SZ;\
+    gs_byte_buffer_t* __BUFFER = __BB;\
+    usize __SZ = sizeof(__T);\
+    usize __TWS = __BUFFER->position + __SZ;\
+    if (__TWS >= __BUFFER->capacity)\
+    {\
+        usize __CAP = __BUFFER->capacity * 2;\
+        while(__CAP < __TWS)\
+        {\
+            __CAP *= 2;\
+        }\
+        gs_byte_buffer_resize(__BUFFER, __CAP);\
+    }\
+    *(__T*)(__BUFFER->data + __BUFFER->position) = __VAL;\
+    __BUFFER->position += __SZ;\
+    __BUFFER->size += __SZ;\
 } while (0)
 
 // Generic "read" function
 #define gs_byte_buffer_read(__BUFFER, __T, __VAL_P)\
 do {\
-	__T* __V = (__T*)(__VAL_P);\
-	gs_byte_buffer_t* __BB = (__BUFFER);\
-	*(__V) = *(__T*)(__BB->data + __BB->position);\
-	__BB->position += sizeof(__T);\
+    __T* __V = (__T*)(__VAL_P);\
+    gs_byte_buffer_t* __BB = (__BUFFER);\
+    *(__V) = *(__T*)(__BB->data + __BB->position);\
+    __BB->position += sizeof(__T);\
 } while (0)
 
 // Defines variable and sets value from buffer in place
 // Use to construct a new variable
 #define gs_byte_buffer_readc(__BUFFER, __T, __NAME)\
-	__T __NAME = gs_default_val();\
-	gs_byte_buffer_read((__BUFFER), __T, &__NAME);
+    __T __NAME = gs_default_val();\
+    gs_byte_buffer_read((__BUFFER), __T, &__NAME);
 
 #define gs_byte_buffer_read_bulkc(__BUFFER, __T, __NAME, __SZ)\
-	__T __NAME = gs_default_val();\
-	__T* gs_macro_cat(__NAME, __LINE__) = &(__NAME);\
-	gs_byte_buffer_read_bulk(__BUFFER, &gs_macro_cat(__NAME, __LINE__), __SZ);
+    __T __NAME = gs_default_val();\
+    __T* gs_macro_cat(__NAME, __LINE__) = &(__NAME);\
+    gs_byte_buffer_read_bulk(__BUFFER, &gs_macro_cat(__NAME, __LINE__), __SZ);
 
 /* Desc */
 GS_API_DECL void gs_byte_buffer_init(gs_byte_buffer_t* buffer);
@@ -1078,88 +1078,88 @@ GS_API_DECL gs_result gs_byte_buffer_read_from_file(gs_byte_buffer_t* buffer, co
 
 typedef struct gs_dyn_array
 {
-	int32_t size;
-	int32_t capacity;
+    int32_t size;
+    int32_t capacity;
 } gs_dyn_array;
 
 #define gs_dyn_array_head(__ARR)\
-	((gs_dyn_array*)((uint8_t*)(__ARR) - sizeof(gs_dyn_array)))
+    ((gs_dyn_array*)((uint8_t*)(__ARR) - sizeof(gs_dyn_array)))
 
 #define gs_dyn_array_size(__ARR)\
-	(__ARR == NULL ? 0 : gs_dyn_array_head((__ARR))->size)
+    (__ARR == NULL ? 0 : gs_dyn_array_head((__ARR))->size)
 
 #define gs_dyn_array_capacity(__ARR)\
-	(__ARR == NULL ? 0 : gs_dyn_array_head((__ARR))->capacity)
+    (__ARR == NULL ? 0 : gs_dyn_array_head((__ARR))->capacity)
 
 #define gs_dyn_array_full(__ARR)\
-	((gs_dyn_array_size((__ARR)) == gs_dyn_array_capacity((__ARR))))	
+    ((gs_dyn_array_size((__ARR)) == gs_dyn_array_capacity((__ARR))))    
 
 gs_inline 
 void* gs_dyn_array_resize_impl(void* arr, size_t sz, size_t amount) 
 {
-	size_t capacity;
+    size_t capacity;
 
-	if (arr) {
-		capacity = amount;	
-	} else {
-		capacity = 0;
-	}
+    if (arr) {
+        capacity = amount;  
+    } else {
+        capacity = 0;
+    }
 
-	// Create new gs_dyn_array with just the header information
-	gs_dyn_array* data = (gs_dyn_array*)gs_realloc(arr ? gs_dyn_array_head(arr) : 0, capacity * sz + sizeof(gs_dyn_array));
+    // Create new gs_dyn_array with just the header information
+    gs_dyn_array* data = (gs_dyn_array*)gs_realloc(arr ? gs_dyn_array_head(arr) : 0, capacity * sz + sizeof(gs_dyn_array));
 
-	if (data) {
-		if (!arr) {
-			data->size = 0;
-		}
-		data->capacity = capacity;
-		return ((int32_t*)data + 2);
-	}
+    if (data) {
+        if (!arr) {
+            data->size = 0;
+        }
+        data->capacity = capacity;
+        return ((int32_t*)data + 2);
+    }
 
-	return NULL;
+    return NULL;
 }
 
 #define gs_dyn_array_need_grow(__ARR, __N)\
-	((__ARR) == 0 || gs_dyn_array_size(__ARR) + (__N) >= gs_dyn_array_capacity(__ARR))
+    ((__ARR) == 0 || gs_dyn_array_size(__ARR) + (__N) >= gs_dyn_array_capacity(__ARR))
 
 #define gs_dyn_array_grow(__ARR)\
-	gs_dyn_array_resize_impl((__ARR), sizeof(*(__ARR)), gs_dyn_array_capacity(__ARR) ? gs_dyn_array_capacity(__ARR) * 2 : 1)
+    gs_dyn_array_resize_impl((__ARR), sizeof(*(__ARR)), gs_dyn_array_capacity(__ARR) ? gs_dyn_array_capacity(__ARR) * 2 : 1)
 
-#define gs_dyn_array_grow_size(__ARR, __SZ	)\
-	gs_dyn_array_resize_impl((__ARR), (__SZ	), gs_dyn_array_capacity(__ARR) ? gs_dyn_array_capacity(__ARR) * 2 : 1)
+#define gs_dyn_array_grow_size(__ARR, __SZ  )\
+    gs_dyn_array_resize_impl((__ARR), (__SZ ), gs_dyn_array_capacity(__ARR) ? gs_dyn_array_capacity(__ARR) * 2 : 1)
 
 gs_force_inline
 void** gs_dyn_array_init(void** arr, size_t val_len)
 {
-	if (*arr == NULL) {
-		gs_dyn_array* data = (gs_dyn_array*)gs_malloc(val_len + sizeof(gs_dyn_array));	// Allocate capacity of one
-		data->size = 0;
-		data->capacity = 1;
-		*arr = ((int32_t*)data + 2);
-		return arr;
-	}
-	return NULL;
+    if (*arr == NULL) {
+        gs_dyn_array* data = (gs_dyn_array*)gs_malloc(val_len + sizeof(gs_dyn_array));  // Allocate capacity of one
+        data->size = 0;
+        data->capacity = 1;
+        *arr = ((int32_t*)data + 2);
+        return arr;
+    }
+    return NULL;
 }
 
 gs_force_inline
 void gs_dyn_array_push_data(void** arr, void* val, size_t val_len)
 {
-	if (*arr == NULL) {
-		gs_dyn_array_init(arr, val_len);
-	}
-	if (gs_dyn_array_need_grow(*arr, 1)) 
-	{
-		int32_t capacity = gs_dyn_array_capacity(*arr) * 2;
+    if (*arr == NULL) {
+        gs_dyn_array_init(arr, val_len);
+    }
+    if (gs_dyn_array_need_grow(*arr, 1)) 
+    {
+        int32_t capacity = gs_dyn_array_capacity(*arr) * 2;
 
-		// Create new gs_dyn_array with just the header information
-		gs_dyn_array* data = (gs_dyn_array*)gs_realloc(gs_dyn_array_head(*arr), capacity * val_len + sizeof(gs_dyn_array));
+        // Create new gs_dyn_array with just the header information
+        gs_dyn_array* data = (gs_dyn_array*)gs_realloc(gs_dyn_array_head(*arr), capacity * val_len + sizeof(gs_dyn_array));
 
-		if (data) {
-			data->capacity = capacity;
-			*arr = ((int32_t*)data + 2);
-		}
-	}
-	size_t offset = gs_dyn_array_size(*arr);
+        if (data) {
+            data->capacity = capacity;
+            *arr = ((int32_t*)data + 2);
+        }
+    }
+    size_t offset = gs_dyn_array_size(*arr);
     memcpy(((uint8_t*)(*arr)) + offset * val_len, val, val_len);
     gs_dyn_array_head(*arr)->size++;
 }
@@ -1167,69 +1167,69 @@ void gs_dyn_array_push_data(void** arr, void* val, size_t val_len)
 gs_force_inline
 void gs_dyn_array_set_data_i(void** arr, void* val, size_t val_len, uint32_t offset)
 {
-	memcpy(((char*)(*arr)) + offset * val_len, val, val_len);
+    memcpy(((char*)(*arr)) + offset * val_len, val, val_len);
 }
 
 #define gs_dyn_array_push(__ARR, __ARRVAL)\
-	do {\
-		gs_dyn_array_init(&(__ARR), sizeof(*(__ARR)));\
-		if (!(__ARR) || ((__ARR) && gs_dyn_array_need_grow(__ARR, 1))) {\
-			*((void **)&(__ARR)) = gs_dyn_array_grow(__ARR); \
-		}\
-		(__ARR)[gs_dyn_array_size(__ARR)] = (__ARRVAL);\
-		gs_dyn_array_head(__ARR)->size++;\
-	} while(0)
+    do {\
+        gs_dyn_array_init(&(__ARR), sizeof(*(__ARR)));\
+        if (!(__ARR) || ((__ARR) && gs_dyn_array_need_grow(__ARR, 1))) {\
+            *((void **)&(__ARR)) = gs_dyn_array_grow(__ARR); \
+        }\
+        (__ARR)[gs_dyn_array_size(__ARR)] = (__ARRVAL);\
+        gs_dyn_array_head(__ARR)->size++;\
+    } while(0)
 
 #define gs_dyn_array_reserve(__ARR, __AMOUNT)\
-	do {\
-		if ((!__ARR)) gs_dyn_array_init(&(__ARR), sizeof(*(__ARR)));\
-		if ((!__ARR) || __AMOUNT > gs_dyn_array_capacity(__ARR)) {\
-			*((void **)&(__ARR)) = gs_dyn_array_resize_impl(__ARR, sizeof(*__ARR), __AMOUNT);\
-		}\
-	} while(0)
+    do {\
+        if ((!__ARR)) gs_dyn_array_init(&(__ARR), sizeof(*(__ARR)));\
+        if ((!__ARR) || __AMOUNT > gs_dyn_array_capacity(__ARR)) {\
+            *((void **)&(__ARR)) = gs_dyn_array_resize_impl(__ARR, sizeof(*__ARR), __AMOUNT);\
+        }\
+    } while(0)
 
 #define gs_dyn_array_empty(__ARR)\
-	(gs_dyn_array_init(&(__ARR), sizeof(*(__ARR))), (gs_dyn_array_size(__ARR) == 0))
+    (gs_dyn_array_init(&(__ARR), sizeof(*(__ARR))), (gs_dyn_array_size(__ARR) == 0))
 
 #define gs_dyn_array_pop(__ARR)\
-	do {\
-		if (__ARR && !gs_dyn_array_empty(__ARR)) {\
-			gs_dyn_array_head(__ARR)->size -= 1;\
-		}\
-	} while (0)
+    do {\
+        if (__ARR && !gs_dyn_array_empty(__ARR)) {\
+            gs_dyn_array_head(__ARR)->size -= 1;\
+        }\
+    } while (0)
 
 #define gs_dyn_array_back(__ARR)\
-	*(__ARR + (gs_dyn_array_size(__ARR) ? gs_dyn_array_size(__ARR) - 1 : 0))
+    *(__ARR + (gs_dyn_array_size(__ARR) ? gs_dyn_array_size(__ARR) - 1 : 0))
 
 #define gs_dyn_array_for(__ARR, __T, __IT_NAME)\
-	for (__T* __IT_NAME = __ARR; __IT_NAME != gs_dyn_array_back(__ARR); ++__IT_NAME)
+    for (__T* __IT_NAME = __ARR; __IT_NAME != gs_dyn_array_back(__ARR); ++__IT_NAME)
 
 #define gs_dyn_array_new(__T)\
-	((__T*)gs_dyn_array_resize_impl(NULL, sizeof(__T), 0))
+    ((__T*)gs_dyn_array_resize_impl(NULL, sizeof(__T), 0))
 
 #define gs_dyn_array_clear(__ARR)\
-	do {\
-		if (__ARR) {\
-			gs_dyn_array_head(__ARR)->size = 0;\
-		}\
-	} while (0)
+    do {\
+        if (__ARR) {\
+            gs_dyn_array_head(__ARR)->size = 0;\
+        }\
+    } while (0)
 
-#define gs_dyn_array(__T)	__T*
+#define gs_dyn_array(__T)   __T*
 
 #define gs_dyn_array_free(__ARR)\
-	do {\
-		if (__ARR) {\
-			gs_free(gs_dyn_array_head(__ARR));\
-			(__ARR) = NULL;\
-		}\
-	} while (0)
+    do {\
+        if (__ARR) {\
+            gs_free(gs_dyn_array_head(__ARR));\
+            (__ARR) = NULL;\
+        }\
+    } while (0)
 
 /*===================================
 // Hash Table
 ===================================*/
 
 /* 
-	If using struct for keys, requires struct to be word-aligned.
+    If using struct for keys, requires struct to be word-aligned.
 */
 
 #define GS_HASH_TABLE_HASH_SEED         0x31415296
@@ -1237,128 +1237,128 @@ void gs_dyn_array_set_data_i(void** arr, void* val, size_t val_len, uint32_t off
 
 typedef enum gs_hash_table_entry_state
 {
-	GS_HASH_TABLE_ENTRY_INACTIVE = 0x00,
-	GS_HASH_TABLE_ENTRY_ACTIVE = 0x01
+    GS_HASH_TABLE_ENTRY_INACTIVE = 0x00,
+    GS_HASH_TABLE_ENTRY_ACTIVE = 0x01
 } gs_hash_table_entry_state;
 
 #define __gs_hash_table_entry(__HMK, __HMV)\
-	struct\
-	{\
-		__HMK key;\
-		__HMV val;\
-		gs_hash_table_entry_state state;\
-	}
+    struct\
+    {\
+        __HMK key;\
+        __HMV val;\
+        gs_hash_table_entry_state state;\
+    }
 
 #define gs_hash_table(__HMK, __HMV)\
-	struct {\
-		__gs_hash_table_entry(__HMK, __HMV)* data;\
-		__HMK tmp_key;\
-		__HMV tmp_val;\
-		size_t stride;\
-		size_t klpvl;\
-	}*
+    struct {\
+        __gs_hash_table_entry(__HMK, __HMV)* data;\
+        __HMK tmp_key;\
+        __HMV tmp_val;\
+        size_t stride;\
+        size_t klpvl;\
+    }*
 
 // Need a way to create a temporary key so I can take the address of it
 
 #define gs_hash_table_new(__K, __V)\
-	NULL
+    NULL
 
 #define gs_hash_table_init(__HT, __K, __V)\
-	do {\
-		size_t entry_sz = sizeof(__K) + sizeof(__V) + sizeof(gs_hash_table_entry_state);\
-		size_t ht_sz = sizeof(__K) + sizeof(__V) + sizeof(void*) + 2 * sizeof(size_t);\
-		(__HT) = gs_malloc(ht_sz);\
-		memset((__HT), 0, ht_sz);\
-		(__HT)->data = gs_dyn_array_resize_impl(NULL, entry_sz, 2);\
-		uintptr_t d0 = (uintptr_t)&((__HT)->data[0]);\
-		uintptr_t d1 = (uintptr_t)&((__HT)->data[1]);\
-		ptrdiff_t diff = (d1 - d0);\
-		ptrdiff_t klpvl = (uintptr_t)&(__HT->data[0].state) - (uintptr_t)(&__HT->data[0]);\
-		(__HT)->stride = (size_t)(diff);\
-		(__HT)->klpvl = (size_t)(klpvl);\
-	} while (0)
+    do {\
+        size_t entry_sz = sizeof(__K) + sizeof(__V) + sizeof(gs_hash_table_entry_state);\
+        size_t ht_sz = sizeof(__K) + sizeof(__V) + sizeof(void*) + 2 * sizeof(size_t);\
+        (__HT) = gs_malloc(ht_sz);\
+        memset((__HT), 0, ht_sz);\
+        (__HT)->data = gs_dyn_array_resize_impl(NULL, entry_sz, 2);\
+        uintptr_t d0 = (uintptr_t)&((__HT)->data[0]);\
+        uintptr_t d1 = (uintptr_t)&((__HT)->data[1]);\
+        ptrdiff_t diff = (d1 - d0);\
+        ptrdiff_t klpvl = (uintptr_t)&(__HT->data[0].state) - (uintptr_t)(&__HT->data[0]);\
+        (__HT)->stride = (size_t)(diff);\
+        (__HT)->klpvl = (size_t)(klpvl);\
+    } while (0)
 
 #define gs_hash_table_size(__HT)\
-	((__HT) != NULL ? gs_dyn_array_size((__HT)->data) : 0)
+    ((__HT) != NULL ? gs_dyn_array_size((__HT)->data) : 0)
 
 #define gs_hash_table_capacity(__HT)\
-	((__HT) != NULL ? gs_dyn_array_capacity((__HT)->data) : 0)
+    ((__HT) != NULL ? gs_dyn_array_capacity((__HT)->data) : 0)
 
 #define gs_hash_table_load_factor(__HT)\
-	(gs_hash_table_capacity(__HT) ? (float)(gs_hash_table_size(__HT)) / (float)(gs_hash_table_capacity(__HT)) : 0.f)
+    (gs_hash_table_capacity(__HT) ? (float)(gs_hash_table_size(__HT)) / (float)(gs_hash_table_capacity(__HT)) : 0.f)
 
 #define gs_hash_table_grow(__HT, __C)\
-	((__HT)->data = gs_dyn_array_resize_impl((__HT)->data, sizeof(*((__HT)->data)), (__C)))
+    ((__HT)->data = gs_dyn_array_resize_impl((__HT)->data, sizeof(*((__HT)->data)), (__C)))
 
 #define gs_hash_table_empty(__HT)\
-	((__HT) != NULL ? gs_dyn_array_size((__HT)->data) == 0 : true)
+    ((__HT) != NULL ? gs_dyn_array_size((__HT)->data) == 0 : true)
 
 #define gs_hash_table_clear(__HT)\
-	do {\
-		if ((__HT) != NULL) {\
-			uint32_t capacity = gs_dyn_array_capacity((__HT)->data);\
-			for (uint32_t i = 0; i < capacity; ++i) {\
-				(__HT)->data[i].state = GS_HASH_TABLE_ENTRY_INACTIVE;\
-			}\
-			/*memset((__HT)->data, 0, gs_dyn_array_capacity((__HT)->data) * );*/\
-			gs_dyn_array_clear((__HT)->data);\
-		}\
-	} while (0)
+    do {\
+        if ((__HT) != NULL) {\
+            uint32_t capacity = gs_dyn_array_capacity((__HT)->data);\
+            for (uint32_t i = 0; i < capacity; ++i) {\
+                (__HT)->data[i].state = GS_HASH_TABLE_ENTRY_INACTIVE;\
+            }\
+            /*memset((__HT)->data, 0, gs_dyn_array_capacity((__HT)->data) * );*/\
+            gs_dyn_array_clear((__HT)->data);\
+        }\
+    } while (0)
 
 #define gs_hash_table_free(__HT)\
-	do {\
-		if ((__HT) != NULL) {\
-			gs_dyn_array_free((__HT)->data);\
-			(__HT)->data = NULL;\
-			gs_free(__HT);\
-			(__HT) = NULL;\
-		}\
-	} while (0)
+    do {\
+        if ((__HT) != NULL) {\
+            gs_dyn_array_free((__HT)->data);\
+            (__HT)->data = NULL;\
+            gs_free(__HT);\
+            (__HT) = NULL;\
+        }\
+    } while (0)
 
 // Find available slot to insert k/v pair into
 #define gs_hash_table_insert(__HT, __HMK, __HMV)\
-	do {\
-		/* Check for null hash table, init if necessary */\
-		if ((__HT) == NULL) {\
-			gs_hash_table_init((__HT), (__HMK), (__HMV));\
-		}\
-	\
-		/* Grow table if necessary */\
-		uint32_t __CAP = gs_hash_table_capacity(__HT);\
-		float __LF = gs_hash_table_load_factor(__HT);\
-		if (__LF >= 0.5f || !__CAP)\
-		{\
-			gs_hash_table_grow(__HT, __CAP ? __CAP * 2 : 1);\
-			/* Iterate through data and set state to null, from __CAP -> __CAP * 2 */\
-			/* Memset here instead */\
-			for (uint32_t __I = __CAP; __I < __CAP * 2; ++__I) {\
-				(__HT)->data[__I].state = GS_HASH_TABLE_ENTRY_INACTIVE;\
-			}\
-			__CAP = gs_hash_table_capacity(__HT);\
-		}\
-	\
-		/* Get hash of key */\
-		(__HT)->tmp_key = (__HMK);\
-		size_t __HSH = gs_hash_bytes(&((__HT)->tmp_key), sizeof((__HT)->tmp_key), GS_HASH_TABLE_HASH_SEED);\
-		size_t __HSH_IDX = __HSH % __CAP;\
-		(__HT)->tmp_key = (__HT)->data[__HSH_IDX].key;\
-		uint32_t c = 0;\
-	\
-		/* Find valid idx and place data */\
-		while (\
-			c < __CAP\
-			&& __HSH != gs_hash_bytes(&__HT->tmp_key, sizeof((__HT)->tmp_key), GS_HASH_TABLE_HASH_SEED)\
-			&& __HT->data[__HSH_IDX].state == GS_HASH_TABLE_ENTRY_ACTIVE)\
-		{\
-			__HSH_IDX = ((__HSH_IDX + 1) % __CAP);\
-			(__HT)->tmp_key = (__HT)->data[__HSH_IDX].key;\
-			++c;\
-		}\
-		(__HT)->data[__HSH_IDX].key = (__HMK);\
-		(__HT)->data[__HSH_IDX].val = (__HMV);\
-		(__HT)->data[__HSH_IDX].state = GS_HASH_TABLE_ENTRY_ACTIVE;\
-		gs_dyn_array_head((__HT)->data)->size++;\
-	} while (0)
+    do {\
+        /* Check for null hash table, init if necessary */\
+        if ((__HT) == NULL) {\
+            gs_hash_table_init((__HT), (__HMK), (__HMV));\
+        }\
+    \
+        /* Grow table if necessary */\
+        uint32_t __CAP = gs_hash_table_capacity(__HT);\
+        float __LF = gs_hash_table_load_factor(__HT);\
+        if (__LF >= 0.5f || !__CAP)\
+        {\
+            gs_hash_table_grow(__HT, __CAP ? __CAP * 2 : 1);\
+            /* Iterate through data and set state to null, from __CAP -> __CAP * 2 */\
+            /* Memset here instead */\
+            for (uint32_t __I = __CAP; __I < __CAP * 2; ++__I) {\
+                (__HT)->data[__I].state = GS_HASH_TABLE_ENTRY_INACTIVE;\
+            }\
+            __CAP = gs_hash_table_capacity(__HT);\
+        }\
+    \
+        /* Get hash of key */\
+        (__HT)->tmp_key = (__HMK);\
+        size_t __HSH = gs_hash_bytes(&((__HT)->tmp_key), sizeof((__HT)->tmp_key), GS_HASH_TABLE_HASH_SEED);\
+        size_t __HSH_IDX = __HSH % __CAP;\
+        (__HT)->tmp_key = (__HT)->data[__HSH_IDX].key;\
+        uint32_t c = 0;\
+    \
+        /* Find valid idx and place data */\
+        while (\
+            c < __CAP\
+            && __HSH != gs_hash_bytes(&__HT->tmp_key, sizeof((__HT)->tmp_key), GS_HASH_TABLE_HASH_SEED)\
+            && __HT->data[__HSH_IDX].state == GS_HASH_TABLE_ENTRY_ACTIVE)\
+        {\
+            __HSH_IDX = ((__HSH_IDX + 1) % __CAP);\
+            (__HT)->tmp_key = (__HT)->data[__HSH_IDX].key;\
+            ++c;\
+        }\
+        (__HT)->data[__HSH_IDX].key = (__HMK);\
+        (__HT)->data[__HSH_IDX].val = (__HMV);\
+        (__HT)->data[__HSH_IDX].state = GS_HASH_TABLE_ENTRY_ACTIVE;\
+        gs_dyn_array_head((__HT)->data)->size++;\
+    } while (0)
 
 // Need size difference between two entries
 // Need size of key + val
@@ -1366,61 +1366,61 @@ typedef enum gs_hash_table_entry_state
 gs_force_inline
 uint32_t gs_hash_table_get_key_index_func(void** data, void* key, size_t key_len, size_t val_len, size_t stride, size_t klpvl)
 {
-	// Need a better way to handle this. Can't do it like this anymore.
-	// Need to fix this. Seriously messing me up.
-	uint32_t capacity = gs_dyn_array_capacity(*data);
-	uint32_t idx = GS_HASH_TABLE_INVALID_INDEX;
-	uint32_t hash = gs_hash_bytes(key, key_len, GS_HASH_TABLE_HASH_SEED);
-	uint32_t hash_idx = (hash % capacity);
+    // Need a better way to handle this. Can't do it like this anymore.
+    // Need to fix this. Seriously messing me up.
+    uint32_t capacity = gs_dyn_array_capacity(*data);
+    uint32_t idx = GS_HASH_TABLE_INVALID_INDEX;
+    uint32_t hash = gs_hash_bytes(key, key_len, GS_HASH_TABLE_HASH_SEED);
+    uint32_t hash_idx = (hash % capacity);
 
-	// Iterate through data 
-	for (uint32_t i = hash_idx, c = 0; c < capacity; ++c, i = ((i + 1) % capacity))
-	{
-		uint32_t offset = (i * stride);
-		void* k = ((char*)(*data) + (offset));	
-		uint32_t kh = gs_hash_bytes(k, key_len, GS_HASH_TABLE_HASH_SEED);
-		bool comp = gs_compare_bytes(k, key, key_len);
-		gs_hash_table_entry_state state = *(gs_hash_table_entry_state*)((char*)(*data) + offset + (klpvl)); 
-		if (comp && hash == kh && state == GS_HASH_TABLE_ENTRY_ACTIVE) {
-			idx = i;
-			break;
-		}
-	}
-	return idx;
+    // Iterate through data 
+    for (uint32_t i = hash_idx, c = 0; c < capacity; ++c, i = ((i + 1) % capacity))
+    {
+        uint32_t offset = (i * stride);
+        void* k = ((char*)(*data) + (offset));  
+        uint32_t kh = gs_hash_bytes(k, key_len, GS_HASH_TABLE_HASH_SEED);
+        bool comp = gs_compare_bytes(k, key, key_len);
+        gs_hash_table_entry_state state = *(gs_hash_table_entry_state*)((char*)(*data) + offset + (klpvl)); 
+        if (comp && hash == kh && state == GS_HASH_TABLE_ENTRY_ACTIVE) {
+            idx = i;
+            break;
+        }
+    }
+    return idx;
 }
 
 // Get key at index
 #define gs_hash_table_getk(__HT, __I)\
-	(((__HT))->data[(__I)].key)
+    (((__HT))->data[(__I)].key)
 
 // Get val at index
 #define gs_hash_table_geti(__HT, __I)\
-	((__HT)->data[(__I)].val)
+    ((__HT)->data[(__I)].val)
 
 // Could search for the index in the macro instead now. Does this help me?
 #define gs_hash_table_get(__HT, __HTK)\
-	((__HT)->tmp_key = (__HTK),\
-		(gs_hash_table_geti((__HT),\
-			gs_hash_table_get_key_index_func((void**)&(__HT)->data, (void*)&((__HT)->tmp_key), sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), (__HT)->stride, (__HT)->klpvl))))
+    ((__HT)->tmp_key = (__HTK),\
+        (gs_hash_table_geti((__HT),\
+            gs_hash_table_get_key_index_func((void**)&(__HT)->data, (void*)&((__HT)->tmp_key), sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), (__HT)->stride, (__HT)->klpvl))))
 
 #define gs_hash_table_getp(__HT, __HTK)\
-	((__HT)->tmp_key = (__HTK),\
-		(&gs_hash_table_geti((__HT),\
-			gs_hash_table_get_key_index_func((void**)&(__HT)->data, (void*)&((__HT)->tmp_key), sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), (__HT)->stride, (__HT)->klpvl))))
+    ((__HT)->tmp_key = (__HTK),\
+        (&gs_hash_table_geti((__HT),\
+            gs_hash_table_get_key_index_func((void**)&(__HT)->data, (void*)&((__HT)->tmp_key), sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), (__HT)->stride, (__HT)->klpvl))))
 
 #define gs_hash_table_key_exists(__HT, __HTK)\
-	((__HT)->tmp_key = (__HTK),\
-		(gs_hash_table_get_key_index_func((void**)&(__HT->data), (void*)&(__HT->tmp_key), sizeof(__HT->tmp_key), sizeof(__HT->tmp_val), __HT->stride, __HT->klpvl) != GS_HASH_TABLE_INVALID_INDEX))
+    ((__HT)->tmp_key = (__HTK),\
+        (gs_hash_table_get_key_index_func((void**)&(__HT->data), (void*)&(__HT->tmp_key), sizeof(__HT->tmp_key), sizeof(__HT->tmp_val), __HT->stride, __HT->klpvl) != GS_HASH_TABLE_INVALID_INDEX))
 
 #define gs_hash_table_erase(__HT, __HTK)\
-	do {\
-		/* Get idx for key */\
-		(__HT)->tmp_key = (__HTK);\
-		uint32_t __IDX = gs_hash_table_get_key_index_func((void**)&(__HT)->data, (void*)&((__HT)->tmp_key), sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), (__HT)->stride, (__HT)->klpvl);\
-		if (__IDX != GS_HASH_TABLE_INVALID_INDEX) {\
-			(__HT)->data[__IDX].state = GS_HASH_TABLE_ENTRY_INACTIVE;\
-		}\
-	} while (0)
+    do {\
+        /* Get idx for key */\
+        (__HT)->tmp_key = (__HTK);\
+        uint32_t __IDX = gs_hash_table_get_key_index_func((void**)&(__HT)->data, (void*)&((__HT)->tmp_key), sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), (__HT)->stride, (__HT)->klpvl);\
+        if (__IDX != GS_HASH_TABLE_INVALID_INDEX) {\
+            (__HT)->data[__IDX].state = GS_HASH_TABLE_ENTRY_INACTIVE;\
+        }\
+    } while (0)
 
 /*===== Hash Table Iterator ====*/
 
@@ -1429,219 +1429,219 @@ typedef uint32_t gs_hash_table_iter;
 gs_force_inline
 uint32_t __gs_find_first_valid_iterator(void* data, size_t key_len, size_t val_len, uint32_t idx)
 {
-	uint32_t it = idx;
-	size_t s = key_len == 8 ? 7 : 3;
-	size_t entry_sz = (((key_len + val_len + sizeof(gs_hash_table_entry_state)) + s) & (~s));	// 4-byte aligned stride
-	size_t klpvl = ((key_len + val_len + s) & (~s));	// 4-byte aligned key/val pair
-	for (; it < gs_dyn_array_capacity(data); ++it)
-	{
-		uint32_t offset = (it * entry_sz);
-		gs_hash_table_entry_state state = *(gs_hash_table_entry_state*)((uint8_t*)data + offset + (klpvl));
-		if (state == GS_HASH_TABLE_ENTRY_ACTIVE)
-		{
-			break;
-		}
-	}
-	return it;
+    uint32_t it = idx;
+    size_t s = key_len == 8 ? 7 : 3;
+    size_t entry_sz = (((key_len + val_len + sizeof(gs_hash_table_entry_state)) + s) & (~s));   // 4-byte aligned stride
+    size_t klpvl = ((key_len + val_len + s) & (~s));    // 4-byte aligned key/val pair
+    for (; it < gs_dyn_array_capacity(data); ++it)
+    {
+        uint32_t offset = (it * entry_sz);
+        gs_hash_table_entry_state state = *(gs_hash_table_entry_state*)((uint8_t*)data + offset + (klpvl));
+        if (state == GS_HASH_TABLE_ENTRY_ACTIVE)
+        {
+            break;
+        }
+    }
+    return it;
 }
 
 /* Find first valid iterator idx */
 #define gs_hash_table_iter_new(__HT)\
-	(__gs_find_first_valid_iterator((__HT)->data, sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val)), 0)
+    (__gs_find_first_valid_iterator((__HT)->data, sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val)), 0)
 
 #define gs_hash_table_iter_valid(__HT, __IT)\
-	((__IT) < gs_hash_table_capacity((__HT)))
+    ((__IT) < gs_hash_table_capacity((__HT)))
 
 // Have to be able to do this for hash table...
 gs_force_inline
 void __gs_hash_table_iter_advance_func(void** data, size_t key_len, size_t val_len, uint32_t* it)
 {
-	size_t s = key_len == 8 ? 7 : 3;	// NO idea if this is a valid way to handle this.
-	size_t entry_sz = (((key_len + val_len + sizeof(gs_hash_table_entry_state)) + s) & (~s));	// Byte aligned stride
-	size_t klpvl = ((key_len + val_len + s) & (~s));	// Byte aligned key/val pair 
-	(*it)++;
-	for (; *it < gs_dyn_array_capacity(*data); ++*it)
-	{
-		uint32_t offset = (*it * entry_sz);
-		gs_hash_table_entry_state state = *(gs_hash_table_entry_state*)((uint8_t*)*data + offset + (klpvl));
-		if (state == GS_HASH_TABLE_ENTRY_ACTIVE)
-		{
-			break;
-		}
-	}
+    size_t s = key_len == 8 ? 7 : 3;    // NO idea if this is a valid way to handle this.
+    size_t entry_sz = (((key_len + val_len + sizeof(gs_hash_table_entry_state)) + s) & (~s));   // Byte aligned stride
+    size_t klpvl = ((key_len + val_len + s) & (~s));    // Byte aligned key/val pair 
+    (*it)++;
+    for (; *it < gs_dyn_array_capacity(*data); ++*it)
+    {
+        uint32_t offset = (*it * entry_sz);
+        gs_hash_table_entry_state state = *(gs_hash_table_entry_state*)((uint8_t*)*data + offset + (klpvl));
+        if (state == GS_HASH_TABLE_ENTRY_ACTIVE)
+        {
+            break;
+        }
+    }
 }
 
 #define gs_hash_table_find_valid_iter(__HT, __IT)\
-	((__IT) = __gs_find_first_valid_iterator((void**)&(__HT)->data, sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), (__IT)))
+    ((__IT) = __gs_find_first_valid_iterator((void**)&(__HT)->data, sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), (__IT)))
 
 #define gs_hash_table_iter_advance(__HT, __IT)\
-	(__gs_hash_table_iter_advance_func((void**)&(__HT)->data, sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), &(__IT)))
+    (__gs_hash_table_iter_advance_func((void**)&(__HT)->data, sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), &(__IT)))
 
 /*===================================
 // Slot Array
 ===================================*/
 
-#define GS_SLOT_ARRAY_INVALID_HANDLE 	UINT32_MAX
+#define GS_SLOT_ARRAY_INVALID_HANDLE    UINT32_MAX
 
 #define gs_slot_array_handle_valid(__SA, __ID)\
-	(__ID < gs_dyn_array_size((__SA)->indices) && (__SA)->indices[__ID] != GS_SLOT_ARRAY_INVALID_HANDLE)
+    (__ID < gs_dyn_array_size((__SA)->indices) && (__SA)->indices[__ID] != GS_SLOT_ARRAY_INVALID_HANDLE)
 
 typedef struct __gs_slot_array_dummy_header {
-	gs_dyn_array(uint32_t) indices;
-	gs_dyn_array(uint32_t) data;
+    gs_dyn_array(uint32_t) indices;
+    gs_dyn_array(uint32_t) data;
 } __gs_slot_array_dummy_header;
 
 #define gs_slot_array(__T)\
-	struct\
-	{\
-		gs_dyn_array(uint32_t) indices;\
-		gs_dyn_array(__T) data;\
-		__T tmp;\
-	}*
+    struct\
+    {\
+        gs_dyn_array(uint32_t) indices;\
+        gs_dyn_array(__T) data;\
+        __T tmp;\
+    }*
 
 #define gs_slot_array_new(__T)\
-	NULL
+    NULL
 
 gs_force_inline
 uint32_t __gs_slot_array_find_next_available_index(gs_dyn_array(uint32_t) indices)
 {
-	uint32_t idx = GS_SLOT_ARRAY_INVALID_HANDLE;
-	for (uint32_t i = 0; i < gs_dyn_array_size(indices); ++i)
-	{
-		uint32_t handle = indices[i];
-		if (handle == GS_SLOT_ARRAY_INVALID_HANDLE)
-		{
-			idx = i;
-			break;
-		}
-	}
-	if (idx == GS_SLOT_ARRAY_INVALID_HANDLE)
-	{
-		idx = gs_dyn_array_size(indices);
-	}
+    uint32_t idx = GS_SLOT_ARRAY_INVALID_HANDLE;
+    for (uint32_t i = 0; i < gs_dyn_array_size(indices); ++i)
+    {
+        uint32_t handle = indices[i];
+        if (handle == GS_SLOT_ARRAY_INVALID_HANDLE)
+        {
+            idx = i;
+            break;
+        }
+    }
+    if (idx == GS_SLOT_ARRAY_INVALID_HANDLE)
+    {
+        idx = gs_dyn_array_size(indices);
+    }
 
-	return idx;
+    return idx;
 }
 
 gs_force_inline
 void** gs_slot_array_init(void** sa, size_t sz)
 {
-	if (*sa == NULL) {
-		*sa = gs_malloc(sz);
-		memset(*sa, 0, sz);
-		return sa;
-	}
-	else {
-		return NULL;
-	}
+    if (*sa == NULL) {
+        *sa = gs_malloc(sz);
+        memset(*sa, 0, sz);
+        return sa;
+    }
+    else {
+        return NULL;
+    }
 }
 
 #define gs_slot_array_init_all(__SA)\
-	(gs_slot_array_init(&(__SA), sizeof(*(__SA))), gs_dyn_array_init(&(__SA)->indices, sizeof(uint32_t)),\
-		gs_dyn_array_init(&(__SA)->data, sizeof((__SA)->tmp)))
+    (gs_slot_array_init(&(__SA), sizeof(*(__SA))), gs_dyn_array_init(&(__SA)->indices, sizeof(uint32_t)),\
+        gs_dyn_array_init(&(__SA)->data, sizeof((__SA)->tmp)))
 
 uint32_t gs_slot_array_insert_func(void** indices, void** data, void* val, size_t val_len, uint32_t* ip)
 {
-	// Find next available index
-	u32 idx = __gs_slot_array_find_next_available_index(*indices);
+    // Find next available index
+    u32 idx = __gs_slot_array_find_next_available_index(*indices);
 
-	if (idx == gs_dyn_array_size(*indices)) {
-		uint32_t v = 0;
-		gs_dyn_array_push_data(indices, &v, sizeof(uint32_t));	
-		idx = gs_dyn_array_size(*indices) - 1;
-	}
+    if (idx == gs_dyn_array_size(*indices)) {
+        uint32_t v = 0;
+        gs_dyn_array_push_data(indices, &v, sizeof(uint32_t));  
+        idx = gs_dyn_array_size(*indices) - 1;
+    }
 
-	// Push data to array
-	gs_dyn_array_push_data(data, val, val_len);
+    // Push data to array
+    gs_dyn_array_push_data(data, val, val_len);
 
-	// Set data in indices
-	uint32_t bi = gs_dyn_array_size(*data) - 1;
-	gs_dyn_array_set_data_i(indices, &bi, sizeof(uint32_t), idx);
+    // Set data in indices
+    uint32_t bi = gs_dyn_array_size(*data) - 1;
+    gs_dyn_array_set_data_i(indices, &bi, sizeof(uint32_t), idx);
 
-	if (ip){
-		*ip = idx;
-	}
+    if (ip){
+        *ip = idx;
+    }
 
-	return idx;
+    return idx;
 }
 
 #define gs_slot_array_insert(__SA, __VAL)\
-	(gs_slot_array_init_all(__SA), (__SA)->tmp = (__VAL),\
-		gs_slot_array_insert_func(&((__SA)->indices), &((__SA)->data), &((__SA)->tmp), sizeof(((__SA)->tmp)), NULL))
+    (gs_slot_array_init_all(__SA), (__SA)->tmp = (__VAL),\
+        gs_slot_array_insert_func(&((__SA)->indices), &((__SA)->data), &((__SA)->tmp), sizeof(((__SA)->tmp)), NULL))
 
 #define gs_slot_array_insert_hp(__SA, __VAL, __hp)\
-	(gs_slot_array_init_all(__SA), (__SA)->tmp = (__VAL),\
-		gs_slot_array_insert_func(&((__SA)->indices), &((__SA)->data), &((__SA)->tmp), sizeof(((__SA)->tmp)), (__hp)))
+    (gs_slot_array_init_all(__SA), (__SA)->tmp = (__VAL),\
+        gs_slot_array_insert_func(&((__SA)->indices), &((__SA)->data), &((__SA)->tmp), sizeof(((__SA)->tmp)), (__hp)))
 
 #define gs_slot_array_insert_no_init(__SA, __VAL)\
-	((__SA)->tmp = (__VAL), gs_slot_array_insert_func(&((__SA)->indices), &((__SA)->data), &((__SA)->tmp), sizeof(((__SA)->tmp)), NULL))
+    ((__SA)->tmp = (__VAL), gs_slot_array_insert_func(&((__SA)->indices), &((__SA)->data), &((__SA)->tmp), sizeof(((__SA)->tmp)), NULL))
 
 #define gs_slot_array_size(__SA)\
- 	((__SA) == NULL ? 0 : gs_dyn_array_size((__SA)->data))
+    ((__SA) == NULL ? 0 : gs_dyn_array_size((__SA)->data))
 
  #define gs_slot_array_empty(__SA)\
- 	(gs_slot_array_size(__SA) == 0)
+    (gs_slot_array_size(__SA) == 0)
 
 #define gs_slot_array_clear(__SA)\
- 	do {\
- 		if ((__SA) != NULL) {\
-			gs_dyn_array_clear((__SA)->data);\
-			gs_dyn_array_clear((__SA)->indices);\
- 		}\
- 	} while (0)
+    do {\
+        if ((__SA) != NULL) {\
+            gs_dyn_array_clear((__SA)->data);\
+            gs_dyn_array_clear((__SA)->indices);\
+        }\
+    } while (0)
 
 #define gs_slot_array_exists(__SA, __SID)\
- 	(__SID < gs_slot_array_size(__SA))
+    (__SID < gs_slot_array_size(__SA))
 
  #define gs_slot_array_get(__SA, __SID)\
- 	((__SA)->data[(__SA)->indices[(__SID) % gs_dyn_array_size(((__SA)->indices))]])
+    ((__SA)->data[(__SA)->indices[(__SID) % gs_dyn_array_size(((__SA)->indices))]])
 
  #define gs_slot_array_getp(__SA, __SID)\
- 	(&(gs_slot_array_get(__SA, (__SID))))
+    (&(gs_slot_array_get(__SA, (__SID))))
 
  #define gs_slot_array_free(__SA)\
- 	do {\
- 		if ((__SA) != NULL) {\
-			gs_dyn_array_free((__SA)->data);\
-			gs_dyn_array_free((__SA)->indices);\
-			(__SA)->indices = NULL;\
-			(__SA)->data = NULL;\
-			gs_free((__SA));\
-			(__SA) = NULL;\
-		}\
- 	} while (0)
+    do {\
+        if ((__SA) != NULL) {\
+            gs_dyn_array_free((__SA)->data);\
+            gs_dyn_array_free((__SA)->indices);\
+            (__SA)->indices = NULL;\
+            (__SA)->data = NULL;\
+            gs_free((__SA));\
+            (__SA) = NULL;\
+        }\
+    } while (0)
 
  #define gs_slot_array_erase(__SA, __id)\
- 	do {\
-	 	uint32_t __H0 = (__id) % gs_dyn_array_size((__SA)->indices);\
-	 	if (gs_slot_array_size(__SA) == 1) {\
-	 		gs_slot_array_clear(__SA);\
-	 	}\
-	 	else if (!gs_slot_array_handle_valid(__SA, __H0)) {\
-			gs_println("Warning: Attempting to erase invalid slot array handle (%zu)", __H0);\
-	 	}\
-	 	else {\
-			uint32_t __OG_DATA_IDX = (__SA)->indices[__H0];\
-			/* Iterate through handles until last index of data found */\
-			uint32_t __H = 0;\
-			for (uint32_t __I = 0; __I < gs_dyn_array_size((__SA)->indices); ++__I)\
-			{\
-				if ((__SA)->indices[__I] == gs_dyn_array_size((__SA)->data) - 1)\
-				{\
-					__H = __I;\
-					break;\
-				}\
-			}\
-		\
-			/* Swap and pop data */\
-			(__SA)->data[__OG_DATA_IDX] = gs_dyn_array_back((__SA)->data);\
-			gs_dyn_array_pop((__SA)->data);\
-		\
-			/* Point new handle, Set og handle to invalid */\
-			(__SA)->indices[__H] = __OG_DATA_IDX;\
-			(__SA)->indices[__H0] = GS_SLOT_ARRAY_INVALID_HANDLE;\
-	 	}\
- 	} while (0)
+    do {\
+        uint32_t __H0 = (__id) % gs_dyn_array_size((__SA)->indices);\
+        if (gs_slot_array_size(__SA) == 1) {\
+            gs_slot_array_clear(__SA);\
+        }\
+        else if (!gs_slot_array_handle_valid(__SA, __H0)) {\
+            gs_println("Warning: Attempting to erase invalid slot array handle (%zu)", __H0);\
+        }\
+        else {\
+            uint32_t __OG_DATA_IDX = (__SA)->indices[__H0];\
+            /* Iterate through handles until last index of data found */\
+            uint32_t __H = 0;\
+            for (uint32_t __I = 0; __I < gs_dyn_array_size((__SA)->indices); ++__I)\
+            {\
+                if ((__SA)->indices[__I] == gs_dyn_array_size((__SA)->data) - 1)\
+                {\
+                    __H = __I;\
+                    break;\
+                }\
+            }\
+        \
+            /* Swap and pop data */\
+            (__SA)->data[__OG_DATA_IDX] = gs_dyn_array_back((__SA)->data);\
+            gs_dyn_array_pop((__SA)->data);\
+        \
+            /* Point new handle, Set og handle to invalid */\
+            (__SA)->indices[__H] = __OG_DATA_IDX;\
+            (__SA)->indices[__H0] = GS_SLOT_ARRAY_INVALID_HANDLE;\
+        }\
+    } while (0)
 
 /*=== Slot Array Iterator ===*/
 
@@ -1649,95 +1649,95 @@ uint32_t gs_slot_array_insert_func(void** indices, void** data, void* val, size_
 typedef uint32_t gs_slot_array_iter;
 
 #define gs_slot_array_iter_valid(__SA, __IT)\
-	((__IT) < gs_slot_array_size((__SA)))
+    ((__IT) < gs_slot_array_size((__SA)))
 
 gs_force_inline
 void __gs_slot_array_iter_advance_func(gs_dyn_array(uint32_t) indices, uint32_t* it)
 {
-	(*it)++;
-	for (; *it < gs_dyn_array_size(indices); ++*it)
-	{\
-		if (indices[*it] != GS_SLOT_ARRAY_INVALID_HANDLE)\
-		{\
-			break;\
-		}\
-	}\
+    (*it)++;
+    for (; *it < gs_dyn_array_size(indices); ++*it)
+    {\
+        if (indices[*it] != GS_SLOT_ARRAY_INVALID_HANDLE)\
+        {\
+            break;\
+        }\
+    }\
 }
 
 #define gs_slot_array_iter_advance(__SA, __IT)\
-	__gs_slot_array_iter_advance_func((__SA)->indices, &(__IT))
+    __gs_slot_array_iter_advance_func((__SA)->indices, &(__IT))
 
 #define gs_slot_array_iter_get(__SA, __IT)\
-	gs_slot_array_get(__SA, __IT)
+    gs_slot_array_get(__SA, __IT)
 
 #define gs_slot_array_iter_getp(__SA, __IT)\
-	gs_slot_array_getp(__SA, __IT)
+    gs_slot_array_getp(__SA, __IT)
 
 /*===================================
 // Slot Map
 ===================================*/
 
 #define gs_slot_map(__SMK, __SMV)\
-	struct {\
-		gs_hash_table(__SMK, uint32_t) ht;\
-		gs_slot_array(__SMV) sa;\
-	}*
+    struct {\
+        gs_hash_table(__SMK, uint32_t) ht;\
+        gs_slot_array(__SMV) sa;\
+    }*
 
 #define gs_slot_map_new(__SMK, __SMV)\
-	NULL
+    NULL
 
 gs_force_inline
 void** gs_slot_map_init(void** sm)
 {
-	if (*sm == NULL) {
-		(*sm) = gs_malloc(sizeof(size_t) * 2);\
-		memset((*sm), 0, sizeof(size_t) * 2);\
-		return sm;
-	}	
-	return NULL;
+    if (*sm == NULL) {
+        (*sm) = gs_malloc(sizeof(size_t) * 2);\
+        memset((*sm), 0, sizeof(size_t) * 2);\
+        return sm;
+    }   
+    return NULL;
 }
 
 // Could return something, I believe?
 #define gs_slot_map_insert(__SM, __SMK, __SMV)\
-	do {\
-		gs_slot_map_init(&(__SM));\
-		uint32_t __h = gs_slot_array_insert((__SM)->sa, ((__SMV)));\
-		gs_hash_table_insert((__SM)->ht, (__SMK), __h);\
-	} while (0)
+    do {\
+        gs_slot_map_init(&(__SM));\
+        uint32_t __h = gs_slot_array_insert((__SM)->sa, ((__SMV)));\
+        gs_hash_table_insert((__SM)->ht, (__SMK), __h);\
+    } while (0)
 
 #define gs_slot_map_get(__SM, __SMK)\
-	(gs_slot_array_get((__SM)->sa, gs_hash_table_get((__SM)->ht, (__SMK))))
+    (gs_slot_array_get((__SM)->sa, gs_hash_table_get((__SM)->ht, (__SMK))))
 
 #define gs_slot_map_getp(__SM, __SMK)\
-	(gs_slot_array_getp((__SM)->sa, gs_hash_table_get((__SM)->ht, (__SMK))))
+    (gs_slot_array_getp((__SM)->sa, gs_hash_table_get((__SM)->ht, (__SMK))))
 
 #define gs_slot_map_size(__SM)\
-	(gs_slot_array_size((__SM)->sa))
+    (gs_slot_array_size((__SM)->sa))
 
 #define gs_slot_map_clear(__SM)\
-	do {\
-		if ((__SM) != NULL) {\
-			gs_hash_table_clear((__SM)->ht);\
-			gs_slot_array_clear((__SM)->sa);\
-		}\
-	} while (0)
+    do {\
+        if ((__SM) != NULL) {\
+            gs_hash_table_clear((__SM)->ht);\
+            gs_slot_array_clear((__SM)->sa);\
+        }\
+    } while (0)
 
 #define gs_slot_map_erase(__SM, __SMK)\
-	do {\
-		uint32_t __K = gs_hash_table_get((__SM)->ht, (__SMK));\
-		gs_hash_table_erase((__SM)->ht, (__SMK));\
-		gs_slot_array_erase((__SM)->sa, __K);\
-	} while (0)
+    do {\
+        uint32_t __K = gs_hash_table_get((__SM)->ht, (__SMK));\
+        gs_hash_table_erase((__SM)->ht, (__SMK));\
+        gs_slot_array_erase((__SM)->sa, __K);\
+    } while (0)
 
 #define gs_slot_map_free(__SM)\
-	do {\
-		if (__SM != NULL) {\
-			gs_hash_table_free((__SM)->ht);\
-			gs_slot_array_free((__SM)->sa);\
-			gs_free((__SM));\
-			(__SM) = NULL;\
-		}\
-	} while (0)
+    do {\
+        if (__SM != NULL) {\
+            gs_hash_table_free((__SM)->ht);\
+            gs_slot_array_free((__SM)->sa);\
+            gs_free((__SM));\
+            (__SM) = NULL;\
+        }\
+    } while (0)
 
 /*=== Slot Map Iterator ===*/
 
@@ -1745,25 +1745,25 @@ typedef uint32_t gs_slot_map_iter;
 
 /* Find first valid iterator idx */
 #define gs_slot_map_iter_new(__SM)\
-	gs_hash_table_iter_new((__SM)->ht)
+    gs_hash_table_iter_new((__SM)->ht)
 
 #define gs_slot_map_iter_valid(__SM, __it)\
-	((__it) < gs_hash_table_capacity((__SM)->ht))
+    ((__it) < gs_hash_table_capacity((__SM)->ht))
 
 #define gs_slot_map_iter_advance(__SM, __it)\
-	__gs_hash_table_iter_advance_func((__SM)->ht->data, sizeof((__SM)->ht->tmp_key), sizeof((__SM)->ht->tmp_val), &(__it))
+    __gs_hash_table_iter_advance_func((__SM)->ht->data, sizeof((__SM)->ht->tmp_key), sizeof((__SM)->ht->tmp_val), &(__it))
 
 #define gs_slot_map_iter_getk(__SM, __it)\
-	(gs_hash_table_find_valid_iter(__SM->ht, __it), gs_hash_table_geti((__SM)->ht, (__it)))
+    (gs_hash_table_find_valid_iter(__SM->ht, __it), gs_hash_table_geti((__SM)->ht, (__it)))
 
 #define gs_slot_map_iter_getkp(__SM, __it)\
-	(gs_hash_table_find_valid_iter(__SM->ht, __it), &(gs_hash_table_geti((__SM)->ht, (__it))))
+    (gs_hash_table_find_valid_iter(__SM->ht, __it), &(gs_hash_table_geti((__SM)->ht, (__it))))
 
 #define gs_slot_map_iter_getv(__SM, __it)\
-	(gs_hash_table_find_valid_iter(__SM->ht, __it), (__SM)->sa->data[gs_hash_table_geti((__SM)->ht, (__it))])
+    (gs_hash_table_find_valid_iter(__SM->ht, __it), (__SM)->sa->data[gs_hash_table_geti((__SM)->ht, (__it))])
 
 #define gs_slot_map_iter_getvp(__SM, __it)\
-	(gs_hash_table_find_valid_iter(__SM->ht, __it), &((__SM)->sa->data[gs_hash_table_geti((__SM)->ht, (__it))]))
+    (gs_hash_table_find_valid_iter(__SM->ht, __it), &((__SM)->sa->data[gs_hash_table_geti((__SM)->ht, (__it))]))
 
 typedef uint32_t gs_slot_map_iter;
 
@@ -1773,39 +1773,39 @@ typedef uint32_t gs_slot_map_iter;
 
 typedef struct gs_command_buffer_t
 {
-	uint32_t num_commands;
-	gs_byte_buffer_t commands;
+    uint32_t num_commands;
+    gs_byte_buffer_t commands;
 } gs_command_buffer_t;
 
 gs_force_inline
 gs_command_buffer_t gs_command_buffer_new()
 {
-	gs_command_buffer_t cb = gs_default_val();
-	cb.commands = gs_byte_buffer_new();
-	return cb;
+    gs_command_buffer_t cb = gs_default_val();
+    cb.commands = gs_byte_buffer_new();
+    return cb;
 }
 
 #define gs_command_buffer_write(__CB, __T, __VAL)\
-	do {\
-		gs_byte_buffer_write(&__CB->commands, __T, __VAL);\
-		__CB->num_commands++;\
-	} while (0)
+    do {\
+        gs_byte_buffer_write(&__CB->commands, __T, __VAL);\
+        __CB->num_commands++;\
+    } while (0)
 
 gs_force_inline 
 void gs_command_buffer_clear(gs_command_buffer_t* cb)
 {
-	cb->num_commands = 0;
-	gs_byte_buffer_clear(&cb->commands);
+    cb->num_commands = 0;
+    gs_byte_buffer_clear(&cb->commands);
 }
 
 gs_force_inline
 void gs_command_buffer_free(gs_command_buffer_t* cb)
 {
-	gs_byte_buffer_free(&cb->commands);
+    gs_byte_buffer_free(&cb->commands);
 }
 
 #ifndef GS_NO_SHORT_NAME
-	typedef gs_command_buffer_t gs_cmdbuf;
+    typedef gs_command_buffer_t gs_cmdbuf;
 #endif
 
 /*========================
@@ -1813,13 +1813,13 @@ void gs_command_buffer_free(gs_command_buffer_t* cb)
 ========================*/
 
 // Defines
-#define GS_PI 		3.1415926535897932
-#define GS_TAU		2.0 * GS_PI
+#define GS_PI       3.1415926535897932
+#define GS_TAU      2.0 * GS_PI
 
 // Useful Utility
-#define gs_v2(...)	gs_vec2_ctor(__VA_ARGS__)
-#define gs_v3(...)	gs_vec3_ctor(__VA_ARGS__)
-#define gs_v4(...)	gs_vec4_ctor(__VA_ARGS__)
+#define gs_v2(...)  gs_vec2_ctor(__VA_ARGS__)
+#define gs_v3(...)  gs_vec3_ctor(__VA_ARGS__)
+#define gs_v4(...)  gs_vec4_ctor(__VA_ARGS__)
 
 #define gs_v2s(__S)  gs_vec2_ctor((__S), (__S))
 #define gs_v3s(__S)  gs_vec3_ctor((__S), (__S), (__S))
@@ -1827,19 +1827,19 @@ void gs_command_buffer_free(gs_command_buffer_t* cb)
 
 #define gs_v4_xy_v(__X, __Y, __V) gs_vec4_ctor((__X), (__Y), (__V).x, (__V).y)
 
-#define GS_XAXIS 	gs_v3(1.f, 0.f, 0.f)
-#define GS_YAXIS 	gs_v3(0.f, 1.f, 0.f)
-#define GS_ZAXIS 	gs_v3(0.f, 0.f, 1.f)
+#define GS_XAXIS    gs_v3(1.f, 0.f, 0.f)
+#define GS_YAXIS    gs_v3(0.f, 1.f, 0.f)
+#define GS_ZAXIS    gs_v3(0.f, 0.f, 1.f)
 
 /*================================================================================
 // Useful Common Math Functions
 ================================================================================*/
 
 #define gs_rad2deg(__R)\
-	(float)((__R * 180.0.f) / GS_PI) 
+    (float)((__R * 180.0.f) / GS_PI) 
 
 #define gs_deg2rad(__D)\
-	(float)((__D * GS_PI) / 180.0f)
+    (float)((__D * GS_PI) / 180.0f)
 
 // Interpolation
 // Source: https://codeplea.com/simple-interpolation
@@ -1847,59 +1847,59 @@ void gs_command_buffer_free(gs_command_buffer_t* cb)
 gs_inline float
 gs_interp_linear(float a, float b, float t)
 {
-	return (a + t * (b - a));
+    return (a + t * (b - a));
 }
 
 gs_inline float
 gs_interp_smooth_step(float a, float b, float t)
 {
-	return gs_interp_linear(a, b, t * t * (3.0f - 2.0f * t));
+    return gs_interp_linear(a, b, t * t * (3.0f - 2.0f * t));
 }
 
 gs_inline float 
 gs_interp_cosine(float a, float b, float t)
 {
-	return gs_interp_linear(a, b, -cos(GS_PI * t) * 0.5f + 0.5f);
+    return gs_interp_linear(a, b, -cos(GS_PI * t) * 0.5f + 0.5f);
 }
 
 gs_inline float 
 gs_interp_acceleration(float a, float b, float t) 
 {
-	return gs_interp_linear(a, b, t * t);
+    return gs_interp_linear(a, b, t * t);
 }
 
 gs_inline float 
 gs_interp_deceleration(float a, float b, float t) 
 {
-	return gs_interp_linear(a, b, 1.0f - (1.0f - t) * (1.0f - t));
+    return gs_interp_linear(a, b, 1.0f - (1.0f - t) * (1.0f - t));
 }
 
 gs_inline float 
 gs_round(float val) 
 {
-	return floor(val + 0.5f);
+    return floor(val + 0.5f);
 }
 
 gs_inline float
 gs_map_range(float input_start, float input_end, float output_start, float output_end, float val)
 {
-	float slope = (output_end - output_start) / (input_end - input_start);
-	return (output_start + (slope * (val - input_start)));
+    float slope = (output_end - output_start) / (input_end - input_start);
+    return (output_start + (slope * (val - input_start)));
 }
 
 // Easings from: https://github.com/raysan5/raylib/blob/ea0f6c7a26f3a61f3be542aa8f066ce033766a9f/examples/others/easings.h
 gs_inline
 float gs_ease_cubic_in(float t, float b, float c, float d) 
 { 
-	t /= d; 
-	return (c*t*t*t + b); 
+    t /= d; 
+    return (c*t*t*t + b); 
 }
 
 gs_inline
 float gs_ease_cubic_out(float t, float b, float c, float d) 
 { 
-	t = t/d - 1.0f; 
-	return (c*(t*t*t + 1.0f) + b); 
+    t = t/d - 1.0f; 
+    return (c*(t*t*t + 1.0f) + b); 
 }
 
 gs_inline
@@ -1907,7 +1907,7 @@ float gs_ease_cubic_in_out(float t, float b, float c, float d)
 {
     if ((t/=d/2.0f) < 1.0f) 
     {
-    	return (c/2.0f*t*t*t + b);
+        return (c/2.0f*t*t*t + b);
     }
     t -= 2.0f; 
     return (c/2.0f*(t*t*t + 2.0f) + b);
@@ -1919,109 +1919,109 @@ float gs_ease_cubic_in_out(float t, float b, float c, float d)
 
 typedef struct 
 {
-	union 
-	{
-		f32 xy[2];
-		struct 
-		{
-			f32 x, y;
-		};
-	};
+    union 
+    {
+        f32 xy[2];
+        struct 
+        {
+            f32 x, y;
+        };
+    };
 } gs_vec2;
 
 gs_inline gs_vec2 
 gs_vec2_ctor(f32 _x, f32 _y) 
 {
-	gs_vec2 v;
-	v.x = _x;
-	v.y = _y;
-	return v;
+    gs_vec2 v;
+    v.x = _x;
+    v.y = _y;
+    return v;
 }
 
 gs_inline gs_vec2 
 gs_vec2_add(gs_vec2 v0, gs_vec2 v1) 
 {
-	return gs_vec2_ctor(v0.x + v1.x, v0.y + v1.y);
+    return gs_vec2_ctor(v0.x + v1.x, v0.y + v1.y);
 }
 
 gs_inline gs_vec2 
 gs_vec2_sub(gs_vec2 v0, gs_vec2 v1)
 {
-	return gs_vec2_ctor(v0.x - v1.x, v0.y - v1.y);
+    return gs_vec2_ctor(v0.x - v1.x, v0.y - v1.y);
 }
 
 gs_inline gs_vec2 
 gs_vec2_mul(gs_vec2 v0, gs_vec2 v1) 
 {
-	return gs_vec2_ctor(v0.x * v1.x, v0.y * v1.y);
+    return gs_vec2_ctor(v0.x * v1.x, v0.y * v1.y);
 }
 
 gs_inline gs_vec2 
 gs_vec2_div(gs_vec2 v0, gs_vec2 v1) 
 {
-	return gs_vec2_ctor(v0.x / v1.x, v0.y / v1.y);
+    return gs_vec2_ctor(v0.x / v1.x, v0.y / v1.y);
 }
 
 gs_inline gs_vec2 
 gs_vec2_scale(gs_vec2 v, f32 s)
 {
-	return gs_vec2_ctor(v.x * s, v.y * s);
+    return gs_vec2_ctor(v.x * s, v.y * s);
 }
 
 gs_inline f32 
 gs_vec2_dot(gs_vec2 v0, gs_vec2 v1) 
 {
-	return (f32)(v0.x * v1.x + v0.y * v1.y);
+    return (f32)(v0.x * v1.x + v0.y * v1.y);
 }
 
 gs_inline f32 
 gs_vec2_len(gs_vec2 v)
 {
-	return (f32)sqrt(gs_vec2_dot(v, v));
+    return (f32)sqrt(gs_vec2_dot(v, v));
 }
 
 gs_inline gs_vec2
 gs_vec2_project_onto(gs_vec2 v0, gs_vec2 v1)
 {
-	f32 dot = gs_vec2_dot(v0, v1);
-	f32 len = gs_vec2_dot(v1, v1);
+    f32 dot = gs_vec2_dot(v0, v1);
+    f32 len = gs_vec2_dot(v1, v1);
 
-	// Orthogonal, so return v1
-	if (len == 0.f) return v1;
+    // Orthogonal, so return v1
+    if (len == 0.f) return v1;
 
-	return gs_vec2_scale(v1, dot / len);
+    return gs_vec2_scale(v1, dot / len);
 }
 
 gs_inline gs_vec2 gs_vec2_norm(gs_vec2 v) 
 {
-	f32 len = gs_vec2_len(v);
-	return gs_vec2_scale(v, len != 0.f ? 1.0f / gs_vec2_len(v) : 1.f);
+    f32 len = gs_vec2_len(v);
+    return gs_vec2_scale(v, len != 0.f ? 1.0f / gs_vec2_len(v) : 1.f);
 }
 
 gs_inline 
 f32 gs_vec2_dist(gs_vec2 a, gs_vec2 b)
 {
-	f32 dx = (a.x - b.x);
-	f32 dy = (a.y - b.y);
-	return (sqrt(dx * dx + dy * dy));
+    f32 dx = (a.x - b.x);
+    f32 dy = (a.y - b.y);
+    return (sqrt(dx * dx + dy * dy));
 }
 
 gs_inline
 f32 gs_vec2_cross(gs_vec2 a, gs_vec2 b) 
 {
-	return a.x * b.y - a.y * b.x;
+    return a.x * b.y - a.y * b.x;
 }
 
 gs_inline
 f32 gs_vec2_angle(gs_vec2 a, gs_vec2 b) 
 {
-	return acos(gs_vec2_dot(a, b) / (gs_vec2_len(a) * gs_vec2_len(b)));
+    return acos(gs_vec2_dot(a, b) / (gs_vec2_len(a) * gs_vec2_len(b)));
 }
 
 gs_inline
 b32 gs_vec2_equal(gs_vec2 a, gs_vec2 b)
 {
-	return (a.x == b.x && a.y == b.y);
+    return (a.x == b.x && a.y == b.y);
 }
 
 /*================================================================================
@@ -2030,113 +2030,113 @@ b32 gs_vec2_equal(gs_vec2 a, gs_vec2 b)
 
 typedef struct
 {
-	union 
-	{
-		f32 xyz[3];
-		struct 
-		{
-			f32 x, y, z;
-		};
-	};
+    union 
+    {
+        f32 xyz[3];
+        struct 
+        {
+            f32 x, y, z;
+        };
+    };
 } gs_vec3;
 
 gs_inline gs_vec3 
 gs_vec3_ctor(f32 _x, f32 _y, f32 _z)
 {
-	gs_vec3 v;
-	v.x = _x;
-	v.y = _y;
-	v.z = _z;
-	return v;
+    gs_vec3 v;
+    v.x = _x;
+    v.y = _y;
+    v.z = _z;
+    return v;
 }
 
 gs_inline gs_vec3 
 gs_vec3_add(gs_vec3 v0, gs_vec3 v1)
 {
-	return gs_vec3_ctor(v0.x + v1.x, v0.y + v1.y, v0.z + v1.z);
+    return gs_vec3_ctor(v0.x + v1.x, v0.y + v1.y, v0.z + v1.z);
 }
 
 gs_inline gs_vec3 
 gs_vec3_sub(gs_vec3 v0, gs_vec3 v1) 
 {
-	return gs_vec3_ctor(v0.x - v1.x, v0.y - v1.y, v0.z - v1.z);
+    return gs_vec3_ctor(v0.x - v1.x, v0.y - v1.y, v0.z - v1.z);
 }
 
 gs_inline gs_vec3 
 gs_vec3_mul(gs_vec3 v0, gs_vec3 v1) 
 {
-	return gs_vec3_ctor(v0.x * v1.x, v0.y * v1.y, v0.z * v1.z);
+    return gs_vec3_ctor(v0.x * v1.x, v0.y * v1.y, v0.z * v1.z);
 }
 
 gs_inline gs_vec3 
 gs_vec3_div(gs_vec3 v0, gs_vec3 v1) 
 {
-	return gs_vec3_ctor(v0.x / v1.x, v0.y / v1.y, v0.z / v1.z);
+    return gs_vec3_ctor(v0.x / v1.x, v0.y / v1.y, v0.z / v1.z);
 }
 
 gs_inline gs_vec3 
 gs_vec3_scale(gs_vec3 v, f32 s) 
 {
-	return gs_vec3_ctor(v.x * s, v.y * s, v.z * s);
+    return gs_vec3_ctor(v.x * s, v.y * s, v.z * s);
 }
 
 gs_inline f32 
 gs_vec3_dot(gs_vec3 v0, gs_vec3 v1) 
 {
-	f32 dot = (f32)((v0.x * v1.x) + (v0.y * v1.y) + v0.z * v1.z);
-	return dot;
+    f32 dot = (f32)((v0.x * v1.x) + (v0.y * v1.y) + v0.z * v1.z);
+    return dot;
 }
 
 gs_inline f32 
 gs_vec3_len(gs_vec3 v)
 {
-	return (f32)sqrt(gs_vec3_dot(v, v));
+    return (f32)sqrt(gs_vec3_dot(v, v));
 }
 
 gs_inline gs_vec3
 gs_vec3_project_onto(gs_vec3 v0, gs_vec3 v1)
 {
-	f32 dot = gs_vec3_dot(v0, v1);
-	f32 len = gs_vec3_dot(v1, v1);
+    f32 dot = gs_vec3_dot(v0, v1);
+    f32 len = gs_vec3_dot(v1, v1);
 
-	// Orthogonal, so return v1
-	if (len == 0.f) return v1;
+    // Orthogonal, so return v1
+    if (len == 0.f) return v1;
 
-	return gs_vec3_scale(v1, dot / len);
+    return gs_vec3_scale(v1, dot / len);
 }
 
 gs_inline 
 f32 gs_vec3_dist(gs_vec3 a, gs_vec3 b)
 {
-	f32 dx = (a.x - b.x);
-	f32 dy = (a.y - b.y);
-	f32 dz = (a.z - b.z);
-	return (sqrt(dx * dx + dy * dy + dz * dz));
+    f32 dx = (a.x - b.x);
+    f32 dy = (a.y - b.y);
+    f32 dz = (a.z - b.z);
+    return (sqrt(dx * dx + dy * dy + dz * dz));
 }
 
 gs_inline gs_vec3 
 gs_vec3_norm(gs_vec3 v)
 {
-	f32 len = gs_vec3_len(v);
-	return len == 0.f ? v : gs_vec3_scale(v, 1.f / len);
+    f32 len = gs_vec3_len(v);
+    return len == 0.f ? v : gs_vec3_scale(v, 1.f / len);
 }
 
 gs_inline gs_vec3 
 gs_vec3_cross(gs_vec3 v0, gs_vec3 v1) 
 {
-	return gs_vec3_ctor
-	(
-		v0.y * v1.z - v0.z * v1.y,
-		v0.z * v1.x - v0.x * v1.z,
-		v0.x * v1.y - v0.y * v1.x
-	);
+    return gs_vec3_ctor
+    (
+        v0.y * v1.z - v0.z * v1.y,
+        v0.z * v1.x - v0.x * v1.z,
+        v0.x * v1.y - v0.y * v1.x
+    );
 }
 
 gs_inline void gs_vec3_scale_ip(gs_vec3* vp, f32 s)
 {
-	vp->x *= s;
-	vp->y *= s;
-	vp->z *= s;
+    vp->x *= s;
+    vp->y *= s;
+    vp->z *= s;
 }
 
 /*================================================================================
@@ -2145,89 +2145,89 @@ gs_inline void gs_vec3_scale_ip(gs_vec3* vp, f32 s)
 
 typedef struct
 {
-	union 
-	{
-		f32 xyzw[4];
-		struct 
-		{
-			f32 x, y, z, w;
-		};
-	};
+    union 
+    {
+        f32 xyzw[4];
+        struct 
+        {
+            f32 x, y, z, w;
+        };
+    };
 } gs_vec4;
 
 gs_inline gs_vec4 
 gs_vec4_ctor(f32 _x, f32 _y, f32 _z, f32 _w)
 {
-	gs_vec4 v; 
-	v.x = _x;
-	v.y = _y; 
-	v.z = _z; 
-	v.w = _w;
-	return v;
+    gs_vec4 v; 
+    v.x = _x;
+    v.y = _y; 
+    v.z = _z; 
+    v.w = _w;
+    return v;
 } 
 
 gs_inline gs_vec4
 gs_vec4_add(gs_vec4 v0, gs_vec4 v1) 
 {
-	return gs_vec4_ctor(v0.x + v1.y, v0.y + v1.y, v0.z + v1.z, v0.w + v1.w);
+    return gs_vec4_ctor(v0.x + v1.y, v0.y + v1.y, v0.z + v1.z, v0.w + v1.w);
 }
 
 gs_inline gs_vec4
 gs_vec4_sub(gs_vec4 v0, gs_vec4 v1) 
 {
-	return gs_vec4_ctor(v0.x - v1.y, v0.y - v1.y, v0.z - v1.z, v0.w - v1.w);
+    return gs_vec4_ctor(v0.x - v1.y, v0.y - v1.y, v0.z - v1.z, v0.w - v1.w);
 }
 
 gs_inline gs_vec4
 gs_vec4_div(gs_vec4 v0, gs_vec4 v1) 
 {
-	return gs_vec4_ctor(v0.x / v1.x, v0.y / v1.y, v0.z / v1.z, v0.w / v1.w);
+    return gs_vec4_ctor(v0.x / v1.x, v0.y / v1.y, v0.z / v1.z, v0.w / v1.w);
 }
 
 gs_inline gs_vec4
 gs_vec4_scale(gs_vec4 v, f32 s) 
 {
-	return gs_vec4_ctor(v.x / s, v.y / s, v.z / s, v.w / s);
+    return gs_vec4_ctor(v.x / s, v.y / s, v.z / s, v.w / s);
 }
 
 gs_inline f32
 gs_vec4_dot(gs_vec4 v0, gs_vec4 v1) 
 {
-	return (f32)(v0.x * v1.x + v0.y * v1.y + v0.z * v1.z + v0.w * v1.w);
+    return (f32)(v0.x * v1.x + v0.y * v1.y + v0.z * v1.z + v0.w * v1.w);
 }
 
 gs_inline f32
 gs_vec4_len(gs_vec4 v) 
 {
-	return (f32)sqrt(gs_vec4_dot(v, v));
+    return (f32)sqrt(gs_vec4_dot(v, v));
 }
 
 gs_inline gs_vec4
 gs_vec4_project_onto(gs_vec4 v0, gs_vec4 v1)
 {
-	f32 dot = gs_vec4_dot(v0, v1);
-	f32 len = gs_vec4_dot(v1, v1);
+    f32 dot = gs_vec4_dot(v0, v1);
+    f32 len = gs_vec4_dot(v1, v1);
 
-	// Orthogonal, so return v1
-	if (len == 0.f) return v1;
+    // Orthogonal, so return v1
+    if (len == 0.f) return v1;
 
-	return gs_vec4_scale(v1, dot / len);
+    return gs_vec4_scale(v1, dot / len);
 }
 
 gs_inline gs_vec4
 gs_vec4_norm(gs_vec4 v) 
 {
-	return gs_vec4_scale(v, 1.0f / gs_vec4_len(v));
+    return gs_vec4_scale(v, 1.0f / gs_vec4_len(v));
 }
 
 gs_inline f32
 gs_vec4_dist(gs_vec4 v0, gs_vec4 v1)
 {
-	f32 dx = (v0.x - v1.x);
-	f32 dy = (v0.y - v1.y);
-	f32 dz = (v0.z - v1.z);
-	f32 dw = (v0.w - v1.w);
-	return (sqrt(dx * dx + dy * dy + dz * dz + dw * dw));
+    f32 dx = (v0.x - v1.x);
+    f32 dy = (v0.y - v1.y);
+    f32 dz = (v0.z - v1.z);
+    f32 dw = (v0.w - v1.w);
+    return (sqrt(dx * dx + dy * dy + dz * dz + dw * dw));
 }
 
 /*================================================================================
@@ -2237,7 +2237,7 @@ gs_vec4_dist(gs_vec4 v0, gs_vec4 v1)
 gs_inline
 gs_vec3 gs_v4_to_v3(gs_vec4 v) 
 {
-	return gs_v3(v.x, v.y, v.z);
+    return gs_v3(v.x, v.y, v.z);
 }
 
 /*================================================================================
@@ -2245,412 +2245,412 @@ gs_vec3 gs_v4_to_v3(gs_vec4 v)
 ================================================================================*/
 
 /*
-	Matrices are stored in linear, contiguous memory and assume a column-major ordering.
+    Matrices are stored in linear, contiguous memory and assume a column-major ordering.
 */
 
 typedef struct gs_mat4
 {
-	f32 elements[16];
+    f32 elements[16];
 } gs_mat4;
 
 gs_inline gs_mat4 
 gs_mat4_diag(f32 val)
 {
-	gs_mat4 m;
-	memset(m.elements, 0, sizeof(m.elements));
-	m.elements[0 + 0 * 4] = val;
-	m.elements[1 + 1 * 4] = val;
-	m.elements[2 + 2 * 4] = val;
-	m.elements[3 + 3 * 4] = val;
-	return m;
+    gs_mat4 m;
+    memset(m.elements, 0, sizeof(m.elements));
+    m.elements[0 + 0 * 4] = val;
+    m.elements[1 + 1 * 4] = val;
+    m.elements[2 + 2 * 4] = val;
+    m.elements[3 + 3 * 4] = val;
+    return m;
 }
 
 #define gs_mat4_identity()\
-	gs_mat4_diag(1.0f)
+    gs_mat4_diag(1.0f)
 
 gs_inline gs_mat4
 gs_mat4_ctor() {
-	gs_mat4 mat = gs_default_val();
-	return mat;
+    gs_mat4 mat = gs_default_val();
+    return mat;
 }
 
 gs_mat4 gs_mat4_elem(const float elements[16])
 {
-	gs_mat4 mat = gs_mat4_ctor();
-	memcpy(mat.elements, elements, sizeof(f32) * 16);
-	return mat;
+    gs_mat4 mat = gs_mat4_ctor();
+    memcpy(mat.elements, elements, sizeof(f32) * 16);
+    return mat;
 }
 
 gs_inline gs_mat4 
 gs_mat4_mul(gs_mat4 m0, gs_mat4 m1)
 {
-	gs_mat4 m_res = gs_mat4_ctor(); 
-	for (u32 y = 0; y < 4; ++y)
-	{
-		for (u32 x = 0; x < 4; ++x)
-		{
-			f32 sum = 0.0f;
-			for (u32 e = 0; e < 4; ++e)
-			{
-				sum += m0.elements[x + e * 4] * m1.elements[e + y * 4];
-			}
-			m_res.elements[x + y * 4] = sum;
-		}
-	}
+    gs_mat4 m_res = gs_mat4_ctor(); 
+    for (u32 y = 0; y < 4; ++y)
+    {
+        for (u32 x = 0; x < 4; ++x)
+        {
+            f32 sum = 0.0f;
+            for (u32 e = 0; e < 4; ++e)
+            {
+                sum += m0.elements[x + e * 4] * m1.elements[e + y * 4];
+            }
+            m_res.elements[x + y * 4] = sum;
+        }
+    }
 
-	return m_res;
+    return m_res;
 }
 
 gs_inline 
 gs_mat4 gs_mat4_mul_list(uint32_t count, ...)
 {
-	va_list ap;
-	gs_mat4 m = gs_mat4_identity();
-	va_start(ap, count);
-	for (uint32_t i = 0; i < count; ++i) {
-		m = gs_mat4_mul(m, va_arg(ap, gs_mat4));
-	}
-	va_end(ap);
-	return m;
+    va_list ap;
+    gs_mat4 m = gs_mat4_identity();
+    va_start(ap, count);
+    for (uint32_t i = 0; i < count; ++i) {
+        m = gs_mat4_mul(m, va_arg(ap, gs_mat4));
+    }
+    va_end(ap);
+    return m;
 }
 
 gs_inline
 void gs_mat4_set_elements(gs_mat4* m, float* elements, uint32_t count)
 {
-	for (u32 i = 0; i < count; ++i)
-	{
-		m->elements[i] = elements[i];
-	}
+    for (u32 i = 0; i < count; ++i)
+    {
+        m->elements[i] = elements[i];
+    }
 }
 
 gs_inline
 gs_mat4 gs_mat4_transpose(gs_mat4 m)
 {
-	gs_mat4 t = gs_mat4_identity();
+    gs_mat4 t = gs_mat4_identity();
 
-	// First row
-	t.elements[0 * 4 + 0] = m.elements[0 * 4 + 0];
-	t.elements[1 * 4 + 0] = m.elements[0 * 4 + 1];
-	t.elements[2 * 4 + 0] = m.elements[0 * 4 + 2];
-	t.elements[3 * 4 + 0] = m.elements[0 * 4 + 3];
+    // First row
+    t.elements[0 * 4 + 0] = m.elements[0 * 4 + 0];
+    t.elements[1 * 4 + 0] = m.elements[0 * 4 + 1];
+    t.elements[2 * 4 + 0] = m.elements[0 * 4 + 2];
+    t.elements[3 * 4 + 0] = m.elements[0 * 4 + 3];
 
-	// Second row
-	t.elements[0 * 4 + 1] = m.elements[1 * 4 + 0];
-	t.elements[1 * 4 + 1] = m.elements[1 * 4 + 1];
-	t.elements[2 * 4 + 1] = m.elements[1 * 4 + 2];
-	t.elements[3 * 4 + 1] = m.elements[1 * 4 + 3];
+    // Second row
+    t.elements[0 * 4 + 1] = m.elements[1 * 4 + 0];
+    t.elements[1 * 4 + 1] = m.elements[1 * 4 + 1];
+    t.elements[2 * 4 + 1] = m.elements[1 * 4 + 2];
+    t.elements[3 * 4 + 1] = m.elements[1 * 4 + 3];
 
-	// Third row
-	t.elements[0 * 4 + 2] = m.elements[2 * 4 + 0];
-	t.elements[1 * 4 + 2] = m.elements[2 * 4 + 1];
-	t.elements[2 * 4 + 2] = m.elements[2 * 4 + 2];
-	t.elements[3 * 4 + 2] = m.elements[2 * 4 + 3];
+    // Third row
+    t.elements[0 * 4 + 2] = m.elements[2 * 4 + 0];
+    t.elements[1 * 4 + 2] = m.elements[2 * 4 + 1];
+    t.elements[2 * 4 + 2] = m.elements[2 * 4 + 2];
+    t.elements[3 * 4 + 2] = m.elements[2 * 4 + 3];
 
-	// Fourth row
-	t.elements[0 * 4 + 3] = m.elements[3 * 4 + 0];
-	t.elements[1 * 4 + 3] = m.elements[3 * 4 + 1];
-	t.elements[2 * 4 + 3] = m.elements[3 * 4 + 2];
-	t.elements[3 * 4 + 3] = m.elements[3 * 4 + 3];
+    // Fourth row
+    t.elements[0 * 4 + 3] = m.elements[3 * 4 + 0];
+    t.elements[1 * 4 + 3] = m.elements[3 * 4 + 1];
+    t.elements[2 * 4 + 3] = m.elements[3 * 4 + 2];
+    t.elements[3 * 4 + 3] = m.elements[3 * 4 + 3];
 
-	return t;
+    return t;
 }
 
 gs_inline
 gs_mat4 gs_mat4_inverse(gs_mat4 m)
 {
-	gs_mat4 res = gs_mat4_identity();
+    gs_mat4 res = gs_mat4_identity();
 
-	f32 temp[16];
+    f32 temp[16];
 
-	temp[0] = m.elements[5] * m.elements[10] * m.elements[15] -
-		m.elements[5] * m.elements[11] * m.elements[14] -
-		m.elements[9] * m.elements[6] * m.elements[15] +
-		m.elements[9] * m.elements[7] * m.elements[14] +
-		m.elements[13] * m.elements[6] * m.elements[11] -
-		m.elements[13] * m.elements[7] * m.elements[10];
+    temp[0] = m.elements[5] * m.elements[10] * m.elements[15] -
+        m.elements[5] * m.elements[11] * m.elements[14] -
+        m.elements[9] * m.elements[6] * m.elements[15] +
+        m.elements[9] * m.elements[7] * m.elements[14] +
+        m.elements[13] * m.elements[6] * m.elements[11] -
+        m.elements[13] * m.elements[7] * m.elements[10];
 
-	temp[4] = -m.elements[4] * m.elements[10] * m.elements[15] +
-		m.elements[4] * m.elements[11] * m.elements[14] +
-		m.elements[8] * m.elements[6] * m.elements[15] -
-		m.elements[8] * m.elements[7] * m.elements[14] -
-		m.elements[12] * m.elements[6] * m.elements[11] +
-		m.elements[12] * m.elements[7] * m.elements[10];
+    temp[4] = -m.elements[4] * m.elements[10] * m.elements[15] +
+        m.elements[4] * m.elements[11] * m.elements[14] +
+        m.elements[8] * m.elements[6] * m.elements[15] -
+        m.elements[8] * m.elements[7] * m.elements[14] -
+        m.elements[12] * m.elements[6] * m.elements[11] +
+        m.elements[12] * m.elements[7] * m.elements[10];
 
-	temp[8] = m.elements[4] * m.elements[9] * m.elements[15] -
-		m.elements[4] * m.elements[11] * m.elements[13] -
-		m.elements[8] * m.elements[5] * m.elements[15] +
-		m.elements[8] * m.elements[7] * m.elements[13] +
-		m.elements[12] * m.elements[5] * m.elements[11] -
-		m.elements[12] * m.elements[7] * m.elements[9];
+    temp[8] = m.elements[4] * m.elements[9] * m.elements[15] -
+        m.elements[4] * m.elements[11] * m.elements[13] -
+        m.elements[8] * m.elements[5] * m.elements[15] +
+        m.elements[8] * m.elements[7] * m.elements[13] +
+        m.elements[12] * m.elements[5] * m.elements[11] -
+        m.elements[12] * m.elements[7] * m.elements[9];
 
-	temp[12] = -m.elements[4] * m.elements[9] * m.elements[14] +
-		m.elements[4] * m.elements[10] * m.elements[13] +
-		m.elements[8] * m.elements[5] * m.elements[14] -
-		m.elements[8] * m.elements[6] * m.elements[13] -
-		m.elements[12] * m.elements[5] * m.elements[10] +
-		m.elements[12] * m.elements[6] * m.elements[9];
+    temp[12] = -m.elements[4] * m.elements[9] * m.elements[14] +
+        m.elements[4] * m.elements[10] * m.elements[13] +
+        m.elements[8] * m.elements[5] * m.elements[14] -
+        m.elements[8] * m.elements[6] * m.elements[13] -
+        m.elements[12] * m.elements[5] * m.elements[10] +
+        m.elements[12] * m.elements[6] * m.elements[9];
 
-	temp[1] = -m.elements[1] * m.elements[10] * m.elements[15] +
-		m.elements[1] * m.elements[11] * m.elements[14] +
-		m.elements[9] * m.elements[2] * m.elements[15] -
-		m.elements[9] * m.elements[3] * m.elements[14] -
-		m.elements[13] * m.elements[2] * m.elements[11] +
-		m.elements[13] * m.elements[3] * m.elements[10];
+    temp[1] = -m.elements[1] * m.elements[10] * m.elements[15] +
+        m.elements[1] * m.elements[11] * m.elements[14] +
+        m.elements[9] * m.elements[2] * m.elements[15] -
+        m.elements[9] * m.elements[3] * m.elements[14] -
+        m.elements[13] * m.elements[2] * m.elements[11] +
+        m.elements[13] * m.elements[3] * m.elements[10];
 
-	temp[5] = m.elements[0] * m.elements[10] * m.elements[15] -
-		m.elements[0] * m.elements[11] * m.elements[14] -
-		m.elements[8] * m.elements[2] * m.elements[15] +
-		m.elements[8] * m.elements[3] * m.elements[14] +
-		m.elements[12] * m.elements[2] * m.elements[11] -
-		m.elements[12] * m.elements[3] * m.elements[10];
+    temp[5] = m.elements[0] * m.elements[10] * m.elements[15] -
+        m.elements[0] * m.elements[11] * m.elements[14] -
+        m.elements[8] * m.elements[2] * m.elements[15] +
+        m.elements[8] * m.elements[3] * m.elements[14] +
+        m.elements[12] * m.elements[2] * m.elements[11] -
+        m.elements[12] * m.elements[3] * m.elements[10];
 
-	temp[9] = -m.elements[0] * m.elements[9] * m.elements[15] +
-		m.elements[0] * m.elements[11] * m.elements[13] +
-		m.elements[8] * m.elements[1] * m.elements[15] -
-		m.elements[8] * m.elements[3] * m.elements[13] -
-		m.elements[12] * m.elements[1] * m.elements[11] +
-		m.elements[12] * m.elements[3] * m.elements[9];
+    temp[9] = -m.elements[0] * m.elements[9] * m.elements[15] +
+        m.elements[0] * m.elements[11] * m.elements[13] +
+        m.elements[8] * m.elements[1] * m.elements[15] -
+        m.elements[8] * m.elements[3] * m.elements[13] -
+        m.elements[12] * m.elements[1] * m.elements[11] +
+        m.elements[12] * m.elements[3] * m.elements[9];
 
-	temp[13] = m.elements[0] * m.elements[9] * m.elements[14] -
-		m.elements[0] * m.elements[10] * m.elements[13] -
-		m.elements[8] * m.elements[1] * m.elements[14] +
-		m.elements[8] * m.elements[2] * m.elements[13] +
-		m.elements[12] * m.elements[1] * m.elements[10] -
-		m.elements[12] * m.elements[2] * m.elements[9];
+    temp[13] = m.elements[0] * m.elements[9] * m.elements[14] -
+        m.elements[0] * m.elements[10] * m.elements[13] -
+        m.elements[8] * m.elements[1] * m.elements[14] +
+        m.elements[8] * m.elements[2] * m.elements[13] +
+        m.elements[12] * m.elements[1] * m.elements[10] -
+        m.elements[12] * m.elements[2] * m.elements[9];
 
-	temp[2] = m.elements[1] * m.elements[6] * m.elements[15] -
-		m.elements[1] * m.elements[7] * m.elements[14] -
-		m.elements[5] * m.elements[2] * m.elements[15] +
-		m.elements[5] * m.elements[3] * m.elements[14] +
-		m.elements[13] * m.elements[2] * m.elements[7] -
-		m.elements[13] * m.elements[3] * m.elements[6];
+    temp[2] = m.elements[1] * m.elements[6] * m.elements[15] -
+        m.elements[1] * m.elements[7] * m.elements[14] -
+        m.elements[5] * m.elements[2] * m.elements[15] +
+        m.elements[5] * m.elements[3] * m.elements[14] +
+        m.elements[13] * m.elements[2] * m.elements[7] -
+        m.elements[13] * m.elements[3] * m.elements[6];
 
-	temp[6] = -m.elements[0] * m.elements[6] * m.elements[15] +
-		m.elements[0] * m.elements[7] * m.elements[14] +
-		m.elements[4] * m.elements[2] * m.elements[15] -
-		m.elements[4] * m.elements[3] * m.elements[14] -
-		m.elements[12] * m.elements[2] * m.elements[7] +
-		m.elements[12] * m.elements[3] * m.elements[6];
+    temp[6] = -m.elements[0] * m.elements[6] * m.elements[15] +
+        m.elements[0] * m.elements[7] * m.elements[14] +
+        m.elements[4] * m.elements[2] * m.elements[15] -
+        m.elements[4] * m.elements[3] * m.elements[14] -
+        m.elements[12] * m.elements[2] * m.elements[7] +
+        m.elements[12] * m.elements[3] * m.elements[6];
 
-	temp[10] = m.elements[0] * m.elements[5] * m.elements[15] -
-		m.elements[0] * m.elements[7] * m.elements[13] -
-		m.elements[4] * m.elements[1] * m.elements[15] +
-		m.elements[4] * m.elements[3] * m.elements[13] +
-		m.elements[12] * m.elements[1] * m.elements[7] -
-		m.elements[12] * m.elements[3] * m.elements[5];
+    temp[10] = m.elements[0] * m.elements[5] * m.elements[15] -
+        m.elements[0] * m.elements[7] * m.elements[13] -
+        m.elements[4] * m.elements[1] * m.elements[15] +
+        m.elements[4] * m.elements[3] * m.elements[13] +
+        m.elements[12] * m.elements[1] * m.elements[7] -
+        m.elements[12] * m.elements[3] * m.elements[5];
 
-	temp[14] = -m.elements[0] * m.elements[5] * m.elements[14] +
-		m.elements[0] * m.elements[6] * m.elements[13] +
-		m.elements[4] * m.elements[1] * m.elements[14] -
-		m.elements[4] * m.elements[2] * m.elements[13] -
-		m.elements[12] * m.elements[1] * m.elements[6] +
-		m.elements[12] * m.elements[2] * m.elements[5];
+    temp[14] = -m.elements[0] * m.elements[5] * m.elements[14] +
+        m.elements[0] * m.elements[6] * m.elements[13] +
+        m.elements[4] * m.elements[1] * m.elements[14] -
+        m.elements[4] * m.elements[2] * m.elements[13] -
+        m.elements[12] * m.elements[1] * m.elements[6] +
+        m.elements[12] * m.elements[2] * m.elements[5];
 
-	temp[3] = -m.elements[1] * m.elements[6] * m.elements[11] +
-		m.elements[1] * m.elements[7] * m.elements[10] +
-		m.elements[5] * m.elements[2] * m.elements[11] -
-		m.elements[5] * m.elements[3] * m.elements[10] -
-		m.elements[9] * m.elements[2] * m.elements[7] +
-		m.elements[9] * m.elements[3] * m.elements[6];
+    temp[3] = -m.elements[1] * m.elements[6] * m.elements[11] +
+        m.elements[1] * m.elements[7] * m.elements[10] +
+        m.elements[5] * m.elements[2] * m.elements[11] -
+        m.elements[5] * m.elements[3] * m.elements[10] -
+        m.elements[9] * m.elements[2] * m.elements[7] +
+        m.elements[9] * m.elements[3] * m.elements[6];
 
-	temp[7] = m.elements[0] * m.elements[6] * m.elements[11] -
-		m.elements[0] * m.elements[7] * m.elements[10] -
-		m.elements[4] * m.elements[2] * m.elements[11] +
-		m.elements[4] * m.elements[3] * m.elements[10] +
-		m.elements[8] * m.elements[2] * m.elements[7] -
-		m.elements[8] * m.elements[3] * m.elements[6];
+    temp[7] = m.elements[0] * m.elements[6] * m.elements[11] -
+        m.elements[0] * m.elements[7] * m.elements[10] -
+        m.elements[4] * m.elements[2] * m.elements[11] +
+        m.elements[4] * m.elements[3] * m.elements[10] +
+        m.elements[8] * m.elements[2] * m.elements[7] -
+        m.elements[8] * m.elements[3] * m.elements[6];
 
-	temp[11] = -m.elements[0] * m.elements[5] * m.elements[11] +
-		m.elements[0] * m.elements[7] * m.elements[9] +
-		m.elements[4] * m.elements[1] * m.elements[11] -
-		m.elements[4] * m.elements[3] * m.elements[9] -
-		m.elements[8] * m.elements[1] * m.elements[7] +
-		m.elements[8] * m.elements[3] * m.elements[5];
+    temp[11] = -m.elements[0] * m.elements[5] * m.elements[11] +
+        m.elements[0] * m.elements[7] * m.elements[9] +
+        m.elements[4] * m.elements[1] * m.elements[11] -
+        m.elements[4] * m.elements[3] * m.elements[9] -
+        m.elements[8] * m.elements[1] * m.elements[7] +
+        m.elements[8] * m.elements[3] * m.elements[5];
 
-	temp[15] = m.elements[0] * m.elements[5] * m.elements[10] -
-		m.elements[0] * m.elements[6] * m.elements[9] -
-		m.elements[4] * m.elements[1] * m.elements[10] +
-		m.elements[4] * m.elements[2] * m.elements[9] +
-		m.elements[8] * m.elements[1] * m.elements[6] -
-		m.elements[8] * m.elements[2] * m.elements[5];
+    temp[15] = m.elements[0] * m.elements[5] * m.elements[10] -
+        m.elements[0] * m.elements[6] * m.elements[9] -
+        m.elements[4] * m.elements[1] * m.elements[10] +
+        m.elements[4] * m.elements[2] * m.elements[9] +
+        m.elements[8] * m.elements[1] * m.elements[6] -
+        m.elements[8] * m.elements[2] * m.elements[5];
 
-	f64 determinant = m.elements[0] * temp[0] + m.elements[1] * temp[4] + m.elements[2] * temp[8] + m.elements[3] * temp[12];
-	determinant = 1.0 / determinant;
+    f64 determinant = m.elements[0] * temp[0] + m.elements[1] * temp[4] + m.elements[2] * temp[8] + m.elements[3] * temp[12];
+    determinant = 1.0 / determinant;
 
-	for (int i = 0; i < 4 * 4; i++)
-		res.elements[i] = temp[i] * determinant;
+    for (int i = 0; i < 4 * 4; i++)
+        res.elements[i] = temp[i] * determinant;
 
-	return res;
+    return res;
 }
 
 /*
-	f32 l : left
-	f32 r : right
-	f32 b : bottom
-	f32 t : top
-	f32 n : near
-	f32 f : far
+    f32 l : left
+    f32 r : right
+    f32 b : bottom
+    f32 t : top
+    f32 n : near
+    f32 f : far
 */
 gs_inline gs_mat4 
 gs_mat4_ortho(f32 l, f32 r, f32 b, f32 t, f32 n, f32 f)
 {
-	gs_mat4 m_res = gs_mat4_identity();		
+    gs_mat4 m_res = gs_mat4_identity();     
 
-	// Main diagonal
-	m_res.elements[0 + 0 * 4] = 2.0f / (r - l);
-	m_res.elements[1 + 1 * 4] = 2.0f / (t - b);
-	m_res.elements[2 + 2 * 4] = -2.0f / (f - n);
+    // Main diagonal
+    m_res.elements[0 + 0 * 4] = 2.0f / (r - l);
+    m_res.elements[1 + 1 * 4] = 2.0f / (t - b);
+    m_res.elements[2 + 2 * 4] = -2.0f / (f - n);
 
-	// Last column
-	m_res.elements[0 + 3 * 4] = -(r + l) / (r - l);
-	m_res.elements[1 + 3 * 4] = -(t + b) / (t - b);
-	m_res.elements[2 + 3 * 4] = -(f + n) / (f - n);
+    // Last column
+    m_res.elements[0 + 3 * 4] = -(r + l) / (r - l);
+    m_res.elements[1 + 3 * 4] = -(t + b) / (t - b);
+    m_res.elements[2 + 3 * 4] = -(f + n) / (f - n);
 
-	return m_res;
+    return m_res;
 }
 
 gs_inline gs_mat4 
 gs_mat4_perspective(f32 fov, f32 asp_ratio, f32 n, f32 f)
 {
-	// Zero matrix
-	gs_mat4 m_res = gs_mat4_ctor();
+    // Zero matrix
+    gs_mat4 m_res = gs_mat4_ctor();
 
-	f32 q = 1.0f / tan(gs_deg2rad(0.5f * fov));
-	f32 a = q / asp_ratio;
-	f32 b = (n + f) / (n - f);
-	f32 c = (2.0f * n * f) / (n - f);
+    f32 q = 1.0f / tan(gs_deg2rad(0.5f * fov));
+    f32 a = q / asp_ratio;
+    f32 b = (n + f) / (n - f);
+    f32 c = (2.0f * n * f) / (n - f);
 
-	m_res.elements[0 + 0 * 4] = a;
-	m_res.elements[1 + 1 * 4] = q;
-	m_res.elements[2 + 2 * 4] = b;
-	m_res.elements[2 + 3 * 4] = c;
-	m_res.elements[3 + 2 * 4] = -1.0f;
+    m_res.elements[0 + 0 * 4] = a;
+    m_res.elements[1 + 1 * 4] = q;
+    m_res.elements[2 + 2 * 4] = b;
+    m_res.elements[2 + 3 * 4] = c;
+    m_res.elements[3 + 2 * 4] = -1.0f;
 
-	return m_res;
+    return m_res;
 }
 
 gs_inline gs_mat4 
 gs_mat4_translatev(const gs_vec3 v)
 {
-	gs_mat4 m_res = gs_mat4_identity();
+    gs_mat4 m_res = gs_mat4_identity();
 
-	m_res.elements[0 + 4 * 3] = v.x;
-	m_res.elements[1 + 4 * 3] = v.y;
-	m_res.elements[2 + 4 * 3] = v.z;
+    m_res.elements[0 + 4 * 3] = v.x;
+    m_res.elements[1 + 4 * 3] = v.y;
+    m_res.elements[2 + 4 * 3] = v.z;
 
-	return m_res;
+    return m_res;
 }
 
 gs_inline gs_mat4 
 gs_mat4_translate(float x, float y, float z)
 {
-	return gs_mat4_translatev(gs_v3(x, y, z));
+    return gs_mat4_translatev(gs_v3(x, y, z));
 }
 
 gs_inline gs_mat4 
 gs_mat4_scalev(const gs_vec3 v)
 {
-	gs_mat4 m_res = gs_mat4_identity();
-	m_res.elements[0 + 0 * 4] = v.x;
-	m_res.elements[1 + 1 * 4] = v.y;
-	m_res.elements[2 + 2 * 4] = v.z;
-	return m_res;
+    gs_mat4 m_res = gs_mat4_identity();
+    m_res.elements[0 + 0 * 4] = v.x;
+    m_res.elements[1 + 1 * 4] = v.y;
+    m_res.elements[2 + 2 * 4] = v.z;
+    return m_res;
 }
 
 gs_inline gs_mat4
 gs_mat4_scale(float x, float y, float z)
 {
-	return (gs_mat4_scalev(gs_v3(x, y, z)));
+    return (gs_mat4_scalev(gs_v3(x, y, z)));
 }
 
 // Assumes normalized axis
 gs_inline gs_mat4 gs_mat4_rotatev(float angle, gs_vec3 axis)
 {
-	gs_mat4 m_res = gs_mat4_identity();
+    gs_mat4 m_res = gs_mat4_identity();
 
-	float a = angle;
-	float c = cos(a);
-	float s = sin(a);
+    float a = angle;
+    float c = cos(a);
+    float s = sin(a);
 
-	gs_vec3 naxis = gs_vec3_norm(axis);
-	float x = naxis.x;
-	float y = naxis.y;
-	float z = naxis.z;
+    gs_vec3 naxis = gs_vec3_norm(axis);
+    float x = naxis.x;
+    float y = naxis.y;
+    float z = naxis.z;
 
-	//First column
-	m_res.elements[0 + 0 * 4] = x * x * (1 - c) + c;	
-	m_res.elements[1 + 0 * 4] = x * y * (1 - c) + z * s;	
-	m_res.elements[2 + 0 * 4] = x * z * (1 - c) - y * s;	
-	
-	//Second column
-	m_res.elements[0 + 1 * 4] = x * y * (1 - c) - z * s;	
-	m_res.elements[1 + 1 * 4] = y * y * (1 - c) + c;	
-	m_res.elements[2 + 1 * 4] = y * z * (1 - c) + x * s;	
-	
-	//Third column
-	m_res.elements[0 + 2 * 4] = x * z * (1 - c) + y * s;	
-	m_res.elements[1 + 2 * 4] = y * z * (1 - c) - x * s;	
-	m_res.elements[2 + 2 * 4] = z * z * (1 - c) + c;	
+    //First column
+    m_res.elements[0 + 0 * 4] = x * x * (1 - c) + c;    
+    m_res.elements[1 + 0 * 4] = x * y * (1 - c) + z * s;    
+    m_res.elements[2 + 0 * 4] = x * z * (1 - c) - y * s;    
+    
+    //Second column
+    m_res.elements[0 + 1 * 4] = x * y * (1 - c) - z * s;    
+    m_res.elements[1 + 1 * 4] = y * y * (1 - c) + c;    
+    m_res.elements[2 + 1 * 4] = y * z * (1 - c) + x * s;    
+    
+    //Third column
+    m_res.elements[0 + 2 * 4] = x * z * (1 - c) + y * s;    
+    m_res.elements[1 + 2 * 4] = y * z * (1 - c) - x * s;    
+    m_res.elements[2 + 2 * 4] = z * z * (1 - c) + c;    
 
-	return m_res;
+    return m_res;
 }
 
 gs_inline gs_mat4
 gs_mat4_rotate(float angle, float x, float y, float z)
 {
-	return gs_mat4_rotatev(angle, gs_v3(x, y, z));
+    return gs_mat4_rotatev(angle, gs_v3(x, y, z));
 }
 
 gs_inline gs_mat4 
 gs_mat4_look_at(gs_vec3 position, gs_vec3 target, gs_vec3 up)
 {
-	gs_vec3 f = gs_vec3_norm(gs_vec3_sub(target, position));
-	gs_vec3 s = gs_vec3_norm(gs_vec3_cross(f, up));
-	gs_vec3 u = gs_vec3_cross(s, f);
+    gs_vec3 f = gs_vec3_norm(gs_vec3_sub(target, position));
+    gs_vec3 s = gs_vec3_norm(gs_vec3_cross(f, up));
+    gs_vec3 u = gs_vec3_cross(s, f);
 
-	gs_mat4 m_res = gs_mat4_identity();
-	m_res.elements[0 * 4 + 0] = s.x;
-	m_res.elements[1 * 4 + 0] = s.y;
-	m_res.elements[2 * 4 + 0] = s.z;
+    gs_mat4 m_res = gs_mat4_identity();
+    m_res.elements[0 * 4 + 0] = s.x;
+    m_res.elements[1 * 4 + 0] = s.y;
+    m_res.elements[2 * 4 + 0] = s.z;
 
-	m_res.elements[0 * 4 + 1] = u.x;
-	m_res.elements[1 * 4 + 1] = u.y;
-	m_res.elements[2 * 4 + 1] = u.z;
+    m_res.elements[0 * 4 + 1] = u.x;
+    m_res.elements[1 * 4 + 1] = u.y;
+    m_res.elements[2 * 4 + 1] = u.z;
 
-	m_res.elements[0 * 4 + 2] = -f.x;
-	m_res.elements[1 * 4 + 2] = -f.y;
-	m_res.elements[2 * 4 + 2] = -f.z;
+    m_res.elements[0 * 4 + 2] = -f.x;
+    m_res.elements[1 * 4 + 2] = -f.y;
+    m_res.elements[2 * 4 + 2] = -f.z;
 
-	m_res.elements[3 * 4 + 0] = -gs_vec3_dot(s, position);;
-	m_res.elements[3 * 4 + 1] = -gs_vec3_dot(u, position);
-	m_res.elements[3 * 4 + 2] = gs_vec3_dot(f, position); 
+    m_res.elements[3 * 4 + 0] = -gs_vec3_dot(s, position);;
+    m_res.elements[3 * 4 + 1] = -gs_vec3_dot(u, position);
+    m_res.elements[3 * 4 + 2] = gs_vec3_dot(f, position); 
 
-	return m_res;
+    return m_res;
 }
 
 gs_inline
 gs_vec3 gs_mat4_mul_vec3(gs_mat4 m, gs_vec3 v)
 {
-	m = gs_mat4_transpose(m);
-	return gs_vec3_ctor
-	(
-		m.elements[0 * 4 + 0] * v.x + m.elements[0 * 4 + 1] * v.y + m.elements[0 * 4 + 2] * v.z,  
-		m.elements[1 * 4 + 0] * v.x + m.elements[1 * 4 + 1] * v.y + m.elements[1 * 4 + 2] * v.z,  
-		m.elements[2 * 4 + 0] * v.x + m.elements[2 * 4 + 1] * v.y + m.elements[2 * 4 + 2] * v.z
-	);
+    m = gs_mat4_transpose(m);
+    return gs_vec3_ctor
+    (
+        m.elements[0 * 4 + 0] * v.x + m.elements[0 * 4 + 1] * v.y + m.elements[0 * 4 + 2] * v.z,  
+        m.elements[1 * 4 + 0] * v.x + m.elements[1 * 4 + 1] * v.y + m.elements[1 * 4 + 2] * v.z,  
+        m.elements[2 * 4 + 0] * v.x + m.elements[2 * 4 + 1] * v.y + m.elements[2 * 4 + 2] * v.z
+    );
 }
-	
+    
 gs_inline
 gs_vec4 gs_mat4_mul_vec4(gs_mat4 m, gs_vec4 v)
 {
-	m = gs_mat4_transpose(m);
-	return gs_vec4_ctor
-	(
-		m.elements[0 * 4 + 0] * v.x + m.elements[0 * 4 + 1] * v.y + m.elements[0 * 4 + 2] * v.z + m.elements[0 * 4 + 3] * v.w,  
-		m.elements[1 * 4 + 0] * v.x + m.elements[1 * 4 + 1] * v.y + m.elements[1 * 4 + 2] * v.z + m.elements[1 * 4 + 3] * v.w,  
-		m.elements[2 * 4 + 0] * v.x + m.elements[2 * 4 + 1] * v.y + m.elements[2 * 4 + 2] * v.z + m.elements[2 * 4 + 3] * v.w,  
-		m.elements[3 * 4 + 0] * v.x + m.elements[3 * 4 + 1] * v.y + m.elements[3 * 4 + 2] * v.z + m.elements[3 * 4 + 3] * v.w
-	);
+    m = gs_mat4_transpose(m);
+    return gs_vec4_ctor
+    (
+        m.elements[0 * 4 + 0] * v.x + m.elements[0 * 4 + 1] * v.y + m.elements[0 * 4 + 2] * v.z + m.elements[0 * 4 + 3] * v.w,  
+        m.elements[1 * 4 + 0] * v.x + m.elements[1 * 4 + 1] * v.y + m.elements[1 * 4 + 2] * v.z + m.elements[1 * 4 + 3] * v.w,  
+        m.elements[2 * 4 + 0] * v.x + m.elements[2 * 4 + 1] * v.y + m.elements[2 * 4 + 2] * v.z + m.elements[2 * 4 + 3] * v.w,  
+        m.elements[3 * 4 + 0] * v.x + m.elements[3 * 4 + 1] * v.y + m.elements[3 * 4 + 2] * v.z + m.elements[3 * 4 + 3] * v.w
+    );
 }
 
 /*================================================================================
@@ -2659,199 +2659,199 @@ gs_vec4 gs_mat4_mul_vec4(gs_mat4 m, gs_vec4 v)
 
 typedef struct
 {
-	union 
-	{
-		f32 xyzw[4];
-		struct 
-		{
-			f32 x, y, z, w;
-		};
-	};
+    union 
+    {
+        f32 xyzw[4];
+        struct 
+        {
+            f32 x, y, z, w;
+        };
+    };
 } gs_quat;
 
 gs_inline
 gs_quat gs_quat_default()
 {
-	gs_quat q;
-	q.x = 0.f;	
-	q.y = 0.f;	
-	q.z = 0.f;	
-	q.w = 1.f;	
-	return q;
+    gs_quat q;
+    q.x = 0.f;  
+    q.y = 0.f;  
+    q.z = 0.f;  
+    q.w = 1.f;  
+    return q;
 }
 
 gs_inline
 gs_quat gs_quat_ctor(f32 _x, f32 _y, f32 _z, f32 _w)
 {
-	gs_quat q;
-	q.x = _x;
-	q.y = _y;
-	q.z = _z;
-	q.w = _w;
-	return q;
+    gs_quat q;
+    q.x = _x;
+    q.y = _y;
+    q.z = _z;
+    q.w = _w;
+    return q;
 }
 
 gs_inline gs_quat 
 gs_quat_add(gs_quat q0, gs_quat q1) 
 {
-	return gs_quat_ctor(q0.x + q1.x, q0.y + q1.y, q0.z + q1.z, q0.w + q1.w);
+    return gs_quat_ctor(q0.x + q1.x, q0.y + q1.y, q0.z + q1.z, q0.w + q1.w);
 }
 
 gs_inline gs_quat 
 gs_quat_sub(gs_quat q0, gs_quat q1)
 {
-	return gs_quat_ctor(q0.x - q1.x, q0.y - q1.y, q0.z - q1.z, q0.w - q1.w);
+    return gs_quat_ctor(q0.x - q1.x, q0.y - q1.y, q0.z - q1.z, q0.w - q1.w);
 }
 
 gs_inline gs_quat
 gs_quat_mul(gs_quat q0, gs_quat q1)
 {
-	return gs_quat_ctor(
-		q0.w * q1.x + q1.w * q0.x + q0.y * q1.z - q1.y * q0.z,
-		q0.w * q1.y + q1.w * q0.y + q0.z * q1.x - q1.z * q0.x,
-		q0.w * q1.z + q1.w * q0.z + q0.x * q1.y - q1.x * q0.y,
-		q0.w * q1.w - q0.x * q1.x - q0.y * q1.y - q0.z * q1.z
-	);
+    return gs_quat_ctor(
+        q0.w * q1.x + q1.w * q0.x + q0.y * q1.z - q1.y * q0.z,
+        q0.w * q1.y + q1.w * q0.y + q0.z * q1.x - q1.z * q0.x,
+        q0.w * q1.z + q1.w * q0.z + q0.x * q1.y - q1.x * q0.y,
+        q0.w * q1.w - q0.x * q1.x - q0.y * q1.y - q0.z * q1.z
+    );
 }
 
 gs_inline 
 gs_quat gs_quat_mul_list(u32 count, ...)
 {
-	va_list ap;
-	gs_quat q = gs_quat_default();
-	va_start(ap, count);
-	for (u32 i = 0; i < count; ++i)
-	{
-		q = gs_quat_mul(q, va_arg(ap, gs_quat));
-	}
-	va_end(ap);
-	return q;
+    va_list ap;
+    gs_quat q = gs_quat_default();
+    va_start(ap, count);
+    for (u32 i = 0; i < count; ++i)
+    {
+        q = gs_quat_mul(q, va_arg(ap, gs_quat));
+    }
+    va_end(ap);
+    return q;
 }
 
 gs_inline gs_quat 
 gs_quat_mul_quat(gs_quat q0, gs_quat q1)
 {
-	return gs_quat_ctor(
-		q0.w * q1.x + q1.w * q0.x + q0.y * q1.z - q1.y * q0.z,
-		q0.w * q1.y + q1.w * q0.y + q0.z * q1.x - q1.z * q0.x,
-		q0.w * q1.z + q1.w * q0.z + q0.x * q1.y - q1.x * q0.y,
-		q0.w * q1.w - q0.x * q1.x - q0.y * q1.y - q0.z * q1.z
-	);
+    return gs_quat_ctor(
+        q0.w * q1.x + q1.w * q0.x + q0.y * q1.z - q1.y * q0.z,
+        q0.w * q1.y + q1.w * q0.y + q0.z * q1.x - q1.z * q0.x,
+        q0.w * q1.z + q1.w * q0.z + q0.x * q1.y - q1.x * q0.y,
+        q0.w * q1.w - q0.x * q1.x - q0.y * q1.y - q0.z * q1.z
+    );
 }
 
 gs_inline 
 gs_quat gs_quat_scale(gs_quat q, f32 s)
 {
-	return gs_quat_ctor(q.x * s, q.y * s, q.z * s, q.w * s);
+    return gs_quat_ctor(q.x * s, q.y * s, q.z * s, q.w * s);
 }
 
 gs_inline f32 
 gs_quat_dot(gs_quat q0, gs_quat q1)
 {
-	return (f32)(q0.x * q1.x + q0.y * q1.y + q0.z * q1.z + q0.w * q1.w);
+    return (f32)(q0.x * q1.x + q0.y * q1.y + q0.z * q1.z + q0.w * q1.w);
 }
 
 gs_inline 
 gs_quat gs_quat_conjugate(gs_quat q)
 {
-	return (gs_quat_ctor(-q.x, -q.y, -q.z, q.w));
+    return (gs_quat_ctor(-q.x, -q.y, -q.z, q.w));
 }
 
 gs_inline f32
 gs_quat_len(gs_quat q)
 {
-	return (f32)sqrt(gs_quat_dot(q, q));
+    return (f32)sqrt(gs_quat_dot(q, q));
 }
 
 gs_inline gs_quat
 gs_quat_norm(gs_quat q) 
 {
-	return gs_quat_scale(q, 1.0f / gs_quat_len(q));
+    return gs_quat_scale(q, 1.0f / gs_quat_len(q));
 }
 
 gs_inline gs_quat
 gs_quat_cross(gs_quat q0, gs_quat q1)
 {
-	return gs_quat_ctor (											
-		q0.x * q1.x + q0.x * q1.w + q0.y * q1.z - q0.z * q1.y,	
-		q0.w * q1.y + q0.y * q1.w + q0.z * q1.x - q0.x * q1.z,	
-		q0.w * q1.z + q0.z * q1.w + q0.x * q1.y - q0.y * q1.x,	
-		q0.w * q1.w - q0.x * q1.x - q0.y * q1.y - q0.z * q1.z 	
-	);
+    return gs_quat_ctor (                                           
+        q0.x * q1.x + q0.x * q1.w + q0.y * q1.z - q0.z * q1.y,  
+        q0.w * q1.y + q0.y * q1.w + q0.z * q1.x - q0.x * q1.z,  
+        q0.w * q1.z + q0.z * q1.w + q0.x * q1.y - q0.y * q1.x,  
+        q0.w * q1.w - q0.x * q1.x - q0.y * q1.y - q0.z * q1.z   
+    );
 }
 
 // Inverse := Conjugate / Dot;
 gs_inline
 gs_quat gs_quat_inverse(gs_quat q)
 {
-	return (gs_quat_scale(gs_quat_conjugate(q), 1.0f / gs_quat_dot(q, q)));
+    return (gs_quat_scale(gs_quat_conjugate(q), 1.0f / gs_quat_dot(q, q)));
 }
 
 gs_inline gs_vec3 gs_quat_rotate(gs_quat q, gs_vec3 v)
 {
-	// nVidia SDK implementation
-	gs_vec3 qvec = gs_vec3_ctor(q.x, q.y, q.z);
-	gs_vec3 uv = gs_vec3_cross(qvec, v);
-	gs_vec3 uuv = gs_vec3_cross(qvec, uv);
-	uv = gs_vec3_scale(uv, 2.f * q.w);
-	uuv = gs_vec3_scale(uuv, 2.f);
-	return (gs_vec3_add(v, gs_vec3_add(uv, uuv)));
+    // nVidia SDK implementation
+    gs_vec3 qvec = gs_vec3_ctor(q.x, q.y, q.z);
+    gs_vec3 uv = gs_vec3_cross(qvec, v);
+    gs_vec3 uuv = gs_vec3_cross(qvec, uv);
+    uv = gs_vec3_scale(uv, 2.f * q.w);
+    uuv = gs_vec3_scale(uuv, 2.f);
+    return (gs_vec3_add(v, gs_vec3_add(uv, uuv)));
 }
 
 gs_inline gs_quat gs_quat_angle_axis(f32 rad, gs_vec3 axis)
 {
-	// Normalize axis
-	gs_vec3 a = gs_vec3_norm(axis);
+    // Normalize axis
+    gs_vec3 a = gs_vec3_norm(axis);
 
-	// Get scalar
-	f32 half_angle = 0.5f * rad;
-	f32 s = sin(half_angle);
+    // Get scalar
+    f32 half_angle = 0.5f * rad;
+    f32 s = sin(half_angle);
 
-	return gs_quat_ctor(a.x * s, a.y * s, a.z * s, cos(half_angle));
+    return gs_quat_ctor(a.x * s, a.y * s, a.z * s, cos(half_angle));
 }
 
 gs_inline
 gs_quat gs_quat_slerp(gs_quat a, gs_quat b, f32 t)
 {
-	f32 c = gs_quat_dot(a, b);
-	gs_quat end = b;
+    f32 c = gs_quat_dot(a, b);
+    gs_quat end = b;
 
-	if (c < 0.0f)
-	{
-		// Reverse all signs
-		c *= -1.0f;
-		end.x *= -1.0f;
-		end.y *= -1.0f;
-		end.z *= -1.0f;
-		end.w *= -1.0f;
-	}
+    if (c < 0.0f)
+    {
+        // Reverse all signs
+        c *= -1.0f;
+        end.x *= -1.0f;
+        end.y *= -1.0f;
+        end.z *= -1.0f;
+        end.w *= -1.0f;
+    }
 
-	// Calculate coefficients
-	f32 sclp, sclq;
-	if ((1.0f - c) > 0.0001f)
-	{
-		f32 omega = acosf(c);
-		f32 s = sinf(omega);
-		sclp = sinf((1.0f - t) * omega) / s;
-		sclq = sinf(t * omega) / s; 
-	}
-	else
-	{
-		sclp = 1.0f - t;
-		sclq = t;
-	}
+    // Calculate coefficients
+    f32 sclp, sclq;
+    if ((1.0f - c) > 0.0001f)
+    {
+        f32 omega = acosf(c);
+        f32 s = sinf(omega);
+        sclp = sinf((1.0f - t) * omega) / s;
+        sclq = sinf(t * omega) / s; 
+    }
+    else
+    {
+        sclp = 1.0f - t;
+        sclq = t;
+    }
 
-	gs_quat q;
-	q.x = sclp * a.x + sclq * end.x;
-	q.y = sclp * a.y + sclq * end.y;
-	q.z = sclp * a.z + sclq * end.z;
-	q.w = sclp * a.w + sclq * end.w;
+    gs_quat q;
+    q.x = sclp * a.x + sclq * end.x;
+    q.y = sclp * a.y + sclq * end.y;
+    q.z = sclp * a.z + sclq * end.z;
+    q.w = sclp * a.w + sclq * end.w;
 
-	return q;
+    return q;
 }
 
 #define quat_axis_angle(__AXS, __ANG)\
-	gs_quat_angle_axis(__ANG, __AXS)
+    gs_quat_angle_axis(__ANG, __AXS)
 
 /*
 * @brief Convert given quaternion param into equivalent 4x4 rotation matrix
@@ -2859,55 +2859,55 @@ gs_quat gs_quat_slerp(gs_quat a, gs_quat b, f32 t)
 */
 gs_inline gs_mat4 gs_quat_to_mat4(gs_quat _q)
 {
-	gs_mat4 mat = gs_mat4_identity();
-	gs_quat q = gs_quat_norm(_q);
+    gs_mat4 mat = gs_mat4_identity();
+    gs_quat q = gs_quat_norm(_q);
 
-	f32 xx = q.x * q.x;	
-	f32 yy = q.y * q.y;	
-	f32 zz = q.z * q.z;	
-	f32 xy = q.x * q.y;
-	f32 xz = q.x * q.z;
-	f32 yz = q.y * q.z;
-	f32 wx = q.w * q.x;
-	f32 wy = q.w * q.y;
-	f32 wz = q.w * q.z;
+    f32 xx = q.x * q.x; 
+    f32 yy = q.y * q.y; 
+    f32 zz = q.z * q.z; 
+    f32 xy = q.x * q.y;
+    f32 xz = q.x * q.z;
+    f32 yz = q.y * q.z;
+    f32 wx = q.w * q.x;
+    f32 wy = q.w * q.y;
+    f32 wz = q.w * q.z;
 
-	mat.elements[0 * 4 + 0] = 1.0f - 2.0f * (yy + zz);
-	mat.elements[1 * 4 + 0] = 2.0f * (xy - wz);
-	mat.elements[2 * 4 + 0] = 2.0f * (xz + wy);
+    mat.elements[0 * 4 + 0] = 1.0f - 2.0f * (yy + zz);
+    mat.elements[1 * 4 + 0] = 2.0f * (xy - wz);
+    mat.elements[2 * 4 + 0] = 2.0f * (xz + wy);
 
-	mat.elements[0 * 4 + 1] = 2.0f * (xy + wz);
-	mat.elements[1 * 4 + 1] = 1.0f - 2.0f * (xx + zz);
-	mat.elements[2 * 4 + 1] = 2.0f * (yz - wx);
+    mat.elements[0 * 4 + 1] = 2.0f * (xy + wz);
+    mat.elements[1 * 4 + 1] = 1.0f - 2.0f * (xx + zz);
+    mat.elements[2 * 4 + 1] = 2.0f * (yz - wx);
 
-	mat.elements[0 * 4 + 2] = 2.0f * (xz - wy);
-	mat.elements[1 * 4 + 2] = 2.0f * (yz + wx);
-	mat.elements[2 * 4 + 2] = 1.0f - 2.0f * (xx + yy);
+    mat.elements[0 * 4 + 2] = 2.0f * (xz - wy);
+    mat.elements[1 * 4 + 2] = 2.0f * (yz + wx);
+    mat.elements[2 * 4 + 2] = 1.0f - 2.0f * (xx + yy);
 
-	return mat;
+    return mat;
 }
 
 gs_inline 
 gs_quat gs_quat_from_euler(f32 yaw_deg, f32 pitch_deg, f32 roll_deg)
 {
-	f32 yaw = gs_deg2rad(yaw_deg);
-	f32 pitch = gs_deg2rad(pitch_deg);
-	f32 roll = gs_deg2rad(roll_deg);
+    f32 yaw = gs_deg2rad(yaw_deg);
+    f32 pitch = gs_deg2rad(pitch_deg);
+    f32 roll = gs_deg2rad(roll_deg);
 
-	gs_quat q;
-	f32 cy = cos(yaw * 0.5f);
-	f32 sy = sin(yaw * 0.5f);
-	f32 cr = cos(roll * 0.5f);
-	f32 sr = sin(roll * 0.5f);
-	f32 cp = cos(pitch * 0.5f);
-	f32 sp = sin(pitch * 0.5f);
+    gs_quat q;
+    f32 cy = cos(yaw * 0.5f);
+    f32 sy = sin(yaw * 0.5f);
+    f32 cr = cos(roll * 0.5f);
+    f32 sr = sin(roll * 0.5f);
+    f32 cp = cos(pitch * 0.5f);
+    f32 sp = sin(pitch * 0.5f);
 
-	q.x = cy * sr * cp - sy * cr * sp;
-	q.y = cy * cr * sp + sy * sr * cp;
-	q.z = sy * cr * cp - cy * sr * sp;
-	q.w = cy * cr * cp + sy * sr * sp;
+    q.x = cy * sr * cp - sy * cr * sp;
+    q.y = cy * cr * sp + sy * sr * cp;
+    q.z = sy * cr * cp - cy * sr * sp;
+    q.w = cy * cr * cp + sy * sr * sp;
 
-	return q;
+    return q;
 }
 
 /*================================================================================
@@ -2915,89 +2915,89 @@ gs_quat gs_quat_from_euler(f32 yaw_deg, f32 pitch_deg, f32 roll_deg)
 ================================================================================*/
 
 /*
-	- This follows a traditional 'VQS' structure for complex object transformations, 
-		however it differs from the standard in that it allows for non-uniform 
-		scaling in the form of a vec3.
+    - This follows a traditional 'VQS' structure for complex object transformations, 
+        however it differs from the standard in that it allows for non-uniform 
+        scaling in the form of a vec3.
 */
 // Source: https://www.eurosis.org/cms/files/conf/gameon-asia/gameon-asia2007/R-SESSION/G1.pdf
 
 typedef struct 
 {
-	gs_vec3 	position;
-	gs_quat 	rotation;
-	gs_vec3 	scale;		
+    gs_vec3     position;
+    gs_quat     rotation;
+    gs_vec3     scale;      
 } gs_vqs;
 
 gs_inline gs_vqs gs_vqs_ctor(gs_vec3 tns, gs_quat rot, gs_vec3 scl)
 {
-	gs_vqs t;	
-	t.position = tns;
-	t.rotation = rot;
-	t.scale = scl;
-	return t;
+    gs_vqs t;   
+    t.position = tns;
+    t.rotation = rot;
+    t.scale = scl;
+    return t;
 }
 
 gs_inline 
 gs_vqs gs_vqs_default()
 {
-	gs_vqs t = gs_vqs_ctor
-	(
-		gs_vec3_ctor(0.0f, 0.0f, 0.0f),
-		gs_quat_ctor(0.0f, 0.0f, 0.0f, 1.0f),
-		gs_vec3_ctor(1.0f, 1.0f, 1.0f)
-	);
-	return t;
+    gs_vqs t = gs_vqs_ctor
+    (
+        gs_vec3_ctor(0.0f, 0.0f, 0.0f),
+        gs_quat_ctor(0.0f, 0.0f, 0.0f, 1.0f),
+        gs_vec3_ctor(1.0f, 1.0f, 1.0f)
+    );
+    return t;
 }
 
-// AbsScale	= ParentScale * LocalScale
-// AbsRot	= LocalRot * ParentRot
-// AbsTrans	= ParentPos + [ParentRot * (ParentScale * LocalPos)]
+// AbsScale = ParentScale * LocalScale
+// AbsRot   = LocalRot * ParentRot
+// AbsTrans = ParentPos + [ParentRot * (ParentScale * LocalPos)]
 gs_inline gs_vqs gs_vqs_absolute_transform(const gs_vqs* local, const gs_vqs* parent)
 {
-	// Normalized rotations
-	gs_quat p_rot_norm = gs_quat_norm(parent->rotation);
-	gs_quat l_rot_norm = gs_quat_norm(local->rotation);
+    // Normalized rotations
+    gs_quat p_rot_norm = gs_quat_norm(parent->rotation);
+    gs_quat l_rot_norm = gs_quat_norm(local->rotation);
 
-	// Scale
-	gs_vec3 scl = gs_vec3_mul(local->scale, parent->scale);
-	// Rotation
-	gs_quat rot = gs_quat_norm(gs_quat_mul(p_rot_norm, l_rot_norm));
-	// position
-	gs_vec3 tns = gs_vec3_add(parent->position, gs_quat_rotate(p_rot_norm, gs_vec3_mul(parent->scale, local->position)));
+    // Scale
+    gs_vec3 scl = gs_vec3_mul(local->scale, parent->scale);
+    // Rotation
+    gs_quat rot = gs_quat_norm(gs_quat_mul(p_rot_norm, l_rot_norm));
+    // position
+    gs_vec3 tns = gs_vec3_add(parent->position, gs_quat_rotate(p_rot_norm, gs_vec3_mul(parent->scale, local->position)));
 
-	return gs_vqs_ctor(tns, rot, scl);
+    return gs_vqs_ctor(tns, rot, scl);
 }
 
 // RelScale = AbsScale / ParentScale 
-// RelRot	= Inverse(ParentRot) * AbsRot
-// RelTrans	= [Inverse(ParentRot) * (AbsPos - ParentPosition)] / ParentScale;
+// RelRot   = Inverse(ParentRot) * AbsRot
+// RelTrans = [Inverse(ParentRot) * (AbsPos - ParentPosition)] / ParentScale;
 gs_inline gs_vqs gs_vqs_relative_transform(const gs_vqs* absolute, const gs_vqs* parent)
 {
-	// Get inverse rotation normalized
-	gs_quat p_rot_inv = gs_quat_norm(gs_quat_inverse(parent->rotation));
-	// Normalized abs rotation
-	gs_quat a_rot_norm = gs_quat_norm(absolute->rotation);
+    // Get inverse rotation normalized
+    gs_quat p_rot_inv = gs_quat_norm(gs_quat_inverse(parent->rotation));
+    // Normalized abs rotation
+    gs_quat a_rot_norm = gs_quat_norm(absolute->rotation);
 
-	// Scale
-	gs_vec3 scl = gs_vec3_div(absolute->scale, parent->scale);
-	// Rotation
-	gs_quat rot = gs_quat_norm(gs_quat_mul(p_rot_inv, a_rot_norm));
-	// position
-	gs_vec3 tns = gs_vec3_div(gs_quat_rotate(p_rot_inv, gs_vec3_sub(absolute->position, parent->position)), parent->scale);
+    // Scale
+    gs_vec3 scl = gs_vec3_div(absolute->scale, parent->scale);
+    // Rotation
+    gs_quat rot = gs_quat_norm(gs_quat_mul(p_rot_inv, a_rot_norm));
+    // position
+    gs_vec3 tns = gs_vec3_div(gs_quat_rotate(p_rot_inv, gs_vec3_sub(absolute->position, parent->position)), parent->scale);
 
-	return gs_vqs_ctor(tns, rot, scl);
+    return gs_vqs_ctor(tns, rot, scl);
 }
 
 gs_inline gs_mat4 gs_vqs_to_mat4(const gs_vqs* transform)
 {
-	gs_mat4 mat = gs_mat4_identity();
-	gs_mat4 trans = gs_mat4_translatev(transform->position);
-	gs_mat4 rot = gs_quat_to_mat4(transform->rotation);
-	gs_mat4 scl = gs_mat4_scalev(transform->scale);
-	mat = gs_mat4_mul(mat, trans);
-	mat = gs_mat4_mul(mat, rot);
-	mat = gs_mat4_mul(mat, scl);
-	return mat;
+    gs_mat4 mat = gs_mat4_identity();
+    gs_mat4 trans = gs_mat4_translatev(transform->position);
+    gs_mat4 rot = gs_quat_to_mat4(transform->rotation);
+    gs_mat4 scl = gs_mat4_scalev(transform->scale);
+    mat = gs_mat4_mul(mat, trans);
+    mat = gs_mat4_mul(mat, rot);
+    mat = gs_mat4_mul(mat, scl);
+    return mat;
 }
 
 /*================================================================================
@@ -3006,16 +3006,16 @@ gs_inline gs_mat4 gs_vqs_to_mat4(const gs_vqs* transform)
 
 typedef struct 
 {
-	gs_vec3 point;
-	gs_vec3 direction;	
+    gs_vec3 point;
+    gs_vec3 direction;  
 } gs_ray;
 
 gs_inline gs_ray gs_ray_ctor(gs_vec3 pt, gs_vec3 dir)
 {
-	gs_ray r;
-	r.point = pt;
-	r.direction = dir;
-	return r;
+    gs_ray r;
+    r.point = pt;
+    r.direction = dir;
+    return r;
 }
 
 /*================================================================================
@@ -3024,18 +3024,18 @@ gs_inline gs_ray gs_ray_ctor(gs_vec3 pt, gs_vec3 dir)
 
 typedef struct gs_plane_t
 {
-	union
-	{
-		gs_vec3 n;
-		struct 
-		{
-			f32 a;
-			f32 b;
-			f32 c;
-		};
-	};
+    union
+    {
+        gs_vec3 n;
+        struct 
+        {
+            f32 a;
+            f32 b;
+            f32 c;
+        };
+    };
 
-	f32 d;
+    f32 d;
 } gs_plane_t;
 
 /*================================================================================
@@ -3044,19 +3044,19 @@ typedef struct gs_plane_t
 
 typedef enum gs_projection_type
 {
-	GS_PROJECTION_TYPE_ORTHOGRAPHIC,
-	GS_PROJECTION_TYPE_PERSPECTIVE
+    GS_PROJECTION_TYPE_ORTHOGRAPHIC,
+    GS_PROJECTION_TYPE_PERSPECTIVE
 } gs_projection_type;
 
 typedef struct gs_camera_t
 {
-	gs_vqs transform;
-	float fov; 
-	float aspect_ratio; 
-	float near_plane; 
-	float far_plane;
-	float ortho_scale;
-	gs_projection_type proj_type;
+    gs_vqs transform;
+    float fov; 
+    float aspect_ratio; 
+    float near_plane; 
+    float far_plane;
+    float ortho_scale;
+    gs_projection_type proj_type;
 } gs_camera_t;
 
 GS_API_DECL gs_camera_t gs_camera_default();
@@ -3078,27 +3078,27 @@ GS_API_DECL void gs_camera_offset_orientation(gs_camera_t* cam, float yaw, float
 ================================================================================*/
 
 /*
-	min is top left of rect,
-	max is bottom right
+    min is top left of rect,
+    max is bottom right
 */
 typedef struct gs_rect_t
 {
-	gs_vec2 min;
-	gs_vec2 max;
+    gs_vec2 min;
+    gs_vec2 max;
 } gs_rect_t;
 
 gs_inline
 b32 gs_rect_vs_rect(gs_rect_t a, gs_rect_t b)
 {
-	if ( a.max.x > b.min.x && 
-		 a.max.y > b.min.y && 
-		 a.min.x < b.max.x && 
-		 a.min.y < b.max.y )
-	{
-		return true;
-	}
+    if ( a.max.x > b.min.x && 
+         a.max.y > b.min.y && 
+         a.min.x < b.max.x && 
+         a.min.y < b.max.y )
+    {
+        return true;
+    }
 
-	return false;
+    return false;
 }
 
 /*========================
@@ -3106,25 +3106,25 @@ b32 gs_rect_vs_rect(gs_rect_t a, gs_rect_t b)
 ========================*/
 
 /* Platform Apple */
-#if (defined __APPLE__ || defined _APPLE) 	
+#if (defined __APPLE__ || defined _APPLE)   
 
-	#define GS_PLATFORM_APPLE
+    #define GS_PLATFORM_APPLE
 
 /* Platform Windows */
 #elif (defined _WIN32 || defined _WIN64)
 
-	// Necessary windows defines before including windows.h, because it's retarded.
-	#define OEMRESOURCE
+    // Necessary windows defines before including windows.h, because it's retarded.
+    #define OEMRESOURCE
 
-	#define GS_PLATFORM_WIN
-	#include <windows.h>
+    #define GS_PLATFORM_WIN
+    #include <windows.h>
 
-	#define WIN32_LEAN_AND_MEAN
+    #define WIN32_LEAN_AND_MEAN
 
 /* Platform Linux */
 #elif (defined linux || defined _linux || defined __linux__)
 
-	#define GS_PLATFORM_LINUX
+    #define GS_PLATFORM_LINUX
 
 /* Else - Platform Undefined and Unsupported */
 
@@ -3136,37 +3136,37 @@ b32 gs_rect_vs_rect(gs_rect_t a, gs_rect_t b)
 
 typedef struct gs_platform_time_t
 {
-	f64 max_fps;
-	f64 current;
-	f64 previous;
-	f64 update;
-	f64 render;
-	f64 delta;
-	f64 frame;
+    f64 max_fps;
+    f64 current;
+    f64 previous;
+    f64 update;
+    f64 render;
+    f64 delta;
+    f64 frame;
 } gs_platform_time_t;
 
 /*============================================================
 // Platform UUID
 ============================================================*/
 
-#define GS_UUID_STR_SIZE_CONSTANT 		32
+#define GS_UUID_STR_SIZE_CONSTANT       32
 
 // 33 characters, all set to 0
-#define	gs_uuid_temp_str_buffer()\
-	{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}	
+#define gs_uuid_temp_str_buffer()\
+    {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} 
 
 typedef struct gs_uuid_t
 {
-	const char* id;
-	uint8_t bytes[16];
+    const char* id;
+    uint8_t bytes[16];
 } gs_uuid_t;
 
 /*============================================================
 // Platform Window
 ============================================================*/
 
-#define GS_WINDOW_FLAGS_RESIZABLE 	0x01
-#define GS_WINDOW_FLAGS_FULLSCREEN 	0x02
+#define GS_WINDOW_FLAGS_RESIZABLE   0x01
+#define GS_WINDOW_FLAGS_FULLSCREEN  0x02
 
 // Should have an internal resource cache of window handles (controlled by the platform api)
 
@@ -3354,18 +3354,18 @@ typedef struct gs_opengl_video_settings_t
     uint8_t                       multi_sampling_count;
     void*                         ctx;
 } gs_opengl_video_settings_t;
-	
+    
 typedef union gs_graphics_api_settings_t
 {
-	gs_opengl_video_settings_t opengl;
-	int32_t                    dummy;	
+    gs_opengl_video_settings_t opengl;
+    int32_t                    dummy;   
 } gs_graphics_api_settings_t;
 
 typedef struct gs_platform_video_settings_t
 {
-	gs_graphics_api_settings_t      graphics;
-	gs_platform_video_driver_type   driver;
-	b32                             vsync_enabled;
+    gs_graphics_api_settings_t      graphics;
+    gs_platform_video_driver_type   driver;
+    b32                             vsync_enabled;
 } gs_platform_video_settings_t;
 
 typedef struct gs_platform_settings_t
@@ -3410,11 +3410,11 @@ typedef struct gs_platform_i
 GS_API_DECL gs_platform_i*  gs_platform_create();
 GS_API_DECL void            gs_platform_destroy(gs_platform_i* platform);
 GS_API_DECL gs_result       gs_platform_init(gs_platform_i* platform);      // Initialize global platform layer
-GS_API_DECL gs_result       gs_platform_shutdown(gs_platform_i* platform);	// Shutdown gloabl platform layer
+GS_API_DECL gs_result       gs_platform_shutdown(gs_platform_i* platform);  // Shutdown gloabl platform layer
 
 // Platform Util
-GS_API_DECL void   gs_platform_sleep(float ms);	// Sleeps platform for time in ms
-GS_API_DECL double gs_platform_elapsed_time(); 	// Returns time in ms since initialization of platform
+GS_API_DECL void   gs_platform_sleep(float ms); // Sleeps platform for time in ms
+GS_API_DECL double gs_platform_elapsed_time();  // Returns time in ms since initialization of platform
 
 // Platform Video
 GS_API_DECL void gs_platform_enable_vsync(int32_t enabled);
@@ -3450,7 +3450,7 @@ GS_API_DECL bool      gs_platform_mouse_moved();
 // Platform Window
 GS_API_DECL uint32_t gs_platform_create_window(const char* title, uint32_t width, uint32_t height);
 GS_API_DECL void*    gs_platform_create_window_internal(const char* title, uint32_t width, uint32_t height);
-GS_API_DECL void  	 gs_platform_window_swap_buffer(uint32_t handle);
+GS_API_DECL void     gs_platform_window_swap_buffer(uint32_t handle);
 GS_API_DECL gs_vec2  gs_platform_window_sizev(uint32_t handle);
 GS_API_DECL void     gs_platform_window_size(uint32_t handle, uint32_t* width, uint32_t* height);
 GS_API_DECL uint32_t gs_platform_window_width(uint32_t handle);
@@ -3482,7 +3482,7 @@ typedef enum gs_audio_file_type
 {
     GS_OGG = 0x00,
     GS_WAV,
-    GS_MP3	
+    GS_MP3  
 } gs_audio_file_type;
 
 /*==================
@@ -3535,7 +3535,7 @@ typedef struct gs_audio_i
     void* sample_out;
 
     /* Amount of samples to write */
-    uint32_t sample_count_to_output;	
+    uint32_t sample_count_to_output;    
 
     /* Samples per second for hardware */
     uint32_t samples_per_second;
@@ -3591,16 +3591,16 @@ GS_API_DECL bool32_t gs_audio_load_mp3_data_from_file(const char* file_path, int
 #ifndef GS_NO_SHORT_NAME
     /* Resources */
     #define gsa_src      gs_handle(gs_audio_source_t)
-	#define gsa_inst     gs_handle(gs_audio_instance_t)
+    #define gsa_inst     gs_handle(gs_audio_instance_t)
     #define gsa_instdecl gs_audio_instance_decl_t
     /* Create */
-    #define gsa_create 	 gs_audio_create
+    #define gsa_create   gs_audio_create
     #define gsa_destroy  gs_audio_destroy
     #define gsa_init     gs_audio_init
     #define gsa_shutdown gs_audio_shutdown
     #define gsa_submit   gs_audio_submit
     /* Source */
-    #define gsa_load     gs_audio_load_from_file 	 		
+    #define gsa_load     gs_audio_load_from_file            
     /* Instance */
     #define gsa_make_inst gs_audio_instance_create
 
@@ -3701,7 +3701,7 @@ gs_enum_decl(gs_graphics_uniform_type,
 
 /* Uniform Block Usage Type */
 gs_enum_decl(gs_graphics_uniform_block_usage_type, 
-    GS_GRAPHICS_UNIFORM_BLOCK_USAGE_STATIC,				// Default of 0x00 is static
+    GS_GRAPHICS_UNIFORM_BLOCK_USAGE_STATIC,             // Default of 0x00 is static
     GS_GRAPHICS_UNIFORM_BLOCK_USAGE_PUSH_CONSTANT
 );
 
@@ -3802,7 +3802,7 @@ gs_enum_decl(gs_graphics_bind_type,
 );
 
 /* Depth Function Type */
-gs_enum_decl(gs_graphics_depth_func_type,		// Default value of 0x00 means depth is disabled
+gs_enum_decl(gs_graphics_depth_func_type,       // Default value of 0x00 means depth is disabled
     GS_GRAPHICS_DEPTH_FUNC_NEVER,
     GS_GRAPHICS_DEPTH_FUNC_LESS,
     GS_GRAPHICS_DEPTH_FUNC_EQUAL,
@@ -3815,7 +3815,7 @@ gs_enum_decl(gs_graphics_depth_func_type,		// Default value of 0x00 means depth 
 
 /* Stencil Function Type */
 gs_enum_decl(gs_graphics_stencil_func_type,
-    GS_GRAPHICS_STENCIL_FUNC_NEVER,				// Default value of 0x00 means stencil is disabled
+    GS_GRAPHICS_STENCIL_FUNC_NEVER,             // Default value of 0x00 means stencil is disabled
     GS_GRAPHICS_STENCIL_FUNC_LESS,
     GS_GRAPHICS_STENCIL_FUNC_EQUAL,
     GS_GRAPHICS_STENCIL_FUNC_LEQUAL,
@@ -3826,7 +3826,7 @@ gs_enum_decl(gs_graphics_stencil_func_type,
 );
 
 /* Stencil Op Type */
-gs_enum_decl(gs_graphics_stencil_op_type,		// Default value of 0x00 means keep is used
+gs_enum_decl(gs_graphics_stencil_op_type,       // Default value of 0x00 means keep is used
     GS_GRAPHICS_STENCIL_OP_KEEP,
     GS_GRAPHICS_STENCIL_OP_ZERO,
     GS_GRAPHICS_STENCIL_OP_REPLACE,
@@ -3848,24 +3848,24 @@ gs_handle_decl(gs_graphics_pipeline_t);
 /* Graphics Shader Source Desc */
 typedef struct gs_graphics_shader_source_desc_t
 {
-    gs_graphics_shader_stage_type type;	// Shader stage type (vertex, fragment, tesselation, geometry, compute)
-    const char* source;			// Source for shader
+    gs_graphics_shader_stage_type type; // Shader stage type (vertex, fragment, tesselation, geometry, compute)
+    const char* source;         // Source for shader
 } gs_graphics_shader_source_desc_t;
 
 /* Graphics Shader Desc */
 typedef struct gs_graphics_shader_desc_t
 {
-    gs_graphics_shader_source_desc_t* sources;	// Array of shader source descriptions
-    size_t size;					// Size in bytes of shader source desc array
-    const char* name;				// Optional (for logging and debugging mainly)
+    gs_graphics_shader_source_desc_t* sources;  // Array of shader source descriptions
+    size_t size;                    // Size in bytes of shader source desc array
+    const char* name;               // Optional (for logging and debugging mainly)
 } gs_graphics_shader_desc_t;
 
 /* Graphics Uniform Desc */
 typedef struct gs_graphics_uniform_desc_t
 {
-    const char* name;				// Name of uniform in shader (used for opengl/es), MUST PROVIDE
-    uint32_t type;					// Type of uniform/sampler
-    uint32_t slot;					// Binding slot for textures to be bound
+    const char* name;               // Name of uniform in shader (used for opengl/es), MUST PROVIDE
+    uint32_t type;                  // Type of uniform/sampler
+    uint32_t slot;                  // Binding slot for textures to be bound
 } gs_graphics_uniform_desc_t;
 
 typedef gs_graphics_uniform_desc_t gs_graphics_sampler_desc_t;
@@ -3873,38 +3873,38 @@ typedef gs_graphics_uniform_desc_t gs_graphics_sampler_desc_t;
 /* Graphics Uniform Block Desc */
 typedef struct gs_graphics_uniform_block_desc_t
 {
-    gs_handle(gs_graphics_shader_t) shader; 	// Shader associated with uniforms, MUST PROVIDE
-    gs_graphics_uniform_desc_t* uniforms;		// Array of uniform descriptions
-    size_t size;								// Size in bytes of uniform description array
+    gs_handle(gs_graphics_shader_t) shader;     // Shader associated with uniforms, MUST PROVIDE
+    gs_graphics_uniform_desc_t* uniforms;       // Array of uniform descriptions
+    size_t size;                                // Size in bytes of uniform description array
     gs_graphics_shader_stage_type shader_stage; // Stage for this uniform block to applied (used for explicit renderers VK/DX12/MTL)
     gs_graphics_uniform_block_usage_type usage; // Designates whether this block is to be applied seldomly or frequently as a push constant
-    const char* name;							// Used for debugging
+    const char* name;                           // Used for debugging
 } gs_graphics_uniform_block_desc_t;
 
 /* Graphics Texture Desc */
 typedef struct gs_graphics_texture_desc_t
 {
-    uint32_t width;									// Width of texture in pixels
-    uint32_t height;								// Height of texture in pixels
-    gs_graphics_texture_format_type format;			// Format of texture data (rgba32, rgba8, rgba32f, r8, depth32f, etc...)
-    gs_graphics_texture_wrapping_type wrap_s;		// Wrapping type for s axis of texture
-    gs_graphics_texture_wrapping_type wrap_t;		// Wrapping type for t axis of texture
-    gs_graphics_texture_filtering_type min_filter;	// Minification filter for texture
-    gs_graphics_texture_filtering_type mag_filter;	// Magnification filter for texture
-    gs_graphics_texture_filtering_type mip_filter;	// Mip filter for texture
-    uint32_t num_mips;								// Number of mips to generate (default 0 is disable mip generation)
-    void* data;										// Texture data to upload (can be null)
-    b32 render_target;								// Default to false (not a render target)
+    uint32_t width;                                 // Width of texture in pixels
+    uint32_t height;                                // Height of texture in pixels
+    gs_graphics_texture_format_type format;         // Format of texture data (rgba32, rgba8, rgba32f, r8, depth32f, etc...)
+    gs_graphics_texture_wrapping_type wrap_s;       // Wrapping type for s axis of texture
+    gs_graphics_texture_wrapping_type wrap_t;       // Wrapping type for t axis of texture
+    gs_graphics_texture_filtering_type min_filter;  // Minification filter for texture
+    gs_graphics_texture_filtering_type mag_filter;  // Magnification filter for texture
+    gs_graphics_texture_filtering_type mip_filter;  // Mip filter for texture
+    uint32_t num_mips;                              // Number of mips to generate (default 0 is disable mip generation)
+    void* data;                                     // Texture data to upload (can be null)
+    b32 render_target;                              // Default to false (not a render target)
 } gs_graphics_texture_desc_t;
 
 /* Graphics Buffer Desc */
 typedef struct gs_graphics_buffer_desc_t
 {
-    gs_graphics_buffer_type type;				// Type of buffer (vertex, index, frame, uniform, sampler)
-    gs_graphics_buffer_usage_type usage;		// Usage type of buffer (static, dynamic, stream, draw, read)
-    void* data;									// Array of buffer data
-    size_t size;								// Size in bytes of buffer data array
-    const char* name; 							// Name of buffer (required for sampler/uniform buffers)
+    gs_graphics_buffer_type type;               // Type of buffer (vertex, index, frame, uniform, sampler)
+    gs_graphics_buffer_usage_type usage;        // Usage type of buffer (static, dynamic, stream, draw, read)
+    void* data;                                 // Array of buffer data
+    size_t size;                                // Size in bytes of buffer data array
+    const char* name;                           // Name of buffer (required for sampler/uniform buffers)
 } gs_graphics_buffer_desc_t;
 
 typedef gs_graphics_buffer_desc_t gs_graphics_vertex_buffer_desc_t;
@@ -3915,51 +3915,51 @@ typedef gs_graphics_buffer_desc_t gs_graphics_sampler_buffer_desc_t;
 /* Graphics Render Pass Action */
 typedef struct gs_graphics_render_pass_action_t
 {
-    gs_graphics_render_pass_action_flag flag;	// Flag to be set (clear color, clear depth, clear stencil, clear all)
+    gs_graphics_render_pass_action_flag flag;   // Flag to be set (clear color, clear depth, clear stencil, clear all)
     union 
     {
-        float color[4];								// Clear color value
-        float depth;								// Clear depth value
-        int32_t stencil;							// Clear stencil value
+        float color[4];                             // Clear color value
+        float depth;                                // Clear depth value
+        int32_t stencil;                            // Clear stencil value
     };
 } gs_graphics_render_pass_action_t;
 
 /* Graphics Render Pass Desc */
 typedef struct gs_graphics_render_pass_desc_t
 {
-    gs_handle(gs_graphics_buffer_t) fbo; 	  // Default is set to invalid for backbuffer
+    gs_handle(gs_graphics_buffer_t) fbo;      // Default is set to invalid for backbuffer
     gs_handle(gs_graphics_texture_t)* color;  // Array of color attachments to be bound (useful for MRT, if supported) 
-    size_t color_size;						  // Size of color attachment array
-    gs_handle(gs_graphics_texture_t) depth;	  // Depth attachment to be bound
+    size_t color_size;                        // Size of color attachment array
+    gs_handle(gs_graphics_texture_t) depth;   // Depth attachment to be bound
     gs_handle(gs_graphics_texture_t) stencil; // Depth attachment to be bound
 } gs_graphics_render_pass_desc_t;
 
 /* 
-	// If you want to write to a color attachment, you have to have a frame buffer attached that isn't the backbuffer
+    // If you want to write to a color attachment, you have to have a frame buffer attached that isn't the backbuffer
 */
 
 /* Graphics Binding Desc */
 typedef struct gs_graphics_bind_desc_t
 {
-    gs_graphics_bind_type type;				// Type of data to bind (vertex buffer, index buffer, uniform buffer, sampler buffer)
-    gs_handle(gs_graphics_buffer_t) buffer;	// Buffer to bind (vertex, index, uniform, sampler)
-    void* data;								// Data associated with bind
-    size_t size;							// Size of data in bytes
-    uint32_t binding;						// Binding for tex units
+    gs_graphics_bind_type type;             // Type of data to bind (vertex buffer, index buffer, uniform buffer, sampler buffer)
+    gs_handle(gs_graphics_buffer_t) buffer; // Buffer to bind (vertex, index, uniform, sampler)
+    void* data;                             // Data associated with bind
+    size_t size;                            // Size of data in bytes
+    uint32_t binding;                       // Binding for tex units
 } gs_graphics_bind_desc_t;
 
 /* Graphics Blend State Desc */
 typedef struct gs_graphics_blend_state_desc_t
 {
-    gs_graphics_blend_equation_type func;	// Equation function to use for blend ops
-    gs_graphics_blend_mode_type src;		// Source blend mode
-    gs_graphics_blend_mode_type dst;		// Destination blend mode
+    gs_graphics_blend_equation_type func;   // Equation function to use for blend ops
+    gs_graphics_blend_mode_type src;        // Source blend mode
+    gs_graphics_blend_mode_type dst;        // Destination blend mode
 } gs_graphics_blend_state_desc_t;
 
 /* Graphics Depth State Desc */
 typedef struct gs_graphics_depth_state_desc_t
 {
-    gs_graphics_depth_func_type func;			// Function to set for depth test
+    gs_graphics_depth_func_type func;           // Function to set for depth test
 } gs_graphics_depth_state_desc_t;
 
 /* Graphics Stencil State Desc */
@@ -4038,7 +4038,7 @@ GS_API_DECL void gs_graphics_end_render_pass(gs_command_buffer_t* cb);
 GS_API_DECL void gs_graphics_set_viewport(gs_command_buffer_t* cb, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
 GS_API_DECL void gs_graphics_set_view_scissor(gs_command_buffer_t* cb, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
 GS_API_DECL void gs_graphics_bind_pipeline(gs_command_buffer_t* cb, gs_handle(gs_graphics_pipeline_t) hndl);
-GS_API_DECL void gs_graphics_bind_uniform_block(gs_command_buffer_t* cb, gs_handle(gs_graphics_uniform_block_t) hndl, void* data, size_t data_size);	// Bind uniforms, push data to be bound
+GS_API_DECL void gs_graphics_bind_uniform_block(gs_command_buffer_t* cb, gs_handle(gs_graphics_uniform_block_t) hndl, void* data, size_t data_size);    // Bind uniforms, push data to be bound
 GS_API_DECL void gs_graphics_bind_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t* binds, size_t binds_size);
 GS_API_DECL void gs_graphics_draw(gs_command_buffer_t* cb, uint32_t start, uint32_t count);
 
@@ -4047,7 +4047,7 @@ GS_API_DECL void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb);
 GS_API_DECL void gs_graphics_submit_frame();
 
 #ifndef GS_NO_SHORT_NAME
-	
+    
 typedef gs_handle(gs_graphics_shader_t)      gs_shader;
 typedef gs_handle(gs_graphics_texture_t)     gs_texture;
 typedef gs_handle(gs_graphics_buffer_t)      gs_gfxbuffer;
@@ -4114,11 +4114,11 @@ typedef struct gs_app_desc_t
 } gs_app_desc_t;
 
 /*
-	Game Engine Context: 
+    Game Engine Context: 
 
-	* This is the main context for the gunslinger engine. Holds pointers to 
-		all interfaces registered with the engine, including the description 
-		for your application.
+    * This is the main context for the gunslinger engine. Holds pointers to 
+        all interfaces registered with the engine, including the description 
+        for your application.
 */
 typedef struct gs_engine_context_t
 {
@@ -4149,10 +4149,10 @@ GS_API_DECL void gs_engine_quit();
 GS_API_DECL gs_app_desc_t gs_main(int32_t argc, char** argv);
 
 #define gs_engine_subsystem(__T)\
-	(gs_engine_instance()->ctx.__T)
+    (gs_engine_instance()->ctx.__T)
 
 #define gs_engine_user_data(__T)\
-	(__T*)(gs_engine_instance()->ctx.app.user_data)
+    (__T*)(gs_engine_instance()->ctx.app.user_data)
 
 /*==================================================================================================================================
 // ===== Gunslinger Implementation ============================================================================================== //
@@ -4188,126 +4188,126 @@ void gs_byte_buffer_free(gs_byte_buffer_t* buffer)
 
 void gs_byte_buffer_clear(gs_byte_buffer_t* buffer)
 {
-	buffer->size = 0;
-	buffer->position = 0;	
+    buffer->size = 0;
+    buffer->position = 0;   
 }
 
 void gs_byte_buffer_resize(gs_byte_buffer_t* buffer, size_t sz)
 {
-	uint8_t* data = gs_realloc(buffer->data, sz);
+    uint8_t* data = gs_realloc(buffer->data, sz);
 
-	if (data == NULL) {
-		return;
-	}
+    if (data == NULL) {
+        return;
+    }
 
-	buffer->data = data;	
-	buffer->capacity = sz;
+    buffer->data = data;    
+    buffer->capacity = sz;
 }
 
 void gs_byte_buffer_seek_to_beg(gs_byte_buffer_t* buffer)
 {
-	buffer->position = 0;
+    buffer->position = 0;
 }
 
 void gs_byte_buffer_seek_to_end(gs_byte_buffer_t* buffer)
 {
-	buffer->position = buffer->size;
+    buffer->position = buffer->size;
 }
 
 void gs_byte_buffer_advance_position(gs_byte_buffer_t* buffer, size_t sz)
 {
-	buffer->position += sz;	
+    buffer->position += sz; 
 }
 
 void gs_byte_buffer_write_bulk(gs_byte_buffer_t* buffer, void* src, size_t size)
 {
-	// Check for necessary resize
-	size_t total_write_size = buffer->position + size;
-	if (total_write_size >= buffer->capacity)
-	{
-		size_t capacity = buffer->capacity * 2;
-		while(capacity <= total_write_size)
-		{
-			capacity *= 2;
-		}
+    // Check for necessary resize
+    size_t total_write_size = buffer->position + size;
+    if (total_write_size >= buffer->capacity)
+    {
+        size_t capacity = buffer->capacity * 2;
+        while(capacity <= total_write_size)
+        {
+            capacity *= 2;
+        }
 
-		gs_byte_buffer_resize(buffer, capacity);
-	} 
+        gs_byte_buffer_resize(buffer, capacity);
+    } 
 
-	// memcpy data
-	 memcpy((buffer->data + buffer->position), src, size);
+    // memcpy data
+     memcpy((buffer->data + buffer->position), src, size);
 
-	buffer->size += size;
-	buffer->position += size;
+    buffer->size += size;
+    buffer->position += size;
 }
 
 void gs_byte_buffer_read_bulk(gs_byte_buffer_t* buffer, void** dst, size_t size)
 {
-	memcpy(*dst, (buffer->data + buffer->position), size);
-	buffer->position += size;
+    memcpy(*dst, (buffer->data + buffer->position), size);
+    buffer->position += size;
 }
 
 void gs_byte_buffer_write_str(gs_byte_buffer_t* buffer, const char* str)
 {
-	// Write size of string
-	uint32_t str_len = gs_string_length(str);
-	gs_byte_buffer_write(buffer, uint16_t, str_len);
+    // Write size of string
+    uint32_t str_len = gs_string_length(str);
+    gs_byte_buffer_write(buffer, uint16_t, str_len);
 
-	size_t i; 
-	for (i = 0; i < str_len; ++i)
-	{
-		gs_byte_buffer_write(buffer, uint8_t, str[i]);
-	}
+    size_t i; 
+    for (i = 0; i < str_len; ++i)
+    {
+        gs_byte_buffer_write(buffer, uint8_t, str[i]);
+    }
 }
 
 void gs_byte_buffer_read_str(gs_byte_buffer_t* buffer, char* str)
 {
-	// Read in size of string from buffer
-	uint16_t sz;
-	gs_byte_buffer_read(buffer, uint16_t, &sz);
+    // Read in size of string from buffer
+    uint16_t sz;
+    gs_byte_buffer_read(buffer, uint16_t, &sz);
 
-	uint32_t i;
-	for (i = 0; i < sz; ++i)
-	{
-		gs_byte_buffer_read(buffer, uint8_t, &str[i]);
-	}
-	str[i] = '\0';
+    uint32_t i;
+    for (i = 0; i < sz; ++i)
+    {
+        gs_byte_buffer_read(buffer, uint8_t, &str[i]);
+    }
+    str[i] = '\0';
 }
 
 gs_result 
 gs_byte_buffer_write_to_file
 (
-	gs_byte_buffer_t* buffer, 
-	const char* output_path 
+    gs_byte_buffer_t* buffer, 
+    const char* output_path 
 )
 {
-	FILE* fp = fopen(output_path, "wb");
-	if (fp) 
-	{
-		int32_t ret = fwrite(buffer->data, sizeof(u8), buffer->size, fp);
-		if (ret == buffer->size)
-		{
-			return GS_RESULT_SUCCESS;
-		}
-	}
-	return GS_RESULT_FAILURE;
+    FILE* fp = fopen(output_path, "wb");
+    if (fp) 
+    {
+        int32_t ret = fwrite(buffer->data, sizeof(u8), buffer->size, fp);
+        if (ret == buffer->size)
+        {
+            return GS_RESULT_SUCCESS;
+        }
+    }
+    return GS_RESULT_FAILURE;
 }
 
 gs_result 
 gs_byte_buffer_read_from_file
 (
-	gs_byte_buffer_t* buffer, 
-	const char* file_path 
+    gs_byte_buffer_t* buffer, 
+    const char* file_path 
 )
 {
-	buffer->data = (u8*)gs_read_file_contents_into_string_null_term(file_path, "rb", (usize*)&buffer->size);
-	if (!buffer->data) {
-		gs_assert(false);	
-		return GS_RESULT_FAILURE;
-	}
-	buffer->position = 0;
-	buffer->capacity = buffer->size;
-	return GS_RESULT_SUCCESS;
+    buffer->data = (u8*)gs_read_file_contents_into_string_null_term(file_path, "rb", (usize*)&buffer->size);
+    if (!buffer->data) {
+        gs_assert(false);   
+        return GS_RESULT_FAILURE;
+    }
+    buffer->position = 0;
+    buffer->capacity = buffer->size;
+    return GS_RESULT_SUCCESS;
 }
 
 /*=============================
@@ -4316,153 +4316,153 @@ gs_byte_buffer_read_from_file
 
 gs_camera_t gs_camera_default()
 {
-	// Construct default camera parameters
-	gs_camera_t cam = gs_default_val();
-	cam.transform = gs_vqs_default();
-	cam.transform.position.z = 1.f;
-	cam.fov = 60.f;
-	cam.near_plane = 0.1f;
-	cam.far_plane = 1000.f;
-	cam.ortho_scale = 1.f;
-	cam.proj_type = GS_PROJECTION_TYPE_ORTHOGRAPHIC;
-	return cam;
+    // Construct default camera parameters
+    gs_camera_t cam = gs_default_val();
+    cam.transform = gs_vqs_default();
+    cam.transform.position.z = 1.f;
+    cam.fov = 60.f;
+    cam.near_plane = 0.1f;
+    cam.far_plane = 1000.f;
+    cam.ortho_scale = 1.f;
+    cam.proj_type = GS_PROJECTION_TYPE_ORTHOGRAPHIC;
+    return cam;
 }
 
 gs_camera_t gs_camera_perspective()
 {
-	gs_camera_t cam = gs_camera_default();
-	cam.proj_type = GS_PROJECTION_TYPE_PERSPECTIVE;
-	cam.transform.position.z = 1.f;
-	return cam;
+    gs_camera_t cam = gs_camera_default();
+    cam.proj_type = GS_PROJECTION_TYPE_PERSPECTIVE;
+    cam.transform.position.z = 1.f;
+    return cam;
 }
 
 gs_vec3 gs_camera_forward(gs_camera_t* cam)
 {
-	return (gs_quat_rotate(cam->transform.rotation, (gs_vec3){0.0f, 0.0f, -1.0f}));
+    return (gs_quat_rotate(cam->transform.rotation, (gs_vec3){0.0f, 0.0f, -1.0f}));
 } 
 
 gs_vec3 gs_camera_backward(gs_camera_t* cam)
 {
-	return (gs_quat_rotate(cam->transform.rotation, (gs_vec3){0.0f, 0.0f, 1.0f}));
+    return (gs_quat_rotate(cam->transform.rotation, (gs_vec3){0.0f, 0.0f, 1.0f}));
 } 
 
 gs_vec3 gs_camera_up(gs_camera_t* cam)
 {
-	return (gs_quat_rotate(cam->transform.rotation, (gs_vec3){0.0f, 1.0f, 0.0f}));
+    return (gs_quat_rotate(cam->transform.rotation, (gs_vec3){0.0f, 1.0f, 0.0f}));
 }
 
 gs_vec3 gs_camera_down(gs_camera_t* cam)
 {
-	return (gs_quat_rotate(cam->transform.rotation, (gs_vec3){0.0f, -1.0f, 0.0f}));
+    return (gs_quat_rotate(cam->transform.rotation, (gs_vec3){0.0f, -1.0f, 0.0f}));
 }
 
 gs_vec3 gs_camera_right(gs_camera_t* cam)
 {
-	return (gs_quat_rotate(cam->transform.rotation, (gs_vec3){1.0f, 0.0f, 0.0f}));
+    return (gs_quat_rotate(cam->transform.rotation, (gs_vec3){1.0f, 0.0f, 0.0f}));
 }
 
 gs_vec3 gs_camera_left(gs_camera_t* cam)
 {
-	return (gs_quat_rotate(cam->transform.rotation, (gs_vec3){-1.0f, 0.0f, 0.0f}));
+    return (gs_quat_rotate(cam->transform.rotation, (gs_vec3){-1.0f, 0.0f, 0.0f}));
 }
 
 gs_vec3 gs_camera_unproject(gs_camera_t* cam, gs_vec3 coords, s32 view_width, s32 view_height)
 {
-	gs_vec3 wc = gs_default_val();
+    gs_vec3 wc = gs_default_val();
 
-	// Get inverse of view projection from camera
-	gs_mat4 inverse_vp = gs_mat4_inverse(gs_camera_get_view_projection(cam, view_width, view_height));	
+    // Get inverse of view projection from camera
+    gs_mat4 inverse_vp = gs_mat4_inverse(gs_camera_get_view_projection(cam, view_width, view_height));  
 
-	f32 w_x = (f32)coords.x;
-	f32 w_y = (f32)coords.y;
-	f32 w_z = (f32)coords.z;
+    f32 w_x = (f32)coords.x;
+    f32 w_y = (f32)coords.y;
+    f32 w_z = (f32)coords.z;
 
-	// Transform from ndc
-	gs_vec4 in;
-	in.x = (w_x / (f32)view_width) * 2.f - 1.f;
-	in.y = 1.f - (w_y / (f32)view_height) * 2.f;
-	in.z = 2.f * w_z - 1.f;
-	in.w = 1.f;
+    // Transform from ndc
+    gs_vec4 in;
+    in.x = (w_x / (f32)view_width) * 2.f - 1.f;
+    in.y = 1.f - (w_y / (f32)view_height) * 2.f;
+    in.z = 2.f * w_z - 1.f;
+    in.w = 1.f;
 
-	// To world coords
-	gs_vec4 out = gs_mat4_mul_vec4(inverse_vp, in);
-	if (out.w == 0.f)
-	{
-		// Avoid div by zero
-		return wc;
-	}
+    // To world coords
+    gs_vec4 out = gs_mat4_mul_vec4(inverse_vp, in);
+    if (out.w == 0.f)
+    {
+        // Avoid div by zero
+        return wc;
+    }
 
-	out.w = 1.f / out.w;
-	wc = (gs_vec3) {
-		out.x * out.w,
-		out.y * out.w,
-		out.z * out.w
-	};
+    out.w = 1.f / out.w;
+    wc = (gs_vec3) {
+        out.x * out.w,
+        out.y * out.w,
+        out.z * out.w
+    };
 
-	return wc;
+    return wc;
 }
 
 gs_mat4 gs_camera_get_view_projection(gs_camera_t* cam, s32 view_width, s32 view_height)
 {
-	gs_mat4 view = gs_camera_get_view(cam);
-	gs_mat4 proj = gs_camera_get_projection(cam, view_width, view_height);
-	return gs_mat4_mul(proj, view);	
+    gs_mat4 view = gs_camera_get_view(cam);
+    gs_mat4 proj = gs_camera_get_projection(cam, view_width, view_height);
+    return gs_mat4_mul(proj, view); 
 }
 
 gs_mat4 gs_camera_get_view(gs_camera_t* cam)
 {
-	gs_vec3 up = gs_camera_up(cam);
-	gs_vec3 forward = gs_camera_forward(cam);
-	gs_vec3 target = gs_vec3_add(forward, cam->transform.position);
-	return gs_mat4_look_at(cam->transform.position, target, up);
+    gs_vec3 up = gs_camera_up(cam);
+    gs_vec3 forward = gs_camera_forward(cam);
+    gs_vec3 target = gs_vec3_add(forward, cam->transform.position);
+    return gs_mat4_look_at(cam->transform.position, target, up);
 }
 
 gs_mat4 gs_camera_get_projection(gs_camera_t* cam, s32 view_width, s32 view_height)
 {
-	gs_mat4 proj_mat = gs_mat4_identity();
+    gs_mat4 proj_mat = gs_mat4_identity();
 
-	switch(cam->proj_type)
-	{
-		case GS_PROJECTION_TYPE_PERSPECTIVE:
-		{
-			proj_mat = gs_mat4_perspective(cam->fov, (f32)view_width / (f32)view_height, cam->near_plane, cam->far_plane);
-		} break;
+    switch(cam->proj_type)
+    {
+        case GS_PROJECTION_TYPE_PERSPECTIVE:
+        {
+            proj_mat = gs_mat4_perspective(cam->fov, (f32)view_width / (f32)view_height, cam->near_plane, cam->far_plane);
+        } break;
 
-		// Don't like this...
-		case GS_PROJECTION_TYPE_ORTHOGRAPHIC:
-		{
-			f32 _ar = (f32)view_width / (f32)view_height;
-			f32 distance = 0.5f * (cam->far_plane - cam->near_plane);
-			const f32 ortho_scale = cam->ortho_scale;
-			const f32 aspect_ratio = _ar;
-			proj_mat = gs_mat4_ortho
-			(
-				-ortho_scale * aspect_ratio, 
-				ortho_scale * aspect_ratio, 
-				-ortho_scale, 
-				ortho_scale, 
-				-distance, 
-				distance	
-			);
-			// (
-			// 	0.f, 
-			// 	view_width, 
-			// 	view_height, 
-			// 	0.f, 
-			// 	cam->near_plane, 
-			// 	cam->far_plane	
-			//);
-		} break;
-	}
+        // Don't like this...
+        case GS_PROJECTION_TYPE_ORTHOGRAPHIC:
+        {
+            f32 _ar = (f32)view_width / (f32)view_height;
+            f32 distance = 0.5f * (cam->far_plane - cam->near_plane);
+            const f32 ortho_scale = cam->ortho_scale;
+            const f32 aspect_ratio = _ar;
+            proj_mat = gs_mat4_ortho
+            (
+                -ortho_scale * aspect_ratio, 
+                ortho_scale * aspect_ratio, 
+                -ortho_scale, 
+                ortho_scale, 
+                -distance, 
+                distance    
+            );
+            // (
+            //  0.f, 
+            //  view_width, 
+            //  view_height, 
+            //  0.f, 
+            //  cam->near_plane, 
+            //  cam->far_plane  
+            //);
+        } break;
+    }
 
-	return proj_mat;
+    return proj_mat;
 }
 
 void gs_camera_offset_orientation(gs_camera_t* cam, f32 yaw, f32 pitch)
 {
-	gs_quat x = gs_quat_angle_axis(gs_deg2rad(yaw), (gs_vec3){0.f, 1.f, 0.f});		// Absolute up
-	gs_quat y = gs_quat_angle_axis(gs_deg2rad(pitch), gs_camera_right(cam));			// Relative right
-	cam->transform.rotation = gs_quat_mul(gs_quat_mul(x, y), cam->transform.rotation);
+    gs_quat x = gs_quat_angle_axis(gs_deg2rad(yaw), (gs_vec3){0.f, 1.f, 0.f});      // Absolute up
+    gs_quat y = gs_quat_angle_axis(gs_deg2rad(pitch), gs_camera_right(cam));            // Relative right
+    cam->transform.rotation = gs_quat_mul(gs_quat_mul(x, y), cam->transform.rotation);
 }
 
 /*=============================
@@ -4483,18 +4483,18 @@ void gs_camera_offset_orientation(gs_camera_t* cam, f32 yaw, f32 pitch)
 
 bool32_t gs_util_load_texture_data_from_file(const char* file_path, int32_t* width, int32_t* height, uint32_t* num_comps, void** data, bool32_t flip_vertically_on_load)
 {
-	// Load texture data
-	stbi_set_flip_vertically_on_load(flip_vertically_on_load);
+    // Load texture data
+    stbi_set_flip_vertically_on_load(flip_vertically_on_load);
 
-	// NOTE(john): For now, this data will always have 4 components, since STBI_rgb_alpha is being passed in as required components param. Could optimize this later.
-	*data = stbi_load(file_path, (s32*)width, (s32*)height, (s32*)num_comps, STBI_rgb_alpha);
+    // NOTE(john): For now, this data will always have 4 components, since STBI_rgb_alpha is being passed in as required components param. Could optimize this later.
+    *data = stbi_load(file_path, (s32*)width, (s32*)height, (s32*)num_comps, STBI_rgb_alpha);
 
-	if (!*data) {
-		gs_println("Warning: could not load texture: %s", file_path);
-		return false;
-	}
+    if (!*data) {
+        gs_println("Warning: could not load texture: %s", file_path);
+        return false;
+    }
 
-	return true;
+    return true;
 }
 
 /*=============================
@@ -4525,98 +4525,98 @@ bool32_t gs_util_load_texture_data_from_file(const char* file_path, int32_t* wid
 
 void gs_asset_texture_load_from_file(const char* path, void* out, bool32_t keep_data)
 {
-	gs_asset_texture_t* t = (gs_asset_texture_t*)out; 
+    gs_asset_texture_t* t = (gs_asset_texture_t*)out; 
 
-	memset(&t->desc, 0, sizeof(gs_graphics_texture_desc_t));
-	t->desc.format = GS_GRAPHICS_TEXTURE_FORMAT_RGBA8;
-	t->desc.min_filter = GS_GRAPHICS_TEXTURE_FILTER_LINEAR;
-	t->desc.mag_filter = GS_GRAPHICS_TEXTURE_FILTER_LINEAR;	
-	t->desc.wrap_s = GS_GRAPHICS_TEXTURE_WRAP_REPEAT;
-	t->desc.wrap_t = GS_GRAPHICS_TEXTURE_WRAP_REPEAT;
+    memset(&t->desc, 0, sizeof(gs_graphics_texture_desc_t));
+    t->desc.format = GS_GRAPHICS_TEXTURE_FORMAT_RGBA8;
+    t->desc.min_filter = GS_GRAPHICS_TEXTURE_FILTER_LINEAR;
+    t->desc.mag_filter = GS_GRAPHICS_TEXTURE_FILTER_LINEAR; 
+    t->desc.wrap_s = GS_GRAPHICS_TEXTURE_WRAP_REPEAT;
+    t->desc.wrap_t = GS_GRAPHICS_TEXTURE_WRAP_REPEAT;
 
-	// Load texture data
-	const bool flip_vertically_on_load = true;
-	int32_t num_comps = 0;
-	bool32_t loaded = gs_util_load_texture_data_from_file(path, &t->desc.width, &t->desc.height, &num_comps, &t->desc.data, flip_vertically_on_load);
+    // Load texture data
+    const bool flip_vertically_on_load = true;
+    int32_t num_comps = 0;
+    bool32_t loaded = gs_util_load_texture_data_from_file(path, &t->desc.width, &t->desc.height, &num_comps, &t->desc.data, flip_vertically_on_load);
 
-	if (!loaded) {
-		gs_println("Warning: could not load texture: %s", path);
-		return;
-	}
+    if (!loaded) {
+        gs_println("Warning: could not load texture: %s", path);
+        return;
+    }
 
-	t->hndl = gs_graphics_texture_create(&t->desc);
+    t->hndl = gs_graphics_texture_create(&t->desc);
 
-	if (!keep_data) {
-		gs_free(t->desc.data);
-		t->desc.data = NULL;
-	}
+    if (!keep_data) {
+        gs_free(t->desc.data);
+        t->desc.data = NULL;
+    }
 }
 
 void gs_asset_font_load_from_file(const char* path, void* out, uint32_t point_size)
 { 
-	gs_asset_font_t* f = (gs_asset_font_t*)out;
+    gs_asset_font_t* f = (gs_asset_font_t*)out;
 
-	if (!point_size) {
-		gs_println("Warning: Font: %s: Point size is 0.", path);
-	}
+    if (!point_size) {
+        gs_println("Warning: Font: %s: Point size is 0.", path);
+    }
 
-	stbtt_fontinfo font = gs_default_val();
-	char* ttf = gs_read_file_contents_into_string_null_term(path, "rb", NULL);
-	const u32 w = 512;
-	const u32 h = 512;
-	const u32 num_comps = 4;
-	u8* alpha_bitmap = gs_malloc(w * h);
-	u8* flipmap = gs_malloc(w * h * num_comps);
-	memset(alpha_bitmap, 0, w * h);
-	memset(flipmap, 0, w * h * num_comps);
-   	s32 v = stbtt_BakeFontBitmap((u8*)ttf, 0, point_size, alpha_bitmap, w, h, 32, 96, (stbtt_bakedchar*)f->glyphs); // no guarantee this fits!
+    stbtt_fontinfo font = gs_default_val();
+    char* ttf = gs_read_file_contents_into_string_null_term(path, "rb", NULL);
+    const u32 w = 512;
+    const u32 h = 512;
+    const u32 num_comps = 4;
+    u8* alpha_bitmap = gs_malloc(w * h);
+    u8* flipmap = gs_malloc(w * h * num_comps);
+    memset(alpha_bitmap, 0, w * h);
+    memset(flipmap, 0, w * h * num_comps);
+    s32 v = stbtt_BakeFontBitmap((u8*)ttf, 0, point_size, alpha_bitmap, w, h, 32, 96, (stbtt_bakedchar*)f->glyphs); // no guarantee this fits!
 
-   	// Flip texture
-   	u32 r = h - 1;
-   	for (u32 i = 0; i < h; ++i)
-   	{
-   		for (u32 j = 0; j < w; ++j)
-   		{
-   			u32 i0 = i * w + j;
-   			u32 i1 = i * w * num_comps + j * num_comps;
-   			u8 a = alpha_bitmap[i0];
-   			flipmap[i1 + 0] = 255;
-   			flipmap[i1 + 1] = 255;
-   			flipmap[i1 + 2] = 255;
-   			flipmap[i1 + 3] = a;
-   		}
-   		r--;
-   	}
+    // Flip texture
+    u32 r = h - 1;
+    for (u32 i = 0; i < h; ++i)
+    {
+        for (u32 j = 0; j < w; ++j)
+        {
+            u32 i0 = i * w + j;
+            u32 i1 = i * w * num_comps + j * num_comps;
+            u8 a = alpha_bitmap[i0];
+            flipmap[i1 + 0] = 255;
+            flipmap[i1 + 1] = 255;
+            flipmap[i1 + 2] = 255;
+            flipmap[i1 + 3] = a;
+        }
+        r--;
+    }
 
-   	gs_graphics_texture_desc_t desc = gs_default_val();
-   	desc.width = w;
-   	desc.height = h;
-   	desc.data = flipmap;
-   	desc.format = GS_GRAPHICS_TEXTURE_FORMAT_RGBA8;
-   	desc.min_filter = GS_GRAPHICS_TEXTURE_FILTER_LINEAR;
+    gs_graphics_texture_desc_t desc = gs_default_val();
+    desc.width = w;
+    desc.height = h;
+    desc.data = flipmap;
+    desc.format = GS_GRAPHICS_TEXTURE_FORMAT_RGBA8;
+    desc.min_filter = GS_GRAPHICS_TEXTURE_FILTER_LINEAR;
 
-   	// Generate atlas texture for bitmap with bitmap data
-   	f->texture.hndl = gs_graphics_texture_create(&desc);
-   	f->texture.desc = desc;
-   	f->texture.desc.data = NULL;
+    // Generate atlas texture for bitmap with bitmap data
+    f->texture.hndl = gs_graphics_texture_create(&desc);
+    f->texture.desc = desc;
+    f->texture.desc.data = NULL;
 
-   	if (v == 0) {
-	   	gs_println("Font Failed to Load: %s, %d", path, v);
-   	}
-   	else {
-	   	gs_println("Font Successfully Load: %s, %d", path, v);
-   	}
+    if (v == 0) {
+        gs_println("Font Failed to Load: %s, %d", path, v);
+    }
+    else {
+        gs_println("Font Successfully Load: %s, %d", path, v);
+    }
 
-   	gs_free(ttf);
-   	gs_free(alpha_bitmap);
-   	gs_free(flipmap);
+    gs_free(ttf);
+    gs_free(alpha_bitmap);
+    gs_free(flipmap);
 }
 
 // Audio
 void gs_asset_audio_load_from_file(const char* path, void* out)
 {
-	gs_asset_audio_t* a = (gs_asset_audio_t*)out;
-	a->hndl = gs_audio_load_from_file(path);
+    gs_asset_audio_t* a = (gs_asset_audio_t*)out;
+    a->hndl = gs_audio_load_from_file(path);
 }
 
 /*=============================
@@ -4633,193 +4633,193 @@ gs_global gs_engine_t* __g_engine_instance = gs_default_val();
 
 gs_engine_t* gs_engine_create(gs_app_desc_t app_desc)
 {
-	if (gs_engine_instance() == NULL)
-	{
-		// Check app desc for defaults
-		if (app_desc.window_width == 0) 	app_desc.window_width = 800;
-		if (app_desc.window_height == 0) 	app_desc.window_height = 600;
-		if (app_desc.window_title == 0) 	app_desc.window_title = "App";
-		if (app_desc.frame_rate <= 0.f) 	app_desc.frame_rate = 60.f;
-		if (app_desc.update == NULL) 		app_desc.update = &gs_default_app_func;
-		if (app_desc.shutdown == NULL)		app_desc.shutdown = &gs_default_app_func;
-		if (app_desc.init == NULL)			app_desc.init = &gs_default_app_func;
+    if (gs_engine_instance() == NULL)
+    {
+        // Check app desc for defaults
+        if (app_desc.window_width == 0)     app_desc.window_width = 800;
+        if (app_desc.window_height == 0)    app_desc.window_height = 600;
+        if (app_desc.window_title == 0)     app_desc.window_title = "App";
+        if (app_desc.frame_rate <= 0.f)     app_desc.frame_rate = 60.f;
+        if (app_desc.update == NULL)        app_desc.update = &gs_default_app_func;
+        if (app_desc.shutdown == NULL)      app_desc.shutdown = &gs_default_app_func;
+        if (app_desc.init == NULL)          app_desc.init = &gs_default_app_func;
 
-		// Construct instance
-		__g_engine_instance = gs_malloc_init(gs_engine_t);
+        // Construct instance
+        __g_engine_instance = gs_malloc_init(gs_engine_t);
 
-		// Set application description for engine
-		gs_engine_instance()->ctx.app = app_desc;
+        // Set application description for engine
+        gs_engine_instance()->ctx.app = app_desc;
 
-		// Set up function pointers
-		gs_engine_instance()->run 		= &gs_engine_run;
-		gs_engine_instance()->shutdown 	= &gs_engine_shutdown;
+        // Set up function pointers
+        gs_engine_instance()->run       = &gs_engine_run;
+        gs_engine_instance()->shutdown  = &gs_engine_shutdown;
 
-		// Need to have video settings passed down from user
-		gs_engine_subsystem(platform) = gs_platform_create();
+        // Need to have video settings passed down from user
+        gs_engine_subsystem(platform) = gs_platform_create();
 
-		// Default initialization for platform here
-		gs_platform_init(gs_engine_subsystem(platform));
+        // Default initialization for platform here
+        gs_platform_init(gs_engine_subsystem(platform));
 
-		// Set frame rate for application
-		gs_engine_subsystem(platform)->time.max_fps = app_desc.frame_rate;
+        // Set frame rate for application
+        gs_engine_subsystem(platform)->time.max_fps = app_desc.frame_rate;
 
-		// Set vsync for video
-		gs_platform_enable_vsync(app_desc.enable_vsync);
+        // Set vsync for video
+        gs_platform_enable_vsync(app_desc.enable_vsync);
 
-		// Construct main window
-		gs_platform_create_window(app_desc.window_title, app_desc.window_width, app_desc.window_height);
+        // Construct main window
+        gs_platform_create_window(app_desc.window_title, app_desc.window_width, app_desc.window_height);
 
-		// Construct graphics api 
-		gs_engine_subsystem(graphics) = gs_graphics_create();
+        // Construct graphics api 
+        gs_engine_subsystem(graphics) = gs_graphics_create();
 
-		// Initialize graphics here
-		gs_graphics_init(gs_engine_subsystem(graphics));
+        // Initialize graphics here
+        gs_graphics_init(gs_engine_subsystem(graphics));
 
-		// Construct audio api
-		gs_engine_subsystem(audio) = gs_audio_create();
+        // Construct audio api
+        gs_engine_subsystem(audio) = gs_audio_create();
 
-		// Initialize audio
-		gs_audio_init(gs_engine_subsystem(audio));
+        // Initialize audio
+        gs_audio_init(gs_engine_subsystem(audio));
 
-		// Initialize application
-		app_desc.init();
+        // Initialize application
+        app_desc.init();
 
-		gs_engine_ctx()->app.is_running = true;
+        gs_engine_ctx()->app.is_running = true;
 
-		// Set default callback for when main window close button is pressed
-		gs_platform_set_window_close_callback(gs_platform_main_window(), &gs_default_main_window_close_callback);
-	}
+        // Set default callback for when main window close button is pressed
+        gs_platform_set_window_close_callback(gs_platform_main_window(), &gs_default_main_window_close_callback);
+    }
 
-	return gs_engine_instance();
+    return gs_engine_instance();
 }
 
 gs_engine_t* gs_engine_instance()
 {
-	return __g_engine_instance;
+    return __g_engine_instance;
 }
 
 gs_engine_context_t* gs_engine_ctx()
 {
-	return &gs_engine_instance()->ctx;
+    return &gs_engine_instance()->ctx;
 }
 
 gs_result gs_engine_run()
 {
-	// Main engine loop
-	while (true)
-	{
-		// TODO(john): Get rid of these...
-		static uint32_t curr_ticks = 0; 
-		static uint32_t prev_ticks = 0;
+    // Main engine loop
+    while (true)
+    {
+        // TODO(john): Get rid of these...
+        static uint32_t curr_ticks = 0; 
+        static uint32_t prev_ticks = 0;
 
-		// Cache platform pointer
-		gs_platform_i* platform = gs_engine_subsystem(platform);
+        // Cache platform pointer
+        gs_platform_i* platform = gs_engine_subsystem(platform);
 
-		// Cache times at start of frame
-		platform->time.current 	= gs_platform_elapsed_time();
-		platform->time.update 	= platform->time.current - platform->time.previous;
-		platform->time.previous = platform->time.current;
+        // Cache times at start of frame
+        platform->time.current  = gs_platform_elapsed_time();
+        platform->time.update   = platform->time.current - platform->time.previous;
+        platform->time.previous = platform->time.current;
 
-		// Update platform input from previous frame		
-		gs_platform_update_input(&platform->input);
+        // Update platform input from previous frame        
+        gs_platform_update_input(&platform->input);
 
-		// Process input for this frame
-		if (gs_platform_process_input(&platform->input) != GS_RESULT_IN_PROGRESS)
-		{
-			return (gs_engine_instance()->shutdown());
-		}
+        // Process input for this frame
+        if (gs_platform_process_input(&platform->input) != GS_RESULT_IN_PROGRESS)
+        {
+            return (gs_engine_instance()->shutdown());
+        }
 
-		// Process application context
-		gs_engine_instance()->ctx.app.update();
-		if (!gs_engine_instance()->ctx.app.is_running) 
-		{
-			// Shutdown engine and return
-			return (gs_engine_instance()->shutdown());
-		}
+        // Process application context
+        gs_engine_instance()->ctx.app.update();
+        if (!gs_engine_instance()->ctx.app.is_running) 
+        {
+            // Shutdown engine and return
+            return (gs_engine_instance()->shutdown());
+        }
 
-		// NOTE(John): This won't work forever. Must change eventually.
-		// Swap all platform window buffers? Sure...
-		for 
-		(
-			gs_slot_array_iter it = 0;
-			gs_slot_array_iter_valid(platform->windows, it);
-			gs_slot_array_iter_advance(platform->windows, it)
-		)
-		{
-			gs_platform_window_swap_buffer(it);
-		}
+        // NOTE(John): This won't work forever. Must change eventually.
+        // Swap all platform window buffers? Sure...
+        for 
+        (
+            gs_slot_array_iter it = 0;
+            gs_slot_array_iter_valid(platform->windows, it);
+            gs_slot_array_iter_advance(platform->windows, it)
+        )
+        {
+            gs_platform_window_swap_buffer(it);
+        }
 
-		// Frame locking
-	    platform->time.current 	= gs_platform_elapsed_time();
-	    platform->time.render 	= platform->time.current - platform->time.previous;
-	    platform->time.previous = platform->time.current;
-	    platform->time.frame 	= platform->time.update + platform->time.render; 			// Total frame time
-	    platform->time.delta 	= platform->time.frame / 1000.f;
+        // Frame locking
+        platform->time.current  = gs_platform_elapsed_time();
+        platform->time.render   = platform->time.current - platform->time.previous;
+        platform->time.previous = platform->time.current;
+        platform->time.frame    = platform->time.update + platform->time.render;            // Total frame time
+        platform->time.delta    = platform->time.frame / 1000.f;
 
-	    float target = (1000.f / platform->time.max_fps);
+        float target = (1000.f / platform->time.max_fps);
 
-	    if (platform->time.frame < target)
-	    {
-	    	gs_platform_sleep((float)(target - platform->time.frame));
-	    	
-	    	platform->time.current = gs_platform_elapsed_time();
-	    	double wait_time = platform->time.current - platform->time.previous;
-	    	platform->time.previous = platform->time.current;
-	    	platform->time.frame += wait_time;
-		    platform->time.delta = platform->time.frame / 1000.f;
-	    }
-	}
+        if (platform->time.frame < target)
+        {
+            gs_platform_sleep((float)(target - platform->time.frame));
+            
+            platform->time.current = gs_platform_elapsed_time();
+            double wait_time = platform->time.current - platform->time.previous;
+            platform->time.previous = platform->time.current;
+            platform->time.frame += wait_time;
+            platform->time.delta = platform->time.frame / 1000.f;
+        }
+    }
 
-	// Shouldn't hit here
-	gs_assert(false);
-	return GS_RESULT_FAILURE;
+    // Shouldn't hit here
+    gs_assert(false);
+    return GS_RESULT_FAILURE;
 }
 
 gs_result gs_engine_shutdown()
 {
-	// Shutdown application
-	gs_engine_ctx()->app.shutdown();
+    // Shutdown application
+    gs_engine_ctx()->app.shutdown();
 
-	// Shutdown subsystems
-	gs_graphics_shutdown(gs_engine_subsystem(graphics));
-	gs_graphics_destroy(gs_engine_subsystem(graphics));
+    // Shutdown subsystems
+    gs_graphics_shutdown(gs_engine_subsystem(graphics));
+    gs_graphics_destroy(gs_engine_subsystem(graphics));
 
-	gs_audio_shutdown(gs_engine_subsystem(audio));
-	gs_audio_destroy(gs_engine_subsystem(audio));
+    gs_audio_shutdown(gs_engine_subsystem(audio));
+    gs_audio_destroy(gs_engine_subsystem(audio));
 
-	gs_platform_shutdown(gs_engine_subsystem(platform)); 
-	gs_platform_destroy(gs_engine_subsystem(platform));
+    gs_platform_shutdown(gs_engine_subsystem(platform)); 
+    gs_platform_destroy(gs_engine_subsystem(platform));
 
-	// Free engine
-	gs_free(__g_engine_instance);
-	__g_engine_instance = NULL;
+    // Free engine
+    gs_free(__g_engine_instance);
+    __g_engine_instance = NULL;
 
-	return GS_RESULT_SUCCESS;
+    return GS_RESULT_SUCCESS;
 }
 
 void gs_default_app_func()
 {
-	// Nothing...
+    // Nothing...
 }
 
 void gs_default_main_window_close_callback(void* window)
 {
-	gs_engine_instance()->ctx.app.is_running = false;
+    gs_engine_instance()->ctx.app.is_running = false;
 }
 
 void gs_engine_quit()
 {
-	gs_engine_instance()->ctx.app.is_running = false;
+    gs_engine_instance()->ctx.app.is_running = false;
 }
 
 /* Main entry point */
 #ifndef GS_NO_HIJACK_MAIN
 
-	int32_t main(int32_t argv, char** argc)
-	{
-		gs_engine_create(gs_main(argc, argc))->run();
-		return 0;
-	}
+    int32_t main(int32_t argv, char** argc)
+    {
+        gs_engine_create(gs_main(argc, argc))->run();
+        return 0;
+    }
 
 #endif // GS_NO_HIJACK_MAIN
 
