@@ -603,8 +603,6 @@ typedef enum gs_result
 
 #define gs_handle_decl(TYPE)\
     typedef struct {uint32_t id;} gs_handle(TYPE);\
-    gs_force_inline\
-\
     gs_inline\
     gs_handle(TYPE) gs_handle_invalid_##TYPE()\
     {\
