@@ -93,11 +93,16 @@
         }
 
     If you do not provide information for any of this information, defaults will be provided by the framework.
-    Therefore, it is possible to return an empty app descriptor back to the framework to run:
+    Therefore, it is possible to return a completely empty app descriptor back to the framework to run:
 
         gs_app_desc_t gs_main(int32_t argc, char** argv) {
             return (gs_app_desc_t){0};
         }
+
+    NOTE: 
+        In addition to function callbacks, there are quite a few options available to provide for this descriptor, 
+        such as window width, window height, window flags, window title, etc. Refer to the section for gs_app_desc_t 
+        further in the code for all provided options.
 
     It's also possible to define GS_NO_HIJACK_MAIN for your application. This will make it so gunslinger will not be
     the main entry point to your application. You will instead be responsible for creating an engine instance and 
@@ -384,9 +389,55 @@
 
     GS_PLATFORM:
 
+        By default, Gunslinger supports (via included GLFW) the following platforms:
+            - Win32
+            - OSX
+            - Linux 
+
+        To define your own custom implementation and not use the included glfw implementation, define GS_PLATFORM_IMPL_CUSTOM in your
+        project. Gunslinger will see this and leave the implementation of the platform API up to you:
+
+            // For custom platform implementation
+            #define GS_PLATFORM_IMPL_CUSTOM
+
+        Internally, the platform interface holds the following data: 
+
+            gs_platform_settings_t settings;         // Settings for platform, including video driver settings
+            gs_platform_time_t time;                 // Time structure, used to query frame time, delta time, render time
+            gs_platform_input_t input;               // Input struture, used to query input state for mouse, keyboard, controllers
+            gs_slot_array(void*) windows;            // Slot array of raw platform window data and handles
+            void* cursors[GS_PLATFORM_CURSOR_COUNT]; // Raw platform cursors
+            void* user_data;                         // Specific user data (for custom implementations)
+
+        Upon creation, the framework will create a main window for you and then store its handle with slot id 0. All platform related window 
+        query functions require passing in an opaque uint32_t handle to get the actual data internally. There is a convenience function available for 
+        querying the main window handle created for you:
+
+            uint32_t main_window_hndl = gs_platform_main_window();
+
+        Internally, the platform layer queries the platform backend and updates its exposed gs_platform_input_t data structure for you to use. Several 
+        utility functions exist: 
+
+            gs_platform_key_down(gs_platform_keycode)                   // Checks to see if a key is held down (pressed last frame and this frame)
+            gs_platform_key_released(gs_platform_keycode)               // Checks to see if a key was released this frame
+            gs_platform_key_pressed(gs_platform_keycode)                // Checks to see if a key was pressed this frame (not pressed last frame)
+            gs_platform_mouse_down(gs_platform_mouse_button_code)       // Checks to see if mouse button is held down
+            gs_platform_mouse_pressed(gs_platform_mouse_button_code)    // Checks to see if mouse button was pressed this frame (not pressed last frame)
+            gs_platform_mouse_released(gs_platform_mouse_button_code)   // Checks to see if mouse button was released this frame
+
     GS_AUDIO:
 
+        By default, Gunslinger includes and uses miniaudio for its audio backend. 
+        To define your own custom implementation and not use the included miniaudio implementation, define GS_AUDIO_IMPL_CUSTOM in your
+        project. Gunslinger will see this and leave the implementation of the audio API up to you:
+
+            // For custom audio implementation
+            #define GS_AUDIO_IMPL_CUSTOM
+
     GS_GRAPHICS:
+
+            // For custom graphics implementation
+            #define GS_GRAPHICS_IMPL_CUSTOM
 
 */
 
@@ -3734,8 +3785,8 @@ GS_API_DECL void      gs_platform_uuid_to_string(char* temp_buffer, const gs_uui
 GS_API_DECL uint32_t  gs_platform_hash_uuid(const gs_uuid_t* uuid);
 
 // Platform Input
-GS_API_DECL gs_result gs_platform_process_input();
-GS_API_DECL void      gs_platform_update_input();
+GS_API_DECL gs_result gs_platform_process_input(gs_platform_input_t* input);
+GS_API_DECL void      gs_platform_update_input(gs_platform_input_t* input);
 GS_API_DECL void      gs_platform_press_key(gs_platform_keycode code);
 GS_API_DECL void      gs_platform_release_key(gs_platform_keycode code);
 GS_API_DECL bool      gs_platform_was_key_down(gs_platform_keycode code);
@@ -4810,23 +4861,28 @@ bool32_t gs_util_load_texture_data_from_file(const char* file_path, int32_t* wid
 // GS_PLATFORM
 =============================*/
 
-// By default, set platform implementation to GLFW
-#define GS_PLATFORM_IMPL_GLFW
-#include "impl/gs_platform_impl.h"
+#ifndef GS_PLATFORM_IMPL_CUSTOM
+    #define GS_PLATFORM_IMPL_GLFW
+    #include "impl/gs_platform_impl.h"
+#endif
 
 /*=============================
 // GS_GRAPHICS
 =============================*/
 
-#define GS_GRAPHICS_IMPL_OPENGL
-#include "impl/gs_graphics_impl.h"
+#ifndef GS_GRAPHICS_IMPL_CUSTOM
+    #define GS_GRAPHICS_IMPL_OPENGL
+    #include "impl/gs_graphics_impl.h"
+#endif
 
 /*=============================
 // GS_AUDIO
 =============================*/
 
-#define GS_AUDIO_IMPL_MINIAUDIO
-#include "impl/gs_audio_impl.h"
+#ifndef GS_AUDIO_IMPL_CUSTOM
+    #define GS_AUDIO_IMPL_MINIAUDIO
+    #include "impl/gs_audio_impl.h"
+#endif
 
 /*==========================
 // GS_ASSET_TYPES
