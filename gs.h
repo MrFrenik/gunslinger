@@ -201,7 +201,6 @@
         siphash (hash generic bytes)
         string utils
         file utils
-        
 
     GS_CONTAINERS:
 
@@ -606,6 +605,7 @@ typedef enum gs_result
     typedef struct {uint32_t id;} gs_handle(TYPE);\
     gs_force_inline\
 \
+    gs_inline\
     gs_handle(TYPE) gs_handle_invalid_##TYPE()\
     {\
         gs_handle(TYPE) h;\
@@ -613,6 +613,7 @@ typedef enum gs_result
         return h;\
     }\
 \
+    gs_inline\
     gs_handle(TYPE) gs_handle_create_##TYPE(uint32_t id)\
     {\
         gs_handle(TYPE) h;\
@@ -1848,6 +1849,7 @@ void** gs_slot_array_init(void** sa, size_t sz)
     (gs_slot_array_init(&(__SA), sizeof(*(__SA))), gs_dyn_array_init(&(__SA)->indices, sizeof(uint32_t)),\
         gs_dyn_array_init(&(__SA)->data, sizeof((__SA)->tmp)))
 
+gs_force_inline
 uint32_t gs_slot_array_insert_func(void** indices, void** data, void* val, size_t val_len, uint32_t* ip)
 {
     // Find next available index
@@ -2582,6 +2584,7 @@ gs_mat4_ctor() {
     return mat;
 }
 
+gs_inline
 gs_mat4 gs_mat4_elem(const float elements[16])
 {
     gs_mat4 mat = gs_mat4_ctor();
