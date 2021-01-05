@@ -174,7 +174,7 @@
 
         `gs_vqs` is a transform structure that's commonly used in games/physics sims, especially with complex child/parent hierarchies. It stands for
         `Vector-Quaternion-Scalar` to denote its internal components. Typically this encodes position, rotation (in quaternion), and a uniform scale
-        for transformation. 
+        for transformation. Gunslinger uses non-uniform scale in the form of a gs_vec3. 
 
             gs_vqs xform = {0};
             xform.position = gs_v3(...);
@@ -195,8 +195,13 @@
             gs_vqs absolute = gs_vqs_absolute_transform(&local, &parent);   // Get absolute transform with respect to local
 
     GS_UTIL:
-
-        basic generic utils
+        
+        memory allocation 
+        hashing(32/64 bit)
+        siphash (hash generic bytes)
+        string utils
+        file utils
+        
 
     GS_CONTAINERS:
 
