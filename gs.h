@@ -72,23 +72,23 @@
         #define GS_IMPL
         #include "gs.h"
 
-        void init() {
+        void my_init() {
             // Do your initialization   
         }
 
-        void update() {
+        void my_update() {
             // Do your updates  
         }
 
-        void shutdown() {
+        void my_shutdown() {
             // Do your shutdown
         }
 
         gs_app_desc_t gs_main(int32_t argc, char** argv) {
             return (gs_app_desc_t) {
-                .init = init,        // Function pointer to call into your init code
-                .update = update,    // Function pointer to call into your update code
-                .shutdown = shutdown // Function pointer to call into your shutdown code
+                .init = my_init,        // Function pointer to call into your init code
+                .update = my_update,    // Function pointer to call into your update code
+                .shutdown = my_shutdown // Function pointer to call into your shutdown code
             };
         }
 
@@ -265,7 +265,18 @@
                 float* val = gs_hash_table_getp(ht, k);    // Cache pointer to internal data. Dangerous game.
                 gs_hash_table_insert(ht, new_key);         // At this point, your pointer could be invalidated due to growing internal array.
 
-            Iterators:
+            Hash tables provide iterators to iterate the data:
+
+                for (
+                    gs_hash_table_iter it = 0; 
+                    gs_hash_table_iter_valid(ht, it);
+                    gs_hash_table_iter_advance(ht, it) 
+                ) {
+                    float v = gs_hash_table_iter_get(ht, it);         // Get value using iterator
+                    float* vp = gs_hash_table_iter_getp(ht, it);      // Get value pointer using iterator
+                    key_t k = gs_hash_table_iter_get_key(ht, it);     // Get key using iterator
+                    key_t* kp = gs_hash_table_iter_get_keyp(ht, it);  // Get key pointer using iterator
+                }
 
             Hash Table Usage:
 
@@ -303,6 +314,17 @@
                 float* val = gs_slot_array_getp(arr, hndl);     // Cache pointer to internal data. Dangerous game.
                 gs_slot_array_insert(arr, 5.f);                 // At this point, your pointer could be invalidated due to growing internal array.
 
+            Slot arrays provide iterators to iterate the data:
+
+                for (
+                    gs_slot_array_iter it = 0; 
+                    gs_slot_array_iter_valid(sa, it);
+                    gs_slot_array_iter_advance(sa, it) 
+                ) {
+                    float v = gs_slot_array_iter_get(sa, it);         // Get value using iterator
+                    float* vp = gs_slot_array_iter_getp(sa, it);      // Get value pointer using iterator
+                }
+
             Slot Array Usage:
 
                 gs_slot_array(float) sa = NULL;                   // Create slot array with internal 'float' data
@@ -330,6 +352,19 @@
 
                 uint64_t* v = gs_slot_map_getp(sm, 1.f);    // Cache pointer to data
                 gs_slot_map_insert(sm, 2.f, 10);            // Possibly have just invalidated your previous pointer
+
+            Slot maps provide iterators to iterate the data:
+
+                for (
+                    gs_slot_map_iter it = 0; 
+                    gs_slot_map_iter_valid(sm, it);
+                    gs_slot_map_iter_advance(sm, it) 
+                ) {
+                    uint64_t v = gs_slot_map_iter_get(sm, it);      // Get value using iterator
+                    uint64_t* vp = gs_slot_map_iter_getp(sm, it);   // Get value pointer using iterator
+                    float k = gs_slot_map_iter_get_key(sm, it);     // Get key using iterator
+                    float* kp = gs_slot_map_iter_get_keyp(sm, it);  // Get key pointer using iterator
+                }
 
             Slot Map Usage:
 
@@ -1732,6 +1767,18 @@ void __gs_hash_table_iter_advance_func(void** data, size_t key_len, size_t val_l
 
 #define gs_hash_table_iter_advance(__HT, __IT)\
     (__gs_hash_table_iter_advance_func((void**)&(__HT)->data, sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), &(__IT)))
+
+#define gs_hash_table_iter_get(__HT, __IT)\
+    gs_hash_table_geti(__HT, __IT)
+
+#define gs_hash_table_iter_getp(__HT, __IT)\
+    (&(gs_hash_table_geti(__HT, __IT)))
+
+#define gs_hash_table_iter_get_key(__HT, __IT)\
+    (gs_hash_table_getk(__HT, __IT))
+
+#define gs_hash_table_iter_get_keyp(__HT, __IT)\
+    (&(gs_hash_table_getk(__HT, __IT)))
 
 /*===================================
 // Slot Array
