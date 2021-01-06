@@ -100,7 +100,6 @@ typedef enum gs_opengl_op_code_type
     GS_OPENGL_OP_SET_VIEW_SCISSOR,
     GS_OPENGL_OP_REQUEST_BUFFER_UPDATE,
     GS_OPENGL_OP_BIND_PIPELINE,
-    GS_OPENGL_OP_BIND_UNIFORM_BLOCK,
     GS_OPENGL_OP_BIND_BINDINGS,
     GS_OPENGL_OP_DRAW,
 } gs_opengl_op_code_type;
@@ -939,14 +938,6 @@ void gs_graphics_bind_pipeline(gs_command_buffer_t* cb, gs_handle(gs_graphics_pi
     // NOTE(john): Not sure if this is safe in the future, since the data for pipelines is on the main thread and MIGHT be tampered with on a separate thread.
     __ogl_push_command(cb, GS_OPENGL_OP_BIND_PIPELINE, {
         gs_byte_buffer_write(&cb->commands, uint32_t, hndl.id);
-    });
-}
-
-void gs_graphics_bind_uniform_block(gs_command_buffer_t* cb, gs_handle(gs_graphics_uniform_block_t) hndl, void* data, size_t data_size)
-{
-    __ogl_push_command(cb, GS_OPENGL_OP_BIND_UNIFORM_BLOCK, {
-        gs_byte_buffer_write(&cb->commands, uint32_t, hndl.id);
-        gs_byte_buffer_write_bulk(&cb->commands, data, data_size);
     });
 }
 
