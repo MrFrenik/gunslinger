@@ -4858,13 +4858,13 @@ void gs_camera_offset_orientation(gs_camera_t* cam, f32 yaw, f32 pitch)
 =============================*/
 
 #define STB_DEFINE
-#include <gs/external/stb/stb.h>
+#include "external/stb/stb.h"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <gs/external/stb/stb_image_write.h>
+#include "external/stb/stb_image_write.h"
 
 #define STB_TRUETYPE_IMPLEMENTATION
-#include <gs/external/stb/stb_truetype.h>
+#include "external/stb/stb_truetype.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "external/stb/stb_image.h"
