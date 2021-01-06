@@ -22,7 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <gs/external/glad/glad.h>
+#include "external/glad/glad.h"
 
 #ifdef GLAD_IMPL
 
