@@ -376,14 +376,14 @@ void gs_graphics_destroy(gs_graphics_i* graphics)
 
     // Free all pipeline data
     if (ogl->pipelines) {
-        for (uint32_t i = 1; i < gs_slot_array_size(ogl->pipelines); ++i) {
+        for (uint32_t i = 1; i < (uint32_t)gs_slot_array_size(ogl->pipelines); ++i) {
             gs_dyn_array_free(ogl->pipelines->data[i].layout);
         }
     }
 
     // Free all render pass data
     if (ogl->render_passes) {
-        for (uint32_t i = 1; i < gs_slot_array_size(ogl->render_passes); ++i) {
+        for (uint32_t i = 1; i < (uint32_t)gs_slot_array_size(ogl->render_passes); ++i) {
             gs_dyn_array_free(ogl->render_passes->data[i].color);
         }
     }
@@ -570,7 +570,7 @@ gs_handle(gs_graphics_buffer_t) gs_graphics_buffer_create(gs_graphics_buffer_des
                 gs_println("Warning: Uniform buffer must be named for OpenGL.");
             }
 
-            uint32_t ct = desc->size / sizeof(gs_graphics_uniform_desc_t);
+            uint32_t ct = (uint32_t)desc->size / (uint32_t)sizeof(gs_graphics_uniform_desc_t);
             if (ct < 1) {
                 gs_println("Warning: Uniform buffer description is empty.");
                 return gs_handle_invalid(gs_graphics_buffer_t);
@@ -598,7 +598,7 @@ gs_handle(gs_graphics_buffer_t) gs_graphics_buffer_create(gs_graphics_buffer_des
                 gs_println("Warning: Uniform buffer must be named for OpenGL.");
             }
 
-            uint32_t ct = desc->size / sizeof(gs_graphics_sampler_desc_t);
+            uint32_t ct = (uint32_t)desc->size / (uint32_t)sizeof(gs_graphics_sampler_desc_t);
             gsgl_uniform_t u = gs_default_val();
             u.name = desc->name;
             u.type = GSGL_UNIFORMTYPE_SAMPLER2D;
@@ -627,7 +627,7 @@ gs_handle(gs_graphics_shader_t) gs_graphics_shader_create(gs_graphics_shader_des
     // Create shader program
     shader = glCreateProgram();
 
-    uint32_t ct = desc->size / sizeof(gs_graphics_shader_source_desc_t);
+    uint32_t ct = (uint32_t)desc->size / (uint32_t)sizeof(gs_graphics_shader_source_desc_t);
     for (uint32_t i = 0; i < ct; ++i) 
     {
         if (desc->sources[i].type == GS_GRAPHICS_SHADER_STAGE_VERTEX) pip |= GSGL_GRAPHICS_SHADER_PIPELINE_GFX;
@@ -734,7 +734,7 @@ gs_handle(gs_graphics_render_pass_t) gs_graphics_render_pass_create(gs_graphics_
     pass.fbo = desc->fbo;
 
     // Set color attachments
-    uint32_t ct = desc->color_size / sizeof(gs_handle(gs_graphics_texture_t));
+    uint32_t ct = (uint32_t)desc->color_size / (uint32_t)sizeof(gs_handle(gs_graphics_texture_t));
     for (uint32_t i = 0; i < ct; ++i) 
     {
         gs_dyn_array_push(pass.color, desc->color[i]);
@@ -759,7 +759,7 @@ gs_handle(gs_graphics_pipeline_t) gs_graphics_pipeline_create(gs_graphics_pipeli
     pipe.stencil = desc->stencil;
 
     // Add layout
-    uint32_t ct = desc->size / sizeof(gs_graphics_vertex_attribute_type);
+    uint32_t ct = (uint32_t)desc->size / (uint32_t)sizeof(gs_graphics_vertex_attribute_type);
     gs_dyn_array_reserve(pipe.layout, ct);
     for (uint32_t i = 0; i < ct; ++i)
     {
@@ -807,7 +807,7 @@ void gs_graphics_buffer_update(gs_handle(gs_graphics_buffer_t) hndl, gs_graphics
 #define __ogl_push_command(CB, OP_CODE, ...)\
 do {\
     gsgl_data_t* DATA = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;\
-    gs_byte_buffer_write(&CB->commands, u32, OP_CODE);\
+    gs_byte_buffer_write(&CB->commands, u32, (u32)OP_CODE);\
     __VA_ARGS__\
     CB->num_commands++;\
 } while (0)
@@ -817,7 +817,7 @@ void gs_graphics_begin_render_pass(gs_command_buffer_t* cb, gs_handle(gs_graphic
 {
     __ogl_push_command(cb, GS_OPENGL_OP_BEGIN_RENDER_PASS, {
         gs_byte_buffer_write(&cb->commands, uint32_t, hndl.id);
-        uint32_t count = actions_size / sizeof(gs_graphics_render_pass_action_t);
+        uint32_t count = (uint32_t)actions_size / (uint32_t)sizeof(gs_graphics_render_pass_action_t);
         gs_byte_buffer_write(&cb->commands, uint32_t, count);
         for (uint32_t i = 0; i < count; ++i) {
             gs_byte_buffer_write(&cb->commands, gs_graphics_render_pass_action_t, actions[i]);
@@ -885,7 +885,7 @@ void gs_graphics_bind_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t*
 
     __ogl_push_command(cb, GS_OPENGL_OP_BIND_BINDINGS, 
     {
-        uint32_t ct = binds_size / sizeof(gs_graphics_bind_desc_t); 
+        uint32_t ct = (uint32_t)binds_size / (uint32_t)sizeof(gs_graphics_bind_desc_t); 
         gs_byte_buffer_write(&cb->commands, uint32_t, ct);
 
         for (uint32_t i = 0; i < ct; ++i) 
@@ -1179,7 +1179,7 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                                 {
                                     gs_assert(sz == sizeof(int32_t));
                                     gs_byte_buffer_read_bulkc(&cb->commands, int32_t, v, sz);
-                                    glUniform1f(u->location, v);
+                                    glUniform1i(u->location, v);
                                 } break;
 
                                 case GSGL_UNIFORMTYPE_VEC2: 

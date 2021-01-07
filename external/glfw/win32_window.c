@@ -245,7 +245,7 @@ static void updateCursorImage(_GLFWwindow* window)
         if (window->cursor)
             SetCursor(window->cursor->win32.handle);
         else
-            SetCursor(LoadCursorW(NULL, IDC_ARROW));
+            SetCursor(LoadCursorW(NULL, (LPCWSTR)IDC_ARROW));
     }
     else
         SetCursor(NULL);
@@ -1325,7 +1325,7 @@ GLFWbool _glfwRegisterWindowClassWin32(void)
     wc.style         = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
     wc.lpfnWndProc   = (WNDPROC) windowProc;
     wc.hInstance     = GetModuleHandleW(NULL);
-    wc.hCursor       = LoadCursorW(NULL, IDC_ARROW);
+    wc.hCursor       = LoadCursorW(NULL, (LPCWSTR)IDC_ARROW);
     wc.lpszClassName = _GLFW_WNDCLASSNAME;
 
     // Load user-provided icon if available
@@ -1336,7 +1336,7 @@ GLFWbool _glfwRegisterWindowClassWin32(void)
     {
         // No user-provided icon found, load default icon
         wc.hIcon = LoadImageW(NULL,
-                              IDI_APPLICATION, IMAGE_ICON,
+                              (LPCWSTR)IDI_APPLICATION, IMAGE_ICON,
                               0, 0, LR_DEFAULTSIZE | LR_SHARED);
     }
 

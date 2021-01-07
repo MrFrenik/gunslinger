@@ -280,7 +280,7 @@ gs_audio_instance_decl_t gs_audio_get_instance_data(gs_handle(gs_audio_instance_
     if (__gs_audio_inst_valid(inst)) {
         return gs_slot_array_get(gs_engine_subsystem(audio)->instances, inst.id);
     }
-    gs_audio_instance_decl_t decl;
+    gs_audio_instance_decl_t decl = gs_default_val();
     return decl;
 }
 

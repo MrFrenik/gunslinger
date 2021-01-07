@@ -80,7 +80,7 @@ struct gs_uuid_t gs_platform_generate_uuid()
     int32_t t = 0;
     char* sz_temp = "xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx";
     char* sz_hex = "0123456789abcdef-";
-    int32_t n_len = strlen(sz_temp);
+    int32_t n_len = (int32_t)strlen(sz_temp);
 
     for (t=0; t < n_len + 1; t++)
     {
@@ -686,7 +686,7 @@ void __glfw_mouse_button_callback(GLFWwindow* window, s32 button, s32 action, s3
 void __glfw_mouse_cursor_position_callback(GLFWwindow* window, f64 x, f64 y)
 {
     gs_platform_i* platform = gs_engine_subsystem(platform);
-    platform->input.mouse.position = (gs_vec2){x, y};
+    platform->input.mouse.position = (gs_vec2){(f32)x, (f32)y};
     platform->input.mouse.moved_this_frame = true;
 }
 
@@ -725,7 +725,7 @@ void  gs_platform_sleep(float ms)
 {
     #if (defined GS_PLATFORM_WIN)
 
-            _sleep(ms);
+            Sleep((uint64_t)ms);
 
     #elif (defined GS_PLATFORM_APPLE)
 
@@ -838,7 +838,7 @@ gs_vec2 gs_platform_window_sizev(uint32_t handle)
     GLFWwindow* win = __glfw_window_from_handle(gs_engine_subsystem(platform), handle);
     uint32_t w, h;
     glfwGetWindowSize(win, &w, &h);
-    return gs_v2(w, h);
+    return gs_v2((float)w, (float)h);
 }
 
 void gs_platform_window_size(uint32_t handle, uint32_t* w, uint32_t* h)
@@ -889,7 +889,7 @@ gs_vec2 gs_platform_framebuffer_sizev(uint32_t handle)
 {
     uint32_t w = 0, h = 0;
     gs_platform_framebuffer_size(handle, &w, &h);
-    return (gs_vec2){w, h};
+    return (gs_vec2){(float)w, (float)h};
 }
 
 uint32_t gs_platform_framebuffer_width(uint32_t handle)

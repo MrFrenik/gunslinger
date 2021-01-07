@@ -852,8 +852,8 @@ gs_util_str_to_lower
     size_t buffer_sz
 )
 {
-    uint32_t src_sz = gs_string_length(src);
-    uint32_t len = gs_min(src_sz, buffer_sz);
+    size_t src_sz = gs_string_length(src);
+    size_t len = gs_min(src_sz, buffer_sz);
 
     for (uint32_t i = 0; i < len; ++i) {
         buffer[i] = tolower(src[i]);
@@ -1372,7 +1372,7 @@ do {\
     gs_byte_buffer_t* __BUFFER = __BB;\
     usize __SZ = sizeof(__T);\
     usize __TWS = __BUFFER->position + __SZ;\
-    if (__TWS >= __BUFFER->capacity)\
+    if (__TWS >= (usize)__BUFFER->capacity)\
     {\
         usize __CAP = __BUFFER->capacity * 2;\
         while(__CAP < __TWS)\
@@ -1382,8 +1382,8 @@ do {\
         gs_byte_buffer_resize(__BUFFER, __CAP);\
     }\
     *(__T*)(__BUFFER->data + __BUFFER->position) = __VAL;\
-    __BUFFER->position += __SZ;\
-    __BUFFER->size += __SZ;\
+    __BUFFER->position += (uint32_t)__SZ;\
+    __BUFFER->size += (uint32_t)__SZ;\
 } while (0)
 
 // Generic "read" function
@@ -1488,7 +1488,7 @@ void* gs_dyn_array_resize_impl(void* arr, size_t sz, size_t amount)
         if (!arr) {
             data->size = 0;
         }
-        data->capacity = capacity;
+        data->capacity = (int32_t)capacity;
         return ((int32_t*)data + 2);
     }
 
@@ -1559,7 +1559,7 @@ void gs_dyn_array_set_data_i(void** arr, void* val, size_t val_len, uint32_t off
 #define gs_dyn_array_reserve(__ARR, __AMOUNT)\
     do {\
         if ((!__ARR)) gs_dyn_array_init(&(__ARR), sizeof(*(__ARR)));\
-        if ((!__ARR) || __AMOUNT > gs_dyn_array_capacity(__ARR)) {\
+        if ((!__ARR) || (size_t)__AMOUNT > gs_dyn_array_capacity(__ARR)) {\
             *((void **)&(__ARR)) = gs_dyn_array_resize_impl(__ARR, sizeof(*__ARR), __AMOUNT);\
         }\
     } while(0)
@@ -1745,16 +1745,16 @@ uint32_t gs_hash_table_get_key_index_func(void** data, void* key, size_t key_len
     // Need a better way to handle this. Can't do it like this anymore.
     // Need to fix this. Seriously messing me up.
     uint32_t capacity = gs_dyn_array_capacity(*data);
-    uint32_t idx = GS_HASH_TABLE_INVALID_INDEX;
-    uint32_t hash = gs_hash_bytes(key, key_len, GS_HASH_TABLE_HASH_SEED);
-    uint32_t hash_idx = (hash % capacity);
+    size_t idx = (size_t)GS_HASH_TABLE_INVALID_INDEX;
+    size_t hash = (size_t)gs_hash_bytes(key, key_len, GS_HASH_TABLE_HASH_SEED);
+    size_t hash_idx = (hash % capacity);
 
     // Iterate through data 
-    for (uint32_t i = hash_idx, c = 0; c < capacity; ++c, i = ((i + 1) % capacity))
+    for (size_t i = hash_idx, c = 0; c < capacity; ++c, i = ((i + 1) % capacity))
     {
-        uint32_t offset = (i * stride);
+        size_t offset = (i * stride);
         void* k = ((char*)(*data) + (offset));  
-        uint32_t kh = gs_hash_bytes(k, key_len, GS_HASH_TABLE_HASH_SEED);
+        size_t kh = gs_hash_bytes(k, key_len, GS_HASH_TABLE_HASH_SEED);
         bool comp = gs_compare_bytes(k, key, key_len);
         gs_hash_table_entry_state state = *(gs_hash_table_entry_state*)((char*)(*data) + offset + (klpvl)); 
         if (comp && hash == kh && state == GS_HASH_TABLE_ENTRY_ACTIVE) {
@@ -1762,7 +1762,7 @@ uint32_t gs_hash_table_get_key_index_func(void** data, void* key, size_t key_len
             break;
         }
     }
-    return idx;
+    return (uint32_t)idx;
 }
 
 // Get key at index
@@ -1805,20 +1805,20 @@ typedef uint32_t gs_hash_table_iter;
 gs_force_inline
 uint32_t __gs_find_first_valid_iterator(void* data, size_t key_len, size_t val_len, uint32_t idx)
 {
-    uint32_t it = idx;
+    size_t it = (size_t)idx;
     size_t s = key_len == 8 ? 7 : 3;
     size_t entry_sz = (((key_len + val_len + sizeof(gs_hash_table_entry_state)) + s) & (~s));   // 4-byte aligned stride
     size_t klpvl = ((key_len + val_len + s) & (~s));    // 4-byte aligned key/val pair
-    for (; it < gs_dyn_array_capacity(data); ++it)
+    for (; it < (uint32_t)gs_dyn_array_capacity(data); ++it)
     {
-        uint32_t offset = (it * entry_sz);
+        size_t offset = (it * entry_sz);
         gs_hash_table_entry_state state = *(gs_hash_table_entry_state*)((uint8_t*)data + offset + (klpvl));
         if (state == GS_HASH_TABLE_ENTRY_ACTIVE)
         {
             break;
         }
     }
-    return it;
+    return (uint32_t)it;
 }
 
 /* Find first valid iterator idx */
@@ -1836,9 +1836,9 @@ void __gs_hash_table_iter_advance_func(void** data, size_t key_len, size_t val_l
     size_t entry_sz = (((key_len + val_len + sizeof(gs_hash_table_entry_state)) + s) & (~s));   // Byte aligned stride
     size_t klpvl = ((key_len + val_len + s) & (~s));    // Byte aligned key/val pair 
     (*it)++;
-    for (; *it < gs_dyn_array_capacity(*data); ++*it)
+    for (; *it < (uint32_t)gs_dyn_array_capacity(*data); ++*it)
     {
-        uint32_t offset = (*it * entry_sz);
+        size_t offset = (size_t)(*it * entry_sz);
         gs_hash_table_entry_state state = *(gs_hash_table_entry_state*)((uint8_t*)*data + offset + (klpvl));
         if (state == GS_HASH_TABLE_ENTRY_ACTIVE)
         {
@@ -1894,7 +1894,7 @@ gs_force_inline
 uint32_t __gs_slot_array_find_next_available_index(gs_dyn_array(uint32_t) indices)
 {
     uint32_t idx = GS_SLOT_ARRAY_INVALID_HANDLE;
-    for (uint32_t i = 0; i < gs_dyn_array_size(indices); ++i)
+    for (uint32_t i = 0; i < (uint32_t)gs_dyn_array_size(indices); ++i)
     {
         uint32_t handle = indices[i];
         if (handle == GS_SLOT_ARRAY_INVALID_HANDLE)
@@ -1925,8 +1925,8 @@ void** gs_slot_array_init(void** sa, size_t sz)
 }
 
 #define gs_slot_array_init_all(__SA)\
-    (gs_slot_array_init(&(__SA), sizeof(*(__SA))), gs_dyn_array_init(&(__SA)->indices, sizeof(uint32_t)),\
-        gs_dyn_array_init(&(__SA)->data, sizeof((__SA)->tmp)))
+    (gs_slot_array_init(&(__SA), sizeof(*(__SA))), gs_dyn_array_init((void**)&((__SA)->indices), sizeof(uint32_t)),\
+        gs_dyn_array_init((void**)&((__SA)->data), sizeof((__SA)->tmp)))
 
 gs_force_inline
 uint32_t gs_slot_array_insert_func(void** indices, void** data, void* val, size_t val_len, uint32_t* ip)
@@ -1956,14 +1956,14 @@ uint32_t gs_slot_array_insert_func(void** indices, void** data, void* val, size_
 
 #define gs_slot_array_insert(__SA, __VAL)\
     (gs_slot_array_init_all(__SA), (__SA)->tmp = (__VAL),\
-        gs_slot_array_insert_func(&((__SA)->indices), &((__SA)->data), &((__SA)->tmp), sizeof(((__SA)->tmp)), NULL))
+        gs_slot_array_insert_func((void**)&((__SA)->indices), (void**)&((__SA)->data), (void*)&((__SA)->tmp), sizeof(((__SA)->tmp)), NULL))
 
 #define gs_slot_array_insert_hp(__SA, __VAL, __hp)\
     (gs_slot_array_init_all(__SA), (__SA)->tmp = (__VAL),\
-        gs_slot_array_insert_func(&((__SA)->indices), &((__SA)->data), &((__SA)->tmp), sizeof(((__SA)->tmp)), (__hp)))
+        gs_slot_array_insert_func((void**)&((__SA)->indices), (void**)&((__SA)->data), &((__SA)->tmp), sizeof(((__SA)->tmp)), (__hp)))
 
 #define gs_slot_array_insert_no_init(__SA, __VAL)\
-    ((__SA)->tmp = (__VAL), gs_slot_array_insert_func(&((__SA)->indices), &((__SA)->data), &((__SA)->tmp), sizeof(((__SA)->tmp)), NULL))
+    ((__SA)->tmp = (__VAL), gs_slot_array_insert_func((void**)&((__SA)->indices), (void**)&((__SA)->data), &((__SA)->tmp), sizeof(((__SA)->tmp)), NULL))
 
 #define gs_slot_array_size(__SA)\
     ((__SA) == NULL ? 0 : gs_dyn_array_size((__SA)->data))
@@ -2038,13 +2038,13 @@ uint32_t gs_slot_array_insert_func(void** indices, void** data, void* val, size_
 typedef uint32_t gs_slot_array_iter;
 
 #define gs_slot_array_iter_valid(__SA, __IT)\
-    ((__IT) < gs_slot_array_size((__SA)))
+    ((__IT) < (uint32_t)gs_slot_array_size((__SA)))
 
 gs_force_inline
 void __gs_slot_array_iter_advance_func(gs_dyn_array(uint32_t) indices, uint32_t* it)
 {
     (*it)++;
-    for (; *it < gs_dyn_array_size(indices); ++*it)
+    for (; *it < (uint32_t)gs_dyn_array_size(indices); ++*it)
     {\
         if (indices[*it] != GS_SLOT_ARRAY_INVALID_HANDLE)\
         {\
@@ -2248,7 +2248,7 @@ gs_interp_smooth_step(float a, float b, float t)
 gs_inline float 
 gs_interp_cosine(float a, float b, float t)
 {
-    return gs_interp_linear(a, b, -cos(GS_PI * t) * 0.5f + 0.5f);
+    return gs_interp_linear(a, b, (float)-cos(GS_PI * t) * 0.5f + 0.5f);
 }
 
 gs_inline float 
@@ -2266,7 +2266,7 @@ gs_interp_deceleration(float a, float b, float t)
 gs_inline float 
 gs_round(float val) 
 {
-    return floor(val + 0.5f);
+    return (float)floor(val + 0.5f);
 }
 
 gs_inline float
@@ -2392,7 +2392,7 @@ f32 gs_vec2_dist(gs_vec2 a, gs_vec2 b)
 {
     f32 dx = (a.x - b.x);
     f32 dy = (a.y - b.y);
-    return (sqrt(dx * dx + dy * dy));
+    return (float)(sqrt(dx * dx + dy * dy));
 }
 
 gs_inline
@@ -2404,7 +2404,7 @@ f32 gs_vec2_cross(gs_vec2 a, gs_vec2 b)
 gs_inline
 f32 gs_vec2_angle(gs_vec2 a, gs_vec2 b) 
 {
-    return acos(gs_vec2_dot(a, b) / (gs_vec2_len(a) * gs_vec2_len(b)));
+    return (float)acos(gs_vec2_dot(a, b) / (gs_vec2_len(a) * gs_vec2_len(b)));
 }
 
 gs_inline
@@ -2500,7 +2500,7 @@ f32 gs_vec3_dist(gs_vec3 a, gs_vec3 b)
     f32 dx = (a.x - b.x);
     f32 dy = (a.y - b.y);
     f32 dz = (a.z - b.z);
-    return (sqrt(dx * dx + dy * dy + dz * dz));
+    return (float)(sqrt(dx * dx + dy * dy + dz * dz));
 }
 
 gs_inline gs_vec3 
@@ -2616,7 +2616,7 @@ gs_vec4_dist(gs_vec4 v0, gs_vec4 v1)
     f32 dy = (v0.y - v1.y);
     f32 dz = (v0.z - v1.z);
     f32 dw = (v0.w - v1.w);
-    return (sqrt(dx * dx + dy * dy + dz * dz + dw * dw));
+    return (float)(sqrt(dx * dx + dy * dy + dz * dz + dw * dw));
 }
 
 /*================================================================================
@@ -2864,11 +2864,11 @@ gs_mat4 gs_mat4_inverse(gs_mat4 m)
         m.elements[8] * m.elements[1] * m.elements[6] -
         m.elements[8] * m.elements[2] * m.elements[5];
 
-    f64 determinant = m.elements[0] * temp[0] + m.elements[1] * temp[4] + m.elements[2] * temp[8] + m.elements[3] * temp[12];
-    determinant = 1.0 / determinant;
+    float determinant = m.elements[0] * temp[0] + m.elements[1] * temp[4] + m.elements[2] * temp[8] + m.elements[3] * temp[12];
+    determinant = 1.0f / determinant;
 
     for (int i = 0; i < 4 * 4; i++)
-        res.elements[i] = temp[i] * determinant;
+        res.elements[i] = (float)(temp[i] * (float)determinant);
 
     return res;
 }
@@ -2905,7 +2905,7 @@ gs_mat4_perspective(f32 fov, f32 asp_ratio, f32 n, f32 f)
     // Zero matrix
     gs_mat4 m_res = gs_mat4_ctor();
 
-    f32 q = 1.0f / tan(gs_deg2rad(0.5f * fov));
+    f32 q = 1.0f / (float)tan(gs_deg2rad(0.5f * fov));
     f32 a = q / asp_ratio;
     f32 b = (n + f) / (n - f);
     f32 c = (2.0f * n * f) / (n - f);
@@ -2959,8 +2959,8 @@ gs_inline gs_mat4 gs_mat4_rotatev(float angle, gs_vec3 axis)
     gs_mat4 m_res = gs_mat4_identity();
 
     float a = angle;
-    float c = cos(a);
-    float s = sin(a);
+    float c = (float)cos(a);
+    float s = (float)sin(a);
 
     gs_vec3 naxis = gs_vec3_norm(axis);
     float x = naxis.x;
@@ -3195,9 +3195,9 @@ gs_inline gs_quat gs_quat_angle_axis(f32 rad, gs_vec3 axis)
 
     // Get scalar
     f32 half_angle = 0.5f * rad;
-    f32 s = sin(half_angle);
+    f32 s = (float)sin(half_angle);
 
-    return gs_quat_ctor(a.x * s, a.y * s, a.z * s, cos(half_angle));
+    return gs_quat_ctor(a.x * s, a.y * s, a.z * s, (float)cos(half_angle));
 }
 
 gs_inline
@@ -3220,10 +3220,10 @@ gs_quat gs_quat_slerp(gs_quat a, gs_quat b, f32 t)
     f32 sclp, sclq;
     if ((1.0f - c) > 0.0001f)
     {
-        f32 omega = acosf(c);
-        f32 s = sinf(omega);
-        sclp = sinf((1.0f - t) * omega) / s;
-        sclq = sinf(t * omega) / s; 
+        f32 omega = (float)acosf(c);
+        f32 s = (float)sinf(omega);
+        sclp = (float)sinf((1.0f - t) * omega) / s;
+        sclq = (float)sinf(t * omega) / s; 
     }
     else
     {
@@ -3285,12 +3285,12 @@ gs_quat gs_quat_from_euler(f32 yaw_deg, f32 pitch_deg, f32 roll_deg)
     f32 roll = gs_deg2rad(roll_deg);
 
     gs_quat q;
-    f32 cy = cos(yaw * 0.5f);
-    f32 sy = sin(yaw * 0.5f);
-    f32 cr = cos(roll * 0.5f);
-    f32 sr = sin(roll * 0.5f);
-    f32 cp = cos(pitch * 0.5f);
-    f32 sp = sin(pitch * 0.5f);
+    f32 cy = (float)cos(yaw * 0.5f);
+    f32 sy = (float)sin(yaw * 0.5f);
+    f32 cr = (float)cos(roll * 0.5f);
+    f32 sr = (float)sin(roll * 0.5f);
+    f32 cp = (float)cos(pitch * 0.5f);
+    f32 sp = (float)sin(pitch * 0.5f);
 
     q.x = cy * sr * cp - sy * cr * sp;
     q.y = cy * cr * sp + sy * sr * cp;
@@ -4589,7 +4589,7 @@ void gs_byte_buffer_resize(gs_byte_buffer_t* buffer, size_t sz)
     }
 
     buffer->data = data;    
-    buffer->capacity = sz;
+    buffer->capacity = (uint32_t)sz;
 }
 
 void gs_byte_buffer_seek_to_beg(gs_byte_buffer_t* buffer)
@@ -4604,14 +4604,14 @@ void gs_byte_buffer_seek_to_end(gs_byte_buffer_t* buffer)
 
 void gs_byte_buffer_advance_position(gs_byte_buffer_t* buffer, size_t sz)
 {
-    buffer->position += sz; 
+    buffer->position += (uint32_t)sz; 
 }
 
 void gs_byte_buffer_write_bulk(gs_byte_buffer_t* buffer, void* src, size_t size)
 {
     // Check for necessary resize
     size_t total_write_size = buffer->position + size;
-    if (total_write_size >= buffer->capacity)
+    if (total_write_size >= (size_t)buffer->capacity)
     {
         size_t capacity = buffer->capacity * 2;
         while(capacity <= total_write_size)
@@ -4625,14 +4625,14 @@ void gs_byte_buffer_write_bulk(gs_byte_buffer_t* buffer, void* src, size_t size)
     // memcpy data
      memcpy((buffer->data + buffer->position), src, size);
 
-    buffer->size += size;
-    buffer->position += size;
+    buffer->size += (uint32_t)size;
+    buffer->position += (uint32_t)size;
 }
 
 void gs_byte_buffer_read_bulk(gs_byte_buffer_t* buffer, void** dst, size_t size)
 {
     memcpy(*dst, (buffer->data + buffer->position), size);
-    buffer->position += size;
+    buffer->position += (uint32_t)size;
 }
 
 void gs_byte_buffer_write_str(gs_byte_buffer_t* buffer, const char* str)
@@ -4672,7 +4672,7 @@ gs_byte_buffer_write_to_file
     FILE* fp = fopen(output_path, "wb");
     if (fp) 
     {
-        int32_t ret = fwrite(buffer->data, sizeof(u8), buffer->size, fp);
+        int32_t ret = (int32_t)fwrite(buffer->data, sizeof(u8), buffer->size, fp);
         if (ret == buffer->size)
         {
             return GS_RESULT_SUCCESS;
@@ -4962,7 +4962,7 @@ void gs_asset_font_load_from_file(const char* path, void* out, uint32_t point_si
     u8* flipmap = gs_malloc(w * h * num_comps);
     memset(alpha_bitmap, 0, w * h);
     memset(flipmap, 0, w * h * num_comps);
-    s32 v = stbtt_BakeFontBitmap((u8*)ttf, 0, point_size, alpha_bitmap, w, h, 32, 96, (stbtt_bakedchar*)f->glyphs); // no guarantee this fits!
+    s32 v = stbtt_BakeFontBitmap((u8*)ttf, 0, (float)point_size, alpha_bitmap, w, h, 32, 96, (stbtt_bakedchar*)f->glyphs); // no guarantee this fits!
 
     // Flip texture
     u32 r = h - 1;
@@ -5210,7 +5210,7 @@ void gs_engine_quit()
 
     int32_t main(int32_t argv, char** argc)
     {
-        gs_engine_create(gs_main(argc, argc))->run();
+        gs_engine_create(gs_main(argv, argc))->run();
         return 0;
     }
 
