@@ -78,8 +78,8 @@ struct gs_uuid_t gs_platform_generate_uuid()
     srand(clock());
     char guid[40];
     int32_t t = 0;
-    char* sz_temp = "xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx";
-    char* sz_hex = "0123456789abcdef-";
+    const char* sz_temp = "xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx";
+    const char* sz_hex = "0123456789abcdef-";
     int32_t n_len = (int32_t)strlen(sz_temp);
 
     for (t=0; t < n_len + 1; t++)
