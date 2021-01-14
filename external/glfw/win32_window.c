@@ -508,7 +508,7 @@ static void releaseMonitor(_GLFWwindow* window)
 static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg,
                                    WPARAM wParam, LPARAM lParam)
 {
-    _GLFWwindow* window = GetPropW(hWnd, L"GLFW");
+    _GLFWwindow* window = (_GLFWwindow*)GetPropW(hWnd, L"GLFW");
     if (!window)
     {
         // This is the message handling for the hidden helper window
@@ -867,7 +867,7 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg,
             if (size > (UINT) _glfw.win32.rawInputSize)
             {
                 free(_glfw.win32.rawInput);
-                _glfw.win32.rawInput = calloc(size, 1);
+                _glfw.win32.rawInput = (RAWINPUT*)calloc(size, 1);
                 _glfw.win32.rawInputSize = size;
             }
 
@@ -1156,7 +1156,7 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg,
             int i;
 
             const int count = DragQueryFileW(drop, 0xffffffff, NULL, 0);
-            char** paths = calloc(count, sizeof(char*));
+            char** paths = (char**)calloc(count, sizeof(char*));
 
             // Move the mouse to the position of the drop
             DragQueryPoint(drop, &pt);
@@ -1165,7 +1165,7 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg,
             for (i = 0;  i < count;  i++)
             {
                 const UINT length = DragQueryFileW(drop, i, NULL, 0);
-                WCHAR* buffer = calloc((size_t) length + 1, sizeof(WCHAR));
+                WCHAR* buffer = (WCHAR*)calloc((size_t) length + 1, sizeof(WCHAR));
 
                 DragQueryFileW(drop, i, buffer, length + 1);
                 paths[i] = _glfwCreateUTF8FromWideStringWin32(buffer);
@@ -1329,13 +1329,13 @@ GLFWbool _glfwRegisterWindowClassWin32(void)
     wc.lpszClassName = _GLFW_WNDCLASSNAME;
 
     // Load user-provided icon if available
-    wc.hIcon = LoadImageW(GetModuleHandleW(NULL),
+    wc.hIcon = (HICON)LoadImageW(GetModuleHandleW(NULL),
                           L"GLFW_ICON", IMAGE_ICON,
                           0, 0, LR_DEFAULTSIZE | LR_SHARED);
     if (!wc.hIcon)
     {
         // No user-provided icon found, load default icon
-        wc.hIcon = LoadImageW(NULL,
+        wc.hIcon = (HICON)LoadImageW(NULL,
                               (LPCWSTR)IDI_APPLICATION, IMAGE_ICON,
                               0, 0, LR_DEFAULTSIZE | LR_SHARED);
     }
@@ -1630,7 +1630,7 @@ void _glfwPlatformGetWindowContentScale(_GLFWwindow* window,
 {
     const HANDLE handle = MonitorFromWindow(window->win32.handle,
                                             MONITOR_DEFAULTTONEAREST);
-    _glfwGetMonitorContentScaleWin32(handle, xscale, yscale);
+    _glfwGetMonitorContentScaleWin32((HMONITOR)handle, xscale, yscale);
 }
 
 void _glfwPlatformIconifyWindow(_GLFWwindow* window)
@@ -1922,7 +1922,7 @@ void _glfwPlatformPollEvents(void)
     handle = GetActiveWindow();
     if (handle)
     {
-        window = GetPropW(handle, L"GLFW");
+        window = (_GLFWwindow*)GetPropW(handle, L"GLFW");
         if (window)
         {
             int i;
@@ -2083,7 +2083,7 @@ int _glfwPlatformCreateStandardCursor(_GLFWcursor* cursor, int shape)
         return GLFW_FALSE;
     }
 
-    cursor->win32.handle = LoadImageW(NULL,
+    cursor->win32.handle = (HCURSOR)LoadImageW(NULL,
                                       MAKEINTRESOURCEW(id), IMAGE_CURSOR, 0, 0,
                                       LR_DEFAULTSIZE | LR_SHARED);
     if (!cursor->win32.handle)
@@ -2126,7 +2126,7 @@ void _glfwPlatformSetClipboardString(const char* string)
         return;
     }
 
-    buffer = GlobalLock(object);
+    buffer = (WCHAR*)GlobalLock(object);
     if (!buffer)
     {
         _glfwInputErrorWin32(GLFW_PLATFORM_ERROR,
@@ -2172,7 +2172,7 @@ const char* _glfwPlatformGetClipboardString(void)
         return NULL;
     }
 
-    buffer = GlobalLock(object);
+    buffer = (WCHAR*)GlobalLock(object);
     if (!buffer)
     {
         _glfwInputErrorWin32(GLFW_PLATFORM_ERROR,

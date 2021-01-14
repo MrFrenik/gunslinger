@@ -236,9 +236,9 @@ typedef void (APIENTRY * PFN_vkVoidFunction)(void);
     }
 
 // Swaps the provided pointers
-#define _GLFW_SWAP_POINTERS(x, y) \
+#define _GLFW_SWAP_POINTERS(T, x, y) \
     {                             \
-        void* t;                  \
+        T t;                      \
         t = x;                    \
         x = y;                    \
         y = t;                    \

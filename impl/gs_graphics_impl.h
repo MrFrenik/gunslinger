@@ -31,7 +31,7 @@ typedef enum gsgl_uniform_type
 /* Uniform (stores samplers as well as primitive uniforms) */
 typedef struct gsgl_uniform_t {
     const char* name;
-    gs_graphics_uniform_type type;
+    gsgl_uniform_type type;
     uint32_t location;
     size_t size;                    // Total data size of uniform
 } gsgl_uniform_t;
@@ -153,14 +153,14 @@ uint32_t gsgl_blend_equation_to_gl_blend_eq(gs_graphics_blend_equation_type eq)
     uint32_t beq = GL_FUNC_ADD; 
     switch (eq) {
         default:
-        case GS_GRAPHICS_BLEND_EQUATION_ADD: eq = GL_FUNC_ADD; break;
-        case GS_GRAPHICS_BLEND_EQUATION_SUBTRACT: eq = GL_FUNC_SUBTRACT; break;
-        case GS_GRAPHICS_BLEND_EQUATION_REVERSE_SUBTRACT: eq = GL_FUNC_REVERSE_SUBTRACT; break;
-        case GS_GRAPHICS_BLEND_EQUATION_MIN: eq = GL_MIN; break;
-        case GS_GRAPHICS_BLEND_EQUATION_MAX: eq = GL_MAX; break;
+        case GS_GRAPHICS_BLEND_EQUATION_ADD:                beq = GL_FUNC_ADD; break;
+        case GS_GRAPHICS_BLEND_EQUATION_SUBTRACT:           beq = GL_FUNC_SUBTRACT; break;
+        case GS_GRAPHICS_BLEND_EQUATION_REVERSE_SUBTRACT:   beq = GL_FUNC_REVERSE_SUBTRACT; break;
+        case GS_GRAPHICS_BLEND_EQUATION_MIN:                beq = GL_MIN; break;
+        case GS_GRAPHICS_BLEND_EQUATION_MAX:                beq = GL_MAX; break;
     };
 
-    return eq;
+    return beq;
 }
 
 uint32_t gsgl_blend_mode_to_gl_blend_mode(gs_graphics_blend_mode_type type, uint32_t def)
@@ -579,12 +579,13 @@ gs_handle(gs_graphics_buffer_t) gs_graphics_buffer_create(gs_graphics_buffer_des
             gsgl_uniform_t u = gs_default_val();
             u.name = desc->name;
             // If size > 1, store type as uniform buffer, other store type as type of first element of data description
-            u.type = ct > 1 ? GSGL_UNIFORMTYPE_UNIFORM_BLOCK : gsgl_uniform_type_to_gl_uniform_type(((gs_graphics_uniform_desc_t*)desc->data)[0].type); 
+            u.type = ct > 1 ? GSGL_UNIFORMTYPE_UNIFORM_BLOCK : 
+                gsgl_uniform_type_to_gl_uniform_type((gs_graphics_uniform_type)((gs_graphics_uniform_desc_t*)desc->data)[0].type); 
             u.location = UINT32_MAX;
 
             // Calculate size
             for (uint32_t i = 0; i < ct; ++i) {
-                u.size += gsgl_uniform_data_size_in_bytes(((gs_graphics_uniform_desc_t*)desc->data)[i].type);
+                u.size += gsgl_uniform_data_size_in_bytes((gs_graphics_uniform_type)((gs_graphics_uniform_desc_t*)desc->data)[i].type);
             }
 
             hndl = gs_handle_create(gs_graphics_buffer_t, gs_slot_array_insert(ogl->uniforms, u));
@@ -662,7 +663,7 @@ gs_handle(gs_graphics_shader_t) gs_graphics_shader_create(gs_graphics_shader_des
             GLint max_len = 0;
             glGetShaderiv(sid, GL_INFO_LOG_LENGTH, &max_len);
 
-            char* log = gs_malloc(max_len);
+            char* log = (char*)gs_malloc(max_len);
             memset(log, 0, max_len);
 
             //The max_len includes the NULL character
@@ -698,7 +699,7 @@ gs_handle(gs_graphics_shader_t) gs_graphics_shader_create(gs_graphics_shader_des
         GLint max_len = 0;
         glGetProgramiv(shader, GL_INFO_LOG_LENGTH, &max_len);
 
-        char* log = gs_malloc(max_len);
+        char* log = (char*)gs_malloc(max_len);
         memset(log, 0, max_len);
         glGetProgramInfoLog(shader, max_len, &max_len, log); 
 
@@ -1011,19 +1012,16 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                         continue;
                     }
 
-                    // Default flag val
-                    if (action.flag == 0x00) action.flag = GS_GRAPHICS_RENDER_PASS_ACTION_CLEAR_ALL; 
-
                     uint32_t bit = 0x00;
 
-                    if (action.flag & GS_GRAPHICS_RENDER_PASS_ACTION_CLEAR_COLOR) {
+                    if (action.flag & GS_GRAPHICS_RENDER_PASS_ACTION_CLEAR_COLOR || action.flag == 0x00) {
                         glClearColor(action.color[0], action.color[1], action.color[2], action.color[3]);
                         bit |= GL_COLOR_BUFFER_BIT;
                     }
-                    if (action.flag & GS_GRAPHICS_RENDER_PASS_ACTION_CLEAR_DEPTH) {
+                    if (action.flag & GS_GRAPHICS_RENDER_PASS_ACTION_CLEAR_DEPTH || action.flag == 0x00) {
                         bit |= GL_DEPTH_BUFFER_BIT;
                     }
-                    if (action.flag & GS_GRAPHICS_RENDER_PASS_ACTION_CLEAR_STENCIL) {
+                    if (action.flag & GS_GRAPHICS_RENDER_PASS_ACTION_CLEAR_STENCIL || action.flag == 0x00) {
                         bit |= GL_STENCIL_BUFFER_BIT;
                     }
 

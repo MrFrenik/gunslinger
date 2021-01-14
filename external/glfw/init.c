@@ -116,7 +116,7 @@ static void terminate(void)
 char* _glfw_strdup(const char* source)
 {
     const size_t length = strlen(source);
-    char* result = calloc(length + 1, 1);
+    char* result = (char*)calloc(length + 1, 1);
     strcpy(result, source);
     return result;
 }
@@ -197,10 +197,10 @@ void _glfwInputError(int code, const char* format, ...)
 
     if (_glfw.initialized)
     {
-        error = _glfwPlatformGetTls(&_glfw.errorSlot);
+        error = (_GLFWerror*)_glfwPlatformGetTls(&_glfw.errorSlot);
         if (!error)
         {
-            error = calloc(1, sizeof(_GLFWerror));
+            error = (_GLFWerror*)calloc(1, sizeof(_GLFWerror));
             _glfwPlatformSetTls(&_glfw.errorSlot, error);
             _glfwPlatformLockMutex(&_glfw.errorLock);
             error->next = _glfw.errorListHead;
@@ -319,7 +319,7 @@ GLFWAPI int glfwGetError(const char** description)
         *description = NULL;
 
     if (_glfw.initialized)
-        error = _glfwPlatformGetTls(&_glfw.errorSlot);
+        error = (_GLFWerror*)_glfwPlatformGetTls(&_glfw.errorSlot);
     else
         error = &_glfwMainThreadError;
 
@@ -336,7 +336,7 @@ GLFWAPI int glfwGetError(const char** description)
 
 GLFWAPI GLFWerrorfun glfwSetErrorCallback(GLFWerrorfun cbfun)
 {
-    _GLFW_SWAP_POINTERS(_glfwErrorCallback, cbfun);
+    _GLFW_SWAP_POINTERS(GLFWerrorfun, _glfwErrorCallback, cbfun);
     return cbfun;
 }
 

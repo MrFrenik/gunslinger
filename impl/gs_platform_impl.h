@@ -270,22 +270,21 @@ gs_vec2 gs_platform_mouse_deltav()
         input->mouse.position.x < 0.0f || 
         input->mouse.position.y < 0.0f)
     {
-        return (gs_vec2){0.0f, 0.0f};
+        return gs_v2(0.0f, 0.0f);
     }
     
-    return (gs_vec2){input->mouse.position.x - input->mouse.prev_position.x, 
-                      input->mouse.position.y - input->mouse.prev_position.y};
+    return gs_v2(input->mouse.position.x - input->mouse.prev_position.x, 
+                      input->mouse.position.y - input->mouse.prev_position.y);
 }
 
 gs_vec2 gs_platform_mouse_positionv()
 {
     gs_platform_input_t* input = __gs_input();
 
-    return (gs_vec2) 
-    {
+    return gs_v2( 
         input->mouse.position.x, 
         input->mouse.position.y
-    };
+    );
 }
 
 void gs_platform_mouse_position(f32* x, f32* y)
@@ -686,14 +685,14 @@ void __glfw_mouse_button_callback(GLFWwindow* window, s32 button, s32 action, s3
 void __glfw_mouse_cursor_position_callback(GLFWwindow* window, f64 x, f64 y)
 {
     gs_platform_i* platform = gs_engine_subsystem(platform);
-    platform->input.mouse.position = (gs_vec2){(f32)x, (f32)y};
+    platform->input.mouse.position = gs_v2((f32)x, (f32)y);
     platform->input.mouse.moved_this_frame = true;
 }
 
 void __glfw_mouse_scroll_wheel_callback(GLFWwindow* window, f64 x, f64 y)
 {
     gs_platform_i* platform = gs_engine_subsystem(platform);
-    platform->input.mouse.wheel = (gs_vec2){(f32)x, (f32)y};
+    platform->input.mouse.wheel = gs_v2((f32)x, (f32)y);
 }
 
 // Gets called when mouse enters or leaves frame of window
@@ -836,7 +835,7 @@ void gs_platform_window_swap_buffer(uint32_t handle)
 gs_vec2 gs_platform_window_sizev(uint32_t handle)
 {
     GLFWwindow* win = __glfw_window_from_handle(gs_engine_subsystem(platform), handle);
-    uint32_t w, h;
+    int32_t w, h;
     glfwGetWindowSize(win, &w, &h);
     return gs_v2((float)w, (float)h);
 }
@@ -844,13 +843,13 @@ gs_vec2 gs_platform_window_sizev(uint32_t handle)
 void gs_platform_window_size(uint32_t handle, uint32_t* w, uint32_t* h)
 {
     GLFWwindow* win = __glfw_window_from_handle(gs_engine_instance()->ctx.platform, handle);
-    glfwGetWindowSize(win, w, h);
+    glfwGetWindowSize(win, (int32_t*)w, (int32_t*)h);
 }
 
 uint32_t gs_platform_window_width(uint32_t handle)
 {
     GLFWwindow* win = __glfw_window_from_handle(gs_engine_instance()->ctx.platform, handle);
-    uint32_t w, h;
+    int32_t w, h;
     glfwGetWindowSize(win, &w, &h);
     return w;
 }
@@ -858,7 +857,7 @@ uint32_t gs_platform_window_width(uint32_t handle)
 uint32_t gs_platform_window_height(uint32_t handle)
 {
     GLFWwindow* win = __glfw_window_from_handle(gs_engine_instance()->ctx.platform, handle);
-    uint32_t w, h;
+    int32_t w, h;
     glfwGetWindowSize(win, &w, &h);
     return h;
 }
@@ -866,7 +865,7 @@ uint32_t gs_platform_window_height(uint32_t handle)
 void gs_platform_set_window_size(uint32_t handle, uint32_t w, uint32_t h)
 {
     GLFWwindow* win = __glfw_window_from_handle(gs_engine_subsystem(platform), handle);
-    glfwSetWindowSize(win, w, h);
+    glfwSetWindowSize(win, (int32_t)w, (int32_t)h);
 }
 
 void gs_platform_set_window_sizev(uint32_t handle, gs_vec2 v)
@@ -880,7 +879,7 @@ void gs_platform_framebuffer_size(uint32_t handle, uint32_t* w, uint32_t* h)
     GLFWwindow* win = __glfw_window_from_handle(gs_engine_subsystem(platform), handle);
     float xscale = 0.f, yscale = 0.f;
     glfwGetWindowContentScale(win, &xscale, &yscale);
-    glfwGetWindowSize(win, w, h);
+    glfwGetWindowSize(win, (int32_t*)w, (int32_t*)h);
     *w = (uint32_t)((float)*w * xscale);
     *h = (uint32_t)((float)*h * yscale);
 }
@@ -889,7 +888,7 @@ gs_vec2 gs_platform_framebuffer_sizev(uint32_t handle)
 {
     uint32_t w = 0, h = 0;
     gs_platform_framebuffer_size(handle, &w, &h);
-    return (gs_vec2){(float)w, (float)h};
+    return gs_v2((float)w, (float)h);
 }
 
 uint32_t gs_platform_framebuffer_width(uint32_t handle)
