@@ -362,12 +362,12 @@ gs_immediate_draw_t gs_immediate_draw_new()
 		gs_graphics_pipeline_desc_t pdesc = gs_default_val();
 		pdesc.raster.shader = shader;
 		pdesc.raster.index_buffer_element_size = sizeof(uint16_t);
-		pdesc.raster.face_culling = attr.face_cull_enabled ? GS_GRAPHICS_FACE_CULLING_BACK : 0x00;
-		pdesc.raster.primitive = attr.prim_type; 
-		pdesc.blend.func = attr.blend_enabled ? GS_GRAPHICS_BLEND_EQUATION_ADD : 0x00;
+		pdesc.raster.face_culling = attr.face_cull_enabled ? GS_GRAPHICS_FACE_CULLING_BACK : (gs_graphics_face_culling_type)0x00;
+		pdesc.raster.primitive = (gs_graphics_primitive_type)attr.prim_type; 
+		pdesc.blend.func = attr.blend_enabled ? GS_GRAPHICS_BLEND_EQUATION_ADD : (gs_graphics_blend_equation_type)0x00;
 		pdesc.blend.src = GS_GRAPHICS_BLEND_MODE_SRC_ALPHA;
 		pdesc.blend.dst = GS_GRAPHICS_BLEND_MODE_ONE_MINUS_SRC_ALPHA;
-		pdesc.depth.func = d ? GS_GRAPHICS_DEPTH_FUNC_LESS : 0x00;
+		pdesc.depth.func = d ? GS_GRAPHICS_DEPTH_FUNC_LESS : (gs_graphics_depth_func_type)0x00;
 		pdesc.layout = gsi_layout;
 		pdesc.size = sizeof(gsi_layout);
 
@@ -389,8 +389,8 @@ gs_immediate_draw_t gs_immediate_draw_new()
 	const u32 w = 512;
 	const u32 h = 512;
 	const u32 num_comps = 4;
-	u8* alpha_bitmap = gs_malloc(w * h);
-	u8* flipmap = gs_malloc(w * h * num_comps);
+	u8* alpha_bitmap = (u8*)gs_malloc(w * h);
+	u8* flipmap = (u8*)gs_malloc(w * h * num_comps);
 	memset(alpha_bitmap, 0, w * h);
 	memset(flipmap, 0, w * h * num_comps);
    	s32 v = stbtt_BakeFontBitmap((u8*)buf_decompressed_data, 0, 16.f, alpha_bitmap, w, h, 32, 96, (stbtt_bakedchar*)f->glyphs); // no guarantee this fits!
@@ -1246,10 +1246,13 @@ void gsi_draw(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb)
 
 void gsi_render_pass_submit(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, gs_color_t c)
 {
-	gs_graphics_render_pass_action_t action = {
-		.color = (float)c.r / 255.f, (float)c.g / (float)255.f, c.b / 255.f, (float)c.a / 255.f
-	};
-	gs_graphics_begin_render_pass(cb, (gs_renderpass){0}, &action, sizeof(action));
+	gs_graphics_render_pass_action_t action = gs_default_val();
+	action.color[0] = (float)c.r / 255.f; 
+	action.color[1] = (float)c.g / 255.f; 
+	action.color[2] = (float)c.b / 255.f; 
+	action.color[3] = (float)c.a / 255.f;
+	gs_renderpass pass = gs_default_val();
+	gs_graphics_begin_render_pass(cb, pass, &action, sizeof(action));
 	gsi_draw(gsi, cb);
 	gs_graphics_end_render_pass(cb);
 }

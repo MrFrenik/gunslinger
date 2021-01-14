@@ -1639,13 +1639,21 @@ typedef enum gs_hash_table_entry_state
 #define gs_hash_table_new(__K, __V)\
     NULL
 
+gs_force_inline
+void __gs_hash_table_init_impl(void** ht, size_t sz)
+{
+    *ht = gs_malloc(sz);
+}
+
 #define gs_hash_table_init(__HT, __K, __V)\
     do {\
         size_t entry_sz = sizeof(__K) + sizeof(__V) + sizeof(gs_hash_table_entry_state);\
         size_t ht_sz = sizeof(__K) + sizeof(__V) + sizeof(void*) + 2 * sizeof(size_t);\
-        (__HT) = gs_malloc(ht_sz);\
+        __gs_hash_table_init_impl((void**)&(__HT), ht_sz);\
         memset((__HT), 0, ht_sz);\
-        (__HT)->data = gs_dyn_array_resize_impl(NULL, entry_sz, 2);\
+        gs_dyn_array_reserve(__HT->data, 2);\
+        __HT->data[0].state = GS_HASH_TABLE_ENTRY_INACTIVE;\
+        __HT->data[1].state = GS_HASH_TABLE_ENTRY_INACTIVE;\
         uintptr_t d0 = (uintptr_t)&((__HT)->data[0]);\
         uintptr_t d1 = (uintptr_t)&((__HT)->data[1]);\
         ptrdiff_t diff = (d1 - d0);\
@@ -1704,10 +1712,13 @@ typedef enum gs_hash_table_entry_state
         float __LF = gs_hash_table_load_factor(__HT);\
         if (__LF >= 0.5f || !__CAP)\
         {\
-            gs_hash_table_grow(__HT, __CAP ? __CAP * 2 : 1);\
+            uint32_t NEW_CAP = __CAP ? __CAP * 2 : 2;\
+            size_t ENTRY_SZ = sizeof(__HT->tmp_key) + sizeof(__HT->tmp_val) + sizeof(gs_hash_table_entry_state);\
+            gs_dyn_array_reserve(__HT->data, NEW_CAP);\
+            /**((void **)&(__HT->data)) = gs_dyn_array_resize_impl(__HT->data, ENTRY_SZ, NEW_CAP);*/\
             /* Iterate through data and set state to null, from __CAP -> __CAP * 2 */\
             /* Memset here instead */\
-            for (uint32_t __I = __CAP; __I < __CAP * 2; ++__I) {\
+            for (uint32_t __I = __CAP; __I < NEW_CAP; ++__I) {\
                 (__HT)->data[__I].state = GS_HASH_TABLE_ENTRY_INACTIVE;\
             }\
             __CAP = gs_hash_table_capacity(__HT);\
@@ -1715,7 +1726,7 @@ typedef enum gs_hash_table_entry_state
     \
         /* Get hash of key */\
         (__HT)->tmp_key = (__HMK);\
-        size_t __HSH = gs_hash_bytes(&((__HT)->tmp_key), sizeof((__HT)->tmp_key), GS_HASH_TABLE_HASH_SEED);\
+        size_t __HSH = gs_hash_bytes((void*)&((__HT)->tmp_key), sizeof((__HT)->tmp_key), GS_HASH_TABLE_HASH_SEED);\
         size_t __HSH_IDX = __HSH % __CAP;\
         (__HT)->tmp_key = (__HT)->data[__HSH_IDX].key;\
         uint32_t c = 0;\
@@ -1723,7 +1734,7 @@ typedef enum gs_hash_table_entry_state
         /* Find valid idx and place data */\
         while (\
             c < __CAP\
-            && __HSH != gs_hash_bytes(&__HT->tmp_key, sizeof((__HT)->tmp_key), GS_HASH_TABLE_HASH_SEED)\
+            && __HSH != gs_hash_bytes((void*)&__HT->tmp_key, sizeof((__HT)->tmp_key), GS_HASH_TABLE_HASH_SEED)\
             && __HT->data[__HSH_IDX].state == GS_HASH_TABLE_ENTRY_ACTIVE)\
         {\
             __HSH_IDX = ((__HSH_IDX + 1) % __CAP);\
@@ -4455,7 +4466,7 @@ typedef struct gs_asset_texture_t
     gs_graphics_texture_desc_t desc;
 } gs_asset_texture_t;
 
-GS_API_DECL void gs_asset_texture_load_from_file(const char* path, void* out, bool32_t keep_data);
+GS_API_DECL void gs_asset_texture_load_from_file(const char* path, void* out, gs_graphics_texture_desc_t* desc, bool32_t flip_on_load, bool32_t keep_data);
 
 // Font
 typedef struct gs_baked_char_t
@@ -4916,22 +4927,26 @@ bool32_t gs_util_load_texture_data_from_file(const char* file_path, int32_t* wid
 // GS_ASSET_TYPES
 ==========================*/
 
-void gs_asset_texture_load_from_file(const char* path, void* out, bool32_t keep_data)
+void gs_asset_texture_load_from_file(const char* path, void* out, gs_graphics_texture_desc_t* desc, bool32_t flip_on_load, bool32_t keep_data)
 {
     gs_asset_texture_t* t = (gs_asset_texture_t*)out; 
 
     memset(&t->desc, 0, sizeof(gs_graphics_texture_desc_t));
-    t->desc.format = GS_GRAPHICS_TEXTURE_FORMAT_RGBA8;
-    t->desc.min_filter = GS_GRAPHICS_TEXTURE_FILTER_LINEAR;
-    t->desc.mag_filter = GS_GRAPHICS_TEXTURE_FILTER_LINEAR; 
-    t->desc.wrap_s = GS_GRAPHICS_TEXTURE_WRAP_REPEAT;
-    t->desc.wrap_t = GS_GRAPHICS_TEXTURE_WRAP_REPEAT;
+
+    if (desc) {
+        t->desc = *desc;
+    } else {
+        t->desc.format = GS_GRAPHICS_TEXTURE_FORMAT_RGBA8;
+        t->desc.min_filter = GS_GRAPHICS_TEXTURE_FILTER_LINEAR;
+        t->desc.mag_filter = GS_GRAPHICS_TEXTURE_FILTER_LINEAR; 
+        t->desc.wrap_s = GS_GRAPHICS_TEXTURE_WRAP_REPEAT;
+        t->desc.wrap_t = GS_GRAPHICS_TEXTURE_WRAP_REPEAT;
+    }
 
     // Load texture data
-    const bool flip_vertically_on_load = true;
     int32_t num_comps = 0;
     bool32_t loaded = gs_util_load_texture_data_from_file(path, (int32_t*)&t->desc.width, 
-        (int32_t*)&t->desc.height, (uint32_t*)&num_comps, (void**)&t->desc.data, flip_vertically_on_load);
+        (int32_t*)&t->desc.height, (uint32_t*)&num_comps, (void**)&t->desc.data, flip_on_load);
 
     if (!loaded) {
         gs_println("Warning: could not load texture: %s", path);
