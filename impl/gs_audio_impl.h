@@ -403,6 +403,9 @@ void ma_audio_commit(ma_device* device, void* output, const void* input, ma_uint
     u32 destroy_count = 0;
     gs_handle(gs_audio_instance_t) handles_to_destroy[32];
 
+    if (!audio->instances) 
+        return;
+
     ma_mutex_lock(&ma->lock);
     {
         for 
@@ -412,6 +415,15 @@ void ma_audio_commit(ma_device* device, void* output, const void* input, ma_uint
             gs_slot_array_iter_advance(audio->instances, it)
         )
         {
+            // Want to check actual validity of instance here.
+            if (it > gs_dyn_array_size(audio->instances->indices))
+                continue;
+
+            // This fixes the crash, but doesn't fix the threaded 
+            // audio issue. Samples are now incorrect. Instances are still invalid.
+            if (audio->instances->indices[it] == GS_SLOT_ARRAY_INVALID_HANDLE)
+                continue;
+
             gs_audio_instance_t* inst = gs_slot_array_iter_getp(audio->instances, it);
 
             // Get raw audio source from instance
@@ -519,10 +531,11 @@ void ma_audio_commit(ma_device* device, void* output, const void* input, ma_uint
             }
         }
 
-        gs_for_range_i(destroy_count) 
-        {
-            gs_slot_array_erase(audio->instances, handles_to_destroy[i].id);
-        }
+        // This needs to happen elsewhere.
+        // gs_for_range_i(destroy_count) 
+        // {
+        //     gs_slot_array_erase(audio->instances, handles_to_destroy[i].id);
+        // }
     }
     ma_mutex_unlock(&ma->lock);
 }

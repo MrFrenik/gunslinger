@@ -183,6 +183,7 @@ GS_API_DECL void gsi_line3Dv(gs_immediate_draw_t* gsi, gs_vec3 s, gs_vec3 e, gs_
 GS_API_DECL void gsi_rect(gs_immediate_draw_t* gsi, float x0, float y0, float x1, float y1, uint8_t r, uint8_t g, uint8_t b, uint8_t a, gs_graphics_primitive_type type);
 GS_API_DECL void gsi_rectx(gs_immediate_draw_t* gsi, float l, float b, float r, float t, float u0, float v0, float u1, float v1, uint8_t _r, uint8_t _g, uint8_t _b, uint8_t _a, gs_graphics_primitive_type type);
 GS_API_DECL void gsi_rectvx(gs_immediate_draw_t* gsi, gs_vec2 bl, gs_vec2 tr, gs_vec2 uv0, gs_vec2 uv1, gs_color_t color, gs_graphics_primitive_type type);
+GS_API_DECL void gsi_rectvd(gs_immediate_draw_t* gsi, gs_vec2 xy, gs_vec2 wh, gs_vec2 uv0, gs_vec2 uv1, gs_color_t color, gs_graphics_primitive_type type);
 GS_API_DECL void gsi_circle(gs_immediate_draw_t* gsi, float cx, float cy, float radius, int32_t segments, uint8_t r, uint8_t g, uint8_t b, uint8_t a, gs_graphics_primitive_type type);
 GS_API_DECL void gsi_circle_sector(gs_immediate_draw_t* gsi, float cx, float cy, float radius, int32_t start_angle, int32_t end_angle, int32_t segments, uint8_t r, uint8_t g, uint8_t b, uint8_t a, gs_graphics_primitive_type type);
 GS_API_DECL void gsi_box(gs_immediate_draw_t* gsi, float x0, float y0, float z0, float hx, float hy, float hz, uint8_t r, uint8_t g, uint8_t b, uint8_t a, gs_graphics_primitive_type type);
@@ -204,7 +205,7 @@ GS_API_DECL void Decode85(const unsigned char* src, unsigned char* dst);
     #define gsi_smooth_circle_error_rate  0.5f
 #endif
 
-const f32 gsi_deg2rad = GS_PI / 180.f;
+const f32 gsi_deg2rad = (f32)GS_PI / 180.f;
 
 const char* gsi_v_fillsrc = "\n"
 "#version 330\n"
@@ -793,7 +794,7 @@ void gsi_camera(gs_immediate_draw_t* gsi, gs_camera_t* cam)
 {
 	// Just grab main window for now. Will need to grab top of viewport stack in future
 	gs_vec2 ws = gs_platform_window_sizev(gs_platform_main_window());	
-	gsi_load_matrix(gsi, gs_camera_get_view_projection(cam, ws.x, ws.y));
+	gsi_load_matrix(gsi, gs_camera_get_view_projection(cam, (s32)ws.x, (s32)ws.y));
 }
 
 void gsi_camera2D(gs_immediate_draw_t* gsi)
@@ -937,6 +938,11 @@ void gsi_rect(gs_immediate_draw_t* gsi, float l, float b, float r, float t, uint
 void gsi_rectvx(gs_immediate_draw_t* gsi, gs_vec2 bl, gs_vec2 tr, gs_vec2 uv0, gs_vec2 uv1, gs_color_t color, gs_graphics_primitive_type type)
 {
 	gsi_rectx(gsi, bl.x, bl.y, tr.x, tr.y, uv0.x, uv0.y, uv1.x, uv1.y, color.r, color.g, color.b, color.a, type);
+}
+
+void gsi_rectvd(gs_immediate_draw_t* gsi, gs_vec2 xy, gs_vec2 wh, gs_vec2 uv0, gs_vec2 uv1, gs_color_t color, gs_graphics_primitive_type type)
+{
+	gsi_rectx(gsi, xy.x, xy.y, xy.x + wh.x, xy.y + wh.y, uv0.x, uv0.y, uv1.x, uv1.y, color.r, color.g, color.b, color.a, type);
 }
 
 void gsi_circle_sector(gs_immediate_draw_t* gsi, float cx, float cy, float radius, int32_t start_angle, 

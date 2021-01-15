@@ -4970,7 +4970,8 @@ void gs_asset_font_load_from_file(const char* path, void* out, uint32_t point_si
     gs_asset_font_t* f = (gs_asset_font_t*)out;
 
     if (!point_size) {
-        gs_println("Warning: Font: %s: Point size is 0.", path);
+        gs_println("Warning: Font: %s: Point size not declared. Setting to default 16.", path);
+        point_size = 16;
     }
 
     stbtt_fontinfo font = gs_default_val();
