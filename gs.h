@@ -518,6 +518,10 @@ extern "C" {
     #define gs_force_inline gs_inline
 #endif
 
+#ifdef __cplusplus
+    #pragma warning(disable:4996)
+#endif
+
 /*===================
 // GS_API_DECL
 ===================*/
