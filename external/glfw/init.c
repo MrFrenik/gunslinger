@@ -61,7 +61,7 @@ static _GLFWinitconfig _glfwInitHints =
 
 // Terminate the library
 //
-static void terminate(void)
+static void _glfw_terminate(void)
 {
     int i;
 
@@ -233,7 +233,7 @@ GLFWAPI int glfwInit(void)
 
     if (!_glfwPlatformInit())
     {
-        terminate();
+        _glfw_terminate();
         return GLFW_FALSE;
     }
 
@@ -241,7 +241,7 @@ GLFWAPI int glfwInit(void)
         !_glfwPlatformCreateTls(&_glfw.errorSlot) ||
         !_glfwPlatformCreateTls(&_glfw.contextSlot))
     {
-        terminate();
+        _glfw_terminate();
         return GLFW_FALSE;
     }
 
@@ -259,7 +259,7 @@ GLFWAPI int glfwInit(void)
         {
             if (!glfwUpdateGamepadMappings(_glfwDefaultMappings[i]))
             {
-                terminate();
+                _glfw_terminate();
                 return GLFW_FALSE;
             }
         }
@@ -273,7 +273,7 @@ GLFWAPI void glfwTerminate(void)
     if (!_glfw.initialized)
         return;
 
-    terminate();
+    _glfw_terminate();
 }
 
 GLFWAPI void glfwInitHint(int hint, int value)
