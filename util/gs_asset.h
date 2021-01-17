@@ -51,6 +51,9 @@ GS_API_DECL gs_asset_t __gs_asset_handle_create_impl(uint64_t type_id, uint32_t 
 #define gs_asset_handle_create(T, ID, IMPID)\
 	__gs_asset_handle_create_impl(gs_hash_str64(gs_to_str(T)), ID, IMPID)
 
+typedef void (* gs_asset_load_func)(const char *,void *,...);
+typedef gs_asset_t (* gs_asset_default_func)(void *);
+
 typedef struct gs_asset_importer_desc_t {
 	void (* load_from_file)(const char* path, void* out, ...);
 	gs_asset_t (* default_asset)(void* out);
@@ -99,7 +102,7 @@ GS_API_DECL void gs_asset_importer_set_desc(gs_asset_importer_t* imp, gs_asset_i
 		ai.tmp_ptr = (void*)&sa->tmp;\
 		ai.slot_array_indices_ptr = (void*)sa->indices;\
 		ai.slot_array_data_ptr = (void*)sa->data;\
-		if (!ai.desc.load_from_file) {ai.desc.load_from_file = (void (__cdecl *)(const char *,void *,...))&gs_asset_default_load_from_file;}\
+		if (!ai.desc.load_from_file) {ai.desc.load_from_file = (gs_asset_load_func)&gs_asset_default_load_from_file;}\
 		gs_hash_table_insert((AM)->importers, gs_hash_str64(gs_to_str(T)), ai);\
 	} while(0)
 
@@ -160,9 +163,9 @@ gs_asset_manager_t gs_asset_manager_new()
 	gs_asset_importer_desc_t font_desc  = gs_default_val();
 	gs_asset_importer_desc_t audio_desc = gs_default_val();
 
-	tex_desc.load_from_file = (void (__cdecl *)(const char *,void *,...))&gs_asset_texture_load_from_file;
-	font_desc.load_from_file = (void (__cdecl *)(const char *,void *,...))&gs_asset_font_load_from_file;
-	audio_desc.load_from_file = (void (__cdecl *)(const char *,void *,...))&gs_asset_audio_load_from_file;
+	tex_desc.load_from_file = (gs_asset_load_func)&gs_asset_texture_load_from_file;
+	font_desc.load_from_file = (gs_asset_load_func)&gs_asset_font_load_from_file;
+	audio_desc.load_from_file = (gs_asset_load_func)&gs_asset_audio_load_from_file;
 
 	gs_assets_register_importer(&assets, gs_asset_texture_t, &tex_desc);
 	gs_assets_register_importer(&assets, gs_asset_font_t, &font_desc);
@@ -209,10 +212,10 @@ void* __gs_assets_getp_impl(gs_asset_manager_t* am, uint64_t type_id, gs_asset_t
 void gs_asset_importer_set_desc(gs_asset_importer_t* imp, gs_asset_importer_desc_t* desc)
 {
 	imp->desc = desc ? *desc : imp->desc;
-	imp->desc.load_from_file = imp->desc.load_from_file ? imp->desc.load_from_file 
-					: (void (__cdecl *)(const char *,void *,...))&gs_asset_default_load_from_file; 
-	imp->desc.default_asset = imp->desc.default_asset ? imp->desc.default_asset 
-					: (gs_asset_t (__cdecl *)(void *))&gs_asset_default_asset; 
+	imp->desc.load_from_file = imp->desc.load_from_file ? (gs_asset_load_func)imp->desc.load_from_file 
+					: (gs_asset_load_func)&gs_asset_default_load_from_file; 
+	imp->desc.default_asset = imp->desc.default_asset ? (gs_asset_default_func)imp->desc.default_asset 
+					: (gs_asset_default_func)&gs_asset_default_asset; 
 }
 
 gs_asset_t gs_asset_default_asset()

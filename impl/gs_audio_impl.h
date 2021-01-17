@@ -406,100 +406,84 @@ void ma_audio_commit(ma_device* device, void* output, const void* input, ma_uint
     if (!audio->instances) 
         return;
 
+    // Mutex not working for pushing samples back. Need to copy sample data OVER at a synced position.
+    // Add sample data into byte buffer to push back, but this has to be done to sync with audio
+    // thread so that it's consistent and smooth feeding.
     ma_mutex_lock(&ma->lock);
     {
-        for 
-        (
-            gs_slot_array_iter it = 0;
-            gs_slot_array_iter_valid(audio->instances, it);
-            gs_slot_array_iter_advance(audio->instances, it)
-        )
+        for (u32 i = 0; i < gs_slot_array_size(audio->instances); ++i)
         {
-            // Want to check actual validity of instance here.
-            if (it > gs_dyn_array_size(audio->instances->indices))
-                continue;
-
-            // This fixes the crash, but doesn't fix the threaded 
-            // audio issue. Samples are now incorrect. Instances are still invalid.
-            if (audio->instances->indices[it] == GS_SLOT_ARRAY_INVALID_HANDLE)
-                continue;
-
-            gs_audio_instance_t* inst = gs_slot_array_iter_getp(audio->instances, it);
+            gs_audio_instance_t* inst = &audio->instances->data[i];
 
             // Get raw audio source from instance
             gs_audio_source_t* src = gs_slot_array_getp(audio->sources, inst->src.id);
 
             // Easy out if the instance is not playing currently or the source is invalid
-            if (!inst->playing || !src) 
-            {
-                if (inst->persistent != true && destroy_count < 32) 
-                {
-                    handles_to_destroy[destroy_count++].id = it;
-                }
+            if (!inst->playing || !src) {
                 continue;
             }
 
-            int16_t* sample_out = (int16_t*)output;
-            int16_t* samples = (int16_t*)src->samples;
+            s16* sample_out = (s16*)output;
+            s16* samples = (s16*)src->samples;
 
-            uint64_t samples_to_write = (uint64_t)frame_count;
-            float64_t sample_volume = inst->volume;
+            u64 samples_to_write = (u64)frame_count;
+            f64 sample_volume = inst->volume;
 
             // Write to channels
-            for (uint64_t write_sample = 0; write_sample < samples_to_write; ++write_sample)
+            for (u64 write_sample = 0; write_sample < samples_to_write; ++write_sample)
             {
-                int32_t channels = src->channels;
-                float64_t start_sample_position = inst->sample_position;
-                int16_t start_left_sample;
-                int16_t start_right_sample;
+                s32 channels = src->channels;
+                f64 start_sample_position = inst->sample_position;
+                s16 start_left_sample;
+                s16 start_right_sample;
 
                 // Not sure about this line of code...
-                float64_t target_sample_position = start_sample_position + (float64_t)channels * (float64_t)1.f;
+                f64 target_sample_position = start_sample_position + (f64)channels * (f64)1.f;
 
                 if (target_sample_position >= src->sample_count)
                 {
                     target_sample_position -= src->sample_count;
                 }
 
-                int16_t target_left_sample;
-                int16_t target_right_sample;
+                s16 target_left_sample;
+                s16 target_right_sample;
 
                 {
-                    uint64_t left_idx = (uint64_t)start_sample_position;
+                    u64 left_idx = (u64)start_sample_position;
                     if (channels > 1)
                     {
-                        left_idx &= ~((uint64_t)(0x01));
+                        left_idx &= ~((u64)(0x01));
                     }
-                    uint64_t right_idx = left_idx + (channels - 1);
+                    u64 right_idx = left_idx + (channels - 1);
 
-                    int16_t first_left_sample = samples[left_idx];
-                    int16_t first_right_sample = samples[right_idx];
-                    int16_t second_left_sample = samples[left_idx + channels];
-                    int16_t second_right_sample = samples[right_idx + channels];
+                    s16 first_left_sample = samples[left_idx];
+                    s16 first_right_sample = samples[right_idx];
+                    s16 second_left_sample = samples[left_idx + channels];
+                    s16 second_right_sample = samples[right_idx + channels];
 
-                    start_left_sample = (int16_t)(first_left_sample + (second_left_sample - first_left_sample) * (start_sample_position / channels - (uint64_t)(start_sample_position / channels)));
-                    start_right_sample = (int16_t)(first_right_sample + (second_right_sample - first_right_sample) * (start_sample_position / channels - (uint64_t)(start_sample_position / channels)));
+                    start_left_sample = (s16)(first_left_sample + (second_left_sample - first_left_sample) * (start_sample_position / channels - (u64)(start_sample_position / channels)));
+                    start_right_sample = (s16)(first_right_sample + (second_right_sample - first_right_sample) * (start_sample_position / channels - (u64)(start_sample_position / channels)));
                 }
 
                 {
-                    uint64_t left_index = (uint64_t)target_sample_position;
+                    u64 left_index = (u64)target_sample_position;
                     if(channels > 1)
                     {
-                        left_index &= ~((uint64_t)(0x01));
+                        left_index &= ~((u64)(0x01));
                     }
-                    uint64_t right_index = left_index + (channels - 1);
+                    u64 right_index = left_index + (channels - 1);
                     
-                    int16_t first_left_sample = samples[left_index];
-                    int16_t first_right_sample = samples[right_index];
-                    int16_t second_left_sample = samples[left_index + channels];
-                    int16_t second_right_sample = samples[right_index + channels];
+                    s16 first_left_sample = samples[left_index];
+                    s16 first_right_sample = samples[right_index];
+                    s16 second_left_sample = samples[left_index + channels];
+                    s16 second_right_sample = samples[right_index + channels];
                     
-                    target_left_sample = (int16_t)(first_left_sample + (second_left_sample - first_left_sample) * (target_sample_position / channels - (uint64_t)(target_sample_position / channels)));
-                    target_right_sample = (int16_t)(first_right_sample + (second_right_sample - first_right_sample) * (target_sample_position / channels - (uint64_t)(target_sample_position / channels)));
+                    target_left_sample = (s16)(first_left_sample + (second_left_sample - first_left_sample) * (target_sample_position / channels - (u64)(target_sample_position / channels)));
+                    target_right_sample = (s16)(first_right_sample + (second_right_sample - first_right_sample) * (target_sample_position / channels - (u64)(target_sample_position / channels)));
                 }
 
-                int16_t left_sample = (int16_t)((((s64)start_left_sample + (s64)target_left_sample) / 2) * sample_volume);
-                int16_t right_sample = (int16_t)((((s64)start_right_sample + (s64)target_right_sample) / 2) * sample_volume);
+                s16 left_sample = (s16)((((s64)start_left_sample + (s64)target_left_sample) / 2) * sample_volume);
+                s16 right_sample = (s16)((((s64)start_right_sample + (s64)target_right_sample) / 2) * sample_volume);
 
                 *sample_out++ += left_sample;  // Left
                 *sample_out++ += right_sample; // Right
@@ -512,30 +496,20 @@ void ma_audio_commit(ma_device* device, void* output, const void* input, ma_uint
                 {
                     if(inst->loop)
                     {
+                        // inst->sample_position -= src->sample_count;
                         inst->sample_position = 0;
                     }
                     else
                     {
-                        // Need to destroy the instance at this point
+                        // Need to destroy the instance at this point...
                         inst->playing = false;
                         inst->sample_position = 0;
-
-                        if (inst->persistent != true && destroy_count < 32) 
-                        {
-                            handles_to_destroy[destroy_count++].id = it;
-                        }
-
                         break;
                     }
                 }
+
             }
         }
-
-        // This needs to happen elsewhere.
-        // gs_for_range_i(destroy_count) 
-        // {
-        //     gs_slot_array_erase(audio->instances, handles_to_destroy[i].id);
-        // }
     }
     ma_mutex_unlock(&ma->lock);
 }
