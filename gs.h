@@ -1838,7 +1838,7 @@ uint32_t __gs_find_first_valid_iterator(void* data, size_t key_len, size_t val_l
 
 /* Find first valid iterator idx */
 #define gs_hash_table_iter_new(__HT)\
-    (__gs_find_first_valid_iterator((__HT)->data, sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val)), 0)
+    (__gs_find_first_valid_iterator((__HT)->data, sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), 0))
 
 #define gs_hash_table_iter_valid(__HT, __IT)\
     ((__IT) < gs_hash_table_capacity((__HT)))
