@@ -3475,7 +3475,7 @@ GS_API_DECL gs_vec3 gs_camera_up(gs_camera_t* cam);
 GS_API_DECL gs_vec3 gs_camera_down(gs_camera_t* cam);
 GS_API_DECL gs_vec3 gs_camera_right(gs_camera_t* cam);
 GS_API_DECL gs_vec3 gs_camera_left(gs_camera_t* cam);
-GS_API_DECL gs_vec3 gs_camera_unproject(gs_camera_t* cam, gs_vec3 coords, int32_t view_width, int32_t view_height);
+GS_API_DECL gs_vec3 gs_camera_screen_to_world(gs_camera_t* cam, gs_vec3 coords, int32_t view_width, int32_t view_height);
 GS_API_DECL void gs_camera_offset_orientation(gs_camera_t* cam, float yaw, float picth);
 
 /*================================================================================
@@ -4770,7 +4770,7 @@ gs_vec3 gs_camera_left(gs_camera_t* cam)
     return (gs_quat_rotate(cam->transform.rotation, gs_v3(-1.0f, 0.0f, 0.0f)));
 }
 
-gs_vec3 gs_camera_unproject(gs_camera_t* cam, gs_vec3 coords, s32 view_width, s32 view_height)
+gs_vec3 gs_camera_screen_to_world(gs_camera_t* cam, gs_vec3 coords, s32 view_width, s32 view_height)
 {
     gs_vec3 wc = gs_default_val();
 
