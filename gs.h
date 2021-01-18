@@ -1717,8 +1717,8 @@ void __gs_hash_table_init_impl(void** ht, size_t sz)
         if (__LF >= 0.5f || !__CAP)\
         {\
             uint32_t NEW_CAP = __CAP ? __CAP * 2 : 2;\
-            size_t ENTRY_SZ = sizeof(__HT->tmp_key) + sizeof(__HT->tmp_val) + sizeof(gs_hash_table_entry_state);\
-            gs_dyn_array_reserve(__HT->data, NEW_CAP);\
+            size_t ENTRY_SZ = sizeof((__HT)->tmp_key) + sizeof((__HT)->tmp_val) + sizeof(gs_hash_table_entry_state);\
+            gs_dyn_array_reserve((__HT)->data, NEW_CAP);\
             /**((void **)&(__HT->data)) = gs_dyn_array_resize_impl(__HT->data, ENTRY_SZ, NEW_CAP);*/\
             /* Iterate through data and set state to null, from __CAP -> __CAP * 2 */\
             /* Memset here instead */\
@@ -1738,8 +1738,8 @@ void __gs_hash_table_init_impl(void** ht, size_t sz)
         /* Find valid idx and place data */\
         while (\
             c < __CAP\
-            && __HSH != gs_hash_bytes((void*)&__HT->tmp_key, sizeof((__HT)->tmp_key), GS_HASH_TABLE_HASH_SEED)\
-            && __HT->data[__HSH_IDX].state == GS_HASH_TABLE_ENTRY_ACTIVE)\
+            && __HSH != gs_hash_bytes((void*)&(__HT)->tmp_key, sizeof((__HT)->tmp_key), GS_HASH_TABLE_HASH_SEED)\
+            && (__HT)->data[__HSH_IDX].state == GS_HASH_TABLE_ENTRY_ACTIVE)\
         {\
             __HSH_IDX = ((__HSH_IDX + 1) % __CAP);\
             (__HT)->tmp_key = (__HT)->data[__HSH_IDX].key;\
@@ -3820,6 +3820,7 @@ GS_API_DECL gs_result       gs_platform_shutdown(gs_platform_i* platform);  // S
 // Platform Util
 GS_API_DECL void   gs_platform_sleep(float ms); // Sleeps platform for time in ms
 GS_API_DECL double gs_platform_elapsed_time();  // Returns time in ms since initialization of platform
+GS_API_DECL float  gs_platform_delta_time();
 
 // Platform Video
 GS_API_DECL void gs_platform_enable_vsync(int32_t enabled);

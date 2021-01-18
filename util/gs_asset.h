@@ -120,7 +120,7 @@ GS_API_DECL void gs_asset_importer_set_desc(gs_asset_importer_t* imp, gs_asset_i
 	(\
 		gs_assert(gs_hash_table_key_exists((AM)->importers, gs_hash_str64(gs_to_str(T)))),\
 		(AM)->tmpi = gs_hash_table_getp((AM)->importers, gs_hash_str64(gs_to_str(T))),\
-		(AM)->tmpi->tmp_ptr = DATA,\
+		(AM)->tmpi->tmp_ptr = (DATA),\
 		(AM)->tmpi->tmpid = gs_slot_array_insert_func(&(AM)->tmpi->slot_array_indices_ptr, &(AM)->tmpi->slot_array_data_ptr, (AM)->tmpi->tmp_ptr, (AM)->tmpi->data_size, NULL),\
 		gs_asset_handle_create(T, (AM)->tmpi->tmpid, (AM)->tmpi->importer_id)\
 	)
