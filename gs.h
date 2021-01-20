@@ -3543,7 +3543,7 @@ gs_vec4 gs_aabb_window_coords(gs_aabb_t* aabb, gs_camera_t* camera, gs_vec2 wind
     gs_vec4 br = gs_v4(aabb->max.x, aabb->max.y, 0.f, 1.f);
 
     gs_mat4 view_mtx = gs_camera_get_view(camera);
-    gs_mat4 proj_mtx = gs_camera_get_projection(camera, window_size.x, window_size.y);
+    gs_mat4 proj_mtx = gs_camera_get_projection(camera, (int32_t)window_size.x, (int32_t)window_size.y);
     gs_mat4 vp = gs_mat4_mul(proj_mtx, view_mtx);
 
     // Transform verts

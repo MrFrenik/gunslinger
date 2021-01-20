@@ -548,7 +548,7 @@ void gsi_blend_enabled(gs_immediate_draw_t* gsi, bool enabled)
 void gsi_depth_enabled(gs_immediate_draw_t* gsi, bool enabled)
 {
 	// Push a new pipeline?
-	if (gsi->cache.pipeline.depth_enabled == enabled) {
+	if (gsi->cache.pipeline.depth_enabled == (uint16_t)enabled) {
 		return;
 	}
 
@@ -565,7 +565,7 @@ void gsi_depth_enabled(gs_immediate_draw_t* gsi, bool enabled)
 void gsi_stencil_enabled(gs_immediate_draw_t* gsi, bool enabled)
 {
 	// Push a new pipeline?
-	if (gsi->cache.pipeline.stencil_enabled == enabled) {
+	if (gsi->cache.pipeline.stencil_enabled == (uint16_t)enabled) {
 		return;
 	}
 
@@ -573,7 +573,7 @@ void gsi_stencil_enabled(gs_immediate_draw_t* gsi, bool enabled)
 	gsi_flush(gsi);
 
 	// Set primitive type
-	gsi->cache.pipeline.stencil_enabled = enabled;	
+	gsi->cache.pipeline.stencil_enabled = (uint16_t)enabled;	
 
 	// Bind pipeline
 	gs_immediate_draw_set_pipeline(gsi);
@@ -582,7 +582,7 @@ void gsi_stencil_enabled(gs_immediate_draw_t* gsi, bool enabled)
 void gsi_face_cull_enabled(gs_immediate_draw_t* gsi, bool enabled)
 {
 	// Push a new pipeline?
-	if (gsi->cache.pipeline.face_cull_enabled == enabled) {
+	if (gsi->cache.pipeline.face_cull_enabled == (uint16_t)enabled) {
 		return;
 	}
 
@@ -590,7 +590,7 @@ void gsi_face_cull_enabled(gs_immediate_draw_t* gsi, bool enabled)
 	gsi_flush(gsi);
 
 	// Set primitive type
-	gsi->cache.pipeline.face_cull_enabled = enabled;	
+	gsi->cache.pipeline.face_cull_enabled = (uint16_t)enabled;	
 
 	// Bind pipeline
 	gs_immediate_draw_set_pipeline(gsi);
@@ -1097,8 +1097,8 @@ void gsi_sphere(gs_immediate_draw_t* gsi, float cx, float cy, float cz, float ra
 	// Modified from: http://www.songho.ca/opengl/gl_sphere.html
 	const uint32_t stacks = 16;
 	const uint32_t sectors = 32; 
-	float sector_step = 2.f * GS_PI / (float)sectors;
-	float stack_step = GS_PI / (float)stacks;
+	float sector_step = 2.f * (float)GS_PI / (float)sectors;
+	float stack_step = (float)GS_PI / (float)stacks;
 	struct { 
 		gs_vec3 p;
 		gs_vec2 uv;
