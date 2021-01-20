@@ -2195,6 +2195,7 @@ void _glfwPlatformGetRequiredInstanceExtensions(char** extensions)
     if (!_glfw.vk.KHR_surface || !_glfw.vk.KHR_win32_surface)
         return;
 
+
     extensions[0] = (char*)"VK_KHR_surface";
     extensions[1] = (char*)"VK_KHR_win32_surface";
 }
