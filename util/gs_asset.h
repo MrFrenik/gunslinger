@@ -133,6 +133,7 @@ typedef struct gs_asset_manager_t
 } gs_asset_manager_t;
 
 GS_API_DECL gs_asset_manager_t gs_asset_manager_new();
+GS_API_DECL void gs_asset_manager_free(gs_asset_manager_t* am);
 GS_API_DECL void* __gs_assets_getp_impl(gs_asset_manager_t* am, uint64_t type_id, gs_asset_t hndl);
 
 #define gs_assets_getp(AM, T, HNDL)\
@@ -172,6 +173,11 @@ gs_asset_manager_t gs_asset_manager_new()
 	gs_assets_register_importer(&assets, gs_asset_audio_t, &audio_desc);
 
 	return assets;
+}
+
+void gs_asset_manager_free(gs_asset_manager_t* am)
+{
+	// Free all data	
 }
 
 void* __gs_assets_getp_impl(gs_asset_manager_t* am, uint64_t type_id, gs_asset_t hndl)
