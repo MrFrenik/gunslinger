@@ -903,9 +903,13 @@ void gsi_rectx(gs_immediate_draw_t* gsi, float l, float b, float r, float t, flo
 		case GS_GRAPHICS_PRIMITIVE_LINES:
 		{
 			// First triangle
-			gsi_triangle(gsi, l, b, r, b, l, t, _r, _g, _b, _a, type);
+			gsi_line(gsi, l, b, r, b, _r, _g, _b, _a);
+			gsi_line(gsi, r, b, r, t, _r, _g, _b, _a);
+			gsi_line(gsi, r, t, l, t, _r, _g, _b, _a);
+			gsi_line(gsi, l, t, l, b, _r, _g, _b, _a);
+			// gsi_triangle(gsi, l, b, r, b, l, t, _r, _g, _b, _a, type);
 			// Second triangle
-			gsi_triangle(gsi, r, b, r, t, l, t, _r, _g, _b, _a, type);
+			// gsi_triangle(gsi, r, b, r, t, l, t, _r, _g, _b, _a, type);
 		} break;
 
 		case GS_GRAPHICS_PRIMITIVE_TRIANGLES:

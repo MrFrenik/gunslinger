@@ -3482,28 +3482,93 @@ GS_API_DECL void gs_camera_offset_orientation(gs_camera_t* cam, float yaw, float
 // Utils
 ================================================================================*/
 
+// AABBs
 /*
     min is top left of rect,
     max is bottom right
 */
-typedef struct gs_rect_t
+typedef struct gs_aabb_t
 {
     gs_vec2 min;
     gs_vec2 max;
-} gs_rect_t;
+} gs_aabb_t;
 
-gs_inline
-b32 gs_rect_vs_rect(gs_rect_t a, gs_rect_t b)
+// Collision Resolution: Minimum Translation Vector 
+gs_force_inline
+gs_vec2 gs_aabb_aabb_mtv(gs_aabb_t* a0, gs_aabb_t* a1)
 {
-    if ( a.max.x > b.min.x && 
-         a.max.y > b.min.y && 
-         a.min.x < b.max.x && 
-         a.min.y < b.max.y )
+    gs_vec2 diff = gs_v2(a0->min.x - a1->min.x, a0->min.y - a1->min.y);    
+
+    f32 l, r, b, t;
+    gs_vec2 mtv = gs_v2(0.f, 0.f);
+
+    l = a1->min.x - a0->max.x;
+    r = a1->max.x - a0->min.x;
+    b = a1->min.y - a0->max.y;
+    t = a1->max.y - a0->min.y;
+
+    mtv.x = fabsf(l) > r ? r : l;
+    mtv.y = fabsf(b) > t ? t : b;
+
+    if ( fabsf(mtv.x) <= fabsf(mtv.y)) {
+        mtv.y = 0.f;
+    } else {
+        mtv.x = 0.f;
+    }
+    
+    return mtv;
+}
+
+// 2D AABB collision detection (rect. vs. rect.)
+gs_force_inline
+b32 gs_aabb_vs_aabb(gs_aabb_t* a, gs_aabb_t* b)
+{
+    if (a->max.x > b->min.x && 
+         a->max.y > b->min.y && 
+         a->min.x < b->max.x && 
+         a->min.y < b->max.y)
     {
         return true;
     }
 
     return false;
+}
+
+gs_force_inline
+gs_vec4 gs_aabb_window_coords(gs_aabb_t* aabb, gs_camera_t* camera, gs_vec2 window_size)
+{
+    // AABB of the player
+    gs_vec4 bounds = gs_default_val();
+    gs_vec4 tl = gs_v4(aabb->min.x, aabb->min.y, 0.f, 1.f);
+    gs_vec4 br = gs_v4(aabb->max.x, aabb->max.y, 0.f, 1.f);
+
+    gs_mat4 view_mtx = gs_camera_get_view(camera);
+    gs_mat4 proj_mtx = gs_camera_get_projection(camera, window_size.x, window_size.y);
+    gs_mat4 vp = gs_mat4_mul(proj_mtx, view_mtx);
+
+    // Transform verts
+    tl = gs_mat4_mul_vec4(vp, tl);            
+    br = gs_mat4_mul_vec4(vp, br);
+
+    // Perspective divide   
+    tl = gs_vec4_scale(tl, 1.f / tl.w);
+    br = gs_vec4_scale(br, 1.f / br.w);
+
+    // NDC [0.f, 1.f] and NDC
+    tl.x = (tl.x * 0.5f + 0.5f);
+    tl.y = (tl.y * 0.5f + 0.5f);
+    br.x = (br.x * 0.5f + 0.5f);
+    br.y = (br.y * 0.5f + 0.5f);
+
+    // Window Space
+    tl.x = tl.x * window_size.x;
+    tl.y = gs_map_range(1.f, 0.f, 0.f, 1.f, tl.y) * window_size.y;
+    br.x = br.x * window_size.x;
+    br.y = gs_map_range(1.f, 0.f, 0.f, 1.f, br.y) * window_size.y;
+
+    bounds = gs_v4(tl.x, tl.y, br.x, br.y);
+
+    return bounds;
 }
 
 /*========================
