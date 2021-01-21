@@ -68,7 +68,6 @@ typedef struct gs_meta_class_t
 typedef struct gs_meta_registry_t
 {
     gs_hash_table(u64, gs_meta_class_t) meta_classes;
-    uint32_t last_id;
 } gs_meta_registry_t;
 
 typedef struct gs_meta_class_decl_t
@@ -98,6 +97,18 @@ GS_API_DECL gs_meta_registry_t gs_meta_registry_new();
 
 #define gs_meta_getvp(OBJ, T, PROP)\
     (((T*)((uint8_t*)(OBJ) + (PROP)->offset)))
+
+gs_meta_property_t __gs_meta_property_impl(const char* name, uint32_t offset, gs_meta_property_type type)
+{
+    gs_meta_property_t mp = gs_default_val();
+    mp.name = name;
+    mp.offset = offset;
+    mp.type = type;
+    return mp;
+}
+
+#define gs_meta_property_decl(NAME, T, TYPE)\
+    __gs_meta_property_impl(gs_to_str(NAME), gs_offset(T, NAME), TYPE)
 
 /*
     #define GS_META_IMPL
