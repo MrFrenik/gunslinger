@@ -77,6 +77,7 @@ typedef struct gs_meta_class_decl_t
 } gs_meta_class_decl_t;
 
 GS_API_DECL gs_meta_registry_t gs_meta_registry_new();
+GS_API_DECL const char* gs_meta_typestr(gs_meta_property_type type);
 
 #define gs_meta_register_class(META, T, DECL)\
     do {\
@@ -201,6 +202,24 @@ gs_meta_registry_t gs_meta_registry_new()
 {
     gs_meta_registry_t meta = gs_default_val();
     return meta;
+}
+
+const char* gs_meta_typestr(gs_meta_property_type type)
+{
+    switch (type)
+    {
+        case GS_META_PROPERTY_TYPE_U8:  return gs_to_str(GS_META_PROPERTY_TYPE_U8); break;
+        case GS_META_PROPERTY_TYPE_S8:  return gs_to_str(GS_META_PROPERTY_TYPE_S8); break;
+        case GS_META_PROPERTY_TYPE_U16: return gs_to_str(GS_META_PROPERTY_TYPE_U16); break;
+        case GS_META_PROPERTY_TYPE_S16: return gs_to_str(GS_META_PROPERTY_TYPE_S16); break;
+        case GS_META_PROPERTY_TYPE_U32: return gs_to_str(GS_META_PROPERTY_TYPE_U32); break;
+        case GS_META_PROPERTY_TYPE_S32: return gs_to_str(GS_META_PROPERTY_TYPE_S32); break;
+        case GS_META_PROPERTY_TYPE_U64: return gs_to_str(GS_META_PROPERTY_TYPE_U64); break;
+        case GS_META_PROPERTY_TYPE_S64: return gs_to_str(GS_META_PROPERTY_TYPE_S64); break;
+        case GS_META_PROPERTY_TYPE_F32: return gs_to_str(GS_META_PROPERTY_TYPE_F32); break;
+        case GS_META_PROPERTY_TYPE_F64: return gs_to_str(GS_META_PROPERTY_TYPE_F64); break;
+    }
+    return "invalid";
 }
 
 #undef GS_META_IMPL
