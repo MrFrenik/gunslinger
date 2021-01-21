@@ -548,7 +548,7 @@ void gsi_blend_enabled(gs_immediate_draw_t* gsi, bool enabled)
 void gsi_depth_enabled(gs_immediate_draw_t* gsi, bool enabled)
 {
 	// Push a new pipeline?
-	if (gsi->cache.pipeline.depth_enabled == enabled) {
+	if (gsi->cache.pipeline.depth_enabled == (uint16_t)enabled) {
 		return;
 	}
 
@@ -565,7 +565,7 @@ void gsi_depth_enabled(gs_immediate_draw_t* gsi, bool enabled)
 void gsi_stencil_enabled(gs_immediate_draw_t* gsi, bool enabled)
 {
 	// Push a new pipeline?
-	if (gsi->cache.pipeline.stencil_enabled == enabled) {
+	if (gsi->cache.pipeline.stencil_enabled == (uint16_t)enabled) {
 		return;
 	}
 
@@ -573,7 +573,7 @@ void gsi_stencil_enabled(gs_immediate_draw_t* gsi, bool enabled)
 	gsi_flush(gsi);
 
 	// Set primitive type
-	gsi->cache.pipeline.stencil_enabled = enabled;	
+	gsi->cache.pipeline.stencil_enabled = (uint16_t)enabled;	
 
 	// Bind pipeline
 	gs_immediate_draw_set_pipeline(gsi);
@@ -582,7 +582,7 @@ void gsi_stencil_enabled(gs_immediate_draw_t* gsi, bool enabled)
 void gsi_face_cull_enabled(gs_immediate_draw_t* gsi, bool enabled)
 {
 	// Push a new pipeline?
-	if (gsi->cache.pipeline.face_cull_enabled == enabled) {
+	if (gsi->cache.pipeline.face_cull_enabled == (uint16_t)enabled) {
 		return;
 	}
 
@@ -590,7 +590,7 @@ void gsi_face_cull_enabled(gs_immediate_draw_t* gsi, bool enabled)
 	gsi_flush(gsi);
 
 	// Set primitive type
-	gsi->cache.pipeline.face_cull_enabled = enabled;	
+	gsi->cache.pipeline.face_cull_enabled = (uint16_t)enabled;	
 
 	// Bind pipeline
 	gs_immediate_draw_set_pipeline(gsi);
@@ -903,9 +903,13 @@ void gsi_rectx(gs_immediate_draw_t* gsi, float l, float b, float r, float t, flo
 		case GS_GRAPHICS_PRIMITIVE_LINES:
 		{
 			// First triangle
-			gsi_triangle(gsi, l, b, r, b, l, t, _r, _g, _b, _a, type);
+			gsi_line(gsi, l, b, r, b, _r, _g, _b, _a);
+			gsi_line(gsi, r, b, r, t, _r, _g, _b, _a);
+			gsi_line(gsi, r, t, l, t, _r, _g, _b, _a);
+			gsi_line(gsi, l, t, l, b, _r, _g, _b, _a);
+			// gsi_triangle(gsi, l, b, r, b, l, t, _r, _g, _b, _a, type);
 			// Second triangle
-			gsi_triangle(gsi, r, b, r, t, l, t, _r, _g, _b, _a, type);
+			// gsi_triangle(gsi, r, b, r, t, l, t, _r, _g, _b, _a, type);
 		} break;
 
 		case GS_GRAPHICS_PRIMITIVE_TRIANGLES:
@@ -1093,8 +1097,8 @@ void gsi_sphere(gs_immediate_draw_t* gsi, float cx, float cy, float cz, float ra
 	// Modified from: http://www.songho.ca/opengl/gl_sphere.html
 	const uint32_t stacks = 16;
 	const uint32_t sectors = 32; 
-	float sector_step = 2.f * GS_PI / (float)sectors;
-	float stack_step = GS_PI / (float)stacks;
+	float sector_step = 2.f * (float)GS_PI / (float)sectors;
+	float stack_step = (float)GS_PI / (float)stacks;
 	struct { 
 		gs_vec3 p;
 		gs_vec2 uv;

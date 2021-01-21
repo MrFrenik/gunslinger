@@ -120,7 +120,7 @@ GS_API_DECL void gs_asset_importer_set_desc(gs_asset_importer_t* imp, gs_asset_i
 	(\
 		gs_assert(gs_hash_table_key_exists((AM)->importers, gs_hash_str64(gs_to_str(T)))),\
 		(AM)->tmpi = gs_hash_table_getp((AM)->importers, gs_hash_str64(gs_to_str(T))),\
-		(AM)->tmpi->tmp_ptr = DATA,\
+		(AM)->tmpi->tmp_ptr = (DATA),\
 		(AM)->tmpi->tmpid = gs_slot_array_insert_func(&(AM)->tmpi->slot_array_indices_ptr, &(AM)->tmpi->slot_array_data_ptr, (AM)->tmpi->tmp_ptr, (AM)->tmpi->data_size, NULL),\
 		gs_asset_handle_create(T, (AM)->tmpi->tmpid, (AM)->tmpi->importer_id)\
 	)
@@ -133,6 +133,7 @@ typedef struct gs_asset_manager_t
 } gs_asset_manager_t;
 
 GS_API_DECL gs_asset_manager_t gs_asset_manager_new();
+GS_API_DECL void gs_asset_manager_free(gs_asset_manager_t* am);
 GS_API_DECL void* __gs_assets_getp_impl(gs_asset_manager_t* am, uint64_t type_id, gs_asset_t hndl);
 
 #define gs_assets_getp(AM, T, HNDL)\
@@ -172,6 +173,11 @@ gs_asset_manager_t gs_asset_manager_new()
 	gs_assets_register_importer(&assets, gs_asset_audio_t, &audio_desc);
 
 	return assets;
+}
+
+void gs_asset_manager_free(gs_asset_manager_t* am)
+{
+	// Free all data	
 }
 
 void* __gs_assets_getp_impl(gs_asset_manager_t* am, uint64_t type_id, gs_asset_t hndl)

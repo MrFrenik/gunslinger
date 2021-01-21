@@ -69,6 +69,13 @@ uint32_t gs_platform_main_window()
     return 0;
 }
 
+/*== Platform Time ==*/
+
+float gs_platform_delta_time()
+{
+    return (float)gs_engine_subsystem(platform)->time.delta;
+}
+
 /*== Platform UUID ==*/
 
 struct gs_uuid_t gs_platform_generate_uuid()
