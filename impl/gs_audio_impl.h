@@ -216,6 +216,7 @@ void gs_audio_play_source(gs_handle(gs_audio_source_t) src, float volume)
     // Construct instance data from source and play
     gs_audio_i* audio = gs_engine_subsystem(audio);
     gs_audio_instance_decl_t decl = gs_default_val();
+    decl.src = src;
     decl.volume = gs_clamp(volume, audio->min_audio_volume, audio->max_audio_volume);
     decl.persistent = false;
     gs_handle(gs_audio_instance_t) inst = gs_audio_instance_create(&decl);
