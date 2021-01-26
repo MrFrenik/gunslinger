@@ -710,11 +710,7 @@ void __glfw_mouse_cursor_enter_callback(GLFWwindow* window, s32 entered)
 
 void __glfw_frame_buffer_size_callback(GLFWwindow* window, s32 width, s32 height)
 {
-    // gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
-    // if (gfx)
-    // {
-    //  gfx->set_viewport(width, height);
-    //} 
+    // Nothing for now
 }
 
 /*== Platform Input == */
@@ -761,7 +757,7 @@ void* gs_platform_create_window_internal(const char* title, uint32_t width, uint
     u32 window_hints = gs_engine_instance()->ctx.app.window_flags;
 
     // Set whether or not the screen is resizable
-    glfwWindowHint(GLFW_RESIZABLE, (window_hints & GS_WINDOW_FLAGS_RESIZABLE) == GS_WINDOW_FLAGS_RESIZABLE);
+    glfwWindowHint(GLFW_RESIZABLE, (window_hints & GS_WINDOW_FLAGS_NO_RESIZE) != GS_WINDOW_FLAGS_NO_RESIZE);
 
     GLFWwindow* window = glfwCreateWindow(width, height, title, NULL, NULL);
     if (window == NULL)
@@ -770,6 +766,8 @@ void* gs_platform_create_window_internal(const char* title, uint32_t width, uint
         glfwTerminate();
         return NULL;
    }
+
+    // Callbacks for window
     glfwMakeContextCurrent(window);
     glfwSetKeyCallback(window, &__glfw_key_callback);
     glfwSetMouseButtonCallback(window, &__glfw_mouse_button_callback);

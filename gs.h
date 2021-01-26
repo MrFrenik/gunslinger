@@ -3635,7 +3635,7 @@ typedef struct gs_uuid_t
 // Platform Window
 ============================================================*/
 
-#define GS_WINDOW_FLAGS_RESIZABLE   0x01
+#define GS_WINDOW_FLAGS_NO_RESIZE   0x01
 #define GS_WINDOW_FLAGS_FULLSCREEN  0x02
 
 // Should have an internal resource cache of window handles (controlled by the platform api)
