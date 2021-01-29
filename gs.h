@@ -3878,6 +3878,19 @@ typedef struct gs_platform_mouse_event_t
     gs_platform_mousebutton_action_type action;
 } gs_platform_mouse_event_t;
 
+typedef enum gs_platform_window_action_type
+{
+    GS_PLATFORM_WINDOW_MOUSE_ENTER,
+    GS_PLATFORM_WINDOW_MOUSE_LEAVE,
+    GS_PLATFORM_WINDOW_RESIZE
+} gs_platform_window_action_type;
+
+typedef struct gs_platform_window_event_t
+{
+    uint32_t hndl;
+    gs_platform_window_action_type action;
+}
+
 // Platform events
 typedef struct gs_platform_event_t
 {
@@ -3885,7 +3898,7 @@ typedef struct gs_platform_event_t
     union {
         gs_platform_key_event_t key;
         gs_platform_mouse_event_t mouse;
-        // gs_platform_window_event_t window;
+        gs_platform_window_event_t window;
     };
     uint32_t idx;
 } gs_platform_event_t;
@@ -3969,7 +3982,7 @@ GS_API_DECL void      gs_platform_mouse_position(int32_t* x, int32_t* y);
 GS_API_DECL void      gs_platform_mouse_wheel(float* x, float* y);
 GS_API_DECL bool      gs_platform_mouse_moved();
 
-// Events
+// Platform Events
 GS_API_DECL bool      gs_platform_poll_event(gs_platform_event_t* evt);
 
 // Platform Window
