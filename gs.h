@@ -2679,7 +2679,7 @@ gs_mat4_ctor() {
 }
 
 gs_inline
-gs_mat4 gs_mat4_elem(const float elements[16])
+gs_mat4 gs_mat4_elem(const float* elements)
 {
     gs_mat4 mat = gs_mat4_ctor();
     memcpy(mat.elements, elements, sizeof(f32) * 16);
@@ -3635,7 +3635,7 @@ typedef struct gs_uuid_t
 // Platform Window
 ============================================================*/
 
-#define GS_WINDOW_FLAGS_RESIZABLE   0x01
+#define GS_WINDOW_FLAGS_NO_RESIZE   0x01
 #define GS_WINDOW_FLAGS_FULLSCREEN  0x02
 
 // Should have an internal resource cache of window handles (controlled by the platform api)
@@ -3843,6 +3843,53 @@ typedef struct gs_platform_settings_t
     gs_platform_video_settings_t video;
 } gs_platform_settings_t;
 
+typedef enum gs_platform_event_type 
+{
+    GS_PLATFORM_EVENT_MOUSE,
+    GS_PLATFORM_EVENT_KEYBOARD,
+    GS_PLATFORM_EVENT_WINDOW
+} gs_platform_event_type;
+
+typedef enum gs_platform_key_action_type
+{
+    GS_PLATFORM_KEY_PRESSED,
+    GS_PLATFORM_KEY_DOWN,
+    GS_PLATFORM_KEY_RELEASED
+} gs_platform_key_action_type;
+
+typedef struct gs_platform_key_event_t
+{
+    int32_t codepoint;
+    gs_platform_keycode key;
+    gs_platform_key_action_type action;
+} gs_platform_key_event_t;
+
+typedef enum gs_platform_mousebutton_action_type
+{
+    GS_PLATFORM_MBUTTON_PRESSED,
+    GS_PLATFORM_MBUTTON_DOWN,
+    GS_PLATFORM_MBUTTON_RELEASED
+} gs_platform_mousebutton_action_type;
+
+typedef struct gs_platform_mouse_event_t 
+{
+    int32_t codepoint;
+    gs_platform_mouse_button_code button;
+    gs_platform_mousebutton_action_type action;
+} gs_platform_mouse_event_t;
+
+// Platform events
+typedef struct gs_platform_event_t
+{
+    gs_platform_event_type type;
+    union {
+        gs_platform_key_event_t key;
+        gs_platform_mouse_event_t mouse;
+        // gs_platform_window_event_t window;
+    };
+    uint32_t idx;
+} gs_platform_event_t;
+
 // Necessary function pointer typedefs
 typedef void (* gs_dropped_files_callback_t)(void*, int32_t count, const char** file_paths);
 typedef void (* gs_window_close_callback_t)(void*);
@@ -3865,6 +3912,9 @@ typedef struct gs_platform_i
     // Window data and handles
     gs_slot_array(void*) windows;
 
+    // Events that user can poll
+    gs_dyn_array(gs_platform_event_t) events;
+
     // Cursors
     void* cursors[GS_PLATFORM_CURSOR_COUNT];
 
@@ -3880,6 +3930,7 @@ typedef struct gs_platform_i
 GS_API_DECL gs_platform_i*  gs_platform_create();
 GS_API_DECL void            gs_platform_destroy(gs_platform_i* platform);
 GS_API_DECL gs_result       gs_platform_init(gs_platform_i* platform);      // Initialize global platform layer
+GS_API_DECL gs_result       gs_platform_update(gs_platform_i* platform);    // Update platform layer
 GS_API_DECL gs_result       gs_platform_shutdown(gs_platform_i* platform);  // Shutdown gloabl platform layer
 
 // Platform Util
@@ -3892,7 +3943,7 @@ GS_API_DECL void gs_platform_enable_vsync(int32_t enabled);
 
 // Platform UUID
 GS_API_DECL gs_uuid_t gs_platform_generate_uuid();
-GS_API_DECL void      gs_platform_uuid_to_string(char* temp_buffer, const gs_uuid_t* uuid); // Expects a temp buffer with at leat 32 bytes
+GS_API_DECL void      gs_platform_uuid_to_string(char* temp_buffer, const gs_uuid_t* uuid); // Expects a temp buffer with at least 32 bytes
 GS_API_DECL uint32_t  gs_platform_hash_uuid(const gs_uuid_t* uuid);
 
 // Platform Input
@@ -3914,9 +3965,12 @@ GS_API_DECL void      gs_platform_set_mouse_position(uint32_t handle, float x, f
 GS_API_DECL gs_vec2   gs_platform_mouse_deltav();
 GS_API_DECL void      gs_platform_mouse_delta(float* x, float* y);
 GS_API_DECL gs_vec2   gs_platform_mouse_positionv();
-GS_API_DECL void      gs_platform_mouse_position(float* x, float* y);
+GS_API_DECL void      gs_platform_mouse_position(int32_t* x, int32_t* y);
 GS_API_DECL void      gs_platform_mouse_wheel(float* x, float* y);
 GS_API_DECL bool      gs_platform_mouse_moved();
+
+// Events
+GS_API_DECL bool      gs_platform_poll_event(gs_platform_event_t* evt);
 
 // Platform Window
 GS_API_DECL uint32_t gs_platform_create_window(const char* title, uint32_t width, uint32_t height);
@@ -4938,16 +4992,26 @@ void gs_camera_offset_orientation(gs_camera_t* cam, f32 yaw, f32 pitch)
 // GS_UTIL
 =============================*/
 
-#define STB_DEFINE
+#ifndef GS_NO_STB_RECT_PACK
+    #define STB_RECT_PACK_IMPLEMENTATION
+#endif
+
+#ifndef GS_NO_STB_TRUETYPE
+    #define STB_TRUETYPE_IMPLEMENTATION
+#endif
+
+#ifndef GS_NO_STB_DEFINE
+    #define STB_DEFINE
+#endif
+
+#ifndef GS_NO_STB_IMAGE
+    #define STB_IMAGE_IMPLEMENTATION
+    #define STB_IMAGE_WRITE_IMPLEMENTATION
+#endif
+
 #include "external/stb/stb.h"
-
-#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "external/stb/stb_image_write.h"
-
-#define STB_TRUETYPE_IMPLEMENTATION
 #include "external/stb/stb_truetype.h"
-
-#define STB_IMAGE_IMPLEMENTATION
 #include "external/stb/stb_image.h"
 
 bool32_t gs_util_load_texture_data_from_file(const char* file_path, int32_t* width, int32_t* height, uint32_t* num_comps, void** data, bool32_t flip_vertically_on_load)
@@ -5200,11 +5264,8 @@ gs_result gs_engine_run()
         platform->time.update   = platform->time.current - platform->time.previous;
         platform->time.previous = platform->time.current;
 
-        // Update platform input from previous frame        
-        gs_platform_update_input(&platform->input);
-
-        // Process input for this frame
-        if (gs_platform_process_input(&platform->input) != GS_RESULT_IN_PROGRESS)
+        // Update platform and process input
+        if (gs_platform_update(platform) != GS_RESULT_IN_PROGRESS)
         {
             return (gs_engine_instance()->shutdown());
         }

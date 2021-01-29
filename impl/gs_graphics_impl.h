@@ -1453,6 +1453,14 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                         glBufferData(GL_ARRAY_BUFFER, sz, (u8*)(cb->commands.data + cb->commands.position), gsgl_buffer_usage_to_gl_enum(usage));
                         glBindBuffer(GL_ARRAY_BUFFER, 0);
                     } break;
+
+                    case GS_GRAPHICS_BUFFER_INDEX:
+                    {
+                        gsgl_buffer_t buffer = gs_slot_array_get(ogl->index_buffers, id);
+                        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer);
+                        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sz, (u8*)(cb->commands.data + cb->commands.position), gsgl_buffer_usage_to_gl_enum(usage));
+                        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+                    } break;
                 }
 
                 // Advance past data

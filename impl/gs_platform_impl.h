@@ -176,6 +176,34 @@ void gs_platform_update_input(gs_platform_input_t* input)
     input->mouse.moved_this_frame = false;
 }
 
+gs_result gs_platform_update(gs_platform_i* platform)
+{
+    // Clear all previous events
+    gs_dyn_array_clear(platform->events);
+
+    // Update platform input from previous frame        
+    gs_platform_update_input(&platform->input);
+
+    // Process input for this frame
+    return gs_platform_process_input(&platform->input);
+}
+
+bool gs_platform_poll_event(gs_platform_event_t* evt)
+{
+    gs_platform_i* platform = gs_engine_subsystem(platform);
+
+    if (!evt) return false;
+    if (gs_dyn_array_empty(platform->events)) return false;
+    if (evt->idx >= gs_dyn_array_size(platform->events)) return false;
+
+    uint32_t tmp_idx = evt->idx;
+    *evt = platform->events[evt->idx];
+    evt->idx = tmp_idx;
+    evt->idx++;
+
+    return true;
+}
+
 bool gs_platform_was_key_down(gs_platform_keycode code)
 {
     gs_platform_input_t* input = __gs_input();
@@ -294,11 +322,11 @@ gs_vec2 gs_platform_mouse_positionv()
     );
 }
 
-void gs_platform_mouse_position(f32* x, f32* y)
+void gs_platform_mouse_position(int32_t* x, int32_t* y)
 {
     gs_platform_input_t* input = __gs_input();
-    *x = input->mouse.position.x;
-    *y = input->mouse.position.y;
+    *x = (int32_t)input->mouse.position.x;
+    *y = (int32_t)input->mouse.position.y;
 }
 
 void gs_platform_mouse_wheel(f32* x, f32* y)
@@ -640,53 +668,75 @@ gs_platform_mouse_button_code __glfw_button_to_gs_mouse_button(s32 code)
     return GS_MOUSE_BUTTON_CODE_COUNT;
 }
 
-void __glfw_key_callback(GLFWwindow* window, s32 key, s32 scancode, s32 action, s32 mods) 
+void __glfw_key_callback(GLFWwindow* window, s32 code, s32 scancode, s32 action, s32 mods) 
 {
     // Grab platform instance from engine
     gs_platform_i* platform = gs_engine_subsystem(platform);
 
     // Get keycode from key
-    gs_platform_keycode code = glfw_key_to_gs_keycode(key);
+    gs_platform_keycode key = glfw_key_to_gs_keycode(code);
+
+    // Push back event into platform events
+    gs_platform_event_t evt = gs_default_val();
+    evt.type = GS_PLATFORM_EVENT_KEYBOARD;
+    evt.key.codepoint = code;
+    evt.key.key = key;
 
     switch (action)
     {
         // Released
         case 0: {
-            gs_platform_release_key(code);
+            gs_platform_release_key(key);
+            evt.key.action = GS_PLATFORM_KEY_RELEASED;
         } break;
 
         // Pressed
         case 1: {
-            gs_platform_press_key(code);
+            gs_platform_press_key(key);
+            evt.key.action = GS_PLATFORM_KEY_PRESSED;
         } break;
 
         default: {
         } break;
     }
+
+    // Add action
+    gs_dyn_array_push(platform->events, evt);
 }
 
-void __glfw_mouse_button_callback(GLFWwindow* window, s32 button, s32 action, s32 mods)
+void __glfw_mouse_button_callback(GLFWwindow* window, s32 code, s32 action, s32 mods)
 {
     // Grab platform instance from engine
     gs_platform_i* platform = gs_engine_subsystem(platform);
 
     // Get mouse code from key
-    gs_platform_mouse_button_code code = __glfw_button_to_gs_mouse_button(button);
+    gs_platform_mouse_button_code button = __glfw_button_to_gs_mouse_button(code);
+
+    // Push back event into platform events
+    gs_platform_event_t evt = gs_default_val();
+    evt.type = GS_PLATFORM_EVENT_MOUSE;
+    evt.mouse.codepoint = code;
+    evt.mouse.button = button;
 
     switch (action)
     {
         // Released
         case 0:
         {
-            gs_platform_release_mouse_button(code);
+            gs_platform_release_mouse_button(button);
+            evt.mouse.action = GS_PLATFORM_MBUTTON_RELEASED;
         } break;
 
         // Pressed
         case 1:
         {
-            gs_platform_press_mouse_button(code);
+            gs_platform_press_mouse_button(button);
+            evt.mouse.action = GS_PLATFORM_MBUTTON_PRESSED;
         } break;
     }
+
+    // Add action
+    gs_dyn_array_push(platform->events, evt);
 }
 
 void __glfw_mouse_cursor_position_callback(GLFWwindow* window, f64 x, f64 y)
@@ -761,7 +811,7 @@ void* gs_platform_create_window_internal(const char* title, uint32_t width, uint
     u32 window_hints = gs_engine_instance()->ctx.app.window_flags;
 
     // Set whether or not the screen is resizable
-    glfwWindowHint(GLFW_RESIZABLE, (window_hints & GS_WINDOW_FLAGS_RESIZABLE) == GS_WINDOW_FLAGS_RESIZABLE);
+    glfwWindowHint(GLFW_RESIZABLE, (window_hints & GS_WINDOW_FLAGS_NO_RESIZE) != GS_WINDOW_FLAGS_NO_RESIZE);
 
     GLFWwindow* window = glfwCreateWindow(width, height, title, NULL, NULL);
     if (window == NULL)

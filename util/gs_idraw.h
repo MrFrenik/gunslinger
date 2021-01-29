@@ -34,6 +34,11 @@
     	#define GS_IMMEDIATE_DRAW_IMPL
     	#include "gs_idraw.h"
 
+    TODO (john): 
+		* Convert flush command to push back commands
+		* On final flush, request update for vertex/index buffer data
+		* Then iterate commands to submit pipelines + state to gfx backend
+
 	================================================================================================================
 */
 
