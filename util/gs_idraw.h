@@ -1273,7 +1273,9 @@ void gsi_render_pass_submit(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, g
 	action.color[2] = (float)c.b / 255.f; 
 	action.color[3] = (float)c.a / 255.f;
 	gs_renderpass pass = gs_default_val();
+	gs_vec2 ws = gs_platform_window_sizev(gs_platform_main_window());
 	gs_graphics_begin_render_pass(cb, pass, &action, sizeof(action));
+	gs_graphics_set_viewport(cb, 0, 0, (int32_t)ws.x, (int32_t)ws.y);
 	gsi_draw(gsi, cb);
 	gs_graphics_end_render_pass(cb);
 }
