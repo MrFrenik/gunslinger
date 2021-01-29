@@ -3889,7 +3889,7 @@ typedef struct gs_platform_window_event_t
 {
     uint32_t hndl;
     gs_platform_window_action_type action;
-}
+};
 
 // Platform events
 typedef struct gs_platform_event_t
