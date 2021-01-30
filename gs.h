@@ -1817,43 +1817,40 @@ uint32_t gs_hash_table_get_key_index_func(void** data, void* key, size_t key_len
 
 typedef uint32_t gs_hash_table_iter;
 
+// uint32_t gs_hash_table_get_key_index_func(void** data, void* key, size_t key_len, size_t val_len, size_t stride, size_t klpvl)
+
 gs_force_inline
-uint32_t __gs_find_first_valid_iterator(void* data, size_t key_len, size_t val_len, uint32_t idx)
+uint32_t __gs_find_first_valid_iterator(void* data, size_t key_len, size_t val_len, uint32_t idx, size_t stride, size_t klpvl)
 {
-    size_t it = (size_t)idx;
-    size_t s = key_len == 8 ? 7 : 3;
-    size_t entry_sz = (((key_len + val_len + sizeof(gs_hash_table_entry_state)) + s) & (~s));   // 4-byte aligned stride
-    size_t klpvl = ((key_len + val_len + s) & (~s));    // 4-byte aligned key/val pair
+    uint32_t it = (uint32_t)idx;
+    gs_println("idx: %zu", it);
     for (; it < (uint32_t)gs_dyn_array_capacity(data); ++it)
     {
-        size_t offset = (it * entry_sz);
+        size_t offset = (it * stride);
         gs_hash_table_entry_state state = *(gs_hash_table_entry_state*)((uint8_t*)data + offset + (klpvl));
         if (state == GS_HASH_TABLE_ENTRY_ACTIVE)
         {
             break;
         }
     }
-    return (uint32_t)it;
+    return it;
 }
 
 /* Find first valid iterator idx */
 #define gs_hash_table_iter_new(__HT)\
-    (__gs_find_first_valid_iterator((__HT)->data, sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), 0))
+    (__gs_find_first_valid_iterator((__HT)->data, sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), 0, (__HT)->stride, (__HT)->klpvl))
 
 #define gs_hash_table_iter_valid(__HT, __IT)\
     ((__IT) < gs_hash_table_capacity((__HT)))
 
 // Have to be able to do this for hash table...
 gs_force_inline
-void __gs_hash_table_iter_advance_func(void** data, size_t key_len, size_t val_len, uint32_t* it)
+void __gs_hash_table_iter_advance_func(void** data, size_t key_len, size_t val_len, uint32_t* it, size_t stride, size_t klpvl)
 {
-    size_t s = key_len == 8 ? 7 : 3;    // NO idea if this is a valid way to handle this.
-    size_t entry_sz = (((key_len + val_len + sizeof(gs_hash_table_entry_state)) + s) & (~s));   // Byte aligned stride
-    size_t klpvl = ((key_len + val_len + s) & (~s));    // Byte aligned key/val pair 
     (*it)++;
     for (; *it < (uint32_t)gs_dyn_array_capacity(*data); ++*it)
     {
-        size_t offset = (size_t)(*it * entry_sz);
+        size_t offset = (size_t)(*it * stride);
         gs_hash_table_entry_state state = *(gs_hash_table_entry_state*)((uint8_t*)*data + offset + (klpvl));
         if (state == GS_HASH_TABLE_ENTRY_ACTIVE)
         {
@@ -1863,10 +1860,10 @@ void __gs_hash_table_iter_advance_func(void** data, size_t key_len, size_t val_l
 }
 
 #define gs_hash_table_find_valid_iter(__HT, __IT)\
-    ((__IT) = __gs_find_first_valid_iterator((void**)&(__HT)->data, sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), (__IT)))
+    ((__IT) = __gs_find_first_valid_iterator((void**)&(__HT)->data, sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), (__IT), (__HT)->stride, (__HT)->klpvl))
 
 #define gs_hash_table_iter_advance(__HT, __IT)\
-    (__gs_hash_table_iter_advance_func((void**)&(__HT)->data, sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), &(__IT)))
+    (__gs_hash_table_iter_advance_func((void**)&(__HT)->data, sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), &(__IT), (__HT)->stride, (__HT)->klpvl))
 
 #define gs_hash_table_iter_get(__HT, __IT)\
     gs_hash_table_geti(__HT, __IT)

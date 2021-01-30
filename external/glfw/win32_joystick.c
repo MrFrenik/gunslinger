@@ -368,10 +368,17 @@ static BOOL CALLBACK deviceCallback(const DIDEVICEINSTANCE* di, void* user)
         return DIENUM_CONTINUE;
 
 #ifdef __cplusplus
+    #ifdef __MINGW32__
+    if (FAILED(IDirectInput8_CreateDevice(_glfw.win32.dinput8.api,
+                                          di->guidInstance,
+                                          (IDirectInputDevice8W**)&device,
+                                          NULL)))
+    #else
     if (FAILED(IDirectInput8_CreateDevice(_glfw.win32.dinput8.api,
                                           di->guidInstance,
                                           &device,
                                           NULL)))
+    #endif
 #else
     if (FAILED(IDirectInput8_CreateDevice(_glfw.win32.dinput8.api,
                                           &di->guidInstance,
@@ -422,14 +429,26 @@ static BOOL CALLBACK deviceCallback(const DIDEVICEINSTANCE* di, void* user)
     }
 
     memset(&data, 0, sizeof(data));
-    data.device = device;
+
+    #if (defined __MINGW32__ && defined __cplusplus)
+        data.device = (IDirectInputDevice8W*)device;
+    #else
+        data.device = device;
+    #endif
     data.objects = (_GLFWjoyobjectWin32*)calloc(dc.dwAxes + (size_t) dc.dwButtons + dc.dwPOVs,
                           sizeof(_GLFWjoyobjectWin32));
 
+    #if (defined __MINGW32__ && defined __cplusplus)
+    if (FAILED(IDirectInputDevice8_EnumObjects((IDirectInputDevice8W*)device,
+                                               deviceObjectCallback,
+                                               &data,
+                                               DIDFT_AXIS | DIDFT_BUTTON | DIDFT_POV)))
+    #else
     if (FAILED(IDirectInputDevice8_EnumObjects(device,
                                                deviceObjectCallback,
                                                &data,
                                                DIDFT_AXIS | DIDFT_BUTTON | DIDFT_POV)))
+    #endif
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
                         "Win32: Failed to enumerate device objects");
@@ -443,10 +462,17 @@ static BOOL CALLBACK deviceCallback(const DIDEVICEINSTANCE* di, void* user)
           sizeof(_GLFWjoyobjectWin32),
           compareJoystickObjects);
 
-    if (!WideCharToMultiByte(CP_UTF8, 0,
-                             di->tszInstanceName, -1,
-                             name, sizeof(name),
-                             NULL, NULL))
+    #if (defined __MINGW32__ && defined __cplusplus)
+        if (!WideCharToMultiByte(CP_UTF8, 0,
+                                 (LPCWCH)di->tszInstanceName, -1,
+                                 name, sizeof(name),
+                                 NULL, NULL))
+    #else
+        if (!WideCharToMultiByte(CP_UTF8, 0,
+                                 di->tszInstanceName, -1,
+                                 name, sizeof(name),
+                                 NULL, NULL))
+    #endif
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
                         "Win32: Failed to convert joystick name to UTF-8");
@@ -484,7 +510,12 @@ static BOOL CALLBACK deviceCallback(const DIDEVICEINSTANCE* di, void* user)
         return DIENUM_STOP;
     }
 
-    js->win32.device = device;
+    #if (defined __MINGW32__ && defined __cplusplus)
+        js->win32.device = (IDirectInputDevice8W*)device;
+    #else
+        js->win32.device = device;
+    #endif
+
     js->win32.guid = di->guidInstance;
     js->win32.objects = data.objects;
     js->win32.objectCount = data.objectCount;
@@ -586,11 +617,19 @@ void _glfwDetectJoystickConnectionWin32(void)
 
     if (_glfw.win32.dinput8.api)
     {
-        if (FAILED(IDirectInput8_EnumDevices(_glfw.win32.dinput8.api,
-                                             DI8DEVCLASS_GAMECTRL,
-                                             deviceCallback,
-                                             NULL,
-                                             DIEDFL_ALLDEVICES)))
+        #if (defined __MINGW32__ && defined __cplusplus)
+            if (FAILED(IDirectInput8_EnumDevices(_glfw.win32.dinput8.api,
+                                                 DI8DEVCLASS_GAMECTRL,
+                                                 (LPDIENUMDEVICESCALLBACKW)deviceCallback,
+                                                 NULL,
+                                                 DIEDFL_ALLDEVICES)))
+        #else
+            if (FAILED(IDirectInput8_EnumDevices(_glfw.win32.dinput8.api,
+                                                 DI8DEVCLASS_GAMECTRL,
+                                                 deviceCallback,
+                                                 NULL,
+                                                 DIEDFL_ALLDEVICES)))
+        #endif
         {
             _glfwInputError(GLFW_PLATFORM_ERROR,
                             "Failed to enumerate DirectInput8 devices");
