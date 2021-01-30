@@ -2237,7 +2237,7 @@ void gs_command_buffer_free(gs_command_buffer_t* cb)
 ================================================================================*/
 
 #define gs_rad2deg(__R)\
-    (float)((__R * 180.0.f) / GS_PI) 
+    (float)((__R * 180.0f) / GS_PI) 
 
 #define gs_deg2rad(__D)\
     (float)((__D * GS_PI) / 180.0f)
