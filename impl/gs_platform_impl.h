@@ -648,7 +648,7 @@ gs_platform_keycode glfw_key_to_gs_keycode(u32 code)
         case GLFW_KEY_KP_DECIMAL:       return GS_KEYCODE_NPDEL; break;
         case GLFW_KEY_PAUSE:            return GS_KEYCODE_PAUSE; break;
         case GLFW_KEY_PRINT_SCREEN:     return GS_KEYCODE_PRINT; break;
-        case GLFW_KEY_UNKNOWN:          return GS_KEYCODE_COUNT; break;
+        default:                        return GS_KEYCODE_COUNT; break;
     }
 
     // Shouldn't reach here

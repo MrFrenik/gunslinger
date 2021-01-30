@@ -5604,7 +5604,8 @@ static FILE *stb__open_temp_file(char *temp_name, char *src_name, const char *mo
    {
       stb_p_strcpy_s(temp_name+p, 65536, "stmpXXXXXX");
       #ifdef __MINGW32__
-         int fd = open(stb_p_mktemp(temp_name), O_RDWR);
+         stb_p_mktemp(temp_name);
+         int fd = open(temp_name, O_RDWR);
       #else
          int fd = mkstemp(temp_name);
       #endif

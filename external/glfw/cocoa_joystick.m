@@ -79,8 +79,8 @@ static CFComparisonResult compareElements(const void* fp,
                                           const void* sp,
                                           void* user)
 {
-    const _GLFWjoyelementNS* fe = fp;
-    const _GLFWjoyelementNS* se = sp;
+    const _GLFWjoyelementNS* fe = (const _GLFWjoyelementNS*)fp;
+    const _GLFWjoyelementNS* se = (const _GLFWjoyelementNS*)sp;
     if (fe->usage < se->usage)
         return kCFCompareLessThan;
     if (fe->usage > se->usage)
@@ -146,7 +146,7 @@ static void matchCallback(void* context,
     property = IOHIDDeviceGetProperty(device, CFSTR(kIOHIDProductKey));
     if (property)
     {
-        CFStringGetCString(property,
+        CFStringGetCString((CFStringRef)property,
                            name,
                            sizeof(name),
                            kCFStringEncodingUTF8);
@@ -156,15 +156,15 @@ static void matchCallback(void* context,
 
     property = IOHIDDeviceGetProperty(device, CFSTR(kIOHIDVendorIDKey));
     if (property)
-        CFNumberGetValue(property, kCFNumberSInt32Type, &vendor);
+        CFNumberGetValue((CFNumberRef)property, kCFNumberSInt32Type, &vendor);
 
     property = IOHIDDeviceGetProperty(device, CFSTR(kIOHIDProductIDKey));
     if (property)
-        CFNumberGetValue(property, kCFNumberSInt32Type, &product);
+        CFNumberGetValue((CFNumberRef)property, kCFNumberSInt32Type, &product);
 
     property = IOHIDDeviceGetProperty(device, CFSTR(kIOHIDVersionNumberKey));
     if (property)
-        CFNumberGetValue(property, kCFNumberSInt32Type, &version);
+        CFNumberGetValue((CFNumberRef)property, kCFNumberSInt32Type, &version);
 
     // Generate a joystick GUID that matches the SDL 2.0.5+ one
     if (vendor && product)
@@ -251,7 +251,7 @@ static void matchCallback(void* context,
 
         if (target)
         {
-            _GLFWjoyelementNS* element = calloc(1, sizeof(_GLFWjoyelementNS));
+            _GLFWjoyelementNS* element = (_GLFWjoyelementNS*)calloc(1, sizeof(_GLFWjoyelementNS));
             element->native  = native;
             element->usage   = usage;
             element->index   = (int) CFArrayGetCount(target);

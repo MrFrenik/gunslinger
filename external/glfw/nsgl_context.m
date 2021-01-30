@@ -80,7 +80,7 @@ static void swapIntervalNSGL(int interval)
 {
     @autoreleasepool {
 
-    _GLFWwindow* window = _glfwPlatformGetTls(&_glfw.contextSlot);
+    _GLFWwindow* window = (_GLFWwindow*)_glfwPlatformGetTls(&_glfw.contextSlot);
     if (window)
     {
         [window->context.nsgl.object setValues:&interval
@@ -102,7 +102,7 @@ static GLFWglproc getProcAddressNSGL(const char* procname)
                                                        procname,
                                                        kCFStringEncodingASCII);
 
-    GLFWglproc symbol = CFBundleGetFunctionPointerForName(_glfw.nsgl.framework,
+    GLFWglproc symbol = (GLFWglproc)CFBundleGetFunctionPointerForName(_glfw.nsgl.framework,
                                                           symbolName);
 
     CFRelease(symbolName);
