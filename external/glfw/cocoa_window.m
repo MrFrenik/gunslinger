@@ -639,7 +639,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     const NSUInteger count = [urls count];
     if (count)
     {
-        char** paths = calloc(count, sizeof(char*));
+        char** paths = (char **)calloc(count, sizeof(char*));
 
         for (NSUInteger i = 0;  i < count;  i++)
             paths[i] = _glfw_strdup([urls[i] fileSystemRepresentation]);
@@ -1514,7 +1514,7 @@ const char* _glfwPlatformGetScancodeName(int scancode)
     UniChar characters[4];
     UniCharCount characterCount = 0;
 
-    if (UCKeyTranslate([(NSData*) _glfw.ns.unicodeData bytes],
+    if (UCKeyTranslate((const UCKeyboardLayout *)[(NSData*) _glfw.ns.unicodeData bytes],
                        scancode,
                        kUCKeyActionDisplay,
                        0,

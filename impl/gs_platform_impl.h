@@ -176,6 +176,34 @@ void gs_platform_update_input(gs_platform_input_t* input)
     input->mouse.moved_this_frame = false;
 }
 
+gs_result gs_platform_update(gs_platform_i* platform)
+{
+    // Clear all previous events
+    gs_dyn_array_clear(platform->events);
+
+    // Update platform input from previous frame        
+    gs_platform_update_input(&platform->input);
+
+    // Process input for this frame
+    return gs_platform_process_input(&platform->input);
+}
+
+bool gs_platform_poll_event(gs_platform_event_t* evt)
+{
+    gs_platform_i* platform = gs_engine_subsystem(platform);
+
+    if (!evt) return false;
+    if (gs_dyn_array_empty(platform->events)) return false;
+    if (evt->idx >= gs_dyn_array_size(platform->events)) return false;
+
+    uint32_t tmp_idx = evt->idx;
+    *evt = platform->events[evt->idx];
+    evt->idx = tmp_idx;
+    evt->idx++;
+
+    return true;
+}
+
 bool gs_platform_was_key_down(gs_platform_keycode code)
 {
     gs_platform_input_t* input = __gs_input();
@@ -294,11 +322,11 @@ gs_vec2 gs_platform_mouse_positionv()
     );
 }
 
-void gs_platform_mouse_position(f32* x, f32* y)
+void gs_platform_mouse_position(int32_t* x, int32_t* y)
 {
     gs_platform_input_t* input = __gs_input();
-    *x = input->mouse.position.x;
-    *y = input->mouse.position.y;
+    *x = (int32_t)input->mouse.position.x;
+    *y = (int32_t)input->mouse.position.y;
 }
 
 void gs_platform_mouse_wheel(f32* x, f32* y)
@@ -620,11 +648,120 @@ gs_platform_keycode glfw_key_to_gs_keycode(u32 code)
         case GLFW_KEY_KP_DECIMAL:       return GS_KEYCODE_NPDEL; break;
         case GLFW_KEY_PAUSE:            return GS_KEYCODE_PAUSE; break;
         case GLFW_KEY_PRINT_SCREEN:     return GS_KEYCODE_PRINT; break;
-        case GLFW_KEY_UNKNOWN:          return GS_KEYCODE_COUNT; break;
+        default:                        return GS_KEYCODE_COUNT; break;
     }
 
     // Shouldn't reach here
     return GS_KEYCODE_COUNT;
+}
+
+uint32_t gs_platform_key_to_codepoint(gs_platform_keycode key)
+{
+    switch (key)
+    {
+        case GS_KEYCODE_A:              return GLFW_KEY_A; break;
+        case GS_KEYCODE_B:              return GS_KEYCODE_B; break;
+        case GS_KEYCODE_C:              return GS_KEYCODE_C; break;
+        case GS_KEYCODE_D:              return GS_KEYCODE_D; break;
+        case GS_KEYCODE_E:              return GS_KEYCODE_E; break;
+        case GS_KEYCODE_F:              return GS_KEYCODE_F; break;
+        case GS_KEYCODE_G:              return GS_KEYCODE_G; break;
+        case GS_KEYCODE_H:              return GS_KEYCODE_H; break;
+        case GS_KEYCODE_I:              return GS_KEYCODE_I; break;
+        case GS_KEYCODE_J:              return GS_KEYCODE_J; break;
+        case GS_KEYCODE_K:              return GS_KEYCODE_K; break;
+        case GS_KEYCODE_L:              return GS_KEYCODE_L; break;
+        case GS_KEYCODE_M:              return GS_KEYCODE_M; break;
+        case GS_KEYCODE_N:              return GS_KEYCODE_N; break;
+        case GS_KEYCODE_O:              return GS_KEYCODE_O; break;
+        case GS_KEYCODE_P:              return GS_KEYCODE_P; break;
+        case GS_KEYCODE_Q:              return GS_KEYCODE_Q; break;
+        case GS_KEYCODE_R:              return GS_KEYCODE_R; break;
+        case GS_KEYCODE_S:              return GS_KEYCODE_S; break;
+        case GS_KEYCODE_T:              return GS_KEYCODE_T; break;
+        case GS_KEYCODE_U:              return GS_KEYCODE_U; break;
+        case GS_KEYCODE_V:              return GS_KEYCODE_V; break;
+        case GS_KEYCODE_W:              return GS_KEYCODE_W; break;
+        case GS_KEYCODE_X:              return GS_KEYCODE_X; break;
+        case GS_KEYCODE_Y:              return GS_KEYCODE_Y; break;
+        case GS_KEYCODE_Z:              return GS_KEYCODE_Z; break;
+        case GS_KEYCODE_LSHIFT:         return GLFW_KEY_LEFT_SHIFT; break;
+        case GS_KEYCODE_RSHIFT:         return GLFW_KEY_RIGHT_SHIFT; break;
+        case GS_KEYCODE_LALT:           return GLFW_KEY_LEFT_ALT; break;
+        case GS_KEYCODE_RALT:           return GLFW_KEY_RIGHT_ALT; break;
+        case GS_KEYCODE_LCTRL:          return GLFW_KEY_LEFT_CONTROL; break;
+        case GS_KEYCODE_RCTRL:          return GLFW_KEY_RIGHT_CONTROL; break;
+        case GS_KEYCODE_BSPACE:         return GLFW_KEY_BACKSPACE; break;
+        case GS_KEYCODE_QMARK:          return GLFW_KEY_SLASH; break;
+        case GS_KEYCODE_TILDE:          return GLFW_KEY_GRAVE_ACCENT; break;
+        case GS_KEYCODE_COMMA:          return GLFW_KEY_COMMA; break;
+        case GS_KEYCODE_PERIOD:         return GLFW_KEY_PERIOD; break;
+        case GS_KEYCODE_ESC:            return GLFW_KEY_ESCAPE; break;
+        case GS_KEYCODE_SPACE:          return GLFW_KEY_SPACE; break;
+        case GS_KEYCODE_LEFT:           return GLFW_KEY_LEFT; break;
+        case GS_KEYCODE_UP:             return GLFW_KEY_UP; break;
+        case GS_KEYCODE_RIGHT:          return GLFW_KEY_RIGHT; break;
+        case GS_KEYCODE_DOWN:           return GLFW_KEY_DOWN; break;
+        case GS_KEYCODE_ZERO:           return GLFW_KEY_0; break;
+        case GS_KEYCODE_ONE:            return GLFW_KEY_1; break;
+        case GS_KEYCODE_TWO:            return GLFW_KEY_2; break;
+        case GS_KEYCODE_THREE:          return GLFW_KEY_3; break;
+        case GS_KEYCODE_FOUR:           return GLFW_KEY_4; break;
+        case GS_KEYCODE_FIVE:           return GLFW_KEY_5; break;
+        case GS_KEYCODE_SIX:            return GLFW_KEY_6; break;
+        case GS_KEYCODE_SEVEN:          return GLFW_KEY_7; break;
+        case GS_KEYCODE_EIGHT:          return GLFW_KEY_8; break;
+        case GS_KEYCODE_NINE:           return GLFW_KEY_9; break;
+        case GS_KEYCODE_NPZERO:         return GLFW_KEY_KP_0; break;
+        case GS_KEYCODE_NPONE:          return GLFW_KEY_KP_1; break;
+        case GS_KEYCODE_NPTWO:          return GLFW_KEY_KP_2; break;
+        case GS_KEYCODE_NPTHREE:        return GLFW_KEY_KP_3; break;
+        case GS_KEYCODE_NPFOUR:         return GLFW_KEY_KP_4; break;
+        case GS_KEYCODE_NPFIVE:         return GLFW_KEY_KP_5; break;
+        case GS_KEYCODE_NPSIX:          return GLFW_KEY_KP_6; break;
+        case GS_KEYCODE_NPSEVEN:        return GLFW_KEY_KP_7; break;
+        case GS_KEYCODE_NPEIGHT:        return GLFW_KEY_KP_8; break;
+        case GS_KEYCODE_NPNINE:         return GLFW_KEY_KP_9; break;
+        case GS_KEYCODE_CAPS:           return GLFW_KEY_CAPS_LOCK; break;
+        case GS_KEYCODE_DELETE:         return GLFW_KEY_DELETE; break;
+        case GS_KEYCODE_END:            return GLFW_KEY_END; break;
+        case GS_KEYCODE_F1:             return GLFW_KEY_F1; break;
+        case GS_KEYCODE_F2:             return GLFW_KEY_F2; break;
+        case GS_KEYCODE_F3:             return GLFW_KEY_F3; break;
+        case GS_KEYCODE_F4:             return GLFW_KEY_F4; break;
+        case GS_KEYCODE_F5:             return GLFW_KEY_F5; break;
+        case GS_KEYCODE_F6:             return GLFW_KEY_F6; break;
+        case GS_KEYCODE_F7:             return GLFW_KEY_F7; break;
+        case GS_KEYCODE_F8:             return GLFW_KEY_F8; break;
+        case GS_KEYCODE_F9:             return GLFW_KEY_F9; break;
+        case GS_KEYCODE_F10:            return GLFW_KEY_F10; break;
+        case GS_KEYCODE_F11:            return GLFW_KEY_F11; break;
+        case GS_KEYCODE_F12:            return GLFW_KEY_F12; break;
+        case GS_KEYCODE_HOME:           return GLFW_KEY_HOME; break;
+        case GS_KEYCODE_PLUS:           return GLFW_KEY_EQUAL; break;
+        case GS_KEYCODE_MINUS:          return GLFW_KEY_MINUS; break;
+        case GS_KEYCODE_LBRACKET:       return GLFW_KEY_LEFT_BRACKET; break;
+        case GS_KEYCODE_RBRACKET:       return GLFW_KEY_RIGHT_BRACKET; break;
+        case GS_KEYCODE_SEMI_COLON:     return GLFW_KEY_SEMICOLON; break;
+        case GS_KEYCODE_ENTER:          return GLFW_KEY_ENTER; break;
+        case GS_KEYCODE_INSERT:         return GLFW_KEY_INSERT; break;
+        case GS_KEYCODE_PGUP:           return GLFW_KEY_PAGE_UP; break;
+        case GS_KEYCODE_PGDOWN:         return GLFW_KEY_PAGE_DOWN; break;
+        case GS_KEYCODE_NUMLOCK:        return GLFW_KEY_NUM_LOCK; break;
+        case GS_KEYCODE_TAB:            return GLFW_KEY_TAB; break;
+        case GS_KEYCODE_NPMULT:         return GLFW_KEY_KP_MULTIPLY; break;
+        case GS_KEYCODE_NPDIV:          return GLFW_KEY_KP_DIVIDE; break;
+        case GS_KEYCODE_NPPLUS:         return GLFW_KEY_KP_ADD; break;
+        case GS_KEYCODE_NPMINUS:        return GLFW_KEY_KP_SUBTRACT; break;
+        case GS_KEYCODE_NPENTER:        return GLFW_KEY_KP_ENTER; break;
+        case GS_KEYCODE_NPDEL:          return GLFW_KEY_KP_DECIMAL; break;
+        case GS_KEYCODE_PAUSE:          return GLFW_KEY_PAUSE; break;
+        case GS_KEYCODE_PRINT:          return GLFW_KEY_PRINT_SCREEN; break;
+        case GS_KEYCODE_COUNT:          return GLFW_KEY_UNKNOWN; break;
+    }
+
+    // Shouldn't reach here
+    return GLFW_KEY_UNKNOWN;
 }
 
 gs_platform_mouse_button_code __glfw_button_to_gs_mouse_button(s32 code)
@@ -640,53 +777,75 @@ gs_platform_mouse_button_code __glfw_button_to_gs_mouse_button(s32 code)
     return GS_MOUSE_BUTTON_CODE_COUNT;
 }
 
-void __glfw_key_callback(GLFWwindow* window, s32 key, s32 scancode, s32 action, s32 mods) 
+void __glfw_key_callback(GLFWwindow* window, s32 code, s32 scancode, s32 action, s32 mods) 
 {
     // Grab platform instance from engine
     gs_platform_i* platform = gs_engine_subsystem(platform);
 
     // Get keycode from key
-    gs_platform_keycode code = glfw_key_to_gs_keycode(key);
+    gs_platform_keycode key = glfw_key_to_gs_keycode(code);
+
+    // Push back event into platform events
+    gs_platform_event_t evt = gs_default_val();
+    evt.type = GS_PLATFORM_EVENT_KEY;
+    evt.key.codepoint = code;
+    evt.key.key = key;
 
     switch (action)
     {
         // Released
         case 0: {
-            gs_platform_release_key(code);
+            gs_platform_release_key(key);
+            evt.key.action = GS_PLATFORM_KEY_RELEASED;
         } break;
 
         // Pressed
         case 1: {
-            gs_platform_press_key(code);
+            gs_platform_press_key(key);
+            evt.key.action = GS_PLATFORM_KEY_PRESSED;
         } break;
 
         default: {
         } break;
     }
+
+    // Add action
+    gs_dyn_array_push(platform->events, evt);
 }
 
-void __glfw_mouse_button_callback(GLFWwindow* window, s32 button, s32 action, s32 mods)
+void __glfw_mouse_button_callback(GLFWwindow* window, s32 code, s32 action, s32 mods)
 {
     // Grab platform instance from engine
     gs_platform_i* platform = gs_engine_subsystem(platform);
 
     // Get mouse code from key
-    gs_platform_mouse_button_code code = __glfw_button_to_gs_mouse_button(button);
+    gs_platform_mouse_button_code button = __glfw_button_to_gs_mouse_button(code);
+
+    // Push back event into platform events
+    gs_platform_event_t evt = gs_default_val();
+    evt.type = GS_PLATFORM_EVENT_MOUSE;
+    evt.mouse.codepoint = code;
+    evt.mouse.button = button;
 
     switch (action)
     {
         // Released
         case 0:
         {
-            gs_platform_release_mouse_button(code);
+            gs_platform_release_mouse_button(button);
+            evt.mouse.action = GS_PLATFORM_MBUTTON_RELEASED;
         } break;
 
         // Pressed
         case 1:
         {
-            gs_platform_press_mouse_button(code);
+            gs_platform_press_mouse_button(button);
+            evt.mouse.action = GS_PLATFORM_MBUTTON_PRESSED;
         } break;
     }
+
+    // Add action
+    gs_dyn_array_push(platform->events, evt);
 }
 
 void __glfw_mouse_cursor_position_callback(GLFWwindow* window, f64 x, f64 y)
@@ -710,11 +869,7 @@ void __glfw_mouse_cursor_enter_callback(GLFWwindow* window, s32 entered)
 
 void __glfw_frame_buffer_size_callback(GLFWwindow* window, s32 width, s32 height)
 {
-    // gs_graphics_i* gfx = gs_engine_instance()->ctx.graphics;
-    // if (gfx)
-    // {
-    //  gfx->set_viewport(width, height);
-    //} 
+    // Nothing for now
 }
 
 /*== Platform Input == */
@@ -761,7 +916,7 @@ void* gs_platform_create_window_internal(const char* title, uint32_t width, uint
     u32 window_hints = gs_engine_instance()->ctx.app.window_flags;
 
     // Set whether or not the screen is resizable
-    glfwWindowHint(GLFW_RESIZABLE, (window_hints & GS_WINDOW_FLAGS_RESIZABLE) == GS_WINDOW_FLAGS_RESIZABLE);
+    glfwWindowHint(GLFW_RESIZABLE, (window_hints & GS_WINDOW_FLAGS_NO_RESIZE) != GS_WINDOW_FLAGS_NO_RESIZE);
 
     GLFWwindow* window = glfwCreateWindow(width, height, title, NULL, NULL);
     if (window == NULL)
@@ -770,10 +925,13 @@ void* gs_platform_create_window_internal(const char* title, uint32_t width, uint
         glfwTerminate();
         return NULL;
    }
+
+    // Callbacks for window
     glfwMakeContextCurrent(window);
     glfwSetKeyCallback(window, &__glfw_key_callback);
     glfwSetMouseButtonCallback(window, &__glfw_mouse_button_callback);
     glfwSetCursorPosCallback(window, &__glfw_mouse_cursor_position_callback);
+    glfwSetScrollCallback(window, &__glfw_mouse_scroll_wheel_callback);
 
     // Need to make sure this is ONLY done once.
     if (gs_slot_array_empty(gs_engine_subsystem(platform)->windows))

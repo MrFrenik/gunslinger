@@ -34,6 +34,11 @@
     	#define GS_IMMEDIATE_DRAW_IMPL
     	#include "gs_idraw.h"
 
+    TODO (john): 
+		* Convert flush command to push back commands
+		* On final flush, request update for vertex/index buffer data
+		* Then iterate commands to submit pipelines + state to gfx backend
+
 	================================================================================================================
 */
 
@@ -181,6 +186,7 @@ GS_API_DECL void gsi_line3Dv(gs_immediate_draw_t* gsi, gs_vec3 s, gs_vec3 e, gs_
 
 // Shape Drawing Util
 GS_API_DECL void gsi_rect(gs_immediate_draw_t* gsi, float x0, float y0, float x1, float y1, uint8_t r, uint8_t g, uint8_t b, uint8_t a, gs_graphics_primitive_type type);
+GS_API_DECL void gsi_rectv(gs_immediate_draw_t* gsi, gs_vec2 bl, gs_vec2 tr, gs_color_t color, gs_graphics_primitive_type type);
 GS_API_DECL void gsi_rectx(gs_immediate_draw_t* gsi, float l, float b, float r, float t, float u0, float v0, float u1, float v1, uint8_t _r, uint8_t _g, uint8_t _b, uint8_t _a, gs_graphics_primitive_type type);
 GS_API_DECL void gsi_rectvx(gs_immediate_draw_t* gsi, gs_vec2 bl, gs_vec2 tr, gs_vec2 uv0, gs_vec2 uv1, gs_color_t color, gs_graphics_primitive_type type);
 GS_API_DECL void gsi_rectvd(gs_immediate_draw_t* gsi, gs_vec2 xy, gs_vec2 wh, gs_vec2 uv0, gs_vec2 uv1, gs_color_t color, gs_graphics_primitive_type type);
@@ -939,6 +945,11 @@ void gsi_rect(gs_immediate_draw_t* gsi, float l, float b, float r, float t, uint
 	gsi_rectx(gsi, l, b, r, t, 0.f, 0.f, 1.f, 1.f, _r, _g, _b, _a, type);
 }
 
+void gsi_rectv(gs_immediate_draw_t* gsi, gs_vec2 bl, gs_vec2 tr, gs_color_t color, gs_graphics_primitive_type type)
+{
+	gsi_rectx(gsi, bl.x, bl.y, tr.x, tr.y, 0.f, 0.f, 1.f, 1.f, color.r, color.g, color.b, color.a, type);
+}
+
 void gsi_rectvx(gs_immediate_draw_t* gsi, gs_vec2 bl, gs_vec2 tr, gs_vec2 uv0, gs_vec2 uv1, gs_color_t color, gs_graphics_primitive_type type)
 {
 	gsi_rectx(gsi, bl.x, bl.y, tr.x, tr.y, uv0.x, uv0.y, uv1.x, uv1.y, color.r, color.g, color.b, color.a, type);
@@ -1262,7 +1273,9 @@ void gsi_render_pass_submit(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, g
 	action.color[2] = (float)c.b / 255.f; 
 	action.color[3] = (float)c.a / 255.f;
 	gs_renderpass pass = gs_default_val();
+	gs_vec2 fb = gs_platform_framebuffer_sizev(gs_platform_main_window());
 	gs_graphics_begin_render_pass(cb, pass, &action, sizeof(action));
+	gs_graphics_set_viewport(cb, 0, 0, (int32_t)fb.x, (int32_t)fb.y);
 	gsi_draw(gsi, cb);
 	gs_graphics_end_render_pass(cb);
 }

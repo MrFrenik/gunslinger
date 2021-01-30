@@ -324,7 +324,7 @@ static GLFWbool updateUnicodeDataNS(void)
         return GLFW_FALSE;
     }
 
-    _glfw.ns.unicodeData =
+    _glfw.ns.unicodeData = (id)
         TISGetInputSourceProperty(_glfw.ns.inputSource,
                                   kTISPropertyUnicodeKeyLayoutData);
     if (!_glfw.ns.unicodeData)
@@ -342,7 +342,7 @@ static GLFWbool updateUnicodeDataNS(void)
 static GLFWbool initializeTIS(void)
 {
     // This works only because Cocoa has already loaded it properly
-    _glfw.ns.tis.bundle =
+    _glfw.ns.tis.bundle = 
         CFBundleGetBundleWithIdentifier(CFSTR("com.apple.HIToolbox"));
     if (!_glfw.ns.tis.bundle)
     {
@@ -352,15 +352,15 @@ static GLFWbool initializeTIS(void)
     }
 
     CFStringRef* kPropertyUnicodeKeyLayoutData =
-        CFBundleGetDataPointerForName(_glfw.ns.tis.bundle,
+        (CFStringRef*)CFBundleGetDataPointerForName(_glfw.ns.tis.bundle,
                                       CFSTR("kTISPropertyUnicodeKeyLayoutData"));
-    _glfw.ns.tis.CopyCurrentKeyboardLayoutInputSource =
+    _glfw.ns.tis.CopyCurrentKeyboardLayoutInputSource = (PFN_TISCopyCurrentKeyboardLayoutInputSource)
         CFBundleGetFunctionPointerForName(_glfw.ns.tis.bundle,
                                           CFSTR("TISCopyCurrentKeyboardLayoutInputSource"));
-    _glfw.ns.tis.GetInputSourceProperty =
+    _glfw.ns.tis.GetInputSourceProperty = (PFN_TISGetInputSourceProperty)
         CFBundleGetFunctionPointerForName(_glfw.ns.tis.bundle,
                                           CFSTR("TISGetInputSourceProperty"));
-    _glfw.ns.tis.GetKbdType =
+    _glfw.ns.tis.GetKbdType = (PFN_LMGetKbdType)
         CFBundleGetFunctionPointerForName(_glfw.ns.tis.bundle,
                                           CFSTR("LMGetKbdType"));
 
