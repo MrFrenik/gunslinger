@@ -4525,6 +4525,7 @@ typedef struct gs_graphics_vertex_attribute_desc_t {
     size_t stride;                                      // Total stride of vertex layout (optional, calculated by default)
     size_t offset;                                      // Offset of this vertex from base pointer of data (optional, calaculated by default)
     size_t divisor;                                     // Used for instancing. (optional, default = 0x00 for no instancing)
+    uint32_t buffer_idx;                                // Vertex buffer to use (optional, default = 0x00)
 } gs_graphics_vertex_attribute_desc_t;
 
 /* Graphics Vertex Layout Desc */
@@ -4587,7 +4588,7 @@ GS_API_DECL void gs_graphics_set_viewport(gs_command_buffer_t* cb, uint32_t x, u
 GS_API_DECL void gs_graphics_set_view_scissor(gs_command_buffer_t* cb, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
 GS_API_DECL void gs_graphics_bind_pipeline(gs_command_buffer_t* cb, gs_handle(gs_graphics_pipeline_t) hndl);
 GS_API_DECL void gs_graphics_bind_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t* binds, size_t binds_size);
-GS_API_DECL void gs_graphics_draw(gs_command_buffer_t* cb, uint32_t start, uint32_t count);
+GS_API_DECL void gs_graphics_draw(gs_command_buffer_t* cb, uint32_t start, uint32_t count, uint32_t instance_count);
 
 /* Submission (Main Thread) */
 GS_API_DECL void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb);

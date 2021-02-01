@@ -526,7 +526,7 @@ void gsi_flush(gs_immediate_draw_t* gsi)
 	gs_graphics_bind_bindings(&gsi->commands, binds, sizeof(binds));
 
 	// Submit draw
-	gs_graphics_draw(&gsi->commands, 0, gs_dyn_array_size(gsi->vertices));
+	gs_graphics_draw(&gsi->commands, 0, gs_dyn_array_size(gsi->vertices), 1);
 
 	// Clear data
 	gs_dyn_array_clear(gsi->vertices);
