@@ -4474,6 +4474,12 @@ typedef struct gs_graphics_render_pass_desc_t
     // If you want to write to a color attachment, you have to have a frame buffer attached that isn't the backbuffer
 */
 
+typedef enum gs_graphics_vertex_data_type
+{
+    GS_GRAPHICS_VERTEX_DATA_INTERLEAVED = 0x00,
+    GS_GRAPHICS_VERTEX_DATA_NONINTERLEAVED
+} gs_graphics_vertex_data_type;
+
 /* Graphics Binding Desc */
 typedef struct gs_graphics_bind_desc_t
 {
@@ -4482,6 +4488,8 @@ typedef struct gs_graphics_bind_desc_t
     void* data;                             // Data associated with bind
     size_t size;                            // Size of data in bytes
     uint32_t binding;                       // Binding for tex units
+    size_t offset;                          // For manual offset with vertex data (used for non-interleaved data) 
+    gs_graphics_vertex_data_type data_type; // Interleaved/Non-interleaved data
 } gs_graphics_bind_desc_t;
 
 /* Graphics Blend State Desc */

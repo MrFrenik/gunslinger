@@ -62,13 +62,19 @@ typedef uint32_t gsgl_buffer_t;
 /* Texture */
 typedef uint32_t gsgl_texture_t;
 
+typedef struct gsgl_vertex_buffer_decl_t {
+    gsgl_buffer_t vbo;
+    gs_graphics_vertex_data_type data_type;
+    size_t offset;
+} gsgl_vertex_buffer_decl_t;
+
 /* Cached data between draws */
 typedef struct gsgl_data_cache_t
 {
     gsgl_buffer_t vao;
     gsgl_buffer_t ibo;
     size_t ibo_elem_sz;
-    gs_dyn_array(gsgl_buffer_t) vbos;
+    gs_dyn_array(gsgl_vertex_buffer_decl_t) vdecls;
     gs_handle(gs_graphics_pipeline_t) pipeline;
 } gsgl_data_cache_t;
 
@@ -110,7 +116,7 @@ void gsgl_reset_data_cache(gsgl_data_cache_t* cache)
     cache->ibo = 0;
     cache->ibo_elem_sz = 0;
     cache->pipeline = gs_handle_invalid(gs_graphics_pipeline_t);
-    gs_dyn_array_clear(cache->vbos);
+    gs_dyn_array_clear(cache->vdecls);
 }
 
 /* GS/OGL Utilities */
@@ -896,6 +902,12 @@ void gs_graphics_bind_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t*
             switch (binds[i].type)
             {
                 case GS_GRAPHICS_BIND_VERTEX_BUFFER:
+                {
+                    gs_byte_buffer_write(&cb->commands, uint32_t, binds[i].buffer.id);
+                    gs_byte_buffer_write(&cb->commands, size_t, binds[i].offset);
+                    gs_byte_buffer_write(&cb->commands, gs_graphics_vertex_data_type, binds[i].data_type);
+                } break;
+
                 case GS_GRAPHICS_BIND_INDEX_BUFFER:
                 {
                     gs_byte_buffer_write(&cb->commands, uint32_t, binds[i].buffer.id);
@@ -1077,6 +1089,8 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                         case GS_GRAPHICS_BIND_VERTEX_BUFFER:
                         {
                             gs_byte_buffer_readc(&cb->commands, uint32_t, id);
+                            gs_byte_buffer_readc(&cb->commands, size_t, offset);
+                            gs_byte_buffer_readc(&cb->commands, gs_graphics_vertex_data_type, data_type);
 
                             if (!id || !gs_slot_array_exists(ogl->vertex_buffers, id)) 
                             {
@@ -1087,11 +1101,17 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                                 });
                             }
 
+                            // Grab vbo to bind
                             gsgl_buffer_t vbo = gs_slot_array_get(ogl->vertex_buffers, id);
-                            // glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+                            // If the data type is non-interleaved, then push size into vertex buffer decl
+                            gsgl_vertex_buffer_decl_t vbo_decl = gs_default_val();
+                            vbo_decl.vbo = vbo;
+                            vbo_decl.data_type = data_type;
+                            vbo_decl.offset = offset;
 
                             // Cache vertex buffer for later use
-                            gs_dyn_array_push(ogl->cache.vbos, vbo);
+                            gs_dyn_array_push(ogl->cache.vdecls, vbo_decl);
 
                         } break;
 
@@ -1382,42 +1402,23 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                 gsgl_pipeline_t* pip = gs_slot_array_getp(ogl->pipelines, ogl->cache.pipeline.id);
 
                 // Must have a vertex buffer bound to draw
-                if (gs_dyn_array_empty(ogl->cache.vbos)) {
+                if (gs_dyn_array_empty(ogl->cache.vdecls)) {
                     gs_println("Error:Opengl:Draw: No vertex buffer bound.");
                     gs_assert(false);
                 }
 
-                // Need to keep track of which vertex buffers to enable for each pointer, I think.
-                // That's the issue.
-
-                // Enable vertex attrib pointers based on pipeline layout
-                // TODO(john): allow user to specify offset and stride for layout decl
-                // Pass in multiple layouts for buffers?
-                // What if buffer is interleaved? What if it's partly interleaved?
-
-                /* Graphics Vertex Attribute Desc */
-                // typedef struct gs_graphics_vertex_attribute_desc_t {
-                //     gs_graphics_vertex_attribute_type format;           // Format for vertex attribute
-                //     size_t stride;                                      // Total stride of vertex layout (optional, calculated by default)
-                //     size_t offset;                                      // Offset of this vertex from base pointer of data (optional, calaculated by default)
-                //     size_t divisor;                                     // Used for instancing. (optional, default = 0x00 for no instancing)
-                // } gs_graphics_vertex_attribute_desc_t;
-
-                // gs_dyn_array(gs_graphics_vertex_attribute_desc_t) layout;
-
-                // Total size will be calculated each iteration (since stride should be taken into account, assuming it's set)
-                // Offset as well (either take the offset that's in the layout desc, or get the calculated offset)
-
+                // Keep track whether or not the data is to be instanced
                 bool is_instanced = false;
 
                 for (uint32_t i = 0; i < gs_dyn_array_size(pip->layout); ++i)
                 {
-                    // Manual override. If you manually set divisor/stride/offset, then will not automatically calculate any of those.
-                    bool is_manual = pip->layout[i].stride | pip->layout[i].divisor | pip->layout[i].offset;
-
                     // Vertex buffer to bind
-                    uint32_t vbo_idx = is_manual ? pip->layout[i].buffer_idx : 0;
-                    gsgl_buffer_t vbo = vbo_idx < gs_dyn_array_size(ogl->cache.vbos) ? ogl->cache.vbos[vbo_idx] : ogl->cache.vbos[0];
+                    uint32_t vbo_idx = pip->layout[i].buffer_idx;
+                    gsgl_vertex_buffer_decl_t vdecl = vbo_idx < gs_dyn_array_size(ogl->cache.vdecls) ? ogl->cache.vdecls[vbo_idx] : ogl->cache.vdecls[0];
+                    gsgl_buffer_t vbo = vdecl.vbo;
+
+                    // Manual override. If you manually set divisor/stride/offset, then will not automatically calculate any of those.
+                    bool is_manual = pip->layout[i].stride | pip->layout[i].divisor | pip->layout[i].offset | vdecl.data_type == GS_GRAPHICS_VERTEX_DATA_NONINTERLEAVED;
 
                     // Bind buffer
                     glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -1426,8 +1427,8 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                     size_t stride = is_manual ? pip->layout[i].stride : 
                                         gsgl_calculate_vertex_size_in_bytes(pip->layout, gs_dyn_array_size(pip->layout));
 
-                    // Byte offset of vertex attribute
-                    size_t offset = is_manual ? pip->layout[i].offset : 
+                    // Byte offset of vertex attribute (if non-interleaved data, then grab offset from decl instead)
+                    size_t offset = vdecl.data_type == GS_GRAPHICS_VERTEX_DATA_NONINTERLEAVED ? vdecl.offset : is_manual ? pip->layout[i].offset : 
                                         gsgl_get_vertex_attr_byte_offest(pip->layout, i);
 
                     // If there is a vertex divisor for this layout, then we'll draw instanced
@@ -1462,8 +1463,8 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                 }
 
                 // Bind all vertex buffers after setting up data and pointers
-                for (uint32_t i = 0; i < gs_dyn_array_size(ogl->cache.vbos); ++i) {
-                    glBindBuffer(GL_ARRAY_BUFFER, ogl->cache.vbos[i]);
+                for (uint32_t i = 0; i < gs_dyn_array_size(ogl->cache.vdecls); ++i) {
+                    glBindBuffer(GL_ARRAY_BUFFER, ogl->cache.vdecls[i].vbo);
                 }
 
                 // Draw based on bound primitive type in raster 
