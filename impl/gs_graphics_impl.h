@@ -825,7 +825,7 @@ void gs_graphics_begin_render_pass(gs_command_buffer_t* cb, gs_handle(gs_graphic
 {
     __ogl_push_command(cb, GS_OPENGL_OP_BEGIN_RENDER_PASS, {
         gs_byte_buffer_write(&cb->commands, uint32_t, hndl.id);
-        uint32_t count = (uint32_t)actions_size / (uint32_t)sizeof(gs_graphics_render_pass_action_t);
+        uint32_t count = (uint32_t)((size_t)actions_size / (size_t)sizeof(gs_graphics_render_pass_action_t));
         gs_byte_buffer_write(&cb->commands, uint32_t, count);
         for (uint32_t i = 0; i < count; ++i) {
             gs_byte_buffer_write(&cb->commands, gs_graphics_render_pass_action_t, actions[i]);
@@ -1129,7 +1129,6 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                             else 
                             {
                                 gsgl_buffer_t ibo = gs_slot_array_get(ogl->index_buffers, id);
-                                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
 
                                 // Store in cache
                                 ogl->cache.ibo = id;
@@ -1423,6 +1422,11 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                     // Bind buffer
                     glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
+					// Bind element buffer
+					if (ogl->cache.ibo) { 
+						glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gs_slot_array_get(ogl->index_buffers, ogl->cache.ibo));
+					}
+
                     // Stride of vertex attribute
                     size_t stride = is_manual ? pip->layout[i].stride : 
                                         gsgl_calculate_vertex_size_in_bytes(pip->layout, gs_dyn_array_size(pip->layout));
@@ -1465,7 +1469,7 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                 // Bind all vertex buffers after setting up data and pointers
                 for (uint32_t i = 0; i < gs_dyn_array_size(ogl->cache.vdecls); ++i) {
                     glBindBuffer(GL_ARRAY_BUFFER, ogl->cache.vdecls[i].vbo);
-                }
+                } 
 
                 // Draw based on bound primitive type in raster 
                 gs_byte_buffer_readc(&cb->commands, uint32_t, start);
@@ -1476,7 +1480,7 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                 uint32_t itype = gsgl_index_buffer_size_to_gl_index_type(pip->raster.index_buffer_element_size);
 
                 // Draw
-                if (ogl->cache.ibo) {
+                if (ogl->cache.ibo) { 
                     if (is_instanced)   glDrawElementsInstanced(prim, count, itype, gs_int2voidp(start), instance_count);
                     else                glDrawElements(prim, count, itype, gs_int2voidp(start));
                 } 
