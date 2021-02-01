@@ -42,7 +42,7 @@ typedef struct gsgl_pipeline_t {
     gs_graphics_depth_state_desc_t depth;
     gs_graphics_raster_state_desc_t raster;
     gs_graphics_stencil_state_desc_t stencil;
-    gs_dyn_array(gs_graphics_vertex_attribute_type) layout;
+    gs_dyn_array(gs_graphics_vertex_attribute_desc_t) layout;
 } gsgl_pipeline_t;
 
 /* Render Pass */
@@ -308,19 +308,19 @@ size_t gsgl_get_byte_size_of_vertex_attribute(gs_graphics_vertex_attribute_type 
 }
 
 
-size_t gsgl_calculate_vertex_size_in_bytes(gs_graphics_vertex_attribute_type* layout, uint32_t count)
+size_t gsgl_calculate_vertex_size_in_bytes(gs_graphics_vertex_attribute_desc_t* layout, uint32_t count)
 {
     // Iterate through all formats in delcarations and calculate total size
     size_t sz = 0;
     for (uint32_t i = 0; i < count; ++i) {
-        gs_graphics_vertex_attribute_type type = layout[i];
+        gs_graphics_vertex_attribute_type type = layout[i].format;
         sz += gsgl_get_byte_size_of_vertex_attribute(type);
     }
 
     return sz;
 }
 
-size_t  gsgl_get_vertex_attr_byte_offest(gs_dyn_array(gs_graphics_vertex_attribute_type) layout, uint32_t idx)
+size_t  gsgl_get_vertex_attr_byte_offest(gs_dyn_array(gs_graphics_vertex_attribute_desc_t) layout, uint32_t idx)
 {
     // Recursively calculate offset
     size_t total_offset = 0;
@@ -332,7 +332,7 @@ size_t  gsgl_get_vertex_attr_byte_offest(gs_dyn_array(gs_graphics_vertex_attribu
 
     // Calculate total offset up to this point
     for (uint32_t i = 0; i < idx; ++i) {
-        total_offset += gsgl_get_byte_size_of_vertex_attribute(layout[i]);
+        total_offset += gsgl_get_byte_size_of_vertex_attribute(layout[i].format);
     } 
 
     return total_offset;
@@ -760,11 +760,10 @@ gs_handle(gs_graphics_pipeline_t) gs_graphics_pipeline_create(gs_graphics_pipeli
     pipe.stencil = desc->stencil;
 
     // Add layout
-    uint32_t ct = (uint32_t)desc->size / (uint32_t)sizeof(gs_graphics_vertex_attribute_type);
+    uint32_t ct = (uint32_t)desc->layout.size / (uint32_t)sizeof(gs_graphics_vertex_attribute_desc_t);
     gs_dyn_array_reserve(pipe.layout, ct);
-    for (uint32_t i = 0; i < ct; ++i)
-    {
-        gs_dyn_array_push(pipe.layout, desc->layout[i]);
+    for (uint32_t i = 0; i < ct; ++i) {
+        gs_dyn_array_push(pipe.layout, desc->layout.attrs[i]);
     }
 
     // Create handle and return
@@ -1378,36 +1377,64 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
 
                 // Enable vertex attrib pointers based on pipeline layout
                 // TODO(john): allow user to specify offset and stride for layout decl
-                uint32_t total_size = gsgl_calculate_vertex_size_in_bytes(pip->layout, gs_dyn_array_size(pip->layout)); 
+                // Pass in multiple layouts for buffers?
+                // What if buffer is interleaved? What if it's partly interleaved?
+
+                /* Graphics Vertex Attribute Desc */
+                // typedef struct gs_graphics_vertex_attribute_desc_t {
+                //     gs_graphics_vertex_attribute_type format;           // Format for vertex attribute
+                //     size_t stride;                                      // Total stride of vertex layout (optional, calculated by default)
+                //     size_t offset;                                      // Offset of this vertex from base pointer of data (optional, calaculated by default)
+                //     size_t divisor;                                     // Used for instancing. (optional, default = 0x00 for no instancing)
+                // } gs_graphics_vertex_attribute_desc_t;
+
+                // gs_dyn_array(gs_graphics_vertex_attribute_desc_t) layout;
+
+                // Total size will be calculated each iteration (since stride should be taken into account, assuming it's set)
+                // Offset as well (either take the offset that's in the layout desc, or get the calculated offset)
+
+                bool is_instanced = false;
+
                 for (uint32_t i = 0; i < gs_dyn_array_size(pip->layout); ++i)
                 {
-                    gs_graphics_vertex_attribute_type type = pip->layout[i];
-                    size_t byte_offset = gsgl_get_vertex_attr_byte_offest(pip->layout, i);
+                    // Stride of vertex attribute
+                    size_t stride = pip->layout[i].stride ? pip->layout[i].stride : 
+                                        gsgl_calculate_vertex_size_in_bytes(pip->layout, gs_dyn_array_size(pip->layout));
+
+                    gs_graphics_vertex_attribute_type type = pip->layout[i].format;
+
+                    // Byte offset of vertex attribute
+                    size_t offset = pip->layout[i].offset ? pip->layout[i].offset : 
+                                        gsgl_get_vertex_attr_byte_offest(pip->layout, i);
+
+                    // If there is a vertex divisor for this layout, then we'll draw instanced
+                    is_instanced |= (pip->layout[i].divisor != 0);
 
                     switch (type)
                     {
-                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT4: glVertexAttribPointer(i, 4, GL_FLOAT, GL_FALSE, total_size, gs_int_2_voidp(byte_offset)); break;
-                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3: glVertexAttribPointer(i, 3, GL_FLOAT, GL_FALSE, total_size, gs_int_2_voidp(byte_offset)); break;
-                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2: glVertexAttribPointer(i, 2, GL_FLOAT, GL_FALSE, total_size, gs_int_2_voidp(byte_offset)); break;
-                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT:  glVertexAttribPointer(i, 1, GL_FLOAT, GL_FALSE, total_size, gs_int_2_voidp(byte_offset)); break;
-                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT4:  glVertexAttribIPointer(i, 4, GL_UNSIGNED_INT, total_size, gs_int_2_voidp(byte_offset)); break;
-                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT3:  glVertexAttribIPointer(i, 3, GL_UNSIGNED_INT, total_size, gs_int_2_voidp(byte_offset)); break;
-                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT2:  glVertexAttribIPointer(i, 2, GL_UNSIGNED_INT, total_size, gs_int_2_voidp(byte_offset)); break;
-                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT:   glVertexAttribIPointer(i, 1, GL_UNSIGNED_INT, total_size, gs_int_2_voidp(byte_offset)); break;
-                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE:   glVertexAttribPointer(i, 1, GL_UNSIGNED_BYTE, GL_TRUE, total_size, gs_int_2_voidp(byte_offset)); break;
-                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE2:  glVertexAttribPointer(i, 2, GL_UNSIGNED_BYTE, GL_TRUE, total_size, gs_int_2_voidp(byte_offset)); break;
-                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE3:  glVertexAttribPointer(i, 3, GL_UNSIGNED_BYTE, GL_TRUE, total_size, gs_int_2_voidp(byte_offset)); break;
-                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE4:  glVertexAttribPointer(i, 4, GL_UNSIGNED_BYTE, GL_TRUE, total_size, gs_int_2_voidp(byte_offset)); break;
+                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT4: glVertexAttribPointer(i, 4, GL_FLOAT, GL_FALSE, stride, gs_int2voidp(offset)); break;
+                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3: glVertexAttribPointer(i, 3, GL_FLOAT, GL_FALSE, stride, gs_int2voidp(offset)); break;
+                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2: glVertexAttribPointer(i, 2, GL_FLOAT, GL_FALSE, stride, gs_int2voidp(offset)); break;
+                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT:  glVertexAttribPointer(i, 1, GL_FLOAT, GL_FALSE, stride, gs_int2voidp(offset)); break;
+                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT4:  glVertexAttribIPointer(i, 4, GL_UNSIGNED_INT, stride, gs_int2voidp(offset)); break;
+                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT3:  glVertexAttribIPointer(i, 3, GL_UNSIGNED_INT, stride, gs_int2voidp(offset)); break;
+                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT2:  glVertexAttribIPointer(i, 2, GL_UNSIGNED_INT, stride, gs_int2voidp(offset)); break;
+                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT:   glVertexAttribIPointer(i, 1, GL_UNSIGNED_INT, stride, gs_int2voidp(offset)); break;
+                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE:   glVertexAttribPointer(i, 1, GL_UNSIGNED_BYTE, GL_TRUE, stride, gs_int2voidp(offset)); break;
+                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE2:  glVertexAttribPointer(i, 2, GL_UNSIGNED_BYTE, GL_TRUE, stride, gs_int2voidp(offset)); break;
+                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE3:  glVertexAttribPointer(i, 3, GL_UNSIGNED_BYTE, GL_TRUE, stride, gs_int2voidp(offset)); break;
+                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE4:  glVertexAttribPointer(i, 4, GL_UNSIGNED_BYTE, GL_TRUE, stride, gs_int2voidp(offset)); break;
 
-                        default: 
-                        {
-                            // Shouldn't get here
+                        // Shouldn't get here
+                        default: {
                             gs_assert(false);
                         } break;
                     }
 
                     // Enable the vertex attribute pointer
                     glEnableVertexAttribArray(i);
+                    // Set up divisor (for instancing)
+                    glVertexAttribDivisor(i, pip->layout[i].divisor);
                 }
 
                 // Draw based on bound primitive type in raster 
@@ -1417,14 +1444,16 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                 uint32_t prim = gsgl_primitive_to_gl_primitive(pip->raster.primitive);
                 uint32_t itype = gsgl_index_buffer_size_to_gl_index_type(pip->raster.index_buffer_element_size);
 
-                /* Draw */
-                if (ogl->cache.ibo) 
-                {
-                    glDrawElements(prim, count, itype, gs_int_2_voidp(start));
+                const uint32_t instance_count = 1;
+
+                // Draw
+                if (ogl->cache.ibo) {
+                    if (is_instanced)   glDrawElementsInstanced(prim, count, itype, gs_int2voidp(start), instance_count);
+                    else                glDrawElements(prim, count, itype, gs_int2voidp(start));
                 } 
-                else 
-                {
-                    glDrawArrays(prim, start, count);
+                else {
+                    if (is_instanced)   glDrawArraysInstanced(prim, start, count, instance_count);
+                    else                glDrawArrays(prim, start, count);
                 }
 
             } break;

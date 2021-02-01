@@ -341,11 +341,11 @@ gs_immediate_draw_t gs_immediate_draw_new()
 	sdesc.name = "gs_immediate_default_fill_shader";
 
 	// Vertex attr layout
-	gs_graphics_vertex_attribute_type gsi_layout[] = {
-		GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3,
-		GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2,
-		GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE4
-	};	
+    gs_graphics_vertex_attribute_desc_t gsi_vattrs[] = {
+        (gs_graphics_vertex_attribute_desc_t){.format = GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3},
+        (gs_graphics_vertex_attribute_desc_t){.format = GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2},
+        (gs_graphics_vertex_attribute_desc_t){.format = GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE4}
+    };
 
 	// Iterate through attribute list, then create custom pipelines requested.
 	gs_handle(gs_graphics_shader_t) shader = gs_graphics_shader_create(&sdesc);
@@ -375,8 +375,8 @@ gs_immediate_draw_t gs_immediate_draw_new()
 		pdesc.blend.src = GS_GRAPHICS_BLEND_MODE_SRC_ALPHA;
 		pdesc.blend.dst = GS_GRAPHICS_BLEND_MODE_ONE_MINUS_SRC_ALPHA;
 		pdesc.depth.func = d ? GS_GRAPHICS_DEPTH_FUNC_LESS : (gs_graphics_depth_func_type)0x00;
-		pdesc.layout = gsi_layout;
-		pdesc.size = sizeof(gsi_layout);
+		pdesc.layout.attrs = gsi_vattrs;
+		pdesc.layout.size = sizeof(gsi_vattrs);
 
 		gs_handle(gs_graphics_pipeline_t) hndl = gs_graphics_pipeline_create(&pdesc);
 		gs_hash_table_insert(gsi.pipeline_table, attr, hndl);
