@@ -110,6 +110,7 @@ void gsgl_reset_data_cache(gsgl_data_cache_t* cache)
     cache->ibo = 0;
     cache->ibo_elem_sz = 0;
     cache->pipeline = gs_handle_invalid(gs_graphics_pipeline_t);
+    gs_dyn_array_clear(cache->vbos);
 }
 
 /* GS/OGL Utilities */
