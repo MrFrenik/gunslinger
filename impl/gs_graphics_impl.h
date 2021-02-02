@@ -42,7 +42,7 @@ typedef struct gsgl_pipeline_t {
     gs_graphics_depth_state_desc_t depth;
     gs_graphics_raster_state_desc_t raster;
     gs_graphics_stencil_state_desc_t stencil;
-    gs_dyn_array(gs_graphics_vertex_attribute_type) layout;
+    gs_dyn_array(gs_graphics_vertex_attribute_desc_t) layout;
 } gsgl_pipeline_t;
 
 /* Render Pass */
@@ -62,12 +62,19 @@ typedef uint32_t gsgl_buffer_t;
 /* Texture */
 typedef uint32_t gsgl_texture_t;
 
+typedef struct gsgl_vertex_buffer_decl_t {
+    gsgl_buffer_t vbo;
+    gs_graphics_vertex_data_type data_type;
+    size_t offset;
+} gsgl_vertex_buffer_decl_t;
+
 /* Cached data between draws */
 typedef struct gsgl_data_cache_t
 {
     gsgl_buffer_t vao;
     gsgl_buffer_t ibo;
     size_t ibo_elem_sz;
+    gs_dyn_array(gsgl_vertex_buffer_decl_t) vdecls;
     gs_handle(gs_graphics_pipeline_t) pipeline;
 } gsgl_data_cache_t;
 
@@ -109,6 +116,7 @@ void gsgl_reset_data_cache(gsgl_data_cache_t* cache)
     cache->ibo = 0;
     cache->ibo_elem_sz = 0;
     cache->pipeline = gs_handle_invalid(gs_graphics_pipeline_t);
+    gs_dyn_array_clear(cache->vdecls);
 }
 
 /* GS/OGL Utilities */
@@ -308,19 +316,19 @@ size_t gsgl_get_byte_size_of_vertex_attribute(gs_graphics_vertex_attribute_type 
 }
 
 
-size_t gsgl_calculate_vertex_size_in_bytes(gs_graphics_vertex_attribute_type* layout, uint32_t count)
+size_t gsgl_calculate_vertex_size_in_bytes(gs_graphics_vertex_attribute_desc_t* layout, uint32_t count)
 {
     // Iterate through all formats in delcarations and calculate total size
     size_t sz = 0;
     for (uint32_t i = 0; i < count; ++i) {
-        gs_graphics_vertex_attribute_type type = layout[i];
+        gs_graphics_vertex_attribute_type type = layout[i].format;
         sz += gsgl_get_byte_size_of_vertex_attribute(type);
     }
 
     return sz;
 }
 
-size_t  gsgl_get_vertex_attr_byte_offest(gs_dyn_array(gs_graphics_vertex_attribute_type) layout, uint32_t idx)
+size_t  gsgl_get_vertex_attr_byte_offest(gs_dyn_array(gs_graphics_vertex_attribute_desc_t) layout, uint32_t idx)
 {
     // Recursively calculate offset
     size_t total_offset = 0;
@@ -332,7 +340,7 @@ size_t  gsgl_get_vertex_attr_byte_offest(gs_dyn_array(gs_graphics_vertex_attribu
 
     // Calculate total offset up to this point
     for (uint32_t i = 0; i < idx; ++i) {
-        total_offset += gsgl_get_byte_size_of_vertex_attribute(layout[i]);
+        total_offset += gsgl_get_byte_size_of_vertex_attribute(layout[i].format);
     } 
 
     return total_offset;
@@ -760,11 +768,10 @@ gs_handle(gs_graphics_pipeline_t) gs_graphics_pipeline_create(gs_graphics_pipeli
     pipe.stencil = desc->stencil;
 
     // Add layout
-    uint32_t ct = (uint32_t)desc->size / (uint32_t)sizeof(gs_graphics_vertex_attribute_type);
+    uint32_t ct = (uint32_t)desc->layout.size / (uint32_t)sizeof(gs_graphics_vertex_attribute_desc_t);
     gs_dyn_array_reserve(pipe.layout, ct);
-    for (uint32_t i = 0; i < ct; ++i)
-    {
-        gs_dyn_array_push(pipe.layout, desc->layout[i]);
+    for (uint32_t i = 0; i < ct; ++i) {
+        gs_dyn_array_push(pipe.layout, desc->layout.attrs[i]);
     }
 
     // Create handle and return
@@ -818,7 +825,7 @@ void gs_graphics_begin_render_pass(gs_command_buffer_t* cb, gs_handle(gs_graphic
 {
     __ogl_push_command(cb, GS_OPENGL_OP_BEGIN_RENDER_PASS, {
         gs_byte_buffer_write(&cb->commands, uint32_t, hndl.id);
-        uint32_t count = (uint32_t)actions_size / (uint32_t)sizeof(gs_graphics_render_pass_action_t);
+        uint32_t count = (uint32_t)((size_t)actions_size / (size_t)sizeof(gs_graphics_render_pass_action_t));
         gs_byte_buffer_write(&cb->commands, uint32_t, count);
         for (uint32_t i = 0; i < count; ++i) {
             gs_byte_buffer_write(&cb->commands, gs_graphics_render_pass_action_t, actions[i]);
@@ -895,6 +902,12 @@ void gs_graphics_bind_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t*
             switch (binds[i].type)
             {
                 case GS_GRAPHICS_BIND_VERTEX_BUFFER:
+                {
+                    gs_byte_buffer_write(&cb->commands, uint32_t, binds[i].buffer.id);
+                    gs_byte_buffer_write(&cb->commands, size_t, binds[i].offset);
+                    gs_byte_buffer_write(&cb->commands, gs_graphics_vertex_data_type, binds[i].data_type);
+                } break;
+
                 case GS_GRAPHICS_BIND_INDEX_BUFFER:
                 {
                     gs_byte_buffer_write(&cb->commands, uint32_t, binds[i].buffer.id);
@@ -942,11 +955,12 @@ void gs_graphics_bind_pipeline(gs_command_buffer_t* cb, gs_handle(gs_graphics_pi
     });
 }
 
-void gs_graphics_draw(gs_command_buffer_t* cb, uint32_t start, uint32_t count)
+void gs_graphics_draw(gs_command_buffer_t* cb, uint32_t start, uint32_t count, uint32_t instance_count)
 {
     __ogl_push_command(cb, GS_OPENGL_OP_DRAW, {
         gs_byte_buffer_write(&cb->commands, uint32_t, start);
         gs_byte_buffer_write(&cb->commands, uint32_t, count);
+        gs_byte_buffer_write(&cb->commands, uint32_t, instance_count);
     });
 }
 
@@ -1075,6 +1089,8 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                         case GS_GRAPHICS_BIND_VERTEX_BUFFER:
                         {
                             gs_byte_buffer_readc(&cb->commands, uint32_t, id);
+                            gs_byte_buffer_readc(&cb->commands, size_t, offset);
+                            gs_byte_buffer_readc(&cb->commands, gs_graphics_vertex_data_type, data_type);
 
                             if (!id || !gs_slot_array_exists(ogl->vertex_buffers, id)) 
                             {
@@ -1085,8 +1101,17 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                                 });
                             }
 
+                            // Grab vbo to bind
                             gsgl_buffer_t vbo = gs_slot_array_get(ogl->vertex_buffers, id);
-                            glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+                            // If the data type is non-interleaved, then push size into vertex buffer decl
+                            gsgl_vertex_buffer_decl_t vbo_decl = gs_default_val();
+                            vbo_decl.vbo = vbo;
+                            vbo_decl.data_type = data_type;
+                            vbo_decl.offset = offset;
+
+                            // Cache vertex buffer for later use
+                            gs_dyn_array_push(ogl->cache.vdecls, vbo_decl);
 
                         } break;
 
@@ -1104,7 +1129,6 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                             else 
                             {
                                 gsgl_buffer_t ibo = gs_slot_array_get(ogl->index_buffers, id);
-                                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
 
                                 // Store in cache
                                 ogl->cache.ibo = id;
@@ -1376,55 +1400,93 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                 // Grab currently bound pipeline (TODO(john): assert if this isn't valid)
                 gsgl_pipeline_t* pip = gs_slot_array_getp(ogl->pipelines, ogl->cache.pipeline.id);
 
-                // Enable vertex attrib pointers based on pipeline layout
-                // TODO(john): allow user to specify offset and stride for layout decl
-                uint32_t total_size = gsgl_calculate_vertex_size_in_bytes(pip->layout, gs_dyn_array_size(pip->layout)); 
+                // Must have a vertex buffer bound to draw
+                if (gs_dyn_array_empty(ogl->cache.vdecls)) {
+                    gs_println("Error:Opengl:Draw: No vertex buffer bound.");
+                    gs_assert(false);
+                }
+
+                // Keep track whether or not the data is to be instanced
+                bool is_instanced = false;
+
                 for (uint32_t i = 0; i < gs_dyn_array_size(pip->layout); ++i)
                 {
-                    gs_graphics_vertex_attribute_type type = pip->layout[i];
-                    size_t byte_offset = gsgl_get_vertex_attr_byte_offest(pip->layout, i);
+                    // Vertex buffer to bind
+                    uint32_t vbo_idx = pip->layout[i].buffer_idx;
+                    gsgl_vertex_buffer_decl_t vdecl = vbo_idx < gs_dyn_array_size(ogl->cache.vdecls) ? ogl->cache.vdecls[vbo_idx] : ogl->cache.vdecls[0];
+                    gsgl_buffer_t vbo = vdecl.vbo;
 
-                    switch (type)
-                    {
-                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT4: glVertexAttribPointer(i, 4, GL_FLOAT, GL_FALSE, total_size, gs_int_2_voidp(byte_offset)); break;
-                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3: glVertexAttribPointer(i, 3, GL_FLOAT, GL_FALSE, total_size, gs_int_2_voidp(byte_offset)); break;
-                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2: glVertexAttribPointer(i, 2, GL_FLOAT, GL_FALSE, total_size, gs_int_2_voidp(byte_offset)); break;
-                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT:  glVertexAttribPointer(i, 1, GL_FLOAT, GL_FALSE, total_size, gs_int_2_voidp(byte_offset)); break;
-                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT4:  glVertexAttribIPointer(i, 4, GL_UNSIGNED_INT, total_size, gs_int_2_voidp(byte_offset)); break;
-                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT3:  glVertexAttribIPointer(i, 3, GL_UNSIGNED_INT, total_size, gs_int_2_voidp(byte_offset)); break;
-                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT2:  glVertexAttribIPointer(i, 2, GL_UNSIGNED_INT, total_size, gs_int_2_voidp(byte_offset)); break;
-                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT:   glVertexAttribIPointer(i, 1, GL_UNSIGNED_INT, total_size, gs_int_2_voidp(byte_offset)); break;
-                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE:   glVertexAttribPointer(i, 1, GL_UNSIGNED_BYTE, GL_TRUE, total_size, gs_int_2_voidp(byte_offset)); break;
-                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE2:  glVertexAttribPointer(i, 2, GL_UNSIGNED_BYTE, GL_TRUE, total_size, gs_int_2_voidp(byte_offset)); break;
-                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE3:  glVertexAttribPointer(i, 3, GL_UNSIGNED_BYTE, GL_TRUE, total_size, gs_int_2_voidp(byte_offset)); break;
-                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE4:  glVertexAttribPointer(i, 4, GL_UNSIGNED_BYTE, GL_TRUE, total_size, gs_int_2_voidp(byte_offset)); break;
+                    // Manual override. If you manually set divisor/stride/offset, then will not automatically calculate any of those.
+                    bool is_manual = pip->layout[i].stride | pip->layout[i].divisor | pip->layout[i].offset | vdecl.data_type == GS_GRAPHICS_VERTEX_DATA_NONINTERLEAVED;
 
-                        default: 
-                        {
-                            // Shouldn't get here
-                            gs_assert(false);
-                        } break;
-                    }
+                    // Bind buffer
+                    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+					// Bind element buffer
+					if (ogl->cache.ibo) { 
+						glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gs_slot_array_get(ogl->index_buffers, ogl->cache.ibo));
+					}
+
+                    // Stride of vertex attribute
+                    size_t stride = is_manual ? pip->layout[i].stride : 
+                                        gsgl_calculate_vertex_size_in_bytes(pip->layout, gs_dyn_array_size(pip->layout));
+
+                    // Byte offset of vertex attribute (if non-interleaved data, then grab offset from decl instead)
+                    size_t offset = vdecl.data_type == GS_GRAPHICS_VERTEX_DATA_NONINTERLEAVED ? vdecl.offset : is_manual ? pip->layout[i].offset : 
+                                        gsgl_get_vertex_attr_byte_offest(pip->layout, i);
+
+                    // If there is a vertex divisor for this layout, then we'll draw instanced
+                    is_instanced |= (pip->layout[i].divisor != 0);
 
                     // Enable the vertex attribute pointer
                     glEnableVertexAttribArray(i);
+
+                    switch (pip->layout[i].format)
+                    {
+                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT4: glVertexAttribPointer(i, 4, GL_FLOAT, GL_FALSE, stride, gs_int2voidp(offset)); break;
+                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3: glVertexAttribPointer(i, 3, GL_FLOAT, GL_FALSE, stride, gs_int2voidp(offset)); break;
+                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2: glVertexAttribPointer(i, 2, GL_FLOAT, GL_FALSE, stride, gs_int2voidp(offset)); break;
+                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT:  glVertexAttribPointer(i, 1, GL_FLOAT, GL_FALSE, stride, gs_int2voidp(offset)); break;
+                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT4:  glVertexAttribIPointer(i, 4, GL_UNSIGNED_INT, stride, gs_int2voidp(offset)); break;
+                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT3:  glVertexAttribIPointer(i, 3, GL_UNSIGNED_INT, stride, gs_int2voidp(offset)); break;
+                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT2:  glVertexAttribIPointer(i, 2, GL_UNSIGNED_INT, stride, gs_int2voidp(offset)); break;
+                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT:   glVertexAttribIPointer(i, 1, GL_UNSIGNED_INT, stride, gs_int2voidp(offset)); break;
+                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE:   glVertexAttribPointer(i, 1, GL_UNSIGNED_BYTE, GL_TRUE, stride, gs_int2voidp(offset)); break;
+                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE2:  glVertexAttribPointer(i, 2, GL_UNSIGNED_BYTE, GL_TRUE, stride, gs_int2voidp(offset)); break;
+                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE3:  glVertexAttribPointer(i, 3, GL_UNSIGNED_BYTE, GL_TRUE, stride, gs_int2voidp(offset)); break;
+                        case GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE4:  glVertexAttribPointer(i, 4, GL_UNSIGNED_BYTE, GL_TRUE, stride, gs_int2voidp(offset)); break;
+
+                        // Shouldn't get here
+                        default: {
+                            gs_assert(false);
+                        } break;
+                    }
+                    // Set up divisor (for instancing)
+                    glVertexAttribDivisor(i, pip->layout[i].divisor);
+                    glBindBuffer(GL_ARRAY_BUFFER, 0);
                 }
+
+                // Bind all vertex buffers after setting up data and pointers
+                for (uint32_t i = 0; i < gs_dyn_array_size(ogl->cache.vdecls); ++i) {
+                    glBindBuffer(GL_ARRAY_BUFFER, ogl->cache.vdecls[i].vbo);
+                } 
 
                 // Draw based on bound primitive type in raster 
                 gs_byte_buffer_readc(&cb->commands, uint32_t, start);
                 gs_byte_buffer_readc(&cb->commands, uint32_t, count);
+                gs_byte_buffer_readc(&cb->commands, uint32_t, instance_count);
 
                 uint32_t prim = gsgl_primitive_to_gl_primitive(pip->raster.primitive);
                 uint32_t itype = gsgl_index_buffer_size_to_gl_index_type(pip->raster.index_buffer_element_size);
 
-                /* Draw */
-                if (ogl->cache.ibo) 
-                {
-                    glDrawElements(prim, count, itype, gs_int_2_voidp(start));
+                // Draw
+                if (ogl->cache.ibo) { 
+                    if (is_instanced)   glDrawElementsInstanced(prim, count, itype, gs_int2voidp(start), instance_count);
+                    else                glDrawElements(prim, count, itype, gs_int2voidp(start));
                 } 
-                else 
-                {
-                    glDrawArrays(prim, start, count);
+                else {
+                    if (is_instanced)   glDrawArraysInstanced(prim, start, count, instance_count);
+                    else                glDrawArrays(prim, start, count);
                 }
 
             } break;
