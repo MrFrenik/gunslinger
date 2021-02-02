@@ -906,6 +906,7 @@ void gs_graphics_bind_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t*
                     gs_byte_buffer_write(&cb->commands, uint32_t, binds[i].buffer.id);
                     gs_byte_buffer_write(&cb->commands, size_t, binds[i].offset);
                     gs_byte_buffer_write(&cb->commands, gs_graphics_vertex_data_type, binds[i].data_type);
+                    gs_byte_buffer_write(&cb->commands, uint32_t, binds[i].clear_previous);
                 } break;
 
                 case GS_GRAPHICS_BIND_INDEX_BUFFER:
@@ -1091,6 +1092,13 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                             gs_byte_buffer_readc(&cb->commands, uint32_t, id);
                             gs_byte_buffer_readc(&cb->commands, size_t, offset);
                             gs_byte_buffer_readc(&cb->commands, gs_graphics_vertex_data_type, data_type);
+                            gs_byte_buffer_readc(&cb->commands, uint32_t, clear_previous);
+
+                            // Clear previous vertex decls if requested
+                            if (clear_previous) {
+                                gs_dyn_array_clear(ogl->cache.vdecls);
+                                glBindBuffer(GL_ARRAY_BUFFER, 0);
+                            }
 
                             if (!id || !gs_slot_array_exists(ogl->vertex_buffers, id)) 
                             {
@@ -1422,11 +1430,6 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                     // Bind buffer
                     glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
-					// Bind element buffer
-					if (ogl->cache.ibo) { 
-						glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gs_slot_array_get(ogl->index_buffers, ogl->cache.ibo));
-					}
-
                     // Stride of vertex attribute
                     size_t stride = is_manual ? pip->layout[i].stride : 
                                         gsgl_calculate_vertex_size_in_bytes(pip->layout, gs_dyn_array_size(pip->layout));
@@ -1464,7 +1467,12 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                     // Set up divisor (for instancing)
                     glVertexAttribDivisor(i, pip->layout[i].divisor);
                     glBindBuffer(GL_ARRAY_BUFFER, 0);
-                }
+                } 
+
+				// Bind element buffer
+				if (ogl->cache.ibo) { 
+					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gs_slot_array_get(ogl->index_buffers, ogl->cache.ibo));
+				}
 
                 // Bind all vertex buffers after setting up data and pointers
                 for (uint32_t i = 0; i < gs_dyn_array_size(ogl->cache.vdecls); ++i) {

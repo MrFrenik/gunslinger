@@ -132,6 +132,9 @@ typedef struct gs_immediate_draw_t
 GS_API_DECL gs_immediate_draw_t gs_immediate_draw_new();
 GS_API_DECL void                gs_immediate_draw_free(gs_immediate_draw_t* gsi);
 
+// Get pipeline from state
+GS_API_DECL gs_handle(gs_graphics_pipeline_t) gsi_get_pipeline(gs_immediate_draw_t* gsi, gsi_pipeline_state_attr_t state);
+
 // Core Vertex Functions
 GS_API_DECL void gsi_begin(gs_immediate_draw_t* gsi, gs_graphics_primitive_type type);
 GS_API_DECL void gsi_end(gs_immediate_draw_t* gsi);
@@ -445,6 +448,13 @@ gs_immediate_draw_t gs_immediate_draw_new()
 void gs_immediate_draw_free(gs_immediate_draw_t* gsi)
 {
 	// Free all data
+}
+
+gs_handle(gs_graphics_pipeline_t) gsi_get_pipeline(gs_immediate_draw_t* gsi, gsi_pipeline_state_attr_t state)
+{
+	// Bind pipeline
+	gs_assert(gs_hash_table_key_exists(gsi->pipeline_table, state));
+	return gs_hash_table_get(gsi->pipeline_table, state);
 }
 
 void gs_immediate_draw_set_pipeline(gs_immediate_draw_t* gsi)
