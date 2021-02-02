@@ -5452,6 +5452,36 @@ void gs_engine_quit()
     layout (location = 1) in vec3 aColor;
     layout (location = 2) in vec2 aOffset;
 
+=======
+
+    What are ways to interleave data?
+
+    layout descriptor? 
+
+    gs_vertex_attribute_type layouts[] = 
+    {
+
+    };
+
+    // Need to codify strides/offsets/divisors
+
+    // This can hold multiple layouts
+    gs_vertex_layout_desc_t layout = 
+    {
+        .layouts = layouts, 
+        .size = sizeof(layouts) 
+    };
+
+    Don't want to have to make user calculate strides, right?
+
+    // If you don't provide manual stride/offset, then it'll calculate it for you based on layout?
+
+    #version 330 core
+    layout (location = 0) in vec2 aPos;
+    layout (location = 1) in vec3 aColor;
+    layout (location = 2) in vec2 aOffset;
+
+>>>>>>> 4ae478460decd3a807c152d58a929afea521564e
     out vec3 fColor;
 
     void main()
