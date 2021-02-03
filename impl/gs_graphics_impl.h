@@ -882,6 +882,10 @@ void gs_graphics_buffer_request_update(gs_command_buffer_t* cb, gs_handle(gs_gra
         gs_byte_buffer_write(&cb->commands, gs_graphics_buffer_usage_type, desc->usage);
         // Write data size
         gs_byte_buffer_write(&cb->commands, size_t, desc->size);
+        // Write data offset
+        gs_byte_buffer_write(&cb->commands, size_t, desc->update.offset);
+        // Write data update type
+        gs_byte_buffer_write(&cb->commands, gs_graphics_buffer_update_type, desc->update.type);
         // Write data
         gs_byte_buffer_write_bulk(&cb->commands, desc->data, desc->size);
     });
@@ -1511,6 +1515,10 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                 gs_byte_buffer_readc(&cb->commands, gs_graphics_buffer_usage_type, usage);
                 // Read data size
                 gs_byte_buffer_readc(&cb->commands, size_t, sz);
+                // Read data offset
+                gs_byte_buffer_readc(&cb->commands, size_t, offset);
+                // Read update type
+                gs_byte_buffer_readc(&cb->commands, gs_graphics_buffer_update_type, update_type);
 
                 switch (type)
                 {
@@ -1520,7 +1528,14 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                     {
                         gsgl_buffer_t buffer = gs_slot_array_get(ogl->vertex_buffers, id);
                         glBindBuffer(GL_ARRAY_BUFFER, buffer);
-                        glBufferData(GL_ARRAY_BUFFER, sz, (u8*)(cb->commands.data + cb->commands.position), gsgl_buffer_usage_to_gl_enum(usage));
+                        if (update_type == GS_GRAPHICS_BUFFER_UPDATE_SUBDATA) 
+                        {
+                            glBufferSubData(GL_ARRAY_BUFFER, offset, sz, (u8*)(cb->commands.data + cb->commands.position));
+                        } 
+                        else 
+                        {
+                            glBufferData(GL_ARRAY_BUFFER, sz, (u8*)(cb->commands.data + cb->commands.position), gsgl_buffer_usage_to_gl_enum(usage));
+                        }
                         glBindBuffer(GL_ARRAY_BUFFER, 0);
                     } break;
 

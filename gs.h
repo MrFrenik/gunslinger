@@ -2232,6 +2232,7 @@ void gs_command_buffer_free(gs_command_buffer_t* cb)
 #define gs_v2(...)  gs_vec2_ctor(__VA_ARGS__)
 #define gs_v3(...)  gs_vec3_ctor(__VA_ARGS__)
 #define gs_v4(...)  gs_vec4_ctor(__VA_ARGS__)
+#define gs_quat(...) gs_quat_ctor(__VA_ARGS__)
 
 #define gs_v2s(__S)  gs_vec2_ctor((__S), (__S))
 #define gs_v3s(__S)  gs_vec3_ctor((__S), (__S), (__S))
@@ -4296,6 +4297,12 @@ gs_enum_decl(gs_graphics_buffer_usage_type,
     GS_GRAPHICS_BUFFER_USAGE_DYNAMIC
 );
 
+/* Buffer Update Type */
+gs_enum_decl(gs_graphics_buffer_update_type,
+    GS_GRAPHICS_BUFFER_UPDATE_RECREATE,
+    GS_GRAPHICS_BUFFER_UPDATE_SUBDATA
+);
+
 /* Texture Format */
 gs_enum_decl(gs_graphics_texture_format_type,
     GS_GRAPHICS_TEXTURE_FORMAT_RGBA8,
@@ -4452,6 +4459,10 @@ typedef struct gs_graphics_buffer_desc_t
     void* data;                                 // Array of buffer data
     size_t size;                                // Size in bytes of buffer data array
     const char* name;                           // Name of buffer (required for sampler/uniform buffers)
+    struct {
+        size_t offset;
+        gs_graphics_buffer_update_type type;
+    } update;
 } gs_graphics_buffer_desc_t;
 
 typedef gs_graphics_buffer_desc_t gs_graphics_vertex_buffer_desc_t;
@@ -4681,6 +4692,7 @@ typedef struct gs_asset_mesh_decl_t
 {
     gs_asset_mesh_layout_t* layout;        // Mesh attribute layout array
     size_t layout_size;                    // Size of mesh attribute layout array in bytes
+    size_t index_buffer_element_size;      // Size of index data size in bytes
 } gs_asset_mesh_decl_t;
 
 typedef struct gs_asset_mesh_primitive_t
@@ -4695,7 +4707,36 @@ typedef struct gs_asset_mesh_t
     gs_dyn_array(gs_asset_mesh_primitive_t) primitives;
 } gs_asset_mesh_t;
 
+// Structured/packed raw mesh data
+typedef struct gs_asset_mesh_raw_data_t 
+{
+    uint32_t prim_count;
+    size_t* vertex_sizes;
+    size_t* index_sizes;
+    void** vertices;
+    void** indices;
+} gs_asset_mesh_raw_data_t;
+
 GS_API_DECL void gs_asset_mesh_load_from_file(const char* path, void* out, gs_asset_mesh_decl_t* decl, void* data_out, size_t data_size);
+
+GS_API_DECL void gs_util_load_gltf_data_from_file(const char* path, gs_asset_mesh_decl_t* decl, gs_asset_mesh_raw_data_t** out, uint32_t* mesh_count);
+
+/*
+    // Could pass in a mesh decl? Then it'll just give you back packed vertex/index data for each primitive?
+    GS_API_DECL gs_util_load_gltf_from_file(const char* path, gs_asset_mesh_decl_t* decl, uint32_t* primitive_count, void*** verticies, size_t** vertex_sizes, void*** indices, size_t** index_sizes);
+    
+    To use: 
+
+    // For primitives
+    uint32_t prim_count = 0;
+    size_t* vertex_sizes = NULL;
+    size_t* index_sizes = NULL;
+    float** vertices = NULL;
+    uint32_t** indices = NULL;
+
+    gs_asset_mesh_raw_data_t data = {};
+    gs_util_load_gltf_from_file("path", &decl, &data);
+*/
 
 /*==========================
 // GS_ENGINE / GS_APP
@@ -5252,444 +5293,362 @@ void gs_asset_audio_load_from_file(const char* path, void* out)
     a->hndl = gs_audio_load_from_file(path);
 }
 
-// typedef struct gs_asset_mesh_layout_t {
-//     gs_asset_mesh_attribute_type type;     // Type of attribute
-//     uint32_t idx;                          // Optional index (for joint/weight/texcoord/color)
-// } gs_asset_mesh_layout_t;
-
-// typedef struct gs_asset_mesh_decl_t
-// {
-//     gs_asset_mesh_layout_t* layout;        // Mesh attribute layout array
-//     size_t layout_size;                    // Size of mesh attribute layout array in bytes
-// } gs_asset_mesh_decl_t;
-
-// typedef struct gs_asset_mesh_t
-// {
-//     gs_handle(gs_graphics_buffer_t) vbo;
-//     gs_handle(gs_graphics_buffer_t) ibo;
-// } gs_asset_mesh_t;
-
-void gs_asset_mesh_load_from_file(const char* path, void* out, gs_asset_mesh_decl_t* decl, void* data_out, size_t data_size)
+// Mesh
+void gs_util_load_gltf_data_from_file(const char* path, gs_asset_mesh_decl_t* decl, gs_asset_mesh_raw_data_t** out, uint32_t* mesh_count)
 {
-    // NOTE(john): Only load gltf data for now
-
-    gs_transient_buffer(file_ext, 32);
-    gs_platform_file_extension(file_ext, 32, path);
-    if (!gs_string_compare_equal(file_ext, "gltf")) {
-        gs_println("Mesh:LoadFromFile:Extension: %s: Can only load .gltf files for now", file_ext);
-        return;
-    }
-
-    // Cast mesh data to use
-    gs_asset_mesh_t* mesh = (gs_asset_mesh_t*)out;
-
     // Use cgltf like a boss
     cgltf_options options = gs_default_val();
     cgltf_data* data = NULL;
     cgltf_result result = cgltf_parse_file(&options, path, &data);
-    if (result == cgltf_result_success)
+
+    if (result != cgltf_result_success)
     {
-        // Load buffers as well
-        
-        result = cgltf_load_buffers(&options, data, path);
-        if (result != cgltf_result_success)
-        {
-            cgltf_free(data);
-            gs_println("Mesh:LoadFromFile:Failed to load buffers: %s", path);
-            return;
-        }
+        gs_println("Mesh:LoadFromFile:Failed load gltf: %s", path);
+        return;
+    }
 
-        // Temporary structures
-        gs_dyn_array(gs_vec3) positions = NULL;
-        gs_dyn_array(gs_vec3) normals = NULL;
-        gs_dyn_array(uint16_t) indices_16u = NULL;
-        gs_dyn_array(gs_color_t) colors = NULL;
-        gs_dyn_array(gs_vec2) uvs = NULL;
-        gs_dyn_array(gs_asset_mesh_layout_t) layouts = NULL;
-        gs_byte_buffer_t v_data = gs_byte_buffer_new();
-        gs_byte_buffer_t i_data = gs_byte_buffer_new();
+    // Load buffers as well
+    result = cgltf_load_buffers(&options, data, path);
+    if (result != cgltf_result_success)
+    {
+        cgltf_free(data);
+        gs_println("Mesh:LoadFromFile:Failed to load buffers: %s", path);
+        return;
+    }
 
-        // Iterate through meshes in data
-        for (uint32_t i = 0; i < data->meshes_count; ++i)
+    // Type of index data
+    size_t index_element_size = decl ? decl->index_buffer_element_size : 0;
+
+    // Temporary structures
+    gs_dyn_array(gs_vec3) positions = NULL;
+    gs_dyn_array(gs_vec3) normals = NULL;
+    gs_dyn_array(gs_vec3) tangents = NULL;
+    gs_dyn_array(gs_color_t) colors = NULL;
+    gs_dyn_array(gs_vec2) uvs = NULL;
+    gs_dyn_array(gs_asset_mesh_layout_t) layouts = NULL;
+    gs_byte_buffer_t v_data = gs_byte_buffer_new();
+    gs_byte_buffer_t i_data = gs_byte_buffer_new();
+
+    // Allocate memory for buffers
+    *mesh_count = data->meshes_count;
+    *out = (gs_asset_mesh_raw_data_t*)gs_malloc(data->meshes_count * sizeof(gs_asset_mesh_raw_data_t));
+    memset(*out, 0, sizeof(gs_asset_mesh_raw_data_t) * data->meshes_count);
+
+    // Iterate through meshes in data
+    for (uint32_t i = 0; i < data->meshes_count; ++i)
+    {
+        // Initialize mesh data
+        gs_asset_mesh_raw_data_t* mesh = out[i];
+        mesh->prim_count = data->meshes[i].primitives_count;
+        mesh->vertex_sizes = (size_t*)gs_malloc(sizeof(size_t) * mesh->prim_count);
+        mesh->index_sizes = (size_t*)gs_malloc(sizeof(size_t) * mesh->prim_count);
+        mesh->vertices = (void**)gs_malloc(sizeof(size_t) * mesh->prim_count);
+        mesh->indices = (void**)gs_malloc(sizeof(size_t) * mesh->prim_count);
+
+        // For each primitive in mesh 
+        for (uint32_t p = 0; p < data->meshes[i].primitives_count; ++p)
         {
-            // For each primitive in mesh 
-            for (uint32_t p = 0; p < data->meshes[i].primitives_count; ++p)
+            // Clear temp data from previous use
+            gs_dyn_array_clear(positions);
+            gs_dyn_array_clear(normals);
+            gs_dyn_array_clear(tangents);
+            gs_dyn_array_clear(uvs);
+            gs_dyn_array_clear(colors);
+            gs_dyn_array_clear(layouts);
+            gs_byte_buffer_clear(&v_data);
+            gs_byte_buffer_clear(&i_data);
+
+            #define __GLTF_PUSH_ATTR(ATTR, TYPE, COUNT, ARR, ARR_TYPE, LAYOUTS, LAYOUT_TYPE)\
+                do {\
+                    int32_t N = 0;\
+                    TYPE* BUF = (TYPE*)ATTR->buffer_view->buffer->data + ATTR->buffer_view->offset/sizeof(TYPE) + ATTR->offset/sizeof(TYPE);\
+                    gs_assert(BUF);\
+                    TYPE V[COUNT] = gs_default_val();\
+                    /* For each vertex */\
+                    for (uint32_t k = 0; k < ATTR->count; k++)\
+                    {\
+                        /* For each element */\
+                        for (int l = 0; l < COUNT; l++) {\
+                            V[l] = BUF[N + l];\
+                        }\
+                        N += (int32_t)(ATTR->stride/sizeof(TYPE));\
+                        /* Add to temp data array */\
+                        ARR_TYPE ELEM = gs_default_val();\
+                        memcpy((void*)&ELEM, (void*)V, sizeof(ARR_TYPE));\
+                        gs_dyn_array_push(ARR, ELEM);\
+                    }\
+                    /* Push into layout */\
+                    gs_asset_mesh_layout_t LAYOUT = gs_default_val();\
+                    LAYOUT.type = LAYOUT_TYPE;\
+                    gs_dyn_array_push(LAYOUTS, LAYOUT);\
+                } while (0)
+
+            // For each attribute in primitive
+            for (uint32_t a = 0; a < data->meshes[i].primitives[p].attributes_count; ++a)
             {
-                // Clear temp data from previous use
-                gs_dyn_array_clear(positions);
-                gs_dyn_array_clear(normals);
-                gs_dyn_array_clear(uvs);
-                gs_dyn_array_clear(colors);
-                gs_dyn_array_clear(indices_16u);
-                gs_dyn_array_clear(layouts);
-                gs_byte_buffer_clear(&v_data);
-                gs_byte_buffer_clear(&i_data);
+                // Accessor for attribute data
+                cgltf_accessor* attr = data->meshes[i].primitives[p].attributes[a].data;
 
-                // For each attribute in primitive
-                for (uint32_t a = 0; a < data->meshes[i].primitives[p].attributes_count; ++a)
+                // Switch on type for reading data
+                switch (data->meshes[i].primitives[p].attributes[a].type)
                 {
-                    // Accessor for attribute data
-                    cgltf_accessor* attr = data->meshes[i].primitives[p].attributes[a].data;
+                    case cgltf_attribute_type_position: {
+                        __GLTF_PUSH_ATTR(attr, float, 3, positions, gs_vec3, layouts, GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION);
+                    } break;
 
-                    // Switch on type for reading data
-                    switch (data->meshes[i].primitives[p].attributes[a].type)
+                    case cgltf_attribute_type_normal: {
+                        __GLTF_PUSH_ATTR(attr, float, 3, normals, gs_vec3, layouts, GS_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL);
+                    } break;
+
+                    case cgltf_attribute_type_tangent: {
+                        __GLTF_PUSH_ATTR(attr, float, 3, tangents, gs_vec3, layouts, GS_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT);
+                    } break;
+
+                    case cgltf_attribute_type_texcoord: {
+                        __GLTF_PUSH_ATTR(attr, float, 2, uvs, gs_vec2, layouts, GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD);
+                    } break;
+
+                    case cgltf_attribute_type_color: {
+                        __GLTF_PUSH_ATTR(attr, uint8_t, 4, colors, gs_color_t, layouts, GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR);
+                    } break;
+
+                    // Not sure what to do with these for now
+                    case cgltf_attribute_type_joints: 
                     {
-                        case cgltf_attribute_type_position:
-                        {
-                            int32_t n = 0; 
-                            float* buf = (float*)attr->buffer_view->buffer->data + attr->buffer_view->offset/sizeof(float) + attr->offset/sizeof(float);
-                            gs_assert(buf);
-                            gs_vec3 v = gs_default_val();
+                        // Push into layout
+                        gs_asset_mesh_layout_t layout = gs_default_val();
+                        layout.type = GS_ASSET_MESH_ATTRIBUTE_TYPE_JOINT;
+                        gs_dyn_array_push(layouts, layout);
+                    } break;
 
-                            // For each vertex
-                            for (uint32_t k = 0; k < attr->count; k++) 
-                            {
-                                // For each element
-                                for (int l = 0; l < 3; l++) {
-                                    v.xyz[l] = buf[n + l];
-                                }
-                                n += (int32_t)(attr->stride/sizeof(float));
+                    case cgltf_attribute_type_weights:
+                    {
+                        // Push into layout
+                        gs_asset_mesh_layout_t layout = gs_default_val();
+                        layout.type = GS_ASSET_MESH_ATTRIBUTE_TYPE_WEIGHT;
+                        gs_dyn_array_push(layouts, layout);
+                    } break;
 
-                                // Add to temp positions array
-                                gs_dyn_array_push(positions, v);
-                            }
+                    // Shouldn't hit here...   
+                    default: 
+                    {
+                    } break;
+                }
+            }
 
-                            // Push into layout
-                            gs_asset_mesh_layout_t layout = gs_default_val();
-                            layout.type = GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION;
-                            gs_dyn_array_push(layouts, layout);
+            // Indices for primitive
+            cgltf_accessor* acc = data->meshes[i].primitives[p].indices;
 
-                        } break;
+            #define __GLTF_PUSH_IDX(BB, ACC, TYPE)\
+                do {\
+                    int32_t n = 0;\
+                    TYPE* buf = (TYPE*)acc->buffer_view->buffer->data + acc->buffer_view->offset/sizeof(TYPE) + acc->offset/sizeof(TYPE);\
+                    gs_assert(buf);\
+                    TYPE v = 0;\
+                    /* For each index */\
+                    for (uint32_t k = 0; k < acc->count; k++) {\
+                        /* For each element */\
+                        for (int l = 0; l < 1; l++) {\
+                            v = buf[n + l];\
+                        }\
+                        n += (int32_t)(acc->stride/sizeof(TYPE));\
+                        /* Add to temp positions array */\
+                        switch (index_element_size) {\
+                            case 0: gs_byte_buffer_write(BB, uint16_t, (uint16_t)v); break;\
+                            case 2: gs_byte_buffer_write(BB, uint16_t, (uint16_t)v); break;\
+                            case 4: gs_byte_buffer_write(BB, uint32_t, (uint32_t)v); break;\
+                        }\
+                    }\
+                } while (0)
 
-                        case cgltf_attribute_type_normal:
-                        {
-                            int32_t n = 0; 
-                            float* buf = (float*)attr->buffer_view->buffer->data + attr->buffer_view->offset/sizeof(float) + attr->offset/sizeof(float);
-                            gs_assert(buf);
-                            gs_vec3 v = gs_default_val();
+            // If indices are available
+            if (acc) 
+            {
+                switch (acc->component_type) 
+                {
+                    case cgltf_component_type_r_8:   __GLTF_PUSH_IDX(&i_data, acc, int8_t);   break;
+                    case cgltf_component_type_r_8u:  __GLTF_PUSH_IDX(&i_data, acc, uint8_t);  break;
+                    case cgltf_component_type_r_16:  __GLTF_PUSH_IDX(&i_data, acc, int16_t);  break;
+                    case cgltf_component_type_r_16u: __GLTF_PUSH_IDX(&i_data, acc, uint16_t); break;
+                    case cgltf_component_type_r_32u: __GLTF_PUSH_IDX(&i_data, acc, uint32_t); break;
+                    case cgltf_component_type_r_32f: __GLTF_PUSH_IDX(&i_data, acc, float);    break;
 
-                            // For each normal
-                            for (uint32_t k = 0; k < attr->count; k++) 
-                            {
-                                // For each element
-                                for (int l = 0; l < 3; l++) {
-                                    v.xyz[l] = buf[n + l];
-                                }
-                                n += (int32_t)(attr->stride/sizeof(float));
-
-                                // Add to temp positions array
-                                gs_dyn_array_push(normals, v);
-                            }
-
-                            // Push into layout
-                            gs_asset_mesh_layout_t layout = gs_default_val();
-                            layout.type = GS_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL;
-                            gs_dyn_array_push(layouts, layout);
-
-                        } break;
-
-                        case cgltf_attribute_type_tangent: 
-                        {
-                            // Push into layout
-                            gs_asset_mesh_layout_t layout = gs_default_val();
-                            layout.type = GS_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT;
-                            gs_dyn_array_push(layouts, layout);
-                        } break;
-
-                        case cgltf_attribute_type_texcoord:
-                        {
-                            int32_t n = 0; 
-                            float* buf = (float*)attr->buffer_view->buffer->data + attr->buffer_view->offset/sizeof(float) + attr->offset/sizeof(float);
-                            gs_assert(buf);
-                            gs_vec2 v = gs_default_val();
-
-                            // For each texcoord
-                            for (uint32_t k = 0; k < attr->count; k++) 
-                            {
-                                // For each element
-                                for (int l = 0; l < 2; l++) {
-                                    v.xy[l] = buf[n + l];
-                                }
-                                n += (int32_t)(attr->stride/sizeof(float));
-
-                                // Add to temp positions array
-                                gs_dyn_array_push(uvs, v);
-                            }
-
-                            // Push into layout
-                            gs_asset_mesh_layout_t layout = gs_default_val();
-                            layout.type = GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD;
-                            gs_dyn_array_push(layouts, layout);
-
-                        } break;
-
-                        case cgltf_attribute_type_joints:
-                        {
-                            // Push into layout
-                            gs_asset_mesh_layout_t layout = gs_default_val();
-                            layout.type = GS_ASSET_MESH_ATTRIBUTE_TYPE_JOINT;
-                            gs_dyn_array_push(layouts, layout);
-                        } break;
-
-                        case cgltf_attribute_type_weights:
-                        {
-                            // Push into layout
-                            gs_asset_mesh_layout_t layout = gs_default_val();
-                            layout.type = GS_ASSET_MESH_ATTRIBUTE_TYPE_WEIGHT;
-                            gs_dyn_array_push(layouts, layout);
-                        } break;
-
-                        case cgltf_attribute_type_color:
-                        {
-                            int32_t n = 0; 
-                            uint8_t* buf = (uint8_t*)attr->buffer_view->buffer->data + attr->buffer_view->offset/sizeof(uint8_t) + attr->offset/sizeof(float);
-                            gs_assert(buf);
-                            gs_color_t v = gs_default_val();
-
-                            // For each texcoord
-                            for (uint32_t k = 0; k < attr->count; k++) 
-                            {
-                                // For each element
-                                for (int l = 0; l < 4; l++) {
-                                    v.rgba[l] = buf[n + l];
-                                }
-                                n += (int32_t)(attr->stride/sizeof(uint8_t));
-
-                                // Add to temp positions array
-                                gs_dyn_array_push(colors, v);
-                            }
-
-                            // Push into layout
-                            gs_asset_mesh_layout_t layout = gs_default_val();
-                            layout.type = GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR;
-                            gs_dyn_array_push(layouts, layout);
-
-                        } break;
-
-                        // Shouldn't hit here...   
-                        default: 
-                        {
-                        } break;
+                    // Shouldn't hit here
+                    default: {
+                    } break;
+                }
+            }
+            else 
+            {
+                // Iterate over positions size, then just push back indices
+                for (uint32_t i = 0; i < gs_dyn_array_size(positions); ++i) 
+                {
+                    switch (index_element_size)
+                    {
+                        default:
+                        case 0: gs_byte_buffer_write(&i_data, uint16_t, (uint16_t)i); break;
+                        case 2: gs_byte_buffer_write(&i_data, uint16_t, (uint16_t)i); break;
+                        case 4: gs_byte_buffer_write(&i_data, uint32_t, (uint32_t)i); break;
                     }
                 }
+            }
 
-                // Indices for primitive
-                cgltf_accessor* acc = data->meshes[i].primitives[p].indices;
+            bool warnings[gs_enum_count(gs_asset_mesh_attribute_type)] = gs_default_val();
 
-                // If indices are available
-                if (acc)
+            // Grab mesh layout pointer to use
+            gs_asset_mesh_layout_t* layoutp = decl ? decl->layout : layouts;
+            uint32_t layout_ct = decl ? decl->layout_size / sizeof(gs_asset_mesh_layout_t) : gs_dyn_array_size(layouts);
+
+            // Iterate layout to fill data buffers according to provided layout
+            {
+                uint32_t vct = 0; 
+                vct = gs_max(vct, gs_dyn_array_size(positions)); 
+                vct = gs_max(vct, gs_dyn_array_size(colors)); 
+                vct = gs_max(vct, gs_dyn_array_size(uvs));
+                vct = gs_max(vct, gs_dyn_array_size(normals));
+                vct = gs_max(vct, gs_dyn_array_size(tangents));
+
+                #define __GLTF_WRITE_DATA(IT, VDATA, ARR, ARR_TYPE, ARR_DEF_VAL, LAYOUT_TYPE)\
+                    do {\
+                        /* Grab data at index, if available */\
+                        if (IT < gs_dyn_array_size(ARR)) {\
+                            gs_byte_buffer_write(&(VDATA), ARR_TYPE, ARR[IT]);\
+                        }\
+                        else {\
+                            /* Write default value and give warning.*/\
+                            gs_byte_buffer_write(&(VDATA), ARR_TYPE, ARR_DEF_VAL);\
+                            if (!warnings[LAYOUT_TYPE]) {\
+                                gs_println("Warning:Mesh:LoadFromFile:%s:Index out of range.", #LAYOUT_TYPE);\
+                                warnings[LAYOUT_TYPE] = true;\
+                            }\
+                        }\
+                    } while (0)
+
+                for (uint32_t it = 0; it < vct; ++it)
                 {
-                    switch (acc->component_type)
+                    // For each attribute in layout
+                    for (uint32_t l = 0; l < layout_ct; ++l)
                     {
-                        // uint16_t 
-                        case cgltf_component_type_r_16u:
+                        switch (layoutp[l].type)
                         {
-                            int32_t n = 0; 
-                            uint16_t* buf = (uint16_t*)acc->buffer_view->buffer->data + acc->buffer_view->offset/sizeof(uint16_t) + acc->offset/sizeof(uint16_t);
-                            gs_assert(buf);
-                            uint16_t v = 0;
+                            case GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION: {
+                                __GLTF_WRITE_DATA(it, v_data, positions, gs_vec3, gs_v3(0.f, 0.f, 0.f), GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION); 
+                            } break;
 
-                            // For each index
-                            for (uint32_t k = 0; k < acc->count; k++) 
+                            case GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD: {
+                                __GLTF_WRITE_DATA(it, v_data, uvs, gs_vec2, gs_v2(0.f, 0.f), GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD); 
+                            } break;
+
+                            case GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR: {
+                                __GLTF_WRITE_DATA(it, v_data, colors, gs_color_t, GS_COLOR_WHITE, GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR); 
+                            } break;
+
+                            case GS_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL: {
+                                __GLTF_WRITE_DATA(it, v_data, normals, gs_vec3, gs_v3(0.f, 0.f, 1.f), GS_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL); 
+                            } break;
+
+                            case GS_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT: {
+                                __GLTF_WRITE_DATA(it, v_data, tangents, gs_vec3, gs_v3(0.f, 1.f, 0.f), GS_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT); 
+                            } break;
+
+                            default:
                             {
-                                // For each element
-                                for (int l = 0; l < 1; l++) {
-                                    v = buf[n + l];
-                                }
-                                n += (int32_t)(acc->stride/sizeof(uint16_t));
-
-                                // Add to temp positions array
-                                gs_dyn_array_push(indices_16u, v);
-                            }
-                        } break;
-
-                        // uint32_t
-                        case cgltf_component_type_r_32u:
-                        {
-                            int32_t n = 0; 
-                            uint32_t* buf = (uint32_t*)acc->buffer_view->buffer->data + acc->buffer_view->offset/sizeof(uint32_t) + acc->offset/sizeof(uint32_t);
-                            gs_assert(buf);
-                            uint32_t v = 0;
-
-                            // For each index
-                            for (uint32_t k = 0; k < acc->count; k++) 
-                            {
-                                // For each element
-                                for (int l = 0; l < 1; l++) {
-                                    v = buf[n + l];
-                                }
-                                n += (int32_t)(acc->stride/sizeof(uint32_t));
-
-                                // Add to temp positions array
-                                gs_dyn_array_push(indices_16u, (uint16_t)v);
-                            }
-                        } break;
-
-                        // Shouldnt' hit here
-                        default: 
-                        {
-                        } break;
-                    }
-                }
-                // No idices available, just use this provided vertices
-                else
-                {
-                    gs_println("NO INDICES AVAILABLE!");
-                    // Create indices out of vertices
-                }
-
-                // typedef struct gs_asset_mesh_layout_t {
-                //     gs_asset_mesh_attribute_type type;     // Type of attribute
-                //     uint32_t idx;                          // Optional index (for joint/weight/texcoord/color)
-                // } gs_asset_mesh_layout_t;
-
-                // typedef struct gs_asset_mesh_decl_t
-                // {
-                //     gs_asset_mesh_layout_t* layout;        // Mesh attribute layout array
-                //     size_t layout_size;                    // Size of mesh attribute layout array in bytes
-                // } gs_asset_mesh_decl_t;
-
-                // If requesting data that isn't available, need to fill in default information
-
-                bool warnings[gs_enum_count(gs_asset_mesh_attribute_type)] = gs_default_val();
-
-                // Iterate layout if not null
-                if (decl)
-                {
-                    uint32_t layout_ct = decl->layout_size / sizeof(gs_asset_mesh_layout_t);
-
-                    // Not sure if this is correct
-                    uint32_t vct = gs_max(gs_dyn_array_size(positions), gs_dyn_array_size(colors)); 
-                    vct = gs_max(vct, gs_dyn_array_size(uvs));
-                    vct = gs_max(vct, gs_dyn_array_size(normals));
-
-                    gs_println("normals size: %zu", gs_dyn_array_size(normals));
-                    gs_println("pos size: %zu", gs_dyn_array_size(positions));
-                    gs_println("color size: %zu", gs_dyn_array_size(colors));
-                    gs_println("uvs size: %zu", gs_dyn_array_size(uvs));
-
-                    for (uint32_t it = 0; it < vct; ++it)
-                    {
-                        // For each attribute in layout
-                        for (uint32_t l = 0; l < layout_ct; ++l)
-                        {
-                            switch (decl->layout[l].type)
-                            {
-                                case GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION:
-                                {
-                                    // Grab data at index, if available
-                                    if (it < gs_dyn_array_size(positions)) 
-                                    {
-                                        gs_byte_buffer_write(&v_data, gs_vec3, positions[it]);
-                                    }
-                                    else 
-                                    {
-                                        // Write default value and give warning.
-                                        gs_byte_buffer_write(&v_data, gs_vec3, gs_v3(0.f, 0.f, 0.f));
-
-                                        if (!warnings[GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION]) {
-                                            gs_println("Warning:Mesh:LoadFromFile:POSITION:Index out of range.");
-                                            warnings[GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION] = true;
-                                        }
-                                    }
-                                } break;
-
-                                case GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD:
-                                {
-                                    // Grab data at index, if available
-                                    if (it < gs_dyn_array_size(uvs)) 
-                                    {
-                                        gs_byte_buffer_write(&v_data, gs_vec2, uvs[it]);
-                                    }
-                                    else 
-                                    {
-                                        // Write default value and give warning.
-                                        gs_byte_buffer_write(&v_data, gs_vec2, gs_v2(0.f, 0.f));
-
-                                        if (!warnings[GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD]) {
-                                            gs_println("Warning:Mesh:LoadFromFile:TEXCOORD:Index out of range.");
-                                            warnings[GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD] = true; 
-                                        }
-                                    }
-                                } break;
-
-                                case GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR:
-                                {
-                                    // Grab data at index, if available
-                                    if (it < gs_dyn_array_size(colors)) 
-                                    {
-                                        gs_byte_buffer_write(&v_data, gs_color_t, colors[it]);
-                                    }
-                                    else 
-                                    {
-                                        // Write default value and give warning.
-                                        gs_byte_buffer_write(&v_data, gs_color_t, GS_COLOR_WHITE);
-
-                                        if (!warnings[GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR]) {
-                                            warnings[GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR] = true;
-                                            gs_println("Warning:Mesh:LoadFromFile:COLOR:Index out of range.");
-                                        }
-                                    }
-                                } break;
-
-                                default:
-                                {
-                                } break;
-                            }
+                            } break;
                         }
                     }
                 }
-                // Iterate over temp layout
-                else
-                {
-                }
-
-                // Iterate indices and push back data into i_data
-                for (uint32_t it = 0; it < gs_dyn_array_size(indices_16u); ++it) {
-                    // Push index into idata
-                    gs_byte_buffer_write(&i_data, uint16_t, indices_16u[it]);
-                }
-
-                // Construct primitive
-                gs_asset_mesh_primitive_t prim = gs_default_val();
-                prim.count = gs_dyn_array_size(indices_16u);
-
-                // Vertex buffer decl
-                gs_graphics_buffer_desc_t vdesc = gs_default_val();
-                vdesc.type = GS_GRAPHICS_BUFFER_VERTEX;
-                vdesc.data = v_data.data;
-                vdesc.size = v_data.size;
-
-                // Construct vertex buffer for primitive
-                prim.vbo = gs_graphics_buffer_create(&vdesc);
-
-                // Index buffer decl
-                gs_graphics_buffer_desc_t idesc = gs_default_val();
-                idesc.type = GS_GRAPHICS_BUFFER_INDEX;
-                idesc.data = i_data.data;
-                idesc.size = i_data.size;
-
-                // Construct index buffer for primitive
-                prim.ibo = gs_graphics_buffer_create(&idesc);
-
-                // Add primitive to mesh
-                gs_dyn_array_push(mesh->primitives, prim);
             }
-        }
 
-        // Free all data at the end
-        cgltf_free(data);
-        gs_dyn_array_free(positions);
-        gs_dyn_array_free(normals);
-        gs_dyn_array_free(positions);
-        gs_dyn_array_free(normals);
-        gs_dyn_array_free(indices_16u);
-        gs_dyn_array_free(colors);
-        gs_dyn_array_free(uvs);
-        gs_dyn_array_free(layouts);
-        gs_byte_buffer_free(&v_data);
-        gs_byte_buffer_free(&i_data);
+            // Add to out data
+            mesh->vertices[p] = gs_malloc(v_data.size);
+            mesh->indices[p] = gs_malloc(i_data.size);
+            mesh->vertex_sizes[p] = v_data.size;
+            mesh->index_sizes[p] = i_data.size;
+
+            // Copy data
+            memcpy(mesh->vertices[p], v_data.data, v_data.size);
+            memcpy(mesh->indices[p], i_data.data, i_data.size);
+        }
     }
+
+    // Free all data at the end
+    cgltf_free(data);
+    gs_dyn_array_free(positions);
+    gs_dyn_array_free(normals);
+    gs_dyn_array_free(tangents);
+    gs_dyn_array_free(colors);
+    gs_dyn_array_free(uvs);
+    gs_dyn_array_free(layouts);
+    gs_byte_buffer_free(&v_data);
+    gs_byte_buffer_free(&i_data);
+}
+
+void gs_asset_mesh_load_from_file(const char* path, void* out, gs_asset_mesh_decl_t* decl, void* data_out, size_t data_size)
+{
+    // Cast mesh data to use
+    gs_asset_mesh_t* mesh = (gs_asset_mesh_t*)out;
+
+    // Mesh data to fill out
+    uint32_t mesh_count = 0;
+    gs_asset_mesh_raw_data_t* meshes = NULL;
+
+    // Get file extension from path
+    gs_transient_buffer(file_ext, 32);
+    gs_platform_file_extension(file_ext, 32, path);
+
+    // GLTF
+    if (gs_string_compare_equal(file_ext, "gltf"))
+    {
+        gs_util_load_gltf_data_from_file(path, decl, &meshes, &mesh_count);
+    }
+    else 
+    {
+        gs_println("Warning:MeshLoadFromFile:File extension not supported: %s, file: %s", file_ext, path);
+        return;
+    }
+
+    // For now, handle meshes with only single mesh count
+    if (mesh_count != 1) {
+        // Error
+        // Free all the memory
+        return;
+    }
+
+    // Process all mesh data, add meshes
+    for (uint32_t i = 0; i < mesh_count; ++i)
+    {
+        gs_asset_mesh_raw_data_t* m = &meshes[i];
+
+        for (uint32_t p = 0; p < m->prim_count; ++p)
+        {
+            // Construct primitive
+            gs_asset_mesh_primitive_t prim = gs_default_val();
+            prim.count = m->index_sizes[p] / sizeof(uint16_t);
+
+            // Vertex buffer decl
+            gs_graphics_buffer_desc_t vdesc = gs_default_val();
+            vdesc.type = GS_GRAPHICS_BUFFER_VERTEX;
+            vdesc.data = m->vertices[p];
+            vdesc.size = m->vertex_sizes[p];
+
+            // Construct vertex buffer for primitive
+            prim.vbo = gs_graphics_buffer_create(&vdesc);
+
+            // Index buffer decl
+            gs_graphics_buffer_desc_t idesc = gs_default_val();
+            idesc.type = GS_GRAPHICS_BUFFER_INDEX;
+            idesc.data = m->indices[p];
+            idesc.size = m->index_sizes[p];
+
+            // Construct index buffer for primitive
+            prim.ibo = gs_graphics_buffer_create(&idesc);
+
+            // Add primitive to mesh
+            gs_dyn_array_push(mesh->primitives, prim);
+        } 
+    }
+
+    // Free all mesh data
 }
 
 /*=============================
