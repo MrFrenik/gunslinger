@@ -5309,7 +5309,6 @@ void gs_util_load_gltf_data_from_file(const char* path, gs_asset_mesh_decl_t* de
     gs_dyn_array(gs_vec3) positions = NULL;
     gs_dyn_array(gs_vec3) normals = NULL;
     gs_dyn_array(gs_vec3) tangents = NULL;
-    gs_dyn_array(uint16_t) indices_16u = NULL;
     gs_dyn_array(gs_color_t) colors = NULL;
     gs_dyn_array(gs_vec2) uvs = NULL;
     gs_dyn_array(gs_asset_mesh_layout_t) layouts = NULL;
@@ -5341,7 +5340,6 @@ void gs_util_load_gltf_data_from_file(const char* path, gs_asset_mesh_decl_t* de
             gs_dyn_array_clear(tangents);
             gs_dyn_array_clear(uvs);
             gs_dyn_array_clear(colors);
-            gs_dyn_array_clear(indices_16u);
             gs_dyn_array_clear(layouts);
             gs_byte_buffer_clear(&v_data);
             gs_byte_buffer_clear(&i_data);
@@ -5400,6 +5398,7 @@ void gs_util_load_gltf_data_from_file(const char* path, gs_asset_mesh_decl_t* de
                         __GLTF_PUSH_ATTR(attr, uint8_t, 4, colors, gs_color_t, layouts, GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR);
                     } break;
 
+                    // Not sure what to do with these for now
                     case cgltf_attribute_type_joints: 
                     {
                         // Push into layout
@@ -5426,50 +5425,43 @@ void gs_util_load_gltf_data_from_file(const char* path, gs_asset_mesh_decl_t* de
             // Indices for primitive
             cgltf_accessor* acc = data->meshes[i].primitives[p].indices;
 
-            #define __GLTF_PUSH_IDX(ARR, ACC, TYPE)\
+            #define __GLTF_PUSH_IDX(BB, ACC, RTYPE, WTYPE)\
                 do {\
                     int32_t n = 0;\
-                    TYPE* buf = (TYPE*)acc->buffer_view->buffer->data + acc->buffer_view->offset/sizeof(TYPE) + acc->offset/sizeof(TYPE);\
+                    RTYPE* buf = (RTYPE*)acc->buffer_view->buffer->data + acc->buffer_view->offset/sizeof(RTYPE) + acc->offset/sizeof(RTYPE);\
                     gs_assert(buf);\
-                    TYPE v = 0;\
+                    WTYPE v = 0;\
                     /* For each index */\
                     for (uint32_t k = 0; k < acc->count; k++) {\
                         /* For each element */\
                         for (int l = 0; l < 1; l++) {\
                             v = buf[n + l];\
                         }\
-                        n += (int32_t)(acc->stride/sizeof(TYPE));\
+                        n += (int32_t)(acc->stride/sizeof(RTYPE));\
                         /* Add to temp positions array */\
-                        gs_dyn_array_push(ARR, v);\
+                        gs_byte_buffer_write(BB, WTYPE, v);\
                     }\
                 } while (0)
 
             // If indices are available
-            if (acc)
+            if (acc) 
             {
-                switch (acc->component_type)
+                switch (acc->component_type) 
                 {
-                    // uint16_t 
-                    case cgltf_component_type_r_16u: {
-                        __GLTF_PUSH_IDX(indices_16u, acc, uint16_t);
-                    } break;
+                    case cgltf_component_type_r_16u: __GLTF_PUSH_IDX(&i_data, acc, uint16_t, uint16_t);  break;
+                    case cgltf_component_type_r_32u: __GLTF_PUSH_IDX(&i_data, acc, uint32_t, uint16_t);  break;
 
-                    // uint32_t
-                    case cgltf_component_type_r_32u: {
-                        __GLTF_PUSH_IDX(indices_16u, acc, uint32_t);
-                    } break;
-
-                    // Shouldnt' hit here
-                    default: 
-                    {
+                    // Shouldn't hit here
+                    default: {
                     } break;
                 }
             }
-            // No idices available, just use this provided vertices
-            else
+            else 
             {
-                gs_println("NO INDICES AVAILABLE!");
-                // Create indices out of vertices
+                // Iterate over positions size, then just push back indices
+                for (uint32_t i = 0; i < gs_dyn_array_size(positions); ++i) {
+                    gs_byte_buffer_write(&i_data, uint16_t, (uint16_t)i);
+                }
             }
 
             bool warnings[gs_enum_count(gs_asset_mesh_attribute_type)] = gs_default_val();
@@ -5538,12 +5530,6 @@ void gs_util_load_gltf_data_from_file(const char* path, gs_asset_mesh_decl_t* de
                 }
             }
 
-            // Iterate indices and push back data into i_data
-            for (uint32_t it = 0; it < gs_dyn_array_size(indices_16u); ++it) {
-                // Push index into idata
-                gs_byte_buffer_write(&i_data, uint16_t, indices_16u[it]);
-            }
-
             // Add to out data
             mesh->vertices[p] = gs_malloc(v_data.size);
             mesh->indices[p] = gs_malloc(i_data.size);
@@ -5561,7 +5547,6 @@ void gs_util_load_gltf_data_from_file(const char* path, gs_asset_mesh_decl_t* de
     gs_dyn_array_free(positions);
     gs_dyn_array_free(normals);
     gs_dyn_array_free(tangents);
-    gs_dyn_array_free(indices_16u);
     gs_dyn_array_free(colors);
     gs_dyn_array_free(uvs);
     gs_dyn_array_free(layouts);
