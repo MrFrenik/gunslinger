@@ -3984,7 +3984,7 @@ GS_API_DECL bool      gs_platform_was_mouse_down(gs_platform_mouse_button_code c
 GS_API_DECL bool      gs_platform_mouse_pressed(gs_platform_mouse_button_code code);
 GS_API_DECL bool      gs_platform_mouse_down(gs_platform_mouse_button_code code);
 GS_API_DECL bool      gs_platform_mouse_released(gs_platform_mouse_button_code code);
-GS_API_DECL void      gs_platform_set_mouse_position(uint32_t handle, float x, float y);
+GS_API_DECL void      gs_platform_mouse_set_position(uint32_t handle, float x, float y);
 GS_API_DECL gs_vec2   gs_platform_mouse_deltav();
 GS_API_DECL void      gs_platform_mouse_delta(float* x, float* y);
 GS_API_DECL gs_vec2   gs_platform_mouse_positionv();
@@ -4502,17 +4502,39 @@ typedef enum gs_graphics_vertex_data_type
     GS_GRAPHICS_VERTEX_DATA_NONINTERLEAVED
 } gs_graphics_vertex_data_type;
 
+/* Graphics Internal Binding Buffer Desc */
+typedef struct gs_graphics_bind_buffer_desc_t
+{
+    gs_handle(gs_graphics_buffer_t) buffer;     // Buffer to bind (vertex, index, uniform, sampler)
+    void* data;                                 // Data associated with bind
+    size_t size;                                // Size of data in bytes
+    uint32_t binding;                           // Binding for tex units
+    size_t offset;                              // For manual offset with vertex data (used for non-interleaved data) 
+    gs_graphics_vertex_data_type data_type;     // Interleaved/Non-interleaved data
+} gs_graphics_bind_buffer_desc_t;
+
 /* Graphics Binding Desc */
 typedef struct gs_graphics_bind_desc_t
 {
-    gs_graphics_bind_type type;             // Type of data to bind (vertex buffer, index buffer, uniform buffer, sampler buffer)
-    gs_handle(gs_graphics_buffer_t) buffer; // Buffer to bind (vertex, index, uniform, sampler)
-    void* data;                             // Data associated with bind
-    size_t size;                            // Size of data in bytes
-    uint32_t binding;                       // Binding for tex units
-    size_t offset;                          // For manual offset with vertex data (used for non-interleaved data) 
-    gs_graphics_vertex_data_type data_type; // Interleaved/Non-interleaved data
-    uint32_t clear_previous;                // Clearing previous vertex buffer data binds
+    struct {
+        gs_graphics_bind_buffer_desc_t* decl;   // Array of vertex buffer declarations (NULL by default)
+        size_t size;                            // Size of array in bytes (optional if only one)
+    } vertex_buffers;
+
+    struct {
+        gs_graphics_bind_buffer_desc_t* decl;   // Array of index buffer declarations (NULL by default)
+        size_t size;                            // Size of array in bytes (optional if only one)
+    } index_buffers;
+
+    struct {
+        gs_graphics_bind_buffer_desc_t* decl;   // Array of uniform buffer declarations (NULL by default)
+        size_t size;                            // Size of array in bytes (optional if only one)
+    } uniform_buffers;
+
+    struct {
+        gs_graphics_bind_buffer_desc_t* decl;   // Array of sampler buffer declarations (NULL by default)
+        size_t size;                            // Size of array in bytes (optional if only one)
+    } sampler_buffers;
 } gs_graphics_bind_desc_t;
 
 /* Graphics Blend State Desc */
@@ -4618,7 +4640,7 @@ GS_API_DECL void gs_graphics_end_render_pass(gs_command_buffer_t* cb);
 GS_API_DECL void gs_graphics_set_viewport(gs_command_buffer_t* cb, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
 GS_API_DECL void gs_graphics_set_view_scissor(gs_command_buffer_t* cb, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
 GS_API_DECL void gs_graphics_bind_pipeline(gs_command_buffer_t* cb, gs_handle(gs_graphics_pipeline_t) hndl);
-GS_API_DECL void gs_graphics_bind_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t* binds, size_t binds_size);
+GS_API_DECL void gs_graphics_bind_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t* binds);
 GS_API_DECL void gs_graphics_draw(gs_command_buffer_t* cb, uint32_t start, uint32_t count, uint32_t instance_count);
 
 /* Submission (Main Thread) */

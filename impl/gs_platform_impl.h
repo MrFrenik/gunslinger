@@ -970,7 +970,7 @@ void  gs_platform_set_window_close_callback(uint32_t handle, gs_window_close_cal
     glfwSetWindowCloseCallback(win, (GLFWwindowclosefun)cb);
 }
 
-void gs_platform_set_mouse_position(uint32_t handle, float x, float y)
+void gs_platform_mouse_set_position(uint32_t handle, float x, float y)
 {
     struct gs_platform_i* platform = gs_engine_subsystem(platform);
     GLFWwindow* win = __glfw_window_from_handle(platform, handle);

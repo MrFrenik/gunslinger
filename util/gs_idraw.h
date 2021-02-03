@@ -524,16 +524,25 @@ void gsi_flush(gs_immediate_draw_t* gsi)
 
 	gs_graphics_buffer_request_update(&gsi->commands, gsi->vbo, &vbdesc);
 
-	// Set up binds
-	gs_graphics_bind_desc_t vbo; {vbo.type = GS_GRAPHICS_BIND_VERTEX_BUFFER; vbo.buffer = gsi->vbo;}
-	gs_graphics_bind_desc_t ub; {ub.type = GS_GRAPHICS_BIND_UNIFORM_BUFFER; ub.buffer = gsi->uniforms; ub.data = &mvp;}
-	gs_graphics_bind_desc_t sb; {sb.type = GS_GRAPHICS_BIND_SAMPLER_BUFFER; sb.buffer = gsi->samplers; sb.data = &gsi->cache.texture; sb.binding = 0;}
+	// Set up all binding data
 
-	gs_graphics_bind_desc_t binds[] = {
-		vbo, ub, sb
-	};
+	gs_graphics_bind_buffer_desc_t vbuffer = gs_default_val();
+	vbuffer.buffer = gsi->vbo;
 
-	gs_graphics_bind_bindings(&gsi->commands, binds, sizeof(binds));
+	gs_graphics_bind_buffer_desc_t ubuffer = gs_default_val();
+	ubuffer.buffer = gsi->uniforms; ubuffer.data = &mvp;
+
+	gs_graphics_bind_buffer_desc_t sbuffer = gs_default_val();
+	sbuffer.buffer = gsi->samplers; sbuffer.data = &gsi->cache.texture; sbuffer.binding = 0;
+
+    // Bindings for all buffers: vertex, uniform, sampler
+    gs_graphics_bind_desc_t binds = gs_default_val();
+   	binds.vertex_buffers.decl = &vbuffer; 
+   	binds.uniform_buffers.decl = &ubuffer;
+   	binds.sampler_buffers.decl = &sbuffer;
+
+   	// Bind bindings
+	gs_graphics_bind_bindings(&gsi->commands, &binds);
 
 	// Submit draw
 	gs_graphics_draw(&gsi->commands, 0, gs_dyn_array_size(gsi->vertices), 1);

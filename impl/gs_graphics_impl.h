@@ -891,63 +891,67 @@ void gs_graphics_buffer_request_update(gs_command_buffer_t* cb, gs_handle(gs_gra
     });
 }
 
-void gs_graphics_bind_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t* binds, size_t binds_size)
+void gs_graphics_bind_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t* binds)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
-
-    __ogl_push_command(cb, GS_OPENGL_OP_BIND_BINDINGS, 
+ 
+    __ogl_push_command(cb, GS_OPENGL_OP_BIND_BINDINGS,
     {
-        uint32_t ct = (uint32_t)binds_size / (uint32_t)sizeof(gs_graphics_bind_desc_t); 
+        // Get counts from buffers
+        uint32_t vct = binds->vertex_buffers.decl ? binds->vertex_buffers.size ? binds->vertex_buffers.size / sizeof(gs_graphics_bind_buffer_desc_t) : 1 : 0;
+        uint32_t ict = binds->index_buffers.decl ? binds->index_buffers.size ? binds->index_buffers.size / sizeof(gs_graphics_bind_buffer_desc_t) : 1 : 0;
+        uint32_t uct = binds->uniform_buffers.decl ? binds->uniform_buffers.size ? binds->uniform_buffers.size / sizeof(gs_graphics_bind_buffer_desc_t) : 1 : 0;
+        uint32_t sct = binds->sampler_buffers.decl ? binds->sampler_buffers.size ? binds->sampler_buffers.size / sizeof(gs_graphics_bind_buffer_desc_t) : 1 : 0;
+
+        // Determine total count to write into command buffer
+        uint32_t ct = vct + ict + uct + sct;
         gs_byte_buffer_write(&cb->commands, uint32_t, ct);
 
-        for (uint32_t i = 0; i < ct; ++i) 
+        // Determine if need to clear any previous vertex buffers (if vct != 0)
+        gs_byte_buffer_write(&cb->commands, bool, (vct != 0));
+
+        // Vertex buffers
+        for (uint32_t i = 0; i < vct; ++i)
         {
-            gs_byte_buffer_write(&cb->commands, gs_graphics_bind_type, binds[i].type);
-            switch (binds[i].type)
+            gs_graphics_bind_buffer_desc_t* decl = &binds->vertex_buffers.decl[i];
+            gs_byte_buffer_write(&cb->commands, gs_graphics_bind_type, GS_GRAPHICS_BIND_VERTEX_BUFFER);
+            gs_byte_buffer_write(&cb->commands, uint32_t, decl->buffer.id);
+            gs_byte_buffer_write(&cb->commands, size_t, decl->offset);
+            gs_byte_buffer_write(&cb->commands, gs_graphics_vertex_data_type, decl->data_type);
+        }
+
+        // Index buffers
+        for (uint32_t i = 0; i < ict; ++i)
+        {
+            gs_graphics_bind_buffer_desc_t* decl = &binds->index_buffers.decl[i];
+            gs_byte_buffer_write(&cb->commands, gs_graphics_bind_type, GS_GRAPHICS_BIND_INDEX_BUFFER);
+            gs_byte_buffer_write(&cb->commands, uint32_t, decl->buffer.id);
+        }
+
+        // Uniform buffers
+        for (uint32_t i = 0; i < uct; ++i)
+        {
+            gs_graphics_bind_buffer_desc_t* decl = &binds->uniform_buffers.decl[i];
+
+            // if (id && gs_slot_array_exists(ogl->uniforms, id))
             {
-                case GS_GRAPHICS_BIND_VERTEX_BUFFER:
-                {
-                    gs_byte_buffer_write(&cb->commands, uint32_t, binds[i].buffer.id);
-                    gs_byte_buffer_write(&cb->commands, size_t, binds[i].offset);
-                    gs_byte_buffer_write(&cb->commands, gs_graphics_vertex_data_type, binds[i].data_type);
-                    gs_byte_buffer_write(&cb->commands, uint32_t, binds[i].clear_previous);
-                } break;
-
-                case GS_GRAPHICS_BIND_INDEX_BUFFER:
-                {
-                    gs_byte_buffer_write(&cb->commands, uint32_t, binds[i].buffer.id);
-                } break;
-
-                case GS_GRAPHICS_BIND_UNIFORM_BUFFER:
-                {
-                    // Get uniform to get size
-                    uint32_t id = binds[i].buffer.id;
-                    if (id && gs_slot_array_exists(ogl->uniforms, id))
-                    {
-                        size_t sz = (size_t)(gs_slot_array_getp(ogl->uniforms, id))->size;
-
-                        // Write slot id of uniform buffer
-                        gs_byte_buffer_write(&cb->commands, uint32_t, binds[i].buffer.id);
-                        // Write data size
-                        gs_byte_buffer_write(&cb->commands, size_t, sz);
-                        // Write data (bulk write of void* data)
-                        gs_byte_buffer_write_bulk(&cb->commands, binds[i].data, sz);
-                    }
-
-                } break;
-
-                case GS_GRAPHICS_BIND_SAMPLER_BUFFER:
-                {
-                    // Write slot id of sampler buffer
-                    gs_byte_buffer_write(&cb->commands, uint32_t, binds[i].buffer.id);
-                    // Write id texture
-                    gs_byte_buffer_write(&cb->commands, uint32_t, ((gs_handle(gs_graphics_texture_t)*)binds[i].data)->id);
-                    // Write binding
-                    gs_byte_buffer_write(&cb->commands, uint32_t, binds[i].binding);
-                } break;
-
-                default: gs_assert(false); break;
+                uint32_t id = decl->buffer.id;
+                size_t sz = (size_t)(gs_slot_array_getp(ogl->uniforms, id))->size;
+                gs_byte_buffer_write(&cb->commands, gs_graphics_bind_type, GS_GRAPHICS_BIND_UNIFORM_BUFFER);
+                gs_byte_buffer_write(&cb->commands, uint32_t, decl->buffer.id);
+                gs_byte_buffer_write(&cb->commands, size_t, sz);
+                gs_byte_buffer_write_bulk(&cb->commands, decl->data, sz);
             }
+        }
+
+        // Sampler buffers
+        for (uint32_t i = 0; i < sct; ++i)
+        {
+            gs_graphics_bind_buffer_desc_t* decl = &binds->sampler_buffers.decl[i];
+            gs_byte_buffer_write(&cb->commands, gs_graphics_bind_type, GS_GRAPHICS_BIND_SAMPLER_BUFFER);
+            gs_byte_buffer_write(&cb->commands, uint32_t, decl->buffer.id);
+            gs_byte_buffer_write(&cb->commands, uint32_t, ((gs_handle(gs_graphics_texture_t)*)decl->data)->id);
+            gs_byte_buffer_write(&cb->commands, uint32_t, decl->binding);
         }
     });
 }
@@ -1086,6 +1090,16 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
             case GS_OPENGL_OP_BIND_BINDINGS:
             {
                 gs_byte_buffer_readc(&cb->commands, uint32_t, ct);
+
+                // Determine if need to clear any previous vertex buffers here
+                gs_byte_buffer_readc(&cb->commands, bool, clear_vertex_buffers);
+
+                // Clear previous vertex decls if necessary
+                if (clear_vertex_buffers) {
+                    gs_dyn_array_clear(ogl->cache.vdecls);
+                    glBindBuffer(GL_ARRAY_BUFFER, 0);
+                }
+
                 for (uint32_t i = 0; i < ct; ++i) 
                 {
                     gs_byte_buffer_readc(&cb->commands, gs_graphics_bind_type, type);
@@ -1096,13 +1110,6 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                             gs_byte_buffer_readc(&cb->commands, uint32_t, id);
                             gs_byte_buffer_readc(&cb->commands, size_t, offset);
                             gs_byte_buffer_readc(&cb->commands, gs_graphics_vertex_data_type, data_type);
-                            gs_byte_buffer_readc(&cb->commands, uint32_t, clear_previous);
-
-                            // Clear previous vertex decls if requested
-                            if (clear_previous) {
-                                gs_dyn_array_clear(ogl->cache.vdecls);
-                                glBindBuffer(GL_ARRAY_BUFFER, 0);
-                            }
 
                             if (!id || !gs_slot_array_exists(ogl->vertex_buffers, id)) 
                             {
