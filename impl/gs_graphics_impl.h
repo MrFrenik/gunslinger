@@ -131,6 +131,18 @@ void gsgl_reset_data_cache(gsgl_data_cache_t* cache)
     gs_dyn_array_clear(cache->vdecls);
 }
 
+void gsgl_pipeline_state()
+{
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindImageTexture(0, 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+    glDisable(GL_SCISSOR_TEST);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_STENCIL_TEST);
+    glDisable(GL_BLEND);
+}
+
 /* GS/OGL Utilities */
 int32_t gsgl_buffer_usage_to_gl_enum(gs_graphics_buffer_usage_type type)
 {
@@ -1474,6 +1486,9 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                 
                 // Reset cache
                 gsgl_reset_data_cache(&ogl->cache);
+
+               // Reset state as well
+                gsgl_pipeline_state();
 
                 /* Cache pipeline id */
                 ogl->cache.pipeline = gs_handle_create(gs_graphics_pipeline_t, pipid);
