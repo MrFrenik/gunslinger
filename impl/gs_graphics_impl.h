@@ -8,9 +8,19 @@
 #ifndef __GS_GRAPHICS_IMPL_H__
 #define __GS_GRAPHICS_IMPL_H__
 
+#ifdef GS_GRAPHICS_IMPL_OPENGL
+    #define GS_GRAPHICS_IMPL_DEFAULT
+#endif
+
 #ifdef GS_GRAPHICS_IMPL_DEFAULT
 
 // Default stuff here, if any...
+
+/* Graphics Info Object Query */
+gs_graphics_info_t* gs_graphics_info()
+{
+    return &gs_engine_subsystem(graphics)->info;
+}
 
 #endif
 
@@ -42,6 +52,7 @@ typedef struct gsgl_pipeline_t {
     gs_graphics_depth_state_desc_t depth;
     gs_graphics_raster_state_desc_t raster;
     gs_graphics_stencil_state_desc_t stencil;
+    gs_graphics_compute_state_desc_t compute;
     gs_dyn_array(gs_graphics_vertex_attribute_desc_t) layout;
 } gsgl_pipeline_t;
 
@@ -108,6 +119,7 @@ typedef enum gs_opengl_op_code_type
     GS_OPENGL_OP_REQUEST_BUFFER_UPDATE,
     GS_OPENGL_OP_BIND_PIPELINE,
     GS_OPENGL_OP_BIND_BINDINGS,
+    GS_OPENGL_OP_DISPATCH_COMPUTE,
     GS_OPENGL_OP_DRAW,
 } gs_opengl_op_code_type;
 
@@ -130,6 +142,34 @@ int32_t gsgl_buffer_usage_to_gl_enum(gs_graphics_buffer_usage_type type)
         case GS_GRAPHICS_BUFFER_USAGE_DYNAMIC: mode = GL_DYNAMIC_DRAW; break;
     }   
     return mode;
+}
+
+uint32_t gsgl_access_type_to_gl_access_type(gs_graphics_access_type type)
+{
+    uint32_t access = GL_WRITE_ONLY;
+    switch (type)
+    {
+        case GS_GRAPHICS_ACCESS_WRITE_ONLY:  access = GL_WRITE_ONLY;  break;
+        case GS_GRAPHICS_ACCESS_READ_ONLY:   access = GL_READ_ONLY;   break;
+        case GS_GRAPHICS_ACCESS_READ_WRITE:  access = GL_READ_WRITE;  break;
+        default: break;
+    }
+    return access;
+}
+
+uint32_t gsgl_texture_format_to_gl_texture_format(gs_graphics_texture_format_type type)
+{
+    uint32_t format = GL_RGBA32F;
+    switch (type)
+    {
+        case GS_GRAPHICS_TEXTURE_FORMAT_RGBA8:              format = GL_RGBA8;              break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_RGB8:               format = GL_RGB8;               break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F:            format = GL_RGBA16F;            break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_RGBA32F:            format = GL_RGBA32F;            break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_R8:                 format = GL_R8;                 break;
+        default:                                                                            break;
+    }
+    return format;
 }
 
 uint32_t gsgl_shader_stage_to_gl_stage(gs_graphics_shader_stage_type type)
@@ -432,8 +472,31 @@ gs_result gs_graphics_init(gs_graphics_i* graphics)
     glGenVertexArrays(1, &ogl->cache.vao);      
     glBindVertexArray(ogl->cache.vao);
 
-    // Init ibo to zero
+    // Reset data cache for rendering ops
     gsgl_reset_data_cache(&ogl->cache);
+
+    // Init info object
+    gs_graphics_info_t* info = &gs_engine_subsystem(graphics)->info;
+
+    // Major/Minor version
+    glGetIntegerv(GL_MAJOR_VERSION, (GLint*)&info->major_version);
+    glGetIntegerv(GL_MINOR_VERSION, (GLint*)&info->minor_version);
+
+    // Compute shader info
+    info->compute.available = info->major_version >= 4 && info->minor_version >= 3;
+    if (info->compute.available)
+    {
+        // Work group counts
+        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, &info->compute.max_work_group_count[0]);
+        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1, &info->compute.max_work_group_count[1]);
+        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 2, &info->compute.max_work_group_count[2]);
+        // Work group sizes
+        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, &info->compute.max_work_group_size[0]);
+        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, &info->compute.max_work_group_size[1]);
+        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, &info->compute.max_work_group_size[2]);
+        // Work group invocations
+        glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, &info->compute.max_work_group_invocations);
+    }
 
     return GS_RESULT_SUCCESS;
 }
@@ -467,6 +530,7 @@ gs_handle(gs_graphics_texture_t) gs_graphics_texture_create(gs_graphics_texture_
         case GS_GRAPHICS_TEXTURE_FORMAT_RGB8:               glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data); break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGBA8:              glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data); break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F:            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, data); break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_RGBA32F:            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, data); break;
         case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH8:             glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
         case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH16:            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT16, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;              
         case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH24:            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
@@ -766,6 +830,7 @@ gs_handle(gs_graphics_pipeline_t) gs_graphics_pipeline_create(gs_graphics_pipeli
     pipe.depth = desc->depth;
     pipe.raster = desc->raster;
     pipe.stencil = desc->stencil;
+    pipe.compute = desc->compute;
 
     // Add layout
     uint32_t ct = (uint32_t)desc->layout.size / (uint32_t)sizeof(gs_graphics_vertex_attribute_desc_t);
@@ -891,6 +956,13 @@ void gs_graphics_buffer_request_update(gs_command_buffer_t* cb, gs_handle(gs_gra
     });
 }
 
+// struct {
+//     struct {
+//         gs_graphics_bind_buffer_desc_t* decl;
+//         size_t size;
+//     } image_buffers;
+// } compute;
+
 void gs_graphics_bind_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t* binds)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
@@ -902,9 +974,10 @@ void gs_graphics_bind_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t*
         uint32_t ict = binds->index_buffers.decl ? binds->index_buffers.size ? binds->index_buffers.size / sizeof(gs_graphics_bind_buffer_desc_t) : 1 : 0;
         uint32_t uct = binds->uniform_buffers.decl ? binds->uniform_buffers.size ? binds->uniform_buffers.size / sizeof(gs_graphics_bind_buffer_desc_t) : 1 : 0;
         uint32_t sct = binds->sampler_buffers.decl ? binds->sampler_buffers.size ? binds->sampler_buffers.size / sizeof(gs_graphics_bind_buffer_desc_t) : 1 : 0;
+        uint32_t ibc = binds->compute.image_buffers.decl ? binds->compute.image_buffers.size ? binds->compute.image_buffers.size / sizeof(gs_graphics_bind_buffer_desc_t) : 1 : 0;
 
         // Determine total count to write into command buffer
-        uint32_t ct = vct + ict + uct + sct;
+        uint32_t ct = vct + ict + uct + sct + ibc;
         gs_byte_buffer_write(&cb->commands, uint32_t, ct);
 
         // Determine if need to clear any previous vertex buffers (if vct != 0)
@@ -953,6 +1026,17 @@ void gs_graphics_bind_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t*
             gs_byte_buffer_write(&cb->commands, uint32_t, ((gs_handle(gs_graphics_texture_t)*)decl->data)->id);
             gs_byte_buffer_write(&cb->commands, uint32_t, decl->binding);
         }
+
+        // Image buffers
+        for (uint32_t i = 0; i < ibc; ++i)
+        {
+            gs_graphics_bind_buffer_desc_t* decl = &binds->compute.image_buffers.decl[i];
+            gs_byte_buffer_write(&cb->commands, gs_graphics_bind_type, GS_GRAPHICS_BIND_IMAGE_BUFFER);
+            gs_byte_buffer_write(&cb->commands, uint32_t, ((gs_handle(gs_graphics_texture_t)*)decl->data)->id);
+            gs_byte_buffer_write(&cb->commands, uint32_t, decl->binding);
+            gs_byte_buffer_write(&cb->commands, gs_graphics_access_type, decl->access);
+            gs_byte_buffer_write(&cb->commands, gs_graphics_texture_format_type, decl->format);
+        }
     });
 }
 
@@ -970,6 +1054,15 @@ void gs_graphics_draw(gs_command_buffer_t* cb, uint32_t start, uint32_t count, u
         gs_byte_buffer_write(&cb->commands, uint32_t, start);
         gs_byte_buffer_write(&cb->commands, uint32_t, count);
         gs_byte_buffer_write(&cb->commands, uint32_t, instance_count);
+    });
+}
+
+void gs_graphics_dispatch_compute(gs_command_buffer_t* cb, uint32_t num_x_groups, uint32_t num_y_groups, uint32_t num_z_groups)
+{
+    __ogl_push_command(cb, GS_OPENGL_OP_DISPATCH_COMPUTE, {
+        gs_byte_buffer_write(&cb->commands, uint32_t, num_x_groups);
+        gs_byte_buffer_write(&cb->commands, uint32_t, num_y_groups);
+        gs_byte_buffer_write(&cb->commands, uint32_t, num_z_groups);
     });
 }
 
@@ -1184,18 +1277,21 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                             // Get uniform
                             gsgl_uniform_t* u = gs_slot_array_getp(ogl->uniforms, id);
 
+                            // Get bound shader from pipeline (either compute or raster)
+                            uint32_t sid = pip->compute.shader.id ? pip->compute.shader.id : pip->raster.shader.id;
+
                             // Check uniform location. If UINT32_T max, then must construct and place location
                             if (u->location == UINT32_MAX && u->location != UINT32_MAX - 1) 
                             {
-                                if (!pip->raster.shader.id || !gs_slot_array_exists(ogl->shaders, pip->raster.shader.id)) {
+                                if (!sid || !gs_slot_array_exists(ogl->shaders, sid)) {
                                     gs_timed_action(60, {
-                                        gs_println("Warning:Bind Uniform Buffer:Shader %d does not exist.", pip->raster.shader.id);
+                                        gs_println("Warning:Bind Uniform Buffer:Shader %d does not exist.", sid);
                                     });
                                     gs_byte_buffer_advance_position(&cb->commands, sz);
                                     continue;
                                 }
 
-                                gsgl_shader_t shader = gs_slot_array_get(ogl->shaders, pip->raster.shader.id);
+                                gsgl_shader_t shader = gs_slot_array_get(ogl->shaders, sid);
 
                                 // Grab location of uniform
                                 u->location = glGetUniformLocation(shader, u->name ? u->name : "__EMPTY_UNIFORM_NAME");
@@ -1295,17 +1391,20 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                             gsgl_texture_t tex = gs_slot_array_get(ogl->textures, tex_slot_id);
                             gsgl_pipeline_t* pip = gs_slot_array_getp(ogl->pipelines, ogl->cache.pipeline.id);
 
+                            // Get bound shader from pipeline (either compute or raster)
+                            uint32_t sid = pip->compute.shader.id ? pip->compute.shader.id : pip->raster.shader.id;
+
                             // Check uniform location. If UINT32_T max, then must construct and place location
                             if (u->location == UINT32_MAX && u->location != UINT32_MAX - 1) 
                             {
-                                if (!pip->raster.shader.id || !gs_slot_array_exists(ogl->shaders, pip->raster.shader.id)) {
+                                if (!sid || !gs_slot_array_exists(ogl->shaders, sid)) {
                                     gs_timed_action(60, {
-                                        gs_println("Warning:Bind Uniform Buffer:Shader %d does not exist.", pip->raster.shader.id);
+                                        gs_println("Warning:Bind Uniform Buffer:Shader %d does not exist.", sid);
                                     });
                                     continue;
                                 }
 
-                                gsgl_shader_t shader = gs_slot_array_get(ogl->shaders, pip->raster.shader.id);
+                                gsgl_shader_t shader = gs_slot_array_get(ogl->shaders, sid);
 
                                 // Grab location of uniform
                                 u->location = glGetUniformLocation(shader, u->name ? u->name : "__EMPTY_UNIFORM_NAME");
@@ -1328,6 +1427,32 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                             // Bind uniform
                             glUniform1i(u->location, binding);
 
+                        } break;
+
+                        case GS_GRAPHICS_BIND_IMAGE_BUFFER:
+                        {
+                            gs_byte_buffer_readc(&cb->commands, uint32_t, tex_slot_id);
+                            gs_byte_buffer_readc(&cb->commands, uint32_t, binding);
+                            gs_byte_buffer_readc(&cb->commands, gs_graphics_access_type, access);
+                            gs_byte_buffer_readc(&cb->commands, gs_graphics_texture_format_type, format);
+
+                            // Grab texture from sampler id
+                            if (!tex_slot_id || !gs_slot_array_exists(ogl->textures, tex_slot_id)) {
+                                gs_timed_action(60, {
+                                    gs_println("Warning:Bind Image Buffer:Texture %d does not exist.", tex_slot_id);
+                                });
+                                continue;
+                            }
+
+                            gsgl_texture_t tex = gs_slot_array_get(ogl->textures, tex_slot_id);
+                            uint32_t gl_access = gsgl_access_type_to_gl_access_type(access);
+                            uint32_t gl_format = gsgl_texture_format_to_gl_texture_format(format);
+
+                            // Bind image texture
+                            // Activate texture slot (don't know if these are necessary)
+                            // glActiveTexture(GL_TEXTURE0 + binding);
+                            // glBindTexture(GL_TEXTURE_2D, tex);
+                            glBindImageTexture(0, tex, 0, GL_FALSE, 0, gl_access, gl_format);
                         } break;
 
                         default: gs_assert(false); break;
@@ -1354,6 +1479,23 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                 ogl->cache.pipeline = gs_handle_create(gs_graphics_pipeline_t, pipid);
 
                 gsgl_pipeline_t* pip = gs_slot_array_getp(ogl->pipelines, pipid);
+
+                /* Compute */ 
+                // Early out if compute, since we're not doing a rasterization stage
+                if (pip->compute.shader.id)
+                {
+                    /* Shader */
+                    if (pip->compute.shader.id && gs_slot_array_exists(ogl->shaders, pip->compute.shader.id)) {
+                        glUseProgram(gs_slot_array_get(ogl->shaders, pip->compute.shader.id));
+                    } 
+                    else {
+                        gs_timed_action(60, {
+                            gs_println("Warning:Opengl:BindPipeline:Compute:Shader %d does not exist.", pip->compute.shader.id);
+                        });
+                    }
+
+                    continue;
+                }
 
                 /* Depth */
                 if (!pip->depth.func) {
@@ -1412,6 +1554,36 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                         gs_println("Warning:Opengl:BindPipeline:Shader %d does not exist.", pip->raster.shader.id);
                     });
                 }
+            } break;
+
+            case GS_OPENGL_OP_DISPATCH_COMPUTE:
+            {
+                gs_byte_buffer_readc(&cb->commands, uint32_t, num_x_groups);
+                gs_byte_buffer_readc(&cb->commands, uint32_t, num_y_groups);
+                gs_byte_buffer_readc(&cb->commands, uint32_t, num_z_groups);
+
+                // Grab currently bound pipeline (TODO(john): assert if this isn't valid)
+                if (ogl->cache.pipeline.id == 0 || !gs_slot_array_exists(ogl->pipelines, ogl->cache.pipeline.id)) {
+                    gs_timed_action(60, {
+                        gs_println("Warning:Opengl:DispatchCompute:Compute Pipeline not bound.");
+                    });
+                    continue;
+                }
+
+                gsgl_pipeline_t* pip = gs_slot_array_getp(ogl->pipelines, ogl->cache.pipeline.id);
+
+                // If pipeline does not have a compute state bound, then leave
+                if (!pip->compute.shader.id) {
+                    gs_timed_action(60, {
+                        gs_println("Warning:Opengl:DispatchCompute:Compute Pipeline not bound.");
+                    });
+                    continue;
+                }
+
+                // Dispatch shader 
+                glDispatchCompute(num_x_groups, num_y_groups, num_z_groups); 
+                // Memory barrier (make this specifically set in the pipeline state)
+                glMemoryBarrier(GL_ALL_BARRIER_BITS);
             } break;
 
             case GS_OPENGL_OP_DRAW:

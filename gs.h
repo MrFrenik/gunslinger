@@ -4352,7 +4352,8 @@ gs_enum_decl(gs_graphics_bind_type,
     GS_GRAPHICS_BIND_VERTEX_BUFFER,
     GS_GRAPHICS_BIND_INDEX_BUFFER,
     GS_GRAPHICS_BIND_UNIFORM_BUFFER,
-    GS_GRAPHICS_BIND_SAMPLER_BUFFER
+    GS_GRAPHICS_BIND_SAMPLER_BUFFER,
+    GS_GRAPHICS_BIND_IMAGE_BUFFER
 );
 
 /* Depth Function Type */
@@ -4502,15 +4503,28 @@ typedef enum gs_graphics_vertex_data_type
     GS_GRAPHICS_VERTEX_DATA_NONINTERLEAVED
 } gs_graphics_vertex_data_type;
 
+typedef enum gs_graphics_access_type
+{
+    GS_GRAPHICS_ACCESS_READ_ONLY = 0x00,
+    GS_GRAPHICS_ACCESS_WRITE_ONLY,
+    GS_GRAPHICS_ACCESS_READ_WRITE,
+} gs_graphics_access_type;
+
 /* Graphics Internal Binding Buffer Desc */
 typedef struct gs_graphics_bind_buffer_desc_t
 {
     gs_handle(gs_graphics_buffer_t) buffer;     // Buffer to bind (vertex, index, uniform, sampler)
     void* data;                                 // Data associated with bind
-    size_t size;                                // Size of data in bytes
-    uint32_t binding;                           // Binding for tex units
-    size_t offset;                              // For manual offset with vertex data (used for non-interleaved data) 
-    gs_graphics_vertex_data_type data_type;     // Interleaved/Non-interleaved data
+    union {
+        size_t size;                            // Size of data in bytes
+        uint32_t binding;                       // Binding for tex units
+        size_t offset;                          // For manual offset with vertex data (used for non-interleaved data)
+    };
+    gs_graphics_access_type access;             // Access type of data
+    union {
+        gs_graphics_vertex_data_type data_type; // Interleaved/Non-interleaved data
+        gs_graphics_texture_format_type format; // Format for textures
+    };
 } gs_graphics_bind_buffer_desc_t;
 
 /* Graphics Binding Desc */
@@ -4535,6 +4549,13 @@ typedef struct gs_graphics_bind_desc_t
         gs_graphics_bind_buffer_desc_t* decl;   // Array of sampler buffer declarations (NULL by default)
         size_t size;                            // Size of array in bytes (optional if only one)
     } sampler_buffers;
+
+    struct {
+        struct {
+            gs_graphics_bind_buffer_desc_t* decl;
+            size_t size;
+        } image_buffers;
+    } compute;
 } gs_graphics_bind_desc_t;
 
 /* Graphics Blend State Desc */
@@ -4572,6 +4593,12 @@ typedef struct gs_graphics_raster_state_desc_t
     size_t index_buffer_element_size;             // Element size of index buffer (used for parsing internal data)
 } gs_graphics_raster_state_desc_t;
 
+/* Graphics Compute State Desc */
+typedef struct gs_graphics_compute_state_desc_t
+{
+    gs_handle(gs_graphics_shader_t) shader;         // Compute shader to bind
+} gs_graphics_compute_state_desc_t;
+
 /* Graphics Vertex Attribute Desc */
 typedef struct gs_graphics_vertex_attribute_desc_t {
     gs_graphics_vertex_attribute_type format;           // Format for vertex attribute
@@ -4594,8 +4621,24 @@ typedef struct gs_graphics_pipeline_desc_t
     gs_graphics_depth_state_desc_t depth;       // Depth state desc for pipeline
     gs_graphics_raster_state_desc_t raster;     // Raster state desc for pipeline
     gs_graphics_stencil_state_desc_t stencil;   // Stencil state desc for pipeline
+    gs_graphics_compute_state_desc_t compute;   // Compute state desc for pipeline
     gs_graphics_vertex_layout_desc_t layout; // Vertex layout desc for pipeline
 } gs_graphics_pipeline_desc_t;
+
+// Convenience define for default render pass to back buffer
+#define GS_GRAPHICS_RENDER_PASS_DEFAULT ((gs_handle(gs_graphics_render_pass_t)){0})
+
+typedef struct gs_graphics_info_t
+{
+    uint32_t major_version;
+    uint32_t minor_version;
+    struct {
+        bool32 available;
+        uint32_t max_work_group_count[3];
+        uint32_t max_work_group_size[3];
+        uint32_t max_work_group_invocations;
+    } compute;
+} gs_graphics_info_t;
 
 /*==========================
 // Graphics Interface
@@ -4603,7 +4646,8 @@ typedef struct gs_graphics_pipeline_desc_t
 
 typedef struct gs_graphics_i
 {
-    void* user_data; // For internal use
+    void* user_data;            // For internal use
+    gs_graphics_info_t info;    // Used for querying by user for features
 } gs_graphics_i;
 
 /*==========================
@@ -4615,6 +4659,9 @@ GS_API_DECL gs_graphics_i* gs_graphics_create();
 GS_API_DECL void           gs_graphics_destroy(gs_graphics_i* graphics);
 GS_API_DECL gs_result      gs_graphics_init(gs_graphics_i* graphics);
 GS_API_DECL gs_result      gs_graphics_shutdown(gs_graphics_i* graphics);
+
+/* Graphics Info Object Query */
+GS_API_DECL                gs_graphics_info_t* gs_graphics_info();
 
 /* Resource Creation */
 GS_API_DECL gs_handle(gs_graphics_texture_t)     gs_graphics_texture_create(gs_graphics_texture_desc_t* desc);
@@ -4642,6 +4689,7 @@ GS_API_DECL void gs_graphics_set_view_scissor(gs_command_buffer_t* cb, uint32_t 
 GS_API_DECL void gs_graphics_bind_pipeline(gs_command_buffer_t* cb, gs_handle(gs_graphics_pipeline_t) hndl);
 GS_API_DECL void gs_graphics_bind_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t* binds);
 GS_API_DECL void gs_graphics_draw(gs_command_buffer_t* cb, uint32_t start, uint32_t count, uint32_t instance_count);
+GS_API_DECL void gs_graphics_dispatch_compute(gs_command_buffer_t* cb, uint32_t num_x_groups, uint32_t num_y_groups, uint32_t num_z_groups);
 
 /* Submission (Main Thread) */
 GS_API_DECL void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb);
