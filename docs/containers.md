@@ -34,7 +34,7 @@ float v = arr[v];
 
 There are also provided functions for accessing information using this provided table. `gs_dyn_array` is the baseline for all other containers provided in gunslinger.
 
-# Dynamic Array API:
+## Dynamic Array API:
 * Creating/Deleting: 
 ```c
 gs_dyn_array(T) arr = NULL;   // Create dynamic array of type T.
@@ -101,7 +101,7 @@ Note: It is possible to return a reference to the data using `gs_hash_table_getp
 float* val = gs_hash_table_getp(ht, k);    // Cache pointer to internal data. Dangerous game.
 gs_hash_table_insert(ht, new_key);         // At this point, your pointer could be invalidated due to growing internal array.
 ```
-# Hash Table API: 
+## Hash Table API: 
 
 * Creating/Deleting
 ```c
