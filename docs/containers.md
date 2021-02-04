@@ -1,6 +1,11 @@
 # Gunslinger Containers
 This document shows off all available containers and data structures in gunslinger.
 
+## Contents: 
+* Dynamic Array:  [Overview]() | [API]()
+* Hash Table:     [Overview]() | [API]() 
+* Slot Array:     [Overview]() | [API]()
+
 ## Dynamic Array
 
 `gs_dyn_array` is a generic, dynamic array of type T, which is defined by the user and is inspired GREATLY from Shawn Barret's [stretchy buffer](https://github.com/nothings/stb/blob/master/stretchy_buffer.h) implementation:
