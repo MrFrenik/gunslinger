@@ -133,62 +133,61 @@ Gunslinger is a header-only framework, so no prior building is required before u
 ## Windows (MSVC)
 * System Libs
    ```
-   * kernel32.lib
-   * user32.lib
-   * shell32.lib
-   * vcruntime.lib
-   * msvcrt.lib
-   * gdi32.lib
-   * Advapi32.lib
+   kernel32.lib
+   user32.lib
+   shell32.lib
+   vcruntime.lib
+   msvcrt.lib
+   gdi32.lib
+   Advapi32.lib
    ```
 * OpenGL (if using OpenGL as backend)
    ```
-   * opengl32.lib
+   opengl32.lib
    ```
 ## Windows (MINGW)
 * System Libs
    ```
-   * -lkernel32
-   * -luser32
-   * -lshell32
-   * -lgdi32
-   * -lAdvapi32
+   -lkernel32
+   -luser32
+   -lshell32
+   -lgdi32
+   -lAdvapi32
    ```
 * OpenGL (if using OpenGL as backend)
    ```
-   * -lopengl32
+   -lopengl32
    ```
 ## Linux (GCC)
 * System Libs
    ```
-   * -ldl
-   * -lX11
-   * -pthread
-   * -lXi
+   -ldl
+   -lX11
+   -lXi
    ```
 * Flags
    ```
-   * -pthread
+   -pthread
    ```
 * OpenGL (if using OpenGL as backend)
    ```
-   * -lGL
+   -lGL
    ```
 ## OSX (GCC)
 * Frameworks
    ```
-	* -framework CoreFoundation 
-	* -framework CoreVideo 
-	* -framework IOKit 
-	* -framework Cocoa 
-	* -framework Carbon
+   -framework CoreFoundation 
+   -framework CoreVideo 
+   -framework IOKit 
+   -framework Cocoa 
+   -framework Carbon
    ```
 * Flags
    ```
-   * -objective-c
+   -objective-c
    ```
 * OpenGL (if using OpenGL as backend)
    ```
-	* -framework OpenGL
+   -framework OpenGL
    ```
 
