@@ -1,3 +1,37 @@
+# Gunslinger Getting Started Guide
+This document is meant as a guide for quickly getting started writing `gunslinger` applications.
+
+## Application Descriptor
+Gunslinger runs its own core loop and provides methods for hooking into your application at certain sync points. Your application is initialized at startup via a `gs_app_desc_t` object. `gs_app_desc_t` has the following fields: 
+```c
+typedef struct gs_app_desc_t
+{
+    void (* init)();              // Initialization callback for the application
+    void (* update)();            // Update callback for the application
+    void (* shutdown)();          // Shutdown callback for the application
+    const char* window_title;     // Title of main window
+    uint32_t window_width;        // Width of main window
+    uint32_t window_height;       // Height of main window
+    uint32_t window_flags;        // Flags for the window (resizeable, fullscreen, borderless, etc.)          
+    float frame_rate;             // Desired frame rate for application
+    bool32 enable_vsync;          // Whether or not vsync is enabled
+    bool32 is_running;            // Internal indicator for framework to know whether application should continue running
+    void* user_data;              // Any user data for the application
+} gs_app_desc_t;
+```
+Let's look at a basic example. In fact, it's the simplest `gunslinger` application you can create and run successfully.
+
+```c
+#define GS_IMPL
+#include <gs.h>
+
+gs_app_desc_t gs_main(int32_t argc, char** argv)
+{
+   return (gs_app_desc_t){0};
+}
+```
+
+In the main function of an application, you create and register 
 
 Gunslinger's main entry point into your application is via `gs_main()`. This conveniently wraps all of the framework initialization and startup for you. It is possible
 to use `gunslinger` without this entry point by defining `GS_NO_HIJACK_MAIN` before implementing the framework: 
