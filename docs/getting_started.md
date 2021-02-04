@@ -65,11 +65,3 @@ typedef struct gs_app_desc_t
     void* user_data;              // Any user data for the application
 } gs_app_desc_t;
 ```
-
-
-Note: While it is possible to use `gunslinger` without it controlling the main application loop, this isn't recommended. 
-Internally, `gunslinger` does its best to handle the boiler plate drudge work of implementing (in correct order) 
-the various layers required for a basic hardware accelerated multi-media application program to work. This involves allocating 
-memory for internal data structures for these layers as well initializing them in a particular order so they can inter-operate
-as expected. If you're interested in taking care of this yourself, look at the `gs_engine_run()` function to get a feeling
-for how this is being handled.
