@@ -7,7 +7,7 @@ Gunslinger is a fast, lightweight, ([stb-style](https://github.com/nothings/stb)
 - Header-only: drag-drop into any project without any additional compiling required.
 - No external dependencies required. Everything is included in the framework itself.
 - Provides core framework for quickly developing multimedia applications: [Platform](https://github.com/MrFrenik/gunslinger/blob/master/docs/platform.md), [Graphics](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md), [Audio layers](https://github.com/MrFrenik/gunslinger/blob/master/docs/audio.md). 
-- Provides custom utilities for math and generic data structures.
+- Provides custom utilities for [math](https://github.com/MrFrenik/gunslinger/blob/master/docs/math.md) and [generic data structures](https://github.com/MrFrenik/gunslinger/blob/master/docs/containers.md).
 - Optional [helper utilties](https://github.com/MrFrenik/gunslinger/tree/master/util) are provided, such as [OpenGL 2.0-style immediate-mode rendering](https://github.com/MrFrenik/gunslinger/blob/master/util/gs_idraw.h), [asset management system](https://github.com/MrFrenik/gunslinger/blob/master/util/gs_asset.h), and a [data reflection utility](https://github.com/MrFrenik/gunslinger/blob/master/util/gs_meta.h). 
 - Large collection of ([examples](https://github.com/MrFrenik/gs_examples)) for quickly getting started.
 - Supports a growing list of platforms: Windows, OSX, Linux currently with plans to add Android, RPI, IOS, and HTML5.
