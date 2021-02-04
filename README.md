@@ -10,7 +10,7 @@ Gunslinger is a fast, lightweight, ([stb-style](https://github.com/nothings/stb)
 - Provides custom utilities for math and generic data structures.
 - Large collection of ([examples](https://github.com/MrFrenik/gs_examples)) for quickly getting started.
 - Supports a growing list of platforms: Windows, OSX, Linux currently with plans to add Android, RPI, IOS, and HTML5.
-- Official framework used for all [Game Engineering](https://www.youtube.com/watch?v=VLZjd_Y1gJ8&list=PLIozaEI1hFu3Cd0YJMwOBQKTKfe9uZoyn&index=1&t=0s) YouTube videos.
+- Official framework used for all [Game Engineering](https://www.youtube.com/watch?v=VLZjd_Y1gJ8&list=PLIozaEI1hFu3Cd0YJMwOBQKTKfe9uZoyn) YouTube videos.
 
 ## Documentation
 
