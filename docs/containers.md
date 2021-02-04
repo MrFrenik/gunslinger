@@ -2,7 +2,7 @@
 This document shows off all available containers and data structures in gunslinger.
 
 ## Contents: 
-* Dynamic Array:  [Overview]() | [API]()
+* Dynamic Array:  [Overview](https://github.com/MrFrenik/gunslinger/blob/master/docs/containers.md#dynamic-array) | [API](https://github.com/MrFrenik/gunslinger/blob/master/docs/containers.md#dynamic-array-api)
 * Hash Table:     [Overview]() | [API]() 
 * Slot Array:     [Overview]() | [API]()
 
