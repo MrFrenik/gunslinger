@@ -48,7 +48,7 @@ for how this is being handled.
 ```
 
 ## Application Descriptor
-Gunslinger runs its own core loop and provides methods for hooking into your application at certain sync points. Your application is initialized at startup via a `gs_app_desc_t` object. `gs_app_desc_t` has the following fields: 
+Gunslinger runs its own core loop and provides methods for hooking into your application at certain sync points. Your application is initialized at startup via a `gs_app_desc_t` object. It has the following fields: 
 ```c
 typedef struct gs_app_desc_t
 {
