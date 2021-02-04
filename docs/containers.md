@@ -110,10 +110,17 @@ gs_hash_table_free(ht);           // Frees hash table internal data calling `gs_
 ```
 * Inserting/Accessing data: 
 ```c
-gs_hash_table_insert(ht, K, V);                 // Insert key/val pair {K, V} into hash table. Will dynamically grow/init on demand. 
-bool exists = gs_hash_table_key_exists(ht, K);  // Use to query whether or not a key exists in the table. Returns true if exists, false if doesn't.
-V val = gs_hash_table_get(ht, K);               // Get value V at key = K. NOTE: Will crash due to access exemption if key not available. 
-V* valp = gs_hash_table_get(ht, K);             // Get pointer reference to data at key = K. NOTE: Will crash due to access exemption if key not available.
+// Insert key/val pair {K, V} into hash table. Will dynamically grow/init on demand. 
+gs_hash_table_insert(ht, K, V);
+
+// Use to query whether or not a key exists in the table. Returns true if exists, false if doesn't.
+bool exists = gs_hash_table_key_exists(ht, K); 
+
+// Get value V at key = K. NOTE: Will crash due to access exemption if key not available. 
+V val = gs_hash_table_get(ht, K);               
+
+// Get pointer reference to data at key = K. NOTE: Will crash due to access exemption if key not available.
+V* valp = gs_hash_table_get(ht, K);             
 ```
 * Size/Capacity/Empty/Reserve/Clear:
 ```c
