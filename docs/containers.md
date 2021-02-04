@@ -175,52 +175,50 @@ gs_slot_array_insert(arr, 5.f);                 // At this point, your pointer c
 ## Slot Array API:
 * Creating/Deleting
 ```c
-gs_hash_table(K, V) ht = NULL;    // Create hash table with key = K, val = V
-gs_hash_table_free(ht);           // Frees hash table internal data calling `gs_free()` internally.
+gs_slot_array(T) sa = NULL;    // Create slot array with data type `T`
+gs_slot_array_free(sa);        // Frees slot array internal data calling `gs_free()` internally.
 ```
 * Inserting/Accessing data: 
 ```c
-// Insert key/val pair {K, V} into hash table. Will dynamically grow/init on demand. 
-gs_hash_table_insert(ht, K, V);
+// Insert data type `T` into slot array. Returns a `uint32_t` handle to user to use for lookups.
+uint32_t hndl = gs_slot_array_insert(sa, T);
 
-// Use to query whether or not a key exists in the table. Returns true if exists, false if doesn't.
-bool exists = gs_hash_table_key_exists(ht, K); 
+// Use to query whether or not a handle is valid. Returns true if valid, false if not.
+bool valid = gs_slot_array_handle_valid(sa, hndl);
 
-// Get value V at key = K. NOTE: Will crash due to access exemption if key not available. 
-V val = gs_hash_table_get(ht, K);               
+// Get value of type T using handle as lookup. NOTE: Will crash due to access exemption if hndl not valid. 
+T val = gs_slot_array_get(sa, hndl);               
 
-// Get pointer reference to data at key = K. NOTE: Will crash due to access exemption if key not available.
-V* valp = gs_hash_table_get(ht, K);             
+// Get pointer reference to data at hndl. NOTE: Will crash due to access exemption if hndl not valid.
+T* valp = gs_slot_array_getp(sa, hndl);             
 ```
 * Size/Capacity/Empty/Reserve/Clear:
 ```c
-uint32_t sz = gs_hash_table_size(ht);           // Get size of hash table. Returns 0 if ht is NULL.               
-uint32_t cap = gs_hash_table_capacity(ht);      // Get capacity of hash table. Returns 0 if ht is NULL.
-bool is_empty = gs_hash_table_empty(ht);        // Returns whether hash table is empty. Returns true if ht NULL.
-gs_hash_table_clear(ht);                        // Clears all elements. Sets size to 0.
+uint32_t sz = gs_slot_array_size(ht);           // Get size of slot array. Returns 0 if ht is NULL.               
+uint32_t cap = gs_slot_array_capacity(ht);      // Get capacity of slot array. Returns 0 if ht is NULL.
+bool is_empty = gs_slot_array_empty(ht);        // Returns whether slot array is empty. Returns true if ht NULL.
+gs_slot_array_clear(ht);                        // Clears all elements. Sets size to 0.
 ```
 * Iterating data:
 `gs_slot_array` provides an `stl-style` iterator api using `gs_slot_array_iter`. You can use this iterator in for/while loops to iterate cleanly over valid data.
 ```c
 // Using for loop
 for (
-  gs_hash_table_iter it = gs_hash_table_iter_new(ht);   // Creates new iterator
-  gs_hash_table_iter_valid(ht, it);                     // Checks whether the iterator is valid each loop iteration
-  gs_hash_table_iter_advance(ht, it)                    // Advances the iterator position internally
+  gs_slot_array_iter it = gs_slot_array_iter_new(sa);   // Creates new iterator
+  gs_slot_array_iter_valid(sa, it);                     // Checks whether the iterator is valid each loop iteration
+  gs_slot_array_iter_advance(sa, it)                    // Advances the iterator position internally
 ) 
 {
-  V val = gs_hash_table_iter_get(ht, it);         // Get value using iterator
-  V* valp = gs_hash_table_iter_getp(ht, it);      // Get value pointer using iterator
-  K key = gs_hash_table_iter_get_key(ht, it);     // Get key using iterator
-  K* keyp = gs_hash_table_iter_get_keyp(ht, it);  // Get key pointer using iterator
+  T val = gs_slot_array_iter_get(sa, it);         // Get value using iterator
+  T* valp = gs_slot_array_iter_getp(sa, it);      // Get value pointer using iterator
 }
 
 // Using while loop
-gs_hash_table_iter it = gs_hash_table_iter_new(ht);
-while (gs_hash_table_iter_valid(ht, it))
+gs_slot_array_iter it = gs_slot_array_iter_new(sa);
+while (gs_slot_array_iter_valid(sa, it))
 {
    // Do stuff with iterator like in for loop example
-   gs_hash_table_iter_advance(ht, it);
+   gs_slot_array_iter_advance(sa, it);
 }
 ```
 
