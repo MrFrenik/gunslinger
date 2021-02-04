@@ -3,8 +3,7 @@ This document shows off all available containers and data structures in gunsling
 
 ## Dynamic Array
 
-Gunslinger provides a dynamic array in the form of `gs_dyn_array` and is inspired GREATLY from Shawn Barret's [stretchy buffer](https://github.com/nothings/stb/blob/master/stretchy_buffer.h) implementation. `gs_dyn_array` is a generic, dynamic array of type T, 
-which is defined by the user:
+`gs_dyn_array` is a generic, dynamic array of type T, which is defined by the user and is inspired GREATLY from Shawn Barret's [stretchy buffer](https://github.com/nothings/stb/blob/master/stretchy_buffer.h) implementation:
 
 ```c
 gs_dyn_array(float) arr = NULL;  // Dyanmic array of type float
@@ -62,6 +61,11 @@ for (uint32_t i = 0; i < gs_dyn_array_size(arr); ++i) {     // Iterate size of a
 }
 ```
 ## Hash Table
+`gs_hash_table` is a generic hash table of key `K` and value `V`, and is inspired by Shawn Barret's [ds](https://github.com/nothings/stb/blob/master/stb_ds.h) library implementation. Both `K` and `V` can be defined by the user: 
+
+```c
+gs_hash_table(uint32_t, float) ht = NULL;   // Declares a hash table with K = uint32_t, V = float
+```
 
 ## Slot Array
 
