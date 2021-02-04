@@ -36,18 +36,6 @@ float v = arr[v];
 There are also provided functions for accessing information using this provided table. `gs_dyn_array` is the baseline for all other containers provided in gunslinger.
 
 # API:
-```c
-gs_dyn_array(T) arr = NULL;                 // Create dynamic array of type T.
-gs_dyn_array_push(arr, T);                  // Push value of type `T` into back of array. Will dynamically grow/initialize on demand.
-T v = arr[i];                               // Gets value of array data at index `i`;
-T* vp = &arr[i];                            // Gets pointer reference of array data at index `i`;
-uint32_t sz = gs_dyn_array_size(arr);       // Gets size of array. Return 0 if NULL.
-uint32_t cap = gs_dyn_array_capacity(arr);  // Gets capacity of array. Return 0 if NULL.
-bool is_empty = gs_dyn_array_empty(arr);    // Returns whether array is empty. Return true if NULL.
-gs_dyn_array_reserve(arr, sz);              // Reserves internal space in the array for N, non-initialized elements.
-gs_dyn_array_clear(arr);                    // Clears all elements. Simply sets array size to 0.
-gs_dyn_array_free(arr);                     // Frees array data calling `gs_free` internally.
-```
 * Declaring array: 
 ```c
 gs_dyn_array(T) arr = NULL;   // Create dynamic array of type T.
@@ -64,6 +52,7 @@ uint32_t sz = gs_dyn_array_size(arr);       // Gets size of array. Return 0 if N
 uint32_t cap = gs_dyn_array_capacity(arr);  // Gets capacity of array. Return 0 if NULL.
 bool is_empty = gs_dyn_array_empty(arr);    // Returns whether array is empty. Return true if NULL.
 gs_dyn_array_reserve(arr, uint32_t);        // Reserves internal space in the array for N, non-initialized elements.
+gs_dyn_array_clear(arr);                    // Clears all elements. Simply sets array size to 0.
 gs_dyn_array_free(arr);                     // Frees array data calling `gs_free()` internally.
 ```
 * Iterating data: 
