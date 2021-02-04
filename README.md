@@ -22,7 +22,7 @@ Gunslinger is a fast, lightweight, ([stb-style](https://github.com/nothings/stb)
 * [Utils](https://github.com/MrFrenik/gunslinger/blob/master/docs/utils.md)
 * [Examples](https://github.com/MrFrenik/gs_examples)
 
-## Example
+## Basic Example
 A simple c99 'Hello World' example using gunslinger: 
 
 ```c
