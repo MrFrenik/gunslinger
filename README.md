@@ -11,6 +11,7 @@ Gunslinger is a fast, lightweight, ([stb-style](https://github.com/nothings/stb)
 - Optional [helper utilties](https://github.com/MrFrenik/gunslinger/tree/master/util) are provided, such as [OpenGL 2.0-style immediate-mode rendering](https://github.com/MrFrenik/gunslinger/blob/master/util/gs_idraw.h), [asset management system](https://github.com/MrFrenik/gunslinger/blob/master/util/gs_asset.h), and a [data reflection utility](https://github.com/MrFrenik/gunslinger/blob/master/util/gs_meta.h). 
 - Large collection of ([examples](https://github.com/MrFrenik/gs_examples)) for quickly getting started.
 - Supports a growing list of platforms: Windows, OSX, Linux currently with plans to add Android, RPI, IOS, and HTML5.
+- Graphics pipeline follows an explicit rendering framework, making it more easy to write for modern backends, such as Vulkan/DX12/Metal.
 - Official framework used for all [Game Engineering](https://www.youtube.com/watch?v=VLZjd_Y1gJ8&list=PLIozaEI1hFu3Cd0YJMwOBQKTKfe9uZoyn) YouTube videos.
 
 ## Documentation
