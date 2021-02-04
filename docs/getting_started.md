@@ -126,5 +126,69 @@ void app_init() {
 }
 ```
 
+# Building
 
+Gunslinger is a header-only framework, so no prior building is required before using it in your application. However, linking against certain system level libraries is required for successful project compilation.
+
+## Windows (MSVC)
+* System Libs
+   ```
+   * kernel32.lib
+   * user32.lib
+   * shell32.lib
+   * vcruntime.lib
+   * msvcrt.lib
+   * gdi32.lib
+   * Advapi32.lib
+   ```
+* OpenGL (if using OpenGL as backend)
+   ```
+   * opengl32.lib
+   ```
+## Windows (MINGW)
+* System Libs
+   ```
+   * -lkernel32
+   * -luser32
+   * -lshell32
+   * -lgdi32
+   * -lAdvapi32
+   ```
+* OpenGL (if using OpenGL as backend)
+   ```
+   * -lopengl32
+   ```
+## Linux (GCC)
+* System Libs
+   ```
+   * -ldl
+   * -lX11
+   * -pthread
+   * -lXi
+   ```
+* Flags
+   ```
+   * -pthread
+   ```
+* OpenGL (if using OpenGL as backend)
+   ```
+   * -lGL
+   ```
+## OSX (GCC)
+* Frameworks
+   ```
+	* -framework CoreFoundation 
+	* -framework CoreVideo 
+	* -framework IOKit 
+	* -framework Cocoa 
+	* -framework Carbon
+   ```
+* Flags
+   ```
+   * -objective-c
+   ```
+* OpenGL (if using OpenGL as backend)
+   ```
+	* -framework OpenGL
+   ```
 
