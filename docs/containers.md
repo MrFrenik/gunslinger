@@ -62,11 +62,45 @@ for (uint32_t i = 0; i < gs_dyn_array_size(arr); ++i) {     // Iterate size of a
 ```
 ## Hash Table
 `gs_hash_table` is a generic hash table of key `K` and value `V`, and is inspired by Shawn Barret's [ds](https://github.com/nothings/stb/blob/master/stb_ds.h) library implementation. Both `K` and `V` can be defined by the user: 
-
 ```c
 gs_hash_table(uint32_t, float) ht = NULL;   // Declares a hash table with K = uint32_t, V = float
 ```
+A hash table is a collection of unamed struct data that is defined when you declare the structure with the `gs_hash_table(K, V)` macro. 
+```c
+#define gs_hash_table(__HMK, __HMV)\
+    struct {\
+        __gs_hash_table_entry(__HMK, __HMV)* data;\
+        __HMK tmp_key;\
+        __HMV tmp_val;\
+        size_t stride;\
+        size_t klpvl;\
+    }*
+```
 
+Where the data is a dynamic array of `__gs_hash_table_entry(K, V)`. These entries store key, value pairs as well as whether or not the entry is `active` or `inactive`. Since the data is a contiguous array, `gs_hash_table` uses open addressing via quadratic probing to search for keys. 
+
+Internally, the hash table uses a 64-bit siphash to hash generic byte data to an unsigned 64-bit key. This means it's possible to pass up arbitrary data to the hash table and it will hash accordingly, such as structs:
+```c
+typedef struct key_t {
+  uint32_t id0;
+  uint64_t id1;
+} key_t;
+
+gs_hash_table(key_t, float) ht = NULL;    // Create hash table with K = key_t, V = float
+```
+
+Inserting into the hash table with these "complex" types is as simple as: 
+```c
+key_t k = {.ido0 = 5, .id1 = 32};     // Create structure for "key"
+gs_hash_table_insert(ht, k, 5.f);     // Insert into hash table using key
+float v = gs_hash_table_get(ht, k);   // Get data at key
+```
+
+Note: It is possible to return a reference to the data using `gs_hash_table_getp()`. However, keep in mind that this comes with the danger that the reference could be lost *IF* the internal data array grows or shrinks in between you caching the pointer and using it.
+```c                
+float* val = gs_hash_table_getp(ht, k);    // Cache pointer to internal data. Dangerous game.
+gs_hash_table_insert(ht, new_key);         // At this point, your pointer could be invalidated due to growing internal array.
+```
 ## Slot Array
 
 ## Slot Map
