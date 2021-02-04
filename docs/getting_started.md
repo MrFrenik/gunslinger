@@ -1,8 +1,8 @@
 # Gunslinger Getting Started Guide
-This document is meant as a guide for quickly getting started writing `gunslinger` applications.
+This document is meant as a guide for quickly getting started writing gunslinger applications.
 
 ## Basic Example
-Let's look at a basic example. In fact, it's the simplest `gunslinger` application you can create and run successfully.
+Let's look at a basic example. In fact, it's the simplest gunslinger application you can create and run successfully.
 
 ```c
 #define GS_IMPL
@@ -13,17 +13,17 @@ gs_app_desc_t gs_main(int32_t argc, char** argv)
    return (gs_app_desc_t){0};
 }
 ```
-Before using `gunslinger`, you must first define its implementation. By defining `GS_IMPL` in ONE source file before including `gs.h`, the `gunslinger` framework will be implemented and ready to use. 
+Before using gunslinger, you must first define its implementation. By defining `GS_IMPL` in ONE source file before including `gs.h`, the gunslinger framework will be implemented and ready to use. 
 
 ## GS Main
-The default main entry point for any `gunslinger` application is `gs_main()`. It expects you to return a `gs_app_desc_t` instance that describes attributes about 
+The default main entry point for any gunslinger application is `gs_main()`. It expects you to return a `gs_app_desc_t` instance that describes attributes about 
 the application you wish to create. 
 
 ```c
 gs_app_desc_t gs_main(int32_t argc, char** argv)
 ```
 
-`gs_main()` conveniently wraps all of the framework initialization and startup for you. It is possible to use `gunslinger` without this entry point by defining `GS_NO_HIJACK_MAIN` before implementing the framework: 
+`gs_main()` conveniently wraps all of the framework initialization and startup for you. It is possible to use gunslinger without this entry point by defining `GS_NO_HIJACK_MAIN` before implementing the framework: 
 
 ```c
 #define GS_NO_HIJACK_MAIN
