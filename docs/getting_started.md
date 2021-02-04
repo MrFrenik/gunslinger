@@ -150,7 +150,7 @@ Gunslinger is a header-only framework, so no prior building is required before u
    ```
 * Flags (g++)
    ```
-   -std=c++11 -x
+   -std=c++11
    ```
 * OpenGL (if using OpenGL as backend)
    ```
@@ -180,11 +180,11 @@ Gunslinger is a header-only framework, so no prior building is required before u
    ```
 * Flags (gcc)
    ```
-   -std=c99 -x -objective-c
+   -std=c99 -objective-c
    ```
 * Flags (g++)
    ```
-   -std=c++11 -x -objective-c++
+   -std=c++11 -objective-c++
    ```
 * OpenGL (if using OpenGL as backend)
    ```
