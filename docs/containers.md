@@ -159,7 +159,7 @@ while (gs_hash_table_iter_valid(ht, it))
 gs_dyn_array(T)        your_data;
 gs_dyn_array(uint32_t) indirection_array;
 ```
-The indirection array takes an opaque uint32_t handle and then dereferences it to find the actual index for the data you're interested in. Just like dynamic arrays, they are NULL initialized and then allocated/initialized internally upon use:
+The indirection array takes an opaque `uint32_t` handle and then dereferences it to find the actual index for the data you're interested in. Just like dynamic arrays, they are `NULL` initialized and then allocated/initialized internally upon use:
 ```c
 gs_slot_array(float) arr = NULL;                    // Slot array with internal 'float' data
 uint32_t hndl = gs_slot_array_insert(arr, 3.145f);  // Inserts your data into the slot array, returns handle to you
