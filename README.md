@@ -20,6 +20,7 @@ Gunslinger is a fast, lightweight, ([stb-style](https://github.com/nothings/stb)
 * [Math]()
 * [Containers]()
 * [Utils]()
+* [Examples](https://github.com/MrFrenik/gs_examples)
 
 ## Example
 A simple c99 'Hello World' example using gunslinger: 
