@@ -13,6 +13,12 @@ gs_app_desc_t gs_main(int32_t argc, char** argv)
    return (gs_app_desc_t){0};
 }
 ```
+Running this example gives the following result:
+
+![hello_gs](https://raw.githubusercontent.com/MrFrenik/gs_examples/main/00_hello_gs/screenshot/screen.png)
+
+*Default 800x600 resizeable window titled "App"* 
+
 Before using gunslinger, you must first define its implementation. By defining `GS_IMPL` in ONE source file before including `gs.h`, the gunslinger framework will be implemented and ready to use. 
 
 ## GS Main
