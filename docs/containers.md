@@ -51,7 +51,7 @@ T* valp = &array[i];            // Access pointer of data type `T` at index `i`
 uint32_t sz = gs_dyn_array_size(arr);       // Gets size of array. Return 0 if NULL.
 uint32_t cap = gs_dyn_array_capacity(arr);  // Gets capacity of array. Return 0 if NULL.
 bool is_empty = gs_dyn_array_empty(arr);    // Returns whether array is empty. Return true if NULL.
-gs_dyn_array_reserve(arr, uint32_t);        // Reserves internal space in the array for N, non-initialized elements.
+gs_dyn_array_reserve(arr, N);               // Reserves internal space in the array for N (uint32_t), non-initialized elements.
 gs_dyn_array_clear(arr);                    // Clears all elements. Simply sets array size to 0.
 gs_dyn_array_free(arr);                     // Frees array data calling `gs_free()` internally.
 ```
