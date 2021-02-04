@@ -154,7 +154,24 @@ while (gs_hash_table_iter_valid(ht, it))
 }
 ```
 ## Slot Array
-
+`gs_slot_array` is a double indirection array. Internally they are just dynamic arrays but alleviate the issue with losing references to internal data when the arrays grow. Slot arrays therefore hold two internal arrays: 
+```c
+gs_dyn_array(T)        your_data;
+gs_dyn_array(uint32_t) indirection_array;
+```
+The indirection array takes an opaque uint32_t handle and then dereferences it to find the actual index for the data you're interested in. Just like dynamic arrays, they are NULL initialized and then allocated/initialized internally upon use:
+```c
+gs_slot_array(float) arr = NULL;                    // Slot array with internal 'float' data
+uint32_t hndl = gs_slot_array_insert(arr, 3.145f);  // Inserts your data into the slot array, returns handle to you
+float val = gs_slot_array_get(arr, hndl);           // Returns copy of data to you using handle as lookup
+```
+It is possible to return a mutable pointer reference to the data using `gs_slot_array_getp()`. However, keep in mind that this comes with the
+danger that the reference could be lost IF the internal data array grows or shrinks in between you caching the pointer 
+and using it. Take for example:
+```c
+float* val = gs_slot_array_getp(arr, hndl);     // Cache pointer to internal data. Dangerous game.
+gs_slot_array_insert(arr, 5.f);                 // At this point, your pointer could be invalidated due to growing internal array.
+```
 ## Slot Map
 
 ## Byte Buffer
