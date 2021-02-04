@@ -13,8 +13,13 @@ gs_app_desc_t gs_main(int32_t argc, char** argv)
    return (gs_app_desc_t){0};
 }
 ```
-
-Before using gunslinger, you must first define its implementation. By defining `GS_IMPL` in ONE source file before including `gs.h`, the gunslinger framework will be implemented and ready to use. 
+Overview of this example: 
+* Before using gunslinger, the application defines `GS_IMPL` in ONE source file before including the framework.
+* The main function returns a `gs_app_desc_t` for gunslinger, which gives various hints about your application.
+* Creates a graphics context with the specified graphics backend. OpenGL modern is provided and selected by default.
+* Creates an audio context with the specified backend for your operating system.
+* Creates a platform context with your operating system as well as a window. 
+* Initializes the `gs_engine_t` instance for the application, which is accessible globally via the `gs_engine_instance()` macro.
 
 Running this example gives the following result:
 
