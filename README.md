@@ -13,13 +13,13 @@ Gunslinger is a fast, lightweight, ([stb-style](https://github.com/nothings/stb)
 
 ## Documentation
 
-* [Getting Started]()
-* [Platform]()
-* [Graphics]()
-* [Audio]()
-* [Math]()
-* [Containers]()
-* [Utils]()
+* [Getting Started](https://github.com/MrFrenik/gunslinger/blob/master/docs/getting_started.md)
+* [Platform](https://github.com/MrFrenik/gunslinger/blob/master/docs/platform.md)
+* [Graphics](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md)
+* [Audio](https://github.com/MrFrenik/gunslinger/blob/master/docs/audio.md)
+* [Math](https://github.com/MrFrenik/gunslinger/blob/master/docs/math.md)
+* [Containers](https://github.com/MrFrenik/gunslinger/blob/master/docs/containers.md)
+* [Utils](https://github.com/MrFrenik/gunslinger/blob/master/docs/utils.md)
 * [Examples](https://github.com/MrFrenik/gs_examples)
 
 ## Example
