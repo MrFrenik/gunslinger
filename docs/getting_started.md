@@ -154,26 +154,41 @@ Gunslinger is a header-only framework, so no prior building is required before u
    -lgdi32
    -lAdvapi32
    ```
+* Flags (gcc)
+   ```
+   -std=gnu99
+   ```
+* Flags (g++)
+   ```
+   -std=c++11
+   -x
+   ```
 * OpenGL (if using OpenGL as backend)
    ```
    -lopengl32
    ```
-## Linux (GCC)
+## Linux (GCC/G++)
 * System Libs
    ```
    -ldl
    -lX11
    -lXi
    ```
-* Flags
+* Flags (gcc)
    ```
+   -std=gnu99
+   -pthread
+   ```
+* Flags (g++)
+   ```
+   -std=c++11
    -pthread
    ```
 * OpenGL (if using OpenGL as backend)
    ```
    -lGL
    ```
-## OSX (GCC)
+## OSX (GCC/G++)
 * Frameworks
    ```
    -framework CoreFoundation 
@@ -182,9 +197,17 @@ Gunslinger is a header-only framework, so no prior building is required before u
    -framework Cocoa 
    -framework Carbon
    ```
-* Flags
+* Flags (gcc)
    ```
+   -std=c99
+   -x
    -objective-c
+   ```
+* Flags (g++)
+   ```
+   -std=c++11
+   -x
+   -objective-c++
    ```
 * OpenGL (if using OpenGL as backend)
    ```
