@@ -34,10 +34,6 @@ gs_app_desc_t gs_main(int32_t argc, char** argv)
 }
 ```
 
-Which gives this result (win32): 
-
-![hello_gs](https://raw.githubusercontent.com/MrFrenik/gs_examples/main/00_hello_gs/screenshot/screen.png)
-
 This does several things: 
 * Before using `gunslinger`, the application defines `GS_IMPL` in ONE source file before including the framework.
 * The main function returns a `gs_app_desc_t` for `gunslinger`, which gives various hints about your application: 
