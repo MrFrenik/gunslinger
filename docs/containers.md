@@ -3,8 +3,11 @@ This document shows off all available containers and data structures in gunsling
 
 ## Contents: 
 * Dynamic Array:  [Overview](https://github.com/MrFrenik/gunslinger/blob/master/docs/containers.md#dynamic-array) | [API](https://github.com/MrFrenik/gunslinger/blob/master/docs/containers.md#dynamic-array-api)
-* Hash Table:     [Overview]() | [API]() 
-* Slot Array:     [Overview]() | [API]()
+* Hash Table:     [Overview](https://github.com/MrFrenik/gunslinger/blob/master/docs/containers.md#hash-table) | [API](https://github.com/MrFrenik/gunslinger/blob/master/docs/containers.md#hash-table-api) 
+* Slot Array:     [Overview](https://github.com/MrFrenik/gunslinger/blob/master/docs/containers.md#slot-array) | [API](https://github.com/MrFrenik/gunslinger/blob/master/docs/containers.md#slot-array-api)
+* Slot Map:       [Overview](https://github.com/MrFrenik/gunslinger/blob/master/docs/containers.md#slot-map) | [API](https://github.com/MrFrenik/gunslinger/blob/master/docs/containers.md#slot-map-api)
+* Byte Buffer:    [Overview](https://github.com/MrFrenik/gunslinger/blob/master/docs/containers.md#byte-buffer) | [API](https://github.com/MrFrenik/gunslinger/blob/master/docs/containers.md#byte-buffer-api)
+* Command Buffer: [Overview](https://github.com/MrFrenik/gunslinger/blob/master/docs/containers.md#command-buffer) | [API](https://github.com/MrFrenik/gunslinger/blob/master/docs/containers.md#command-buffer-api)
 
 ## Dynamic Array
 
