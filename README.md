@@ -9,7 +9,7 @@ Gunslinger is a fast, lightweight, ([stb-style](https://github.com/nothings/stb)
 - Provides core framework for quickly developing multimedia applications: Platform, Graphics, Audio layers. 
 - Provides custom utilities for math and generic data structures.
 - Large collection of ([examples](https://github.com/MrFrenik/gs_examples)) for quickly getting started.
-- Supports a growing list of platforms: Windows, OSX, Linux.
+- Supports a growing list of platforms: Windows, OSX, Linux currently with plans to add Android, RPI, IOS, and HTML5.
 
 ## Documentation
 
