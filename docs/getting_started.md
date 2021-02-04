@@ -19,7 +19,9 @@ Before using `gunslinger`, you must first define its implementation. By defining
 The default main entry point for any `gunslinger` application is `gs_main()`. It expects you to return a `gs_app_desc_t` instance that describes attributes about 
 the application you wish to create. 
 
-```cgs_app_desc_t gs_main(int32_t argc, char** argv)```
+```c
+gs_app_desc_t gs_main(int32_t argc, char** argv)
+```
 
 `gs_main()` conveniently wraps all of the framework initialization and startup for you. It is possible to use `gunslinger` without this entry point by defining `GS_NO_HIJACK_MAIN` before implementing the framework: 
 
