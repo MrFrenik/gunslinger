@@ -34,25 +34,25 @@ float v = arr[v];
 
 There are also provided functions for accessing information using this provided table. `gs_dyn_array` is the baseline for all other containers provided in gunslinger.
 
-# API:
-* Declaring array: 
+# Dynamic Array API:
+* Creating/Deleting: 
 ```c
 gs_dyn_array(T) arr = NULL;   // Create dynamic array of type T.
+gs_dyn_array_free(arr);       // Frees array data calling `gs_free()` internally.
 ```
-* Inserting/Randomly accessing data: 
+* Inserting/Accessing data: 
 ```c
 gs_dyn_array_push(array, T);    // Push data of type `T` into array
 T val = array[i];               // Access data of type `T` at index `i`
 T* valp = &array[i];            // Access pointer of data type `T` at index `i`
 ```
-* Size/Capacity/Empty/Reserve/Clear/Free:
+* Size/Capacity/Empty/Reserve/Clear:
 ```c
-uint32_t sz = gs_dyn_array_size(arr);       // Gets size of array. Return 0 if NULL.
-uint32_t cap = gs_dyn_array_capacity(arr);  // Gets capacity of array. Return 0 if NULL.
-bool is_empty = gs_dyn_array_empty(arr);    // Returns whether array is empty. Return true if NULL.
+uint32_t sz = gs_dyn_array_size(arr);       // Gets size of array. Return 0 if arr is NULL.
+uint32_t cap = gs_dyn_array_capacity(arr);  // Gets capacity of array. Return 0 if arr is NULL.
+bool is_empty = gs_dyn_array_empty(arr);    // Returns whether array is empty. Return true if arr is NULL.
 gs_dyn_array_reserve(arr, N);               // Reserves internal space in the array for N (uint32_t), non-initialized elements.
 gs_dyn_array_clear(arr);                    // Clears all elements. Simply sets array size to 0.
-gs_dyn_array_free(arr);                     // Frees array data calling `gs_free()` internally.
 ```
 * Iterating data: 
 ```c
@@ -100,6 +100,51 @@ Note: It is possible to return a reference to the data using `gs_hash_table_getp
 ```c                
 float* val = gs_hash_table_getp(ht, k);    // Cache pointer to internal data. Dangerous game.
 gs_hash_table_insert(ht, new_key);         // At this point, your pointer could be invalidated due to growing internal array.
+```
+# Hash Table API: 
+
+* Creating/Deleting
+```c
+gs_hash_table(K, V) ht = NULL;    // Create hash table with key = K, val = V
+gs_hash_table_free(ht);           // Frees hash table internal data calling `gs_free()` internally.
+```
+* Inserting/Accessing data: 
+```c
+gs_hash_table_insert(ht, K, V);                 // Insert key/val pair {K, V} into hash table. Will dynamically grow/init on demand. 
+bool exists = gs_hash_table_key_exists(ht, K);  // Use to query whether or not a key exists in the table. Returns true if exists, false if doesn't.
+V val = gs_hash_table_get(ht, K);               // Get value V at key = K. NOTE: Will crash due to access exemption if key not available. 
+V* valp = gs_hash_table_get(ht, K);             // Get pointer reference to data at key = K. NOTE: Will crash due to access exemption if key not available.
+```
+* Size/Capacity/Empty/Reserve/Clear:
+```c
+uint32_t sz = gs_hash_table_size(ht);           // Get size of hash table. Returns 0 if ht is NULL.               
+uint32_t cap = gs_hash_table_capacity(ht);      // Get capacity of hash table. Returns 0 if ht is NULL.
+bool is_empty = gs_hash_table_empty(ht);        // Returns whether hash table is empty. Returns true if ht NULL.
+gs_hash_table_clear(ht);                        // Clears all elements. Sets size to 0.
+```
+* Iterating data:
+Hash table provides an `stl-style` iterator api using `gs_hash_table_iter`. You can use this iterator in for/while loops to iterate cleanly over valid data.
+```c
+// Using for loop
+for (
+  gs_hash_table_iter it = gs_hash_table_iter_new(ht);   // Creates new iterator
+  gs_hash_table_iter_valid(ht, it);                     // Checks whether the iterator is valid each loop iteration
+  gs_hash_table_iter_advance(ht, it)                    // Advances the iterator position internally
+) 
+{
+  V val = gs_hash_table_iter_get(ht, it);         // Get value using iterator
+  V* valp = gs_hash_table_iter_getp(ht, it);      // Get value pointer using iterator
+  K key = gs_hash_table_iter_get_key(ht, it);     // Get key using iterator
+  K* keyp = gs_hash_table_iter_get_keyp(ht, it);  // Get key pointer using iterator
+}
+
+// Using while loop
+gs_hash_table_iter it = gs_hash_table_iter_new(ht);
+while (gs_hash_table_iter_valid(ht, it))
+{
+   // Do stuff with iterator like in for loop example
+   gs_hash_table_iter_advance(ht, it);
+}
 ```
 ## Slot Array
 
