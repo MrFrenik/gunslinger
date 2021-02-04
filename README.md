@@ -10,3 +10,18 @@ Gunslinger is a fast, lightweight, ([stb-style](https://github.com/nothings/stb)
 - Provides custom utilities for math and generic data structures.
 - Large collection of ([examples](https://github.com/MrFrenik/gs_examples)) for quickly getting started. 
 
+## Documentation
+
+## Example
+A simple 'Hello World' example using gunslinger: 
+
+```c
+#define GS_IMPL
+#include <gs.h>
+
+gs_app_desc_t gs_main(int32_t argc, char** argv)
+{
+   return (gs_app_desc_t){0};
+}
+```
+
