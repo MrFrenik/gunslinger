@@ -17,7 +17,7 @@ Running this example gives the following result:
 
 ![hello_gs](https://raw.githubusercontent.com/MrFrenik/gs_examples/main/00_hello_gs/screenshot/screen.png)
 
-*Default 800x600 resizeable window titled "App"* 
+*Default 800x600 resizable window titled "App"* 
 
 Before using gunslinger, you must first define its implementation. By defining `GS_IMPL` in ONE source file before including `gs.h`, the gunslinger framework will be implemented and ready to use. 
 
@@ -71,3 +71,54 @@ typedef struct gs_app_desc_t
     void* user_data;              // Any user data for the application
 } gs_app_desc_t;
 ```
+
+Gunslinger interfaces with your application via callbacks that you can register with your application descriptor. These are `init`, `update`, and `shutdown`. When creating a `gs_app_desc_t`, you can set these callbacks like so:
+
+```c
+void app_init() {
+}
+
+void app_update() {
+}
+
+void app_shutdown() {
+}
+
+gs_app_desc_t gs_main(int32_t argc, char** argv)
+{
+   return (gs_app_desc_t){
+      .init = app_init,
+      .update = app_update,
+      .shutdown = app_shutdown
+   };
+}
+```
+
+You can register a pointer to any application data you'd like to be globally accessible via the application descriptor `user_data` field: 
+
+```c
+typedef struct your_user_data {
+   uint32_t u_val;
+   float f_val;
+} your_user_data;
+
+gs_global user_data = {0};
+
+gs_app_desc_t gs_main(int32_t argc, char** argv)
+{
+   return (gs_app_desc_t){
+      .user_data = &data;
+   };
+}
+```
+
+To access a mutable pointer to this data, you can use the `gs_engine_user_data(T)` macro, where `T` is the type of your data.
+
+```c
+void app_init() {
+   your_user_data* data = gs_engine_user_data(your_user_data);
+}
+```
+
+
+
