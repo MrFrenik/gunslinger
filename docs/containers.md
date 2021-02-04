@@ -61,7 +61,7 @@ for (uint32_t i = 0; i < gs_dyn_array_size(arr); ++i) {     // Iterate size of a
 }
 ```
 ## Hash Table
-`gs_hash_table` is a generic hash table of key `K` and value `V`, and is inspired by Shawn Barret's [ds](https://github.com/nothings/stb/blob/master/stb_ds.h) library implementation. Both `K` and `V` can be defined by the user: 
+`gs_hash_table` is a generic hash table of key `K` and value `V`, and is inspired by Shawn Barret's [ds](https://github.com/nothings/stb/blob/master/stb_ds.h) library:
 ```c
 gs_hash_table(uint32_t, float) ht = NULL;   // Declares a hash table with K = uint32_t, V = float
 ```
