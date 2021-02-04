@@ -35,15 +35,3 @@ gs_app_desc_t gs_main(int32_t argc, char** argv)
 }
 ```
 
-This does several things: 
-* Before using `gunslinger`, the application defines `GS_IMPL` in ONE source file before including the framework.
-* The main function returns a `gs_app_desc_t` for `gunslinger`, which gives various hints about your application: 
-   * window title, 
-   * window width 
-   * window flags (resizeable, full screen, etc.)
-   * desired frame rate
-* Creates a graphics context with the specified graphics backend. OpenGL modern is provided and selected by default.
-* Creates a platform context with your operating system as well as a window. 
-* Initializes the `gs_engine_t` instance for the application, which is accessible globally via the `gs_engine_instance()` macro.
-
-
