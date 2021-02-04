@@ -48,37 +48,22 @@ gs_dyn_array_reserve(arr, sz);              // Reserves internal space in the ar
 gs_dyn_array_clear(arr);                    // Clears all elements. Simply sets array size to 0.
 gs_dyn_array_free(arr);                     // Frees array data calling `gs_free` internally.
 ```
-* Inserting data: 
+* Declaring array: 
 ```c
-gs_dyn_array_push(array, T);    // Push data of type `T` into array 
+gs_dyn_array(T) arr = NULL;   // Create dynamic array of type T.
 ```
-* Randomly accessing data:
+* Inserting/Randomly accessing data: 
 ```c
+gs_dyn_array_push(array, T);    // Push data of type `T` into array
 T val = array[i];               // Access data of type `T` at index `i`
 T* valp = &array[i];            // Access pointer of data type `T` at index `i`
 ```
-* Size:
+* Size/Capacity/Empty/Reserve/Clear/Free:
 ```c
-uint32_t sz = gs_dyn_array_size(arr);   // Gets size of array. Return 0 if NULL.
-```
-* Capacity: 
-```c
+uint32_t sz = gs_dyn_array_size(arr);       // Gets size of array. Return 0 if NULL.
 uint32_t cap = gs_dyn_array_capacity(arr);  // Gets capacity of array. Return 0 if NULL.
-```
-* Empty: 
-```c
 bool is_empty = gs_dyn_array_empty(arr);    // Returns whether array is empty. Return true if NULL.
-```
-* Reserve: 
-```c
 gs_dyn_array_reserve(arr, uint32_t);        // Reserves internal space in the array for N, non-initialized elements.
-```
-* Clear:
-```c
-gs_dyn_array_clear(arr);                    // Clears all elements. Simply sets array size to 0.
-```
-* Free:
-```c
 gs_dyn_array_free(arr);                     // Frees array data calling `gs_free()` internally.
 ```
 * Iterating data: 
