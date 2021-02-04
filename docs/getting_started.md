@@ -1,6 +1,12 @@
 # Gunslinger Getting Started Guide
 This document is meant as a guide for quickly getting started writing gunslinger applications.
 
+## Contents: 
+* [Basic Example](https://github.com/MrFrenik/gunslinger/blob/master/docs/getting_started.md#basic-example)
+* [GS Main](https://github.com/MrFrenik/gunslinger/blob/master/docs/getting_started.md#gs-main)
+* [Application Descriptor](https://github.com/MrFrenik/gunslinger/blob/master/docs/getting_started.md#application-descriptor)
+* [Building](https://github.com/MrFrenik/gunslinger/blob/master/docs/getting_started.md#building)
+
 ## Basic Example
 Let's look at a basic example. In fact, it's the simplest gunslinger application you can create and run successfully.
 
