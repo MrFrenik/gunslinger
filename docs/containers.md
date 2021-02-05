@@ -295,15 +295,34 @@ while (gs_slot_map_iter_valid(sm, it))
 }
 ```
 
-```c
-
-
-
-
-```
-
 ## Byte Buffer
+`gs_byte_buffer_t` is a convenient data structure for being able to read/write structed byte information, which makes it perfect for binary serialization. Internally, it just consists of a dyanmic array of `uint8_t` data. 
+
 ## Byte Buffer API:
+
+* Create/Delete
+```c
+gs_byte_buffer_t bb = gs_byte_buffer_new();     // Create new byte buffer and initialize.
+gs_byte_buffer_free(&bb);                       // Free byte buffer memory by calling `gs_free()` internally.
+```
+* Read/Write
+```c
+gs_byte_buffer_write(&bb, T, val);          // Write data of type `T` into buffer.
+
+T val;
+gs_byte_buffer_read(&bb, T, &val);          // Read data of type `T` into val. Pass in val by pointer.
+
+gs_byte_buffer_readc(&bb, T, NAME);         // Macro for reading data type `T` from buffer and constructing variable `NAME`. 
+```
+* Read/Write Bulk
+
+* Seek Commands
 
 ## Command Buffer
 ## Command Buffer API:
+
+
+
+
+
+
