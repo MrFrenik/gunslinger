@@ -499,15 +499,15 @@ gs_result gs_graphics_init(gs_graphics_i* graphics)
     if (info->compute.available)
     {
         // Work group counts
-        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, &info->compute.max_work_group_count[0]);
-        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1, &info->compute.max_work_group_count[1]);
-        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 2, &info->compute.max_work_group_count[2]);
+        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, (int32_t*)&info->compute.max_work_group_count[0]);
+        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1, (int32_t*)&info->compute.max_work_group_count[1]);
+        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 2, (int32_t*)&info->compute.max_work_group_count[2]);
         // Work group sizes
-        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, &info->compute.max_work_group_size[0]);
-        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, &info->compute.max_work_group_size[1]);
-        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, &info->compute.max_work_group_size[2]);
+        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, (int32_t*)&info->compute.max_work_group_size[0]);
+        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, (int32_t*)&info->compute.max_work_group_size[1]);
+        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, (int32_t*)&info->compute.max_work_group_size[2]);
         // Work group invocations
-        glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, &info->compute.max_work_group_invocations);
+        glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, (int32_t*)&info->compute.max_work_group_invocations);
     }
 
     return GS_RESULT_SUCCESS;
