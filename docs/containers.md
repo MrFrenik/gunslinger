@@ -135,6 +135,7 @@ V* valp = gs_hash_table_get(ht, K);
 uint32_t sz = gs_hash_table_size(ht);           // Get size of hash table. Returns 0 if ht is NULL.               
 uint32_t cap = gs_hash_table_capacity(ht);      // Get capacity of hash table. Returns 0 if ht is NULL.
 bool is_empty = gs_hash_table_empty(ht);        // Returns whether hash table is empty. Returns true if ht NULL.
+gs_hash_table_reserve(ht, N);                   // Reserves internal space in the hash table for N (uint32_t), non-initialized elements.
 gs_hash_table_clear(ht);                        // Clears all elements. Sets size to 0.
 ```
 * Iterating data:
@@ -202,10 +203,11 @@ T* valp = gs_slot_array_getp(sa, hndl);
 ```
 * Size/Capacity/Empty/Reserve/Clear:
 ```c
-uint32_t sz = gs_slot_array_size(ht);           // Get size of slot array. Returns 0 if ht is NULL.               
-uint32_t cap = gs_slot_array_capacity(ht);      // Get capacity of slot array. Returns 0 if ht is NULL.
-bool is_empty = gs_slot_array_empty(ht);        // Returns whether slot array is empty. Returns true if ht NULL.
-gs_slot_array_clear(ht);                        // Clears all elements. Sets size to 0.
+uint32_t sz = gs_slot_array_size(sa);           // Get size of slot array. Returns 0 if ht is NULL.               
+uint32_t cap = gs_slot_array_capacity(sa);      // Get capacity of slot array. Returns 0 if ht is NULL.
+bool is_empty = gs_slot_array_empty(sa);        // Returns whether slot array is empty. Returns true if ht NULL.
+gs_slot_array_reserve(sa, N);                   // Reserves internal space in the slot array for N (uint32_t), non-initialized elements.
+gs_slot_array_clear(sa);                        // Clears all elements. Sets size to 0.
 ```
 * Iterating data:
 `gs_slot_array` provides an `stl-style` iterator api using `gs_slot_array_iter`. You can use this iterator in for/while loops to iterate cleanly over valid data.
@@ -249,16 +251,55 @@ gs_slot_map_insert(sm, 2.f, 10);                // Possibly have just invalidate
 ```
 ## Slot Map API: 
 
+* Creating/Deleting
 ```c
-gs_slot_map(K, V) sm = NULL;                    // Create slot map with K = float, V = uint64_t
-uint32_t hndl = gs_slot_map_insert(sm, K, V);   // Insert data into slot map. Init/Grow on demand.
-uint64_t v = gs_slot_map_get(sm, K);            // Get data at key.
-uint64_t* vp = gs_slot_map_getp(sm, K);         // Get pointer reference at hndl. Dangerous.
-uint32_t sz = gs_slot_map_size(sm);             // Size of slot map. Returns 0 if NULL.
-uint32_t cap = gs_slot_map_capacity(sm);        // Capacity of slot map. Returns 0 if NULL.
-gs_slot_map_empty(sm);                          // Returns whether slot map is empty. Returns true if NULL.
-gs_slot_map_clear(sm);                          // Clears map. Sets size to 0.
-gs_slot_map_free(sm);                           // Frees map memory. Calls `gs_free` internally.
+gs_slot_map(K, V) sm = NULL;        // Create slot map with key K, value V
+gs_slot_map_free(sm);               // Frees map memory. Calls `gs_free` internally.
+```
+* Inserting/Accessing data: 
+```c
+gs_slot_map_insert(sm, K, V);                // Insert data into slot map. Init/Grow on demand.
+uint64_t v = gs_slot_map_get(sm, K);         // Get data at key.
+uint64_t* vp = gs_slot_map_getp(sm, K);      // Get pointer reference at hndl. Dangerous.
+```
+* Size/Capacity/Empty/Reserve/Clear:
+```c
+uint32_t sz = gs_slot_map_size(sm);          // Size of slot map. Returns 0 if NULL.
+uint32_t cap = gs_slot_map_capacity(sm);     // Capacity of slot map. Returns 0 if NULL.
+gs_slot_map_empty(sm);                       // Returns whether slot map is empty. Returns true if NULL.
+gs_slot_map_reserve(sm, N);                  // Reserves internal space in the slot map for N (uint32_t), non-initialized elements.
+gs_slot_map_clear(sm);                       // Clears map. Sets size to 0.
+```
+* Iterating data:
+`gs_slot_map` provides an `stl-style` iterator api using `gs_slot_map_iter`. You can use this iterator in for/while loops to iterate cleanly over valid data.
+```c
+// Using for loop
+for (
+  gs_slot_map_iter it = gs_slot_map_iter_new(sm);   // Creates new iterator
+  gs_slot_map_iter_valid(sm, it);                   // Checks whether the iterator is valid each loop iteration
+  gs_slot_map_iter_advance(sm, it)                  // Advances the iterator position internally
+) 
+{
+  K key= gs_slot_map_iter_getk(sm, it);         // Get key using iterator
+  K* keyp = gs_slot_map_iter_getkp(sm, it);     // Get key pointer using iterator
+  V val = gs_slot_map_iter_get(sa, it);         // Get value using iterator
+  V* valp = gs_slot_map_iter_getp(sa, it);      // Get value pointer using iterator
+}
+
+// Using while loop
+gs_slot_map_iter it = gs_slot_array_iter_new(sm);
+while (gs_slot_map_iter_valid(sm, it))
+{
+   // Do stuff with iterator like in for loop example
+   gs_slot_map_iter_advance(sm, it);
+}
+```
+
+```c
+
+
+
+
 ```
 
 ## Byte Buffer
