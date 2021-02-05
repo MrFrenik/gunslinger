@@ -231,7 +231,35 @@ while (gs_slot_array_iter_valid(sa, it))
 ```
 
 ## Slot Map
+`gs_slot_map` works exactly the same, functionally, as `gs_slot_array`, however allows the user to use one more layer of indirection by 
+hashing any data as a key type `K`.
+
+```c
+gs_slot_map(float, uint32_t) sm = NULL;         // Slot map with key type 'float' and value type 'uint32_t'
+gs_slot_map_insert(sm, 3.145f, 10);             // Inserts your data into the slot map
+uint32_t val = gs_slot_map_get(sm, 3.145f);     // Returns copy of data to you using handle as lookup
+```
+
+Like the slot array, it is possible to return a reference via pointer using `gs_slot_map_getp()`. Again, this comes with the same 
+danger of losing references if not careful about growing the internal data. 
+
+```c
+uint32_t* v = gs_slot_map_getp(sm, 3.145.f);    // Cache pointer to data
+gs_slot_map_insert(sm, 2.f, 10);                // Possibly have just invalidated your previous pointer
+```
 ## Slot Map API: 
+
+```c
+gs_slot_map(K, V) sm = NULL;                    // Create slot map with K = float, V = uint64_t
+uint32_t hndl = gs_slot_map_insert(sm, K, V);   // Insert data into slot map. Init/Grow on demand.
+uint64_t v = gs_slot_map_get(sm, K);            // Get data at key.
+uint64_t* vp = gs_slot_map_getp(sm, K);         // Get pointer reference at hndl. Dangerous.
+uint32_t sz = gs_slot_map_size(sm);             // Size of slot map. Returns 0 if NULL.
+uint32_t cap = gs_slot_map_capacity(sm);        // Capacity of slot map. Returns 0 if NULL.
+gs_slot_map_empty(sm);                          // Returns whether slot map is empty. Returns true if NULL.
+gs_slot_map_clear(sm);                          // Clears map. Sets size to 0.
+gs_slot_map_free(sm);                           // Frees map memory. Calls `gs_free` internally.
+```
 
 ## Byte Buffer
 ## Byte Buffer API:
