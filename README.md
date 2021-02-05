@@ -22,6 +22,11 @@ Gunslinger is a fast, lightweight, ([stb-style](https://github.com/nothings/stb)
 * [Getting Started](https://github.com/MrFrenik/gunslinger/blob/master/docs/getting_started.md)
 * [Containers](https://github.com/MrFrenik/gunslinger/blob/master/docs/containers.md)
 * [Examples](https://github.com/MrFrenik/gs_examples)
+* Platform: WIP
+* Audio: WIP
+* Graphics: WIP
+* Math: WIP
+* Utils: WIP
 
 [//]: # "(* [Platform](https://github.com/MrFrenik/gunslinger/blob/master/docs/platform.md) )"
 [//]: # "(* [Graphics](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md) )" 
