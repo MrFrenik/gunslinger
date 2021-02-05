@@ -106,7 +106,7 @@ struct gs_uuid_t gs_platform_generate_uuid()
     }
 
     // Convert to uuid bytes from string
-    const char* hex_string = sz_temp, *pos = hex_string;
+    const char* hex_string = guid, *pos = hex_string;
 
      /* WARNING: no sanitization or error-checking whatsoever */
     for (size_t count = 0; count < 16; count++) 
