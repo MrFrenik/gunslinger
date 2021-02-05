@@ -904,7 +904,7 @@ char* gs_read_file_contents_into_string_null_term
             fread(buffer, 1, sz, fp);
         }
         fclose(fp);
-        buffer[sz] = '0';
+        buffer[sz] = '\0';
         if (_sz) *_sz = sz;
     }
     return buffer;
