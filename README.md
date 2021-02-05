@@ -5,6 +5,7 @@
 
 Gunslinger is a fast, lightweight, ([stb-style](https://github.com/nothings/stb)) header-only c99 framework for multimedia applications.
 ## Features
+--------
 - Header-only: drag-drop into any project without any additional compiling required.
 - No external dependencies required. Everything is included in the framework itself.
 - Provides core framework for quickly developing multimedia applications: [Platform](https://github.com/MrFrenik/gunslinger/blob/master/docs/platform.md), [Graphics](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md), [Audio layers](https://github.com/MrFrenik/gunslinger/blob/master/docs/audio.md). 
