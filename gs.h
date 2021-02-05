@@ -904,7 +904,7 @@ char* gs_read_file_contents_into_string_null_term
             fread(buffer, 1, sz, fp);
         }
         fclose(fp);
-        buffer[sz] = '0';
+        buffer[sz] = '\0';
         if (_sz) *_sz = sz;
     }
     return buffer;
@@ -960,11 +960,19 @@ void gs_util_get_dir_from_file
 {
     uint32_t str_len = gs_string_length(file_path);
     const char* end = (file_path + str_len);
-    while (*end != '/' && end != file_path)
+    for (uint32_t i = 0; i < str_len; ++i)
     {
-        end--;
+        if (file_path[i] == '/' || file_path[i] == '\\')
+        {
+            end = &file_path[i];
+        }
     }
-    memcpy(buffer, file_path, gs_min(buffer_size, (end - file_path) + 1));
+
+    size_t dir_len = end - file_path;
+    memcpy(buffer, file_path, gs_min(buffer_size, dir_len + 1));
+    if (dir_len + 1 <= buffer_size) {
+        buffer[dir_len] = '\0';
+    }
 }
 
 gs_force_inline 
@@ -976,18 +984,25 @@ void gs_util_get_file_name
 )
 {
     uint32_t str_len = gs_string_length(file_path);
-    const char* end = (file_path + str_len);
-    const char* dot_at = end;
-    while (*end != '.' && end != file_path)
+    const char* file_start = file_path;
+    const char* file_end = (file_path + str_len);
+    for (uint32_t i = 0; i < str_len; ++i)
     {
-        end--;
+        if (file_path[i] == '/' || file_path[i] == '\\')
+        {
+            file_start = &file_path[i + 1];
+        }
+        else if (file_path[i] == '.')
+        {
+            file_end = &file_path[i];
+        }
     }
-    const char* start = end; 
-    while (*start != '/' && start != file_path)
-    {
-        start--;
+
+    size_t dir_len = file_end - file_start;
+    memcpy(buffer, file_start, gs_min(buffer_size, dir_len + 1));
+    if (dir_len + 1 <= buffer_size) {
+        buffer[dir_len] = '\0';
     }
-    memcpy(buffer, start, (end - start));
 }
 
 gs_force_inline 
