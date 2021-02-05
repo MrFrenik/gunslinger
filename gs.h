@@ -964,7 +964,11 @@ void gs_util_get_dir_from_file
     {
         end--;
     }
-    memcpy(buffer, file_path, gs_min(buffer_size, (end - file_path) + 1));
+    size_t dir_len = end - file_path;
+    memcpy(buffer, file_path, gs_min(buffer_size, dir_len + 1));
+    if (dir_len + 1 <= buffer_size) {
+        buffer[dir_len] = '\0';
+    }
 }
 
 gs_force_inline 
