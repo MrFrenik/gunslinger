@@ -960,10 +960,14 @@ void gs_util_get_dir_from_file
 {
     uint32_t str_len = gs_string_length(file_path);
     const char* end = (file_path + str_len);
-    while (*end != '/' && end != file_path)
+    for (uint32_t i = 0; i < str_len; ++i)
     {
-        end--;
+        if (file_path[i] == '/' || file_path[i] == '\\')
+        {
+            end = &file_path[i];
+        }
     }
+    
     size_t dir_len = end - file_path;
     memcpy(buffer, file_path, gs_min(buffer_size, dir_len + 1));
     if (dir_len + 1 <= buffer_size) {
