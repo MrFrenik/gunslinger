@@ -1,4 +1,4 @@
-# gunslinger
+![gunslinger](https://raw.githubusercontent.com/MrFrenik/gunslinger/master/docs/logo.png)
 ![GitHub](https://img.shields.io/github/license/mrfrenik/gunslinger)
 [![Discord](https://img.shields.io/discord/485178488203116567?label=discord&logo=discord)](https://discord.gg/QXwpETB)
 ![GitHub top language](https://img.shields.io/github/languages/top/mrfrenik/gunslinger?label=c99)
