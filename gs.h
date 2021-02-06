@@ -543,7 +543,9 @@ extern "C" {
 #ifdef __cplusplus
         typedef bool      b8;
 #else
+    #ifndef __bool_true_false_are_defined
         typedef _Bool     bool;
+    #endif
         typedef bool      b8;
 #endif
 
