@@ -543,7 +543,9 @@ extern "C" {
 #ifdef __cplusplus
         typedef bool      b8;
 #else
+    #ifndef __bool_true_false_are_defined
         typedef _Bool     bool;
+    #endif
         typedef bool      b8;
 #endif
 
@@ -3930,6 +3932,7 @@ typedef struct gs_platform_event_t
 // Necessary function pointer typedefs
 typedef void (* gs_dropped_files_callback_t)(void*, int32_t count, const char** file_paths);
 typedef void (* gs_window_close_callback_t)(void*);
+typedef void (* gs_character_callback_t)(void*, uint32_t code_point);
 
 /*===============================================================================================
 // Platform Interface
@@ -4024,6 +4027,7 @@ GS_API_DECL void     gs_platform_set_cursor(uint32_t handle, gs_platform_cursor 
 GS_API_DECL uint32_t gs_platform_main_window();
 GS_API_DECL void     gs_platform_set_dropped_files_callback(uint32_t handle, gs_dropped_files_callback_t cb);
 GS_API_DECL void     gs_platform_set_window_close_callback(uint32_t handle, gs_window_close_callback_t cb);
+GS_API_DECL void     gs_platform_set_character_callback(uint32_t handle, gs_character_callback_t cb);
 GS_API_DECL void*    gs_platform_raw_window_handle(uint32_t handle);
 GS_API_DECL gs_vec2  gs_platform_framebuffer_sizev(uint32_t handle);
 GS_API_DECL void     gs_platform_framebuffer_size(uint32_t handle, uint32_t* w, uint32_t* h);
