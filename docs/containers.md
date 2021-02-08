@@ -315,8 +315,15 @@ gs_byte_buffer_read(&bb, T, &val);          // Read data of type `T` into val. P
 gs_byte_buffer_readc(&bb, T, NAME);         // Macro for reading data type `T` from buffer and constructing variable `NAME`. 
 ```
 * Read/Write Bulk
+```c
+gs_byte_buffer_read_bulk(gs_byte_buffer_t* buffer, void** dst, size_t sz);
+gs_byte_buffer_read_bulkc(__BUFFER, __T, __NAME, __SZ);
+void gs_byte_buffer_write_bulk(gs_byte_buffer_t* buffer, void* src, size_t sz);
+```
 
 * Seek Commands
+```c
+```
 
 ## Command Buffer
 ## Command Buffer API:
