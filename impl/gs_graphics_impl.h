@@ -1064,12 +1064,13 @@ void gs_graphics_bind_pipeline(gs_command_buffer_t* cb, gs_handle(gs_graphics_pi
     });
 }
 
-void gs_graphics_draw(gs_command_buffer_t* cb, uint32_t start, uint32_t count, uint32_t instance_count)
+void gs_graphics_draw(gs_command_buffer_t* cb, gs_graphics_draw_desc_t* desc)
 {
     __ogl_push_command(cb, GS_OPENGL_OP_DRAW, {
-        gs_byte_buffer_write(&cb->commands, uint32_t, start);
-        gs_byte_buffer_write(&cb->commands, uint32_t, count);
-        gs_byte_buffer_write(&cb->commands, uint32_t, instance_count);
+        gs_byte_buffer_write(&cb->commands, uint32_t, desc->start);
+        gs_byte_buffer_write(&cb->commands, uint32_t, desc->count);
+        gs_byte_buffer_write(&cb->commands, uint32_t, desc->instances);
+        gs_byte_buffer_write(&cb->commands, uint32_t, desc->base_vertex);
     });
 }
 
@@ -1685,6 +1686,7 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                 gs_byte_buffer_readc(&cb->commands, uint32_t, start);
                 gs_byte_buffer_readc(&cb->commands, uint32_t, count);
                 gs_byte_buffer_readc(&cb->commands, uint32_t, instance_count);
+                gs_byte_buffer_readc(&cb->commands, uint32_t, base_vertex);
 
                 uint32_t prim = gsgl_primitive_to_gl_primitive(pip->raster.primitive);
                 uint32_t itype = gsgl_index_buffer_size_to_gl_index_type(pip->raster.index_buffer_element_size);
@@ -1765,10 +1767,6 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
 
     // Set num commands to 0
     cb->num_commands = 0;
-}
-
-void gs_graphics_submit_frame()
-{
 }
 
 

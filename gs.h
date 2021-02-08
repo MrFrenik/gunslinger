@@ -4644,6 +4644,15 @@ typedef struct gs_graphics_pipeline_desc_t
     gs_graphics_vertex_layout_desc_t layout; // Vertex layout desc for pipeline
 } gs_graphics_pipeline_desc_t;
 
+/* Graphics Draw Desc */
+typedef struct gs_graphics_draw_desc_t
+{
+    uint32_t start;                             
+    uint32_t count; 
+    uint32_t instances;
+    uint32_t base_vertex; 
+} gs_graphics_draw_desc_t;
+
 // Convenience define for default render pass to back buffer
 #define GS_GRAPHICS_RENDER_PASS_DEFAULT ((gs_handle(gs_graphics_render_pass_t)){0})
 
@@ -4707,12 +4716,11 @@ GS_API_DECL void gs_graphics_set_viewport(gs_command_buffer_t* cb, uint32_t x, u
 GS_API_DECL void gs_graphics_set_view_scissor(gs_command_buffer_t* cb, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
 GS_API_DECL void gs_graphics_bind_pipeline(gs_command_buffer_t* cb, gs_handle(gs_graphics_pipeline_t) hndl);
 GS_API_DECL void gs_graphics_bind_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t* binds);
-GS_API_DECL void gs_graphics_draw(gs_command_buffer_t* cb, uint32_t start, uint32_t count, uint32_t instance_count);
+GS_API_DECL void gs_graphics_draw(gs_command_buffer_t* cb, gs_graphics_draw_desc_t* desc);
 GS_API_DECL void gs_graphics_dispatch_compute(gs_command_buffer_t* cb, uint32_t num_x_groups, uint32_t num_y_groups, uint32_t num_z_groups);
 
 /* Submission (Main Thread) */
 GS_API_DECL void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb);
-GS_API_DECL void gs_graphics_submit_frame();
 
 #ifndef GS_NO_SHORT_NAME
     
