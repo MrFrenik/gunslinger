@@ -4636,12 +4636,13 @@ typedef struct gs_graphics_depth_state_desc_t
 /* Graphics Stencil State Desc */
 typedef struct gs_graphics_stencil_state_desc_t
 {
-    gs_graphics_stencil_func_type   func;   // Function to set for stencil test
-    uint32_t                        ref;    // Specifies reference val for stencil test
-    uint32_t                        mask;   // Specifies mask that is ANDed with both ref val and stored stencil val
-    gs_graphics_stencil_op_type     sfail;  // Action to take when stencil test fails
-    gs_graphics_stencil_op_type     dpfail; // Action to take when stencil test passes but depth test fails
-    gs_graphics_stencil_op_type     dppass; // Action to take when both stencil test passes and either depth passes or is not enabled
+    gs_graphics_stencil_func_type   func;        // Function to set for stencil test
+    uint32_t                        ref;         // Specifies reference val for stencil test
+    uint32_t                        comp_mask;   // Specifies mask that is ANDed with both ref val and stored stencil val
+    uint32_t                        write_mask;  // Specifies mask that is ANDed with both ref val and stored stencil val
+    gs_graphics_stencil_op_type     sfail;       // Action to take when stencil test fails
+    gs_graphics_stencil_op_type     dpfail;      // Action to take when stencil test passes but depth test fails
+    gs_graphics_stencil_op_type     dppass;      // Action to take when both stencil test passes and either depth passes or is not enabled
 } gs_graphics_stencil_state_desc_t;
 
 /* Graphics Raster State Desc */

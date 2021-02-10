@@ -612,6 +612,10 @@ gs_handle(gs_graphics_texture_t) gs_graphics_texture_create(gs_graphics_texture_
         glGenerateMipmap(GL_TEXTURE_2D);
     }
 
+    // float aniso = 0.0f;
+    // glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &aniso);
+    // glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, aniso); 
+
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, texture_wrap_s);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, texture_wrap_t);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter);
@@ -1668,7 +1672,8 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                     uint32_t sfail = gsgl_stencil_op_to_gl_stencil_op(pip->stencil.sfail);
                     uint32_t dpfail = gsgl_stencil_op_to_gl_stencil_op(pip->stencil.dpfail);
                     uint32_t dppass = gsgl_stencil_op_to_gl_stencil_op(pip->stencil.dppass);
-                    glStencilFunc(func, pip->stencil.ref, pip->stencil.mask);
+                    glStencilFunc(func, pip->stencil.ref, pip->stencil.comp_mask);
+                    glStencilMask(pip->stencil.write_mask);
                     glStencilOp(sfail, dpfail, dppass);
                 }
 
