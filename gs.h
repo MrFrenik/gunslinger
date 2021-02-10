@@ -2993,7 +2993,8 @@ gs_mat4_scale(float x, float y, float z)
 }
 
 // Assumes normalized axis
-gs_inline gs_mat4 gs_mat4_rotatev(float angle, gs_vec3 axis)
+gs_inline gs_mat4 
+gs_mat4_rotatev(float angle, gs_vec3 axis)
 {
     gs_mat4 m_res = gs_mat4_identity();
 
@@ -3491,7 +3492,7 @@ typedef struct gs_camera_t
 GS_API_DECL gs_camera_t gs_camera_default();
 GS_API_DECL gs_camera_t gs_camera_perspective();
 GS_API_DECL gs_mat4 gs_camera_get_view(gs_camera_t* cam);
-GS_API_DECL gs_mat4 gs_camera_get_projection(gs_camera_t* cam, int32_t view_width, int32_t view_height);
+GS_API_DECL gs_mat4 gs_camera_get_proj(gs_camera_t* cam, int32_t view_width, int32_t view_height);
 GS_API_DECL gs_mat4 gs_camera_get_view_projection(gs_camera_t* cam, int32_t view_width, int32_t view_height);
 GS_API_DECL gs_vec3 gs_camera_forward(gs_camera_t* cam);
 GS_API_DECL gs_vec3 gs_camera_backward(gs_camera_t* cam);
@@ -3567,7 +3568,7 @@ gs_vec4 gs_aabb_window_coords(gs_aabb_t* aabb, gs_camera_t* camera, gs_vec2 wind
     gs_vec4 br = gs_v4(aabb->max.x, aabb->max.y, 0.f, 1.f);
 
     gs_mat4 view_mtx = gs_camera_get_view(camera);
-    gs_mat4 proj_mtx = gs_camera_get_projection(camera, (int32_t)window_size.x, (int32_t)window_size.y);
+    gs_mat4 proj_mtx = gs_camera_get_proj(camera, (int32_t)window_size.x, (int32_t)window_size.y);
     gs_mat4 vp = gs_mat4_mul(proj_mtx, view_mtx);
 
     // Transform verts
@@ -4265,6 +4266,7 @@ gs_enum_decl(gs_graphics_uniform_type,
     GS_GRAPHICS_UNIFORM_VEC3,
     GS_GRAPHICS_UNIFORM_VEC4,
     GS_GRAPHICS_UNIFORM_MAT4,
+    GS_GRAPHICS_UNIFORM_SAMPLER2D,
     GS_GRAPHICS_UNIFORM_BLOCK
 );
 
@@ -4609,6 +4611,7 @@ typedef struct gs_graphics_bind_uniform_buffer_desc_t {
 typedef struct gs_graphics_bind_uniform_desc_t {
     gs_handle(gs_graphics_uniform_t) uniform;
     void* data;
+    uint32_t binding;   // Base binding for samplers?
 } gs_graphics_bind_uniform_desc_t;
 
 /* Graphics Binding Desc */
@@ -5225,7 +5228,7 @@ gs_vec3 gs_camera_screen_to_world(gs_camera_t* cam, gs_vec3 coords, s32 view_wid
 gs_mat4 gs_camera_get_view_projection(gs_camera_t* cam, s32 view_width, s32 view_height)
 {
     gs_mat4 view = gs_camera_get_view(cam);
-    gs_mat4 proj = gs_camera_get_projection(cam, view_width, view_height);
+    gs_mat4 proj = gs_camera_get_proj(cam, view_width, view_height);
     return gs_mat4_mul(proj, view); 
 }
 
@@ -5237,7 +5240,7 @@ gs_mat4 gs_camera_get_view(gs_camera_t* cam)
     return gs_mat4_look_at(cam->transform.position, target, up);
 }
 
-gs_mat4 gs_camera_get_projection(gs_camera_t* cam, s32 view_width, s32 view_height)
+gs_mat4 gs_camera_get_proj(gs_camera_t* cam, s32 view_width, s32 view_height)
 {
     gs_mat4 proj_mat = gs_mat4_identity();
 

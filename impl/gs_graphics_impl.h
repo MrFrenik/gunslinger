@@ -33,7 +33,8 @@ typedef enum gsgl_uniform_type
     GSGL_UNIFORMTYPE_VEC2,
     GSGL_UNIFORMTYPE_VEC3,
     GSGL_UNIFORMTYPE_VEC4,
-    GSGL_UNIFORMTYPE_MAT4
+    GSGL_UNIFORMTYPE_MAT4,
+    GSGL_UNIFORMTYPE_SAMPLER2D
 } gsgl_uniform_type;
 
 /* Graphics Uniform Desc */
@@ -125,7 +126,6 @@ typedef struct gsgl_data_t
     gs_slot_array(gsgl_buffer_t)        index_buffers;
     gs_slot_array(gsgl_buffer_t)        frame_buffers;
     gs_slot_array(gsgl_uniform_list_t)  uniforms;
-    gs_slot_array(gsgl_uniform_t)       samplers;
     gs_slot_array(gsgl_pipeline_t)      pipelines;
     gs_slot_array(gsgl_render_pass_t)   render_passes;
 
@@ -363,6 +363,7 @@ gsgl_uniform_type gsgl_uniform_type_to_gl_uniform_type(gs_graphics_uniform_type 
         case GS_GRAPHICS_UNIFORM_VEC3: type = GSGL_UNIFORMTYPE_VEC3; break;
         case GS_GRAPHICS_UNIFORM_VEC4: type = GSGL_UNIFORMTYPE_VEC4; break;
         case GS_GRAPHICS_UNIFORM_MAT4: type = GSGL_UNIFORMTYPE_MAT4; break;
+        case GS_GRAPHICS_UNIFORM_SAMPLER2D: type = GSGL_UNIFORMTYPE_SAMPLER2D; break;
     }
     return type;
 } 
@@ -441,6 +442,7 @@ size_t gsgl_uniform_data_size_in_bytes(gs_graphics_uniform_type type)
         case GS_GRAPHICS_UNIFORM_VEC3:  sz = 3 * sizeof(float); break;
         case GS_GRAPHICS_UNIFORM_VEC4:  sz = 4 * sizeof(float); break;
         case GS_GRAPHICS_UNIFORM_MAT4:  sz = 16 * sizeof(float); break;
+        case GS_GRAPHICS_UNIFORM_SAMPLER2D:  sz = sizeof(gs_handle(gs_graphics_texture_t)); break;  // handle size
         default: {
             sz = 0;
         } break;
@@ -484,7 +486,6 @@ void gs_graphics_destroy(gs_graphics_i* graphics)
     gs_slot_array_free(ogl->shaders);
     gs_slot_array_free(ogl->vertex_buffers);
     gs_slot_array_free(ogl->index_buffers);
-    gs_slot_array_free(ogl->samplers);
     gs_slot_array_free(ogl->frame_buffers);
     gs_slot_array_free(ogl->uniforms);
     gs_slot_array_free(ogl->textures);
@@ -510,14 +511,12 @@ gs_result gs_graphics_init(gs_graphics_i* graphics)
     gsgl_uniform_buffer_t ub = gs_default_val();
     gsgl_pipeline_t pip = gs_default_val();
     gsgl_render_pass_t rp = gs_default_val();
-    gsgl_uniform_t sb = gs_default_val();
     gsgl_texture_t tex = gs_default_val();
 
     gs_slot_array_insert(ogl->uniforms, ul);
     gs_slot_array_insert(ogl->pipelines, pip);
     gs_slot_array_insert(ogl->render_passes, rp);
     gs_slot_array_insert(ogl->uniform_buffers, ub);
-    gs_slot_array_insert(ogl->samplers, sb);
     gs_slot_array_insert(ogl->textures, tex);
 
     // Construct vao then bind
@@ -681,99 +680,6 @@ gs_handle(gs_graphics_uniform_t) gs_graphics_uniform_create(gs_graphics_uniform_
     return gs_handle_create(gs_graphics_uniform_t, gs_slot_array_insert(ogl->uniforms, ul));
 }
 
-// gs_handle(gs_graphics_buffer_t) gs_graphics_buffer_create(gs_graphics_buffer_desc_t* desc)
-// {
-//     gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
-
-//     gs_handle(gs_graphics_buffer_t) hndl = gs_default_val();
-//     gsgl_buffer_t buffer = 0;
-
-//     switch (desc->type)
-//     {
-//         // Vertex Buffer
-//         default:
-//         case GS_GRAPHICS_BUFFER_VERTEX:
-//         {
-//             // Assert if data isn't filled for vertex data when static draw enabled
-//             if (desc->usage == GS_GRAPHICS_BUFFER_USAGE_STATIC && !desc->vertex_buffer.data) {
-//                 gs_println("Error: Vertex buffer desc must contain data when GS_GRAPHICS_BUFFER_USAGE_STATIC set.");
-//                 gs_assert(false);
-//             } 
-
-//             glGenBuffers(1, &buffer);
-//             glBindBuffer(GL_ARRAY_BUFFER, buffer);
-//             glBufferData(GL_ARRAY_BUFFER, desc->vertex_buffer.size, desc->vertex_buffer.data, gsgl_buffer_usage_to_gl_enum(desc->usage));
-//             glBindBuffer(GL_ARRAY_BUFFER, 0);
-//             hndl = gs_handle_create(gs_graphics_buffer_t, gs_slot_array_insert(ogl->vertex_buffers, buffer));
-
-//         } break;
-
-//         // Index Buffer
-//         case GS_GRAPHICS_BUFFER_INDEX:
-//         {
-//             // Assert if data isn't filled for vertex data when static draw enabled
-//             if (desc->usage == GS_GRAPHICS_BUFFER_USAGE_STATIC && !desc->vertex_buffer.data) {
-//                 gs_println("Error: Index buffer desc must contain data when GS_GRAPHICS_BUFFER_USAGE_STATIC set.");
-//                 gs_assert(false);
-//             }
-
-//             glGenBuffers(1, &buffer);
-//             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer);
-//             glBufferData(GL_ELEMENT_ARRAY_BUFFER, desc->vertex_buffer.size, desc->vertex_buffer.data, gsgl_buffer_usage_to_gl_enum(desc->usage));
-//             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-//             hndl = gs_handle_create(gs_graphics_buffer_t, gs_slot_array_insert(ogl->index_buffers, buffer));
-
-//         } break;
-
-//         case GS_GRAPHICS_BUFFER_FRAME:
-//         {
-//             // Construct and bind frame buffer
-//             glGenFramebuffers(1, &buffer);
-//             hndl = gs_handle_create(gs_graphics_buffer_t, gs_slot_array_insert(ogl->frame_buffers, buffer));
-//         } break;
-
-//         case GS_GRAPHICS_BUFFER_UNIFORM:
-//         {
-//             // Assert if data isn't named
-//             if (desc->uniform_buffer.name == NULL) {
-//                 gs_println("Warning: Uniform buffer must be named for OpenGL.");
-//             }
-
-//             gsgl_uniform_buffer_t u = gs_default_val();
-//             u.name = desc->uniform_buffer.name;
-//             u.size = desc->uniform_buffer.size;
-//             u.location = UINT32_MAX;
-
-//             // Generate buffer (if needed)
-//             glGenBuffers(1, &u.ubo);
-//             glBindBuffer(GL_UNIFORM_BUFFER, u.ubo);
-//             glBufferData(GL_UNIFORM_BUFFER, u.size, 0, gsgl_buffer_usage_to_gl_enum(desc->usage));
-//             glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-//             hndl = gs_handle_create(gs_graphics_buffer_t, gs_slot_array_insert(ogl->uniform_buffers, u));
-//         } break;
-
-//         /*
-//         case GS_GRAPHICS_BUFFER_SAMPLER:
-//         {
-//             // Assert if data isn't named
-//             if (desc->sampler_buffer.name == NULL) {
-//                 gs_println("Warning: Uniform buffer must be named for OpenGL.");
-//             }
-
-//             uint32_t ct = (uint32_t)desc->size / (uint32_t)sizeof(gs_graphics_sampler_desc_t);
-//             gsgl_uniform_t u = gs_default_val();
-//             u.name = desc->name;
-//             u.location = UINT32_MAX;
-
-//             hndl = gs_handle_create(gs_graphics_buffer_t, gs_slot_array_insert(ogl->uniforms, u));
-//         } break;
-//         */
-//     }
-
-//     return hndl;
-// }
-
 gs_handle(gs_graphics_vertex_buffer_t) gs_graphics_vertex_buffer_create(gs_graphics_vertex_buffer_desc_t* desc)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
@@ -839,25 +745,6 @@ gs_handle(gs_graphics_uniform_buffer_t) gs_graphics_uniform_buffer_create(gs_gra
     glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
     hndl = gs_handle_create(gs_graphics_uniform_buffer_t, gs_slot_array_insert(ogl->uniform_buffers, u));
-
-    return hndl;
-}
-
-gs_handle(gs_graphics_sampler_buffer_t) gs_graphics_sampler_buffer_create(gs_graphics_sampler_buffer_desc_t* desc)
-{
-    gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
-    gs_handle(gs_graphics_sampler_buffer_t) hndl = gs_default_val();
-    gsgl_buffer_t buffer = 0;
-
-    // / Assert if data isn't named
-    if (desc->name == NULL) {
-        gs_println("Warning: Sampler buffer must be named for OpenGL.");
-    }
-
-    gsgl_uniform_t u = gs_default_val();
-    u.name = desc->name;
-    u.location = UINT32_MAX;
-    hndl = gs_handle_create(gs_graphics_sampler_buffer_t, gs_slot_array_insert(ogl->samplers, u));
 
     return hndl;
 }
@@ -1282,6 +1169,7 @@ void gs_graphics_apply_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t
             gs_byte_buffer_write(&cb->commands, gs_graphics_bind_type, GS_GRAPHICS_BIND_UNIFORM);
             gs_byte_buffer_write(&cb->commands, uint32_t, decl->uniform.id);
             gs_byte_buffer_write(&cb->commands, size_t, sz);
+            gs_byte_buffer_write(&cb->commands, uint32_t, decl->binding);
             gs_byte_buffer_write_bulk(&cb->commands, decl->data, sz);
         }
     };
@@ -1506,6 +1394,8 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                             gs_byte_buffer_readc(&cb->commands, uint32_t, id);
                             // Read data size for uniform list 
                             gs_byte_buffer_readc(&cb->commands, size_t, sz);
+                            // Read binding from uniform list (could make this a binding list? not sure how to handle this)
+                            gs_byte_buffer_readc(&cb->commands, uint32_t, binding);
 
                             // Check buffer id. If invalid, then we can't operate, and instead just need to pass over the data.
                             if (!id || !gs_slot_array_exists(ogl->uniforms, id)) {
@@ -1547,7 +1437,7 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                                         });
 
                                         // Advance by size of uniform
-                                        gs_byte_buffer_advance_position(&cb->commands, u->size);
+                                        gs_byte_buffer_advance_position(&cb->commands, sz);
                                         continue;
                                     }
 
@@ -1615,6 +1505,23 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                                         gs_assert(u->size == sizeof(gs_mat4));
                                         gs_byte_buffer_read_bulkc(&cb->commands, gs_mat4, v, u->size);
                                         glUniformMatrix4fv(u->location, 1, false, (float*)(v.elements));
+                                    } break;
+
+                                    case GSGL_UNIFORMTYPE_SAMPLER2D:
+                                    {
+                                        gs_assert(u->size == sizeof(gs_handle(gs_graphics_texture_t)));
+                                        gs_byte_buffer_read_bulkc(&cb->commands, gs_handle(gs_graphics_texture_t), v, u->size);
+
+                                        // Get texture, also need binding, but will worry about that in a bit
+                                        gsgl_texture_t* tex = gs_slot_array_getp(ogl->textures, v.id);
+
+                                        // Activate texture slot
+                                        glActiveTexture(GL_TEXTURE0 + binding);
+                                        // Bind texture
+                                        glBindTexture(GL_TEXTURE_2D, tex->id);
+                                        // Bind uniform
+                                        glUniform1i(u->location, binding++);
+
                                     } break;
 
                                     default: {
@@ -1694,6 +1601,7 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
 
                         } break;
 
+/*
                         case GS_GRAPHICS_BIND_SAMPLER_BUFFER:
                         {
                             // Read slot id of sampler buffer
@@ -1768,7 +1676,7 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                             glUniform1i(u->location, binding);
 
                         } break;
-
+*/
                         case GS_GRAPHICS_BIND_IMAGE_BUFFER:
                         {
                             gs_byte_buffer_readc(&cb->commands, uint32_t, tex_slot_id);
