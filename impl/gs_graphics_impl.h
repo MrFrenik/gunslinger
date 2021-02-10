@@ -37,15 +37,6 @@ typedef enum gsgl_uniform_type
     GSGL_UNIFORMTYPE_SAMPLER2D
 } gsgl_uniform_type;
 
-/* Graphics Uniform Desc */
-// typedef struct gs_graphics_uniform_desc_t
-// {
-//     gs_graphics_shader_stage_type shader_stage;
-//     const char* name;
-//     gs_graphics_uniform_layout_desc_t* layout;
-//     size_t layout_size;
-// } gs_graphics_uniform_desc_t;
-
 /* Uniform (stores samplers as well as primitive uniforms) */
 typedef struct gsgl_uniform_t {
     const char* name;               // Name of uniform to find location
@@ -1096,12 +1087,11 @@ void gs_graphics_apply_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t
         uint32_t vct = binds->vertex_buffers.desc ? binds->vertex_buffers.size ? binds->vertex_buffers.size / sizeof(gs_graphics_bind_vertex_buffer_desc_t) : 1 : 0;
         uint32_t ict = binds->index_buffers.desc ? binds->index_buffers.size ? binds->index_buffers.size / sizeof(gs_graphics_bind_index_buffer_desc_t) : 1 : 0;
         uint32_t uct = binds->uniform_buffers.desc ? binds->uniform_buffers.size ? binds->uniform_buffers.size / sizeof(gs_graphics_bind_uniform_buffer_desc_t) : 1 : 0;
-        uint32_t sct = binds->sampler_buffers.desc ? binds->sampler_buffers.size ? binds->sampler_buffers.size / sizeof(gs_graphics_bind_sampler_buffer_desc_t) : 1 : 0;
         uint32_t pct = binds->uniforms.desc ? binds->uniforms.size ? binds->uniforms.size / sizeof(gs_graphics_bind_uniform_desc_t) : 1 : 0;
         uint32_t ibc = binds->image_buffers.desc ? binds->image_buffers.size ? binds->image_buffers.size / sizeof(gs_graphics_bind_image_buffer_desc_t) : 1 : 0;
 
         // Determine total count to write into command buffer
-        uint32_t ct = vct + ict + uct + sct + ibc + pct;
+        uint32_t ct = vct + ict + uct + ibc + pct;
         gs_byte_buffer_write(&cb->commands, uint32_t, ct);
 
         // Determine if need to clear any previous vertex buffers (if vct != 0)
@@ -1137,16 +1127,6 @@ void gs_graphics_apply_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t
             gs_byte_buffer_write(&cb->commands, uint32_t, decl->binding);
             gs_byte_buffer_write(&cb->commands, size_t, decl->range.offset);
             gs_byte_buffer_write(&cb->commands, size_t, decl->range.size);
-        }
-
-        // Sampler buffers
-        for (uint32_t i = 0; i < sct; ++i)
-        {
-            gs_graphics_bind_sampler_buffer_desc_t* decl = &binds->sampler_buffers.desc[i];
-            gs_byte_buffer_write(&cb->commands, gs_graphics_bind_type, GS_GRAPHICS_BIND_SAMPLER_BUFFER);
-            gs_byte_buffer_write(&cb->commands, uint32_t, decl->buffer.id);
-            gs_byte_buffer_write(&cb->commands, uint32_t, decl->tex.id);
-            gs_byte_buffer_write(&cb->commands, uint32_t, decl->binding);
         }
 
         // Image buffers
@@ -1601,82 +1581,6 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
 
                         } break;
 
-/*
-                        case GS_GRAPHICS_BIND_SAMPLER_BUFFER:
-                        {
-                            // Read slot id of sampler buffer
-                            gs_byte_buffer_readc(&cb->commands, uint32_t, sampler_slot_id);
-                            // Read id texture
-                            gs_byte_buffer_readc(&cb->commands, uint32_t, tex_slot_id);
-                            // Read binding
-                            gs_byte_buffer_readc(&cb->commands, uint32_t, binding);
-
-                            // Grab uniform from sampler id
-                            if (!sampler_slot_id || !gs_slot_array_exists(ogl->samplers, sampler_slot_id)) {
-                                gs_timed_action(60, {
-                                    gs_println("Warning:Bind Sampler Buffer:Sampler %d does not exist.", sampler_slot_id);
-                                });
-                                continue;
-                            }
-
-                            // Grab texture from sampler id
-                            if (!tex_slot_id || !gs_slot_array_exists(ogl->textures, tex_slot_id)) {
-                                gs_timed_action(60, {
-                                    gs_println("Warning:Bind Sampler Buffer:Texture %d does not exist.", tex_slot_id);
-                                });
-                                continue;
-                            }
-
-                            // Grab currently bound pipeline (TODO(john): assert if this isn't valid)
-                            if (!ogl->cache.pipeline.id || !gs_slot_array_exists(ogl->pipelines, ogl->cache.pipeline.id)){
-                                gs_timed_action(60, {
-                                    gs_println("Warning:Bind Sampler Buffer:Pipeline %d does not exist.", ogl->cache.pipeline.id);
-                                });
-                                continue;
-                            }
-
-                            gsgl_uniform_t* u = gs_slot_array_getp(ogl->samplers, sampler_slot_id);
-                            gsgl_texture_t* tex = gs_slot_array_getp(ogl->textures, tex_slot_id);
-                            gsgl_pipeline_t* pip = gs_slot_array_getp(ogl->pipelines, ogl->cache.pipeline.id);
-
-                            // Get bound shader from pipeline (either compute or raster)
-                            uint32_t sid = pip->compute.shader.id ? pip->compute.shader.id : pip->raster.shader.id;
-
-                            // Check uniform location. If UINT32_T max, then must construct and place location
-                            if (u->location == UINT32_MAX && u->location != UINT32_MAX - 1) 
-                            {
-                                if (!sid || !gs_slot_array_exists(ogl->shaders, sid)) {
-                                    gs_timed_action(60, {
-                                        gs_println("Warning:Bind Uniform Buffer:Shader %d does not exist.", sid);
-                                    });
-                                    continue;
-                                }
-
-                                gsgl_shader_t shader = gs_slot_array_get(ogl->shaders, sid);
-
-                                // Grab location of uniform
-                                u->location = glGetUniformLocation(shader, u->name ? u->name : "__EMPTY_UNIFORM_NAME");
-
-                                if (u->location >= UINT32_MAX) {
-                                    gs_println("Warning: uniform not found: \"%s\"", u->name);
-                                    u->location = UINT32_MAX - 1;
-                                }
-                            }
-
-                            // Invalid texture
-                            if (u->location == UINT32_MAX - 1) {
-                                continue;
-                            }
-
-                            // Activate texture slot
-                            glActiveTexture(GL_TEXTURE0 + binding);
-                            // Bind texture
-                            glBindTexture(GL_TEXTURE_2D, tex->id);
-                            // Bind uniform
-                            glUniform1i(u->location, binding);
-
-                        } break;
-*/
                         case GS_GRAPHICS_BIND_IMAGE_BUFFER:
                         {
                             gs_byte_buffer_readc(&cb->commands, uint32_t, tex_slot_id);

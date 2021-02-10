@@ -4377,7 +4377,6 @@ gs_enum_decl(gs_graphics_bind_type,
     GS_GRAPHICS_BIND_INDEX_BUFFER,
     GS_GRAPHICS_BIND_UNIFORM_BUFFER,
     GS_GRAPHICS_BIND_UNIFORM,
-    GS_GRAPHICS_BIND_SAMPLER_BUFFER,
     GS_GRAPHICS_BIND_IMAGE_BUFFER
 );
 
@@ -4423,7 +4422,6 @@ gs_handle_decl(gs_graphics_texture_t);
 gs_handle_decl(gs_graphics_vertex_buffer_t);
 gs_handle_decl(gs_graphics_index_buffer_t);
 gs_handle_decl(gs_graphics_uniform_buffer_t);
-gs_handle_decl(gs_graphics_sampler_buffer_t);
 gs_handle_decl(gs_graphics_framebuffer_t);
 gs_handle_decl(gs_graphics_uniform_t);
 gs_handle_decl(gs_graphics_render_pass_t);
@@ -4443,15 +4441,6 @@ typedef struct gs_graphics_shader_desc_t
     size_t size;                    // Size in bytes of shader source desc array
     const char* name;               // Optional (for logging and debugging mainly)
 } gs_graphics_shader_desc_t;
-
-/* Graphics Uniform Desc */
-typedef struct gs_graphics_sampler_desc_t
-{
-    const char* name;               // Name of uniform in shader (used for opengl/es), MUST PROVIDE
-    uint32_t type;                  // Type of uniform/sampler
-    uint32_t slot;                  // Binding slot for textures to be bound
-    size_t size;                    // Size of uniform data (used for uniform blocks)
-} gs_graphics_sampler_desc_t;
 
 /* Graphics Texture Desc */
 typedef struct gs_graphics_texture_desc_t
@@ -4479,7 +4468,7 @@ typedef struct gs_graphics_uniform_layout_desc_t
 /* Graphics Uniform Desc */
 typedef struct gs_graphics_uniform_desc_t
 {
-    gs_graphics_shader_stage_type shader_stage;
+    gs_graphics_shader_stage_type stage;
     const char* name;
     gs_graphics_uniform_layout_desc_t* layout;
     size_t layout_size;
@@ -4508,13 +4497,6 @@ typedef struct gs_graphics_vertex_buffer_desc_t
 } gs_graphics_vertex_buffer_desc_t;
 
 typedef gs_graphics_vertex_buffer_desc_t gs_graphics_index_buffer_desc_t;
-
-typedef struct gs_graphics_sampler_buffer_desc_t 
-{
-    const char* name;
-    gs_graphics_shader_stage_type stage;
-    gs_graphics_sampler_type type;
-} gs_graphics_sampler_buffer_desc_t;
 
 typedef struct gs_graphics_uniform_buffer_desc_t
 {
@@ -4587,12 +4569,6 @@ typedef struct gs_graphics_bind_index_buffer_desc_t {
     gs_handle(gs_graphics_index_buffer_t) buffer;
 } gs_graphics_bind_index_buffer_desc_t;
 
-typedef struct gs_graphics_bind_sampler_buffer_desc_t {
-    gs_handle(gs_graphics_sampler_buffer_t) buffer;
-    gs_handle(gs_graphics_texture_t) tex;
-    uint32_t binding;
-} gs_graphics_bind_sampler_buffer_desc_t;
-
 typedef struct gs_graphics_bind_image_buffer_desc_t {
     gs_handle(gs_graphics_texture_t) tex;
     uint32_t binding;
@@ -4636,11 +4612,6 @@ typedef struct gs_graphics_bind_desc_t
         gs_graphics_bind_uniform_desc_t* desc;   // Array of uniform declarations (NULL by default)
         size_t size;                             // Size of array in bytes (optional if one)
     } uniforms;
-
-    struct {
-        gs_graphics_bind_sampler_buffer_desc_t* desc;   // Array of sampler buffer declarations (NULL by default)
-        size_t size;                                    // Size of array in bytes (optional if only one)
-    } sampler_buffers;
 
     struct {
         gs_graphics_bind_image_buffer_desc_t* desc;
@@ -4773,7 +4744,6 @@ GS_API_DECL gs_handle(gs_graphics_shader_t)         gs_graphics_shader_create(gs
 GS_API_DECL gs_handle(gs_graphics_vertex_buffer_t)  gs_graphics_vertex_buffer_create(gs_graphics_vertex_buffer_desc_t* desc);
 GS_API_DECL gs_handle(gs_graphics_index_buffer_t)   gs_graphics_index_buffer_create(gs_graphics_index_buffer_desc_t* desc);
 GS_API_DECL gs_handle(gs_graphics_uniform_buffer_t) gs_graphics_uniform_buffer_create(gs_graphics_uniform_buffer_desc_t* desc);
-GS_API_DECL gs_handle(gs_graphics_sampler_buffer_t) gs_graphics_sampler_buffer_create(gs_graphics_sampler_buffer_desc_t* desc);
 GS_API_DECL gs_handle(gs_graphics_framebuffer_t)    gs_graphics_framebuffer_create(gs_graphics_framebuffer_desc_t* desc);
 GS_API_DECL gs_handle(gs_graphics_render_pass_t)    gs_graphics_render_pass_create(gs_graphics_render_pass_desc_t* desc);
 GS_API_DECL gs_handle(gs_graphics_pipeline_t)       gs_graphics_pipeline_create(gs_graphics_pipeline_desc_t* desc);
