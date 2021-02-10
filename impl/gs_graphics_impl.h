@@ -33,18 +33,41 @@ typedef enum gsgl_uniform_type
     GSGL_UNIFORMTYPE_VEC2,
     GSGL_UNIFORMTYPE_VEC3,
     GSGL_UNIFORMTYPE_VEC4,
-    GSGL_UNIFORMTYPE_MAT4,
-    GSGL_UNIFORMTYPE_SAMPLER2D,
-    GSGL_UNIFORMTYPE_UNIFORM_BLOCK
+    GSGL_UNIFORMTYPE_MAT4
 } gsgl_uniform_type;
+
+/* Graphics Uniform Desc */
+// typedef struct gs_graphics_uniform_desc_t
+// {
+//     gs_graphics_shader_stage_type shader_stage;
+//     const char* name;
+//     gs_graphics_uniform_layout_desc_t* layout;
+//     size_t layout_size;
+// } gs_graphics_uniform_desc_t;
 
 /* Uniform (stores samplers as well as primitive uniforms) */
 typedef struct gsgl_uniform_t {
-    const char* name;
-    gsgl_uniform_type type;
-    uint32_t location;
+    const char* name;               // Name of uniform to find location
+    gsgl_uniform_type type;         // Type of uniform data
+    uint32_t location;              // Location of uniform
     size_t size;                    // Total data size of uniform
+    uint32_t sid;                   // Shader id (should probably inverse this, but I don't want to force a map lookup)
 } gsgl_uniform_t;
+
+// When a user passes in a uniform layout, that handle could then pass to a WHOLE list of uniforms (if describing a struct)
+typedef struct gsgl_uniform_list_t {
+    size_t size;                                // Total size of uniform data
+    const char* name;                           // Base name of uniform
+    gs_dyn_array(gsgl_uniform_t) uniforms;      // Individual uniforms in list
+} gsgl_uniform_list_t;
+
+typedef struct gsgl_uniform_buffer_t {
+    const char* name;
+    uint32_t location;
+    size_t size;
+    uint32_t ubo;
+    uint32_t sid;
+} gsgl_uniform_buffer_t;
 
 /* Pipeline */
 typedef struct gsgl_pipeline_t {
@@ -58,7 +81,7 @@ typedef struct gsgl_pipeline_t {
 
 /* Render Pass */
 typedef struct gsgl_render_pass_t {
-    gs_handle(gs_graphics_buffer_t) fbo;                        
+    gs_handle(gs_graphics_framebuffer_t) fbo;                        
     gs_dyn_array(gs_handle(gs_graphics_texture_t)) color;
     gs_handle(gs_graphics_texture_t) depth; 
     gs_handle(gs_graphics_texture_t) stencil;
@@ -95,9 +118,11 @@ typedef struct gsgl_data_t
     gs_slot_array(gsgl_shader_t)        shaders;
     gs_slot_array(gsgl_texture_t)       textures;
     gs_slot_array(gsgl_buffer_t)        vertex_buffers;
+    gs_slot_array(gsgl_uniform_buffer_t) uniform_buffers;
     gs_slot_array(gsgl_buffer_t)        index_buffers;
     gs_slot_array(gsgl_buffer_t)        frame_buffers;
-    gs_slot_array(gsgl_uniform_t)       uniforms;
+    gs_slot_array(gsgl_uniform_list_t)  uniforms;
+    gs_slot_array(gsgl_uniform_t)       samplers;
     gs_slot_array(gsgl_pipeline_t)      pipelines;
     gs_slot_array(gsgl_render_pass_t)   render_passes;
 
@@ -116,9 +141,10 @@ typedef enum gs_opengl_op_code_type
     GS_OPENGL_OP_END_RENDER_PASS,
     GS_OPENGL_OP_SET_VIEWPORT,
     GS_OPENGL_OP_SET_VIEW_SCISSOR,
+    GS_OPENGL_OP_CLEAR,
     GS_OPENGL_OP_REQUEST_BUFFER_UPDATE,
     GS_OPENGL_OP_BIND_PIPELINE,
-    GS_OPENGL_OP_BIND_BINDINGS,
+    GS_OPENGL_OP_APPLY_BINDINGS,
     GS_OPENGL_OP_DISPATCH_COMPUTE,
     GS_OPENGL_OP_DRAW,
 } gs_opengl_op_code_type;
@@ -455,11 +481,13 @@ void gs_graphics_destroy(gs_graphics_i* graphics)
     gs_slot_array_free(ogl->shaders);
     gs_slot_array_free(ogl->vertex_buffers);
     gs_slot_array_free(ogl->index_buffers);
+    gs_slot_array_free(ogl->samplers);
     gs_slot_array_free(ogl->frame_buffers);
     gs_slot_array_free(ogl->uniforms);
     gs_slot_array_free(ogl->textures);
     gs_slot_array_free(ogl->pipelines);
     gs_slot_array_free(ogl->render_passes);
+    gs_slot_array_free(ogl->uniform_buffers);
 
     gs_free(graphics);
     graphics = NULL;
@@ -476,13 +504,17 @@ gs_result gs_graphics_init(gs_graphics_i* graphics)
     gs_slot_array_insert(ogl->frame_buffers, 0);    
     gs_slot_array_insert(ogl->textures, 0);
 
-    gsgl_uniform_t uni = gs_default_val();
+    gsgl_uniform_list_t ul = gs_default_val();
+    gsgl_uniform_buffer_t ub = gs_default_val();
     gsgl_pipeline_t pip = gs_default_val();
     gsgl_render_pass_t rp = gs_default_val();
+    gsgl_uniform_t sb = gs_default_val();
 
-    gs_slot_array_insert(ogl->uniforms, uni);
+    gs_slot_array_insert(ogl->uniforms, ul);
     gs_slot_array_insert(ogl->pipelines, pip);
     gs_slot_array_insert(ogl->render_passes, rp);
+    gs_slot_array_insert(ogl->uniform_buffers, ub);
+    gs_slot_array_insert(ogl->samplers, sb);
 
     // Construct vao then bind
     glGenVertexArrays(1, &ogl->cache.vao);      
@@ -599,104 +631,237 @@ gs_handle(gs_graphics_texture_t) gs_graphics_texture_create(gs_graphics_texture_
     return (gs_handle_create(gs_graphics_texture_t, gs_slot_array_insert(ogl->textures, tex)));
 }
 
-gs_handle(gs_graphics_buffer_t) gs_graphics_buffer_create(gs_graphics_buffer_desc_t* desc)
+gs_handle(gs_graphics_uniform_t) gs_graphics_uniform_create(gs_graphics_uniform_desc_t* desc)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
 
-    gs_handle(gs_graphics_buffer_t) hndl = gs_default_val();
-    gsgl_buffer_t buffer = 0;
-
-    switch (desc->type)
-    {
-        // Vertex Buffer
-        default:
-        case GS_GRAPHICS_BUFFER_VERTEX:
-        {
-            // Assert if data isn't filled for vertex data when static draw enabled
-            if (desc->usage == GS_GRAPHICS_BUFFER_USAGE_STATIC && !desc->data) {
-                gs_println("Error: Vertex buffer desc must contain data when GS_GRAPHICS_BUFFER_USAGE_STATIC set.");
-                gs_assert(false);
-            } 
-
-            glGenBuffers(1, &buffer);
-            glBindBuffer(GL_ARRAY_BUFFER, buffer);
-            glBufferData(GL_ARRAY_BUFFER, desc->size, desc->data, gsgl_buffer_usage_to_gl_enum(desc->usage));
-            glBindBuffer(GL_ARRAY_BUFFER, 0);
-            hndl = gs_handle_create(gs_graphics_buffer_t, gs_slot_array_insert(ogl->vertex_buffers, buffer));
-
-        } break;
-
-        // Index Buffer
-        case GS_GRAPHICS_BUFFER_INDEX:
-        {
-            // Assert if data isn't filled for vertex data when static draw enabled
-            if (desc->usage == GS_GRAPHICS_BUFFER_USAGE_STATIC && !desc->data) {
-                gs_println("Error: Index buffer desc must contain data when GS_GRAPHICS_BUFFER_USAGE_STATIC set.");
-                gs_assert(false);
-            }
-
-            glGenBuffers(1, &buffer);
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer);
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, desc->size, desc->data, gsgl_buffer_usage_to_gl_enum(desc->usage));
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-            hndl = gs_handle_create(gs_graphics_buffer_t, gs_slot_array_insert(ogl->index_buffers, buffer));
-
-        } break;
-
-        case GS_GRAPHICS_BUFFER_FRAME:
-        {
-            // Construct and bind frame buffer
-            glGenFramebuffers(1, &buffer);
-            hndl = gs_handle_create(gs_graphics_buffer_t, gs_slot_array_insert(ogl->frame_buffers, buffer));
-
-        } break;
-
-        case GS_GRAPHICS_BUFFER_UNIFORM:
-        {
-            // Assert if data isn't named
-            if (desc->name == NULL) {
-                gs_println("Warning: Uniform buffer must be named for OpenGL.");
-            }
-
-            uint32_t ct = (uint32_t)desc->size / (uint32_t)sizeof(gs_graphics_uniform_desc_t);
-            if (ct < 1) {
-                gs_println("Warning: Uniform buffer description is empty.");
-                return gs_handle_invalid(gs_graphics_buffer_t);
-            }
-
-            gsgl_uniform_t u = gs_default_val();
-            u.name = desc->name;
-            // If size > 1, store type as uniform buffer, other store type as type of first element of data description
-            u.type = ct > 1 ? GSGL_UNIFORMTYPE_UNIFORM_BLOCK : 
-                gsgl_uniform_type_to_gl_uniform_type((gs_graphics_uniform_type)((gs_graphics_uniform_desc_t*)desc->data)[0].type); 
-            u.location = UINT32_MAX;
-
-            // Calculate size
-            for (uint32_t i = 0; i < ct; ++i) {
-                u.size += gsgl_uniform_data_size_in_bytes((gs_graphics_uniform_type)((gs_graphics_uniform_desc_t*)desc->data)[i].type);
-            }
-
-            hndl = gs_handle_create(gs_graphics_buffer_t, gs_slot_array_insert(ogl->uniforms, u));
-
-        } break;
-
-        case GS_GRAPHICS_BUFFER_SAMPLER:
-        {
-            // Assert if data isn't named
-            if (desc->name == NULL) {
-                gs_println("Warning: Uniform buffer must be named for OpenGL.");
-            }
-
-            uint32_t ct = (uint32_t)desc->size / (uint32_t)sizeof(gs_graphics_sampler_desc_t);
-            gsgl_uniform_t u = gs_default_val();
-            u.name = desc->name;
-            u.type = GSGL_UNIFORMTYPE_SAMPLER2D;
-            u.location = UINT32_MAX;
-
-            hndl = gs_handle_create(gs_graphics_buffer_t, gs_slot_array_insert(ogl->uniforms, u));
-        } break;
+    // Assert if data isn't named
+    if (desc->name == NULL) {
+        gs_println("Warning: Uniform must be named for OpenGL.");
+        return gs_handle_invalid(gs_graphics_uniform_t);
     }
 
+    uint32_t ct = !desc->layout ? 0 : !desc->layout_size ? 1 : (uint32_t)desc->layout_size / (uint32_t)sizeof(gs_graphics_uniform_layout_desc_t);
+    if (ct < 1) {
+        gs_println("Warning: Uniform layout description must not be empty for: %s.", desc->name);
+        return gs_handle_invalid(gs_graphics_uniform_t);
+    }
+
+    // Construct list for uniform handles
+    gsgl_uniform_list_t ul = gs_default_val();
+    ul.name = desc->name;
+
+    // Iterate layout, construct individual handles
+    for (uint32_t i = 0; i < ct; ++i)
+    {
+        // Uniform to fill out
+        gsgl_uniform_t u = gs_default_val();
+        // Cache layout
+        gs_graphics_uniform_layout_desc_t* layout = &desc->layout[i];
+
+        u.name = layout->fname;
+        u.type = gsgl_uniform_type_to_gl_uniform_type(layout->type);
+        u.size = gsgl_uniform_data_size_in_bytes(layout->type);
+        u.location = UINT32_MAX;
+
+        // Add to size of ul
+        ul.size += u.size;
+
+        // Push uniform into list
+        gs_dyn_array_push(ul.uniforms, u);
+    }
+
+    return gs_handle_create(gs_graphics_uniform_t, gs_slot_array_insert(ogl->uniforms, ul));
+}
+
+// gs_handle(gs_graphics_buffer_t) gs_graphics_buffer_create(gs_graphics_buffer_desc_t* desc)
+// {
+//     gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
+
+//     gs_handle(gs_graphics_buffer_t) hndl = gs_default_val();
+//     gsgl_buffer_t buffer = 0;
+
+//     switch (desc->type)
+//     {
+//         // Vertex Buffer
+//         default:
+//         case GS_GRAPHICS_BUFFER_VERTEX:
+//         {
+//             // Assert if data isn't filled for vertex data when static draw enabled
+//             if (desc->usage == GS_GRAPHICS_BUFFER_USAGE_STATIC && !desc->vertex_buffer.data) {
+//                 gs_println("Error: Vertex buffer desc must contain data when GS_GRAPHICS_BUFFER_USAGE_STATIC set.");
+//                 gs_assert(false);
+//             } 
+
+//             glGenBuffers(1, &buffer);
+//             glBindBuffer(GL_ARRAY_BUFFER, buffer);
+//             glBufferData(GL_ARRAY_BUFFER, desc->vertex_buffer.size, desc->vertex_buffer.data, gsgl_buffer_usage_to_gl_enum(desc->usage));
+//             glBindBuffer(GL_ARRAY_BUFFER, 0);
+//             hndl = gs_handle_create(gs_graphics_buffer_t, gs_slot_array_insert(ogl->vertex_buffers, buffer));
+
+//         } break;
+
+//         // Index Buffer
+//         case GS_GRAPHICS_BUFFER_INDEX:
+//         {
+//             // Assert if data isn't filled for vertex data when static draw enabled
+//             if (desc->usage == GS_GRAPHICS_BUFFER_USAGE_STATIC && !desc->vertex_buffer.data) {
+//                 gs_println("Error: Index buffer desc must contain data when GS_GRAPHICS_BUFFER_USAGE_STATIC set.");
+//                 gs_assert(false);
+//             }
+
+//             glGenBuffers(1, &buffer);
+//             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer);
+//             glBufferData(GL_ELEMENT_ARRAY_BUFFER, desc->vertex_buffer.size, desc->vertex_buffer.data, gsgl_buffer_usage_to_gl_enum(desc->usage));
+//             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+//             hndl = gs_handle_create(gs_graphics_buffer_t, gs_slot_array_insert(ogl->index_buffers, buffer));
+
+//         } break;
+
+//         case GS_GRAPHICS_BUFFER_FRAME:
+//         {
+//             // Construct and bind frame buffer
+//             glGenFramebuffers(1, &buffer);
+//             hndl = gs_handle_create(gs_graphics_buffer_t, gs_slot_array_insert(ogl->frame_buffers, buffer));
+//         } break;
+
+//         case GS_GRAPHICS_BUFFER_UNIFORM:
+//         {
+//             // Assert if data isn't named
+//             if (desc->uniform_buffer.name == NULL) {
+//                 gs_println("Warning: Uniform buffer must be named for OpenGL.");
+//             }
+
+//             gsgl_uniform_buffer_t u = gs_default_val();
+//             u.name = desc->uniform_buffer.name;
+//             u.size = desc->uniform_buffer.size;
+//             u.location = UINT32_MAX;
+
+//             // Generate buffer (if needed)
+//             glGenBuffers(1, &u.ubo);
+//             glBindBuffer(GL_UNIFORM_BUFFER, u.ubo);
+//             glBufferData(GL_UNIFORM_BUFFER, u.size, 0, gsgl_buffer_usage_to_gl_enum(desc->usage));
+//             glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+//             hndl = gs_handle_create(gs_graphics_buffer_t, gs_slot_array_insert(ogl->uniform_buffers, u));
+//         } break;
+
+//         /*
+//         case GS_GRAPHICS_BUFFER_SAMPLER:
+//         {
+//             // Assert if data isn't named
+//             if (desc->sampler_buffer.name == NULL) {
+//                 gs_println("Warning: Uniform buffer must be named for OpenGL.");
+//             }
+
+//             uint32_t ct = (uint32_t)desc->size / (uint32_t)sizeof(gs_graphics_sampler_desc_t);
+//             gsgl_uniform_t u = gs_default_val();
+//             u.name = desc->name;
+//             u.location = UINT32_MAX;
+
+//             hndl = gs_handle_create(gs_graphics_buffer_t, gs_slot_array_insert(ogl->uniforms, u));
+//         } break;
+//         */
+//     }
+
+//     return hndl;
+// }
+
+gs_handle(gs_graphics_vertex_buffer_t) gs_graphics_vertex_buffer_create(gs_graphics_vertex_buffer_desc_t* desc)
+{
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
+    gs_handle(gs_graphics_vertex_buffer_t) hndl = gs_default_val();
+    gsgl_buffer_t buffer = 0;
+
+    // Assert if data isn't filled for vertex data when static draw enabled
+    if (desc->usage == GS_GRAPHICS_BUFFER_USAGE_STATIC && !desc->data) {
+        gs_println("Error: Vertex buffer desc must contain data when GS_GRAPHICS_BUFFER_USAGE_STATIC set.");
+        gs_assert(false);
+    } 
+
+    glGenBuffers(1, &buffer);
+    glBindBuffer(GL_ARRAY_BUFFER, buffer);
+    glBufferData(GL_ARRAY_BUFFER, desc->size, desc->data, gsgl_buffer_usage_to_gl_enum(desc->usage));
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    hndl = gs_handle_create(gs_graphics_vertex_buffer_t, gs_slot_array_insert(ogl->vertex_buffers, buffer));
+
+    return hndl;
+}
+
+gs_handle(gs_graphics_index_buffer_t) gs_graphics_index_buffer_create(gs_graphics_index_buffer_desc_t* desc)
+{
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
+    gs_handle(gs_graphics_index_buffer_t) hndl = gs_default_val();
+    gsgl_buffer_t buffer = 0;
+
+     // Assert if data isn't filled for vertex data when static draw enabled
+    if (desc->usage == GS_GRAPHICS_BUFFER_USAGE_STATIC && !desc->data) {
+        gs_println("Error: Index buffer desc must contain data when GS_GRAPHICS_BUFFER_USAGE_STATIC set.");
+        gs_assert(false);
+    }
+
+    glGenBuffers(1, &buffer);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, desc->size, desc->data, gsgl_buffer_usage_to_gl_enum(desc->usage));
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    hndl = gs_handle_create(gs_graphics_index_buffer_t, gs_slot_array_insert(ogl->index_buffers, buffer));
+
+    return hndl;
+}
+
+gs_handle(gs_graphics_uniform_buffer_t) gs_graphics_uniform_buffer_create(gs_graphics_uniform_buffer_desc_t* desc)
+{
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
+    gs_handle(gs_graphics_uniform_buffer_t) hndl = gs_default_val();
+    gsgl_buffer_t buffer = 0;
+
+     // Assert if data isn't named
+    if (desc->name == NULL) {
+        gs_println("Warning: Uniform buffer must be named for OpenGL.");
+    }
+
+    gsgl_uniform_buffer_t u = gs_default_val();
+    u.name = desc->name;
+    u.size = desc->size;
+    u.location = UINT32_MAX;
+
+    // Generate buffer (if needed)
+    glGenBuffers(1, &u.ubo);
+    glBindBuffer(GL_UNIFORM_BUFFER, u.ubo);
+    glBufferData(GL_UNIFORM_BUFFER, u.size, 0, gsgl_buffer_usage_to_gl_enum(desc->usage));
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+    hndl = gs_handle_create(gs_graphics_uniform_buffer_t, gs_slot_array_insert(ogl->uniform_buffers, u));
+
+    return hndl;
+}
+
+gs_handle(gs_graphics_sampler_buffer_t) gs_graphics_sampler_buffer_create(gs_graphics_sampler_buffer_desc_t* desc)
+{
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
+    gs_handle(gs_graphics_sampler_buffer_t) hndl = gs_default_val();
+    gsgl_buffer_t buffer = 0;
+
+    // / Assert if data isn't named
+    if (desc->name == NULL) {
+        gs_println("Warning: Sampler buffer must be named for OpenGL.");
+    }
+
+    gsgl_uniform_t u = gs_default_val();
+    u.name = desc->name;
+    u.location = UINT32_MAX;
+    hndl = gs_handle_create(gs_graphics_sampler_buffer_t, gs_slot_array_insert(ogl->samplers, u));
+
+    return hndl;
+}
+
+gs_handle(gs_graphics_framebuffer_t) gs_graphics_framebuffer_create(gs_graphics_framebuffer_desc_t* desc)
+{
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
+    gs_handle(gs_graphics_framebuffer_t) hndl = gs_default_val();
+    gsgl_buffer_t buffer = 0;
+    glGenFramebuffers(1, &buffer);
+    hndl = gs_handle_create(gs_graphics_framebuffer_t, gs_slot_array_insert(ogl->frame_buffers, buffer));
     return hndl;
 }
 
@@ -809,6 +974,23 @@ gs_handle(gs_graphics_shader_t) gs_graphics_shader_create(gs_graphics_shader_des
         glDeleteShader(sids[i]);
     }
 
+    // Iterate over uniforms
+    /*
+    {
+        char tmp_name[256] = gs_default_val();
+        int32_t count = 0;
+        glGetProgramiv(shader, GL_ACTIVE_UNIFORMS, &count);
+        gs_println("Active Uniforms: %d\n", count);
+
+        for (uint32_t i = 0; i < count; i++) {
+            int32_t sz = 0;
+            uint32_t type;
+            glGetActiveUniform(shader, (GLuint)i, 256, NULL, &sz, &type, tmp_name);
+            gs_println("Uniform #%d Type: %u Name: %s\n", i, type, tmp_name);
+        }
+    }
+    */
+
     // Add to pool and return handle
     return (gs_handle_create(gs_graphics_shader_t, gs_slot_array_insert(ogl->shaders, shader)));
 }
@@ -864,15 +1046,11 @@ void gs_graphics_texture_destroy(gs_handle(gs_graphics_texture_t) hndl)
 {
 }
 
-void gs_graphics_buffer_destroy(gs_handle(gs_graphics_buffer_t) hndl)
-{
-}
+// void gs_graphics_buffer_destroy(gs_handle(gs_graphics_buffer_t) hndl)
+// {
+// }
 
 void gs_graphics_shader_destroy(gs_handle(gs_graphics_shader_t) hndl)
-{
-}
-
-void gs_graphics_uniform_block_destroy(gs_handle(gs_graphics_uniform_block_t) hndl)
 {
 }
 
@@ -889,9 +1067,9 @@ void gs_graphics_texture_update(gs_handle(gs_graphics_texture_t) hndl, gs_graphi
 {
 }
 
-void gs_graphics_buffer_update(gs_handle(gs_graphics_buffer_t) hndl, gs_graphics_buffer_desc_t* desc)
-{
-}
+// void gs_graphics_buffer_update(gs_handle(gs_graphics_buffer_t) hndl, gs_graphics_buffer_desc_t* desc)
+// {
+// }
 
 #define __ogl_push_command(CB, OP_CODE, ...)\
 do {\
@@ -902,15 +1080,10 @@ do {\
 } while (0)
 
 /* Command Buffer Ops: Pipeline / Pass / Bind / Draw */
-void gs_graphics_begin_render_pass(gs_command_buffer_t* cb, gs_handle(gs_graphics_render_pass_t) hndl, gs_graphics_render_pass_action_t* actions, size_t actions_size)
+void gs_graphics_begin_render_pass(gs_command_buffer_t* cb, gs_handle(gs_graphics_render_pass_t) hndl)
 {
     __ogl_push_command(cb, GS_OPENGL_OP_BEGIN_RENDER_PASS, {
         gs_byte_buffer_write(&cb->commands, uint32_t, hndl.id);
-        uint32_t count = (uint32_t)((size_t)actions_size / (size_t)sizeof(gs_graphics_render_pass_action_t));
-        gs_byte_buffer_write(&cb->commands, uint32_t, count);
-        for (uint32_t i = 0; i < count; ++i) {
-            gs_byte_buffer_write(&cb->commands, gs_graphics_render_pass_action_t, actions[i]);
-        }
     });
 }
 
@@ -918,6 +1091,17 @@ void gs_graphics_end_render_pass(gs_command_buffer_t* cb)
 {
     __ogl_push_command(cb, GS_OPENGL_OP_END_RENDER_PASS, {
         // Nothing...
+    });
+}
+
+void gs_graphics_clear(gs_command_buffer_t* cb, gs_graphics_clear_desc_t* desc)
+{
+    __ogl_push_command(cb, GS_OPENGL_OP_CLEAR, {
+        uint32_t count = !desc->actions ? 0 : !desc->size ? 1 : (uint32_t)((size_t)desc->size / (size_t)sizeof(gs_graphics_clear_action_t));
+        gs_byte_buffer_write(&cb->commands, uint32_t, count);
+        for (uint32_t i = 0; i < count; ++i) {
+            gs_byte_buffer_write(&cb->commands, gs_graphics_clear_action_t, desc->actions[i]);
+        }
     });
 }
 
@@ -945,55 +1129,85 @@ void gs_graphics_texture_request_update(gs_command_buffer_t* cb, gs_handle(gs_gr
 {
 }
 
-void gs_graphics_buffer_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_buffer_t) hndl, gs_graphics_buffer_desc_t* desc)
+void __gs_graphics_update_buffer_internal(gs_command_buffer_t* cb, 
+    uint32_t id, 
+    gs_graphics_buffer_type type,
+    gs_graphics_buffer_usage_type usage, 
+    size_t sz, 
+    size_t offset, 
+    gs_graphics_buffer_update_type update_type,
+    void* data)
 {
-    gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
+    // Write command
+    gs_byte_buffer_write(&cb->commands, u32, (u32)GS_OPENGL_OP_REQUEST_BUFFER_UPDATE);
+    cb->num_commands++;
 
-    // Need to just store all buffers into single buffer slot array. This is goofy.
-    if (!hndl.id) return;
-
+    // Write handle id
+    gs_byte_buffer_write(&cb->commands, uint32_t, id);
     // Write type
-    __ogl_push_command(cb, GS_OPENGL_OP_REQUEST_BUFFER_UPDATE, {
-
-        // Write handle id
-        gs_byte_buffer_write(&cb->commands, uint32_t, hndl.id);
-        // Write type
-        gs_byte_buffer_write(&cb->commands, gs_graphics_buffer_type, desc->type);
-        // Write usage
-        gs_byte_buffer_write(&cb->commands, gs_graphics_buffer_usage_type, desc->usage);
-        // Write data size
-        gs_byte_buffer_write(&cb->commands, size_t, desc->size);
-        // Write data offset
-        gs_byte_buffer_write(&cb->commands, size_t, desc->update.offset);
-        // Write data update type
-        gs_byte_buffer_write(&cb->commands, gs_graphics_buffer_update_type, desc->update.type);
-        // Write data
-        gs_byte_buffer_write_bulk(&cb->commands, desc->data, desc->size);
-    });
+    gs_byte_buffer_write(&cb->commands, gs_graphics_buffer_type, type);
+    // Write usage
+    gs_byte_buffer_write(&cb->commands, gs_graphics_buffer_usage_type, usage);
+    // Write data size
+    gs_byte_buffer_write(&cb->commands, size_t, sz);
+    // Write data offset
+    gs_byte_buffer_write(&cb->commands, size_t, offset);
+    // Write data update type
+    gs_byte_buffer_write(&cb->commands, gs_graphics_buffer_update_type, update_type);
+    // Write data
+    gs_byte_buffer_write_bulk(&cb->commands, data, sz);
 }
 
-// struct {
-//     struct {
-//         gs_graphics_bind_buffer_desc_t* decl;
-//         size_t size;
-//     } image_buffers;
-// } compute;
-
-void gs_graphics_bind_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t* binds)
+void gs_graphics_vertex_buffer_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_vertex_buffer_t) hndl, gs_graphics_vertex_buffer_desc_t* desc)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
+
+    // Return if handle not valid
+    if (!hndl.id) return;
+
+    __gs_graphics_update_buffer_internal(cb, hndl.id, GS_GRAPHICS_BUFFER_VERTEX, desc->usage, desc->size, desc->update.offset, desc->update.type, desc->data);
+}
+
+void gs_graphics_index_buffer_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_index_buffer_t) hndl, gs_graphics_index_buffer_desc_t* desc)
+{
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
+
+    // Return if handle not valid
+    if (!hndl.id) return;
+
+    __gs_graphics_update_buffer_internal(cb, hndl.id, GS_GRAPHICS_BUFFER_INDEX, desc->usage, desc->size, desc->update.offset, desc->update.type, desc->data);
+}
+
+void gs_graphics_uniform_buffer_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_uniform_buffer_t) hndl, gs_graphics_uniform_buffer_desc_t* desc)
+{
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
+
+    // Return if handle not valid
+    if (!hndl.id) return;
+
+    __gs_graphics_update_buffer_internal(cb, hndl.id, GS_GRAPHICS_BUFFER_UNIFORM, desc->usage, desc->size, desc->update.offset, desc->update.type, desc->data);
+}
+
+void gs_graphics_apply_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t* binds)
+{
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
+
+    // Increment commands
+    gs_byte_buffer_write(&cb->commands, u32, (u32)GS_OPENGL_OP_APPLY_BINDINGS);
+    cb->num_commands++;
  
-    __ogl_push_command(cb, GS_OPENGL_OP_BIND_BINDINGS,
+    // __ogl_push_command(cb, GS_OPENGL_OP_APPLY_BINDINGS,
     {
         // Get counts from buffers
-        uint32_t vct = binds->vertex_buffers.decl ? binds->vertex_buffers.size ? binds->vertex_buffers.size / sizeof(gs_graphics_bind_buffer_desc_t) : 1 : 0;
-        uint32_t ict = binds->index_buffers.decl ? binds->index_buffers.size ? binds->index_buffers.size / sizeof(gs_graphics_bind_buffer_desc_t) : 1 : 0;
-        uint32_t uct = binds->uniform_buffers.decl ? binds->uniform_buffers.size ? binds->uniform_buffers.size / sizeof(gs_graphics_bind_buffer_desc_t) : 1 : 0;
-        uint32_t sct = binds->sampler_buffers.decl ? binds->sampler_buffers.size ? binds->sampler_buffers.size / sizeof(gs_graphics_bind_buffer_desc_t) : 1 : 0;
-        uint32_t ibc = binds->compute.image_buffers.decl ? binds->compute.image_buffers.size ? binds->compute.image_buffers.size / sizeof(gs_graphics_bind_buffer_desc_t) : 1 : 0;
+        uint32_t vct = binds->vertex_buffers.desc ? binds->vertex_buffers.size ? binds->vertex_buffers.size / sizeof(gs_graphics_bind_vertex_buffer_desc_t) : 1 : 0;
+        uint32_t ict = binds->index_buffers.desc ? binds->index_buffers.size ? binds->index_buffers.size / sizeof(gs_graphics_bind_index_buffer_desc_t) : 1 : 0;
+        uint32_t uct = binds->uniform_buffers.desc ? binds->uniform_buffers.size ? binds->uniform_buffers.size / sizeof(gs_graphics_bind_uniform_buffer_desc_t) : 1 : 0;
+        uint32_t sct = binds->sampler_buffers.desc ? binds->sampler_buffers.size ? binds->sampler_buffers.size / sizeof(gs_graphics_bind_sampler_buffer_desc_t) : 1 : 0;
+        uint32_t pct = binds->uniforms.desc ? binds->uniforms.size ? binds->uniforms.size / sizeof(gs_graphics_bind_uniform_desc_t) : 1 : 0;
+        uint32_t ibc = binds->image_buffers.desc ? binds->image_buffers.size ? binds->image_buffers.size / sizeof(gs_graphics_bind_image_buffer_desc_t) : 1 : 0;
 
         // Determine total count to write into command buffer
-        uint32_t ct = vct + ict + uct + sct + ibc;
+        uint32_t ct = vct + ict + uct + sct + ibc + pct;
         gs_byte_buffer_write(&cb->commands, uint32_t, ct);
 
         // Determine if need to clear any previous vertex buffers (if vct != 0)
@@ -1002,7 +1216,7 @@ void gs_graphics_bind_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t*
         // Vertex buffers
         for (uint32_t i = 0; i < vct; ++i)
         {
-            gs_graphics_bind_buffer_desc_t* decl = &binds->vertex_buffers.decl[i];
+            gs_graphics_bind_vertex_buffer_desc_t* decl = &binds->vertex_buffers.desc[i];
             gs_byte_buffer_write(&cb->commands, gs_graphics_bind_type, GS_GRAPHICS_BIND_VERTEX_BUFFER);
             gs_byte_buffer_write(&cb->commands, uint32_t, decl->buffer.id);
             gs_byte_buffer_write(&cb->commands, size_t, decl->offset);
@@ -1012,7 +1226,7 @@ void gs_graphics_bind_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t*
         // Index buffers
         for (uint32_t i = 0; i < ict; ++i)
         {
-            gs_graphics_bind_buffer_desc_t* decl = &binds->index_buffers.decl[i];
+            gs_graphics_bind_index_buffer_desc_t* decl = &binds->index_buffers.desc[i];
             gs_byte_buffer_write(&cb->commands, gs_graphics_bind_type, GS_GRAPHICS_BIND_INDEX_BUFFER);
             gs_byte_buffer_write(&cb->commands, uint32_t, decl->buffer.id);
         }
@@ -1020,40 +1234,51 @@ void gs_graphics_bind_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t*
         // Uniform buffers
         for (uint32_t i = 0; i < uct; ++i)
         {
-            gs_graphics_bind_buffer_desc_t* decl = &binds->uniform_buffers.decl[i];
+            gs_graphics_bind_uniform_buffer_desc_t* decl = &binds->uniform_buffers.desc[i];
 
-            // if (id && gs_slot_array_exists(ogl->uniforms, id))
-            {
-                uint32_t id = decl->buffer.id;
-                size_t sz = (size_t)(gs_slot_array_getp(ogl->uniforms, id))->size;
-                gs_byte_buffer_write(&cb->commands, gs_graphics_bind_type, GS_GRAPHICS_BIND_UNIFORM_BUFFER);
-                gs_byte_buffer_write(&cb->commands, uint32_t, decl->buffer.id);
-                gs_byte_buffer_write(&cb->commands, size_t, sz);
-                gs_byte_buffer_write_bulk(&cb->commands, decl->data, sz);
-            }
+            uint32_t id = decl->buffer.id;
+            size_t sz = (size_t)(gs_slot_array_getp(ogl->uniform_buffers, id))->size;
+            gs_byte_buffer_write(&cb->commands, gs_graphics_bind_type, GS_GRAPHICS_BIND_UNIFORM_BUFFER);
+            gs_byte_buffer_write(&cb->commands, uint32_t, decl->buffer.id);
+            gs_byte_buffer_write(&cb->commands, uint32_t, decl->binding);
+            gs_byte_buffer_write(&cb->commands, size_t, decl->range.offset);
+            gs_byte_buffer_write(&cb->commands, size_t, decl->range.size);
         }
 
         // Sampler buffers
         for (uint32_t i = 0; i < sct; ++i)
         {
-            gs_graphics_bind_buffer_desc_t* decl = &binds->sampler_buffers.decl[i];
+            gs_graphics_bind_sampler_buffer_desc_t* decl = &binds->sampler_buffers.desc[i];
             gs_byte_buffer_write(&cb->commands, gs_graphics_bind_type, GS_GRAPHICS_BIND_SAMPLER_BUFFER);
             gs_byte_buffer_write(&cb->commands, uint32_t, decl->buffer.id);
-            gs_byte_buffer_write(&cb->commands, uint32_t, ((gs_handle(gs_graphics_texture_t)*)decl->data)->id);
+            gs_byte_buffer_write(&cb->commands, uint32_t, decl->tex.id);
             gs_byte_buffer_write(&cb->commands, uint32_t, decl->binding);
         }
 
         // Image buffers
         for (uint32_t i = 0; i < ibc; ++i)
         {
-            gs_graphics_bind_buffer_desc_t* decl = &binds->compute.image_buffers.decl[i];
+            gs_graphics_bind_image_buffer_desc_t* decl = &binds->image_buffers.desc[i];
             gs_byte_buffer_write(&cb->commands, gs_graphics_bind_type, GS_GRAPHICS_BIND_IMAGE_BUFFER);
-            gs_byte_buffer_write(&cb->commands, uint32_t, ((gs_handle(gs_graphics_texture_t)*)decl->data)->id);
+            gs_byte_buffer_write(&cb->commands, uint32_t, decl->tex.id);
             gs_byte_buffer_write(&cb->commands, uint32_t, decl->binding);
             gs_byte_buffer_write(&cb->commands, gs_graphics_access_type, decl->access);
             gs_byte_buffer_write(&cb->commands, gs_graphics_texture_format_type, decl->format);
         }
-    });
+
+        // Uniforms
+        for (uint32_t i = 0; i < pct; ++i)
+        {
+            gs_graphics_bind_uniform_desc_t* decl = &binds->uniforms.desc[i];
+
+            // Get size from uniform list
+            size_t sz = gs_slot_array_getp(ogl->uniforms, decl->uniform.id)->size;
+            gs_byte_buffer_write(&cb->commands, gs_graphics_bind_type, GS_GRAPHICS_BIND_UNIFORM);
+            gs_byte_buffer_write(&cb->commands, uint32_t, decl->uniform.id);
+            gs_byte_buffer_write(&cb->commands, size_t, sz);
+            gs_byte_buffer_write_bulk(&cb->commands, decl->data, sz);
+        }
+    };
 }
 
 void gs_graphics_bind_pipeline(gs_command_buffer_t* cb, gs_handle(gs_graphics_pipeline_t) hndl)
@@ -1071,6 +1296,8 @@ void gs_graphics_draw(gs_command_buffer_t* cb, gs_graphics_draw_desc_t* desc)
         gs_byte_buffer_write(&cb->commands, uint32_t, desc->count);
         gs_byte_buffer_write(&cb->commands, uint32_t, desc->instances);
         gs_byte_buffer_write(&cb->commands, uint32_t, desc->base_vertex);
+        gs_byte_buffer_write(&cb->commands, uint32_t, desc->range.start);
+        gs_byte_buffer_write(&cb->commands, uint32_t, desc->range.end);
     });
 }
 
@@ -1133,33 +1360,6 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                         }
                     }
                 }
-
-                // Actions
-                gs_byte_buffer_readc(&cb->commands, uint32_t, action_count);
-                for (uint32_t j = 0; j < action_count; ++j)
-                {
-                    gs_byte_buffer_readc(&cb->commands, gs_graphics_render_pass_action_t, action);
-
-                    // No clear
-                    if (action.flag & GS_GRAPHICS_RENDER_PASS_ACTION_CLEAR_NONE) {
-                        continue;
-                    }
-
-                    uint32_t bit = 0x00;
-
-                    if (action.flag & GS_GRAPHICS_RENDER_PASS_ACTION_CLEAR_COLOR || action.flag == 0x00) {
-                        glClearColor(action.color[0], action.color[1], action.color[2], action.color[3]);
-                        bit |= GL_COLOR_BUFFER_BIT;
-                    }
-                    if (action.flag & GS_GRAPHICS_RENDER_PASS_ACTION_CLEAR_DEPTH || action.flag == 0x00) {
-                        bit |= GL_DEPTH_BUFFER_BIT;
-                    }
-                    if (action.flag & GS_GRAPHICS_RENDER_PASS_ACTION_CLEAR_STENCIL || action.flag == 0x00) {
-                        bit |= GL_STENCIL_BUFFER_BIT;
-                    }
-
-                    glClear(bit);
-                }
             } break;
 
             case GS_OPENGL_OP_END_RENDER_PASS:
@@ -1174,6 +1374,36 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                 glDisable(GL_DEPTH_TEST);
                 glDisable(GL_STENCIL_TEST);
                 glDisable(GL_BLEND);
+            } break;
+
+            case GS_OPENGL_OP_CLEAR:
+            {
+                // Actions
+                gs_byte_buffer_readc(&cb->commands, uint32_t, action_count);
+                for (uint32_t j = 0; j < action_count; ++j)
+                {
+                    gs_byte_buffer_readc(&cb->commands, gs_graphics_clear_action_t, action);
+
+                    // No clear
+                    if (action.flag & GS_GRAPHICS_CLEAR_NONE) {
+                        continue;
+                    }
+
+                    uint32_t bit = 0x00;
+
+                    if (action.flag & GS_GRAPHICS_CLEAR_COLOR || action.flag == 0x00) {
+                        glClearColor(action.color[0], action.color[1], action.color[2], action.color[3]);
+                        bit |= GL_COLOR_BUFFER_BIT;
+                    }
+                    if (action.flag & GS_GRAPHICS_CLEAR_DEPTH || action.flag == 0x00) {
+                        bit |= GL_DEPTH_BUFFER_BIT;
+                    }
+                    if (action.flag & GS_GRAPHICS_CLEAR_STENCIL || action.flag == 0x00) {
+                        bit |= GL_STENCIL_BUFFER_BIT;
+                    }
+
+                    glClear(bit);
+                }
             } break;
 
             case GS_OPENGL_OP_SET_VIEWPORT:
@@ -1197,7 +1427,7 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                 glScissor(x, y, w, h);
             } break;
 
-            case GS_OPENGL_OP_BIND_BINDINGS:
+            case GS_OPENGL_OP_APPLY_BINDINGS:
             {
                 gs_byte_buffer_readc(&cb->commands, uint32_t, ct);
 
@@ -1264,17 +1494,17 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                             }
                         } break;
 
-                        case GS_GRAPHICS_BIND_UNIFORM_BUFFER:
+                        case GS_GRAPHICS_BIND_UNIFORM:
                         {
-                            // Read slot id of uniform buffer
+                            // Get size from uniform list
                             gs_byte_buffer_readc(&cb->commands, uint32_t, id);
-                            // Read data size
+                            // Read data size for uniform list 
                             gs_byte_buffer_readc(&cb->commands, size_t, sz);
 
                             // Check buffer id. If invalid, then we can't operate, and instead just need to pass over the data.
                             if (!id || !gs_slot_array_exists(ogl->uniforms, id)) {
                                 gs_timed_action(60, {
-                                    gs_println("Warning:Bind Uniform Buffer:Uniform %d does not exist.", ogl->cache.pipeline.id);
+                                    gs_println("Warning:Bind Uniform:Uniform %d does not exist.", id);
                                 });
                                 gs_byte_buffer_advance_position(&cb->commands, sz);
                                 continue;
@@ -1292,82 +1522,169 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                             gsgl_pipeline_t* pip = gs_slot_array_getp(ogl->pipelines, ogl->cache.pipeline.id);
 
                             // Get uniform
-                            gsgl_uniform_t* u = gs_slot_array_getp(ogl->uniforms, id);
+                            gsgl_uniform_list_t* ul = gs_slot_array_getp(ogl->uniforms, id);
 
                             // Get bound shader from pipeline (either compute or raster)
                             uint32_t sid = pip->compute.shader.id ? pip->compute.shader.id : pip->raster.shader.id;
 
                             // Check uniform location. If UINT32_T max, then must construct and place location
-                            if (u->location == UINT32_MAX && u->location != UINT32_MAX - 1) 
+                            for (uint32_t ui = 0; ui < gs_dyn_array_size(ul->uniforms); ++ui)
+                            {
+                                gsgl_uniform_t* u = &ul->uniforms[ui];
+
+                                // Searching for location if not bound or sid doesn't match previous use
+                                if ((u->location == UINT32_MAX && u->location != UINT32_MAX - 1) || u->sid != pip->raster.shader.id) 
+                                {
+                                    if (!sid || !gs_slot_array_exists(ogl->shaders, sid)) {
+                                        gs_timed_action(60, {
+                                            gs_println("Warning:Bind Uniform:Shader %d does not exist.", sid);
+                                        });
+
+                                        // Advance by size of uniform
+                                        gs_byte_buffer_advance_position(&cb->commands, u->size);
+                                        continue;
+                                    }
+
+                                    gsgl_shader_t shader = gs_slot_array_get(ogl->shaders, sid);
+
+                                    // Construct temp name, concat with base name + uniform field name
+                                    const char* name = ul->name;
+                                    if (u->name)
+                                    {
+                                        gs_snprintfc(UTMP, 256, "%s%s", ul->name, u->name);
+                                        name = UTMP;
+                                    }
+
+                                    // Grab location of uniform based on name
+                                    u->location = glGetUniformLocation(shader, name ? name : "__EMPTY_UNIFORM_NAME");
+
+                                    if (u->location >= UINT32_MAX) {
+                                        gs_println("Warning: Bind Uniform: Uniform not found: \"%s\"", name);
+                                        u->location = UINT32_MAX - 1;
+                                    }
+
+                                    u->sid = pip->raster.shader.id;
+                                }
+
+                                // Switch on uniform type to upload data
+                                switch (u->type) 
+                                {
+                                    case GSGL_UNIFORMTYPE_FLOAT: 
+                                    {
+                                        gs_assert(u->size == sizeof(float));
+                                        gs_byte_buffer_read_bulkc(&cb->commands, float, v, u->size);
+                                        glUniform1f(u->location, v);
+                                    } break;
+
+                                    case GSGL_UNIFORMTYPE_INT: 
+                                    {
+                                        gs_assert(u->size == sizeof(int32_t));
+                                        gs_byte_buffer_read_bulkc(&cb->commands, int32_t, v, u->size);
+                                        glUniform1i(u->location, v);
+                                    } break;
+
+                                    case GSGL_UNIFORMTYPE_VEC2: 
+                                    {
+                                        gs_assert(u->size == sizeof(gs_vec2));
+                                        gs_byte_buffer_read_bulkc(&cb->commands, gs_vec2, v, u->size);
+                                        glUniform2f(u->location, v.x, v.y);
+                                    } break;
+
+                                    case GSGL_UNIFORMTYPE_VEC3: 
+                                    {
+                                        gs_assert(u->size == sizeof(gs_vec3));
+                                        gs_byte_buffer_read_bulkc(&cb->commands, gs_vec3, v, u->size);
+                                        glUniform3f(u->location, v.x, v.y, v.z);
+                                    } break;
+
+                                    case GSGL_UNIFORMTYPE_VEC4: 
+                                    {
+                                        gs_assert(u->size == sizeof(gs_vec4));
+                                        gs_byte_buffer_read_bulkc(&cb->commands, gs_vec4, v, u->size);
+                                        glUniform4f(u->location, v.x, v.y, v.z, v.w);
+                                    } break;
+
+                                    case GSGL_UNIFORMTYPE_MAT4: 
+                                    {
+                                        gs_assert(u->size == sizeof(gs_mat4));
+                                        gs_byte_buffer_read_bulkc(&cb->commands, gs_mat4, v, u->size);
+                                        glUniformMatrix4fv(u->location, 1, false, (float*)(v.elements));
+                                    } break;
+
+                                    default: {
+                                        // Shouldn't hit here
+                                        gs_println("Assert: Bind Uniform: Invalid uniform type specified.");
+                                        gs_assert(false);
+                                    } break;
+                                }
+                            }
+
+                        } break;
+
+                        case GS_GRAPHICS_BIND_UNIFORM_BUFFER:
+                        {
+                            // Read slot id of uniform buffer
+                            gs_byte_buffer_readc(&cb->commands, uint32_t, id);
+                            // Read binding
+                            gs_byte_buffer_readc(&cb->commands, uint32_t, binding);
+                            // Read range offset
+                            gs_byte_buffer_readc(&cb->commands, size_t, range_offset);
+                            // Read range size
+                            gs_byte_buffer_readc(&cb->commands, size_t, range_size);
+
+                            // Check buffer id. If invalid, then we can't operate, and instead just need to pass over the data.
+                            if (!id || !gs_slot_array_exists(ogl->uniforms, id)) {
+                                gs_timed_action(60, {
+                                    gs_println("Warning:Bind Uniform Buffer:Uniform %d does not exist.", id);
+                                });
+                                continue;
+                            }
+
+                            // Grab currently bound pipeline (TODO(john): assert if this isn't valid)
+                            if (!ogl->cache.pipeline.id || !gs_slot_array_exists(ogl->pipelines, ogl->cache.pipeline.id)){
+                                gs_timed_action(60, {
+                                    gs_println("Warning:Bind Uniform Buffer:Pipeline %d does not exist.", ogl->cache.pipeline.id);
+                                });
+                                continue;
+                            }
+
+                            gsgl_pipeline_t* pip = gs_slot_array_getp(ogl->pipelines, ogl->cache.pipeline.id);
+
+                            // Get uniform
+                            gsgl_uniform_buffer_t* u = gs_slot_array_getp(ogl->uniform_buffers, id);
+
+                            // Get bound shader from pipeline (either compute or raster)
+                            uint32_t sid = pip->compute.shader.id ? pip->compute.shader.id : pip->raster.shader.id;
+
+                            // Check uniform location. 
+                            // If UINT32_T max, then must construct and place location, or if shader id doesn't match previously used shader with this uniform
+                            // TODO(john): To avoid constant lookups in this case, allow for shaders to hold uniform handles references instead.
+                            if ((u->location == UINT32_MAX && u->location != UINT32_MAX - 1) || u->sid != pip->raster.shader.id) 
                             {
                                 if (!sid || !gs_slot_array_exists(ogl->shaders, sid)) {
                                     gs_timed_action(60, {
                                         gs_println("Warning:Bind Uniform Buffer:Shader %d does not exist.", sid);
                                     });
-                                    gs_byte_buffer_advance_position(&cb->commands, sz);
                                     continue;
                                 }
 
                                 gsgl_shader_t shader = gs_slot_array_get(ogl->shaders, sid);
 
-                                // Grab location of uniform
-                                u->location = glGetUniformLocation(shader, u->name ? u->name : "__EMPTY_UNIFORM_NAME");
+                                // Get uniform location based on name and bound shader
+                                u->location = glGetUniformBlockIndex(shader, u->name ? u->name : "__EMPTY_UNIFORM_NAME");
+
+                                // Set binding for uniform block
+                                glUniformBlockBinding(u->sid, u->location, binding); 
 
                                 if (u->location >= UINT32_MAX) {
-                                    gs_println("Warning: uniform not found: \"%s\"", u->name);
+                                    gs_println("Warning: Bind Uniform Buffer: Uniform not found: \"%s\"", u->name);
                                     u->location = UINT32_MAX - 1;
                                 }
+
+                                u->sid = pip->raster.shader.id;
                             }
 
-                            // Switch on uniform type to upload data
-                            switch (u->type) 
-                            {
-                                case GSGL_UNIFORMTYPE_FLOAT: 
-                                {
-                                    gs_assert(sz == sizeof(float));
-                                    gs_byte_buffer_read_bulkc(&cb->commands, float, v, sz);
-                                    glUniform1f(u->location, v);
-                                } break;
-
-                                case GSGL_UNIFORMTYPE_INT: 
-                                {
-                                    gs_assert(sz == sizeof(int32_t));
-                                    gs_byte_buffer_read_bulkc(&cb->commands, int32_t, v, sz);
-                                    glUniform1i(u->location, v);
-                                } break;
-
-                                case GSGL_UNIFORMTYPE_VEC2: 
-                                {
-                                    gs_assert(sz == sizeof(gs_vec2));
-                                    gs_byte_buffer_read_bulkc(&cb->commands, gs_vec2, v, sz);
-                                    glUniform2f(u->location, v.x, v.y);
-                                } break;
-
-                                case GSGL_UNIFORMTYPE_VEC3: 
-                                {
-                                    gs_assert(sz == sizeof(gs_vec3));
-                                    gs_byte_buffer_read_bulkc(&cb->commands, gs_vec3, v, sz);
-                                    glUniform3f(u->location, v.x, v.y, v.z);
-                                } break;
-
-                                case GSGL_UNIFORMTYPE_VEC4: 
-                                {
-                                    gs_assert(sz == sizeof(gs_vec4));
-                                    gs_byte_buffer_read_bulkc(&cb->commands, gs_vec4, v, sz);
-                                    glUniform4f(u->location, v.x, v.y, v.z, v.w);
-                                } break;
-
-                                case GSGL_UNIFORMTYPE_MAT4: 
-                                {
-                                    gs_assert(sz == sizeof(gs_mat4));
-                                    gs_byte_buffer_read_bulkc(&cb->commands, gs_mat4, v, sz);
-                                    glUniformMatrix4fv(u->location, 1, false, (float*)(v.elements));
-                                } break;
-
-                                default: {
-                                    // Shouldn't hit here
-                                } break;
-                            }
+                            glBindBufferRange(GL_UNIFORM_BUFFER, binding, u->ubo, range_offset, range_size ? range_size : u->size);
 
                         } break;
 
@@ -1381,7 +1698,7 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                             gs_byte_buffer_readc(&cb->commands, uint32_t, binding);
 
                             // Grab uniform from sampler id
-                            if (!sampler_slot_id || !gs_slot_array_exists(ogl->uniforms, sampler_slot_id)) {
+                            if (!sampler_slot_id || !gs_slot_array_exists(ogl->samplers, sampler_slot_id)) {
                                 gs_timed_action(60, {
                                     gs_println("Warning:Bind Sampler Buffer:Sampler %d does not exist.", sampler_slot_id);
                                 });
@@ -1404,7 +1721,7 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                                 continue;
                             }
 
-                            gsgl_uniform_t* u = gs_slot_array_getp(ogl->uniforms, sampler_slot_id);
+                            gsgl_uniform_t* u = gs_slot_array_getp(ogl->samplers, sampler_slot_id);
                             gsgl_texture_t tex = gs_slot_array_get(ogl->textures, tex_slot_id);
                             gsgl_pipeline_t* pip = gs_slot_array_getp(ogl->pipelines, ogl->cache.pipeline.id);
 
@@ -1466,9 +1783,6 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                             uint32_t gl_format = gsgl_texture_format_to_gl_texture_format(format);
 
                             // Bind image texture
-                            // Activate texture slot (don't know if these are necessary)
-                            // glActiveTexture(GL_TEXTURE0 + binding);
-                            // glBindTexture(GL_TEXTURE_2D, tex);
                             glBindImageTexture(0, tex, 0, GL_FALSE, 0, gl_access, gl_format);
                         } break;
 
@@ -1549,8 +1863,6 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                     glBlendEquation(gsgl_blend_equation_to_gl_blend_eq(pip->blend.func));
                     glBlendFunc(gsgl_blend_mode_to_gl_blend_mode(pip->blend.src, GL_ONE), 
                         gsgl_blend_mode_to_gl_blend_mode(pip->blend.dst, GL_ZERO));
-
-                    //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
                 }
 
                 /* Raster */
@@ -1602,7 +1914,7 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
 
                 // Dispatch shader 
                 glDispatchCompute(num_x_groups, num_y_groups, num_z_groups); 
-                // Memory barrier (make this specifically set in the pipeline state)
+                // Memory barrier (TODO(john): make this specifically set in the pipeline state)
                 glMemoryBarrier(GL_ALL_BARRIER_BITS);
             } break;
 
@@ -1672,11 +1984,6 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                     glBindBuffer(GL_ARRAY_BUFFER, 0);
                 } 
 
-				// Bind element buffer
-				if (ogl->cache.ibo) { 
-					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gs_slot_array_get(ogl->index_buffers, ogl->cache.ibo));
-				}
-
                 // Bind all vertex buffers after setting up data and pointers
                 for (uint32_t i = 0; i < gs_dyn_array_size(ogl->cache.vdecls); ++i) {
                     glBindBuffer(GL_ARRAY_BUFFER, ogl->cache.vdecls[i].vbo);
@@ -1687,14 +1994,26 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                 gs_byte_buffer_readc(&cb->commands, uint32_t, count);
                 gs_byte_buffer_readc(&cb->commands, uint32_t, instance_count);
                 gs_byte_buffer_readc(&cb->commands, uint32_t, base_vertex);
+                gs_byte_buffer_readc(&cb->commands, uint32_t, range_start);
+                gs_byte_buffer_readc(&cb->commands, uint32_t, range_end);
+
+                range_end = (range_end && range_end < range_start) ? range_end : count;
+
+                // Bind element buffer ranged
+                if (ogl->cache.ibo) {
+                    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gs_slot_array_get(ogl->index_buffers, ogl->cache.ibo));
+                }
+
+                // If instance count > 1, do instanced drawing
+                is_instanced |= (instance_count > 1);
 
                 uint32_t prim = gsgl_primitive_to_gl_primitive(pip->raster.primitive);
                 uint32_t itype = gsgl_index_buffer_size_to_gl_index_type(pip->raster.index_buffer_element_size);
 
                 // Draw
                 if (ogl->cache.ibo) { 
-                    if (is_instanced)   glDrawElementsInstanced(prim, count, itype, gs_int2voidp(start), instance_count);
-                    else                glDrawElements(prim, count, itype, gs_int2voidp(start));
+                    if (is_instanced)   glDrawElementsInstancedBaseVertex(prim, count, itype, gs_int2voidp(start), instance_count, base_vertex);
+                    else                glDrawRangeElementsBaseVertex(prim, range_start, range_end, count, itype, gs_int2voidp(start), base_vertex);
                 } 
                 else {
                     if (is_instanced)   glDrawArraysInstanced(prim, start, count, instance_count);
@@ -1720,6 +2039,8 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                 // Read update type
                 gs_byte_buffer_readc(&cb->commands, gs_graphics_buffer_update_type, update_type);
 
+                int32_t glusage = gsgl_buffer_usage_to_gl_enum(usage);
+
                 switch (type)
                 {
                     // Vertex Buffer
@@ -1728,13 +2049,9 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                     {
                         gsgl_buffer_t buffer = gs_slot_array_get(ogl->vertex_buffers, id);
                         glBindBuffer(GL_ARRAY_BUFFER, buffer);
-                        if (update_type == GS_GRAPHICS_BUFFER_UPDATE_SUBDATA) 
-                        {
-                            glBufferSubData(GL_ARRAY_BUFFER, offset, sz, (u8*)(cb->commands.data + cb->commands.position));
-                        } 
-                        else 
-                        {
-                            glBufferData(GL_ARRAY_BUFFER, sz, (u8*)(cb->commands.data + cb->commands.position), gsgl_buffer_usage_to_gl_enum(usage));
+                        switch (update_type) {
+                            case GS_GRAPHICS_BUFFER_UPDATE_SUBDATA: glBufferSubData(GL_ARRAY_BUFFER, offset, sz, (cb->commands.data + cb->commands.position)); break;
+                            default:                                glBufferData(GL_ARRAY_BUFFER, sz, (cb->commands.data + cb->commands.position), glusage); break;
                         }
                         glBindBuffer(GL_ARRAY_BUFFER, 0);
                     } break;
@@ -1743,8 +2060,33 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                     {
                         gsgl_buffer_t buffer = gs_slot_array_get(ogl->index_buffers, id);
                         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer);
-                        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sz, (u8*)(cb->commands.data + cb->commands.position), gsgl_buffer_usage_to_gl_enum(usage));
+                        switch (update_type) {
+                            case GS_GRAPHICS_BUFFER_UPDATE_SUBDATA: glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, offset, sz, (cb->commands.data + cb->commands.position)); break;
+                            default:                                glBufferData(GL_ELEMENT_ARRAY_BUFFER, sz, (cb->commands.data + cb->commands.position), glusage); break;
+                        }
                         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+                    } break;
+
+                    case GS_GRAPHICS_BUFFER_UNIFORM:
+                    {
+                        // Have to 
+                        gsgl_uniform_buffer_t* u = gs_slot_array_getp(ogl->uniform_buffers, id);
+
+                        glBindBuffer(GL_UNIFORM_BUFFER, u->ubo);
+
+                        switch (update_type) {
+                            case GS_GRAPHICS_BUFFER_UPDATE_SUBDATA: {
+                                glBufferSubData(GL_UNIFORM_BUFFER, offset, sz, (cb->commands.data + cb->commands.position));
+                            } break;
+                            default: {
+                                // Reset uniform size
+                                u->size = sz;
+                                // Recreate buffer
+                                glBufferData(GL_UNIFORM_BUFFER, sz, (cb->commands.data + cb->commands.position), glusage);
+                            } break;
+                        }
+
+                        glBindBuffer(GL_UNIFORM_BUFFER, 0);
                     } break;
                 }
 

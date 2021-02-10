@@ -98,9 +98,9 @@ typedef struct gs_immediate_cache_t
 typedef struct gs_immediate_draw_t
 {
 	/* Handle to vertex buffer resource */
-	gs_handle(gs_graphics_buffer_t) vbo;
+	gs_handle(gs_graphics_vertex_buffer_t) vbo;
 	/* Handle to index buffer resource */
-	gs_handle(gs_graphics_buffer_t) ibo;
+	gs_handle(gs_graphics_index_buffer_t) ibo;
 	/* Default texture */
 	gs_handle(gs_graphics_texture_t) tex_default;
 	/* Default font */
@@ -108,9 +108,9 @@ typedef struct gs_immediate_draw_t
 	/* Pipeline state matrix table */
 	gs_hash_table(gsi_pipeline_state_attr_t, gs_handle(gs_graphics_pipeline_t)) pipeline_table;
 	/* Uniform buffer */
-	gs_handle(gs_graphics_buffer_t) uniforms;
+	gs_handle(gs_graphics_uniform_t) uniform;
 	/* Sampler buffer */
-	gs_handle(gs_graphics_buffer_t) samplers;
+	gs_handle(gs_graphics_sampler_buffer_t) sampler;
 	/* Dynamic array of vertex data to update */
 	gs_dyn_array(gs_immediate_vert_t) vertices;
 	/* Dynamic array of index data to update */
@@ -284,38 +284,27 @@ gs_immediate_draw_t gs_immediate_draw_new()
 	// Init command buffer
 	gsi.commands = gs_command_buffer_new();	// Not totally sure on the syntax for new vs. create
 
-	// Create uniform buffer 
+	// Create uniform buffer
 	gs_graphics_uniform_desc_t udesc = gs_default_val();
-	udesc.type = GS_GRAPHICS_UNIFORM_MAT4;
+	udesc.name = "u_mvp";
+	udesc.layout = &(gs_graphics_uniform_layout_desc_t){.type = GS_GRAPHICS_UNIFORM_MAT4};
 
-	gs_graphics_buffer_desc_t ubdesc = gs_default_val();
-	ubdesc.type = GS_GRAPHICS_BUFFER_UNIFORM;
-	ubdesc.data = &udesc; 
-	ubdesc.size = sizeof(udesc);
-	ubdesc.name = "u_mvp";
-
-	gsi.uniforms = gs_graphics_buffer_create(&ubdesc);
+	gsi.uniform = gs_graphics_uniform_create(&udesc);
 
 	// Create sampler buffer 
-	gs_graphics_sampler_desc_t smpldesc = gs_default_val();
-	smpldesc.type = GS_GRAPHICS_SAMPLER_2D;
-
-	gs_graphics_buffer_desc_t sbdesc = gs_default_val();
-	sbdesc.type = GS_GRAPHICS_BUFFER_SAMPLER;
-	sbdesc.data = &smpldesc;
-	sbdesc.size = sizeof(smpldesc);
+	gs_graphics_sampler_buffer_desc_t sbdesc = gs_default_val();
+	sbdesc.type = GS_GRAPHICS_SAMPLER_2D;
 	sbdesc.name = "u_tex";
 
-	gsi.samplers = gs_graphics_buffer_create(&sbdesc); 
+	gsi.sampler = gs_graphics_sampler_buffer_create(&sbdesc); 
 
 	// Create vertex buffer 
-	gs_graphics_buffer_desc_t vbdesc = gs_default_val();
-	vbdesc.type = GS_GRAPHICS_BUFFER_VERTEX;
-	vbdesc.data = NULL;
-	vbdesc.size = 0;
-	vbdesc.usage = GS_GRAPHICS_BUFFER_USAGE_STREAM;
+	gs_graphics_vertex_buffer_desc_t vdesc = gs_default_val();
+	vdesc.data = NULL;
+	vdesc.size = 0;
+	vdesc.usage = GS_GRAPHICS_BUFFER_USAGE_STREAM;
 
-	gsi.vbo = gs_graphics_buffer_create(&vbdesc);
+	gsi.vbo = gs_graphics_vertex_buffer_create(&vdesc);
 
 	// Create default texture (4x4 white) 
 	gs_color_t pixels[16] = gs_default_val();
@@ -516,33 +505,32 @@ void gsi_flush(gs_immediate_draw_t* gsi)
 	gs_mat4 mvp = gs_mat4_mul(proj, mv);
 
 	// Update vertex buffer (command buffer version)
-	gs_graphics_buffer_desc_t vbdesc = gs_default_val();
-	vbdesc.type = GS_GRAPHICS_BUFFER_VERTEX;
-	vbdesc.data = gsi->vertices;
-	vbdesc.size = gs_dyn_array_size(gsi->vertices) * sizeof(gs_immediate_vert_t);
-	vbdesc.usage = GS_GRAPHICS_BUFFER_USAGE_STREAM;
+	gs_graphics_vertex_buffer_desc_t vdesc = gs_default_val();
+	vdesc.data = gsi->vertices;
+	vdesc.size = gs_dyn_array_size(gsi->vertices) * sizeof(gs_immediate_vert_t);
+	vdesc.usage = GS_GRAPHICS_BUFFER_USAGE_STREAM;
 
-	gs_graphics_buffer_request_update(&gsi->commands, gsi->vbo, &vbdesc);
+	gs_graphics_vertex_buffer_request_update(&gsi->commands, gsi->vbo, &vdesc);
 
 	// Set up all binding data
 
-	gs_graphics_bind_buffer_desc_t vbuffer = gs_default_val();
+	gs_graphics_bind_vertex_buffer_desc_t vbuffer = gs_default_val();
 	vbuffer.buffer = gsi->vbo;
 
-	gs_graphics_bind_buffer_desc_t ubuffer = gs_default_val();
-	ubuffer.buffer = gsi->uniforms; ubuffer.data = &mvp;
+	gs_graphics_bind_uniform_desc_t ubuffer = gs_default_val();
+	ubuffer.uniform = gsi->uniform; ubuffer.data = &mvp;
 
-	gs_graphics_bind_buffer_desc_t sbuffer = gs_default_val();
-	sbuffer.buffer = gsi->samplers; sbuffer.data = &gsi->cache.texture; sbuffer.binding = 0;
+	gs_graphics_bind_sampler_buffer_desc_t sbuffer = gs_default_val();
+	sbuffer.buffer = gsi->sampler; sbuffer.tex = gsi->cache.texture; sbuffer.binding = 0;
 
     // Bindings for all buffers: vertex, uniform, sampler
     gs_graphics_bind_desc_t binds = gs_default_val();
-   	binds.vertex_buffers.decl = &vbuffer; 
-   	binds.uniform_buffers.decl = &ubuffer;
-   	binds.sampler_buffers.decl = &sbuffer;
+   	binds.vertex_buffers.desc = &vbuffer; 
+   	binds.uniforms.desc = &ubuffer;
+   	binds.sampler_buffers.desc = &sbuffer;
 
    	// Bind bindings
-	gs_graphics_bind_bindings(&gsi->commands, &binds);
+	gs_graphics_apply_bindings(&gsi->commands, &binds);
 
 	// Submit draw
 	gs_graphics_draw(&gsi->commands, &(gs_graphics_draw_desc_t){.start = 0, .count = gs_dyn_array_size(gsi->vertices)});
@@ -1286,15 +1274,18 @@ void gsi_draw(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb)
 
 void gsi_render_pass_submit(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, gs_color_t c)
 {
-	gs_graphics_render_pass_action_t action = gs_default_val();
+	gs_graphics_clear_action_t action = gs_default_val();
 	action.color[0] = (float)c.r / 255.f; 
 	action.color[1] = (float)c.g / 255.f; 
 	action.color[2] = (float)c.b / 255.f; 
 	action.color[3] = (float)c.a / 255.f;
+	gs_graphics_clear_desc_t clear = gs_default_val();
+	clear.actions = &action;
 	gs_renderpass pass = gs_default_val();
 	gs_vec2 fb = gs_platform_framebuffer_sizev(gs_platform_main_window());
-	gs_graphics_begin_render_pass(cb, pass, &action, sizeof(action));
+	gs_graphics_begin_render_pass(cb, pass);
 	gs_graphics_set_viewport(cb, 0, 0, (int32_t)fb.x, (int32_t)fb.y);
+	gs_graphics_clear(cb, &clear);
 	gsi_draw(gsi, cb);
 	gs_graphics_end_render_pass(cb);
 }
