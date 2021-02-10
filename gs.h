@@ -4595,7 +4595,6 @@ typedef struct gs_graphics_bind_image_buffer_desc_t {
     gs_handle(gs_graphics_texture_t) tex;
     uint32_t binding;
     gs_graphics_access_type access;
-    gs_graphics_texture_format_type format;
 } gs_graphics_bind_image_buffer_desc_t;
 
 typedef struct gs_graphics_bind_uniform_buffer_desc_t {

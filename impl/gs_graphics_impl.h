@@ -94,7 +94,10 @@ typedef uint32_t gsgl_shader_t;
 typedef uint32_t gsgl_buffer_t;
 
 /* Texture */
-typedef uint32_t gsgl_texture_t;
+typedef struct gsgl_texture_t {
+    uint32_t id;
+    gs_graphics_texture_desc_t desc;
+} gsgl_texture_t;
 
 typedef struct gsgl_vertex_buffer_decl_t {
     gsgl_buffer_t vbo;
@@ -502,19 +505,20 @@ gs_result gs_graphics_init(gs_graphics_i* graphics)
     gs_slot_array_insert(ogl->vertex_buffers, 0);   
     gs_slot_array_insert(ogl->index_buffers, 0);    
     gs_slot_array_insert(ogl->frame_buffers, 0);    
-    gs_slot_array_insert(ogl->textures, 0);
 
     gsgl_uniform_list_t ul = gs_default_val();
     gsgl_uniform_buffer_t ub = gs_default_val();
     gsgl_pipeline_t pip = gs_default_val();
     gsgl_render_pass_t rp = gs_default_val();
     gsgl_uniform_t sb = gs_default_val();
+    gsgl_texture_t tex = gs_default_val();
 
     gs_slot_array_insert(ogl->uniforms, ul);
     gs_slot_array_insert(ogl->pipelines, pip);
     gs_slot_array_insert(ogl->render_passes, rp);
     gs_slot_array_insert(ogl->uniform_buffers, ub);
     gs_slot_array_insert(ogl->samplers, sb);
+    gs_slot_array_insert(ogl->textures, tex);
 
     // Construct vao then bind
     glGenVertexArrays(1, &ogl->cache.vao);      
@@ -559,7 +563,7 @@ gs_handle(gs_graphics_texture_t) gs_graphics_texture_create(gs_graphics_texture_
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
 
-    gsgl_texture_t tex;
+    gsgl_texture_t tex = gs_default_val();
     uint32_t width = desc->width;
     uint32_t height = desc->height;
     void* data = desc->data;
@@ -567,8 +571,8 @@ gs_handle(gs_graphics_texture_t) gs_graphics_texture_create(gs_graphics_texture_
     // TODO(john): allow for user to specify explicitly whether to allocate texture as 'render buffer storage'
 
     // Construct 'normal' texture
-    glGenTextures(1, &tex);
-    glBindTexture(GL_TEXTURE_2D, tex);
+    glGenTextures(1, &tex.id);
+    glBindTexture(GL_TEXTURE_2D, tex.id);
 
     // Construct texture based on appropriate format
     switch(desc->format) 
@@ -626,6 +630,9 @@ gs_handle(gs_graphics_texture_t) gs_graphics_texture_create(gs_graphics_texture_
     // Unbind buffers
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+    // Set description
+    tex.desc = *desc;
 
     // Add texture to internal resource pool and return handle
     return (gs_handle_create(gs_graphics_texture_t, gs_slot_array_insert(ogl->textures, tex)));
@@ -1263,7 +1270,6 @@ void gs_graphics_apply_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t
             gs_byte_buffer_write(&cb->commands, uint32_t, decl->tex.id);
             gs_byte_buffer_write(&cb->commands, uint32_t, decl->binding);
             gs_byte_buffer_write(&cb->commands, gs_graphics_access_type, decl->access);
-            gs_byte_buffer_write(&cb->commands, gs_graphics_texture_format_type, decl->format);
         }
 
         // Uniforms
@@ -1354,8 +1360,8 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                             uint32_t cid = rp->color[r].id;
                             if (cid && gs_slot_array_exists(ogl->textures, cid)) 
                             {
-                                gsgl_texture_t rt = gs_slot_array_get(ogl->textures, cid);
-                                glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + r, rt, 0);
+                                gsgl_texture_t* rt = gs_slot_array_getp(ogl->textures, cid);
+                                glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + r, rt->id, 0);
                             }
                         }
                     }
@@ -1722,7 +1728,7 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                             }
 
                             gsgl_uniform_t* u = gs_slot_array_getp(ogl->samplers, sampler_slot_id);
-                            gsgl_texture_t tex = gs_slot_array_get(ogl->textures, tex_slot_id);
+                            gsgl_texture_t* tex = gs_slot_array_getp(ogl->textures, tex_slot_id);
                             gsgl_pipeline_t* pip = gs_slot_array_getp(ogl->pipelines, ogl->cache.pipeline.id);
 
                             // Get bound shader from pipeline (either compute or raster)
@@ -1757,7 +1763,7 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                             // Activate texture slot
                             glActiveTexture(GL_TEXTURE0 + binding);
                             // Bind texture
-                            glBindTexture(GL_TEXTURE_2D, tex);
+                            glBindTexture(GL_TEXTURE_2D, tex->id);
                             // Bind uniform
                             glUniform1i(u->location, binding);
 
@@ -1768,7 +1774,6 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                             gs_byte_buffer_readc(&cb->commands, uint32_t, tex_slot_id);
                             gs_byte_buffer_readc(&cb->commands, uint32_t, binding);
                             gs_byte_buffer_readc(&cb->commands, gs_graphics_access_type, access);
-                            gs_byte_buffer_readc(&cb->commands, gs_graphics_texture_format_type, format);
 
                             // Grab texture from sampler id
                             if (!tex_slot_id || !gs_slot_array_exists(ogl->textures, tex_slot_id)) {
@@ -1778,12 +1783,12 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                                 continue;
                             }
 
-                            gsgl_texture_t tex = gs_slot_array_get(ogl->textures, tex_slot_id);
+                            gsgl_texture_t* tex = gs_slot_array_getp(ogl->textures, tex_slot_id);
                             uint32_t gl_access = gsgl_access_type_to_gl_access_type(access);
-                            uint32_t gl_format = gsgl_texture_format_to_gl_texture_format(format);
+                            uint32_t gl_format = gsgl_texture_format_to_gl_texture_format(tex->desc.format);
 
                             // Bind image texture
-                            glBindImageTexture(0, tex, 0, GL_FALSE, 0, gl_access, gl_format);
+                            glBindImageTexture(0, tex->id, 0, GL_FALSE, 0, gl_access, gl_format);
                         } break;
 
                         default: gs_assert(false); break;
