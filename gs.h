@@ -142,8 +142,11 @@
 
         int32_t main(int32_t argv, char** argc)
         {
-            gs_app_desc_t app = {0};        // Fill this with whatever your app needs
-            gs_engine_create(app)->run();   // Create instance of engine for framework and run
+            gs_app_desc_t app = {0}; // Fill this with whatever your app needs
+            gs_engine_create(app);   // Create instance of engine for framework and run
+            while (gs_engine_app()->is_running) {
+                gs_engine_frame();
+            }
             return 0;
        }
 
@@ -152,7 +155,7 @@
         Internally, gunslinger does its best to handle the boiler plate drudge work of implementing (in correct order) 
         the various layers required for a basic hardware accelerated multi-media application program to work. This involves allocating 
         memory for internal data structures for these layers as well initializing them in a particular order so they can inter-operate
-        as expected. If you're interested in taking care of this yourself, look at the `gs_engine_run()` function to get a feeling
+        as expected. If you're interested in taking care of this yourself, look at the `gs_engine_frame()` function to get a feeling
         for how this is being handled.
 
     GS_MATH:
@@ -473,9 +476,9 @@
 
 /*===== Gunslinger Include ======*/
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+// #ifdef __cplusplus
+// extern "C" {
+// #endif
 
 /*========================
 // Defines
@@ -1835,8 +1838,6 @@ uint32_t gs_hash_table_get_key_index_func(void** data, void* key, size_t key_len
 
 typedef uint32_t gs_hash_table_iter;
 
-// uint32_t gs_hash_table_get_key_index_func(void** data, void* key, size_t key_len, size_t val_len, size_t stride, size_t klpvl)
-
 gs_force_inline
 uint32_t __gs_find_first_valid_iterator(void* data, size_t key_len, size_t val_len, uint32_t idx, size_t stride, size_t klpvl)
 {
@@ -1983,6 +1984,13 @@ uint32_t gs_slot_array_insert_func(void** indices, void** data, void* val, size_
     return idx;
 }
 
+#define gs_slot_array_reserve(__SA, __NUM)\
+    do {\
+        gs_slot_array_init_all(__SA);\
+        gs_dyn_array_reserve((__SA)->data, __NUM);\
+        gs_dyn_array_reserve((__SA)->indices, __NUM);\
+    } while (0)
+
 #define gs_slot_array_insert(__SA, __VAL)\
     (gs_slot_array_init_all(__SA), (__SA)->tmp = (__VAL),\
         gs_slot_array_insert_func((void**)&((__SA)->indices), (void**)&((__SA)->data), (void*)&((__SA)->tmp), sizeof(((__SA)->tmp)), NULL))
@@ -2031,7 +2039,7 @@ uint32_t gs_slot_array_insert_func(void** indices, void** data, void* val, size_
 
  #define gs_slot_array_erase(__SA, __id)\
     do {\
-        uint32_t __H0 = (__id) % gs_dyn_array_size((__SA)->indices);\
+        uint32_t __H0 = (__id) /*% gs_dyn_array_size((__SA)->indices)*/;\
         if (gs_slot_array_size(__SA) == 1) {\
             gs_slot_array_clear(__SA);\
         }\
@@ -3621,6 +3629,11 @@ gs_vec4 gs_aabb_window_coords(gs_aabb_t* aabb, gs_camera_t* camera, gs_vec2 wind
 
     #define GS_PLATFORM_LINUX
 
+/* Platform Emscripten */
+#elif (defined __EMSCRIPTEN__)
+
+    #define GS_PLATFORM_WEB
+
 /* Else - Platform Undefined and Unsupported */
 
 #endif
@@ -3681,6 +3694,25 @@ typedef enum gs_platform_cursor
 
 typedef enum gs_platform_keycode
 {
+    GS_KEYCODE_INVALID,
+    GS_KEYCODE_SPACE,
+    GS_KEYCODE_APOSTROPHE,  /* ' */
+    GS_KEYCODE_COMMA,  /* , */
+    GS_KEYCODE_MINUS,  /* - */
+    GS_KEYCODE_PERIOD,  /* . */
+    GS_KEYCODE_SLASH,  /* / */
+    GS_KEYCODE_0,
+    GS_KEYCODE_1,
+    GS_KEYCODE_2,
+    GS_KEYCODE_3,
+    GS_KEYCODE_4,
+    GS_KEYCODE_5,
+    GS_KEYCODE_6,
+    GS_KEYCODE_7,
+    GS_KEYCODE_8,
+    GS_KEYCODE_9,
+    GS_KEYCODE_SEMICOLON,  /* ; */
+    GS_KEYCODE_EQUAL,  /* = */
     GS_KEYCODE_A,
     GS_KEYCODE_B,
     GS_KEYCODE_C,
@@ -3707,47 +3739,31 @@ typedef enum gs_platform_keycode
     GS_KEYCODE_X,
     GS_KEYCODE_Y,
     GS_KEYCODE_Z,
-    GS_KEYCODE_LSHIFT,
-    GS_KEYCODE_RSHIFT,
-    GS_KEYCODE_LALT,
-    GS_KEYCODE_RALT,
-    GS_KEYCODE_LCTRL,
-    GS_KEYCODE_RCTRL,
-    GS_KEYCODE_BSPACE,
-    GS_KEYCODE_BSLASH,
-    GS_KEYCODE_QMARK,
-    GS_KEYCODE_TILDE,
-    GS_KEYCODE_COMMA,
-    GS_KEYCODE_PERIOD,
-    GS_KEYCODE_ESC, 
-    GS_KEYCODE_SPACE,
-    GS_KEYCODE_LEFT,
-    GS_KEYCODE_UP,
-    GS_KEYCODE_RIGHT,
-    GS_KEYCODE_DOWN,
-    GS_KEYCODE_ZERO,
-    GS_KEYCODE_ONE,
-    GS_KEYCODE_TWO,
-    GS_KEYCODE_THREE,
-    GS_KEYCODE_FOUR,
-    GS_KEYCODE_FIVE,
-    GS_KEYCODE_SIX,
-    GS_KEYCODE_SEVEN,
-    GS_KEYCODE_EIGHT,
-    GS_KEYCODE_NINE,
-    GS_KEYCODE_NPZERO,
-    GS_KEYCODE_NPONE,
-    GS_KEYCODE_NPTWO,
-    GS_KEYCODE_NPTHREE,
-    GS_KEYCODE_NPFOUR,
-    GS_KEYCODE_NPFIVE,
-    GS_KEYCODE_NPSIX,
-    GS_KEYCODE_NPSEVEN,
-    GS_KEYCODE_NPEIGHT,
-    GS_KEYCODE_NPNINE,
-    GS_KEYCODE_CAPS,
+    GS_KEYCODE_LEFT_BRACKET,  /* [ */
+    GS_KEYCODE_BACKSLASH,  /* \ */
+    GS_KEYCODE_RIGHT_BRACKET,  /* ] */
+    GS_KEYCODE_GRAVE_ACCENT,  /* ` */
+    GS_KEYCODE_WORLD_1, /* non-US #1 */
+    GS_KEYCODE_WORLD_2, /* non-US #2 */
+    GS_KEYCODE_ESC,
+    GS_KEYCODE_ENTER,
+    GS_KEYCODE_TAB,
+    GS_KEYCODE_BACKSPACE,
+    GS_KEYCODE_INSERT,
     GS_KEYCODE_DELETE,
+    GS_KEYCODE_RIGHT,
+    GS_KEYCODE_LEFT,
+    GS_KEYCODE_DOWN,
+    GS_KEYCODE_UP,
+    GS_KEYCODE_PAGE_UP,
+    GS_KEYCODE_PAGE_DOWN,
+    GS_KEYCODE_HOME,
     GS_KEYCODE_END,
+    GS_KEYCODE_CAPS_LOCK,
+    GS_KEYCODE_SCROLL_LOCK,
+    GS_KEYCODE_NUM_LOCK,
+    GS_KEYCODE_PRINT_SCREEN,
+    GS_KEYCODE_PAUSE,
     GS_KEYCODE_F1,
     GS_KEYCODE_F2,
     GS_KEYCODE_F3,
@@ -3760,30 +3776,46 @@ typedef enum gs_platform_keycode
     GS_KEYCODE_F10,
     GS_KEYCODE_F11,
     GS_KEYCODE_F12,
-    GS_KEYCODE_HOME,
-    GS_KEYCODE_PLUS,
-    GS_KEYCODE_MINUS,
-    GS_KEYCODE_LBRACKET,
-    GS_KEYCODE_RBRACKET,
-    GS_KEYCODE_SEMI_COLON,
-    GS_KEYCODE_ENTER,
-    GS_KEYCODE_INSERT,
-    GS_KEYCODE_PGUP,
-    GS_KEYCODE_PGDOWN,
-    GS_KEYCODE_NUMLOCK,
-    GS_KEYCODE_TAB,
-    GS_KEYCODE_NPMULT,
-    GS_KEYCODE_NPDIV,
-    GS_KEYCODE_NPPLUS,
-    GS_KEYCODE_NPMINUS,
-    GS_KEYCODE_NPENTER,
-    GS_KEYCODE_NPDEL,
-    GS_KEYCODE_MUTE,
-    GS_KEYCODE_VOLUP,
-    GS_KEYCODE_VOLDOWN,
-    GS_KEYCODE_PAUSE,
-    GS_KEYCODE_PRINT,
-    GS_KEYCODE_COUNT
+    GS_KEYCODE_F13,
+    GS_KEYCODE_F14,
+    GS_KEYCODE_F15,
+    GS_KEYCODE_F16,
+    GS_KEYCODE_F17,
+    GS_KEYCODE_F18,
+    GS_KEYCODE_F19,
+    GS_KEYCODE_F20,
+    GS_KEYCODE_F21,
+    GS_KEYCODE_F22,
+    GS_KEYCODE_F23,
+    GS_KEYCODE_F24,
+    GS_KEYCODE_F25,
+    GS_KEYCODE_KP_0,
+    GS_KEYCODE_KP_1,
+    GS_KEYCODE_KP_2,
+    GS_KEYCODE_KP_3,
+    GS_KEYCODE_KP_4,
+    GS_KEYCODE_KP_5,
+    GS_KEYCODE_KP_6,
+    GS_KEYCODE_KP_7,
+    GS_KEYCODE_KP_8,
+    GS_KEYCODE_KP_9,
+    GS_KEYCODE_KP_DECIMAL,
+    GS_KEYCODE_KP_DIVIDE,
+    GS_KEYCODE_KP_MULTIPLY,
+    GS_KEYCODE_KP_SUBTRACT,
+    GS_KEYCODE_KP_ADD,
+    GS_KEYCODE_KP_ENTER,
+    GS_KEYCODE_KP_EQUAL,
+    GS_KEYCODE_LEFT_SHIFT,
+    GS_KEYCODE_LEFT_CONTROL,
+    GS_KEYCODE_LEFT_ALT,
+    GS_KEYCODE_LEFT_SUPER,
+    GS_KEYCODE_RIGHT_SHIFT,
+    GS_KEYCODE_RIGHT_CONTROL,
+    GS_KEYCODE_RIGHT_ALT,
+    GS_KEYCODE_RIGHT_SUPER,
+    GS_KEYCODE_MENU,
+    GS_KEYCODE_COUNT 
 } gs_platform_keycode;
 
 typedef enum gs_platform_mouse_button_code
@@ -3799,9 +3831,10 @@ typedef struct gs_platform_mouse_t
     b32 button_map[GS_MOUSE_BUTTON_CODE_COUNT];
     b32 prev_button_map[GS_MOUSE_BUTTON_CODE_COUNT];
     gs_vec2 position;
-    gs_vec2 prev_position;
+    gs_vec2 delta;
     gs_vec2 wheel;
     b32 moved_this_frame;
+    b32 locked;
 } gs_platform_mouse_t;
 
 typedef struct gs_platform_input_t
@@ -3875,6 +3908,14 @@ typedef enum gs_platform_event_type
     GS_PLATFORM_EVENT_WINDOW
 } gs_platform_event_type;
 
+typedef enum gs_platform_key_modifier_type
+{
+    GS_PLATFORM_KEY_MODIFIER_NONE    = 0x00,
+    GS_PLATFORM_KEY_MODIFIER_SHIFT   = 0x01,
+    GS_PLATFORM_KEY_MODIFIER_CONTROL = 0x02,
+    GS_PLATFORM_KEY_MODIFIER_ALT     = 0x04
+} gs_platform_key_modifier_type;
+
 typedef enum gs_platform_key_action_type
 {
     GS_PLATFORM_KEY_PRESSED,
@@ -3885,28 +3926,35 @@ typedef enum gs_platform_key_action_type
 typedef struct gs_platform_key_event_t
 {
     int32_t codepoint;
-    gs_platform_keycode key;
+    gs_platform_keycode keycode;
     gs_platform_key_action_type action;
+    gs_platform_key_modifier_type modifier;
 } gs_platform_key_event_t;
 
 typedef enum gs_platform_mousebutton_action_type
 {
-    GS_PLATFORM_MBUTTON_PRESSED,
-    GS_PLATFORM_MBUTTON_DOWN,
-    GS_PLATFORM_MBUTTON_RELEASED
+    GS_PLATFORM_MOUSE_BUTTON_PRESSED,
+    GS_PLATFORM_MOUSE_BUTTON_DOWN,
+    GS_PLATFORM_MOUSE_BUTTON_RELEASED,
+    GS_PLATFORM_MOUSE_MOVE,
+    GS_PLATFORM_MOUSE_ENTER,
+    GS_PLATFORM_MOUSE_LEAVE,
+    GS_PLATFORM_MOUSE_WHEEL
 } gs_platform_mousebutton_action_type;
 
 typedef struct gs_platform_mouse_event_t 
 {
     int32_t codepoint;
-    gs_platform_mouse_button_code button;
+    union {
+        gs_platform_mouse_button_code button;
+        gs_vec2 wheel;
+        gs_vec2 move;
+    };
     gs_platform_mousebutton_action_type action;
 } gs_platform_mouse_event_t;
 
 typedef enum gs_platform_window_action_type
 {
-    GS_PLATFORM_WINDOW_MOUSE_ENTER,
-    GS_PLATFORM_WINDOW_MOUSE_LEAVE,
     GS_PLATFORM_WINDOW_RESIZE
 } gs_platform_window_action_type;
 
@@ -3937,7 +3985,7 @@ typedef void (* gs_character_callback_t)(void*, uint32_t code_point);
 // Platform Interface
 ===============================================================================================*/
 
-typedef struct gs_platform_i
+typedef struct gs_platform_t
 {
     // Settings for platform, including video
     gs_platform_settings_t settings;
@@ -3959,26 +4007,32 @@ typedef struct gs_platform_i
 
     // Specific user data (for custom implementations)
     void* user_data;
-} gs_platform_i;
+
+} gs_platform_t;
 
 /*===============================================================================================
 // Platform API
 ===============================================================================================*/
 
-// Platform Init / Shutdown
-GS_API_DECL gs_platform_i*  gs_platform_create();
-GS_API_DECL void            gs_platform_destroy(gs_platform_i* platform);
-GS_API_DECL gs_result       gs_platform_init(gs_platform_i* platform);      // Initialize global platform layer
-GS_API_DECL gs_result       gs_platform_update(gs_platform_i* platform);    // Update platform layer
-GS_API_DECL gs_result       gs_platform_shutdown(gs_platform_i* platform);  // Shutdown gloabl platform layer
+/* == Platform Default API == */
+
+// Platform Create / Destroy
+GS_API_DECL gs_platform_t*  gs_platform_create();
+GS_API_DECL void            gs_platform_register_instance(gs_platform_t* platform);     // Sets global instance of platform layer
+GS_API_DECL void            gs_platform_destroy(gs_platform_t* platform);
+
+ // Platform Init / Update / Shutdown
+GS_API_DECL void            gs_platform_init(gs_platform_t* platform);      // Initialize platform layer
+GS_API_DECL void            gs_platform_update(gs_platform_t* platform);    // Update platform layer
+GS_API_DECL void            gs_platform_shutdown(gs_platform_t* platform);  // Shutdown platform layer
+
+ // Platform Init / Update / Shutdown (make these default with custom implementations for internal inits/updates/shutdowns)
+GS_API_DECL void gs_platform_update(gs_platform_t* platform);
+
+/* Platform global instance functions (should only be called if global platform instance is registered, automatically done when using default engine instance) */
 
 // Platform Util
-GS_API_DECL void   gs_platform_sleep(float ms); // Sleeps platform for time in ms
-GS_API_DECL double gs_platform_elapsed_time();  // Returns time in ms since initialization of platform
 GS_API_DECL float  gs_platform_delta_time();
-
-// Platform Video
-GS_API_DECL void gs_platform_enable_vsync(int32_t enabled);
 
 // Platform UUID
 GS_API_DECL gs_uuid_t gs_platform_generate_uuid();
@@ -3986,7 +4040,6 @@ GS_API_DECL void      gs_platform_uuid_to_string(char* temp_buffer, const gs_uui
 GS_API_DECL uint32_t  gs_platform_hash_uuid(const gs_uuid_t* uuid);
 
 // Platform Input
-GS_API_DECL gs_result gs_platform_process_input(gs_platform_input_t* input);
 GS_API_DECL void      gs_platform_update_input(gs_platform_input_t* input);
 GS_API_DECL void      gs_platform_press_key(gs_platform_keycode code);
 GS_API_DECL void      gs_platform_release_key(gs_platform_keycode code);
@@ -3994,26 +4047,55 @@ GS_API_DECL bool      gs_platform_was_key_down(gs_platform_keycode code);
 GS_API_DECL bool      gs_platform_key_pressed(gs_platform_keycode code);
 GS_API_DECL bool      gs_platform_key_down(gs_platform_keycode code);
 GS_API_DECL bool      gs_platform_key_released(gs_platform_keycode code);
-GS_API_DECL uint32_t  gs_platform_key_to_codepoint(gs_platform_keycode code);
 GS_API_DECL void      gs_platform_press_mouse_button(gs_platform_mouse_button_code code);
 GS_API_DECL void      gs_platform_release_mouse_button(gs_platform_mouse_button_code code);
 GS_API_DECL bool      gs_platform_was_mouse_down(gs_platform_mouse_button_code code);
 GS_API_DECL bool      gs_platform_mouse_pressed(gs_platform_mouse_button_code code);
 GS_API_DECL bool      gs_platform_mouse_down(gs_platform_mouse_button_code code);
 GS_API_DECL bool      gs_platform_mouse_released(gs_platform_mouse_button_code code);
-GS_API_DECL void      gs_platform_mouse_set_position(uint32_t handle, float x, float y);
 GS_API_DECL gs_vec2   gs_platform_mouse_deltav();
 GS_API_DECL void      gs_platform_mouse_delta(float* x, float* y);
 GS_API_DECL gs_vec2   gs_platform_mouse_positionv();
 GS_API_DECL void      gs_platform_mouse_position(int32_t* x, int32_t* y);
 GS_API_DECL void      gs_platform_mouse_wheel(float* x, float* y);
 GS_API_DECL bool      gs_platform_mouse_moved();
+GS_API_DECL bool      gs_platform_mouse_locked();
 
 // Platform Events
-GS_API_DECL bool      gs_platform_poll_event(gs_platform_event_t* evt);
+GS_API_DECL bool      gs_platform_poll_events(gs_platform_event_t* evt, bool32_t consume);
 
 // Platform Window
 GS_API_DECL uint32_t gs_platform_create_window(const char* title, uint32_t width, uint32_t height);
+GS_API_DECL uint32_t gs_platform_main_window();
+
+// Platform File IO
+GS_API_DECL char*      gs_platform_read_file_contents(const char* file_path, const char* mode, int32_t* sz);
+GS_API_DECL gs_result  gs_platform_write_file_contents(const char* file_path, const char* mode, void* data, size_t data_size);
+GS_API_DECL bool       gs_platform_file_exists(const char* file_path);
+GS_API_DECL int32_t    gs_platform_file_size_in_bytes(const char* file_path);
+GS_API_DECL void       gs_platform_file_extension(char* buffer, size_t buffer_sz, const char* file_path);
+
+/* == Platform Dependent API == */
+
+ // Platform Init / Update / Shutdown
+GS_API_DECL void   gs_platform_init_internal(gs_platform_t* platform);
+GS_API_DECL void   gs_platform_update_internal(gs_platform_t* platform);
+GS_API_DECL void   gs_platform_shutdown_internal(gs_platform_t* platform);
+
+// Platform Util
+GS_API_DECL double gs_platform_elapsed_time();  // Returns time in ms since initialization of platform
+GS_API_DECL void   gs_platform_sleep(float ms); // Sleeps platform for time in ms
+
+// Platform Video
+GS_API_DECL void gs_platform_enable_vsync(int32_t enabled);
+
+// Platform Input
+GS_API_DECL void                 gs_platform_process_input(gs_platform_input_t* input);
+GS_API_DECL uint32_t             gs_platform_key_to_codepoint(gs_platform_keycode code);
+GS_API_DECL gs_platform_keycode  gs_platform_codepoint_to_key(uint32_t code);
+GS_API_DECL void                 gs_platform_mouse_set_position(uint32_t handle, float x, float y);
+GS_API_DECL void                 gs_platform_lock_mouse(uint32_t handle, bool32_t lock);
+
 GS_API_DECL void*    gs_platform_create_window_internal(const char* title, uint32_t width, uint32_t height);
 GS_API_DECL void     gs_platform_window_swap_buffer(uint32_t handle);
 GS_API_DECL gs_vec2  gs_platform_window_sizev(uint32_t handle);
@@ -4023,7 +4105,6 @@ GS_API_DECL uint32_t gs_platform_window_height(uint32_t handle);
 GS_API_DECL void     gs_platform_set_window_size(uint32_t handle, uint32_t width, uint32_t height);
 GS_API_DECL void     gs_platform_set_window_sizev(uint32_t handle, gs_vec2 v);
 GS_API_DECL void     gs_platform_set_cursor(uint32_t handle, gs_platform_cursor cursor);
-GS_API_DECL uint32_t gs_platform_main_window();
 GS_API_DECL void     gs_platform_set_dropped_files_callback(uint32_t handle, gs_dropped_files_callback_t cb);
 GS_API_DECL void     gs_platform_set_window_close_callback(uint32_t handle, gs_window_close_callback_t cb);
 GS_API_DECL void     gs_platform_set_character_callback(uint32_t handle, gs_character_callback_t cb);
@@ -4032,13 +4113,6 @@ GS_API_DECL gs_vec2  gs_platform_framebuffer_sizev(uint32_t handle);
 GS_API_DECL void     gs_platform_framebuffer_size(uint32_t handle, uint32_t* w, uint32_t* h);
 GS_API_DECL uint32_t gs_platform_framebuffer_width(uint32_t handle);
 GS_API_DECL uint32_t gs_platform_framebuffer_height(uint32_t handle);
-
-// Platform File IO
-GS_API_DECL char*      gs_platform_read_file_contents(const char* file_path, const char* mode, int32_t* sz);
-GS_API_DECL gs_result  gs_platform_write_file_contents(const char* file_path, const char* mode, void* data, size_t data_size);
-GS_API_DECL bool       gs_platform_file_exists(const char* file_path);
-GS_API_DECL int32_t    gs_platform_file_size_in_bytes(const char* file_path);
-GS_API_DECL void       gs_platform_file_extension(char* buffer, size_t buffer_sz, const char* file_path);
 
 /*=============================
 // GS_AUDIO
@@ -4083,7 +4157,7 @@ gs_handle_decl(gs_audio_instance_t);
 // Audio Interface
 =============================*/
 
-typedef struct gs_audio_i
+typedef struct gs_audio_t
 {
     /* Audio source data cache */
     gs_slot_array(gs_audio_source_t) sources;
@@ -4108,23 +4182,27 @@ typedef struct gs_audio_i
 
     /* User data for custom impl */
     void* user_data;
-} gs_audio_i;
+} gs_audio_t;
 
 /*=============================
 // Audio API
 =============================*/
 
 /* Audio Create, Destroy, Init, Shutdown, Submit */
-GS_API_DECL gs_audio_i* gs_audio_create();
-GS_API_DECL void        gs_audio_destroy(gs_audio_i* audio);
-GS_API_DECL gs_result   gs_audio_init(gs_audio_i* audio);
-GS_API_DECL gs_result   gs_audio_shutdown(gs_audio_i* audio);
+GS_API_DECL gs_audio_t* gs_audio_create();
+GS_API_DECL void        gs_audio_destroy(gs_audio_t* audio);
+GS_API_DECL gs_result   gs_audio_init(gs_audio_t* audio);
+GS_API_DECL gs_result   gs_audio_shutdown(gs_audio_t* audio);
 
 /* Audio create source */
 GS_API_DECL gs_handle(gs_audio_source_t) gs_audio_load_from_file(const char* file_path);
 
 /* Audio create instance */
 GS_API_DECL gs_handle(gs_audio_instance_t) gs_audio_instance_create(gs_audio_instance_decl_t* decl);
+
+/* Locking audio thread (optional) */
+GS_API_DECL void gs_audio_mutex_lock(gs_audio_t* audio);
+GS_API_DECL void gs_audio_mutex_unlock(gs_audio_t* audio);
 
 /* Audio play instance */
 GS_API_DECL void     gs_audio_play_source(gs_handle(gs_audio_source_t) src, float volume);
@@ -4663,6 +4741,7 @@ typedef struct gs_graphics_compute_state_desc_t
 
 /* Graphics Vertex Attribute Desc */
 typedef struct gs_graphics_vertex_attribute_desc_t {
+    const char* name;                                   // Attribute name (required for lower versions of OpenGL and ES)
     gs_graphics_vertex_attribute_type format;           // Format for vertex attribute
     size_t stride;                                      // Total stride of vertex layout (optional, calculated by default)
     size_t offset;                                      // Offset of this vertex from base pointer of data (optional, calaculated by default)
@@ -4719,21 +4798,21 @@ typedef struct gs_graphics_info_t
 // Graphics Interface
 ==========================*/
 
-typedef struct gs_graphics_i
+typedef struct gs_graphics_t
 {
     void* user_data;            // For internal use
     gs_graphics_info_t info;    // Used for querying by user for features
-} gs_graphics_i;
+} gs_graphics_t;
 
 /*==========================
 // Graphics API
 ==========================*/
 
 /* Graphics Interface Creation / Initialization / Shutdown / Destruction */
-GS_API_DECL gs_graphics_i* gs_graphics_create();
-GS_API_DECL void           gs_graphics_destroy(gs_graphics_i* graphics);
-GS_API_DECL gs_result      gs_graphics_init(gs_graphics_i* graphics);
-GS_API_DECL gs_result      gs_graphics_shutdown(gs_graphics_i* graphics);
+GS_API_DECL gs_graphics_t* gs_graphics_create();
+GS_API_DECL void           gs_graphics_destroy(gs_graphics_t* graphics);
+GS_API_DECL void           gs_graphics_init(gs_graphics_t* graphics);
+GS_API_DECL void           gs_graphics_shutdown(gs_graphics_t* graphics);
 
 /* Graphics Info Object Query */
 GS_API_DECL                gs_graphics_info_t* gs_graphics_info();
@@ -4916,17 +4995,16 @@ typedef struct gs_app_desc_t
 */
 typedef struct gs_engine_context_t
 {
-    gs_platform_i* platform;
-    gs_graphics_i* graphics;
-    gs_audio_i* audio;
+    gs_platform_t* platform;
+    gs_graphics_t* graphics;
+    gs_audio_t* audio;
     gs_app_desc_t app;
 } gs_engine_context_t;
 
 typedef struct gs_engine_t
 {
     gs_engine_context_t ctx;
-    gs_result (* run)();
-    gs_result (* shutdown)();
+    void (* shutdown)();
 } gs_engine_t;
 
 /* Desc */
@@ -4937,6 +5015,10 @@ GS_API_DECL void gs_engine_destroy();
 GS_API_DECL gs_engine_t* gs_engine_instance();
 /* Desc */
 GS_API_DECL gs_engine_context_t* gs_engine_ctx();
+/* Desc */
+GS_API_DECL gs_app_desc_t* gs_engine_app();
+/* Desc */
+GS_API_DECL void gs_engine_frame();
 /* Desc */
 GS_API_DECL void gs_engine_quit();
 /* Desc */
@@ -5303,6 +5385,7 @@ bool32_t gs_util_load_texture_data_from_file(const char* file_path, int32_t* wid
 
     if (!*data) {
         gs_println("Warning: could not load texture: %s", file_path);
+        gs_free(*data);
         return false;
     }
 
@@ -5313,19 +5396,30 @@ bool32_t gs_util_load_texture_data_from_file(const char* file_path, int32_t* wid
 // GS_PLATFORM
 =============================*/
 
+// Default provided platform implementations (these will be removed eventually)
 #ifndef GS_PLATFORM_IMPL_CUSTOM
-    #define GS_PLATFORM_IMPL_GLFW
-    #include "impl/gs_platform_impl.h"
+    #if (defined GS_PLATFORM_WIN || defined GS_PLATFORM_APPLE || defined GS_PLATFORM_LINUX)
+        #define GS_PLATFORM_IMPL_GLFW
+    #elif (defined GS_PLATFORM_WEB)
+        #define GS_PLATFORM_IMPL_EMSCRIPTEN
+	#endif
 #endif
+
+#include "impl/gs_platform_impl.h"
 
 /*=============================
 // GS_GRAPHICS
 =============================*/
 
 #ifndef GS_GRAPHICS_IMPL_CUSTOM
-    #define GS_GRAPHICS_IMPL_OPENGL
-    #include "impl/gs_graphics_impl.h"
+    #if (defined GS_PLATFORM_WIN || defined GS_PLATFORM_APPLE || defined GS_PLATFORM_LINUX)
+        #define GS_GRAPHICS_IMPL_OPENGL_CORE
+    #else
+        #define GS_GRAPHICS_IMPL_OPENGL_ES
+    #endif
 #endif
+
+#include "impl/gs_graphics_impl.h"
 
 /*=============================
 // GS_AUDIO
@@ -5333,8 +5427,9 @@ bool32_t gs_util_load_texture_data_from_file(const char* file_path, int32_t* wid
 
 #ifndef GS_AUDIO_IMPL_CUSTOM
     #define GS_AUDIO_IMPL_MINIAUDIO
-    #include "impl/gs_audio_impl.h"
 #endif
+
+#include "impl/gs_audio_impl.h"
 
 /*==========================
 // GS_ASSET_TYPES
@@ -5362,7 +5457,6 @@ void gs_asset_texture_load_from_file(const char* path, void* out, gs_graphics_te
         (int32_t*)&t->desc.height, (uint32_t*)&num_comps, (void**)&t->desc.data, flip_on_load);
 
     if (!loaded) {
-        gs_println("Warning: could not load texture: %s", path);
         return;
     }
 
@@ -5427,7 +5521,7 @@ void gs_asset_font_load_from_file(const char* path, void* out, uint32_t point_si
         gs_println("Font Failed to Load: %s, %d", path, v);
     }
     else {
-        gs_println("Font Successfully Load: %s, %d", path, v);
+        gs_println("Font Successfully Loaded: %s, %d", path, v);
     }
 
     gs_free(ttf);
@@ -5802,8 +5896,7 @@ void gs_asset_mesh_load_from_file(const char* path, void* out, gs_asset_mesh_dec
 // GS_ENGINE
 =============================*/
 
-gs_result gs_engine_run();
-gs_result gs_engine_shutdown();
+void gs_engine_shutdown();
 void gs_default_app_func();
 void gs_default_main_window_close_callback(void* window);
 
@@ -5830,7 +5923,6 @@ gs_engine_t* gs_engine_create(gs_app_desc_t app_desc)
         gs_engine_instance()->ctx.app = app_desc;
 
         // Set up function pointers
-        gs_engine_instance()->run       = &gs_engine_run;
         gs_engine_instance()->shutdown  = &gs_engine_shutdown;
 
         // Need to have video settings passed down from user
@@ -5882,79 +5974,82 @@ gs_engine_context_t* gs_engine_ctx()
     return &gs_engine_instance()->ctx;
 }
 
-gs_result gs_engine_run()
+gs_app_desc_t* gs_engine_app()
 {
-    // Main engine loop
-    while (true)
-    {
-        // TODO(john): Get rid of these...
-        static uint32_t curr_ticks = 0; 
-        static uint32_t prev_ticks = 0;
-
-        // Cache platform pointer
-        gs_platform_i* platform = gs_engine_subsystem(platform);
-
-        // Cache times at start of frame
-        platform->time.current  = gs_platform_elapsed_time();
-        platform->time.update   = platform->time.current - platform->time.previous;
-        platform->time.previous = platform->time.current;
-
-        // Update platform and process input
-        if (gs_platform_update(platform) != GS_RESULT_IN_PROGRESS)
-        {
-            return (gs_engine_instance()->shutdown());
-        }
-
-        // Process application context
-        gs_engine_instance()->ctx.app.update();
-        if (!gs_engine_instance()->ctx.app.is_running) 
-        {
-            // Shutdown engine and return
-            return (gs_engine_instance()->shutdown());
-        }
-
-        // NOTE(John): This won't work forever. Must change eventually.
-        // Swap all platform window buffers? Sure...
-        for 
-        (
-            gs_slot_array_iter it = 0;
-            gs_slot_array_iter_valid(platform->windows, it);
-            gs_slot_array_iter_advance(platform->windows, it)
-        )
-        {
-            gs_platform_window_swap_buffer(it);
-        }
-
-        // Frame locking
-        platform->time.current  = gs_platform_elapsed_time();
-        platform->time.render   = platform->time.current - platform->time.previous;
-        platform->time.previous = platform->time.current;
-        platform->time.frame    = platform->time.update + platform->time.render;            // Total frame time
-        platform->time.delta    = platform->time.frame / 1000.f;
-
-        float target = (1000.f / platform->time.max_fps);
-
-        if (platform->time.frame < target)
-        {
-            gs_platform_sleep((float)(target - platform->time.frame));
-            
-            platform->time.current = gs_platform_elapsed_time();
-            double wait_time = platform->time.current - platform->time.previous;
-            platform->time.previous = platform->time.current;
-            platform->time.frame += wait_time;
-            platform->time.delta = platform->time.frame / 1000.f;
-        }
-    }
-
-    // Shouldn't hit here
-    gs_assert(false);
-    return GS_RESULT_FAILURE;
+    return &gs_engine_instance()->ctx.app;
 }
 
-gs_result gs_engine_shutdown()
+// Define main frame function for engine to step
+// Get rid of this eventually and just allow for the internal platform layer to decide how to update.
+GS_API_DECL void gs_engine_frame()
+{
+    // Remove these...
+    static uint32_t curr_ticks = 0; 
+    static uint32_t prev_ticks = 0;
+
+    // Cache platform pointer
+    gs_platform_t* platform = gs_engine_subsystem(platform);
+
+    // Cache times at start of frame
+    platform->time.current  = gs_platform_elapsed_time();
+    platform->time.update   = platform->time.current - platform->time.previous;
+    platform->time.previous = platform->time.current;
+
+    // Update platform and process input
+    gs_platform_update(platform);
+    if (!gs_engine_instance()->ctx.app.is_running) {
+        gs_engine_instance()->shutdown();
+        return;
+    }
+
+    // Process application context
+    gs_engine_instance()->ctx.app.update();
+    if (!gs_engine_instance()->ctx.app.is_running) {
+        gs_engine_instance()->shutdown();
+        return;
+    }
+
+    // Clear all platform events
+    gs_dyn_array_clear(platform->events);
+
+    // NOTE(John): This won't work forever. Must change eventually.
+    // Swap all platform window buffers? Sure...
+    for 
+    (
+        gs_slot_array_iter it = 0;
+        gs_slot_array_iter_valid(platform->windows, it);
+        gs_slot_array_iter_advance(platform->windows, it)
+    )
+    {
+        gs_platform_window_swap_buffer(it);
+    }
+
+    // Frame locking (not sure if this should be done here, but it is what it is)
+    platform->time.current  = gs_platform_elapsed_time();
+    platform->time.render   = platform->time.current - platform->time.previous;
+    platform->time.previous = platform->time.current;
+    platform->time.frame    = platform->time.update + platform->time.render;            // Total frame time
+    platform->time.delta    = platform->time.frame / 1000.f;
+
+    float target = (1000.f / platform->time.max_fps);
+
+    if (platform->time.frame < target)
+    {
+        gs_platform_sleep((float)(target - platform->time.frame));
+        
+        platform->time.current = gs_platform_elapsed_time();
+        double wait_time = platform->time.current - platform->time.previous;
+        platform->time.previous = platform->time.current;
+        platform->time.frame += wait_time;
+        platform->time.delta = platform->time.frame / 1000.f;
+    }
+}
+
+void gs_engine_shutdown()
 {
     // Shutdown application
     gs_engine_ctx()->app.shutdown();
+    gs_engine_ctx()->app.is_running = false;
 
     // Shutdown subsystems
     gs_graphics_shutdown(gs_engine_subsystem(graphics));
@@ -5965,12 +6060,6 @@ gs_result gs_engine_shutdown()
 
     gs_platform_shutdown(gs_engine_subsystem(platform)); 
     gs_platform_destroy(gs_engine_subsystem(platform));
-
-    // Free engine
-    gs_free(__g_engine_instance);
-    __g_engine_instance = NULL;
-
-    return GS_RESULT_SUCCESS;
 }
 
 void gs_default_app_func()
@@ -5985,26 +6074,17 @@ void gs_default_main_window_close_callback(void* window)
 
 void gs_engine_quit()
 {
+#ifndef GS_PLATFORM_WEB
     gs_engine_instance()->ctx.app.is_running = false;
+#endif
 }
-
-/* Main entry point */
-#ifndef GS_NO_HIJACK_MAIN
-
-    int32_t main(int32_t argv, char** argc)
-    {
-        gs_engine_create(gs_main(argv, argc))->run();
-        return 0;
-    }
-
-#endif // GS_NO_HIJACK_MAIN
 
 #undef GS_IMPL
 #endif // GS_IMPL
 
-#ifdef __cplusplus
-}
-#endif // c++
+// #ifdef __cplusplus
+// }
+// #endif // c++
 
 #endif // __GS_INCLUDED_H__
 
@@ -6240,4 +6320,21 @@ void gs_engine_quit()
                 For each attribute:
                     Get data and push into mesh definition 
     }
+
+
+    main update for web? android? probably want to move to different "main" implementations:
+        gs_win32_main
+        gs_glfw_linux_main
+        gs_glfw_osx_main
+        gs_glfw_win32_main
+        gs_glfw_emsc_main
+
+        Each platform should define its own main function, control its own loop, reach into application code, then
+        run how it needs to.
+
+        int main(int32_t argc, char** argv) 
+        {
+            emscripten_set_main_loop(gs_engine_create(gs_main(argc, argv))->run(), 0, true);
+        }
+
 */

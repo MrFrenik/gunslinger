@@ -216,8 +216,17 @@ GS_API_DECL void Decode85(const unsigned char* src, unsigned char* dst);
 
 const f32 gsi_deg2rad = (f32)GS_PI / 180.f;
 
-const char* gsi_v_fillsrc = "\n"
-"#version 330\n"
+// Shaders
+#ifdef GS_PLATFORM_WEB
+    #define GSI_GL_VERSION_STR "#version 300 es\n"
+#else
+    #define GSI_GL_VERSION_STR "#version 330 core\n"
+#endif
+
+
+const char* gsi_v_fillsrc =
+GSI_GL_VERSION_STR
+"precision mediump float;\n"
 "layout(location = 0) in vec3 a_position;\n"
 "layout(location = 1) in vec2 a_uv;\n"
 "layout(location = 2) in vec4 a_color;\n"
@@ -230,8 +239,9 @@ const char* gsi_v_fillsrc = "\n"
 "  color = a_color;\n"
 "}\n";
 
-const char* gsi_f_fillsrc = "\n"
- "#version 330\n"
+const char* gsi_f_fillsrc =
+GSI_GL_VERSION_STR
+"precision mediump float;\n"
 "in vec2 uv;\n"
 "in vec4 color;\n"
 "uniform sampler2D u_tex;\n"
@@ -334,9 +344,9 @@ gs_immediate_draw_t gs_immediate_draw_new()
 
 	// Vertex attr layout
     gs_graphics_vertex_attribute_desc_t gsi_vattrs[] = {
-        (gs_graphics_vertex_attribute_desc_t){.format = GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3},
-        (gs_graphics_vertex_attribute_desc_t){.format = GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2},
-        (gs_graphics_vertex_attribute_desc_t){.format = GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE4}
+        (gs_graphics_vertex_attribute_desc_t){.format = GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3, .name = "a_position"},
+        (gs_graphics_vertex_attribute_desc_t){.format = GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2, .name = "a_uv"},
+        (gs_graphics_vertex_attribute_desc_t){.format = GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE4, .name = "a_color"}
     };
 
 	// Iterate through attribute list, then create custom pipelines requested.

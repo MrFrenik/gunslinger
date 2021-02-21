@@ -8,7 +8,7 @@
 #ifndef __GS_GRAPHICS_IMPL_H__
 #define __GS_GRAPHICS_IMPL_H__
 
-#ifdef GS_GRAPHICS_IMPL_OPENGL
+#ifndef GS_GRAPHICS_IMPL_CUSTOM
     #define GS_GRAPHICS_IMPL_DEFAULT
 #endif
 
@@ -24,7 +24,13 @@ gs_graphics_info_t* gs_graphics_info()
 
 #endif
 
-#ifdef GS_GRAPHICS_IMPL_OPENGL
+#if (defined GS_GRAPHICS_IMPL_OPENGL_CORE || defined GS_GRAPHICS_IMPL_OPENGL_ES)
+
+#ifdef GS_GRAPHICS_IMPL_OPENGL_CORE
+    #define CHECK_GL_CORE(__VA_ARGS__) __VA_ARGS__
+#else
+    #define CHECK_GL_CORE(__VA_ARGS__) gs_empty_instruction(void)
+#endif
 
 typedef enum gsgl_uniform_type
 {
@@ -125,9 +131,6 @@ typedef struct gsgl_data_t
 
 } gsgl_data_t;
 
-// Do I want to add a deferred buffer update here?... Or add that elsewhere?
-// Means I'd have to create a VM for the immediate mode...
-
 /* Internal OGL Command Buffer Op Code */
 typedef enum gs_opengl_op_code_type
 {
@@ -161,10 +164,12 @@ void gsgl_pipeline_state()
     glDisable(GL_STENCIL_TEST);
     glDisable(GL_BLEND);
 
-    gs_graphics_info_t* info = gs_graphics_info();
-    if (info->compute.available) {
-        glBindImageTexture(0, 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
-    }
+    CHECK_GL_CORE(
+        gs_graphics_info_t* info = gs_graphics_info();
+        if (info->compute.available) {
+            glBindImageTexture(0, 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+        }
+    )
 }
 
 /* GS/OGL Utilities */
@@ -182,15 +187,32 @@ int32_t gsgl_buffer_usage_to_gl_enum(gs_graphics_buffer_usage_type type)
 
 uint32_t gsgl_access_type_to_gl_access_type(gs_graphics_access_type type)
 {
-    uint32_t access = GL_WRITE_ONLY;
-    switch (type)
-    {
-        case GS_GRAPHICS_ACCESS_WRITE_ONLY:  access = GL_WRITE_ONLY;  break;
-        case GS_GRAPHICS_ACCESS_READ_ONLY:   access = GL_READ_ONLY;   break;
-        case GS_GRAPHICS_ACCESS_READ_WRITE:  access = GL_READ_WRITE;  break;
-        default: break;
-    }
-    return access;
+    CHECK_GL_CORE(
+        uint32_t access = GL_WRITE_ONLY;
+        switch (type)
+        {
+            case GS_GRAPHICS_ACCESS_WRITE_ONLY:  access = GL_WRITE_ONLY;  break;
+            case GS_GRAPHICS_ACCESS_READ_ONLY:   access = GL_READ_ONLY;   break;
+            case GS_GRAPHICS_ACCESS_READ_WRITE:  access = GL_READ_WRITE;  break;
+            default: break;
+        }
+        return access;
+    )
+    return 0;
+}
+
+uint32_t gsgl_texture_wrap_to_gl_texture_wrap(gs_graphics_texture_wrapping_type type)
+{
+    uint32_t wrap = GL_REPEAT;
+    switch (type) {
+        default:
+        case GS_GRAPHICS_TEXTURE_WRAP_REPEAT:           wrap = GL_REPEAT;           break;
+        case GS_GRAPHICS_TEXTURE_WRAP_MIRRORED_REPEAT:  wrap = GL_MIRRORED_REPEAT;  break;
+        case GS_GRAPHICS_TEXTURE_WRAP_CLAMP_TO_EDGE:    wrap = GL_CLAMP_TO_EDGE;    break;
+        CHECK_GL_CORE(case GS_GRAPHICS_TEXTURE_WRAP_CLAMP_TO_BORDER:  wrap = GL_CLAMP_TO_BORDER;  break;)
+    };
+
+    return wrap;
 }
 
 uint32_t gsgl_texture_format_to_gl_texture_format(gs_graphics_texture_format_type type)
@@ -215,7 +237,7 @@ uint32_t gsgl_shader_stage_to_gl_stage(gs_graphics_shader_stage_type type)
         default:
         case GS_GRAPHICS_SHADER_STAGE_VERTEX: stage = GL_VERTEX_SHADER; break;
         case GS_GRAPHICS_SHADER_STAGE_FRAGMENT: stage = GL_FRAGMENT_SHADER; break;
-        case GS_GRAPHICS_SHADER_STAGE_COMPUTE: stage = GL_COMPUTE_SHADER; break;
+        CHECK_GL_CORE(case GS_GRAPHICS_SHADER_STAGE_COMPUTE: stage = GL_COMPUTE_SHADER; break;)
     }
     return stage;
 }
@@ -227,7 +249,7 @@ uint32_t gsgl_primitive_to_gl_primitive(gs_graphics_primitive_type type)
         default:
         case GS_GRAPHICS_PRIMITIVE_TRIANGLES: prim = GL_TRIANGLES; break;
         case GS_GRAPHICS_PRIMITIVE_LINES: prim = GL_LINES; break;
-        case GS_GRAPHICS_PRIMITIVE_QUADS: prim = GL_QUADS; break;
+        CHECK_GL_CORE(case GS_GRAPHICS_PRIMITIVE_QUADS: prim = GL_QUADS; break;)
     }
     return prim;
 }
@@ -442,10 +464,10 @@ size_t gsgl_uniform_data_size_in_bytes(gs_graphics_uniform_type type)
 }
 
 /* Graphics Interface Creation / Initialization / Shutdown / Destruction */
-gs_graphics_i* gs_graphics_create()
+gs_graphics_t* gs_graphics_create()
 {
     // Construct new graphics interface
-    gs_graphics_i* gfx = gs_malloc_init(gs_graphics_i);
+    gs_graphics_t* gfx = gs_malloc_init(gs_graphics_t);
 
     // Construct internal data for opengl
     gfx->user_data = gs_malloc_init(gsgl_data_t);
@@ -453,7 +475,7 @@ gs_graphics_i* gs_graphics_create()
     return gfx;
 }
 
-void gs_graphics_destroy(gs_graphics_i* graphics)
+void gs_graphics_destroy(gs_graphics_t* graphics)
 {
     // Free all resources (assuming they've been freed from the GPU already)
     if (graphics == NULL) return;
@@ -488,7 +510,7 @@ void gs_graphics_destroy(gs_graphics_i* graphics)
     graphics = NULL;
 }
 
-gs_result gs_graphics_init(gs_graphics_i* graphics)
+void gs_graphics_init(gs_graphics_t* graphics)
 {
     // Push back 0 handles into slot arrays (for 0 init validation)
     gsgl_data_t* ogl = (gsgl_data_t*)graphics->user_data;
@@ -525,27 +547,26 @@ gs_result gs_graphics_init(gs_graphics_i* graphics)
     glGetIntegerv(GL_MINOR_VERSION, (GLint*)&info->minor_version);
 
     // Compute shader info
-    info->compute.available = info->major_version >= 4 && info->minor_version >= 3;
-    if (info->compute.available)
-    {
-        // Work group counts
-        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, (int32_t*)&info->compute.max_work_group_count[0]);
-        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1, (int32_t*)&info->compute.max_work_group_count[1]);
-        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 2, (int32_t*)&info->compute.max_work_group_count[2]);
-        // Work group sizes
-        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, (int32_t*)&info->compute.max_work_group_size[0]);
-        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, (int32_t*)&info->compute.max_work_group_size[1]);
-        glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, (int32_t*)&info->compute.max_work_group_size[2]);
-        // Work group invocations
-        glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, (int32_t*)&info->compute.max_work_group_invocations);
-    }
-
-    return GS_RESULT_SUCCESS;
+    CHECK_GL_CORE(
+        info->compute.available = info->major_version >= 4 && info->minor_version >= 3;
+        if (info->compute.available)
+        {
+            // Work group counts
+            glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, (int32_t*)&info->compute.max_work_group_count[0]);
+            glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1, (int32_t*)&info->compute.max_work_group_count[1]);
+            glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 2, (int32_t*)&info->compute.max_work_group_count[2]);
+            // Work group sizes
+            glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, (int32_t*)&info->compute.max_work_group_size[0]);
+            glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, (int32_t*)&info->compute.max_work_group_size[1]);
+            glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, (int32_t*)&info->compute.max_work_group_size[2]);
+            // Work group invocations
+            glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, (int32_t*)&info->compute.max_work_group_invocations);
+        }
+    )
 }
 
-gs_result gs_graphics_shutdown(gs_graphics_i* graphics)
+void gs_graphics_shutdown(gs_graphics_t* graphics)
 {
-    return GS_RESULT_SUCCESS;
 }
 
 /* Resource Creation */
@@ -599,14 +620,8 @@ gs_handle(gs_graphics_texture_t) gs_graphics_texture_create(gs_graphics_texture_
         }
     }
 
-    int32_t texture_wrap_s = desc->wrap_s == GS_GRAPHICS_TEXTURE_WRAP_REPEAT ? GL_REPEAT : 
-                         desc->wrap_s == GS_GRAPHICS_TEXTURE_WRAP_MIRRORED_REPEAT ? GL_MIRRORED_REPEAT : 
-                         desc->wrap_s == GS_GRAPHICS_TEXTURE_WRAP_CLAMP_TO_EDGE ? GL_CLAMP_TO_EDGE : 
-                         GL_CLAMP_TO_BORDER;
-    int32_t texture_wrap_t = desc->wrap_t == GS_GRAPHICS_TEXTURE_WRAP_REPEAT ? GL_REPEAT : 
-                         desc->wrap_t == GS_GRAPHICS_TEXTURE_WRAP_MIRRORED_REPEAT ? GL_MIRRORED_REPEAT : 
-                         desc->wrap_t == GS_GRAPHICS_TEXTURE_WRAP_CLAMP_TO_EDGE ? GL_CLAMP_TO_EDGE : 
-                         GL_CLAMP_TO_BORDER;
+    uint32_t texture_wrap_s = gsgl_texture_wrap_to_gl_texture_wrap(desc->wrap_s); 
+    uint32_t texture_wrap_t = gsgl_texture_wrap_to_gl_texture_wrap(desc->wrap_t);
 
     if (desc->num_mips) {
         glGenerateMipmap(GL_TEXTURE_2D);
@@ -1233,7 +1248,8 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                             if (cid && gs_slot_array_exists(ogl->textures, cid)) 
                             {
                                 gsgl_texture_t* rt = gs_slot_array_getp(ogl->textures, cid);
-                                glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + r, rt->id, 0);
+
+                                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + r, GL_TEXTURE_2D, rt->id, 0);
                             }
                         }
                     }
@@ -1571,7 +1587,7 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                                 u->location = glGetUniformBlockIndex(shader, u->name ? u->name : "__EMPTY_UNIFORM_NAME");
 
                                 // Set binding for uniform block
-                                glUniformBlockBinding(u->sid, u->location, binding); 
+                                glUniformBlockBinding(shader, u->location, binding); 
 
                                 if (u->location >= UINT32_MAX) {
                                     gs_println("Warning: Bind Uniform Buffer: Uniform not found: \"%s\"", u->name);
@@ -1604,7 +1620,7 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                             uint32_t gl_format = gsgl_texture_format_to_gl_texture_format(tex->desc.format);
 
                             // Bind image texture
-                            glBindImageTexture(0, tex->id, 0, GL_FALSE, 0, gl_access, gl_format);
+                            CHECK_GL_CORE(glBindImageTexture(0, tex->id, 0, GL_FALSE, 0, gl_access, gl_format);)
                         } break;
 
                         default: gs_assert(false); break;
@@ -1735,9 +1751,11 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                 }
 
                 // Dispatch shader 
-                glDispatchCompute(num_x_groups, num_y_groups, num_z_groups); 
-                // Memory barrier (TODO(john): make this specifically set in the pipeline state)
-                glMemoryBarrier(GL_ALL_BARRIER_BITS);
+                CHECK_GL_CORE(
+                    glDispatchCompute(num_x_groups, num_y_groups, num_z_groups); 
+                    // Memory barrier (TODO(john): make this specifically set in the pipeline state)
+                    glMemoryBarrier(GL_ALL_BARRIER_BITS);
+                )
             } break;
 
             case GS_OPENGL_OP_DRAW:
@@ -1834,8 +1852,13 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
 
                 // Draw
                 if (ogl->cache.ibo) { 
-                    if (is_instanced)   glDrawElementsInstancedBaseVertex(prim, count, itype, gs_int2voidp(start), instance_count, base_vertex);
-                    else                glDrawRangeElementsBaseVertex(prim, range_start, range_end, count, itype, gs_int2voidp(start), base_vertex);
+                    #ifdef GS_GRAPHICS_IMPL_OPENGL_CORE
+                        if (is_instanced)   glDrawElementsInstancedBaseVertex(prim, count, itype, gs_int2voidp(start), instance_count, base_vertex);
+                        else                glDrawRangeElementsBaseVertex(prim, range_start, range_end, count, itype, gs_int2voidp(start), base_vertex);
+                    #else
+                        if (is_instanced)   glDrawElementsInstanced(prim, count, itype, gs_int2voidp(start), instance_count);
+                        else                glDrawElements(prim, count, itype, gs_int2voidp(start));
+                    #endif
                 } 
                 else {
                     if (is_instanced)   glDrawArraysInstanced(prim, start, count, instance_count);
@@ -1933,34 +1956,6 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
     cb->num_commands = 0;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #endif // GS_GRAPHICS_IMPL_OPENGL
-
 #endif // __GS_GRAPHICS_IMPL_H__
 

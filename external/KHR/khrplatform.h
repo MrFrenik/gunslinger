@@ -119,7 +119,7 @@
  * This follows the return type of the function  and precedes the function
  * name in the function prototype.
  */
-#if defined(_WIN32) && !defined(_WIN32_WCE) && !defined(KHRONOS_STATIC)
+#if defined(_WIN32) && !defined(_WIN32_WCE) && !defined(__SCITECH_SNAP__)
     /* Win32 but not WinCE */
 #   define KHRONOS_APIENTRY __stdcall
 #else
@@ -154,7 +154,7 @@ typedef uint64_t                khronos_uint64_t;
 #define KHRONOS_SUPPORT_INT64   1
 #define KHRONOS_SUPPORT_FLOAT   1
 
-#elif defined(__VMS) || defined(__sgi)
+#elif defined(__VMS ) || defined(__sgi)
 
 /*
  * Using <inttypes.h>

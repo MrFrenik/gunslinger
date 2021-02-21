@@ -109,7 +109,7 @@ GS_API_DECL void gs_asset_importer_set_desc(gs_asset_importer_t* imp, gs_asset_i
 // Need a way to be able to print upon assert
 #define gs_assets_load_from_file(AM, T, PATH, ...)\
 	(\
-		gs_assert(gs_hash_table_key_exists((AM)->importers, gs_hash_str64(gs_to_str(T)))),\
+		/*gs_assert(gs_hash_table_key_exists((AM)->importers, gs_hash_str64(gs_to_str(T)))),*/\
 		(AM)->tmpi = gs_hash_table_getp((AM)->importers, gs_hash_str64(gs_to_str(T))),\
 		(AM)->tmpi->desc.load_from_file(PATH, (AM)->tmpi->tmp_ptr, ## __VA_ARGS__),\
 		(AM)->tmpi->tmpid = gs_slot_array_insert_func(&(AM)->tmpi->slot_array_indices_ptr, &(AM)->tmpi->slot_array_data_ptr, (AM)->tmpi->tmp_ptr, (AM)->tmpi->data_size, NULL),\
@@ -118,7 +118,7 @@ GS_API_DECL void gs_asset_importer_set_desc(gs_asset_importer_t* imp, gs_asset_i
 
 #define gs_assets_create_asset(AM, T, DATA)\
 	(\
-		gs_assert(gs_hash_table_key_exists((AM)->importers, gs_hash_str64(gs_to_str(T)))),\
+		/*gs_assert(gs_hash_table_key_exists((AM)->importers, gs_hash_str64(gs_to_str(T)))),*/\
 		(AM)->tmpi = gs_hash_table_getp((AM)->importers, gs_hash_str64(gs_to_str(T))),\
 		(AM)->tmpi->tmp_ptr = (DATA),\
 		(AM)->tmpi->tmpid = gs_slot_array_insert_func(&(AM)->tmpi->slot_array_indices_ptr, &(AM)->tmpi->slot_array_data_ptr, (AM)->tmpi->tmp_ptr, (AM)->tmpi->data_size, NULL),\
@@ -164,12 +164,14 @@ gs_asset_manager_t gs_asset_manager_new()
 	gs_asset_importer_desc_t font_desc  = gs_default_val();
 	gs_asset_importer_desc_t audio_desc = gs_default_val();
 	gs_asset_importer_desc_t mesh_desc  = gs_default_val();
+	gs_asset_importer_desc_t asset_desc  = gs_default_val();
 
 	tex_desc.load_from_file = (gs_asset_load_func)&gs_asset_texture_load_from_file;
 	font_desc.load_from_file = (gs_asset_load_func)&gs_asset_font_load_from_file;
 	audio_desc.load_from_file = (gs_asset_load_func)&gs_asset_audio_load_from_file;
 	mesh_desc.load_from_file = (gs_asset_load_func)&gs_asset_mesh_load_from_file;
 
+	gs_assets_register_importer(&assets, gs_asset_t, &asset_desc);
 	gs_assets_register_importer(&assets, gs_asset_texture_t, &tex_desc);
 	gs_assets_register_importer(&assets, gs_asset_font_t, &font_desc);
 	gs_assets_register_importer(&assets, gs_asset_audio_t, &audio_desc);
