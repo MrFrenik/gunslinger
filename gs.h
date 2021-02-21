@@ -3348,6 +3348,30 @@ gs_quat gs_quat_from_euler(f32 yaw_deg, f32 pitch_deg, f32 roll_deg)
     return q;
 }
 
+gs_inline
+float gs_quat_pitch(gs_quat* q)
+{
+    return atan2(2.0f * q->y * q->z + q->w * q->x, q->w * q->w - q->x * q->x - q->y * q->y + q->z * q->z);
+}
+
+gs_inline
+float gs_quat_yaw(gs_quat* q)
+{
+    return asin(-2.0f * (q->x * q->z - q->w * q->y));
+}
+
+gs_inline
+float gs_quat_roll(gs_quat* q)
+{
+    return atan2(2.0f * q->x * q->y +  q->z * q->w,  q->x * q->x + q->w * q->w - q->y * q->y - q->z * q->z);
+}
+
+gs_inline
+gs_vec3 gs_quat_to_euler(gs_quat* q)
+{
+    return gs_v3(gs_quat_yaw(q), gs_quat_pitch(q), gs_quat_roll(q));
+}
+
 /*================================================================================
 // Transform (Non-Uniform Scalar VQS)
 ================================================================================*/
@@ -5336,7 +5360,7 @@ gs_mat4 gs_camera_get_proj(gs_camera_t* cam, s32 view_width, s32 view_height)
 
 void gs_camera_offset_orientation(gs_camera_t* cam, f32 yaw, f32 pitch)
 {
-    gs_quat x = gs_quat_angle_axis(gs_deg2rad(yaw), gs_v3(0.f, 1.f, 0.f));      // Absolute up
+    gs_quat x = gs_quat_angle_axis(gs_deg2rad(yaw), gs_v3(0.f, 1.f, 0.f));              // Absolute up
     gs_quat y = gs_quat_angle_axis(gs_deg2rad(pitch), gs_camera_right(cam));            // Relative right
     cam->transform.rotation = gs_quat_mul(gs_quat_mul(x, y), cam->transform.rotation);
 }
