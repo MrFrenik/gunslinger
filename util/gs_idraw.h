@@ -203,8 +203,11 @@ GS_API_DECL void gsi_bezier(gs_immediate_draw_t* gsi, float x0, float y0, float 
 GS_API_DECL void gsi_text(gs_immediate_draw_t* gsi, float x, float y, const char* text, const gs_asset_font_t* fp, bool32_t flip_vertical, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 
 // Private Internal Utilities (Not user facing)
-GS_API_DECL const char* GetDefaultCompressedFontDataTTFBase85();
-GS_API_DECL void Decode85(const unsigned char* src, unsigned char* dst);
+GS_API_DECL const char* GSGetDefaultCompressedFontDataTTFBase85();
+GS_API_DECL void GSDecode85(const unsigned char* src, unsigned char* dst);
+GS_API_DECL unsigned int GSDecode85Byte(char c);
+GS_API_DECL unsigned int gs_decompress_length(const unsigned char* input);
+GS_API_DECL unsigned int gs_decompress(unsigned char* output, unsigned char* input, unsigned int length);
 
 /*==== Implementation ====*/
 
@@ -295,14 +298,16 @@ gs_immediate_draw_t gs_immediate_draw_new()
 	gsi.commands = gs_command_buffer_new();	// Not totally sure on the syntax for new vs. create
 
 	// Create uniform buffer
-	gs_graphics_uniform_layout_desc_t uldesc = {.type = GS_GRAPHICS_UNIFORM_MAT4};
+	gs_graphics_uniform_layout_desc_t uldesc = gs_default_val();
+	uldesc.type = GS_GRAPHICS_UNIFORM_MAT4;
 	gs_graphics_uniform_desc_t udesc = gs_default_val();
 	udesc.name = "u_mvp";
 	udesc.layout = &uldesc;
 	gsi.uniform = gs_graphics_uniform_create(&udesc);
 
 	// Create sampler buffer 
-	gs_graphics_uniform_layout_desc_t sldesc = {.type = GS_GRAPHICS_UNIFORM_SAMPLER2D};
+	gs_graphics_uniform_layout_desc_t sldesc = gs_default_val(); 
+	sldesc.type = GS_GRAPHICS_UNIFORM_SAMPLER2D;
 	gs_graphics_uniform_desc_t sbdesc = gs_default_val();
 	sbdesc.name = "u_tex";
 	sbdesc.layout = &sldesc;
@@ -343,11 +348,10 @@ gs_immediate_draw_t gs_immediate_draw_new()
 	sdesc.name = "gs_immediate_default_fill_shader";
 
 	// Vertex attr layout
-    gs_graphics_vertex_attribute_desc_t gsi_vattrs[] = {
-        (gs_graphics_vertex_attribute_desc_t){.format = GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3, .name = "a_position"},
-        (gs_graphics_vertex_attribute_desc_t){.format = GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2, .name = "a_uv"},
-        (gs_graphics_vertex_attribute_desc_t){.format = GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE4, .name = "a_color"}
-    };
+    gs_graphics_vertex_attribute_desc_t gsi_vattrs[3] = gs_default_val();
+    gsi_vattrs[0].format = GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3; gsi_vattrs[0].name = "a_position";
+    gsi_vattrs[1].format = GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2; gsi_vattrs[1].name = "a_uv";
+    gsi_vattrs[2].format = GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE4; gsi_vattrs[2].name = "a_color";
 
 	// Iterate through attribute list, then create custom pipelines requested.
 	gs_handle(gs_graphics_shader_t) shader = gs_graphics_shader_create(&sdesc);
@@ -387,13 +391,13 @@ gs_immediate_draw_t gs_immediate_draw_new()
 	// Create default font
 	gs_asset_font_t* f = &gsi.font_default;
 	stbtt_fontinfo font = gs_default_val();
-	const char* compressed_ttf_data_base85 = GetDefaultCompressedFontDataTTFBase85();
+	const char* compressed_ttf_data_base85 = GSGetDefaultCompressedFontDataTTFBase85();
 	s32 compressed_ttf_size = (((s32)strlen(compressed_ttf_data_base85) + 4) / 5) * 4;
     void* compressed_ttf_data = gs_malloc((usize)compressed_ttf_size);
-    Decode85((const unsigned char*)compressed_ttf_data_base85, (unsigned char*)compressed_ttf_data);
-    const u32 buf_decompressed_size = stb_decompress_length((unsigned char*)compressed_ttf_data);
+    GSDecode85((const unsigned char*)compressed_ttf_data_base85, (unsigned char*)compressed_ttf_data);
+    const u32 buf_decompressed_size = gs_decompress_length((unsigned char*)compressed_ttf_data);
     unsigned char* buf_decompressed_data = (unsigned char*)gs_malloc(buf_decompressed_size);
-    stb_decompress(buf_decompressed_data, (unsigned char*)compressed_ttf_data, (u32)compressed_ttf_size);
+    gs_decompress(buf_decompressed_data, (unsigned char*)compressed_ttf_data, (u32)compressed_ttf_size);
 
 	const u32 w = 512;
 	const u32 h = 512;
@@ -523,14 +527,12 @@ void gsi_flush(gs_immediate_draw_t* gsi)
 	gs_graphics_vertex_buffer_request_update(&gsi->commands, gsi->vbo, &vdesc);
 
 	// Set up all binding data
-
 	gs_graphics_bind_vertex_buffer_desc_t vbuffer = gs_default_val();
 	vbuffer.buffer = gsi->vbo;
 
-	gs_graphics_bind_uniform_desc_t ubinds[] = {
-		{.uniform = gsi->uniform, .data = &mvp},
-		{.uniform = gsi->sampler, .data = &gsi->cache.texture}
-	};
+	gs_graphics_bind_uniform_desc_t ubinds[2] = gs_default_val();
+	ubinds[0].uniform = gsi->uniform; ubinds[0].data = &mvp;
+	ubinds[1].uniform = gsi->sampler; ubinds[1].data = &gsi->cache.texture; ubinds[1].binding = 0;
 
     // Bindings for all buffers: vertex, uniform, sampler
     gs_graphics_bind_desc_t binds = gs_default_val();
@@ -542,7 +544,9 @@ void gsi_flush(gs_immediate_draw_t* gsi)
 	gs_graphics_apply_bindings(&gsi->commands, &binds);
 
 	// Submit draw
-	gs_graphics_draw(&gsi->commands, &(gs_graphics_draw_desc_t){.start = 0, .count = gs_dyn_array_size(gsi->vertices)});
+	gs_graphics_draw_desc_t draw = gs_default_val();
+	draw.start = 0; draw.count = gs_dyn_array_size(gsi->vertices);
+	gs_graphics_draw(&gsi->commands, &draw);
 
 	// Clear data
 	gs_dyn_array_clear(gsi->vertices);
@@ -1312,19 +1316,135 @@ void gsi_render_pass_submit(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, g
 // The purpose of encoding as base85 instead of "0x00,0x01,..." style is only save on _source code_ size.
 //-----------------------------------------------------------------------------
 
-unsigned int Decode85Byte(char c)                                    {return c >= '\\' ? c-36 : c-35;}
-void         Decode85(const unsigned char* src, unsigned char* dst)
+// Modified from stb lib for embedding without collisions
+GS_API_DECL unsigned int gs_decompress_length(const unsigned char* input)
+{
+    return (input[8] << 24) + (input[9] << 16) + (input[10] << 8) + input[11];
+}
+
+static unsigned char *gs__barrier;
+static unsigned char *gs__barrier2;
+static unsigned char *gs__barrier3;
+static unsigned char *gs__barrier4;
+
+static unsigned char *gs__dout;
+static void gs__match(const unsigned char *data, unsigned int length)
+{
+   // INVERSE of memmove... write each byte before copying the next...
+   assert (gs__dout + length <= gs__barrier);
+   if (gs__dout + length > gs__barrier) { gs__dout += length; return; }
+   if (data < gs__barrier4) { gs__dout = gs__barrier+1; return; }
+   while (length--) *gs__dout++ = *data++;
+}
+
+static void gs__lit(const unsigned char *data, unsigned int length)
+{
+   assert (gs__dout + length <= gs__barrier);
+   if (gs__dout + length > gs__barrier) { gs__dout += length; return; }
+   if (data < gs__barrier2) { gs__dout = gs__barrier+1; return; }
+   memcpy(gs__dout, data, length);
+   gs__dout += length;
+}
+
+#define gs__in2(x)   ((i[x] << 8) + i[(x)+1])
+#define gs__in3(x)   ((i[x] << 16) + gs__in2((x)+1))
+#define gs__in4(x)   ((i[x] << 24) + gs__in3((x)+1))
+
+static unsigned char *gs_decompress_token(unsigned char *i)
+{
+    if (*i >= 0x20) { // use fewer if's for cases that expand small
+        if (*i >= 0x80)       gs__match(gs__dout-i[1]-1, i[0] - 0x80 + 1), i += 2;
+        else if (*i >= 0x40)  gs__match(gs__dout-(gs__in2(0) - 0x4000 + 1), i[2]+1), i += 3;
+        else /* *i >= 0x20 */ gs__lit(i+1, i[0] - 0x20 + 1), i += 1 + (i[0] - 0x20 + 1);
+    } else { // more ifs for cases that expand large, since overhead is amortized
+        if (*i >= 0x18)       gs__match(gs__dout-(gs__in3(0) - 0x180000 + 1), i[3]+1), i += 4;
+        else if (*i >= 0x10)  gs__match(gs__dout-(gs__in3(0) - 0x100000 + 1), gs__in2(3)+1), i += 5;
+        else if (*i >= 0x08)  gs__lit(i+2, gs__in2(0) - 0x0800 + 1), i += 2 + (gs__in2(0) - 0x0800 + 1);
+        else if (*i == 0x07)  gs__lit(i+3, gs__in2(1) + 1), i += 3 + (gs__in2(1) + 1);
+        else if (*i == 0x06)  gs__match(gs__dout-(gs__in3(1)+1), i[4]+1), i += 5;
+        else if (*i == 0x04)  gs__match(gs__dout-(gs__in3(1)+1), gs__in2(4)+1), i += 6;
+    }
+    return i;
+}
+
+unsigned int gs_adler32(unsigned int adler32, unsigned char *buffer, unsigned int buflen)
+{
+    const unsigned long ADLER_MOD = 65521;
+    unsigned long s1 = adler32 & 0xffff, s2 = adler32 >> 16;
+    unsigned long blocklen = buflen % 5552;
+
+    unsigned long i;
+    while (buflen) {
+        for (i=0; i + 7 < blocklen; i += 8) {
+            s1 += buffer[0], s2 += s1;
+            s1 += buffer[1], s2 += s1;
+            s1 += buffer[2], s2 += s1;
+            s1 += buffer[3], s2 += s1;
+            s1 += buffer[4], s2 += s1;
+            s1 += buffer[5], s2 += s1;
+            s1 += buffer[6], s2 += s1;
+            s1 += buffer[7], s2 += s1;
+
+            buffer += 8;
+        }
+
+        for (; i < blocklen; ++i)
+            s1 += *buffer++, s2 += s1;
+
+        s1 %= ADLER_MOD, s2 %= ADLER_MOD;
+        buflen -= blocklen;
+        blocklen = 5552;
+    }
+    return (unsigned int)(s2 << 16) + (unsigned int)s1;
+}
+
+GS_API_DECL unsigned int gs_decompress(unsigned char *output, unsigned char *i, unsigned int length)
+{
+   uint32_t olen;
+   if (gs__in4(0) != 0x57bC0000) return 0;
+   if (gs__in4(4) != 0)          return 0; // error! stream is > 4GB
+   olen = gs_decompress_length(i);
+   gs__barrier2 = i;
+   gs__barrier3 = i+length;
+   gs__barrier = output + olen;
+   gs__barrier4 = output;
+   i += 16;
+
+   gs__dout = output;
+   while (1) {
+      unsigned char *old_i = i;
+      i = gs_decompress_token(i);
+      if (i == old_i) {
+         if (*i == 0x05 && i[1] == 0xfa) {
+            assert(gs__dout == output + olen);
+            if (gs__dout != output + olen) return 0;
+            if (gs_adler32(1, output, olen) != (uint32_t) gs__in4(2))
+               return 0;
+            return olen;
+         } else {
+            assert(0); /* NOTREACHED */
+            return 0;
+         }
+      }
+      assert(gs__dout <= output + olen);
+      if (gs__dout > output + olen)
+         return 0;
+   }
+}
+
+GS_API_DECL unsigned int GSDecode85Byte(char c)                                    {return c >= '\\' ? c-36 : c-35;}
+GS_API_DECL void         GSDecode85(const unsigned char* src, unsigned char* dst)
 {
     while (*src)
     {
-        unsigned int tmp = Decode85Byte(src[0]) + 85 * (Decode85Byte(src[1]) + 85 * (Decode85Byte(src[2]) + 85 * (Decode85Byte(src[3]) + 85 * Decode85Byte(src[4]))));
+        unsigned int tmp = GSDecode85Byte(src[0]) + 85 * (GSDecode85Byte(src[1]) + 85 * (GSDecode85Byte(src[2]) + 85 * (GSDecode85Byte(src[3]) + 85 * GSDecode85Byte(src[4]))));
         dst[0] = ((tmp >> 0) & 0xFF); dst[1] = ((tmp >> 8) & 0xFF); dst[2] = ((tmp >> 16) & 0xFF); dst[3] = ((tmp >> 24) & 0xFF);   // We can't assume little-endianness.
         src += 5;
         dst += 4;
     }
 }
 
-static const char __proggy_clean_ttf_compressed_data_base85[11980 + 1] =
+static const char __gs_proggy_clean_ttf_compressed_data_base85[11980 + 1] =
     "7])#######hV0qs'/###[),##/l:$#Q6>##5[n42>c-TH`->>#/e>11NNV=Bv(*:.F?uu#(gRU.o0XGH`$vhLG1hxt9?W`#,5LsCp#-i>.r$<$6pD>Lb';9Crc6tgXmKVeU2cD4Eo3R/"
     "2*>]b(MC;$jPfY.;h^`IWM9<Lh2TlS+f-s$o6Q<BWH`YiU.xfLq$N;$0iR/GX:U(jcW2p/W*q?-qmnUCI;jHSAiFWM.R*kU@C=GH?a9wp8f$e.-4^Qg1)Q-GL(lf(r/7GrRgwV%MS=C#"
     "`8ND>Qo#t'X#(v#Y9w0#1D$CIf;W'#pWUPXOuxXuU(H9M(1<q-UE31#^-V'8IRUo7Qf./L>=Ke$$'5F%)]0^#0X@U.a<r:QLtFsLcL6##lOj)#.Y5<-R&KgLwqJfLgN&;Q?gI^#DY2uL"
@@ -1412,9 +1532,9 @@ static const char __proggy_clean_ttf_compressed_data_base85[11980 + 1] =
     "GT4CPGT4CPGT4CPGT4CPGT4CPGT4CP-qekC`.9kEg^+F$kwViFJTB&5KTB&5KTB&5KTB&5KTB&5KTB&5KTB&5KTB&5KTB&5KTB&5KTB&5KTB&5KTB&5KTB&5KTB&5o,^<-28ZI'O?;xp"
     "O?;xpO?;xpO?;xpO?;xpO?;xpO?;xpO?;xpO?;xpO?;xpO?;xpO?;xpO?;xpO?;xp;7q-#lLYI:xvD=#";
 
-const char* GetDefaultCompressedFontDataTTFBase85()
+GS_API_DECL const char* GSGetDefaultCompressedFontDataTTFBase85()
 {
-    return __proggy_clean_ttf_compressed_data_base85;
+    return __gs_proggy_clean_ttf_compressed_data_base85;
 }
 
 #undef GS_IMMEDIATE_DRAW_IMPL
