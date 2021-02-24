@@ -448,27 +448,24 @@ void gs_platform_release_key(gs_platform_keycode code)
 }
 
 // Platform File IO
-char* gs_platform_read_file_contents(const char* file_path, const char* mode, int32_t* sz)
+char* gs_platform_read_file_contents(const char* file_path, const char* mode, size_t* sz)
 {
      char* buffer = 0;
     FILE* fp = fopen(file_path, mode);
-    usize _sz = 0;
+    size_t read_sz = 0;
     if (fp)
     {
-        _sz = gs_platform_file_size_in_bytes(file_path);
-        // fseek(fp, 0, SEEK_END);
-        // _sz = ftell(fp);
-        // fseek(fp, 0, SEEK_SET);
-        buffer = (char*)gs_malloc(_sz);
-        if (buffer)
-        {
-            fread(buffer, 1, _sz, fp);
+        read_sz = gs_platform_file_size_in_bytes(file_path);
+        buffer = (char*)gs_malloc(read_sz + 1);
+        if (buffer) {
+            fread(buffer, 1, read_sz, fp);
         }
-        fclose(fp);
-        // buffer[_sz] = '\0';
+        buffer[read_sz] = '\0';
     }
-    if (sz)
-        *sz = _sz;
+    if (sz) *sz = read_sz;
+
+    fclose(fp);
+
     return buffer;
 }
 
@@ -480,9 +477,11 @@ gs_result gs_platform_write_file_contents(const char* file_path, const char* mod
         size_t ret = fwrite(data, sizeof(uint8_t), sz, fp);
         if (ret == sz)
         {
+            fclose(fp);
             return GS_RESULT_SUCCESS;
         }
     }
+    fclose(fp);
     return GS_RESULT_FAILURE;
 }
 

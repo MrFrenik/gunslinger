@@ -140,6 +140,7 @@ typedef enum gs_opengl_op_code_type
     GS_OPENGL_OP_SET_VIEW_SCISSOR,
     GS_OPENGL_OP_CLEAR,
     GS_OPENGL_OP_REQUEST_BUFFER_UPDATE,
+    GS_OPENGL_OP_REQUEST_TEXTURE_UPDATE,
     GS_OPENGL_OP_BIND_PIPELINE,
     GS_OPENGL_OP_APPLY_BINDINGS,
     GS_OPENGL_OP_DISPATCH_COMPUTE,
@@ -215,17 +216,66 @@ uint32_t gsgl_texture_wrap_to_gl_texture_wrap(gs_graphics_texture_wrapping_type 
     return wrap;
 }
 
+uint32_t gsgl_texture_format_to_gl_data_type(gs_graphics_texture_format_type type)
+{
+    uint32_t format = GL_UNSIGNED_BYTE;
+    switch (type) {
+        default:
+        case GS_GRAPHICS_TEXTURE_FORMAT_A8:                 format = GL_UNSIGNED_BYTE; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_R8:                 format = GL_UNSIGNED_BYTE; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_RGB8:               format = GL_UNSIGNED_BYTE; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_RGBA8:              format = GL_UNSIGNED_BYTE; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F:            format = GL_FLOAT; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_RGBA32F:            format = GL_FLOAT; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH8:             format = GL_FLOAT; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH16:            format = GL_FLOAT; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH24:            format = GL_FLOAT; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH32F:           format = GL_FLOAT; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH24_STENCIL8:   format = GL_UNSIGNED_INT_24_8; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH32F_STENCIL8:  format = GL_FLOAT_32_UNSIGNED_INT_24_8_REV; break;
+    }
+    return format;
+}
+
 uint32_t gsgl_texture_format_to_gl_texture_format(gs_graphics_texture_format_type type)
 {
-    uint32_t format = GL_RGBA32F;
+    uint32_t dt = GL_RGBA;
     switch (type)
     {
-        case GS_GRAPHICS_TEXTURE_FORMAT_RGBA8:              format = GL_RGBA8;              break;
-        case GS_GRAPHICS_TEXTURE_FORMAT_RGB8:               format = GL_RGB8;               break;
-        case GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F:            format = GL_RGBA16F;            break;
-        case GS_GRAPHICS_TEXTURE_FORMAT_RGBA32F:            format = GL_RGBA32F;            break;
-        case GS_GRAPHICS_TEXTURE_FORMAT_R8:                 format = GL_R8;                 break;
-        default:                                                                            break;
+        default:
+        case GS_GRAPHICS_TEXTURE_FORMAT_RGBA8:              dt = GL_RGBA; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_A8:                 dt = GL_ALPHA; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_R8:                 dt = GL_RED; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_RGB8:               dt = GL_RGB; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F:            dt = GL_RGBA; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_RGBA32F:            dt = GL_RGBA; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH8:             dt = GL_DEPTH_COMPONENT; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH16:            dt = GL_DEPTH_COMPONENT; break;              
+        case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH24:            dt = GL_DEPTH_COMPONENT; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH32F:           dt = GL_DEPTH_COMPONENT; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH24_STENCIL8:   dt = GL_DEPTH_STENCIL;
+        case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH32F_STENCIL8:  dt = GL_DEPTH_STENCIL; break;
+    }
+    return dt;
+}
+
+
+uint32_t gsgl_texture_format_to_gl_texture_internal_format(gs_graphics_texture_format_type type)
+{
+    uint32_t format = GL_UNSIGNED_BYTE;
+    switch (type) {
+        case GS_GRAPHICS_TEXTURE_FORMAT_A8:                 format = GL_ALPHA; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_R8:                 format = GL_RED; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_RGB8:               format = GL_RGB8; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_RGBA8:              format = GL_RGBA8; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F:            format = GL_RGBA16F; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_RGBA32F:            format = GL_RGBA32F; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH8:             format = GL_DEPTH_COMPONENT; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH16:            format = GL_DEPTH_COMPONENT16; break;              
+        case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH24:            format = GL_DEPTH_COMPONENT24; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH32F:           format = GL_DEPTH_COMPONENT32F; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH24_STENCIL8:   format = GL_DEPTH24_STENCIL8; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH32F_STENCIL8:  format = GL_DEPTH32F_STENCIL8; break;
     }
     return format;
 }
@@ -569,10 +619,9 @@ void gs_graphics_shutdown(gs_graphics_t* graphics)
 {
 }
 
-/* Resource Creation */
-gs_handle(gs_graphics_texture_t) gs_graphics_texture_create(gs_graphics_texture_desc_t* desc)
+gsgl_texture_t gl_texture_create_internal(gs_graphics_texture_desc_t* desc)
 {
-    gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
+     gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
 
     gsgl_texture_t tex = gs_default_val();
     uint32_t width = desc->width;
@@ -643,6 +692,15 @@ gs_handle(gs_graphics_texture_t) gs_graphics_texture_create(gs_graphics_texture_
     // Set description
     tex.desc = *desc;
 
+    // Add texture to internal resource pool and return handle
+    return tex;
+}
+
+/* Resource Creation */
+gs_handle(gs_graphics_texture_t) gs_graphics_texture_create(gs_graphics_texture_desc_t* desc)
+{
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
+    gsgl_texture_t tex = gl_texture_create_internal(desc);
     // Add texture to internal resource pool and return handle
     return (gs_handle_create(gs_graphics_texture_t, gs_slot_array_insert(ogl->textures, tex)));
 }
@@ -1031,6 +1089,37 @@ void gs_graphics_set_view_scissor(gs_command_buffer_t* cb, uint32_t x, uint32_t 
 
 void gs_graphics_texture_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc)
 {
+    // Write command
+    gs_byte_buffer_write(&cb->commands, uint32_t, (uint32_t)GS_OPENGL_OP_REQUEST_TEXTURE_UPDATE);
+    cb->num_commands++;
+
+    uint32_t num_comps = 0;
+    size_t data_type_size = 0;
+    size_t total_size = 0;
+    switch(desc->format) 
+    {
+        default:
+        case GS_GRAPHICS_TEXTURE_FORMAT_RGBA8:              num_comps = 4; data_type_size = sizeof(uint8_t); break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_RGB8:               num_comps = 3; data_type_size = sizeof(uint8_t); break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_A8:                 num_comps = 1; data_type_size = sizeof(uint8_t); break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_R8:                 num_comps = 1; data_type_size = sizeof(uint8_t); break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F:            num_comps = 4; data_type_size = sizeof(float); break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_RGBA32F:            num_comps = 4; data_type_size = sizeof(float); break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH8:             num_comps = 1; data_type_size = sizeof(float); break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH16:            num_comps = 1; data_type_size = sizeof(float); break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH24:            num_comps = 1; data_type_size = sizeof(float); break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH32F:           num_comps = 1; data_type_size = sizeof(float); break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH24_STENCIL8:   num_comps = 1; data_type_size = sizeof(uint32_t); break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH32F_STENCIL8:  num_comps = 1; data_type_size = sizeof(float) + sizeof(uint8_t); break;
+
+        // NOTE(john): Because Apple is a shit company, I have to section this off and provide support for 4.1 only features.
+        // case GS_GRAPHICS_TEXTURE_FORMAT_STENCIL8:            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT8, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
+    }
+    total_size = desc->width * desc->height * num_comps * data_type_size;
+    gs_byte_buffer_write(&cb->commands, uint32_t, hndl.id);
+    gs_byte_buffer_write(&cb->commands, gs_graphics_texture_desc_t, *desc);
+    gs_byte_buffer_write(&cb->commands, size_t, total_size);
+    gs_byte_buffer_write_bulk(&cb->commands, desc->data, total_size);
 }
 
 void __gs_graphics_update_buffer_internal(gs_command_buffer_t* cb, 
@@ -1617,7 +1706,7 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
 
                             gsgl_texture_t* tex = gs_slot_array_getp(ogl->textures, tex_slot_id);
                             uint32_t gl_access = gsgl_access_type_to_gl_access_type(access);
-                            uint32_t gl_format = gsgl_texture_format_to_gl_texture_format(tex->desc.format);
+                            uint32_t gl_format = gsgl_texture_format_to_gl_texture_internal_format(tex->desc.format);
 
                             // Bind image texture
                             CHECK_GL_CORE(glBindImageTexture(0, tex->id, 0, GL_FALSE, 0, gl_access, gl_format);)
@@ -1865,6 +1954,39 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                     else                glDrawArrays(prim, start, count);
                 }
 
+            } break;
+
+            case GS_OPENGL_OP_REQUEST_TEXTURE_UPDATE:
+            {
+                gs_byte_buffer_readc(&cb->commands, uint32_t, tex_slot_id);
+                gs_byte_buffer_readc(&cb->commands, gs_graphics_texture_desc_t, desc);
+                gs_byte_buffer_readc(&cb->commands, size_t, data_size);
+
+                // Update texture with data, depending on update type (for now, just stream new data)
+
+                // Grab texture from sampler id
+                if (!tex_slot_id || !gs_slot_array_exists(ogl->textures, tex_slot_id)) {
+                    gs_timed_action(60, {
+                        gs_println("Warning:Bind Image Buffer:Texture %d does not exist.", tex_slot_id);
+                    });
+                    gs_byte_buffer_advance_position(&cb->commands, data_size);
+                }
+
+                gsgl_texture_t* tex = gs_slot_array_getp(ogl->textures, tex_slot_id);
+                uint32_t int_format = gsgl_texture_format_to_gl_texture_internal_format(desc.format);
+                uint32_t format = gsgl_texture_format_to_gl_texture_format(desc.format);
+                uint32_t dt = gsgl_texture_format_to_gl_data_type(desc.format);
+                desc.data = (cb->commands.data + cb->commands.position);
+                *tex = gl_texture_create_internal(&desc);
+
+                // Bind texture
+                // glBindTexture(GL_TEXTURE_2D, tex->id);
+                // // Update texture data
+                // // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, desc.width, desc.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, (cb->commands.data, cb->commands.position));
+                // // glTexImage2D(GL_TEXTURE_2D, 0, int_format, desc.width, desc.height, 0, format, dt, (cb->commands.data, cb->commands.position));
+                // glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, desc.width, desc.height, format, dt, (cb->commands.data + cb->commands.position));
+                // glBindTexture(GL_TEXTURE_2D, 0);
+                gs_byte_buffer_advance_position(&cb->commands, data_size);
             } break;
 
             case GS_OPENGL_OP_REQUEST_BUFFER_UPDATE:

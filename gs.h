@@ -4096,7 +4096,7 @@ GS_API_DECL uint32_t gs_platform_create_window(const char* title, uint32_t width
 GS_API_DECL uint32_t gs_platform_main_window();
 
 // Platform File IO
-GS_API_DECL char*      gs_platform_read_file_contents(const char* file_path, const char* mode, int32_t* sz);
+GS_API_DECL char*      gs_platform_read_file_contents(const char* file_path, const char* mode, size_t* sz);
 GS_API_DECL gs_result  gs_platform_write_file_contents(const char* file_path, const char* mode, void* data, size_t data_size);
 GS_API_DECL bool       gs_platform_file_exists(const char* file_path);
 GS_API_DECL int32_t    gs_platform_file_size_in_bytes(const char* file_path);
@@ -5184,16 +5184,8 @@ gs_byte_buffer_write_to_file
     const char* output_path 
 )
 {
-    FILE* fp = fopen(output_path, "wb");
-    if (fp) 
-    {
-        int32_t ret = (int32_t)fwrite(buffer->data, sizeof(u8), buffer->size, fp);
-        if (ret == buffer->size)
-        {
-            return GS_RESULT_SUCCESS;
-        }
-    }
-    return GS_RESULT_FAILURE;
+
+    return gs_platform_write_file_contents(output_path, "wb", buffer->data, buffer->size);
 }
 
 gs_result 
@@ -5203,11 +5195,18 @@ gs_byte_buffer_read_from_file
     const char* file_path 
 )
 {
-    buffer->data = (u8*)gs_read_file_contents_into_string_null_term(file_path, "rb", (usize*)&buffer->size);
+    if (!buffer) return GS_RESULT_FAILURE;
+
+    if (buffer->data) {
+        gs_byte_buffer_free(buffer);
+    }
+
+    buffer->data = (u8*)gs_platform_read_file_contents(file_path, "rb", (size_t*)&buffer->size);
     if (!buffer->data) {
         gs_assert(false);   
         return GS_RESULT_FAILURE;
     }
+
     buffer->position = 0;
     buffer->capacity = buffer->size;
     return GS_RESULT_SUCCESS;
