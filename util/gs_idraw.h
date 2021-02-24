@@ -1028,14 +1028,14 @@ void gsi_box(gs_immediate_draw_t* gsi, float x, float y, float z, float hx, floa
 	float height = hy;
 	float length = hz;
 
-	gs_vec3 v0 = gs_v3(x - width/2, y - height/2, z + length/2);
-	gs_vec3 v1 = gs_v3(x + width/2, y - height/2, z + length/2);
-	gs_vec3 v2 = gs_v3(x - width/2, y + height/2, z + length/2);
-	gs_vec3 v3 = gs_v3(x + width/2, y + height/2, z + length/2);
-	gs_vec3 v4 = gs_v3(x - width/2, y - height/2, z - length/2);
-	gs_vec3 v5 = gs_v3(x - width/2, y + height/2, z - length/2);
-	gs_vec3 v6 = gs_v3(x + width/2, y - height/2, z - length/2);
-	gs_vec3 v7 = gs_v3(x + width/2, y + height/2, z - length/2);
+	gs_vec3 v0 = gs_v3(x - width, y - height, z + length);
+	gs_vec3 v1 = gs_v3(x + width, y - height, z + length);
+	gs_vec3 v2 = gs_v3(x - width, y + height, z + length);
+	gs_vec3 v3 = gs_v3(x + width, y + height, z + length);
+	gs_vec3 v4 = gs_v3(x - width, y - height, z - length);
+	gs_vec3 v5 = gs_v3(x - width, y + height, z - length);
+	gs_vec3 v6 = gs_v3(x + width, y - height, z - length);
+	gs_vec3 v7 = gs_v3(x + width, y + height, z - length);
 
 	gs_color_t color = gs_color(r, g, b, a);
 
