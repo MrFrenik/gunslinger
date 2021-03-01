@@ -128,7 +128,7 @@ bool exists = gs_hash_table_key_exists(ht, K);
 V val = gs_hash_table_get(ht, K);               
 
 // Get pointer reference to data at key = K. NOTE: Will crash due to access exemption if key not available.
-V* valp = gs_hash_table_get(ht, K);             
+V* valp = gs_hash_table_getp(ht, K);             
 ```
 * Size/Capacity/Empty/Reserve/Clear:
 ```c
