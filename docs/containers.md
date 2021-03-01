@@ -34,7 +34,7 @@ typedef struct gs_array_header_t {
 ```
 The user maintains a pointer to the beginning of the data array in memory at all times.
 
-Since `gs_dyn_array` evaluates to a simple pointer of type `T`, the array can be randomly accessed using the `[]` operator as you would with any stadnard c array. 
+Since `gs_dyn_array` evaluates to a simple pointer of type `T`, the array can be randomly accessed using the `[]` operator as you would with any standard c array. 
 
 ```c
 float v = arr[v];
