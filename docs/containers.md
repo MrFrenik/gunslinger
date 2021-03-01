@@ -233,7 +233,7 @@ while (gs_slot_array_iter_valid(sa, it))
 ```
 
 ## Slot Map
-`gs_slot_map` works exactly the same, functionally, as `gs_slot_array`, however allows the user to use one more layer of indirection by 
+`gs_slot_map` functionally works exactly the same as `gs_slot_array`, however it allows the user to use one more layer of indirection by 
 hashing any data as a key type `K`.
 
 ```c
