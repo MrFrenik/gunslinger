@@ -25,7 +25,7 @@ Since c99 does not provide templates, generics must be achieved using macros. `g
 array => [header_info][actual array data]
 ```
 
-Where the header is a define as:
+Where the header is defined as:
 ```c
 typedef struct gs_array_header_t {
   uint32_t size;
