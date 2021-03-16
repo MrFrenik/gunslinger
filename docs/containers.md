@@ -25,7 +25,7 @@ Since c99 does not provide templates, generics must be achieved using macros. `g
 array => [header_info][actual array data]
 ```
 
-Where the header is a define as:
+Where the header is defined as:
 ```c
 typedef struct gs_array_header_t {
   uint32_t size;
@@ -34,7 +34,7 @@ typedef struct gs_array_header_t {
 ```
 The user maintains a pointer to the beginning of the data array in memory at all times.
 
-Since `gs_dyn_array` evaluates to a simple pointer of type `T`, the array can be randomly accessed using the `[]` operator as you would with any stadnard c array. 
+Since `gs_dyn_array` evaluates to a simple pointer of type `T`, the array can be randomly accessed using the `[]` operator as you would with any standard c array. 
 
 ```c
 float v = arr[v];
@@ -128,7 +128,7 @@ bool exists = gs_hash_table_key_exists(ht, K);
 V val = gs_hash_table_get(ht, K);               
 
 // Get pointer reference to data at key = K. NOTE: Will crash due to access exemption if key not available.
-V* valp = gs_hash_table_get(ht, K);             
+V* valp = gs_hash_table_getp(ht, K);             
 ```
 * Size/Capacity/Empty/Reserve/Clear:
 ```c
@@ -233,7 +233,7 @@ while (gs_slot_array_iter_valid(sa, it))
 ```
 
 ## Slot Map
-`gs_slot_map` works exactly the same, functionally, as `gs_slot_array`, however allows the user to use one more layer of indirection by 
+`gs_slot_map` functionally works exactly the same as `gs_slot_array`, however it allows the user to use one more layer of indirection by 
 hashing any data as a key type `K`.
 
 ```c

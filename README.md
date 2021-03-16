@@ -3,15 +3,16 @@
 [![Discord](https://img.shields.io/discord/485178488203116567?label=discord&logo=discord)](https://discord.gg/QXwpETB)
 ![GitHub top language](https://img.shields.io/github/languages/top/mrfrenik/gunslinger?label=c99)
 
-Gunslinger is a [stb-style](https://github.com/nothings/stb), header-only c99 framework for multimedia applications.
+Gunslinger is an [stb-style](https://github.com/nothings/stb), header-only c99 framework for multimedia applications.
 
 ## Features
 - Header-only: drag-drop into any project without any additional compiling required.
 - All externals included in the framework itself.
+- Simple API inspired by [sokol](https://github.com/floooh/sokol) headers.
 - Provides core framework for quickly developing multimedia applications: [Platform](https://github.com/MrFrenik/gunslinger/blob/master/docs/platform.md), [Graphics](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md), [Audio layers](https://github.com/MrFrenik/gunslinger/blob/master/docs/audio.md). 
 - Provides custom utilities for [math](https://github.com/MrFrenik/gunslinger/blob/master/docs/math.md) and [generic data structures](https://github.com/MrFrenik/gunslinger/blob/master/docs/containers.md).
 - Optional [helper utilties](https://github.com/MrFrenik/gunslinger/tree/master/util) are provided, such as [OpenGL 2.0-style immediate-mode rendering](https://github.com/MrFrenik/gunslinger/blob/master/util/gs_idraw.h), [asset management system](https://github.com/MrFrenik/gunslinger/blob/master/util/gs_asset.h), and a [data reflection utility](https://github.com/MrFrenik/gunslinger/blob/master/util/gs_meta.h). 
-- Supports a growing list of platforms: `Windows`, `OSX`, `Linux`, and `HTML5` currently with plans to add `Android`, `RPI`, `IOS`.
+- Supports a growing list of platforms: `Windows`, `OSX`, `Linux`, and `HTML5` currently with plans to add `UWP`, `Android`, `RPI`, `IOS`.
 - Graphics pipeline follows an explicit rendering framework, making it easier to write for modern backends, such as `Vulkan`/`DX12`/`Metal`.
 - All core layers can be fully swapped out with custom user implementations.
 - Large collection of [examples](https://github.com/MrFrenik/gs_examples) for quickly getting started.
@@ -46,4 +47,17 @@ gs_app_desc_t gs_main(int32_t argc, char** argv)
    return (gs_app_desc_t){0};
 }
 ```
+## Roadmap
 
+* Support Android/iOS/RPI/UWP backends
+* Support Vulkan/Metal/DX12 backends
+* Add support for more texture sampler types: 1D, 3D, Cube Maps, Arrays
+* Material Asset utils
+* Language Ports: (Python, JS, Rust, C#)
+* Add platform-independent threading utils to framework
+* MRT
+* Job System Util
+* Write more docs for github
+* Hot-reload util
+* Remove all externals from core framework
+* Add more texture formats (including compressed)
