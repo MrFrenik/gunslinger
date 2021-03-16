@@ -65,8 +65,10 @@ bool32_t gs_audio_load_ogg_data_from_file
     void** samples
 )
 {
-    *sample_count = stb_vorbis_decode_filename(file_path, channels, 
-        sample_rate, (s16**)samples);
+    size_t len = 0;
+    char* file_data = gs_platform_read_file_contents(file_path, "rb", &len);
+    *sample_count = stb_vorbis_decode_memory((const unsigned char*)file_data, (size_t)len, channels, sample_rate, (s16**)samples);
+    gs_free(file_data);
 
     if (!*samples || *sample_count == -1)
     {
@@ -89,10 +91,12 @@ bool32_t gs_audio_load_wav_data_from_file
     void** samples
 )
 {
+    size_t len = 0;
+    char* file_data = gs_platform_read_file_contents(file_path, "rb", &len);
     uint64_t total_pcm_frame_count = 0;
-    *samples = drwav_open_file_and_read_pcm_frames_s16(
-        file_path, (uint32_t*)channels, (uint32_t*)sample_rate, 
-        &total_pcm_frame_count, NULL);
+    *samples =  drwav_open_memory_and_read_pcm_frames_s16(
+            file_data, len, (uint32_t*)channels, (uint32_t*)sample_rate, &total_pcm_frame_count, NULL);
+    gs_free(file_data);
 
     if (!*samples) {
         *samples = NULL; 
@@ -114,11 +118,13 @@ bool32_t gs_audio_load_mp3_data_from_file
     void** samples
 )
 {
-    // Decode entire mp3 
+    size_t len = 0;
+    char* file_data = gs_platform_read_file_contents(file_path, "rb", &len);
     uint64_t total_pcm_frame_count = 0;
     drmp3_config cfg = gs_default_val();
-    *samples = drmp3_open_file_and_read_pcm_frames_s16(
-        file_path, &cfg, &total_pcm_frame_count, NULL);
+    *samples =  drmp3_open_memory_and_read_pcm_frames_s16(
+            file_data, len, &cfg, &total_pcm_frame_count, NULL);
+    gs_free(file_data);
 
     if (!*samples) {
         *samples = NULL; 
@@ -141,8 +147,7 @@ gs_handle(gs_audio_source_t) gs_audio_load_from_file(const char* file_path)
     gs_handle(gs_audio_source_t) handle = gs_handle_invalid(gs_audio_source_t);
     bool32_t load_successful = false;
 
-    if(!gs_platform_file_exists(file_path)) 
-    {
+    if(!gs_platform_file_exists(file_path)) {
         gs_println("WARNING: Could not open file: %s", file_path);
         return handle;
     }
@@ -150,11 +155,11 @@ gs_handle(gs_audio_source_t) gs_audio_load_from_file(const char* file_path)
     char ext[64] = gs_default_val();
     gs_util_str_to_lower(file_path, ext, sizeof(ext));
     gs_platform_file_extension(ext, sizeof(ext), ext);
+    gs_println("Audio: File Extension: %s", ext);
 
     // Load OGG data
     if (gs_string_compare_equal(ext, "ogg"))
     {
-
         load_successful = gs_audio_load_ogg_data_from_file (
             file_path, 
             &src.sample_count, 
@@ -167,6 +172,7 @@ gs_handle(gs_audio_source_t) gs_audio_load_from_file(const char* file_path)
     // Load WAV data
     if (gs_string_compare_equal(ext, "wav"))
     {
+        gs_println("Audio: Loading Wav");
         load_successful = gs_audio_load_wav_data_from_file (
             file_path, 
             &src.sample_count, 

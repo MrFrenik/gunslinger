@@ -859,7 +859,7 @@ gs_handle(gs_graphics_shader_t) gs_graphics_shader_create(gs_graphics_shader_des
         uint32_t sid = glCreateShader(stage);
 
         if (!sid) {
-            gs_println ("Error: Failed to allocate memory for shader: '%s': stage: {put stage id here}.", desc->name);
+            gs_println ("Error: Failed to allocate memory for shader: '%s': stage: {put stage id here}", desc->name);
             gs_assert(sid);
         }
 
