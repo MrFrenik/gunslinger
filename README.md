@@ -12,7 +12,7 @@ Gunslinger is an [stb-style](https://github.com/nothings/stb), header-only c99 f
 - Provides core framework for quickly developing multimedia applications: [Platform](https://github.com/MrFrenik/gunslinger/blob/master/docs/platform.md), [Graphics](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md), [Audio layers](https://github.com/MrFrenik/gunslinger/blob/master/docs/audio.md). 
 - Provides custom utilities for [math](https://github.com/MrFrenik/gunslinger/blob/master/docs/math.md) and [generic data structures](https://github.com/MrFrenik/gunslinger/blob/master/docs/containers.md).
 - Optional [helper utilties](https://github.com/MrFrenik/gunslinger/tree/master/util) are provided, such as [OpenGL 2.0-style immediate-mode rendering](https://github.com/MrFrenik/gunslinger/blob/master/util/gs_idraw.h), [asset management system](https://github.com/MrFrenik/gunslinger/blob/master/util/gs_asset.h), and a [data reflection utility](https://github.com/MrFrenik/gunslinger/blob/master/util/gs_meta.h). 
-- Supports a growing list of platforms: `Windows`, `OSX`, `Linux`, and `HTML5` currently with plans to add `UWP`, `Android`, `RPI`, `IOS`.
+- Supports a growing list of platforms: `Windows`, `OSX`, `Linux`, `Android`, and `HTML5` currently with plans to add `UWP`, `RPI`, `IOS`.
 - Graphics pipeline follows an explicit rendering framework, making it easier to write for modern backends, such as `Vulkan`/`DX12`/`Metal`.
 - All core layers can be fully swapped out with custom user implementations.
 - Large collection of [examples](https://github.com/MrFrenik/gs_examples) for quickly getting started.
