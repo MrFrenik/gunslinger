@@ -242,8 +242,8 @@ CREDITS
 #include <stdio.h>      // need FILE
 #include <string.h>     // stb_define_hash needs memcpy/memset
 #include <time.h>       // stb_dirtree
-#ifdef __MINGW32__
-   #include <fcntl.h>   // O_RDWR
+#if defined(__MINGW32__) || defined(__TINYC__) 
+   #include <fcntl.h>   
 #endif
 
 #ifdef STB_PERSONAL
@@ -1537,7 +1537,7 @@ int stb_is_pow2(size_t n)
 
 // tricky use of 4-bit table to identify 5 bit positions (note the '-1')
 // 3-bit table would require another tree level; 5-bit table wouldn't save one
-#if defined(_WIN32) && !defined(__MINGW32__)
+#if defined(_WIN32) && !defined(__MINGW32__) && !defined(__TINYC__)
 #pragma warning(push)
 #pragma warning(disable: 4035)  // disable warning about no return value
 int stb_log2_floor(size_t n)
@@ -5603,7 +5603,7 @@ static FILE *stb__open_temp_file(char *temp_name, char *src_name, const char *mo
    #else
    {
       stb_p_strcpy_s(temp_name+p, 65536, "stmpXXXXXX");
-      #ifdef __MINGW32__
+      #if defined(__MINGW32__) || defined(__TINYC__) 
          stb_p_mktemp(temp_name);
          int fd = open(temp_name, O_RDWR);
       #else
@@ -7182,7 +7182,7 @@ static void stb__dirtree_scandir(char *path, time_t last_time, stb_dirtree *acti
    n = stb_arr_lastn(active->dirs);
 
    if (stb__showfile) printf("[");
-   if( (hFile = (long) _wfindfirsti64( (wchar_t *) full_path, &c_file )) != -1L ) {
+   if( (hFile = (long) _findfirst( (wchar_t *) full_path, &c_file )) != -1L ) {
       do {
          if (stb__showfile) printf(")");
          if (c_file.attrib & _A_SUBDIR) {
@@ -7226,7 +7226,7 @@ static void stb__dirtree_scandir(char *path, time_t last_time, stb_dirtree *acti
             stb__dirtree_add_file(temp, n, c_file.size, c_file.time_write, active);
          }
          if (stb__showfile) printf("(");
-      } while( _wfindnexti64( hFile, &c_file ) == 0 );
+      } while( _findnext( hFile, &c_file ) == 0 );
       if (stb__showfile) printf("]");
       _findclose( hFile );
    }

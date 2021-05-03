@@ -13,6 +13,7 @@
     #define GS_AUDIO_IMPL_DEFAULT
 #endif
 
+
 /*=============================
 // Default Impl
 =============================*/
@@ -21,8 +22,8 @@
 
 // Includes
 #include "../external/stb/stb_vorbis.c"
-#include "../external/dr_libs/dr_wav.h"
-#include "../external/dr_libs/dr_mp3.h"
+#define MINIAUDIO_IMPLEMENTATION
+#include "../external/miniaudio/miniaudio.h"
 
 /* Audio Create, Destroy, Init, Shutdown, Submit */
 gs_audio_t* gs_audio_create()
@@ -411,8 +412,6 @@ int32_t gs_audio_get_num_channels(gs_handle(gs_audio_source_t) src)
 
 #ifdef GS_AUDIO_IMPL_MINIAUDIO
 
-#define MINIAUDIO_IMPLEMENTATION
-#include "../external/miniaudio/miniaudio.h"
 
 typedef struct miniaudio_data_t
 {
