@@ -23,7 +23,7 @@
 // Includes
 #include "../external/stb/stb_vorbis.c"
 #define MINIAUDIO_IMPLEMENTATION
-#include "../external/miniaudio/miniaudio.h"
+#include "../external/miniaudio/miniaudio.h" // dr_wav dr_wav inluded
 
 /* Audio Create, Destroy, Init, Shutdown, Submit */
 gs_audio_t* gs_audio_create()

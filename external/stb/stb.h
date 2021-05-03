@@ -243,7 +243,7 @@ CREDITS
 #include <string.h>     // stb_define_hash needs memcpy/memset
 #include <time.h>       // stb_dirtree
 #if defined(__MINGW32__) || defined(__TINYC__) 
-   #include <fcntl.h>   
+   #include <fcntl.h>   // O_RDWR
 #endif
 
 #ifdef STB_PERSONAL
