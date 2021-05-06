@@ -1764,7 +1764,7 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                 }
                 else {
                     glEnable(GL_DEPTH_TEST);    
-                    gsgl_depth_func_to_gl_depth_func(pip->depth.func);
+                    glDepthFunc(gsgl_depth_func_to_gl_depth_func(pip->depth.func));
                 }
 
                 /* Stencil */
