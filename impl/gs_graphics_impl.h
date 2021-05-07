@@ -1006,6 +1006,13 @@ gs_handle(gs_graphics_pipeline_t) gs_graphics_pipeline_create(gs_graphics_pipeli
 /* Resource Destruction */
 void gs_graphics_texture_destroy(gs_handle(gs_graphics_texture_t) hndl)
 {
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
+    if (gs_slot_array_exists(ogl->textures, hndl.id)) {
+        gsgl_texture_t* tex = gs_slot_array_getp(ogl->textures, hndl.id);
+        gs_assert(tex);
+        glDeleteTextures(1, &tex->id);
+        gs_slot_array_erase(ogl->textures, hndl.id);
+    }
 }
 
 // void gs_graphics_buffer_destroy(gs_handle(gs_graphics_buffer_t) hndl)
