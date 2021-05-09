@@ -1006,6 +1006,13 @@ gs_handle(gs_graphics_pipeline_t) gs_graphics_pipeline_create(gs_graphics_pipeli
 /* Resource Destruction */
 void gs_graphics_texture_destroy(gs_handle(gs_graphics_texture_t) hndl)
 {
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
+    if (gs_slot_array_exists(ogl->textures, hndl.id)) {
+        gsgl_texture_t* tex = gs_slot_array_getp(ogl->textures, hndl.id);
+        gs_assert(tex);
+        glDeleteTextures(1, &tex->id);
+        gs_slot_array_erase(ogl->textures, hndl.id);
+    }
 }
 
 // void gs_graphics_buffer_destroy(gs_handle(gs_graphics_buffer_t) hndl)
@@ -1339,6 +1346,16 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                                 gsgl_texture_t* rt = gs_slot_array_getp(ogl->textures, cid);
 
                                 glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + r, GL_TEXTURE_2D, rt->id, 0);
+                            }
+                        }
+
+                        // Bind depth attachment
+                        {
+                            uint32_t depth_id = rp->depth.id;
+                            if (depth_id && gs_slot_array_exists(ogl->textures, depth_id))
+                            {
+                                gsgl_texture_t* rt = gs_slot_array_getp(ogl->textures, depth_id);
+                                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, rt->id, 0);
                             }
                         }
                     }
@@ -1764,7 +1781,7 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                 }
                 else {
                     glEnable(GL_DEPTH_TEST);    
-                    gsgl_depth_func_to_gl_depth_func(pip->depth.func);
+                    glDepthFunc(gsgl_depth_func_to_gl_depth_func(pip->depth.func));
                 }
 
                 /* Stencil */

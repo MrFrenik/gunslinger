@@ -50,8 +50,11 @@ It is possible to use gunslinger without this entry point by defining `GS_NO_HIJ
 
 int32_t main(int32_t argc, char** argv)
 {
-   gs_app_desc_t app = {0};       // Fill this with whatever the application needs
-   gs_engine_create(app)->run();  // Create framework instance and run application
+   gs_app_desc_t app = {0}; // Fill this with whatever your app needs
+   gs_engine_create(app);   // Create instance of engine for framework and run
+   while (gs_engine_app()->is_running) {
+       gs_engine_frame();
+   }
    return 0;
 }
 ```

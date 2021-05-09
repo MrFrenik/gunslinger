@@ -511,7 +511,7 @@ bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_opti
     for (uint32_t i = 0; i < data->meshes_count; ++i)
     {
         // Initialize mesh data
-        gs_gfxt_mesh_raw_data_t* mesh = out[i];
+        gs_gfxt_mesh_raw_data_t* mesh = &((*out)[i]);
         mesh->prim_count = data->meshes[i].primitives_count;
         mesh->vertex_sizes = (size_t*)gs_malloc(sizeof(size_t) * mesh->prim_count);
         mesh->index_sizes = (size_t*)gs_malloc(sizeof(size_t) * mesh->prim_count);
