@@ -22,8 +22,8 @@
 
 // Includes
 #include "../external/stb/stb_vorbis.c"
-#define MINIAUDIO_IMPLEMENTATION
-#include "../external/miniaudio/miniaudio.h" // dr_wav dr_wav inluded
+#include "../external/dr_libs/dr_wav.h"
+#include "../external/dr_libs/dr_mp3.h"
 
 /* Audio Create, Destroy, Init, Shutdown, Submit */
 gs_audio_t* gs_audio_create()
@@ -411,7 +411,8 @@ int32_t gs_audio_get_num_channels(gs_handle(gs_audio_source_t) src)
 =============================*/
 
 #ifdef GS_AUDIO_IMPL_MINIAUDIO
-
+#define MINIAUDIO_IMPLEMENTATION
+#include "../external/miniaudio/miniaudio.h"
 
 typedef struct miniaudio_data_t
 {
