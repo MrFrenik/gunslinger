@@ -34,6 +34,7 @@ gs_graphics_info_t* gs_graphics_info()
 
 typedef enum gsgl_uniform_type
 {
+    GSGL_UNIFORMTYPE_BOOL,
     GSGL_UNIFORMTYPE_FLOAT,
     GSGL_UNIFORMTYPE_INT,
     GSGL_UNIFORMTYPE_VEC2,
@@ -420,6 +421,7 @@ gsgl_uniform_type gsgl_uniform_type_to_gl_uniform_type(gs_graphics_uniform_type 
     gsgl_uniform_type type = GSGL_UNIFORMTYPE_FLOAT;
     switch (gstype) {
         default:
+        case GS_GRAPHICS_UNIFORM_BOOL: type = GSGL_UNIFORMTYPE_BOOL; break;
         case GS_GRAPHICS_UNIFORM_FLOAT: type = GSGL_UNIFORMTYPE_FLOAT; break;
         case GS_GRAPHICS_UNIFORM_INT: type = GSGL_UNIFORMTYPE_INT; break;
         case GS_GRAPHICS_UNIFORM_VEC2: type = GSGL_UNIFORMTYPE_VEC2; break;
@@ -499,6 +501,7 @@ size_t gsgl_uniform_data_size_in_bytes(gs_graphics_uniform_type type)
 {
     size_t sz = 0;
     switch (type) {
+        case GS_GRAPHICS_UNIFORM_BOOL: sz = sizeof(bool); break;
         case GS_GRAPHICS_UNIFORM_FLOAT: sz = sizeof(float); break;
         case GS_GRAPHICS_UNIFORM_INT:   sz = sizeof(int32_t); break;
         case GS_GRAPHICS_UNIFORM_VEC2:  sz = 2 * sizeof(float); break;
@@ -1571,6 +1574,14 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                                 // Switch on uniform type to upload data
                                 switch (u->type) 
                                 {
+
+                                    case GSGL_UNIFORMTYPE_BOOL: //GSGL size of bool is uint32, which is fine for a normally one byte bool in C
+                                    {
+                                    gs_assert(u->size == sizeof(bool));
+                                    gs_byte_buffer_read_bulkc(&cb->commands, bool, v, u->size);
+                                    glUniform1f(u->location, v);
+                                    } break;
+
                                     case GSGL_UNIFORMTYPE_FLOAT: 
                                     {
                                         gs_assert(u->size == sizeof(float));

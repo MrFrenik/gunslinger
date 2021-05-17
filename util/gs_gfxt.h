@@ -243,6 +243,7 @@ gs_gfxt_uniform_block_t gs_gfxt_uniform_block_create(gs_gfxt_uniform_block_desc_
 		// Add to data offset based on type
 		switch (ud->type) {
 			default:
+            case GS_GRAPHICS_UNIFORM_BOOL:		offset += sizeof(bool); break;
 		    case GS_GRAPHICS_UNIFORM_FLOAT:		offset += sizeof(float); break;
 		    case GS_GRAPHICS_UNIFORM_INT:		offset += sizeof(int32_t); break;
 		    case GS_GRAPHICS_UNIFORM_VEC2:		offset += sizeof(gs_vec2); break;
@@ -367,7 +368,8 @@ void gs_gfxt_material_set_uniform(gs_gfxt_material_t* mat, const char* name, voi
 
 	switch (u->type)
 	{
-	    case GS_GRAPHICS_UNIFORM_FLOAT: gs_byte_buffer_write(&mat->uniform_data, float, *(float*)data); 	break;
+        case GS_GRAPHICS_UNIFORM_BOOL: gs_byte_buffer_write(&mat->uniform_data, bool, *(bool*)data); 	break;
+        case GS_GRAPHICS_UNIFORM_FLOAT: gs_byte_buffer_write(&mat->uniform_data, float, *(float*)data); 	break;
 	    case GS_GRAPHICS_UNIFORM_INT: 	gs_byte_buffer_write(&mat->uniform_data, int32_t, *(int32_t*)data); break;
 	    case GS_GRAPHICS_UNIFORM_VEC2:  gs_byte_buffer_write(&mat->uniform_data, gs_vec2, *(gs_vec2*)data); break;
 	    case GS_GRAPHICS_UNIFORM_VEC3:  gs_byte_buffer_write(&mat->uniform_data, gs_vec3, *(gs_vec3*)data); break;
