@@ -83,6 +83,7 @@ typedef struct gs_app_desc_t
     float frame_rate;             // Desired frame rate for application
     bool32 enable_vsync;          // Whether or not vsync is enabled
     bool32 is_running;            // Internal indicator for framework to know whether application should continue running
+    bool32 debug_gfx;             // Whether or not to enable debug logging for the graphics API
     void* user_data;              // Any user data for the application
 } gs_app_desc_t;
 ```
