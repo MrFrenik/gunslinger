@@ -196,6 +196,7 @@ GS_API_DECL void* gs_gfxt_raw_data_default_impl(GS_GFXT_HNDL hndl, void* user_da
 GS_API_DECL gs_gfxt_mesh_t gs_gfxt_mesh_unit_quad_generate(gs_gfxt_mesh_import_options_t* options);
 gs_handle(gs_graphics_texture_t) gs_gfxt_texture_generate_default();
 
+#ifdef GS_GFXT_IMPL
 /*==== Implementation ====*/
 
 // Creation/Destruction
@@ -874,6 +875,8 @@ gs_handle(gs_graphics_texture_t) gs_gfxt_texture_generate_default()
     // Create dynamic texture
     return gs_graphics_texture_create(&desc);
 }
+
+#endif // GS_GFXT_IMPL
 
 #endif // __GS_GFXT_H__
 
