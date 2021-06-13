@@ -3978,7 +3978,7 @@ typedef struct gs_opengl_video_settings_t
 typedef union gs_graphics_api_settings_t
 {
     gs_opengl_video_settings_t opengl;
-    int32_t                    dummy;   
+    bool32                     debug;
 } gs_graphics_api_settings_t;
 
 typedef struct gs_platform_video_settings_t
@@ -5158,6 +5158,7 @@ typedef struct gs_app_desc_t
     float frame_rate;
     bool32 enable_vsync;
     bool32 is_running;
+    bool32 debug_gfx;
     void* user_data;
 
     // Platform specific data
@@ -6185,6 +6186,9 @@ gs_engine_t* gs_engine_create(gs_app_desc_t app_desc)
 
         // Need to have video settings passed down from user
         gs_engine_subsystem(platform) = gs_platform_create();
+
+        // Enable graphics API debugging
+        gs_engine_subsystem(platform)->settings.video.graphics.debug = app_desc.debug_gfx;
 
         // Default initialization for platform here
         gs_platform_init(gs_engine_subsystem(platform));
