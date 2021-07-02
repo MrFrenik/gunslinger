@@ -199,6 +199,8 @@ GS_API_DECL void gsi_box(gs_immediate_draw_t* gsi, float x0, float y0, float z0,
 GS_API_DECL void gsi_sphere(gs_immediate_draw_t* gsi, float cx, float cy, float cz, float radius, uint8_t r, uint8_t g, uint8_t b, uint8_t a, gs_graphics_primitive_type type);
 GS_API_DECL void gsi_bezier(gs_immediate_draw_t* gsi, float x0, float y0, float x1, float y1, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 
+// Draw planes/poly groups
+
 // Text Drawing Util
 GS_API_DECL void gsi_text(gs_immediate_draw_t* gsi, float x, float y, const char* text, const gs_asset_font_t* fp, bool32_t flip_vertical, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 
