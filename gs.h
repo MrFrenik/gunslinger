@@ -622,6 +622,11 @@ typedef bool32_t          bool32;
 // gs utils
 ============================================================*/
 
+/** @defgroup gs_util Common Utils
+ *  Gunslinger Common Utils
+ *  @{
+ */
+
 // Helper macro for compiling to nothing
 #define gs_empty_instruction(...)
 
@@ -1437,9 +1442,16 @@ size_t gs_hash_bytes(void *p, size_t len, size_t seed)
 GS_API_DECL bool32_t gs_util_load_texture_data_from_file(const char* file_path, int32_t* width, int32_t* height, uint32_t* num_comps, void** data, bool32_t flip_vertically_on_load);
 GS_API_DECL bool32_t gs_util_load_texture_data_from_memory(const void* memory, size_t sz, int32_t* width, int32_t* height, uint32_t* num_comps, void** data, bool32_t flip_vertically_on_load);
 
+/** @} */ // end of gs_util
+
 /*========================
 // GS_CONTAINERS
 ========================*/
+
+/** @defgroup gs_containers Containers
+ *  Gunslinger Containers
+ *  @{
+ */
 
 /*========================
 // Byte Buffer
@@ -2310,9 +2322,16 @@ void gs_command_buffer_free(gs_command_buffer_t* cb)
     typedef gs_command_buffer_t gs_cmdbuf;
 #endif
 
+/** @} */ // end of gs_containers
+
 /*========================
 // GS_MEMORY
 ========================*/
+
+/** @defgroup gs_memory Memory
+ *  Gunslinger Memory
+ *  @{
+ */
 
 #define gs_ptr_add(P, BYTES) \
     (((uint8_t*)P + (BYTES)))
@@ -2428,12 +2447,14 @@ GS_API_DECL void* gs_paged_allocator_allocate(gs_paged_allocator_t* pa);
 GS_API_DECL void gs_paged_allocator_deallocate(gs_paged_allocator_t* pa, void* data);
 GS_API_DECL void gs_paged_allocator_clear(gs_paged_allocator_t* pa);
 
+/** @} */ // end of gs_memory
+
 /*========================
 // GS_MATH
 ========================*/
 
-/** @defgroup group1 The First Group
- *  This is the first group
+/** @defgroup gs_math Math
+ *  Gunslinger Math
  *  @{
  */
 
@@ -2544,7 +2565,7 @@ float gs_ease_cubic_in_out(float t, float b, float c, float d)
 // Vec2
 ================================================================================*/
 
-/** @brief class C1 in group 1 */
+/** @brief struct gs_vec2 in gs math */
 typedef struct 
 {
     union 
@@ -2556,8 +2577,6 @@ typedef struct
         };
     };
 } gs_vec2;
-
-/** @} */ // end of group1
 
 gs_inline gs_vec2 
 gs_vec2_ctor(f32 _x, f32 _y) 
@@ -3953,9 +3972,16 @@ gs_vec4 gs_aabb_window_coords(gs_aabb_t* aabb, gs_camera_t* camera, gs_vec2 wind
 }
 */
 
+/** @} */ // end of gs_math
+
 /*========================
 // GS_PLATFORM
 ========================*/
+
+/** @defgroup gs_platform Platform
+ *  Gunslinger Platform
+ *  @{
+ */
 
 /*============================================================
 // Platform Time
@@ -4519,9 +4545,16 @@ GS_API_DECL void     gs_platform_framebuffer_size(uint32_t handle, uint32_t* w, 
 GS_API_DECL uint32_t gs_platform_framebuffer_width(uint32_t handle);
 GS_API_DECL uint32_t gs_platform_framebuffer_height(uint32_t handle);
 
+/** @} */ // end of gs_platform
+
 /*=============================
 // GS_AUDIO
 =============================*/
+
+/** @defgroup gs_audio Audio
+ *  Gunslinger Audio
+ *  @{
+ */
 
 typedef enum gs_audio_file_type
 {
@@ -4661,9 +4694,16 @@ GS_API_DECL bool32_t gs_audio_load_mp3_data_from_file(const char* file_path, int
     #define gsa_restart   gs_audio_restart
 #endif
 
+/** @} */ // end of gs_audio
+
 /*=============================
 // GS_GRAPHICS
 =============================*/
+
+/** @defgroup gs_graphics Graphics
+ *  Gunslinger Graphics
+ *  @{
+ */
 
 // Graphics Pipeline
 
@@ -5275,6 +5315,8 @@ typedef gs_handle(gs_graphics_pipeline_t)    gs_pipeline;
 
 #endif
 
+/** @} */ // end of gs_graphics
+
 /*==========================
 // GS_ASSET_TYPES
 ==========================*/
@@ -5395,6 +5437,11 @@ GS_API_DECL bool gs_util_load_gltf_data_from_memory(const void* memory, size_t s
 // GS_ENGINE / GS_APP
 ==========================*/
 
+/** @defgroup gs_app App/Engine
+ *  Gunslinger App/Engine
+ *  @{
+ */
+
 // Application descriptor for user application
 typedef struct gs_app_desc_t
 {
@@ -5463,6 +5510,8 @@ GS_API_DECL gs_app_desc_t gs_main(int32_t argc, char** argv);
 
 #define gs_engine_user_data(__T)\
     (__T*)(gs_engine_instance()->ctx.app.user_data)
+
+/** @} */ // end of gs_app
 
 /*==================================================================================================================================
 // ===== Gunslinger Implementation ============================================================================================== //
