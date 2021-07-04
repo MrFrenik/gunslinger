@@ -44,6 +44,11 @@
 
 /*==== Interface ====*/
 
+/** @defgroup gs_immediate_draw_util Immediate Draw Util
+ *  Gunslinger Immediate Draw Util
+ *  @{
+ */
+
 gs_enum_decl(gsi_matrix_type,
 	GSI_MATRIX_MODELVIEW,
 	GSI_MATRIX_PROJECTION
@@ -210,6 +215,8 @@ GS_API_DECL void GSDecode85(const unsigned char* src, unsigned char* dst);
 GS_API_DECL unsigned int GSDecode85Byte(char c);
 GS_API_DECL unsigned int gs_decompress_length(const unsigned char* input);
 GS_API_DECL unsigned int gs_decompress(unsigned char* output, unsigned char* input, unsigned int length);
+
+/** @} */ // end of gs_immediate_draw_util
 
 /*==== Implementation ====*/
 

@@ -46,6 +46,11 @@
 
 /*==== Interface ====*/
 
+/** @defgroup gs_physics_util Physics Util
+ *  Gunslinger Physics Util
+ *  @{
+ */
+
 /*==== Util ====*/
 
 typedef struct gs_phys_xform_t {
@@ -309,6 +314,8 @@ GS_API_DECL gs_raycast_data_t  gs_physics_scene_raycast(gs_physics_scene_t* scen
     Rigid Body
     Collision Shape
 */
+
+/** @} */ // end of gs_physics_util
 
 /*==== Implementation ====*/
 
