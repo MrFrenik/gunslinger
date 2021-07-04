@@ -5372,6 +5372,7 @@ typedef struct gs_asset_font_t
 
 GS_API_DECL bool gs_asset_font_load_from_file(const char* path, void* out, uint32_t point_size);
 GS_API_DECL bool gs_asset_font_load_from_memory(const void* memory, size_t sz, void* out, uint32_t point_size);
+GS_API_DECL gs_vec2 gs_asset_font_get_text_bounds(const gs_asset_font_t* font, const char* text);
 
 // Audio
 typedef struct gs_asset_audio_t
@@ -6455,6 +6456,35 @@ bool gs_asset_font_load_from_memory(const void* memory, size_t sz, void* out, ui
     gs_free(alpha_bitmap);
     gs_free(flipmap);
     return success;
+}
+
+GS_API_DECL gs_vec2 gs_asset_font_get_text_bounds(const gs_asset_font_t* fp, const char* text)
+{
+    gs_vec2 bounds = gs_v2s(0.f);
+
+    if (!fp || !text) return bounds;
+    float x = 0.f;
+    float y = 0.f;
+
+    while (text[0] != '\0')
+    {
+        char c = text[0];
+        if (c >= 32 && c <= 127) 
+        {
+            stbtt_aligned_quad q = gs_default_val();
+            stbtt_GetBakedQuad((stbtt_bakedchar*)fp->glyphs, fp->texture.desc.width, fp->texture.desc.height, c - 32, &x, &y, &q, 1);
+
+            // gs_vec3 v0 = gs_v3(q.x0, q.y0, 0.f);    // TL
+            // gs_vec3 v1 = gs_v3(q.x1, q.y0, 0.f);    // TR
+            // gs_vec3 v2 = gs_v3(q.x0, q.y1, 0.f);    // BL
+            // gs_vec3 v3 = gs_v3(q.x1, q.y1, 0.f);    // BR
+
+            bounds.x += q.x1;
+            bounds.y = gs_max(gs_max(bounds.y, q.y0), q.y1);
+        }
+    };
+
+    return bounds;
 }
 
 // Audio
