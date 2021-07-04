@@ -1450,7 +1450,6 @@ GS_API_DECL bool32_t gs_util_load_texture_data_from_memory(const void* memory, s
 
 /** @defgroup gs_containers Containers
  *  Gunslinger Containers
- *  @{
  */
 
 /*========================
@@ -1563,6 +1562,12 @@ GS_API_DECL void gs_byte_buffer_memset(gs_byte_buffer_t* buffer, uint8_t val);
 /*===================================
 // Dynamic Array
 ===================================*/
+
+/** @defgroup gs_dyn_array Dynamic Array
+ *  @ingroup gs_containers
+ *  Dynamic Array
+ *  @{
+ */
 
 typedef struct gs_dyn_array
 {
@@ -1711,6 +1716,9 @@ void gs_dyn_array_set_data_i(void** arr, void* val, size_t val_len, uint32_t off
             (__ARR) = NULL;\
         }\
     } while (0)
+
+/** @} */ // end of gs_dyn_array
+/** @} */ // end of gs_containers
 
 /*===================================
 // Hash Table
@@ -2329,8 +2337,6 @@ void gs_command_buffer_free(gs_command_buffer_t* cb)
 #ifndef GS_NO_SHORT_NAME
     typedef gs_command_buffer_t gs_cmdbuf;
 #endif
-
-/** @} */ // end of gs_containers
 
 /*========================
 // GS_MEMORY
