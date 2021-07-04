@@ -38,6 +38,11 @@
 
 /*==== Interface ====*/
 
+/** @defgroup gs_asset_util Asset Util
+ *  Gunslinger Asset Util
+ *  @{
+ */
+
 // Asset handle
 typedef struct gs_asset_t
 {
@@ -141,6 +146,8 @@ GS_API_DECL void* __gs_assets_getp_impl(gs_asset_manager_t* am, uint64_t type_id
 
 #define gs_assets_get(AM, T, HNDL)\
 	*(gs_assets_getp(AM, T, HNDL));
+
+/** @} */ // end of gs_asset_util
 
 /*==== Implementation ====*/
 

@@ -46,6 +46,11 @@
 
 /*==== Interface ====*/
 
+/** @defgroup gs_graphics_extension_util Graphics Extension Util
+ *  Gunslinger Graphics Extension Util
+ *  @{
+ */
+
 // Raw data retrieval/Handles
 #ifndef GS_GFXT_HNDL
 	#define GS_GFXT_HNDL void*							// Default handle will just be a pointer to the data itself 
@@ -195,6 +200,8 @@ GS_API_DECL void* gs_gfxt_raw_data_default_impl(GS_GFXT_HNDL hndl, void* user_da
 // Mesh Generation API
 GS_API_DECL gs_gfxt_mesh_t gs_gfxt_mesh_unit_quad_generate(gs_gfxt_mesh_import_options_t* options);
 gs_handle(gs_graphics_texture_t) gs_gfxt_texture_generate_default();
+
+/** @} */ // end of gs_graphics_extension_util
 
 #ifdef GS_GFXT_IMPL
 /*==== Implementation ====*/

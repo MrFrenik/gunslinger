@@ -38,6 +38,11 @@
 
 /*==== Interface ====*/
 
+/** @defgroup gs_meta_util Meta Data Util
+ *  Gunslinger Meta Data Util
+ *  @{
+ */
+
 typedef enum gs_meta_property_type
 {
     GS_META_PROPERTY_TYPE_U8,
@@ -193,6 +198,8 @@ gs_meta_property_t __gs_meta_property_impl(const char* name, uint32_t offset, gs
     };
     
 */
+
+/** @} */ // end of gs_meta_data_util
 
 /*==== Implementation ====*/
 
