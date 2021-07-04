@@ -1459,11 +1459,12 @@ GS_API_DECL bool32_t gs_util_load_texture_data_from_memory(const void* memory, s
 /** @defgroup gs_byte_buffer Byte Buffer
  *  @ingroup gs_containers
  *  Byte Buffer
- *  @{
  */
 
 #define GS_BYTE_BUFFER_DEFAULT_CAPCITY  1024
 
+/** @addtogroup gs_byte_buffer
+ */
 typedef struct gs_byte_buffer_t
 {
     uint8_t* data;      // Buffer that actually holds all relevant byte data
@@ -1557,8 +1558,6 @@ GS_API_DECL gs_result gs_byte_buffer_read_from_file(gs_byte_buffer_t* buffer, co
 /* Desc */
 GS_API_DECL void gs_byte_buffer_memset(gs_byte_buffer_t* buffer, uint8_t val);
 
-/** @} */ // end of gs_byte_buffer
-
 /*===================================
 // Dynamic Array
 ===================================*/
@@ -1566,9 +1565,10 @@ GS_API_DECL void gs_byte_buffer_memset(gs_byte_buffer_t* buffer, uint8_t val);
 /** @defgroup gs_dyn_array Dynamic Array
  *  @ingroup gs_containers
  *  Dynamic Array
- *  @{
  */
 
+/** @addtogroup gs_dyn_array
+ */
 typedef struct gs_dyn_array
 {
     int32_t size;
@@ -1716,8 +1716,6 @@ void gs_dyn_array_set_data_i(void** arr, void* val, size_t val_len, uint32_t off
             (__ARR) = NULL;\
         }\
     } while (0)
-
-/** @} */ // end of gs_dyn_array
 
 /*===================================
 // Hash Table
