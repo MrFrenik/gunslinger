@@ -1450,6 +1450,7 @@ GS_API_DECL bool32_t gs_util_load_texture_data_from_memory(const void* memory, s
 
 /** @defgroup gs_containers Containers
  *  Gunslinger Containers
+ *  @{
  */
 
 /*========================
@@ -2341,6 +2342,8 @@ void gs_command_buffer_free(gs_command_buffer_t* cb)
 #ifndef GS_NO_SHORT_NAME
     typedef gs_command_buffer_t gs_cmdbuf;
 #endif
+
+/** @} */ // end of gs_containers
 
 /*========================
 // GS_MEMORY
