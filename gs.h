@@ -1718,7 +1718,6 @@ void gs_dyn_array_set_data_i(void** arr, void* val, size_t val_len, uint32_t off
     } while (0)
 
 /** @} */ // end of gs_dyn_array
-/** @} */ // end of gs_containers
 
 /*===================================
 // Hash Table
