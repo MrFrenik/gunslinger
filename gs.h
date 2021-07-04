@@ -5335,6 +5335,10 @@ typedef gs_handle(gs_graphics_pipeline_t)    gs_pipeline;
 // GS_ASSET_TYPES
 ==========================*/
 
+/** @addtogroup gs_util
+ *  @{
+ */
+
 // Texture
 typedef struct gs_asset_texture_t
 {
@@ -5418,6 +5422,8 @@ typedef struct gs_asset_mesh_raw_data_t
 GS_API_DECL bool gs_asset_mesh_load_from_file(const char* path, void* out, gs_asset_mesh_decl_t* decl, void* data_out, size_t data_size);
 GS_API_DECL bool gs_util_load_gltf_data_from_file(const char* path, gs_asset_mesh_decl_t* decl, gs_asset_mesh_raw_data_t** out, uint32_t* mesh_count);
 GS_API_DECL bool gs_util_load_gltf_data_from_memory(const void* memory, size_t sz, gs_asset_mesh_decl_t* decl, gs_asset_mesh_raw_data_t** out, uint32_t* mesh_count);
+
+/** @} */ // end of gs_util
 
 // Material
 // How to do this? Materials really are utility types...
