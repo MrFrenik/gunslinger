@@ -6902,11 +6902,11 @@ gs_engine_t* gs_engine_create(gs_app_desc_t app_desc)
         // Set frame rate for application
         gs_engine_subsystem(platform)->time.max_fps = app_desc.frame_rate;
 
-        // Set vsync for video
-        gs_platform_enable_vsync(app_desc.enable_vsync);
-
         // Construct main window
         gs_platform_create_window(app_desc.window_title, app_desc.window_width, app_desc.window_height);
+        
+        // Set vsync for video
+        gs_platform_enable_vsync(app_desc.enable_vsync);
 
         // Construct graphics api 
         gs_engine_subsystem(graphics) = gs_graphics_create();
