@@ -2439,6 +2439,11 @@ GS_API_DECL void gs_paged_allocator_clear(gs_paged_allocator_t* pa);
 // GS_MATH
 ========================*/
 
+/** @defgroup group1 The First Group
+ *  This is the first group
+ *  @{
+ */
+
 // Defines
 #define GS_EPSILON  (1e-6)
 #define GS_PI       3.1415926535897932
@@ -2546,6 +2551,7 @@ float gs_ease_cubic_in_out(float t, float b, float c, float d)
 // Vec2
 ================================================================================*/
 
+/** @brief class C1 in group 1 */
 typedef struct 
 {
     union 
@@ -2557,6 +2563,8 @@ typedef struct
         };
     };
 } gs_vec2;
+
+/** @} */ // end of group1
 
 gs_inline gs_vec2 
 gs_vec2_ctor(f32 _x, f32 _y) 
