@@ -50,7 +50,7 @@ gs_app_desc_t gs_main(int32_t argc, char** argv)
 ```
 ## Roadmap
 
-* Support Android/iOS/RPI/UWP backends
+* Support iOS/RPI/UWP backends
 * Support Vulkan/Metal/DX12 backends
 * Add support for more texture sampler types: 1D, 3D, Cube Maps, Arrays
 * Material Asset utils
