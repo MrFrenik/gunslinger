@@ -183,6 +183,9 @@ void gs_platform_update_input(gs_platform_input_t* input)
 void gs_platform_poll_all_events()
 {
     gs_platform_t* platform = gs_engine_subsystem(platform);
+   
+   platform->input.mouse.delta.x = 0;
+   platform->input.mouse.delta.y = 0;
 
     // Iterate through events, don't consume
     gs_platform_event_t evt = gs_default_val();
@@ -199,8 +202,7 @@ void gs_platform_poll_all_events()
                         // If locked, then movement amount will be applied to delta, 
                         // otherwise set position
                         if (gs_platform_mouse_locked()) {
-                            platform->input.mouse.delta = evt.mouse.move;
-                            platform->input.mouse.position = gs_vec2_add(evt.mouse.move, platform->input.mouse.position);
+                            platform->input.mouse.delta = gs_vec2_add(platform->input.mouse.delta, evt.mouse.move);
                         } else {
                             platform->input.mouse.delta = gs_vec2_sub(evt.mouse.move, platform->input.mouse.position);
                             platform->input.mouse.position = evt.mouse.move;
@@ -1292,6 +1294,8 @@ void __glfw_mouse_cursor_position_callback(GLFWwindow* window, f64 x, f64 y)
     if (gs_platform_mouse_locked()) {
         gs_evt.mouse.move.x = x - platform->input.mouse.position.x;
         gs_evt.mouse.move.y = y - platform->input.mouse.position.y;
+        platform->input.mouse.position.x = x;
+        platform->input.mouse.position.y = y;
     } else {
         gs_evt.mouse.move = gs_v2((f32)x, (f32)y);
     }
