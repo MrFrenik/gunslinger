@@ -2838,6 +2838,11 @@ gs_inline float gs_vec3_angle_between_signed(gs_vec3 v0, gs_vec3 v1)
     return asinf(gs_vec3_len(gs_vec3_cross(v0, v1)));
 }
 
+gs_inline gs_vec3 gs_vec3_triple_cross_product(gs_vec3 a, gs_vec3 b, gs_vec3 c)
+{
+    return gs_vec3_sub((gs_vec3_scale(b, gs_vec3_dot(c, a))), (gs_vec3_scale(a, gs_vec3_dot(c, b))));
+}
+
 /*================================================================================
 // Vec4
 ================================================================================*/
@@ -6899,7 +6904,7 @@ gs_engine_t* gs_engine_create(gs_app_desc_t app_desc)
 
         // Construct main window
         gs_platform_create_window(app_desc.window_title, app_desc.window_width, app_desc.window_height);
-        
+
         // Set vsync for video
         gs_platform_enable_vsync(app_desc.enable_vsync);
 

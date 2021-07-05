@@ -46,11 +46,6 @@
 
 /*==== Interface ====*/
 
-/** @defgroup gs_physics_util Physics Util
- *  Gunslinger Physics Util
- *  @{
- */
-
 /*==== Util ====*/
 
 typedef struct gs_phys_xform_t {
@@ -79,6 +74,8 @@ typedef struct gs_ray_t      {gs_vec3 p, d;                                     
 typedef struct gs_triangle_t {gs_vec3 p0,p1,p2;                                              } gs_triangle_t;
 typedef struct gs_poly_t     {gs_vec3* verts; int32_t cnt;                                   } gs_poly_t;
 typedef union  gs_frustum_t  {struct {gs_vec4 l, r, t, b, n, f;}; gs_vec4 pl[6]; float v[24];} gs_frustum_t;
+typedef struct gs_cylinder_t {float r; gs_vec3 base; float height;                           } gs_cylinder_t; 
+typedef struct gs_cone_t     {float r; gs_vec3 base; float height;                           } gs_cone_t;
 
 typedef struct gs_hit_t {
     int32_t hit;
@@ -104,6 +101,8 @@ typedef struct gs_hit_t {
 #define gs_triangle(...) gs_ctor(gs_triangle_t, __VA_ARGS__)
 #define gs_poly(...)     gs_ctor(gs_poly_t, __VA_ARGS__)
 #define gs_frustum(...). gs_ctor(gs_frustum_t, __VA_ARGS__)
+#define gs_cylinder(...) gs_ctor(gs_cylinder_t, __VA_ARGS__)
+#define gs_cone(...)     gs_ctor(gs_cone_t, __VA_ARGS__)
 #define gs_hit(...)      gs_ctor(gs_hit_t, __VA_ARGS__)
 
 // Forward Decl. 
@@ -117,11 +116,15 @@ struct gs_gjk_contact_info_t;
 GS_API_DECL int32_t gs_sphere_vs_sphere(const gs_sphere_t* a, gs_vqs* xform_a, const gs_sphere_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
 GS_API_DECL int32_t gs_sphere_vs_aabb(const gs_sphere_t* a, gs_vqs* xform_a, const gs_aabb_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
 GS_API_DECL int32_t gs_sphere_vs_poly(const gs_sphere_t* a, gs_vqs* xform_a, const gs_poly_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
+GS_API_DECL int32_t gs_sphere_vs_cylinder(const gs_sphere_t* a, gs_vqs* xform_a, const gs_cylinder_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
+GS_API_DECL int32_t gs_sphere_vs_cone(const gs_sphere_t* a, gs_vqs* xform_a, const gs_cone_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
 
 /* Box */
 GS_API_DECL int32_t gs_aabb_vs_aabb(const gs_aabb_t* a, gs_vqs* xform_a, const gs_aabb_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
 GS_API_DECL int32_t gs_aabb_vs_sphere(const gs_aabb_t* a, gs_vqs* xform_a, const gs_sphere_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
 GS_API_DECL int32_t gs_aabb_vs_poly(const gs_aabb_t* a, gs_vqs* xform_a, const gs_poly_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
+GS_API_DECL int32_t gs_aabb_vs_cylinder(const gs_aabb_t* a, gs_vqs* xform_a, const gs_cylinder_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
+GS_API_DECL int32_t gs_aabb_vs_cone(const gs_aabb_t* a, gs_vqs* xform_a, const gs_cone_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
 
 /* Plane */
 
@@ -135,8 +138,24 @@ GS_API_DECL int32_t gs_aabb_vs_poly(const gs_aabb_t* a, gs_vqs* xform_a, const g
 GS_API_DECL int32_t gs_poly_vs_poly(const gs_poly_t* a, gs_vqs* xform_a, const gs_poly_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
 GS_API_DECL int32_t gs_poly_vs_sphere(const gs_poly_t* a, gs_vqs* xform_a, const gs_sphere_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
 GS_API_DECL int32_t gs_poly_vs_aabb(const gs_poly_t* a, gs_vqs* xform_a, const gs_aabb_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
+GS_API_DECL int32_t gs_poly_vs_cylinder(const gs_poly_t* a, gs_vqs* xform_a, const gs_cylinder_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
+GS_API_DECL int32_t gs_poly_vs_cone(const gs_poly_t* a, gs_vqs* xform_a, const gs_cone_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
 
 /* Frustum */
+
+/* Cylinder */
+GS_API_DECL int32_t gs_cylinder_vs_cylinder(const gs_cylinder_t* a, gs_vqs* xform_a, const gs_cylinder_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
+GS_API_DECL int32_t gs_cylinder_vs_sphere(const gs_cylinder_t* a, gs_vqs* xform_a, const gs_sphere_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
+GS_API_DECL int32_t gs_cylinder_vs_aabb(const gs_cylinder_t* a, gs_vqs* xform_a, const gs_aabb_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
+GS_API_DECL int32_t gs_cylinder_vs_poly(const gs_cylinder_t* a, gs_vqs* xform_a, const gs_poly_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
+GS_API_DECL int32_t gs_cylinder_vs_cone(const gs_cylinder_t* a, gs_vqs* xform_a, const gs_cone_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
+
+/* Cone */
+GS_API_DECL int32_t gs_cone_vs_cone(const gs_cone_t* a, gs_vqs* xform_a, const gs_cone_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
+GS_API_DECL int32_t gs_cone_vs_sphere(const gs_cone_t* a, gs_vqs* xform_a, const gs_sphere_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
+GS_API_DECL int32_t gs_cone_vs_aabb(const gs_cone_t* a, gs_vqs* xform_a, const gs_aabb_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
+GS_API_DECL int32_t gs_cone_vs_poly(const gs_cone_t* a, gs_vqs* xform_a, const gs_poly_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
+GS_API_DECL int32_t gs_cone_vs_cylinder(const gs_cone_t* a, gs_vqs* xform_a, const gs_cylinder_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
 
 /* Hit */
 
@@ -148,17 +167,19 @@ typedef gs_vec3 (* gs_gjk_support_func_t)(const void* collider, gs_vqs* xform, g
 GS_API_DECL gs_vec3 gs_gjk_support_poly(const gs_poly_t* p, gs_phys_xform_t* xform, gs_vec3 search_dir);
 GS_API_DECL gs_vec3 gs_gjk_support_sphere(const gs_sphere_t* s, gs_phys_xform_t* xform, gs_vec3 search_dir);
 GS_API_DECL gs_vec3 gs_gjk_support_aabb(const gs_aabb_t* a, gs_phys_xform_t* xform, gs_vec3 search_dir);
+GS_API_DECL gs_vec3 gs_gjk_support_cylinder(const gs_cylinder_t* c, gs_phys_xform_t* xform, gs_vec3 search_dir);
+GS_API_DECL gs_vec3 gs_gjk_support_cone(const gs_cone_t* c, gs_phys_xform_t* xform, gs_vec3 search_dir);
 
 /*==== GJK ====*/
 
 #define GS_GJK_FLT_MAX FLT_MAX     // 3.40282347E+38F
 #define GS_GJK_EPSILON FLT_EPSILON // 1.19209290E-07F
-#define GS_GJK_MAX_ITERATIONS 64
+#define GS_GJK_MAX_ITERATIONS 128
 
 #define GS_EPA_TOLERANCE 0.00001
 #define GS_EPA_MAX_NUM_FACES 64
 #define GS_EPA_MAX_NUM_LOOSE_EDGES 32
-#define GS_EPA_MAX_NUM_ITERATIONS 64
+#define GS_EPA_MAX_NUM_ITERATIONS 128
 
 typedef struct gs_gjk_support_point_t {
     gs_vec3 support_a;
@@ -176,6 +197,7 @@ typedef struct gs_gjk_simplex_t {
             gs_gjk_support_point_t d;
         };
     };
+    uint32_t ct;
 } gs_gjk_simplex_t;
 
 typedef struct gs_gjk_polytope_face_t {
@@ -197,11 +219,7 @@ typedef struct gs_gjk_collider_info_t {
 } gs_gjk_collider_info_t;
 
 GS_API_DECL int32_t gs_gjk(const gs_gjk_collider_info_t* ci0, const gs_gjk_collider_info_t* ci1, gs_gjk_contact_info_t* res);
-GS_API_DECL gs_gjk_support_point_t gs_gjk_generate_support_point(const gs_gjk_collider_info_t* ci0, const gs_gjk_collider_info_t* ci1, gs_vec3 dir);
-GS_API_DECL void gs_gjk_update_simplex_triangle(gs_gjk_simplex_t* simplex, int32_t* simp_dim, gs_vec3* search_dir);
-GS_API_DECL bool gs_gjk_update_simplex_tetrahedron(gs_gjk_simplex_t* simplex, int32_t* simp_dim, gs_vec3* search_dir);
 GS_API_DECL gs_gjk_contact_info_t gs_gjk_epa(const gs_gjk_simplex_t* simplex, const gs_gjk_collider_info_t* ci0, const gs_gjk_collider_info_t* ci1);
-GS_API_DECL void gs_gjk_bary(gs_vec3 p, gs_vec3 a, gs_vec3 b, gs_vec3 c, float* u, float* v, float* w);
 GS_API_DECL gs_gjk_collider_info_t gs_gjk_collider_info(void* c, gs_gjk_support_func_t f, gs_phys_xform_t* t);
 
 /*==== Physics System ====*/
@@ -315,8 +333,6 @@ GS_API_DECL gs_raycast_data_t  gs_physics_scene_raycast(gs_physics_scene_t* scen
     Collision Shape
 */
 
-/** @} */ // end of gs_physics_util
-
 /*==== Implementation ====*/
 
 #ifdef GS_PHYSICS_IMPL
@@ -343,9 +359,85 @@ GS_API_DECL gs_gjk_collider_info_t gs_gjk_collider_info(void* c, gs_gjk_support_
     return info;
 }
 
+int32_t _gs_gjk_internal(
+    void* c0, gs_vqs* xform_a, gs_gjk_support_func_t f0, 
+    void* c1, gs_vqs* xform_b, gs_gjk_support_func_t f1, 
+    struct gs_gjk_result_t* res
+)
+{
+    gs_phys_xform_t x0 = xform_a ? gs_phys_xform_from_vqs(xform_a) : gs_ctor(gs_phys_xform_t);
+    gs_phys_xform_t x1 = xform_b ? gs_phys_xform_from_vqs(xform_b) : gs_ctor(gs_phys_xform_t);
+    gs_gjk_collider_info_t ci0 = gs_gjk_collider_info(c0, f0, xform_a ? &x0 : NULL);
+    gs_gjk_collider_info_t ci1 = gs_gjk_collider_info(c1, f1, xform_b ? &x1 : NULL);
+    return gs_gjk(&ci0, &ci1, res);
+}
+
 /*==== Collision Shapes ====*/
 
 /* Line/Segment */
+
+GS_API_DECL  float gs_line_closest_line_(float* t1, float* t2, gs_vec3* c1, gs_vec3* c2, gs_line_t l, gs_line_t m) 
+{
+    gs_vec3 r, d1, d2;
+    d1 = gs_vec3_sub(l.b, l.a); /* direction vector segment s1 */
+    d2 = gs_vec3_sub(m.b, m.a); /* direction vector segment s2 */
+    r = gs_vec3_sub(l.a, m.a);
+
+    float i = gs_vec3_dot(d1, d1);
+    float e = gs_vec3_dot(d2, d2);
+    float f = gs_vec3_dot(d2, r);
+
+    if (i <= FLT_EPSILON && e <= FLT_EPSILON) {
+        /* both segments degenerate into points */
+        gs_vec3 d12;
+        *t1 = *t2 = 0.0f;
+        *c1 = l.a;
+        *c2 = m.a;
+        d12 = gs_vec3_sub(*c1, *c2);
+        return gs_vec3_dot(d12,d12);
+    }
+    if (i > FLT_EPSILON) {
+        float c = gs_vec3_dot(d1,r);
+        if (e > FLT_EPSILON) {
+            /* non-degenerate case */
+            float b = gs_vec3_dot(d1,d2);
+            float denom = i*e - b*b;
+
+            /* compute closest point on L1/L2 if not parallel else pick any t2 */
+            if (denom != 0.0f)
+                *t1 = gs_clamp(0.0f, (b*f - c*e) / denom, 1.0f);
+            else *t1 = 0.0f;
+
+            /* cmpute point on L2 closest to S1(s) */
+            *t2 = (b*(*t1) + f) / e;
+            if (*t2 < 0.0f) {
+                *t2 = 0.0f;
+                *t1 = gs_clamp(0.0f, -c/i, 1.0f);
+            } else if (*t2 > 1.0f) {
+                *t2 = 1.0f;
+                *t1 = gs_clamp(0.0f, (b-c)/i, 1.0f);
+            }
+        } else {
+            /* second segment degenerates into a point */
+            *t1 = gs_clamp(0.0f, -c/i, 1.0f);
+            *t2 = 0.0f;
+        }
+    } else {
+        /* first segment degenerates into a point */
+        *t2 = gs_clamp(0.0f, f/e, 1.0f);
+        *t1 = 0.0f;
+    }
+    /* calculate closest points */
+    gs_vec3 n, d12;
+    n = gs_vec3_scale(d1, *t1);
+    *c1 = gs_vec3_add(l.a, n);
+    n = gs_vec3_scale(d2, *t2);
+    *c2 = gs_vec3_add(m.a, n);
+
+    /* calculate squared distance */
+    d12 = gs_vec3_sub(*c1, *c2);
+    return gs_vec3_dot(d12,d12);
+}
 
 /* Sphere */
 
@@ -388,6 +480,7 @@ GS_API_DECL int32_t gs_sphere_vs_sphere(const gs_sphere_t* a, gs_vqs* xform_a, c
         d = gs_vec3_scale(res->normal, b->r * bs);
         res->points[0] = gs_vec3_add(wa, d);
         res->points[1] = gs_vec3_sub(wb, d);
+        res->hit = true;
     }
 
     return true;
@@ -395,16 +488,22 @@ GS_API_DECL int32_t gs_sphere_vs_sphere(const gs_sphere_t* a, gs_vqs* xform_a, c
 
 GS_API_DECL int32_t gs_sphere_vs_aabb(const gs_sphere_t* a, gs_vqs* xform_a, const gs_aabb_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
 {
-    gs_phys_xform_t x0 = xform_a ? gs_phys_xform_from_vqs(xform_a) : gs_ctor(gs_phys_xform_t);
-    gs_phys_xform_t x1 = xform_b ? gs_phys_xform_from_vqs(xform_b) : gs_ctor(gs_phys_xform_t);
-    gs_gjk_collider_info_t c0 = gs_gjk_collider_info(a, gs_gjk_support_sphere, xform_a ? &x0 : NULL);
-    gs_gjk_collider_info_t c1 = gs_gjk_collider_info(b, gs_gjk_support_aabb, xform_b ? &x1 : NULL);
-    return gs_gjk(&c0, &c1, res);
+    return _gs_gjk_internal(a, xform_a, gs_gjk_support_sphere, b, xform_b, gs_gjk_support_aabb, res);
 }
 
 GS_API_DECL int32_t gs_sphere_vs_poly(const gs_sphere_t* a, gs_vqs* xform_a, const gs_poly_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
 {
     return gs_poly_vs_sphere(b, xform_b, a, xform_a, res);
+}
+
+GS_API_DECL int32_t gs_sphere_vs_cylinder(const gs_sphere_t* a, gs_vqs* xform_a, const gs_cylinder_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
+{
+    return _gs_gjk_internal(a, xform_a, gs_gjk_support_sphere, b, xform_b, gs_gjk_support_cylinder, res);
+}
+
+GS_API_DECL int32_t gs_sphere_vs_cone(const gs_sphere_t* a, gs_vqs* xform_a, const gs_cone_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
+{
+    return gs_cone_vs_sphere(b, xform_b, a, xform_a, res);
 }
 
 /* AABB */
@@ -429,12 +528,7 @@ GS_API_DECL gs_vec3 gs_gjk_support_aabb(const gs_aabb_t* a, gs_phys_xform_t* xfo
 GS_API_DECL int32_t gs_aabb_vs_aabb(const gs_aabb_t* a, gs_vqs* xform_a, const gs_aabb_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
 {
     // NOTE(john): If neither have transforms, then can default to less expensive AABB vs. AABB check
-
-    gs_phys_xform_t x0 = xform_a ? gs_phys_xform_from_vqs(xform_a) : gs_ctor(gs_phys_xform_t);
-    gs_phys_xform_t x1 = xform_b ? gs_phys_xform_from_vqs(xform_b) : gs_ctor(gs_phys_xform_t);
-    gs_gjk_collider_info_t c0 = gs_gjk_collider_info(a, gs_gjk_support_aabb, xform_a ? &x0 : NULL);
-    gs_gjk_collider_info_t c1 = gs_gjk_collider_info(b, gs_gjk_support_aabb, xform_b ? &x1 : NULL);
-    return gs_gjk(&c0, &c1, res);
+    return _gs_gjk_internal(a, xform_a, gs_gjk_support_aabb, b, xform_b, gs_gjk_support_aabb, res);
 }
 
 GS_API_DECL int32_t gs_aabb_vs_sphere(const gs_aabb_t* a, gs_vqs* xform_a, const gs_sphere_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
@@ -445,6 +539,16 @@ GS_API_DECL int32_t gs_aabb_vs_sphere(const gs_aabb_t* a, gs_vqs* xform_a, const
 GS_API_DECL int32_t gs_aabb_vs_poly(const gs_aabb_t* a, gs_vqs* xform_a, const gs_poly_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
 {
     return gs_poly_vs_aabb(b, xform_b, a, xform_a, res);
+}
+
+GS_API_DECL int32_t gs_aabb_vs_cylinder(const gs_aabb_t* a, gs_vqs* xform_a, const gs_cylinder_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
+{
+    return gs_cylinder_vs_aabb(b, xform_b, a, xform_a, res);
+}
+
+GS_API_DECL int32_t gs_aabb_vs_cone(const gs_aabb_t* a, gs_vqs* xform_a, const gs_cone_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
+{
+    return gs_cone_vs_aabb(b, xform_b, a, xform_a, res);
 }
 
 /* Plane */
@@ -466,13 +570,11 @@ GS_API_DECL gs_vec3 gs_gjk_support_poly(const gs_poly_t* p, gs_phys_xform_t* xfo
     gs_vec3 res = p->verts[0];
     float max_dot = gs_vec3_dot(res, dir);
 
-    int32_t max_i = 0;
     for (int32_t i = 1; i < p->cnt; ++i) {
         float d = gs_vec3_dot(dir, p->verts[i]);
         if (d > max_dot) {
             max_dot = d;
             res = p->verts[i];
-            max_i = i;
         }
     }
 
@@ -484,140 +586,203 @@ GS_API_DECL gs_vec3 gs_gjk_support_poly(const gs_poly_t* p, gs_phys_xform_t* xfo
 
 GS_API_DECL int32_t gs_poly_vs_poly(const gs_poly_t* a, gs_vqs* xform_a, const gs_poly_t* b, gs_vqs* xform_b, gs_gjk_contact_info_t* res)
 {
-    gs_phys_xform_t x0 = xform_a ? gs_phys_xform_from_vqs(xform_a) : gs_ctor(gs_phys_xform_t);
-    gs_phys_xform_t x1 = xform_b ? gs_phys_xform_from_vqs(xform_b) : gs_ctor(gs_phys_xform_t);
-    gs_gjk_collider_info_t c0 = gs_gjk_collider_info(a, gs_gjk_support_poly, xform_a ? &x0 : NULL);
-    gs_gjk_collider_info_t c1 = gs_gjk_collider_info(b, gs_gjk_support_poly, xform_b ? &x1 : NULL);
-    return gs_gjk(&c0, &c1, res);
+    return _gs_gjk_internal(a, xform_a, gs_gjk_support_poly, b, xform_b, gs_gjk_support_poly, res);
 }
 
 GS_API_DECL int32_t gs_poly_vs_sphere(const gs_poly_t* a, gs_vqs* xform_a, const gs_sphere_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
 {
-    gs_phys_xform_t x0 = xform_a ? gs_phys_xform_from_vqs(xform_a) : gs_ctor(gs_phys_xform_t);
-    gs_phys_xform_t x1 = xform_b ? gs_phys_xform_from_vqs(xform_b) : gs_ctor(gs_phys_xform_t);
-    gs_gjk_collider_info_t c0 = gs_gjk_collider_info(a, gs_gjk_support_poly, xform_a ? &x0 : NULL);
-    gs_gjk_collider_info_t c1 = gs_gjk_collider_info(b, gs_gjk_support_sphere, xform_b ? &x1 : NULL);
-    return gs_gjk(&c0, &c1, res);
+    return _gs_gjk_internal(a, xform_a, gs_gjk_support_poly, b, xform_b, gs_gjk_support_sphere, res);
 }
 
 GS_API_DECL int32_t gs_poly_vs_aabb(const gs_poly_t* a, gs_vqs* xform_a, const gs_aabb_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
 {
-    gs_phys_xform_t x0 = xform_a ? gs_phys_xform_from_vqs(xform_a) : gs_ctor(gs_phys_xform_t);
-    gs_phys_xform_t x1 = xform_b ? gs_phys_xform_from_vqs(xform_b) : gs_ctor(gs_phys_xform_t);
-    gs_gjk_collider_info_t c0 = gs_gjk_collider_info(a, gs_gjk_support_poly, xform_a ? &x0 : NULL);
-    gs_gjk_collider_info_t c1 = gs_gjk_collider_info(b, gs_gjk_support_aabb, xform_b ? &x1 : NULL);
-    return gs_gjk(&c0, &c1, res);
+    return _gs_gjk_internal(a, xform_a, gs_gjk_support_poly, b, xform_b, gs_gjk_support_aabb, res);
+}
+
+GS_API_DECL int32_t gs_poly_vs_cylinder(const gs_poly_t* a, gs_vqs* xform_a, const gs_cylinder_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
+{
+    return _gs_gjk_internal(a, xform_a, gs_gjk_support_poly, b, xform_b, gs_gjk_support_cylinder, res);
+}
+
+GS_API_DECL int32_t gs_poly_vs_cone(const gs_poly_t* a, gs_vqs* xform_a, const gs_cone_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
+{
+    return _gs_gjk_internal(a, xform_a, gs_gjk_support_poly, b, xform_b, gs_gjk_support_cone, res);
 }
 
 /* Frustum */
+
+/* Cylinder */
+
+GS_API_DECL gs_vec3 gs_gjk_support_cylinder(const gs_cylinder_t* c, gs_phys_xform_t* xform, gs_vec3 dir)
+{
+    dir = xform ? gs_mat3_mul_vec3(xform->inv_rs, dir) : dir;
+
+    gs_vec3 dir_xz = gs_v3(dir.x, 0.f, dir.z);
+    gs_vec3 res = gs_vec3_scale(gs_vec3_norm(dir_xz), c->r);
+    res.y = (dir.y > 0.f) ? c->base.y + c->height : c->base.y;
+
+    // Conver to world space
+    res = xform ? gs_vec3_add(gs_mat3_mul_vec3(xform->rs, res), xform->pos) : res;
+
+    return res;
+}
+
+GS_API_DECL int32_t gs_cylinder_vs_cylinder(const gs_cylinder_t* a, gs_vqs* xform_a, const gs_cylinder_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
+{
+    return _gs_gjk_internal(a, xform_a, gs_gjk_support_cylinder, b, xform_b, gs_gjk_support_cylinder, res);
+}
+
+GS_API_DECL int32_t gs_cylinder_vs_sphere(const gs_cylinder_t* a, gs_vqs* xform_a, const gs_sphere_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
+{
+    return _gs_gjk_internal(a, xform_a, gs_gjk_support_cylinder, b, xform_b, gs_gjk_support_sphere, res);
+}
+
+GS_API_DECL int32_t gs_cylinder_vs_aabb(const gs_cylinder_t* a, gs_vqs* xform_a, const gs_aabb_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
+{
+    return _gs_gjk_internal(a, xform_a, gs_gjk_support_cylinder, b, xform_b, gs_gjk_support_aabb, res);
+}
+
+GS_API_DECL int32_t gs_cylinder_vs_poly(const gs_cylinder_t* a, gs_vqs* xform_a, const gs_poly_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
+{
+    return _gs_gjk_internal(a, xform_a, gs_gjk_support_cylinder, b, xform_b, gs_gjk_support_poly, res);
+}
+
+GS_API_DECL int32_t gs_cylinder_vs_cone(const gs_cylinder_t* a, gs_vqs* xform_a, const gs_cone_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
+{
+    return gs_cone_vs_cylinder(b, xform_b, a, xform_a, res);
+}
+
+/* Cone */
+
+#define MAX_CONE_PTS 10
+
+GS_API_DECL gs_vec3 gs_gjk_support_cone(const gs_cone_t* c, gs_phys_xform_t* xform, gs_vec3 dir)
+{
+    // Disc and point for support functions, using base information
+    gs_vec3 pts[MAX_CONE_PTS] = gs_default_val();
+    const float step = 360.f / (float)MAX_CONE_PTS;
+    for (uint32_t i = 0; i < MAX_CONE_PTS - 1; ++i) {
+        float a = gs_deg2rad(step * (float)i);
+        pts[i] = gs_v3(sinf(a) * c->r, c->base.y, cosf(a) * c->r);
+    }
+    pts[MAX_CONE_PTS - 1] = gs_vec3_add(c->base, gs_v3(0.f, c->height, 0.f));
+
+    // Find support in object space (with inverse matrix)
+    dir = xform ? gs_mat3_mul_vec3(xform->inv_rs, dir) : dir;
+
+    // Initial furthest point
+    gs_vec3 res = pts[0];
+    float max_dot = gs_vec3_dot(res, dir);
+
+    for (int32_t i = 1; i < MAX_CONE_PTS; ++i) {
+        float d = gs_vec3_dot(dir, pts[i]);
+        if (d > max_dot) {
+            max_dot = d;
+            res = pts[i];
+        }
+    }
+
+    // Convert to world space
+    res = xform ? gs_vec3_add(gs_mat3_mul_vec3(xform->rs, res), xform->pos) : res;
+
+    return res;
+}
+
+GS_API_DECL int32_t gs_cone_vs_cone(const gs_cone_t* a, gs_vqs* xform_a, const gs_cone_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
+{
+    return _gs_gjk_internal(a, xform_a, gs_gjk_support_cone, b, xform_b, gs_gjk_support_cone, res);
+}
+
+GS_API_DECL int32_t gs_cone_vs_sphere(const gs_cone_t* a, gs_vqs* xform_a, const gs_sphere_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
+{
+    return _gs_gjk_internal(a, xform_a, gs_gjk_support_cone, b, xform_b, gs_gjk_support_sphere, res);
+}
+
+GS_API_DECL int32_t gs_cone_vs_aabb(const gs_cone_t* a, gs_vqs* xform_a, const gs_aabb_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
+{
+    return _gs_gjk_internal(a, xform_a, gs_gjk_support_cone, b, xform_b, gs_gjk_support_aabb, res);
+}
+
+GS_API_DECL int32_t gs_cone_vs_poly(const gs_cone_t* a, gs_vqs* xform_a, const gs_poly_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
+{
+    return _gs_gjk_internal(a, xform_a, gs_gjk_support_cone, b, xform_b, gs_gjk_support_poly, res);
+}
+
+GS_API_DECL int32_t gs_cone_vs_cylinder(const gs_cone_t* a, gs_vqs* xform_a, const gs_cylinder_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
+{
+    return _gs_gjk_internal(a, xform_a, gs_gjk_support_cone, b, xform_b, gs_gjk_support_cylinder, res);
+}
 
 /* Hit */
 
 /*==== GKJ ====*/
 
-GS_API_DECL int32_t gs_gjk(const gs_gjk_collider_info_t* ci0, const gs_gjk_collider_info_t* ci1, gs_gjk_contact_info_t* res)
+// Internal functions
+bool gs_gjk_check_if_simplex_contains_origin(gs_gjk_simplex_t* simplex, gs_vec3* search_dir);
+void gs_gjk_simplex_push(gs_gjk_simplex_t* simplex, gs_gjk_support_point_t p);
+void gs_gjk_bary(gs_vec3 p, gs_vec3 a, gs_vec3 b, gs_vec3 c, float* u, float* v, float* w);
+gs_gjk_support_point_t gs_gjk_generate_support_point(const gs_gjk_collider_info_t* ci0, const gs_gjk_collider_info_t* ci1, gs_vec3 dir);
+
+// Modified from: https://github.com/Nightmask3/Physics-Framework/blob/master/PhysicsFramework/PhysicsManager.cpp
+int32_t gs_gjk(const gs_gjk_collider_info_t* ci0, const gs_gjk_collider_info_t* ci1, gs_gjk_contact_info_t* res)
 {
-    // Simplex: just a set of points (a is always most recently added)
-    gs_gjk_simplex_t simplex = {0};
-    gs_gjk_support_point_t* a = &simplex.a, *b = &simplex.b, *c = &simplex.c, *d = &simplex.d;
+    // Simplex simplex;
+    gs_gjk_simplex_t simplex = gs_default_val();
+    gs_vec3 search_dir = gs_v3s(1.f);
+    gs_gjk_support_point_t new_pt = gs_gjk_generate_support_point(ci0, ci1, search_dir);
 
-    // Cache pointers for collider 0
-    void* c0 = ci0->collider;
-    gs_gjk_support_func_t f0 = ci0->func;
-    gs_phys_xform_t* xform_0 = ci0->xform;
-
-    // Calculate inverse matrix if available
-    if (ci0->xform) ci0->xform->inv_rs = gs_mat3_inverse(ci0->xform->rs);
-
-    // Cache pointers for collider 1
-    void* c1 = ci1->collider;
-    gs_gjk_support_func_t f1 = ci1->func; 
-    gs_phys_xform_t* xform_1 = ci1->xform; 
-
-    // Calculate inverse matrix if available
-    if (ci1->xform) ci1->xform->inv_rs = gs_mat3_inverse(ci1->xform->rs);
-
-    // Initial search direction between colliders (xaxis for start, can be any random direction)
-    gs_vec3 search_dir = GS_XAXIS; 
-
-    // Get initial point for simplex
-    *c = gs_gjk_generate_support_point(ci0, ci1, search_dir); 
-    search_dir = gs_vec3_neg(c->minkowski_hull_vert); //search in direction of origin
-
-    // Get second point for a line segment simplex
-    *b = gs_gjk_generate_support_point(ci0, ci1, search_dir); 
-
-    // We didn't reach the origin, won't enclose it
-    if (!gs_vec3_same_dir(b->minkowski_hull_vert, search_dir)) {
-        return false;
-    }
-
-    // Direction from c to b
-    gs_vec3 cmb = gs_vec3_sub(c->minkowski_hull_vert, b->minkowski_hull_vert);
-    // Direction back to origin from b
-    gs_vec3 nb = gs_vec3_neg(b->minkowski_hull_vert);
-
-    // Search perpendicular to line segment towards origin
-    search_dir = gs_vec3_cross(gs_vec3_cross(cmb, nb), cmb);
-
-    // Origin is on this line segment
-    if (gs_vec3_eq(search_dir, gs_v3s(0.f))) {
-
-        // Search with normal to cmb/x axis (can be any random axis)
-        search_dir = gs_vec3_cross(cmb, GS_XAXIS);
-
-        // Normal with -zaxis
-        if (gs_vec3_eq(search_dir, gs_v3s(0.f))) {
-            search_dir = gs_vec3_cross(cmb, gs_v3(0.f,0.f,-1.f));
-        }
-    }
-
-    // Check line, initially
-    int32_t simp_dim = 2;
-    bool just_turned_three = false;
-    
-    for (int32_t iterations = 0; iterations < GS_GJK_MAX_ITERATIONS; ++iterations)
+    // Stability check
+    if (gs_vec3_dot(search_dir, new_pt.minkowski_hull_vert) >= gs_vec3_len(new_pt.minkowski_hull_vert) * 0.8f) 
     {
-        // Generate new support point along updated search direction
-        *a = gs_gjk_generate_support_point(ci0, ci1, search_dir); 
+        // the chosen direction is invalid, will produce (0,0,0) for a subsequent direction later
+        search_dir = gs_v3(0.f, 1.f, 0.f);
+        new_pt = gs_gjk_generate_support_point(ci0, ci1, search_dir);
+    }
+    gs_gjk_simplex_push(&simplex, new_pt);
 
-        // We didn't reach the origin, won't enclose it
-        if (!gs_vec3_same_dir(a->minkowski_hull_vert, search_dir)) { 
-            return false; 
-        } 
-    
-        // Increase simplex dimensions
-        simp_dim++;
+    // Invert the search direction for the next point
+    search_dir = gs_vec3_neg(search_dir);
 
-        // Check for case where we just hit three dimensions (hack for now)
-        if (just_turned_three) {
-            just_turned_three = false;
-            simp_dim = 4;
-        }
+    uint32_t iterationCount = 0;
 
-        // Triangle
-        if (simp_dim == 3) 
+    while (true)
+    {
+        if (iterationCount++ >= GS_GJK_MAX_ITERATIONS) 
+            return false;
+        // Stability check
+        // Error, for some reason the direction vector is broken
+        if (gs_vec3_len(search_dir) <= 0.0001f)
+            return false;
+
+        // Add a new point to the simplex
+        gs_gjk_support_point_t new_pt = gs_gjk_generate_support_point(ci0, ci1, search_dir);
+        gs_gjk_simplex_push(&simplex, new_pt);
+
+        // If projection of newly added point along the search direction has not crossed the origin,
+        // the Minkowski Difference could not contain the origin, objects are not colliding
+        if (gs_vec3_dot(new_pt.minkowski_hull_vert, search_dir) < 0.0f)
         {
-            if (!just_turned_three) just_turned_three = true;
-            gs_gjk_update_simplex_triangle(&simplex, &simp_dim, &search_dir);
+            return false;
         }
-        // Tetrahedron
-        else if (gs_gjk_update_simplex_tetrahedron(&simplex, &simp_dim, &search_dir)) 
+        else
         {
-            // Capture collision data using EPA if requested by user
-            if (res) 
+            // If the new point IS past the origin, check if the simplex contains the origin, 
+            // If it doesn't modify search direction to point towards to origin
+            if (gs_gjk_check_if_simplex_contains_origin(&simplex, &search_dir))
             {
-                *res = gs_gjk_epa(&simplex, ci0, ci1);
-                return res->hit;
-            } 
-            else 
-            {
-                return true;
+                // Capture collision data using EPA if requested by user
+                if (res) 
+                {
+                    *res = gs_gjk_epa(&simplex, ci0, ci1);
+                    return res->hit;
+                } 
+                else 
+                {
+                    return true;
+                }
             }
         }
     }
-
-    return false;
 }
 
 GS_API_DECL gs_gjk_support_point_t gs_gjk_generate_support_point(const gs_gjk_collider_info_t* ci0, const gs_gjk_collider_info_t* ci1, gs_vec3 dir)
@@ -629,121 +794,274 @@ GS_API_DECL gs_gjk_support_point_t gs_gjk_generate_support_point(const gs_gjk_co
    return sp;
 }
 
-GS_API_DECL void gs_gjk_update_simplex_triangle(gs_gjk_simplex_t* simplex, int32_t* simp_dim, gs_vec3* search_dir)
+// Closest point method taken from Erin Catto's GDC 2010 slides
+// Returns the closest point
+gs_vec3 gs_closest_point_on_line_from_target_point(gs_line_t line, gs_vec3 point, float* u, float* v)
 {
-    /* Required winding order:
-    //  b
-    //  | \
-    //  |   \
-    //  |    a
-    //  |   /
-    //  | /
-    //  c
-    */
-
-    // B -> A
-    gs_vec3 bma = gs_vec3_sub(simplex->b.minkowski_hull_vert, simplex->a.minkowski_hull_vert);
-    // C -> A
-    gs_vec3 cma = gs_vec3_sub(simplex->c.minkowski_hull_vert, simplex->a.minkowski_hull_vert);
-    // Normal of ABC
-    gs_vec3 n = gs_vec3_cross(bma, cma);
-    // Directino to origin
-    gs_vec3 AO = gs_vec3_neg(simplex->a.minkowski_hull_vert);
-
-    // Set for line initially
-    *simp_dim = 2;
-
-    // Edge AB
-    if (gs_vec3_same_dir(gs_vec3_cross(bma, n), AO)) 
+    gs_vec3 line_seg = gs_vec3_sub(line.b, line.a);
+    gs_vec3 normalized = gs_vec3_norm(line_seg);
+    *v = gs_vec3_dot(gs_vec3_neg(line.a), normalized) / gs_vec3_len(line_seg);
+    *u = gs_vec3_dot(line.b, normalized) / gs_vec3_len(line_seg);
+    gs_vec3 closest_point;
+    if (*u <= 0.0f)
     {
-        simplex->c = simplex->a;
-        *search_dir = gs_vec3_cross(gs_vec3_cross(bma, AO), bma);
-        return;
+        closest_point = line.b;
     }
-    // Edge AC
-    if (gs_vec3_same_dir(gs_vec3_cross(n, cma), AO))
+    else if (*v <= 0.0f)
     {
-        simplex->b = simplex->a;
-        *search_dir = gs_vec3_cross(gs_vec3_cross(cma, AO), cma);
-        return;
+        closest_point = line.a;
+    }
+    else
+    {
+        closest_point = gs_vec3_add(gs_vec3_scale(line.a, *u), gs_vec3_scale(line.b, *v));
     }
 
-    // Valid triangle
-    simp_dim = 3;
-
-    // Above Triangle
-    if (gs_vec3_same_dir(n, AO))
-    {
-        simplex->d = simplex->c;
-        simplex->c = simplex->b;
-        simplex->b = simplex->a;
-        *search_dir = n;
-        return;
-    }
-
-    // Below triangle
-    simplex->d = simplex->b;
-    simplex->b = simplex->a;
-    *search_dir = gs_vec3_neg(n);
-    return;
-
+    return closest_point;
 }
 
-GS_API_DECL bool gs_gjk_update_simplex_tetrahedron(gs_gjk_simplex_t* simplex, int32_t* simp_dim, gs_vec3* search_dir)
+void gs_gjk_simplex_push(gs_gjk_simplex_t* simplex, gs_gjk_support_point_t p)
 {
-    // Direction: B -> A
-    gs_vec3 bma = gs_vec3_sub(simplex->b.minkowski_hull_vert, simplex->a.minkowski_hull_vert);
-    // Direction: C -> A
-    gs_vec3 cma = gs_vec3_sub(simplex->c.minkowski_hull_vert, simplex->a.minkowski_hull_vert);
-    // Direction D -> A
-    gs_vec3 dma = gs_vec3_sub(simplex->d.minkowski_hull_vert, simplex->a.minkowski_hull_vert);
-    // Normal: ABC
-    gs_vec3 ABC = gs_vec3_cross(bma, cma);
-    // Normal ACD
-    gs_vec3 ACD = gs_vec3_cross(cma, dma);
-    // Normal: ADB
-    gs_vec3 ADB = gs_vec3_cross(dma, bma);
-    // Direction to origin
-    gs_vec3 AO = gs_vec3_neg(simplex->a.minkowski_hull_vert);
-    // Set current dimension to 3
-    *simp_dim = 3;
+    simplex->ct = gs_min(simplex->ct + 1, 4);
 
-    //Plane-test origin with 3 faces
-    /*
-    // Note: Kind of primitive approach used here; If origin is in front of a face, just use it as the new simplex.
-    // We just go through the faces sequentially and exit at the first one which satisfies dot product. Not sure this 
-    // is optimal or if edges should be considered as possible simplices? Thinking this through in my head I feel like 
-    // this method is good enough. Makes no difference for AABBS, should test with more complex colliders.
-    */
-    // In front of ABC
-    if (gs_vec3_same_dir(ABC, AO)) 
-    {
-        simplex->d = simplex->c;
-        simplex->c = simplex->b;
-        simplex->b = simplex->a;
-        *search_dir = ABC;
-        return false;
-    }
-    // In front of ACD
-    if (gs_vec3_same_dir(ACD, AO)) 
-    {
-        simplex->b = simplex->a;
-        *search_dir = ACD;
-        return false;
-    }
-    // In front of ADB
-    if (gs_vec3_same_dir(ADB, AO)) 
-    {
-        simplex->c = simplex->d;
-        simplex->d = simplex->b;
-        simplex->b = simplex->a;
-        *search_dir = ADB;
-        return false;
-    }
+    for (int32_t i = simplex->ct - 1; i > 0; i--)
+        simplex->points[i] = simplex->points[i - 1];
 
-    // Else inside tetrahedron, therefore origin is enclosed
-    return true;
+    simplex->points[0] = p;
 }
+
+void gs_gjk_simplex_clear(gs_gjk_simplex_t* simplex)
+{
+    simplex->ct = 0;
+}
+
+void gs_gjk_simplex_set1(gs_gjk_simplex_t* simplex, gs_gjk_support_point_t a)
+{
+    simplex->ct = 1;
+    simplex->a = a;
+}
+
+void gs_gjk_simplex_set2(gs_gjk_simplex_t* simplex, gs_gjk_support_point_t a, gs_gjk_support_point_t b)
+{
+    simplex->ct = 2;
+    simplex->a = a;
+    simplex->b = b;
+}
+
+void gs_gjk_simplex_set3(gs_gjk_simplex_t* simplex, gs_gjk_support_point_t a, gs_gjk_support_point_t b, gs_gjk_support_point_t c)
+{
+    simplex->ct = 3;
+    simplex->a = a;
+    simplex->b = b;
+    simplex->c = c;
+}
+
+void gs_gjk_simplex_set4(gs_gjk_simplex_t* simplex, gs_gjk_support_point_t a, gs_gjk_support_point_t b, gs_gjk_support_point_t c, gs_gjk_support_point_t d)
+{
+    simplex->ct = 4;
+    simplex->a = a;
+    simplex->b = b;
+    simplex->c = c;
+    simplex->d = d;
+}
+
+bool gs_gjk_check_if_simplex_contains_origin(gs_gjk_simplex_t* simplex, gs_vec3* search_dir)
+{
+    // Line case
+    if (simplex->ct == 2)
+    {
+        // Line cannot contain the origin, only search for the direction to it 
+        gs_vec3 new_point_to_old_point = gs_vec3_sub(simplex->b.minkowski_hull_vert, simplex->a.minkowski_hull_vert);
+        gs_vec3 new_point_to_origin = gs_vec3_neg(simplex->a.minkowski_hull_vert);
+
+        // Method given by Erin Catto in GDC 2010 presentation
+        float u = 0.0f, v = 0.0f;
+        gs_line_t line = gs_line(simplex->a.minkowski_hull_vert, simplex->b.minkowski_hull_vert);
+        gs_vec3 origin = gs_v3s(0.f);
+        gs_vec3 closest_point = gs_closest_point_on_line_from_target_point(line, origin, &u, &v);
+    
+        // Test vertex region of new simplex point first as highest chance to be there
+        if (v <= 0.0f)
+        {
+            gs_gjk_simplex_set1(simplex, simplex->a);
+            *search_dir = gs_vec3_neg(closest_point);
+            return false;
+        }
+        else if (u <= 0.0f)
+        {
+            gs_gjk_simplex_set1(simplex, simplex->b);
+            *search_dir = gs_vec3_neg(closest_point);
+            return false;
+        }
+        else
+        {
+            *search_dir = gs_vec3_neg(closest_point);
+            return false;
+        }
+    }
+    // Triangle case
+    else if (simplex->ct == 3)
+    {
+        // Find the newly added features
+        gs_vec3 new_point_to_origin = gs_vec3_neg(simplex->a.minkowski_hull_vert);
+        gs_vec3 edge1 = gs_vec3_sub(simplex->b.minkowski_hull_vert, simplex->a.minkowski_hull_vert);
+        gs_vec3 edge2 = gs_vec3_sub(simplex->c.minkowski_hull_vert, simplex->a.minkowski_hull_vert);
+        // Find the normals to the triangle and the two edges
+        gs_vec3 triangle_normal = gs_vec3_cross(edge1, edge2);
+        gs_vec3 edge1_normal = gs_vec3_cross(edge1, triangle_normal);
+        gs_vec3 edge2_normal = gs_vec3_cross(triangle_normal, edge2);
+
+        // If origin is closer to the area along the second edge normal
+        if (gs_vec3_dot(edge2_normal, new_point_to_origin) > 0.0f)
+        {
+            // If closer to the edge then find the normal that points towards the origin
+            if (gs_vec3_dot(edge2, new_point_to_origin) > 0.0f)
+            {
+                // [AC]
+                *search_dir = gs_vec3_triple_cross_product(edge2, new_point_to_origin, edge2);
+                gs_gjk_simplex_clear(simplex);
+                gs_gjk_simplex_set2(simplex, simplex->a, simplex->c);
+                return false;
+            }
+            // If closer to the new simplex point 
+            else
+            {
+                // The "Star case" from the Muratori lecture
+                // If new search direction should be along edge normal 
+                if (gs_vec3_dot(edge1, new_point_to_origin) > 0.0f)
+                {
+                    // [AB]
+                    *search_dir = gs_vec3_triple_cross_product(edge1, new_point_to_origin, edge1);
+                    gs_gjk_simplex_clear(simplex);
+                    gs_gjk_simplex_set2(simplex, simplex->a, simplex->b);
+                    return false;
+                }
+                else // If new search direction should be along the new Simplex point
+                {
+                    // Return new simplex point alone [A]
+                    *search_dir = new_point_to_origin;
+                    gs_gjk_simplex_clear(simplex);
+                    gs_gjk_simplex_set1(simplex, simplex->a);
+                    return false;
+                }
+            }
+        }
+        else
+        {
+            // The "Star case" from the Muratori lecture
+            // If closer to the first edge normal
+            if (gs_vec3_dot(edge1_normal, new_point_to_origin) > 0.0f)
+            {
+                // If new search direction should be along edge normal
+                if (gs_vec3_dot(edge1, new_point_to_origin) > 0.0f)
+                {
+                    // Return it as [A, B]
+                    *search_dir = gs_vec3_triple_cross_product(edge1, new_point_to_origin, edge1);
+                    gs_gjk_simplex_clear(simplex);
+                    gs_gjk_simplex_set2(simplex, simplex->a, simplex->b);
+                    return false;
+                }
+                else // If new search direction should be along the new Simplex point
+                {
+                    // Return new simplex point alone [A]
+                    *search_dir = new_point_to_origin;
+                    gs_gjk_simplex_clear(simplex);
+                    gs_gjk_simplex_set1(simplex, simplex->a);
+                    return false;
+                }
+            }
+            else
+            {
+                // Check if it is above the triangle
+                if (gs_vec3_dot(triangle_normal, new_point_to_origin) > 0.0f)
+                {
+                    // No need to change the simplex, return as [A, B, C]
+                    *search_dir = triangle_normal;
+                    return false;
+                }
+                else // Has to be below the triangle, all 4 other possible regions checked
+                {
+                    // Return simplex as [A, C, B]
+                    *search_dir = gs_vec3_neg(triangle_normal);
+                    gs_gjk_simplex_set3(simplex, simplex->a, simplex->c, simplex->b);
+                    return false;
+                }
+            }
+        }
+    }
+    else if (simplex->ct == 4)
+    {
+        // the simplex is a tetrahedron, must check if it is outside any of the side triangles,
+        // if it is then set the simplex equal to that triangle and continue, otherwise we know
+        // there is an intersection and exit
+
+        gs_vec3 edge1 = gs_vec3_sub(simplex->b.minkowski_hull_vert, simplex->a.minkowski_hull_vert);
+        gs_vec3 edge2 = gs_vec3_sub(simplex->c.minkowski_hull_vert, simplex->a.minkowski_hull_vert);
+        gs_vec3 edge3 = gs_vec3_sub(simplex->d.minkowski_hull_vert, simplex->a.minkowski_hull_vert);
+        
+        gs_vec3 face1_normal = gs_vec3_cross(edge1, edge2);
+        gs_vec3 face2_normal = gs_vec3_cross(edge2, edge3);
+        gs_vec3 face3_normal = gs_vec3_cross(edge3, edge1);
+        
+        gs_vec3 new_point_to_origin = gs_vec3_neg(simplex->a.minkowski_hull_vert);
+
+        bool contains = true;
+        if (gs_vec3_dot(face1_normal, new_point_to_origin) > 0.0f)
+        {
+            // Origin is in front of first face, simplex is correct already
+            // goto tag;
+            contains = false;
+        }
+
+        if (!contains && gs_vec3_dot(face2_normal, new_point_to_origin) > 0.0f)
+        {
+            // Origin is in front of second face, simplex is set to this triangle [A, C, D]
+            gs_gjk_simplex_clear(simplex);
+            gs_gjk_simplex_set3(simplex, simplex->a, simplex->c, simplex->d);
+            contains = false;
+        }
+
+        if (!contains && gs_vec3_dot(face3_normal, new_point_to_origin) > 0.0f)
+        {
+            // Origin is in front of third face, simplex is set to this triangle [A, D, B]
+            gs_gjk_simplex_clear(simplex);
+            gs_gjk_simplex_set3(simplex, simplex->a, simplex->d, simplex->b);
+            contains = false;
+        }
+
+        // If reached here it means the simplex MUST contain the origin, intersection confirmed
+        if (contains) {
+            return true;
+        }
+
+        gs_vec3 edge1_normal = gs_vec3_cross(edge1, face1_normal);
+        if (gs_vec3_dot(edge1_normal, new_point_to_origin) > 0.0f)
+        {
+            // Origin is along the normal of edge1, set the simplex to that edge [A, B]
+            *search_dir = gs_vec3_triple_cross_product(edge1, new_point_to_origin, edge1);
+            gs_gjk_simplex_clear(simplex);
+            gs_gjk_simplex_set2(simplex, simplex->a, simplex->b);
+            return false;
+        }
+
+        gs_vec3 edge2Normal = gs_vec3_cross(face1_normal, edge2);
+        if (gs_vec3_dot(edge2Normal, new_point_to_origin) > 0.0f)
+        {
+            // Origin is along the normal of edge2, set the simplex to that edge [A, C]
+            *search_dir = gs_vec3_triple_cross_product(edge2, new_point_to_origin, edge2);
+            gs_gjk_simplex_clear(simplex);
+            gs_gjk_simplex_set2(simplex, simplex->a, simplex->c);
+            return false;
+        }
+
+        // If reached here the origin is along the first face normal, set the simplex to this face [A, B, C]
+        *search_dir = face1_normal;
+        gs_gjk_simplex_clear(simplex);
+        gs_gjk_simplex_set3(simplex, simplex->a, simplex->b, simplex->c);
+        return false;
+    }
+    return false;
+}
+
 
 // Find barycentric coordinates of triangle with respect to p
 GS_API_DECL void gs_gjk_bary(gs_vec3 p, gs_vec3 a, gs_vec3 b, gs_vec3 c, float* u, float* v, float* w)
