@@ -11,7 +11,7 @@ Gunslinger is an [stb-style](https://github.com/nothings/stb), header-only c99 f
 - Simple API inspired by [sokol](https://github.com/floooh/sokol) headers.
 - Provides core framework for quickly developing multimedia applications: [Platform](https://github.com/MrFrenik/gunslinger/blob/master/docs/platform.md), [Graphics](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md), [Audio layers](https://github.com/MrFrenik/gunslinger/blob/master/docs/audio.md). 
 - Provides custom utilities for [math](https://github.com/MrFrenik/gunslinger/blob/master/docs/math.md) and [generic data structures](https://github.com/MrFrenik/gunslinger/blob/master/docs/containers.md).
-- Optional [helper utilties](https://github.com/MrFrenik/gunslinger/tree/master/util) are provided, such as [OpenGL 2.0-style immediate-mode rendering](https://github.com/MrFrenik/gunslinger/blob/master/util/gs_idraw.h), [asset management system](https://github.com/MrFrenik/gunslinger/blob/master/util/gs_asset.h), and a [data reflection utility](https://github.com/MrFrenik/gunslinger/blob/master/util/gs_meta.h). 
+- Optional [helper utilties](https://github.com/MrFrenik/gunslinger/tree/master/util) are provided, such as [OpenGL 2.0-style immediate-mode rendering](https://github.com/MrFrenik/gunslinger/blob/master/util/gs_idraw.h), [asset management system](https://github.com/MrFrenik/gunslinger/blob/master/util/gs_asset.h), a [data reflection utility](https://github.com/MrFrenik/gunslinger/blob/master/util/gs_meta.h), and a [physics utility](https://github.com/MrFrenik/gunslinger/blob/master/util/gs_physics.h). 
 - Supports a growing list of platforms: `Windows`, `OSX`, `Linux`, `Android`, and `HTML5` currently with plans to add `UWP`, `RPI`, `IOS`.
 - Graphics pipeline follows an explicit rendering framework, making it easier to write for modern backends, such as `Vulkan`/`DX12`/`Metal`.
 - All core layers can be fully swapped out with custom user implementations.
@@ -28,6 +28,7 @@ Gunslinger is an [stb-style](https://github.com/nothings/stb), header-only c99 f
 * Graphics: WIP
 * Math: WIP
 * Utils: WIP
+* [Official Documentation](https://gunslinger.docsforge.com/) (DocsForge)
 
 [//]: # "(* [Platform](https://github.com/MrFrenik/gunslinger/blob/master/docs/platform.md) )"
 [//]: # "(* [Graphics](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md) )" 
@@ -49,7 +50,7 @@ gs_app_desc_t gs_main(int32_t argc, char** argv)
 ```
 ## Roadmap
 
-* Support Android/iOS/RPI/UWP backends
+* Support iOS/RPI/UWP backends
 * Support Vulkan/Metal/DX12 backends
 * Add support for more texture sampler types: 1D, 3D, Cube Maps, Arrays
 * Material Asset utils

@@ -623,6 +623,11 @@ typedef bool32_t          bool32;
 // gs utils
 ============================================================*/
 
+/** @defgroup gs_util Common Utils
+ *  Gunslinger Common Utils
+ *  @{
+ */
+
 // Helper macro for compiling to nothing
 #define gs_empty_instruction(...)
 
@@ -659,6 +664,12 @@ typedef bool32_t          bool32;
 
 // Helpful macro for casting one type to another
 #define gs_cast(A, B) ((A*)(B))
+
+#ifdef __cplusplus
+    #define gs_ctor(TYPE, ...) (TYPE {__VA_ARGS__})
+#else 
+    #define gs_ctor(TYPE, ...) ((TYPE){__VA_ARGS__})
+#endif
 
 // Helpful marco for calculating offset (in bytes) of an element from a given structure type
 #define gs_offset(TYPE, ELEMENT) ((size_t)(&(((TYPE*)(0))->ELEMENT)))
@@ -1432,16 +1443,30 @@ size_t gs_hash_bytes(void *p, size_t len, size_t seed)
 GS_API_DECL bool32_t gs_util_load_texture_data_from_file(const char* file_path, int32_t* width, int32_t* height, uint32_t* num_comps, void** data, bool32_t flip_vertically_on_load);
 GS_API_DECL bool32_t gs_util_load_texture_data_from_memory(const void* memory, size_t sz, int32_t* width, int32_t* height, uint32_t* num_comps, void** data, bool32_t flip_vertically_on_load);
 
+/** @} */ // end of gs_util
+
 /*========================
 // GS_CONTAINERS
 ========================*/
+
+/** @defgroup gs_containers Containers
+ *  Gunslinger Containers
+ *  @{
+ */
 
 /*========================
 // Byte Buffer
 ========================*/
 
+/** @defgroup gs_byte_buffer Byte Buffer
+ *  @ingroup gs_containers
+ *  Byte Buffer
+ */
+
 #define GS_BYTE_BUFFER_DEFAULT_CAPCITY  1024
 
+/** @addtogroup gs_byte_buffer
+ */
 typedef struct gs_byte_buffer_t
 {
     uint8_t* data;      // Buffer that actually holds all relevant byte data
@@ -1539,6 +1564,13 @@ GS_API_DECL void gs_byte_buffer_memset(gs_byte_buffer_t* buffer, uint8_t val);
 // Dynamic Array
 ===================================*/
 
+/** @defgroup gs_dyn_array Dynamic Array
+ *  @ingroup gs_containers
+ *  Dynamic Array
+ */
+
+/** @addtogroup gs_dyn_array
+ */
 typedef struct gs_dyn_array
 {
     int32_t size;
@@ -2305,11 +2337,144 @@ void gs_command_buffer_free(gs_command_buffer_t* cb)
     typedef gs_command_buffer_t gs_cmdbuf;
 #endif
 
+/** @} */ // end of gs_containers
+
+/*========================
+// GS_MEMORY
+========================*/
+
+/** @defgroup gs_memory Memory
+ *  Gunslinger Memory
+ *  @{
+ */
+
+#define gs_ptr_add(P, BYTES) \
+    (((uint8_t*)P + (BYTES)))
+
+typedef struct gs_memory_block_t {
+    uint8_t* data;
+    size_t size;
+} gs_memory_block_t;
+    
+GS_API_DECL gs_memory_block_t gs_memory_block_new(size_t sz);
+GS_API_DECL void gs_memory_block_free(gs_memory_block_t* mem);
+GS_API_DECL size_t gs_memory_calc_padding(size_t base_address, size_t alignment);
+GS_API_DECL size_t gs_memory_calc_padding_w_header(size_t base_address, size_t alignment, size_t header_sz);
+
+/*================================================================================
+// Linear Allocator
+================================================================================*/
+
+typedef struct gs_linear_allocator_t {
+    uint8_t* memory;
+    size_t total_size;
+    size_t offset;
+} gs_linear_allocator_t;
+
+GS_API_DECL gs_linear_allocator_t gs_linear_allocator_new(size_t sz);
+GS_API_DECL void gs_linear_allocator_free(gs_linear_allocator_t* la);
+GS_API_DECL void* gs_linear_allocator_allocate(gs_linear_allocator_t* la, size_t sz, size_t alignment);
+GS_API_DECL void gs_linear_allocator_clear(gs_linear_allocator_t* la);
+
+/*================================================================================
+// Stack Allocator
+================================================================================*/
+
+typedef struct gs_stack_allocator_header_t {
+    uint32_t size;
+} gs_stack_allocator_header_t;
+
+typedef struct gs_stack_allocator_t {
+    gs_memory_block_t memory;
+    size_t offset;
+} gs_stack_allocator_t;
+
+GS_API_DECL gs_stack_allocator_t gs_stack_allocator_new(size_t sz);
+GS_API_DECL void gs_stack_allocator_free(gs_stack_allocator_t* sa);
+GS_API_DECL void* gs_stack_allocator_allocate(gs_stack_allocator_t* sa, size_t sz);
+GS_API_DECL void* gs_stack_allocator_peek(gs_stack_allocator_t* sa);
+GS_API_DECL void* gs_stack_allocator_pop(gs_stack_allocator_t* sa);
+GS_API_DECL void gs_stack_allocator_clear(gs_stack_allocator_t* sa);
+
+/*================================================================================
+// Heap Allocator
+================================================================================*/
+
+#ifndef GS_HEAP_ALLOC_DEFAULT_SIZE 
+    #define GS_HEAP_ALLOC_DEFAULT_SIZE 1024 * 1024 * 20
+#endif
+
+#ifndef GS_HEAP_ALLOC_DEFAULT_CAPCITY 
+    #define GS_HEAP_ALLOC_DEFAULT_CAPCITY 1024
+#endif
+
+typedef struct gs_heap_allocator_header_t {
+    struct gs_heap_allocator_header_t* next;
+    struct gs_heap_allocator_header_t* prev;
+    size_t size; 
+} gs_heap_allocator_header_t;
+
+typedef struct gs_heap_allocator_free_block_t {
+    gs_heap_allocator_header_t* header;
+    size_t size;
+} gs_heap_allocator_free_block_t;
+
+typedef struct gs_heap_allocator_t {
+    gs_heap_allocator_header_t* memory;
+    gs_heap_allocator_free_block_t* free_blocks;
+    uint32_t free_block_count;
+    uint32_t free_block_capacity;
+} gs_heap_allocator_t;
+
+GS_API_DECL gs_heap_allocator_t gs_heap_allocate_new();
+GS_API_DECL void gs_heap_allocator_free(gs_heap_allocator_t* ha);
+GS_API_DECL void* gs_heap_allocator_allocate(gs_heap_allocator_t* ha, size_t sz);
+GS_API_DECL void gs_heap_allocator_deallocate(gs_heap_allocator_t* ha, void* memory);
+
+/*================================================================================
+// Pool Allocator
+================================================================================*/
+
+/*================================================================================
+// Paged Allocator
+================================================================================*/
+
+typedef struct gs_paged_allocator_block_t {
+    struct gs_paged_allocator_block_t* next;
+} gs_paged_allocator_block_t;
+
+typedef struct gs_paged_allocator_page_t {
+    struct gs_paged_allocator_page_t* next;
+    struct gs_paged_allocator_block_t* data;
+} gs_paged_allocator_page_t;
+
+typedef struct gs_paged_allocator_t {
+    uint32_t block_size;
+    uint32_t blocks_per_page;
+    gs_paged_allocator_page_t* pages;
+    uint32_t page_count;
+    gs_paged_allocator_block_t* free_list;
+} gs_paged_allocator_t;
+
+GS_API_DECL gs_paged_allocator_t gs_paged_allocator_new(size_t element_size, size_t elements_per_page);
+GS_API_DECL void gs_paged_allocator_free(gs_paged_allocator_t* pa);
+GS_API_DECL void* gs_paged_allocator_allocate(gs_paged_allocator_t* pa);
+GS_API_DECL void gs_paged_allocator_deallocate(gs_paged_allocator_t* pa, void* data);
+GS_API_DECL void gs_paged_allocator_clear(gs_paged_allocator_t* pa);
+
+/** @} */ // end of gs_memory
+
 /*========================
 // GS_MATH
 ========================*/
 
+/** @defgroup gs_math Math
+ *  Gunslinger Math
+ *  @{
+ */
+
 // Defines
+#define GS_EPSILON  (1e-6)
 #define GS_PI       3.1415926535897932
 #define GS_TAU      2.0 * GS_PI
 
@@ -2415,6 +2580,7 @@ float gs_ease_cubic_in_out(float t, float b, float c, float d)
 // Vec2
 ================================================================================*/
 
+/** @brief struct gs_vec2 in gs math */
 typedef struct 
 {
     union 
@@ -2548,6 +2714,12 @@ gs_vec3_ctor(f32 _x, f32 _y, f32 _z)
     return v;
 }
 
+gs_inline bool 
+gs_vec3_eq(gs_vec3 v0, gs_vec3 v1)
+{
+    return (v0.x == v1.x && v0.y == v1.y && v0.z == v1.z);
+}
+
 gs_inline gs_vec3 
 gs_vec3_add(gs_vec3 v0, gs_vec3 v1)
 {
@@ -2578,12 +2750,25 @@ gs_vec3_scale(gs_vec3 v, f32 s)
     return gs_vec3_ctor(v.x * s, v.y * s, v.z * s);
 }
 
+gs_inline gs_vec3
+gs_vec3_neg(gs_vec3 v)
+{
+    return gs_vec3_scale(v, -1.f);
+}
+
 gs_inline f32 
 gs_vec3_dot(gs_vec3 v0, gs_vec3 v1) 
 {
     f32 dot = (f32)((v0.x * v1.x) + (v0.y * v1.y) + v0.z * v1.z);
     return dot;
 }
+
+gs_inline bool 
+gs_vec3_same_dir(gs_vec3 v0, gs_vec3 v1)
+{
+    return (gs_vec3_dot(v0, v1) > 0.f);
+}
+
 
 gs_inline f32 
 gs_vec3_len(gs_vec3 v)
@@ -2752,6 +2937,139 @@ gs_inline
 gs_vec3 gs_v4_to_v3(gs_vec4 v) 
 {
     return gs_v3(v.x, v.y, v.z);
+}
+
+/*================================================================================
+// Mat3x3
+================================================================================*/
+
+/*
+    Matrices are stored in linear, contiguous memory and assume a column-major ordering.
+*/
+
+typedef struct gs_mat3 {
+    f32 m[9];
+} gs_mat3;
+
+gs_inline gs_mat3 gs_mat3_diag(float val)
+{
+    gs_mat3 m = gs_default_val();
+    m.m[0 + 0 * 3] = val;
+    m.m[1 + 1 * 3] = val;
+    m.m[2 + 2 * 3] = val;
+    return m;
+}
+
+#define gs_mat3_identity()\
+    gs_mat3_diag(1.f)
+
+gs_inline gs_mat3 
+gs_mat3_mul(gs_mat3 m0, gs_mat3 m1)
+{
+    gs_mat3 m = gs_default_val();
+
+    for (u32 y = 0; y < 3; ++y)
+    {
+        for (u32 x = 0; x < 3; ++x)
+        {
+            f32 sum = 0.0f;
+            for (u32 e = 0; e < 3; ++e)
+            {
+                sum += m0.m[x + e * 3] * m1.m[e + y * 3];
+            }
+            m.m[x + y * 3] = sum;
+        }
+    }
+
+    return m;
+}
+
+gs_inline gs_vec3 
+gs_mat3_mul_vec3(gs_mat3 m, gs_vec3 v)
+{
+    return gs_vec3_ctor(
+        m.m[0] * v.x + m.m[1] * v.y + m.m[2] * v.z,
+        m.m[3] * v.x + m.m[4] * v.y + m.m[5] * v.z,
+        m.m[6] * v.x + m.m[7] * v.y + m.m[8] * v.z
+    );
+}
+
+gs_inline gs_mat3
+gs_mat3_scale(float x, float y, float z)
+{
+    gs_mat3 m = gs_default_val();
+    m.m[0] = x;
+    m.m[4] = y;
+    m.m[8] = z;
+    return m;
+}
+
+gs_inline gs_mat3 
+gs_mat3_rotate(float radians, float x, float y, float z)
+{
+    gs_mat3 m = gs_default_val();
+    float s = sinf(radians), c = cosf(radians), c1 = 1.f - c;
+    float xy = x * y;
+    float yz = y * z;
+    float zx = z * x;
+    float xs = x * s;
+    float ys = y * s;
+    float zs = z * s;
+    m.m[0] = c1 * x * x + c; m.m[1] = c1 * xy - zs;   m.m[2] = c1 * zx + ys; 
+    m.m[3] = c1 * xy + zs;   m.m[4] = c1 * y * y + c; m.m[5] = c1 * yz - xs;
+    m.m[6] = c1 * zx - ys;   m.m[7] = c1 * yz + xs;   m.m[8] = c1 * z * z + c;
+    return m;
+}
+
+gs_inline gs_mat3
+gs_mat3_rotatev(float radians, gs_vec3 axis)
+{
+    return gs_mat3_rotate(radians, axis.x, axis.y, axis.z);
+}
+
+// Turn quaternion into mat3
+gs_inline gs_mat3 
+gs_mat3_rotateq(gs_vec4 q)
+{
+    gs_mat3 m = gs_default_val();
+    float x2 = q.x * q.x, y2 = q.y * q.y, z2 = q.z * q.z, w2 = q.w * q.w;
+    float xz = q.x  *q.z, xy = q.x * q.y, yz = q.y * q.z, wz = q.w * q.z, wy = q.w * q.y, wx = q.w * q.x;
+    m.m[0] = 1 - 2 * (y2 + z2); m.m[1] = 2 * (xy + wz);     m.m[2] = 2 * (xz - wy);
+    m.m[3] = 2 * (xy - wz);     m.m[4] = 1 - 2 * (x2 + z2); m.m[5] = 2 * (yz + wx);
+    m.m[6] = 2 * (xz + wy);     m.m[7] = 2 * (yz - wx);     m.m[8] = 1 - 2 * (x2 + y2);
+    return m;
+}
+
+gs_inline gs_mat3 
+gs_mat3_rsq(gs_vec4 q, gs_vec3 s)
+{
+    gs_mat3 mr = gs_mat3_rotateq(q);
+    gs_mat3 ms = gs_mat3_scale(s.x, s.y, s.z);
+    return gs_mat3_mul(mr, ms);
+}
+
+gs_inline gs_mat3
+gs_mat3_inverse(gs_mat3 m)
+{
+    gs_mat3 r = gs_default_val();
+
+    float det = m.m[0 * 3 + 0] * (m.m[1 * 3 + 1] * m.m[2 * 3 + 2] - m.m[2 * 3 + 1] * m.m[1 * 3 + 2]) -
+                m.m[0 * 3 + 1] * (m.m[1 * 3 + 0] * m.m[2 * 3 + 2] - m.m[1 * 3 + 2] * m.m[2 * 3 + 0]) +
+                m.m[0 * 3 + 2] * (m.m[1 * 3 + 0] * m.m[2 * 3 + 1] - m.m[1 * 3 + 1] * m.m[2 * 3 + 0]); 
+
+    float inv_det = det ? 1.f / det : 0.f;
+
+    r.m[0 * 3 + 0] = (m.m[1 * 3 + 1] * m.m[2 * 3 + 2] - m.m[2 * 3 + 1] * m.m[1 * 3 + 2]) * inv_det;
+    r.m[0 * 3 + 1] = (m.m[0 * 3 + 2] * m.m[2 * 3 + 1] - m.m[0 * 3 + 1] * m.m[2 * 3 + 2]) * inv_det;
+    r.m[0 * 3 + 2] = (m.m[0 * 3 + 1] * m.m[1 * 3 + 2] - m.m[0 * 3 + 2] * m.m[1 * 3 + 1]) * inv_det;
+    r.m[1 * 3 + 0] = (m.m[1 * 3 + 2] * m.m[2 * 3 + 0] - m.m[1 * 3 + 0] * m.m[2 * 3 + 2]) * inv_det;
+    r.m[1 * 3 + 1] = (m.m[0 * 3 + 0] * m.m[2 * 3 + 2] - m.m[0 * 3 + 2] * m.m[2 * 3 + 0]) * inv_det;
+    r.m[1 * 3 + 2] = (m.m[1 * 3 + 0] * m.m[0 * 3 + 2] - m.m[0 * 3 + 0] * m.m[1 * 3 + 2]) * inv_det;
+    r.m[2 * 3 + 0] = (m.m[1 * 3 + 0] * m.m[2 * 3 + 1] - m.m[2 * 3 + 0] * m.m[1 * 3 + 1]) * inv_det;
+    r.m[2 * 3 + 1] = (m.m[2 * 3 + 0] * m.m[0 * 3 + 1] - m.m[0 * 3 + 0] * m.m[2 * 3 + 1]) * inv_det;
+    r.m[2 * 3 + 2] = (m.m[0 * 3 + 0] * m.m[1 * 3 + 1] - m.m[1 * 3 + 0] * m.m[0 * 3 + 1]) * inv_det;
+
+    return r;
 }
 
 /*================================================================================
@@ -3175,6 +3493,7 @@ typedef struct
 {
     union 
     {
+        gs_vec4 v;
         f32 xyzw[4];
         struct 
         {
@@ -3539,44 +3858,6 @@ gs_inline gs_mat4 gs_vqs_to_mat4(const gs_vqs* transform)
 }
 
 /*================================================================================
-// Ray
-================================================================================*/
-
-typedef struct 
-{
-    gs_vec3 point;
-    gs_vec3 direction;  
-} gs_ray;
-
-gs_inline gs_ray gs_ray_ctor(gs_vec3 pt, gs_vec3 dir)
-{
-    gs_ray r;
-    r.point = pt;
-    r.direction = dir;
-    return r;
-}
-
-/*================================================================================
-// Plane
-================================================================================*/
-
-typedef struct gs_plane_t
-{
-    union
-    {
-        gs_vec3 n;
-        struct 
-        {
-            f32 a;
-            f32 b;
-            f32 c;
-        };
-    };
-
-    f32 d;
-} gs_plane_t;
-
-/*================================================================================
 // Camera
 ================================================================================*/
 
@@ -3620,6 +3901,7 @@ GS_API_DECL void gs_camera_offset_orientation(gs_camera_t* cam, float yaw, float
     min is top left of rect,
     max is bottom right
 */
+/*
 typedef struct gs_aabb_t
 {
     gs_vec2 min;
@@ -3703,10 +3985,18 @@ gs_vec4 gs_aabb_window_coords(gs_aabb_t* aabb, gs_camera_t* camera, gs_vec2 wind
 
     return bounds;
 }
+*/
+
+/** @} */ // end of gs_math
 
 /*========================
 // GS_PLATFORM
 ========================*/
+
+/** @defgroup gs_platform Platform
+ *  Gunslinger Platform
+ *  @{
+ */
 
 /*============================================================
 // Platform Time
@@ -4270,9 +4560,16 @@ GS_API_DECL void     gs_platform_framebuffer_size(uint32_t handle, uint32_t* w, 
 GS_API_DECL uint32_t gs_platform_framebuffer_width(uint32_t handle);
 GS_API_DECL uint32_t gs_platform_framebuffer_height(uint32_t handle);
 
+/** @} */ // end of gs_platform
+
 /*=============================
 // GS_AUDIO
 =============================*/
+
+/** @defgroup gs_audio Audio
+ *  Gunslinger Audio
+ *  @{
+ */
 
 typedef enum gs_audio_file_type
 {
@@ -4412,9 +4709,16 @@ GS_API_DECL bool32_t gs_audio_load_mp3_data_from_file(const char* file_path, int
     #define gsa_restart   gs_audio_restart
 #endif
 
+/** @} */ // end of gs_audio
+
 /*=============================
 // GS_GRAPHICS
 =============================*/
+
+/** @defgroup gs_graphics Graphics
+ *  Gunslinger Graphics
+ *  @{
+ */
 
 // Graphics Pipeline
 
@@ -5026,9 +5330,15 @@ typedef gs_handle(gs_graphics_pipeline_t)    gs_pipeline;
 
 #endif
 
+/** @} */ // end of gs_graphics
+
 /*==========================
 // GS_ASSET_TYPES
 ==========================*/
+
+/** @addtogroup gs_util
+ *  @{
+ */
 
 // Texture
 typedef struct gs_asset_texture_t
@@ -5056,6 +5366,7 @@ typedef struct gs_asset_font_t
 
 GS_API_DECL bool gs_asset_font_load_from_file(const char* path, void* out, uint32_t point_size);
 GS_API_DECL bool gs_asset_font_load_from_memory(const void* memory, size_t sz, void* out, uint32_t point_size);
+GS_API_DECL gs_vec2 gs_asset_font_get_text_dimensions(const gs_asset_font_t* font, const char* text);
 
 // Audio
 typedef struct gs_asset_audio_t
@@ -5114,6 +5425,8 @@ GS_API_DECL bool gs_asset_mesh_load_from_file(const char* path, void* out, gs_as
 GS_API_DECL bool gs_util_load_gltf_data_from_file(const char* path, gs_asset_mesh_decl_t* decl, gs_asset_mesh_raw_data_t** out, uint32_t* mesh_count);
 GS_API_DECL bool gs_util_load_gltf_data_from_memory(const void* memory, size_t sz, gs_asset_mesh_decl_t* decl, gs_asset_mesh_raw_data_t** out, uint32_t* mesh_count);
 
+/** @} */ // end of gs_util
+
 // Material
 // How to do this? Materials really are utility types...
 // So should they be relegated to a utility file?
@@ -5145,6 +5458,11 @@ GS_API_DECL bool gs_util_load_gltf_data_from_memory(const void* memory, size_t s
 /*==========================
 // GS_ENGINE / GS_APP
 ==========================*/
+
+/** @defgroup gs_app App/Engine
+ *  Gunslinger App/Engine
+ *  @{
+ */
 
 // Application descriptor for user application
 typedef struct gs_app_desc_t
@@ -5214,6 +5532,8 @@ GS_API_DECL gs_app_desc_t gs_main(int32_t argc, char** argv);
 
 #define gs_engine_user_data(__T)\
     (__T*)(gs_engine_instance()->ctx.app.user_data)
+
+/** @} */ // end of gs_app
 
 /*==================================================================================================================================
 // ===== Gunslinger Implementation ============================================================================================== //
@@ -5373,6 +5693,360 @@ gs_byte_buffer_read_from_file
 GS_API_DECL void gs_byte_buffer_memset(gs_byte_buffer_t* buffer, uint8_t val)
 {
     memset(buffer->data, val, buffer->capacity);
+}
+
+/*========================
+// GS_MEMORY
+========================*/
+
+// typedef struct gs_memory_block_t {
+//     uint8_t* data;
+//     size_t size;
+// } gs_memory_block_t;
+
+GS_API_DECL gs_memory_block_t gs_memory_block_new(size_t sz)
+{
+    gs_memory_block_t mem = gs_default_val();
+    mem.data = gs_malloc(sz);
+    memset(mem.data, 0, sz);
+    mem.size = sz;
+    return mem;
+}
+
+GS_API_DECL void gs_memory_block_free(gs_memory_block_t* mem)
+{
+    gs_assert(mem);
+    gs_assert(mem->data);
+    gs_free(mem->data);
+    mem->data = NULL;
+    mem->size = 0;
+}
+
+// Modified from: https://github.com/mtrebi/memory-allocators/blob/master/includes/Utils.h
+GS_API_DECL size_t gs_memory_calc_padding(size_t base_address, size_t alignment)
+{
+    size_t mult = (base_address / alignment) + 1;
+    size_t aligned_addr = mult * alignment;
+    size_t padding = aligned_addr - base_address;
+    return padding;
+}
+
+GS_API_DECL size_t gs_memory_calc_padding_w_header(size_t base_address, size_t alignment, size_t header_sz)
+{
+    size_t padding = gs_memory_calc_padding(base_address, alignment);
+    size_t needed_space = header_sz;
+
+    if (padding < needed_space) {
+        needed_space -= padding;
+
+        if (needed_space % alignment > 0) {
+            padding += alignment * (1 + (needed_space / alignment));
+        } else {
+            padding += alignment * (needed_space / alignment);
+        }
+    }
+
+    return padding;
+}
+
+/*================================================================================
+// Linear Allocator
+================================================================================*/
+
+// typedef struct gs_linear_allocator_t {
+//     uint8_t* memory;
+//     size_t total_size;
+//     size_t offset;
+// } gs_linear_allocator_t;
+
+GS_API_DECL gs_linear_allocator_t gs_linear_allocator_new(size_t sz)
+{
+    gs_linear_allocator_t la = gs_default_val();
+    la.memory = gs_malloc(sz);
+    memset(la.memory, 0, sz);
+    la.offset = 0;
+    la.total_size = sz;
+    return la;
+}
+
+GS_API_DECL void gs_linear_allocator_free(gs_linear_allocator_t* la)
+{
+    gs_assert(la);
+    gs_assert(la->memory);
+    gs_free(la->memory);
+    la->memory = NULL;
+}
+
+GS_API_DECL void* gs_linear_allocator_allocate(gs_linear_allocator_t* la, size_t sz, size_t alignment)
+{
+    gs_assert(la);
+    size_t padding = 0;
+    size_t padding_address = 0;
+    size_t cur_address = (size_t)la->memory + la->offset;
+
+    // Calculate alignment required
+    if (alignment != 0 && la->offset % alignment != 0) {
+        padding = gs_memory_calc_padding(cur_address, alignment);
+    }
+
+    // Cannot allocate (not enough memory available)
+    if (la->offset + padding + sz > la->total_size) {
+        return NULL;
+    }
+
+    // Allocate and return pointer
+    la->offset += padding;
+    size_t next_address = cur_address + padding;
+    la->offset += sz;
+    return (void*)next_address;
+}
+
+GS_API_DECL void gs_linear_allocator_clear(gs_linear_allocator_t* la)
+{
+    gs_assert(la);
+    la->offset = 0;
+}
+
+/*================================================================================
+// Stack Allocator
+================================================================================*/
+
+GS_API_DECL gs_stack_allocator_t gs_stack_allocator_new(size_t sz)
+{
+    gs_stack_allocator_t alloc = gs_default_val();
+    alloc.memory = gs_memory_block_new(sz);
+    return alloc;
+}
+
+GS_API_DECL void gs_stack_allocator_free(gs_stack_allocator_t* sa)
+{
+    gs_stack_allocator_clear(sa);
+    gs_memory_block_free(&sa->memory);
+}
+
+GS_API_DECL void* gs_stack_allocator_allocate(gs_stack_allocator_t* sa, size_t sz)
+{
+    // Not enough memory available
+    size_t total_size = sz + sizeof(gs_stack_allocator_header_t);
+    if (total_size > (size_t)sa->memory.size - sa->offset) {
+        return NULL;
+    }
+
+    // Create new entry and push
+    size_t header_addr = (size_t)(sa->memory.data + sa->offset + sz);
+    gs_stack_allocator_header_t* header = (gs_stack_allocator_header_t*)(sa->memory.data + sa->offset + sz);
+    uint8_t* data = (uint8_t*)(sa->memory.data + sa->offset);
+    header->size = (uint32_t)sz;
+
+    // Add this to the memory size
+    sa->offset += total_size;
+
+    // Return data
+    return data;
+}
+
+GS_API_DECL void* gs_stack_allocator_pop(gs_stack_allocator_t* sa)
+{
+    // If no entries left, then cannot pop
+    if (sa->offset == 0) {
+        return NULL;
+    }
+
+    // Move current size back
+    gs_stack_allocator_header_t* header = (gs_stack_allocator_header_t*)(sa->memory.data + sa->offset - sizeof(gs_stack_allocator_header_t));
+    void* data = (uint8_t*)(sa->memory.data + sa->offset - sizeof(gs_stack_allocator_header_t) - header->size);
+    size_t total_sz = (size_t)header->size + sizeof(gs_stack_allocator_header_t);
+
+    // Set offset back
+    sa->offset -= total_sz;
+
+    // Return data
+    return (void*)data;
+}
+
+GS_API_DECL void* gs_stack_allocator_peek(gs_stack_allocator_t* sa)
+{
+    if (sa->offset == 0) {
+        return NULL;
+    }
+
+    gs_stack_allocator_header_t* header = (gs_stack_allocator_header_t*)(sa->memory.data + sa->offset - sizeof(gs_stack_allocator_header_t));
+    return (void*)(sa->memory.data + sa->offset - sizeof(gs_stack_allocator_header_t) - (size_t)header->size);
+}
+
+GS_API_DECL void gs_stack_allocator_clear(gs_stack_allocator_t* sa)
+{
+    // Clear offset
+    sa->offset = 0;
+}
+
+/*================================================================================
+// Paged Allocator
+================================================================================*/
+
+GS_API_DECL gs_paged_allocator_t gs_paged_allocator_new(size_t block_size, size_t blocks_per_page)
+{
+    gs_paged_allocator_t pa = gs_default_val();
+    pa.block_size = block_size;
+    pa.blocks_per_page = blocks_per_page;
+    pa.pages = NULL;
+    pa.page_count = 0;
+    pa.free_list = NULL;
+    return pa;
+}
+
+GS_API_DECL void gs_paged_allocator_free(gs_paged_allocator_t* pa)
+{
+    gs_paged_allocator_clear(pa);
+}
+
+GS_API_DECL void* gs_paged_allocator_allocate(gs_paged_allocator_t* pa)
+{
+    if (pa->free_list)
+    {
+        gs_paged_allocator_block_t* data = pa->free_list;
+        pa->free_list = data->next;
+        return data;
+    }
+    else 
+    {
+        gs_paged_allocator_page_t* page = _gs_malloc_init_impl(pa->block_size * pa->blocks_per_page + sizeof(gs_paged_allocator_page_t));
+        pa->page_count++;
+
+        page->next = pa->pages;
+        page->data = gs_ptr_add(page, sizeof(gs_paged_allocator_page_t));
+        pa->pages = page;
+
+        uint32_t bppmo = pa->blocks_per_page - 1;
+        for (uint32_t i = 0; i < bppmo; ++i)
+        {
+            gs_paged_allocator_block_t* node = gs_ptr_add(page->data, pa->block_size * i);
+            gs_paged_allocator_block_t* next = gs_ptr_add(page->data, pa->block_size * (i + 1));
+            node->next = next;
+        }
+
+        gs_paged_allocator_block_t* last = gs_ptr_add(page->data, pa->block_size * bppmo);
+        last->next = NULL;
+
+        pa->free_list = page->data->next;
+        return page->data;
+    }
+}
+
+GS_API_DECL void gs_paged_allocator_deallocate(gs_paged_allocator_t* pa, void* data)
+{
+    ((gs_paged_allocator_block_t*)data)->next = pa->free_list;
+    pa->free_list = ((gs_paged_allocator_block_t*)data);
+}
+
+GS_API_DECL void gs_paged_allocator_clear(gs_paged_allocator_t* pa)
+{
+    gs_paged_allocator_page_t* page = pa->pages;
+    for (uint32_t i = 0; i < pa->page_count; ++i)
+    {
+        gs_paged_allocator_page_t* next = page->next;
+        gs_free(page);
+        page = next;
+    }
+    pa->free_list = NULL;
+    pa->page_count = 0; 
+}
+
+/*================================================================================
+// Heap Allocator
+================================================================================*/
+
+// #ifndef GS_HEAP_ALLOC_DEFAULT_SIZE 
+//     #define GS_HEAP_ALLOC_DEFAULT_SIZE 1024 * 1024 * 20
+// #endif
+
+// #ifndef GS_HEAP_ALLOC_DEFAULT_CAPCITY 
+//     #define GS_HEAP_ALLOC_DEFAULT_CAPCITY 1024
+// #endif
+
+// typedef struct gs_heap_allocator_header_t {
+//     struct gs_heap_allocator_header_t* next;
+//     struct gs_heap_allocator_header_t* prev;
+//     size_t size; 
+// } gs_heap_allocator_header_t;
+
+// typedef struct gs_heap_allocator_free_block_t {
+//     gs_heap_allocator_header_t* header;
+//     size_t size;
+// } gs_heap_allocator_free_block_t;
+
+// typedef struct gs_heap_allocator_t {
+//     gs_heap_allocator_header_t* memory;
+//     gs_heap_allocator_free_block_t* free_blocks;
+//     uint32_t free_block_count;
+//     uint32_t free_block_capacity;
+// } gs_heap_allocator_t;
+
+GS_API_DECL gs_heap_allocator_t gs_heap_allocate_new()
+{
+    gs_heap_allocator_t ha = gs_default_val();
+    ha.memory = _gs_malloc_init_impl(GS_HEAP_ALLOC_DEFAULT_SIZE);
+    ha.memory->next = NULL;
+    ha.memory->prev = NULL;
+    ha.memory->size = GS_HEAP_ALLOC_DEFAULT_SIZE;
+
+    ha.free_blocks = _gs_malloc_init_impl(sizeof(gs_heap_allocator_free_block_t) * GS_HEAP_ALLOC_DEFAULT_CAPCITY);
+    ha.free_block_count = 1;
+    ha.free_block_capacity = GS_HEAP_ALLOC_DEFAULT_CAPCITY;
+
+    ha.free_blocks->header = ha.memory;
+    ha.free_blocks->size = GS_HEAP_ALLOC_DEFAULT_SIZE;
+
+    return ha;
+}
+
+GS_API_DECL void gs_heap_allocator_free(gs_heap_allocator_t* ha)
+{
+    gs_free(ha->memory);
+    gs_free(ha->free_blocks);
+    ha->memory = NULL;
+    ha->free_blocks = NULL;
+}
+
+GS_API_DECL void* gs_heap_allocator_allocate(gs_heap_allocator_t* ha, size_t sz)
+{
+    size_t size_needed = sz + sizeof(gs_heap_allocator_header_t);
+    gs_heap_allocator_free_block_t* first_fit = NULL;
+
+    for (uint32_t i = 0; i < ha->free_block_count; ++i)
+    {
+        gs_heap_allocator_free_block_t* block = ha->free_blocks + i;
+        if (block->size >= size_needed)
+        {
+            first_fit = block;
+            break;
+        }
+    }
+
+    if (!first_fit) {
+        return NULL;
+    }
+
+    gs_heap_allocator_header_t* node = first_fit->header;
+    gs_heap_allocator_header_t* new_node = gs_ptr_add(node, size_needed);
+    node->size = size_needed;
+
+    first_fit->size -= size_needed;
+    first_fit->header = new_node;
+
+    new_node->next = node->next;
+    if (node->next) {
+        node->next->prev = new_node;
+    }
+    node->next = new_node;
+    new_node->prev = node;
+
+    return gs_ptr_add(node, sizeof(gs_heap_allocator_header_t));
+}
+
+GS_API_DECL void gs_heap_allocator_deallocate(gs_heap_allocator_t* ha, void* memory)
+{
+    // Fill this out...
 }
 
 /*=============================
@@ -5608,7 +6282,7 @@ bool32_t gs_util_load_texture_data_from_memory(const void* memory, size_t sz, in
 
         #define GS_PLATFORM_IMPL_ANDROID
 
-	#endif
+    #endif
 #endif
 
 #ifdef GS_PLATFORM_IMPL_FILE
@@ -5776,6 +6450,30 @@ bool gs_asset_font_load_from_memory(const void* memory, size_t sz, void* out, ui
     gs_free(alpha_bitmap);
     gs_free(flipmap);
     return success;
+}
+
+GS_API_DECL gs_vec2 gs_asset_font_get_text_dimensions(const gs_asset_font_t* fp, const char* text)
+{
+    gs_vec2 dimensions = gs_v2s(0.f);
+
+    if (!fp || !text) return dimensions;
+    float x = 0.f;
+    float y = 0.f;
+
+    while (text[0] != '\0')
+    {
+        char c = text[0];
+        if (c >= 32 && c <= 127) 
+        {
+            stbtt_aligned_quad q = gs_default_val();
+            stbtt_GetBakedQuad((stbtt_bakedchar*)fp->glyphs, fp->texture.desc.width, fp->texture.desc.height, c - 32, &x, &y, &q, 1);
+            dimensions.x = gs_max(dimensions.x, x);
+            dimensions.y = gs_max(gs_max(dimensions.y, fabsf(q.y0)), fabsf(q.y1));
+        }
+        text++;
+    };
+
+    return dimensions;
 }
 
 // Audio
@@ -6193,11 +6891,11 @@ gs_engine_t* gs_engine_create(gs_app_desc_t app_desc)
         // Set frame rate for application
         gs_engine_subsystem(platform)->time.max_fps = app_desc.frame_rate;
 
-        // Set vsync for video
-        gs_platform_enable_vsync(app_desc.enable_vsync);
-
         // Construct main window
         gs_platform_create_window(app_desc.window_title, app_desc.window_width, app_desc.window_height);
+        
+        // Set vsync for video
+        gs_platform_enable_vsync(app_desc.enable_vsync);
 
         // Construct graphics api 
         gs_engine_subsystem(graphics) = gs_graphics_create();

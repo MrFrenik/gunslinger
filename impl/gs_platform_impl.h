@@ -1341,7 +1341,9 @@ void  gs_platform_sleep(float ms)
 {
     #if (defined GS_PLATFORM_WIN)
 
+            timeBeginPeriod(1);
             Sleep((uint64_t)ms);
+            timeEndPeriod(1);
 
     #elif (defined GS_PLATFORM_APPLE)
 
@@ -1505,11 +1507,7 @@ void gs_platform_set_window_sizev(uint32_t handle, gs_vec2 v)
 void gs_platform_framebuffer_size(uint32_t handle, uint32_t* w, uint32_t* h)
 {
     GLFWwindow* win = __glfw_window_from_handle(gs_engine_subsystem(platform), handle);
-    float xscale = 0.f, yscale = 0.f;
-    glfwGetWindowContentScale(win, &xscale, &yscale);
-    glfwGetWindowSize(win, (int32_t*)w, (int32_t*)h);
-    *w = (uint32_t)((float)*w * xscale);
-    *h = (uint32_t)((float)*h * yscale);
+    glfwGetFramebufferSize(win, (int32_t*)w, (int32_t*)h);
 }
 
 gs_vec2 gs_platform_framebuffer_sizev(uint32_t handle)

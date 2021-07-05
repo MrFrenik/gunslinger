@@ -168,7 +168,7 @@ Gunslinger is a header-only framework, so no prior building is required before u
 ## Linux (GCC/G++)
 * System Libs
    ```
-   -ldl -lX11 -lXi
+   -ldl -lX11 -lXi -lm
    ```
 * Flags (gcc)
    ```

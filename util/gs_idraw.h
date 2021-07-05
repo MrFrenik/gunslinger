@@ -44,6 +44,11 @@
 
 /*==== Interface ====*/
 
+/** @defgroup gs_immediate_draw_util Immediate Draw Util
+ *  Gunslinger Immediate Draw Util
+ *  @{
+ */
+
 gs_enum_decl(gsi_matrix_type,
 	GSI_MATRIX_MODELVIEW,
 	GSI_MATRIX_PROJECTION
@@ -199,6 +204,8 @@ GS_API_DECL void gsi_box(gs_immediate_draw_t* gsi, float x0, float y0, float z0,
 GS_API_DECL void gsi_sphere(gs_immediate_draw_t* gsi, float cx, float cy, float cz, float radius, uint8_t r, uint8_t g, uint8_t b, uint8_t a, gs_graphics_primitive_type type);
 GS_API_DECL void gsi_bezier(gs_immediate_draw_t* gsi, float x0, float y0, float x1, float y1, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 
+// Draw planes/poly groups
+
 // Text Drawing Util
 GS_API_DECL void gsi_text(gs_immediate_draw_t* gsi, float x, float y, const char* text, const gs_asset_font_t* fp, bool32_t flip_vertical, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 
@@ -208,6 +215,8 @@ GS_API_DECL void GSDecode85(const unsigned char* src, unsigned char* dst);
 GS_API_DECL unsigned int GSDecode85Byte(char c);
 GS_API_DECL unsigned int gs_decompress_length(const unsigned char* input);
 GS_API_DECL unsigned int gs_decompress(unsigned char* output, unsigned char* input, unsigned int length);
+
+/** @} */ // end of gs_immediate_draw_util
 
 /*==== Implementation ====*/
 
