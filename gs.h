@@ -2170,7 +2170,7 @@ typedef uint32_t gs_slot_array_iter;
 #define gs_slot_array_iter_new(__SA) 0
 
 #define gs_slot_array_iter_valid(__SA, __IT)\
-    ((__IT) < (uint32_t)gs_slot_array_size((__SA)))
+    ((__IT) < (uint32_t)gs_dyn_array_size((__SA)->indices))
 
 gs_force_inline
 void __gs_slot_array_iter_advance_func(gs_dyn_array(uint32_t) indices, uint32_t* it)
