@@ -46,6 +46,11 @@
 
 /*==== Interface ====*/
 
+/** @defgroup gs_physics_util Physics Util
+ *  Gunslinger Physics Util
+ *  @{
+ */
+
 /*==== Util ====*/
 
 typedef struct gs_phys_xform_t {
@@ -78,6 +83,8 @@ typedef struct gs_cylinder_t {float r; gs_vec3 base; float height;              
 typedef struct gs_cone_t     {float r; gs_vec3 base; float height;                           } gs_cone_t;
 typedef struct gs_quad_t     {gs_vec2 min; gs_vec2 max;                                      } gs_quad_t;
 typedef struct gs_circle_t   {float r; gs_vec2 c;                                            } gs_circle_t;
+
+// Need 2d collision shapes and responses with GJK+EPA
 
 typedef struct gs_hit_t {
     int32_t hit;
@@ -226,12 +233,12 @@ GS_API_DECL gs_vec3 gs_gjk_support_circle(const gs_circle_t* c, gs_phys_xform_t*
 
 #define GS_GJK_FLT_MAX FLT_MAX     // 3.40282347E+38F
 #define GS_GJK_EPSILON FLT_EPSILON // 1.19209290E-07F
-#define GS_GJK_MAX_ITERATIONS 128
+#define GS_GJK_MAX_ITERATIONS 64
 
-#define GS_EPA_TOLERANCE 0.00001
+#define GS_EPA_TOLERANCE 0.0001
 #define GS_EPA_MAX_NUM_FACES 64
 #define GS_EPA_MAX_NUM_LOOSE_EDGES 32
-#define GS_EPA_MAX_NUM_ITERATIONS 128
+#define GS_EPA_MAX_NUM_ITERATIONS 64
 
 typedef struct gs_gjk_support_point_t {
     gs_vec3 support_a;
@@ -385,6 +392,8 @@ GS_API_DECL gs_raycast_data_t  gs_physics_scene_raycast(gs_physics_scene_t* scen
     Collision Shape
 */
 
+/** @} */ // end of gs_physics_util
+
 /*==== Implementation ====*/
 
 #ifdef GS_PHYSICS_IMPL
@@ -486,22 +495,6 @@ GS_API_DECL gs_vec3 gs_gjk_support_aabb(const gs_aabb_t* a, gs_phys_xform_t* xfo
     return res;
 }
 
-// Cylinder
-
-GS_API_DECL gs_vec3 gs_gjk_support_cylinder(const gs_cylinder_t* c, gs_phys_xform_t* xform, gs_vec3 dir)
-{
-    dir = xform ? gs_mat3_mul_vec3(xform->inv_rs, dir) : dir;
-
-    gs_vec3 dir_xz = gs_v3(dir.x, 0.f, dir.z);
-    gs_vec3 res = gs_vec3_scale(gs_vec3_norm(dir_xz), c->r);
-    res.y = (dir.y > 0.f) ? c->base.y + c->height : c->base.y;
-
-    // Conver to world space
-    res = xform ? gs_vec3_add(gs_mat3_mul_vec3(xform->rs, res), xform->pos) : res;
-
-    return res;
-}
-
 // Cone
 
 #define MAX_CONE_PTS 10
@@ -537,6 +530,22 @@ GS_API_DECL gs_vec3 gs_gjk_support_cone(const gs_cone_t* c, gs_phys_xform_t* xfo
     return res;
 }
 
+// Cylinder
+
+GS_API_DECL gs_vec3 gs_gjk_support_cylinder(const gs_cylinder_t* c, gs_phys_xform_t* xform, gs_vec3 dir)
+{
+    dir = xform ? gs_mat3_mul_vec3(xform->inv_rs, dir) : dir;
+
+    gs_vec3 dir_xz = gs_v3(dir.x, 0.f, dir.z);
+    gs_vec3 res = gs_vec3_scale(gs_vec3_norm(dir_xz), c->r);
+    res.y = (dir.y > 0.f) ? c->base.y + c->height : c->base.y;
+
+    // Conver to world space
+    res = xform ? gs_vec3_add(gs_mat3_mul_vec3(xform->rs, res), xform->pos) : res;
+
+    return res;
+}
+
 // Capsule
 
 GS_API_DECL gs_vec3 gs_gjk_support_capsule(const gs_capsule_t* c, gs_phys_xform_t* xform, gs_vec3 dir)
@@ -548,7 +557,7 @@ GS_API_DECL gs_vec3 gs_gjk_support_capsule(const gs_capsule_t* c, gs_phys_xform_
     gs_vec3 res = gs_vec3_scale(gs_vec3_norm(dir), c->r);
 
     // Find y
-    res.y = (dir.y > 0.f) ? c->base.y + c->height : c->base.y;
+    res.y = (dir.y > 0.f) ? c->base.y + c->height + c->r : c->base.y - c->r;
 
     // Convert to world space
     res = xform ? gs_vec3_add(gs_mat3_mul_vec3(xform->rs, res), xform->pos) : res;
