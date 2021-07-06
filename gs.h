@@ -2488,6 +2488,7 @@ GS_API_DECL void gs_paged_allocator_clear(gs_paged_allocator_t* pa);
 #define gs_v4s(__S)  gs_vec4_ctor((__S), (__S), (__S), (__S))
 
 #define gs_v4_xy_v(__X, __Y, __V) gs_vec4_ctor((__X), (__Y), (__V).x, (__V).y)
+#define gs_v4_xyz_s(__XYZ, __S) gs_vec4_ctor((__XYZ).x, (__XYZ).y, (__XYZ).z, (__S))
 
 #define GS_XAXIS    gs_v3(1.f, 0.f, 0.f)
 #define GS_YAXIS    gs_v3(0.f, 1.f, 0.f)
@@ -2775,6 +2776,12 @@ gs_vec3_len(gs_vec3 v)
     return (f32)sqrt(gs_vec3_dot(v, v));
 }
 
+gs_inline f32 
+gs_vec3_len2(gs_vec3 v)
+{
+    return (f32)(gs_vec3_dot(v, v));
+}
+
 gs_inline gs_vec3
 gs_vec3_project_onto(gs_vec3 v0, gs_vec3 v1)
 {
@@ -2943,6 +2950,12 @@ gs_vec3 gs_v4_to_v3(gs_vec4 v)
     return gs_v3(v.x, v.y, v.z);
 }
 
+gs_inline
+gs_vec2 gs_v3_to_v2(gs_vec3 v) 
+{
+    return gs_v2(v.x, v.y);
+}
+
 /*================================================================================
 // Mat3x3
 ================================================================================*/
@@ -3057,11 +3070,11 @@ gs_mat3_inverse(gs_mat3 m)
 {
     gs_mat3 r = gs_default_val();
 
-    float det = m.m[0 * 3 + 0] * (m.m[1 * 3 + 1] * m.m[2 * 3 + 2] - m.m[2 * 3 + 1] * m.m[1 * 3 + 2]) -
+    double det = (double)(m.m[0 * 3 + 0] * (m.m[1 * 3 + 1] * m.m[2 * 3 + 2] - m.m[2 * 3 + 1] * m.m[1 * 3 + 2]) -
                 m.m[0 * 3 + 1] * (m.m[1 * 3 + 0] * m.m[2 * 3 + 2] - m.m[1 * 3 + 2] * m.m[2 * 3 + 0]) +
-                m.m[0 * 3 + 2] * (m.m[1 * 3 + 0] * m.m[2 * 3 + 1] - m.m[1 * 3 + 1] * m.m[2 * 3 + 0]); 
+                m.m[0 * 3 + 2] * (m.m[1 * 3 + 0] * m.m[2 * 3 + 1] - m.m[1 * 3 + 1] * m.m[2 * 3 + 0]));
 
-    float inv_det = det ? 1.f / det : 0.f;
+    double inv_det = det ? 1.0 / det : 0.0;
 
     r.m[0 * 3 + 0] = (m.m[1 * 3 + 1] * m.m[2 * 3 + 2] - m.m[2 * 3 + 1] * m.m[1 * 3 + 2]) * inv_det;
     r.m[0 * 3 + 1] = (m.m[0 * 3 + 2] * m.m[2 * 3 + 1] - m.m[0 * 3 + 1] * m.m[2 * 3 + 2]) * inv_det;
@@ -6895,11 +6908,11 @@ gs_engine_t* gs_engine_create(gs_app_desc_t app_desc)
         // Set frame rate for application
         gs_engine_subsystem(platform)->time.max_fps = app_desc.frame_rate;
 
-        // Construct main window
-        gs_platform_create_window(app_desc.window_title, app_desc.window_width, app_desc.window_height);
-
         // Set vsync for video
         gs_platform_enable_vsync(app_desc.enable_vsync);
+
+        // Construct main window
+        gs_platform_create_window(app_desc.window_title, app_desc.window_width, app_desc.window_height);
 
         // Construct graphics api 
         gs_engine_subsystem(graphics) = gs_graphics_create();
