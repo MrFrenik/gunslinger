@@ -2281,10 +2281,12 @@ gs_command_buffer_t gs_command_buffer_new()
     return cb;
 }
 
-#define gs_command_buffer_write(__CB, __T, __VAL)\
+#define gs_command_buffer_write(__CB, __CT, __C, __T, __VAL)\
     do {\
-        gs_byte_buffer_write(&__CB->commands, __T, __VAL);\
-        __CB->num_commands++;\
+        gs_command_buffer_t* __cb = (__CB);\
+        __cb->num_commands++;\
+        gs_byte_buffer_write(&__cb->commands, __CT, (__C));\
+        gs_byte_buffer_write(&__cb->commands, __T, (__VAL));\
     } while (0)
 
 gs_force_inline 
@@ -2299,6 +2301,11 @@ void gs_command_buffer_free(gs_command_buffer_t* cb)
 {
     gs_byte_buffer_free(&cb->commands);
 }
+
+#define gs_command_buffer_readc(__CB, __T, __NAME)\
+    __T __NAME = gs_default_val();\
+    gs_byte_buffer_read(&(__CB)->commands, __T, &__NAME);
+
 
 #ifndef GS_NO_SHORT_NAME
     typedef gs_command_buffer_t gs_cmdbuf;
