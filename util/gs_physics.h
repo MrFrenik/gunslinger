@@ -414,6 +414,28 @@ GS_API_DECL gs_raycast_data_t  gs_physics_scene_raycast(gs_physics_scene_t* scen
 // Poly
 GS_API_DECL void gs_support_poly(const void* _o, const gs_vqs* xform, const gs_vec3* dir, gs_vec3* out)
 {
+    const gs_poly_t* p = (gs_poly_t*)_o;
+
+    // Bring direction vector into rotation space
+    gs_quat qinv = gs_quat_inverse(xform->rotation);
+    gs_vec3 d = gs_quat_rotate(qinv, *dir);
+
+    // Iterate over all points, find dot farthest in direction of d
+    double max_dot, dot = 0.0;
+    max_dot = (double)-FLT_MAX;
+    for (uint32_t i = 0; i < p->cnt; i++) 
+    {
+        dot = (double)gs_vec3_dot(d, p->verts[i]);
+        if (dot > max_dot) {
+            *out = p->verts[i];
+            max_dot = dot;
+        }
+    }
+
+    // Transform support point by rotation and translation of object
+    *out = gs_quat_rotate(xform->rotation, *out);
+    *out = gs_vec3_mul(xform->scale, *out);
+    *out = gs_vec3_add(xform->position, *out);
 }
 
 // Sphere
