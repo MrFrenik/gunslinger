@@ -16,6 +16,7 @@ Gunslinger is an [stb-style](https://github.com/nothings/stb), header-only c99 f
 - Graphics pipeline follows an explicit rendering framework, making it easier to write for modern backends, such as `Vulkan`/`DX12`/`Metal`.
 - All core layers can be fully swapped out with custom user implementations.
 - Large collection of [examples](https://github.com/MrFrenik/gs_examples) for quickly getting started.
+- An available [project template](https://github.com/MrFrenik/gs_project_template) for various platforms and build systems to get started with a blank gunslinger project.
 - Official framework used for all [Game Engineering](https://www.youtube.com/watch?v=VLZjd_Y1gJ8&list=PLIozaEI1hFu3Cd0YJMwOBQKTKfe9uZoyn) YouTube videos.
 
 ## Documentation
