@@ -1559,7 +1559,6 @@ int32_t _gs_ccd_gjk_internal(
     ccd_real_t depth = CCD_REAL(0.0);
     ccd_vec3_t n = gs_ctor(ccd_vec3_t, 0.f, 0.f, 0.f), p = gs_ctor(ccd_vec3_t, 0.f, 0.f, 0.f);
     int32_t r = ccdGJKPenetration(&h0, &h1, &ccd, &depth, &n, &p);
-    /*
     bool32 hit = r >= 0 && !gs_is_nan(n.v[0]) && !gs_is_nan(n.v[1]) && !gs_is_nan(n.v[2]);
 
     if (hit && res)
@@ -1569,7 +1568,6 @@ int32_t _gs_ccd_gjk_internal(
         _gs_ccdv32gsv3(&p, &res->point);
         _gs_ccdv32gsv3(&n, &res->normal);
     }
-    */
 
     return r;
 }
