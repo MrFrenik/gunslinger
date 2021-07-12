@@ -1205,6 +1205,7 @@ void __glfw_key_callback(GLFWwindow* window, s32 code, s32 scancode, s32 action,
     evt.type = GS_PLATFORM_EVENT_KEY;
     evt.key.codepoint = code;
     evt.key.keycode = key;
+    evt.key.modifier = mods;
 
     switch (action)
     {
