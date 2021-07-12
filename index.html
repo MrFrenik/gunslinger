@@ -29,12 +29,15 @@
     <!-- Examples JS -->
     <!-- <script type="text/javascript" src=""></script> -->
 
+    <!-- Examples css sheet -->
+    <link rel="stylesheet" href="./examples/examples.css" type="text/css" media="screen" />
+
     <script type="text/javascript">
       $(document).ready(function() {
 
         $(".example").fancybox({
-          'width'       : '100%',
-          'height'      : '100%',
+          'width'       : 900,
+          'height'      : 650,
           'autoScale'     : 'false',
           'transitionIn'    : 'elastic',
           'transitionOut'   : 'none',
@@ -89,7 +92,7 @@
 <!-- Header -->
 <header>
 
-  <div class="collapse" style="background-color: rgb(16, 16, 16)" id="navbarHeader">
+<!--   <div class="collapse" style="background-color: rgb(16, 16, 16)" id="navbarHeader">
     <div class="container">
       <div class="row">
         <div class="col-sm-8 col-md-7 py-4">
@@ -106,8 +109,8 @@
       </div>
     </div>
   </div>
-
-  <div class="navbar navbar-dark shadow-sm" style="background-color: rgb(16, 16, 16)">
+ -->
+<!--   <div class="navbar navbar-dark shadow-sm" style="background-color: rgb(16, 16, 16)">
     <div class="container">
       <a href="#" class="navbar-brand d-flex align-items-center"><strong>Gunslinger</strong></a>
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarHeader" aria-controls="navbarHeader" aria-expanded="false" aria-label="Toggle navigation">
@@ -115,7 +118,7 @@
       </button>
     </div>
   </div>
-
+ -->
 </header>
 
 <main style="background-color:black">
@@ -126,18 +129,27 @@
       <div class="col-lg-6 col-md-8 mx-auto">
         <img src="./assets/gs_logo2.png" width="100%" height="100" xmlns="http://www.w3.org/2000/svg" role="image" aria-label="Banner Logo" focusable="false"></img>
         <p class="lead text-muted">C99, header-only framework for games and multimedia applications</p>
+        <h3 class="section_title" style="padding-bottom: 5px">Samples</h3>
         <p>
-<!--           <a href="#" class="btn btn-primary my-2">Main call to action</a>
-          <a href="#" class="btn btn-secondary my-2">Secondary action</a>
- -->        </p>
+          <a href="#example_list_graphics" class="btn btn-primary my-2">Graphics</a>
+          <a href="#example_list_audio" class="btn btn-primary my-2">Audio</a>
+          <a href="#example_list_physics" class="btn btn-primary my-2">Physics</a>
+          <a href="#example_list_misc" class="btn btn-primary my-2">Misc</a>
+        </p>
       </div>
     </div>
   </section>
 
+<!-- Need to separate these examples by grouping -->
+
 <!-- Example List -->
   <div class="album py-5" style="background-color: rgb(16, 16, 16)">
+
+    <!-- Graphics -->
+    <h2 id="example_list_graphics" class="section_title">Graphics</h2>
+
     <div class="container">
-      <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
+      <div class="row row-cols-2 row-cols-sm-2 row-cols-md-5 g-3">
 
         <!-- Example 0: Hello World -->
         <div class="col">
@@ -277,29 +289,6 @@
           </div>
         </div>
 
-        <!-- Audio -->
-        <div class="col">
-          <div class =card shadow-sm" style="background-color: rgb(45, 45, 45)">
-            <a class="example" href = "examples/08_audio/bin/App.html">
-                <img src="examples/08_audio/screen_shot.png" class="bd-placeholder-img card-img-top" width="100%" height="225" xmlns="http://www.w3.org/2000/svg" role="button" aria-label="Placeholder: Thumbnail" preserveAspectRatio="xMidYMid slice" focusable="false">
-                <title>Audio</title>
-                <rect width="100%" height="100%" fill="#55595c"/>
-            </img>
-            </a>
-             <div class="card-body" style="background-color: rgb(20, 20, 20)">
-              <p class="card-text" style="color: white">Audio</p>
-              <div class="d-flex justify-content-between align-items-center">
-                <div class="btn-group">
-                  <a href="https://github.com/MrFrenik/gs_examples/tree/main/08_audio"> 
-                    <button type="button" class="btn btn-sm btn-outline-secondary">Github</button>
-                  </a>
-                </div>
-                <!-- <small class="text-muted">9 mins</small> -->
-              </div>
-            </div>
-          </div>
-        </div>
-
         <!-- Frame Buffer -->
         <div class="col">
           <div class =card shadow-sm" style="background-color: rgb(45, 45, 45)">
@@ -337,98 +326,6 @@
               <div class="d-flex justify-content-between align-items-center">
                 <div class="btn-group">
                   <a href="https://github.com/MrFrenik/gs_examples/tree/main/10_non_interleave_instancing"> 
-                    <button type="button" class="btn btn-sm btn-outline-secondary">Github</button>
-                  </a>
-                </div>
-                <!-- <small class="text-muted">9 mins</small> -->
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Asset Manager -->
-        <div class="col">
-          <div class =card shadow-sm" style="background-color: rgb(45, 45, 45)">
-            <a class="example" href = "examples/12_asset_manager/bin/App.html">
-                <img src="examples/12_asset_manager/screen_shot.png" class="bd-placeholder-img card-img-top" width="100%" height="225" xmlns="http://www.w3.org/2000/svg" role="button" aria-label="Placeholder: Thumbnail" preserveAspectRatio="xMidYMid slice" focusable="false">
-                <title>Asset Manager</title>
-                <rect width="100%" height="100%" fill="#55595c"/>
-            </img>
-            </a>
-             <div class="card-body" style="background-color: rgb(20, 20, 20)">
-              <p class="card-text" style="color: white">Asset Manager</p>
-              <div class="d-flex justify-content-between align-items-center">
-                <div class="btn-group">
-                  <a href="https://github.com/MrFrenik/gs_examples/tree/main/12_asset_manager"> 
-                    <button type="button" class="btn btn-sm btn-outline-secondary">Github</button>
-                  </a>
-                </div>
-                <!-- <small class="text-muted">9 mins</small> -->
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Immediate Draw -->
-        <div class="col">
-          <div class =card shadow-sm" style="background-color: rgb(45, 45, 45)">
-            <a class="example" href = "examples/14_immediate_draw/bin/App.html">
-                <img src="examples/14_immediate_draw/screen_shot.png" class="bd-placeholder-img card-img-top" width="100%" height="225" xmlns="http://www.w3.org/2000/svg" role="button" aria-label="Placeholder: Thumbnail" preserveAspectRatio="xMidYMid slice" focusable="false">
-                <title>Immediate Draw</title>
-                <rect width="100%" height="100%" fill="#55595c"/>
-            </img>
-            </a>
-             <div class="card-body" style="background-color: rgb(20, 20, 20)">
-              <p class="card-text" style="color: white">Immediate Draw Util</p>
-              <div class="d-flex justify-content-between align-items-center">
-                <div class="btn-group">
-                  <a href="https://github.com/MrFrenik/gs_examples/tree/main/14_immediate_draw"> 
-                    <button type="button" class="btn btn-sm btn-outline-secondary">Github</button>
-                  </a>
-                </div>
-                <!-- <small class="text-muted">9 mins</small> -->
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Nuklear Gui -->
-        <div class="col">
-          <div class =card shadow-sm" style="background-color: rgb(45, 45, 45)">
-            <a class="example" href = "examples/16_nuklear_gui/bin/App.html">
-                <img src="examples/16_nuklear_gui/screen_shot.png" class="bd-placeholder-img card-img-top" width="100%" height="225" xmlns="http://www.w3.org/2000/svg" role="button" aria-label="Placeholder: Thumbnail" preserveAspectRatio="xMidYMid slice" focusable="false">
-                <title>Nuklear Gui</title>
-                <rect width="100%" height="100%" fill="#55595c"/>
-            </img>
-            </a>
-             <div class="card-body" style="background-color: rgb(20, 20, 20)">
-              <p class="card-text" style="color: white">Immediate Draw Util</p>
-              <div class="d-flex justify-content-between align-items-center">
-                <div class="btn-group">
-                  <a href="https://github.com/MrFrenik/gs_examples/tree/main/16_nuklear_gui"> 
-                    <button type="button" class="btn btn-sm btn-outline-secondary">Github</button>
-                  </a>
-                </div>
-                <!-- <small class="text-muted">9 mins</small> -->
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Flecs -->
-        <div class="col">
-          <div class =card shadow-sm" style="background-color: rgb(45, 45, 45)">
-            <a class="example" href = "examples/18_flecs/bin/App.html">
-                <img src="examples/18_flecs/screen_shot.png" class="bd-placeholder-img card-img-top" width="100%" height="225" xmlns="http://www.w3.org/2000/svg" role="button" aria-label="Placeholder: Thumbnail" preserveAspectRatio="xMidYMid slice" focusable="false">
-                <title>Flecs</title>
-                <rect width="100%" height="100%" fill="#55595c"/>
-            </img>
-            </a>
-             <div class="card-body" style="background-color: rgb(20, 20, 20)">
-              <p class="card-text" style="color: white">Flecs</p>
-              <div class="d-flex justify-content-between align-items-center">
-                <div class="btn-group">
-                  <a href="https://github.com/MrFrenik/gs_examples/tree/main/18_flecs"> 
                     <button type="button" class="btn btn-sm btn-outline-secondary">Github</button>
                   </a>
                 </div>
@@ -507,20 +404,29 @@
           </div>
         </div>
 
-        <!-- FPS Camera -->
+      </div>
+    </div>
+
+    <!-- Audio -->
+    <h2 id="example_list_audio" class="section_title">Audio</h2>
+
+    <div class="container">
+      <div class="row row-cols-2 row-cols-sm-2 row-cols-md-5 g-3">
+
+        <!-- Audio -->
         <div class="col">
           <div class =card shadow-sm" style="background-color: rgb(45, 45, 45)">
-            <a class="example" href = "examples/22_first_person_camera/bin/App.html">
-                <img src="examples/22_first_person_camera/screen_shot.png" class="bd-placeholder-img card-img-top" width="100%" height="225" xmlns="http://www.w3.org/2000/svg" role="button" aria-label="Placeholder: Thumbnail" preserveAspectRatio="xMidYMid slice" focusable="false">
-                <title>FPS Camera</title>
+            <a class="example" href = "examples/08_audio/bin/App.html">
+                <img src="examples/08_audio/screen_shot.png" class="bd-placeholder-img card-img-top" width="100%" height="225" xmlns="http://www.w3.org/2000/svg" role="button" aria-label="Placeholder: Thumbnail" preserveAspectRatio="xMidYMid slice" focusable="false">
+                <title>Audio</title>
                 <rect width="100%" height="100%" fill="#55595c"/>
             </img>
             </a>
              <div class="card-body" style="background-color: rgb(20, 20, 20)">
-              <p class="card-text" style="color: white">FPS Camera</p>
+              <p class="card-text" style="color: white">Audio</p>
               <div class="d-flex justify-content-between align-items-center">
                 <div class="btn-group">
-                  <a href="https://github.com/MrFrenik/gs_examples/tree/main/22_first_person_camera"> 
+                  <a href="https://github.com/MrFrenik/gs_examples/tree/main/08_audio"> 
                     <button type="button" class="btn btn-sm btn-outline-secondary">Github</button>
                   </a>
                 </div>
@@ -529,6 +435,15 @@
             </div>
           </div>
         </div>
+
+      </div>
+    </div>
+
+    <!-- Physics -->
+    <h2 id="example_list_physics" class="section_title">Physics</h2>
+
+    <div class="container">
+      <div class="row row-cols-2 row-cols-sm-2 row-cols-md-5 g-3">
 
         <!-- Collision Detection -->
         <div class="col">
@@ -555,6 +470,131 @@
 
       </div>
     </div>
+
+    <!-- Misc -->
+    <h2 id="example_list_misc" class="section_title">Misc</h2>
+
+    <div class="container">
+      <div class="row row-cols-2 row-cols-sm-2 row-cols-md-5 g-3">
+
+        <!-- Immediate Draw -->
+        <div class="col">
+          <div class =card shadow-sm" style="background-color: rgb(45, 45, 45)">
+            <a class="example" href = "examples/14_immediate_draw/bin/App.html">
+                <img src="examples/14_immediate_draw/screen_shot.png" class="bd-placeholder-img card-img-top" width="100%" height="225" xmlns="http://www.w3.org/2000/svg" role="button" aria-label="Placeholder: Thumbnail" preserveAspectRatio="xMidYMid slice" focusable="false">
+                <title>Immediate Draw</title>
+                <rect width="100%" height="100%" fill="#55595c"/>
+            </img>
+            </a>
+             <div class="card-body" style="background-color: rgb(20, 20, 20)">
+              <p class="card-text" style="color: white">Immediate Draw Util</p>
+              <div class="d-flex justify-content-between align-items-center">
+                <div class="btn-group">
+                  <a href="https://github.com/MrFrenik/gs_examples/tree/main/14_immediate_draw"> 
+                    <button type="button" class="btn btn-sm btn-outline-secondary">Github</button>
+                  </a>
+                </div>
+                <!-- <small class="text-muted">9 mins</small> -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Asset Manager -->
+        <div class="col">
+          <div class =card shadow-sm" style="background-color: rgb(45, 45, 45)">
+            <a class="example" href = "examples/12_asset_manager/bin/App.html">
+                <img src="examples/12_asset_manager/screen_shot.png" class="bd-placeholder-img card-img-top" width="100%" height="225" xmlns="http://www.w3.org/2000/svg" role="button" aria-label="Placeholder: Thumbnail" preserveAspectRatio="xMidYMid slice" focusable="false">
+                <title>Asset Manager</title>
+                <rect width="100%" height="100%" fill="#55595c"/>
+            </img>
+            </a>
+             <div class="card-body" style="background-color: rgb(20, 20, 20)">
+              <p class="card-text" style="color: white">Asset Manager</p>
+              <div class="d-flex justify-content-between align-items-center">
+                <div class="btn-group">
+                  <a href="https://github.com/MrFrenik/gs_examples/tree/main/12_asset_manager"> 
+                    <button type="button" class="btn btn-sm btn-outline-secondary">Github</button>
+                  </a>
+                </div>
+                <!-- <small class="text-muted">9 mins</small> -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Nuklear Gui -->
+        <div class="col">
+          <div class =card shadow-sm" style="background-color: rgb(45, 45, 45)">
+            <a class="example" href = "examples/16_nuklear_gui/bin/App.html">
+                <img src="examples/16_nuklear_gui/screen_shot.png" class="bd-placeholder-img card-img-top" width="100%" height="225" xmlns="http://www.w3.org/2000/svg" role="button" aria-label="Placeholder: Thumbnail" preserveAspectRatio="xMidYMid slice" focusable="false">
+                <title>Nuklear Gui</title>
+                <rect width="100%" height="100%" fill="#55595c"/>
+            </img>
+            </a>
+             <div class="card-body" style="background-color: rgb(20, 20, 20)">
+              <p class="card-text" style="color: white">Immediate Draw Util</p>
+              <div class="d-flex justify-content-between align-items-center">
+                <div class="btn-group">
+                  <a href="https://github.com/MrFrenik/gs_examples/tree/main/16_nuklear_gui"> 
+                    <button type="button" class="btn btn-sm btn-outline-secondary">Github</button>
+                  </a>
+                </div>
+                <!-- <small class="text-muted">9 mins</small> -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Flecs -->
+        <div class="col">
+          <div class =card shadow-sm" style="background-color: rgb(45, 45, 45)">
+            <a class="example" href = "examples/18_flecs/bin/App.html">
+                <img src="examples/18_flecs/screen_shot.png" class="bd-placeholder-img card-img-top" width="100%" height="225" xmlns="http://www.w3.org/2000/svg" role="button" aria-label="Placeholder: Thumbnail" preserveAspectRatio="xMidYMid slice" focusable="false">
+                <title>Flecs</title>
+                <rect width="100%" height="100%" fill="#55595c"/>
+            </img>
+            </a>
+             <div class="card-body" style="background-color: rgb(20, 20, 20)">
+              <p class="card-text" style="color: white">Flecs</p>
+              <div class="d-flex justify-content-between align-items-center">
+                <div class="btn-group">
+                  <a href="https://github.com/MrFrenik/gs_examples/tree/main/18_flecs"> 
+                    <button type="button" class="btn btn-sm btn-outline-secondary">Github</button>
+                  </a>
+                </div>
+                <!-- <small class="text-muted">9 mins</small> -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- FPS Camera -->
+        <div class="col">
+          <div class =card shadow-sm" style="background-color: rgb(45, 45, 45)">
+            <a class="example" href = "examples/22_first_person_camera/bin/App.html">
+                <img src="examples/22_first_person_camera/screen_shot.png" class="bd-placeholder-img card-img-top" width="100%" height="225" xmlns="http://www.w3.org/2000/svg" role="button" aria-label="Placeholder: Thumbnail" preserveAspectRatio="xMidYMid slice" focusable="false">
+                <title>FPS Camera</title>
+                <rect width="100%" height="100%" fill="#55595c"/>
+            </img>
+            </a>
+             <div class="card-body" style="background-color: rgb(20, 20, 20)">
+              <p class="card-text" style="color: white">FPS Camera</p>
+              <div class="d-flex justify-content-between align-items-center">
+                <div class="btn-group">
+                  <a href="https://github.com/MrFrenik/gs_examples/tree/main/22_first_person_camera"> 
+                    <button type="button" class="btn btn-sm btn-outline-secondary">Github</button>
+                  </a>
+                </div>
+                <!-- <small class="text-muted">9 mins</small> -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
   </div>
 
 </main>

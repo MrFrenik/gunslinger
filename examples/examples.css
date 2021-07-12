@@ -3,7 +3,13 @@
 }
 
 .canvas {
-    padding-top: 25px;
+	padding-top: 10px;
     margin: auto;
     display: block;
+}
+
+.section_title {
+	color: white;
+	text-align: center;
+	padding-bottom: 25px;
 }
