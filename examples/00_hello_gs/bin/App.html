@@ -8,12 +8,27 @@
     <link rel="icon" href="./../gs_logo.png">
     <!-- Bootstrap core CSS -->
     <link href="./../assets/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+
+		.body {
+			background-color: black;
+		}
+
+		.canvas {
+			padding: 0;
+		    margin: auto;
+		    display: block;
+		}
+
+	</style>
+
 </head>
 
-<body>
+<body class="body">
 
     <!-- Create the canvas that the C++ code will draw into -->
-    <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
+    <canvas id="canvas" oncontextmenu="event.preventDefault()" class="canvas"></canvas>
 
     <!-- Allow the C++ to access the canvas element --> 
     <script type='text/javascript'>
