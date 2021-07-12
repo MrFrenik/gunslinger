@@ -1,16 +1,125 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="">
     <meta name="generator" content="Hugo 0.84.0">
     <title>Gunslinger</title>
 
-    <link rel="icon" href="gs_logo.png">
+    <link rel="icon" href="./assets/gs_logo.png">
+
+    <!-- Scripts -->
+
+    <!-- Add jQuery library -->
+    <!-- <script type="text/javascript" src="https://code.jquery.com/jquery-latest.min.js"></script> -->
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4/jquery.min.js"></script>
+
+    <!-- Add jQuery easing plugin -->
+    <script src="./external/fancybox/fancybox/jquery.easing-1.3.pack.js"></script>
+
+    <!-- Bootstrap -->
+    <script src="./assets/dist/js/bootstrap.bundle.min.js"></script>
+    <link href="./assets/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- JQuery -->
+    <!-- <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4/jquery.min.js"></script> -->
+    <!-- <script type="text/javascript" src="./external/fancybox/jquery-1.4.3.min.js"></script> -->
+
+    <!-- FancyBox -->
+    <script type="text/javascript" src="./external/fancybox/fancybox/jquery.fancybox-1.3.4.pack.js"></script>
+    <link rel="stylesheet" href="./external/fancybox/fancybox/jquery.fancybox-1.3.4.css" type="text/css" media="screen" />
+
+    <!-- Examples JS -->
+    <!-- <script type="text/javascript" src=""></script> -->
+
+    <script type="text/javascript">
+      $(document).ready(function() {
+        /*
+        *   Examples - images
+        */
+
+        $("a#example1").fancybox();
+
+        $("a#example2").fancybox({
+          'overlayShow' : false,
+          'transitionIn'  : 'elastic',
+          'transitionOut' : 'elastic'
+        });
+
+        $("a#example3").fancybox({
+          'transitionIn'  : 'none',
+          'transitionOut' : 'none'  
+        });
+
+        $("a#example4").fancybox({
+          'opacity'   : true,
+          'overlayShow' : false,
+          'transitionIn'  : 'elastic',
+          'transitionOut' : 'none'
+        });
+
+        $("a#example5").fancybox();
+
+        $("a#example6").fancybox({
+          'titlePosition'   : 'outside',
+          'overlayColor'    : '#000',
+          'overlayOpacity'  : 0.9
+        });
+
+        $("a#example7").fancybox({
+          'titlePosition' : 'inside'
+        });
+
+        $("a#example8").fancybox({
+          'titlePosition' : 'over'
+        });
+
+        $("a[rel=example_group]").fancybox({
+          'transitionIn'    : 'none',
+          'transitionOut'   : 'none',
+          'titlePosition'   : 'over',
+          'titleFormat'   : function(title, currentArray, currentIndex, currentOpts) {
+            return '<span id="fancybox-title-over">Image ' + (currentIndex + 1) + ' / ' + currentArray.length + (title.length ? ' &nbsp; ' + title : '') + '</span>';
+          }
+        });
+
+        /*
+        *   Examples - various
+        */
+
+        $("#various1").fancybox({
+          'titlePosition'   : 'inside',
+          'transitionIn'    : 'none',
+          'transitionOut'   : 'none'
+        });
+
+        $("#various2").fancybox();
+
+        $("#various3").fancybox({
+          'width'       : '75%',
+          'height'      : '75%',
+          'autoScale'     : false,
+          'transitionIn'    : 'none',
+          'transitionOut'   : 'none',
+          'type'        : 'iframe',
+          'overlayColor'    : '#000',
+          'overlayOpacity'  : 0.9
+        });
+
+        $("#various4").fancybox({
+          'padding'     : 0,
+          'autoScale'     : false,
+          'transitionIn'    : 'none',
+          'transitionOut'   : 'none'
+        });
+      });
+    </script>
 
     <!-- Bootstrap core CSS -->
-    <link href="./assets/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- <link href="./assets/dist/css/bootstrap.min.css" rel="stylesheet"> -->
+    <!-- FancyBox CSS -->
+    <!-- <link rel="stylesheet" href="./external/fancybox/fancybox/jquery.fancybox-1.3.4.css" type="text/css" media="screen" /> -->
 
     <style>
       .bd-placeholder-img {
@@ -86,7 +195,7 @@
   <section class="py-5 text-center container" style="background-color: black">
     <div class="row py-lg-5">
       <div class="col-lg-6 col-md-8 mx-auto">
-        <img src="gs_logo2.png" width="100%" height="100" xmlns="http://www.w3.org/2000/svg" role="image" aria-label="Banner Logo" focusable="false"></img>
+        <img src="./assets/gs_logo2.png" width="100%" height="100" xmlns="http://www.w3.org/2000/svg" role="image" aria-label="Banner Logo" focusable="false"></img>
         <p class="lead text-muted">C99, header-only framework for games and multimedia applications</p>
         <p>
 <!--           <a href="#" class="btn btn-primary my-2">Main call to action</a>
@@ -95,6 +204,18 @@
       </div>
     </div>
   </section>
+   <!-- <a class="iframe" href="http://www.example">This goes to iframe</a> -->
+ 
+    <!-- Add some kind of image banner thing -->
+    <a id="various3" href="./examples/00_hello_gs/App.html"><img src="./external/fancybox/fancybox/fancybox.png" alt=""/></a>
+  <section>
+    <img  
+  </section> 
+
+  <a id="example1" href="./external/fancybox/example/1_b.jpg"><img alt="example1" src="./external/fancybox/example/1_s.jpg" /></a>
+
+<!-- Dialog Trigger -->
+<button data-fancybox="dialog" data-src="#dialog-content">Launch Dialog</button>
 
 <!-- Example List -->
   <div class="album py-5" style="background-color: rgb(16, 16, 16)">
@@ -530,9 +651,6 @@
     <!-- <p class="mb-0">New to Bootstrap? <a href="/">Visit the homepage</a> or read our <a href="../getting-started/introduction/">getting started guide</a>.</p> -->
   </div>
 </footer>
-
-
-    <script src="./assets/dist/js/bootstrap.bundle.min.js"></script>
 
       
   </body>
