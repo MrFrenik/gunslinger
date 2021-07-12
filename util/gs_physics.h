@@ -210,7 +210,7 @@ GS_API_DECL int32_t gs_cone_vs_capsule(const gs_cone_t* a, const gs_vqs* xform_a
 /*==== Support Functions ====*/
 
 // Support function typedef for GJK collision detection
-typedef gs_vec3 (* gs_support_func_t)(const void* collider, gs_vqs* xform, const gs_vec3* dir, gs_vec3* out);
+typedef void (* gs_support_func_t)(const void* collider, const gs_vqs* xform, const gs_vec3* dir, gs_vec3* out);
 
 GS_API_DECL void gs_support_poly(const void* p, const gs_vqs* xform, const gs_vec3* dir, gs_vec3* out);
 GS_API_DECL void gs_support_sphere(const void* s, const gs_vqs* xform, const gs_vec3* dir, gs_vec3* out);
@@ -273,6 +273,10 @@ typedef struct gs_gjk_epa_edge_t {
 
 /*==== CCD ====*/
 
+#ifndef GS_PHYSICS_NO_CCD
+
+#include "../external/ccd/src/ccd/ccd_vec3.h"
+
 // Internal collision object conversion handle
 typedef struct _gs_collision_obj_handle_t 
 {
@@ -284,8 +288,10 @@ typedef struct _gs_collision_obj_handle_t
 // Internal support function for all ccd callbacks (will pass in user function through this cb), 
 // this way I can keep everything consistent, only expose gs related APIs, wrap any 3rd party libs, 
 // and possibly change internals in the future to custom implementations without breaking anything.
-GS_API_DECL void _gs_ccd_support_func(const void* _obj, const void* _dir, void* _out);
+GS_API_DECL void _gs_ccd_support_func(const void* _obj, const ccd_vec3_t* _dir, ccd_vec3_t* _out);
 GS_API_DECL int32_t _gs_ccd_gjk(const _gs_collision_obj_handle_t* c0, const _gs_collision_obj_handle_t* c1, gs_contact_info_t* res);
+
+#endif // GS_PHYSICS_NO_CCD
 
 /*==== Physics System ====*/
 
@@ -688,7 +694,11 @@ GS_API_DECL int32_t gs_plane_vs_sphere(const gs_plane_t* a, gs_vqs* xform_a, con
 
 /* Sphere */
 
-_GS_COLLIDE_FUNC_IMPL(sphere, sphere, gs_support_sphere, gs_support_sphere);      // Sphere vs. Sphere
+// _GS_COLLIDE_FUNC_IMPL(sphere, sphere, gs_support_sphere, gs_support_sphere);      // Sphere vs. Sphere
+GS_API_DECL int32_t gs_sphere_vs_sphere(const gs_sphere_t* a, const gs_vqs* xform_a, const gs_sphere_t* b, const gs_vqs* xform_b, gs_contact_info_t* res)
+{
+    return _gs_ccd_gjk_internal(a, xform_a, gs_support_sphere, b, xform_b, gs_support_sphere, res);
+}
 _GS_COLLIDE_FUNC_IMPL(sphere, cylinder, gs_support_sphere, gs_support_cylinder);  // Sphere vs. Cylinder
 _GS_COLLIDE_FUNC_IMPL(sphere, cone, gs_support_sphere, gs_support_cone);          // Sphere vs. Cone
 _GS_COLLIDE_FUNC_IMPL(sphere, aabb, gs_support_sphere, gs_support_aabb);          // Sphere vs. AABB
@@ -1549,6 +1559,7 @@ int32_t _gs_ccd_gjk_internal(
     ccd_real_t depth = CCD_REAL(0.0);
     ccd_vec3_t n = gs_ctor(ccd_vec3_t, 0.f, 0.f, 0.f), p = gs_ctor(ccd_vec3_t, 0.f, 0.f, 0.f);
     int32_t r = ccdGJKPenetration(&h0, &h1, &ccd, &depth, &n, &p);
+    /*
     bool32 hit = r >= 0 && !gs_is_nan(n.v[0]) && !gs_is_nan(n.v[1]) && !gs_is_nan(n.v[2]);
 
     if (hit && res)
@@ -1558,12 +1569,16 @@ int32_t _gs_ccd_gjk_internal(
         _gs_ccdv32gsv3(&p, &res->point);
         _gs_ccdv32gsv3(&n, &res->normal);
     }
+    */
 
-    return hit;
+    return r;
 }
 
+// typedef void (*ccd_support_fn)(const void *obj, const ccd_vec3_t *dir,
+//                                ccd_vec3_t *vec);
+
 // Internal support function for gs -> ccd
-GS_API_DECL void _gs_ccd_support_func(const void* _obj, const void* _dir, void* _out)
+GS_API_DECL void _gs_ccd_support_func(const void* _obj, const ccd_vec3_t* _dir, ccd_vec3_t* _out)
 {
     const _gs_collision_obj_handle_t* obj = (const _gs_collision_obj_handle_t*)_obj;
     if (obj->support) 
@@ -1573,6 +1588,7 @@ GS_API_DECL void _gs_ccd_support_func(const void* _obj, const void* _dir, void* 
         _gs_ccdv32gsv3((const ccd_vec3_t*)_dir, &dir);
 
         // Call user provided support function
+        // Think I found it...
         obj->support(obj->obj, obj->xform, &dir, &out);
 
         // Copy over out result for ccd
