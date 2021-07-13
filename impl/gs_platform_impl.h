@@ -602,10 +602,9 @@ char* gs_platform_read_file_contents_default_impl(const char* file_path, const c
             fread(buffer, 1, read_sz, fp);
         }
         buffer[read_sz] = '\0';
+        fclose(fp);
+        if (sz) *sz = read_sz;
     }
-    if (sz) *sz = read_sz;
-
-    fclose(fp);
 
     return buffer;
 }
@@ -629,8 +628,8 @@ gs_result gs_platform_write_file_contents_default_impl(const char* file_path, co
             fclose(fp);
             return GS_RESULT_SUCCESS;
         }
+        fclose(fp);
     }
-    fclose(fp);
     return GS_RESULT_FAILURE;
 }
 
