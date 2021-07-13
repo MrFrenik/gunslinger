@@ -1260,6 +1260,7 @@ GS_API_DECL void gsi_cylinder(gs_immediate_draw_t* gsi, float x, float y, float 
     if (sides < 3) sides = 3;
 
     int32_t numVertex = sides * 8;
+    const float hh = height * 0.5f;
 
     switch (type)
     {
@@ -1279,21 +1280,21 @@ GS_API_DECL void gsi_cylinder(gs_immediate_draw_t* gsi, float x, float y, float 
 	                // Draw Body -------------------------------------------------------------------------------------
 	                for (int i = 0; i < 360; i += 360/sides)
 	                {
-	                    gsi_v3f(gsi, x + sinf(gsi_deg2rad*i)*r_bottom, y + 0, z + cosf(gsi_deg2rad*i)*r_bottom); //Bottom Left
-	                    gsi_v3f(gsi, x + sinf(gsi_deg2rad*(i + 360.0f/sides))*r_bottom, y + 0, z + cosf(gsi_deg2rad*(i + 360.0f/sides))*r_bottom); //Bottom Right
-	                    gsi_v3f(gsi, x + sinf(gsi_deg2rad*(i + 360.0f/sides))*r_top, y + height, z + cosf(gsi_deg2rad*(i + 360.0f/sides))*r_top); //Top Right
+	                    gsi_v3f(gsi, x + sinf(gsi_deg2rad*i)*r_bottom, y - hh, z + cosf(gsi_deg2rad*i)*r_bottom); //Bottom Left
+	                    gsi_v3f(gsi, x + sinf(gsi_deg2rad*(i + 360.0f/sides))*r_bottom, y - hh, z + cosf(gsi_deg2rad*(i + 360.0f/sides))*r_bottom); //Bottom Right
+	                    gsi_v3f(gsi, x + sinf(gsi_deg2rad*(i + 360.0f/sides))*r_top, y + hh, z + cosf(gsi_deg2rad*(i + 360.0f/sides))*r_top); //Top Right
 
-	                    gsi_v3f(gsi, x + sinf(gsi_deg2rad*i)*r_top, y + height, z + cosf(gsi_deg2rad*i)*r_top); //Top Left
-	                    gsi_v3f(gsi, x + sinf(gsi_deg2rad*i)*r_bottom, y + 0, z + cosf(gsi_deg2rad*i)*r_bottom); //Bottom Left
-	                    gsi_v3f(gsi, x + sinf(gsi_deg2rad*(i + 360.0f/sides))*r_top, y + height, z + cosf(gsi_deg2rad*(i + 360.0f/sides))*r_top); //Top Right
+	                    gsi_v3f(gsi, x + sinf(gsi_deg2rad*i)*r_top, y + hh, z + cosf(gsi_deg2rad*i)*r_top); //Top Left
+	                    gsi_v3f(gsi, x + sinf(gsi_deg2rad*i)*r_bottom, y - hh, z + cosf(gsi_deg2rad*i)*r_bottom); //Bottom Left
+	                    gsi_v3f(gsi, x + sinf(gsi_deg2rad*(i + 360.0f/sides))*r_top, y + hh, z + cosf(gsi_deg2rad*(i + 360.0f/sides))*r_top); //Top Right
 	                }
 
 	                // Draw Cap --------------------------------------------------------------------------------------
 	                for (int i = 0; i < 360; i += 360/sides)
 	                {
-	                    gsi_v3f(gsi, x + 0, height, z + 0);
-	                    gsi_v3f(gsi, x + sinf(gsi_deg2rad*i)*r_top, y + height, z + cosf(gsi_deg2rad*i)*r_top);
-	                    gsi_v3f(gsi, x + sinf(gsi_deg2rad*(i + 360.0f/sides))*r_top, y + height, z + cosf(gsi_deg2rad*(i + 360.0f/sides))*r_top);
+	                    gsi_v3f(gsi, x + 0, y + hh, z + 0);
+	                    gsi_v3f(gsi, x + sinf(gsi_deg2rad*i)*r_top, y + hh, z + cosf(gsi_deg2rad*i)*r_top);
+	                    gsi_v3f(gsi, x + sinf(gsi_deg2rad*(i + 360.0f/sides))*r_top, y + hh, z + cosf(gsi_deg2rad*(i + 360.0f/sides))*r_top);
 	                }
 	            }
 	            else
@@ -1301,18 +1302,18 @@ GS_API_DECL void gsi_cylinder(gs_immediate_draw_t* gsi, float x, float y, float 
 	                // Draw Cone -------------------------------------------------------------------------------------
 	                for (int i = 0; i < 360; i += 360/sides)
 	                {
-	                    gsi_v3f(gsi, x + 0, height, z + 0);
-	                    gsi_v3f(gsi, x + sinf(gsi_deg2rad*i)*r_bottom, y + 0, z + cosf(gsi_deg2rad*i)*r_bottom);
-	                    gsi_v3f(gsi, x + sinf(gsi_deg2rad*(i + 360.0f/sides))*r_bottom, y + 0, z + cosf(gsi_deg2rad*(i + 360.0f/sides))*r_bottom);
+	                    gsi_v3f(gsi, x + 0, y + hh, z + 0);
+	                    gsi_v3f(gsi, x + sinf(gsi_deg2rad*i)*r_bottom, y - hh, z + cosf(gsi_deg2rad*i)*r_bottom);
+	                    gsi_v3f(gsi, x + sinf(gsi_deg2rad*(i + 360.0f/sides))*r_bottom, y - hh, z + cosf(gsi_deg2rad*(i + 360.0f/sides))*r_bottom);
 	                }
 	            }
 
 	            // Draw Base -----------------------------------------------------------------------------------------
 	            for (int i = 0; i < 360; i += 360/sides)
 	            {
-	                gsi_v3f(gsi, x + 0, y + 0, z + 0);
-	                gsi_v3f(gsi, x + sinf(gsi_deg2rad*(i + 360.0f/sides))*r_bottom, y + 0, z + cosf(gsi_deg2rad*(i + 360.0f/sides))*r_bottom);
-	                gsi_v3f(gsi, x + sinf(gsi_deg2rad*i)*r_bottom, y + 0, z + cosf(gsi_deg2rad*i)*r_bottom);
+	                gsi_v3f(gsi, x + 0, y - hh, z + 0);
+	                gsi_v3f(gsi, x + sinf(gsi_deg2rad*(i + 360.0f/sides))*r_bottom, y - hh, z + cosf(gsi_deg2rad*(i + 360.0f/sides))*r_bottom);
+	                gsi_v3f(gsi, x + sinf(gsi_deg2rad*i)*r_bottom, y - hh, z + cosf(gsi_deg2rad*i)*r_bottom);
 	            }
     		}
     		gsi_end(gsi);
@@ -1326,28 +1327,28 @@ GS_API_DECL void gsi_cylinder(gs_immediate_draw_t* gsi, float x, float y, float 
 
 	            for (int32_t i = 0; i < 360; i += 360/sides)
 	            {
-	                gsi_v3f(gsi, x + sinf(gsi_deg2rad*i)*r_bottom, y, cosf(gsi_deg2rad*i)*r_bottom);
-	                gsi_v3f(gsi, x + sinf(gsi_deg2rad*(i + 360.0f/sides))*r_bottom, y, z + cosf(gsi_deg2rad*(i + 360.0f/sides))*r_bottom);
+	                gsi_v3f(gsi, x + sinf(gsi_deg2rad*i)*r_bottom, y - hh, cosf(gsi_deg2rad*i)*r_bottom);
+	                gsi_v3f(gsi, x + sinf(gsi_deg2rad*(i + 360.0f/sides))*r_bottom, y - hh, z + cosf(gsi_deg2rad*(i + 360.0f/sides))*r_bottom);
 
-	                gsi_v3f(gsi, x + sinf(gsi_deg2rad*(i + 360.0f/sides))*r_bottom, y, z + cosf(gsi_deg2rad*(i + 360.0f/sides))*r_bottom);
-	                gsi_v3f(gsi, x + sinf(gsi_deg2rad*(i + 360.0f/sides))*r_top, y + height, z + cosf(gsi_deg2rad*(i + 360.0f/sides))*r_top);
+	                gsi_v3f(gsi, x + sinf(gsi_deg2rad*(i + 360.0f/sides))*r_bottom, y - hh, z + cosf(gsi_deg2rad*(i + 360.0f/sides))*r_bottom);
+	                gsi_v3f(gsi, x + sinf(gsi_deg2rad*(i + 360.0f/sides))*r_top, y + hh, z + cosf(gsi_deg2rad*(i + 360.0f/sides))*r_top);
 
-	                gsi_v3f(gsi, x + sinf(gsi_deg2rad*(i + 360.0f/sides))*r_top, y + height, z + cosf(gsi_deg2rad*(i + 360.0f/sides))*r_top);
-	                gsi_v3f(gsi, x + sinf(gsi_deg2rad*i)*r_top, y + height, z + cosf(gsi_deg2rad*i)*r_top);
+	                gsi_v3f(gsi, x + sinf(gsi_deg2rad*(i + 360.0f/sides))*r_top, y + hh, z + cosf(gsi_deg2rad*(i + 360.0f/sides))*r_top);
+	                gsi_v3f(gsi, x + sinf(gsi_deg2rad*i)*r_top, y + hh, z + cosf(gsi_deg2rad*i)*r_top);
 
-	                gsi_v3f(gsi, x + sinf(gsi_deg2rad*i)*r_top, y + height, z + cosf(gsi_deg2rad*i)*r_top);
-	                gsi_v3f(gsi, x + sinf(gsi_deg2rad*i)*r_bottom, y, z + cosf(gsi_deg2rad*i)*r_bottom);
+	                gsi_v3f(gsi, x + sinf(gsi_deg2rad*i)*r_top, y + hh, z + cosf(gsi_deg2rad*i)*r_top);
+	                gsi_v3f(gsi, x + sinf(gsi_deg2rad*i)*r_bottom, y - hh, z + cosf(gsi_deg2rad*i)*r_bottom);
 	            }
 
 	            // Draw Top/Bottom circles
 	            for (int i = 0; i < 360; i += 360/sides)
 	            {
-	                gsi_v3f(gsi, x, y, z);
-	                gsi_v3f(gsi, x + sinf(gsi_deg2rad*(i + 360.0f/sides))*r_bottom, y + 0, z + cosf(gsi_deg2rad*(i + 360.0f/sides))*r_bottom);
+	                gsi_v3f(gsi, x, y - hh, z);
+	                gsi_v3f(gsi, x + sinf(gsi_deg2rad*(i + 360.0f/sides))*r_bottom, y - hh, z + cosf(gsi_deg2rad*(i + 360.0f/sides))*r_bottom);
 
 	                if (r_top) {
-		                gsi_v3f(gsi, x + 0, y + height, z + 0);
-		                gsi_v3f(gsi, x + sinf(gsi_deg2rad*(i + 360.0f/sides))*r_top, y + height, z + cosf(gsi_deg2rad*(i + 360.0f/sides))*r_top);
+		                gsi_v3f(gsi, x + 0, y + hh, z + 0);
+		                gsi_v3f(gsi, x + sinf(gsi_deg2rad*(i + 360.0f/sides))*r_top, y + hh, z + cosf(gsi_deg2rad*(i + 360.0f/sides))*r_top);
 	                }
 	            }
     		}

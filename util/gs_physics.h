@@ -51,30 +51,13 @@
  *  @{
  */
 
-/*==== Util ====*/
-
-typedef struct gs_phys_xform_t {
-    // Rotation/Scale matrix
-    gs_mat3 rs;
-    // Inverse Rotation/Scale matrix
-    gs_mat3 inv_rs;
-    // Rotation
-    gs_quat rot;
-    // Scale
-    gs_vec3 scale;
-    // Position
-    gs_vec3 pos;
-} gs_phys_xform_t;
-
-GS_API_DECL gs_phys_xform_t gs_phys_xform_from_vqs(gs_vqs* vqs);
-
 /*==== Collision Shapes ====*/
 
 // 3D shapes
 typedef struct gs_line_t     {gs_vec3 a, b;                                                  } gs_line_t;
 typedef struct gs_aabb_t     {gs_vec3 min, max;                                              } gs_aabb_t;
 typedef struct gs_sphere_t   {gs_vec3 c; float r;                                            } gs_sphere_t;
-typedef struct gs_plane_t    {gs_vec3 p, n;                                                  } gs_plane_t;
+typedef struct gs_plane_t    {union{gs_vec3 p; struct{float a, b, c;};}; float d;            } gs_plane_t;
 typedef struct gs_capsule_t  {gs_vec3 base; float r, height;                                 } gs_capsule_t;
 typedef struct gs_ray_t      {gs_vec3 p, d;                                                  } gs_ray_t;
 typedef struct gs_poly_t     {gs_vec3* verts; int32_t cnt;                                   } gs_poly_t;
@@ -83,10 +66,39 @@ typedef struct gs_cylinder_t {float r; gs_vec3 base; float height;              
 typedef struct gs_cone_t     {float r; gs_vec3 base; float height;                           } gs_cone_t;
 
 // 2D shapes
-typedef struct gs_quad_t     {gs_vec2 min; gs_vec2 max;                                      } gs_quad_t;
-typedef struct gs_circle_t   {float r; gs_vec2 c;                                            } gs_circle_t;
-typedef struct gs_triangle_t {gs_vec2 a,b,c;                                                 } gs_triangle_t;
-typedef struct gs_pill_t     {gs_vec2 base; float r, height;                                 } gs_pill_t;
+// typedef struct gs_rect_t     {gs_vec2 min; gs_vec2 max;                                      } gs_rect_t;
+// typedef struct gs_circle_t   {float r; gs_vec2 c;                                            } gs_circle_t;
+// typedef struct gs_triangle_t {gs_vec2 a,b,c;                                                 } gs_triangle_t;
+// typedef struct gs_pill_t     {gs_vec2 base; float r, height;                                 } gs_pill_t;
+
+/*
+    typedef struct _gs_collision_obj_handle_t 
+    {
+        void* obj;
+        gs_support_func_t support;
+        gs_vqs* xform;
+    } _gs_collision_obj_handle_t;
+
+    // Wrap this, then expose collision callback to user through gs means
+
+    // Internal support function for all ccd callbacks (will pass in user function through this cb), 
+    // this way I can keep everything consistent, only expose gs related APIs, wrap any 3rd party libs, 
+    // and possibly change internals in the future to custom implementations without breaking anything.
+    void _gs_ccd_support_func(const void* _obj, const ccd_vec3_t* _dir, ccd_vec3_t* _out) 
+    {
+        const _gs_collision_obj_handle_t* obj = (const _gs_collision_obj_handle_t)_obj;
+        if (obj->support) 
+        {
+            // Call user support function
+            gs_vec3 dir = _gs_ccdv32gsv3(_dir);
+            gs_vec3 out = gs_default_val();
+            obj->support(obj->obj, obj->xform, &dir, &out);
+
+            // Copy over out result for ccd
+            _gs_gsv32ccdv3(&out, _out);
+        }
+    }
+*/
 
 // Need 2d collision shapes and responses with GJK+EPA
 
@@ -110,184 +122,102 @@ typedef struct gs_hit_t {
 #define gs_aabb(...)     gs_ctor(gs_aabb_t, __VA_ARGS__)
 #define gs_plane(...)    gs_ctor(gs_plane_t, __VA_ARGS__)
 #define gs_capsule(...)  gs_ctor(gs_capsule_t, __VA_ARGS__)
+#define gs_cone(...)     gs_ctor(gs_cone_t, __VA_ARGS__)
 #define gs_ray(...)      gs_ctor(gs_ray_t, __VA_ARGS__)
 #define gs_poly(...)     gs_ctor(gs_poly_t, __VA_ARGS__)
 #define gs_frustum(...). gs_ctor(gs_frustum_t, __VA_ARGS__)
 #define gs_cylinder(...) gs_ctor(gs_cylinder_t, __VA_ARGS__)
-#define gs_cone(...)     gs_ctor(gs_cone_t, __VA_ARGS__)
 #define gs_hit(...)      gs_ctor(gs_hit_t, __VA_ARGS__)
-#define gs_pill(...)     gs_ctor(gs_pill_t, __VA_ARGS__)
-#define gs_quad(...)     gs_ctor(gs_quad_t, __VA_ARGS__)
-#define gs_triangle(...) gs_ctor(gs_triangle_t, __VA_ARGS__)
-#define gs_circle(...)   gs_ctor(gs_circle_t, __VA_ARGS__)
 
-// Forward Decl. 
-struct gs_gjk_result_t;
-struct gs_gjk_epa_result_t;
-struct gs_gjk_contact_info_t;
+// Contact info
+typedef struct gs_contact_info_t {
+    int32_t hit;
+    gs_vec3 normal;
+    float depth;
+    gs_vec3 point;
+} gs_contact_info_t;
 
 /* Line/Segment */
-GS_API_DECL float gs_line_closest_line(float* t1, float* t2, gs_vec3* c1, gs_vec3* c2, gs_line_t l, gs_line_t m);
-
-/* Sphere */
-GS_API_DECL int32_t gs_sphere_vs_sphere(const gs_sphere_t* a, gs_vqs* xform_a, const gs_sphere_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_sphere_vs_aabb(const gs_sphere_t* a, gs_vqs* xform_a, const gs_aabb_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_sphere_vs_poly(const gs_sphere_t* a, gs_vqs* xform_a, const gs_poly_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_sphere_vs_cylinder(const gs_sphere_t* a, gs_vqs* xform_a, const gs_cylinder_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_sphere_vs_cone(const gs_sphere_t* a, gs_vqs* xform_a, const gs_cone_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_sphere_vs_capsule(const gs_sphere_t* a, gs_vqs* xform_a, const gs_capsule_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_sphere_vs_quad(const gs_sphere_t* a, gs_vqs* xform_a, const gs_quad_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_sphere_vs_triangle(const gs_sphere_t* a, gs_vqs* xform_a, const gs_triangle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_sphere_vs_circle(const gs_sphere_t* a, gs_vqs* xform_a, const gs_circle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_sphere_vs_pill(const gs_sphere_t* a, gs_vqs* xform_a, const gs_pill_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-
-/* Box */
-GS_API_DECL int32_t gs_aabb_vs_aabb(const gs_aabb_t* a, gs_vqs* xform_a, const gs_aabb_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_aabb_vs_sphere(const gs_aabb_t* a, gs_vqs* xform_a, const gs_sphere_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_aabb_vs_poly(const gs_aabb_t* a, gs_vqs* xform_a, const gs_poly_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_aabb_vs_cylinder(const gs_aabb_t* a, gs_vqs* xform_a, const gs_cylinder_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_aabb_vs_cone(const gs_aabb_t* a, gs_vqs* xform_a, const gs_cone_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_aabb_vs_capsule(const gs_aabb_t* a, gs_vqs* xform_a, const gs_capsule_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_aabb_vs_quad(const gs_aabb_t* a, gs_vqs* xform_a, const gs_quad_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_aabb_vs_triangle(const gs_aabb_t* a, gs_vqs* xform_a, const gs_triangle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_aabb_vs_circle(const gs_aabb_t* a, gs_vqs* xform_a, const gs_circle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_aabb_vs_pill(const gs_aabb_t* a, gs_vqs* xform_a, const gs_pill_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-
-/* Plane */
-
-/* Capsule */
-GS_API_DECL int32_t gs_capsule_vs_aabb(const gs_capsule_t* capsule, gs_vqs* xform_a, const gs_aabb_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_capsule_vs_sphere(const gs_capsule_t* capsule, gs_vqs* xform_a, const gs_sphere_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_capsule_vs_poly(const gs_capsule_t* capsule, gs_vqs* xform_a, const gs_poly_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_capsule_vs_cylinder(const gs_capsule_t* capsule, gs_vqs* xform_a, const gs_cylinder_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_capsule_vs_cone(const gs_capsule_t* capsule, gs_vqs* xform_a, const gs_cone_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_capsule_vs_capsule(const gs_capsule_t* capsule, gs_vqs* xform_a, const gs_capsule_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_capsule_vs_quad(const gs_capsule_t* capsule, gs_vqs* xform_a, const gs_quad_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_capsule_vs_triangle(const gs_capsule_t* capsule, gs_vqs* xform_a, const gs_triangle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_capsule_vs_circle(const gs_capsule_t* capsule, gs_vqs* xform_a, const gs_circle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_capsule_vs_pill(const gs_capsule_t* capsule, gs_vqs* xform_a, const gs_pill_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
+GS_API_DECL gs_line_t gs_line_closest_line(const gs_line_t* l, gs_vec3 p);
+GS_API_DECL gs_vec3   gs_line_closest_point(const gs_line_t* l, gs_vec3 p);
+GS_API_DECL gs_vec3   gs_line_direction(const gs_line_t* l);
 
 /* Ray */
 
+/* Plane */
+GS_API_DECL gs_plane_t gs_plane_from_pt_normal(gs_vec3 pt, gs_vec3 n);
+GS_API_DECL gs_plane_t gs_plane_from_pts(gs_vec3 a, gs_vec3 b, gs_vec3 c);
+GS_API_DECL gs_vec3    gs_plane_normal(const gs_plane_t* p); 
+GS_API_DECL gs_vec3    gs_plane_closest_point(const gs_plane_t* p, gs_vec3 pt); 
+GS_API_DECL float      gs_plane_signed_distance(const gs_plane_t* p, gs_vec3 pt);
+GS_API_DECL float      gs_plane_unsigned_distance(const gs_plane_t* p, gs_vec3 pt);
+GS_API_DECL gs_plane_t gs_plane_normalized(const gs_plane_t* p);
+
+/* Sphere */
+GS_API_DECL int32_t gs_sphere_vs_sphere(const gs_sphere_t* a, const gs_vqs* xform_a, const gs_sphere_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_sphere_vs_aabb(const gs_sphere_t* a, const gs_vqs* xform_a, const gs_aabb_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_sphere_vs_poly(const gs_sphere_t* a, const gs_vqs* xform_a, const gs_poly_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_sphere_vs_cylinder(const gs_sphere_t* a, const gs_vqs* xform_a, const gs_cylinder_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_sphere_vs_cone(const gs_sphere_t* a, const gs_vqs* xform_a, const gs_cone_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_sphere_vs_capsule(const gs_sphere_t* a, const gs_vqs* xform_a, const gs_capsule_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+
+/* Box */
+GS_API_DECL int32_t gs_aabb_vs_aabb(const gs_aabb_t* a, const gs_vqs* xform_a, const gs_aabb_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_aabb_vs_sphere(const gs_aabb_t* a, const gs_vqs* xform_a, const gs_sphere_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_aabb_vs_poly(const gs_aabb_t* a, const gs_vqs* xform_a, const gs_poly_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_aabb_vs_cylinder(const gs_aabb_t* a, const gs_vqs* xform_a, const gs_cylinder_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_aabb_vs_cone(const gs_aabb_t* a, const gs_vqs* xform_a, const gs_cone_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_aabb_vs_capsule(const gs_aabb_t* a, const gs_vqs* xform_a, const gs_capsule_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+
+/* Capsule */
+GS_API_DECL int32_t gs_capsule_vs_aabb(const gs_capsule_t* capsule, const gs_vqs* xform_a, const gs_aabb_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_capsule_vs_sphere(const gs_capsule_t* capsule, const gs_vqs* xform_a, const gs_sphere_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_capsule_vs_poly(const gs_capsule_t* capsule, const gs_vqs* xform_a, const gs_poly_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_capsule_vs_cylinder(const gs_capsule_t* capsule, const gs_vqs* xform_a, const gs_cylinder_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_capsule_vs_cone(const gs_capsule_t* capsule, const gs_vqs* xform_a, const gs_cone_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_capsule_vs_capsule(const gs_capsule_t* capsule, const gs_vqs* xform_a, const gs_capsule_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+
 /* Poly */
-GS_API_DECL int32_t gs_poly_vs_poly(const gs_poly_t* a, gs_vqs* xform_a, const gs_poly_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_poly_vs_sphere(const gs_poly_t* a, gs_vqs* xform_a, const gs_sphere_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_poly_vs_aabb(const gs_poly_t* a, gs_vqs* xform_a, const gs_aabb_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_poly_vs_cylinder(const gs_poly_t* a, gs_vqs* xform_a, const gs_cylinder_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_poly_vs_cone(const gs_poly_t* a, gs_vqs* xform_a, const gs_cone_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_poly_vs_capsule(const gs_poly_t* a, gs_vqs* xform_a, const gs_capsule_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_poly_vs_quad(const gs_poly_t* a, gs_vqs* xform_a, const gs_quad_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_poly_vs_triangle(const gs_poly_t* a, gs_vqs* xform_a, const gs_triangle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_poly_vs_circle(const gs_poly_t* a, gs_vqs* xform_a, const gs_circle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_poly_vs_pill(const gs_poly_t* a, gs_vqs* xform_a, const gs_pill_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
+GS_API_DECL int32_t gs_poly_vs_poly(const gs_poly_t* a, const gs_vqs* xform_a, const gs_poly_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_poly_vs_sphere(const gs_poly_t* a, const gs_vqs* xform_a, const gs_sphere_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_poly_vs_aabb(const gs_poly_t* a, const gs_vqs* xform_a, const gs_aabb_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_poly_vs_cylinder(const gs_poly_t* a, const gs_vqs* xform_a, const gs_cylinder_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_poly_vs_cone(const gs_poly_t* a, const gs_vqs* xform_a, const gs_cone_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_poly_vs_capsule(const gs_poly_t* a, const gs_vqs* xform_a, const gs_capsule_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
 
 /* Frustum */
 
 /* Cylinder */
-GS_API_DECL int32_t gs_cylinder_vs_cylinder(const gs_cylinder_t* a, gs_vqs* xform_a, const gs_cylinder_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_cylinder_vs_sphere(const gs_cylinder_t* a, gs_vqs* xform_a, const gs_sphere_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_cylinder_vs_aabb(const gs_cylinder_t* a, gs_vqs* xform_a, const gs_aabb_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_cylinder_vs_poly(const gs_cylinder_t* a, gs_vqs* xform_a, const gs_poly_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_cylinder_vs_cone(const gs_cylinder_t* a, gs_vqs* xform_a, const gs_cone_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_cylinder_vs_capsule(const gs_cylinder_t* a, gs_vqs* xform_a, const gs_capsule_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_cylinder_vs_quad(const gs_cylinder_t* a, gs_vqs* xform_a, const gs_quad_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_cylinder_vs_triangle(const gs_cylinder_t* a, gs_vqs* xform_a, const gs_triangle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_cylinder_vs_circle(const gs_cylinder_t* a, gs_vqs* xform_a, const gs_circle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_cylinder_vs_pill(const gs_cylinder_t* a, gs_vqs* xform_a, const gs_pill_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
+GS_API_DECL int32_t gs_cylinder_vs_cylinder(const gs_cylinder_t* a, const gs_vqs* xform_a, const gs_cylinder_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_cylinder_vs_sphere(const gs_cylinder_t* a, const gs_vqs* xform_a, const gs_sphere_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_cylinder_vs_aabb(const gs_cylinder_t* a, const gs_vqs* xform_a, const gs_aabb_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_cylinder_vs_poly(const gs_cylinder_t* a, const gs_vqs* xform_a, const gs_poly_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_cylinder_vs_cone(const gs_cylinder_t* a, const gs_vqs* xform_a, const gs_cone_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_cylinder_vs_capsule(const gs_cylinder_t* a, const gs_vqs* xform_a, const gs_capsule_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
 
 /* Cone */
-GS_API_DECL int32_t gs_cone_vs_cone(const gs_cone_t* a, gs_vqs* xform_a, const gs_cone_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_cone_vs_sphere(const gs_cone_t* a, gs_vqs* xform_a, const gs_sphere_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_cone_vs_aabb(const gs_cone_t* a, gs_vqs* xform_a, const gs_aabb_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_cone_vs_poly(const gs_cone_t* a, gs_vqs* xform_a, const gs_poly_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_cone_vs_cylinder(const gs_cone_t* a, gs_vqs* xform_a, const gs_cylinder_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_cone_vs_capsule(const gs_cone_t* a, gs_vqs* xform_a, const gs_capsule_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_cone_vs_quad(const gs_cone_t* a, gs_vqs* xform_a, const gs_quad_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_cone_vs_triangle(const gs_cone_t* a, gs_vqs* xform_a, const gs_triangle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_cone_vs_circle(const gs_cone_t* a, gs_vqs* xform_a, const gs_circle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_cone_vs_pill(const gs_cone_t* a, gs_vqs* xform_a, const gs_pill_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
+GS_API_DECL int32_t gs_cone_vs_cone(const gs_cone_t* a, const gs_vqs* xform_a, const gs_cone_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_cone_vs_sphere(const gs_cone_t* a, const gs_vqs* xform_a, const gs_sphere_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_cone_vs_aabb(const gs_cone_t* a, const gs_vqs* xform_a, const gs_aabb_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_cone_vs_poly(const gs_cone_t* a, const gs_vqs* xform_a, const gs_poly_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_cone_vs_cylinder(const gs_cone_t* a, const gs_vqs* xform_a, const gs_cylinder_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_cone_vs_capsule(const gs_cone_t* a, const gs_vqs* xform_a, const gs_capsule_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
 
-// 2D Shapes
-
-/* Triangle */
-GS_API_DECL int32_t gs_triangle_vs_triangle(const gs_triangle_t* a, gs_vqs* xform_a, const gs_triangle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_triangle_vs_quad(const gs_triangle_t* a, gs_vqs* xform_a, const gs_quad_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_triangle_vs_sphere(const gs_triangle_t* a, gs_vqs* xform_a, const gs_sphere_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_triangle_vs_aabb(const gs_triangle_t* a, gs_vqs* xform_a, const gs_aabb_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_triangle_vs_poly(const gs_triangle_t* a, gs_vqs* xform_a, const gs_poly_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_triangle_vs_cone(const gs_triangle_t* a, gs_vqs* xform_a, const gs_cone_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_triangle_vs_cylinder(const gs_triangle_t* a, gs_vqs* xform_a, const gs_cylinder_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_triangle_vs_capsule(const gs_triangle_t* a, gs_vqs* xform_a, const gs_capsule_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_triangle_vs_triangle_2d(const gs_triangle_t* a, gs_vqs* xform_a, const gs_triangle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_triangle_vs_quad_2d(const gs_triangle_t* a, gs_vqs* xform_a, const gs_quad_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_triangle_vs_circle_2d(const gs_triangle_t* a, gs_vqs* xform_a, const gs_circle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_triangle_vs_pill_2d(const gs_triangle_t* a, gs_vqs* xform_a, const gs_pill_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-
-/* Quad */
-GS_API_DECL int32_t gs_quad_vs_quad(const gs_quad_t* a, gs_vqs* xform_a, const gs_quad_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_quad_vs_sphere(const gs_quad_t* a, gs_vqs* xform_a, const gs_sphere_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_quad_vs_aabb(const gs_quad_t* a, gs_vqs* xform_a, const gs_aabb_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_quad_vs_poly(const gs_quad_t* a, gs_vqs* xform_a, const gs_poly_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_quad_vs_cone(const gs_quad_t* a, gs_vqs* xform_a, const gs_cone_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_quad_vs_cylinder(const gs_quad_t* a, gs_vqs* xform_a, const gs_cylinder_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_quad_vs_capsule(const gs_quad_t* a, gs_vqs* xform_a, const gs_capsule_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_quad_vs_triangle(const gs_quad_t* a, gs_vqs* xform_a, const gs_triangle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_quad_vs_circle(const gs_quad_t* a, gs_vqs* xform_a, const gs_circle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_quad_vs_pill(const gs_quad_t* a, gs_vqs* xform_a, const gs_pill_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_quad_vs_triangle_2d(const gs_quad_t* a, gs_vqs* xform_a, const gs_triangle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_quad_vs_quad_2d(const gs_quad_t* a, gs_vqs* xform_a, const gs_quad_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_quad_vs_circle_2d(const gs_quad_t* a, gs_vqs* xform_a, const gs_circle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_quad_vs_pill_2d(const gs_quad_t* a, gs_vqs* xform_a, const gs_pill_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-
-/* Circle */
-GS_API_DECL int32_t gs_circle_vs_sphere(const gs_circle_t* a, gs_vqs* xform_a, const gs_sphere_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_circle_vs_aabb(const gs_circle_t* a, gs_vqs* xform_a, const gs_aabb_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_circle_vs_poly(const gs_circle_t* a, gs_vqs* xform_a, const gs_poly_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_circle_vs_cone(const gs_circle_t* a, gs_vqs* xform_a, const gs_cone_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_circle_vs_cylinder(const gs_circle_t* a, gs_vqs* xform_a, const gs_cylinder_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_circle_vs_capsule(const gs_circle_t* a, gs_vqs* xform_a, const gs_capsule_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_circle_vs_triangle(const gs_circle_t* a, gs_vqs* xform_a, const gs_triangle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_circle_vs_pill(const gs_circle_t* a, gs_vqs* xform_a, const gs_pill_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_circle_vs_circle(const gs_circle_t* a, gs_vqs* xform_a, const gs_circle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_circle_vs_quad(const gs_circle_t* a, gs_vqs* xform_a, const gs_quad_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_circle_vs_quad_2d(const gs_circle_t* a, gs_vqs* xform_a, const gs_quad_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_circle_vs_circle_2d(const gs_circle_t* a, gs_vqs* xform_a, const gs_circle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_circle_vs_triangle_2d(const gs_circle_t* a, gs_vqs* xform_a, const gs_triangle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_circle_vs_pill_2d(const gs_circle_t* a, gs_vqs* xform_a, const gs_pill_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-
-/* Pill (2D Capsule) */
-GS_API_DECL int32_t gs_pill_vs_sphere(const gs_pill_t* a, gs_vqs* xform_a, const gs_sphere_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_pill_vs_aabb(const gs_pill_t* a, gs_vqs* xform_a, const gs_aabb_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_pill_vs_poly(const gs_pill_t* a, gs_vqs* xform_a, const gs_poly_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_pill_vs_cone(const gs_pill_t* a, gs_vqs* xform_a, const gs_cone_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_pill_vs_cylinder(const gs_pill_t* a, gs_vqs* xform_a, const gs_cylinder_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_pill_vs_capsule(const gs_pill_t* a, gs_vqs* xform_a, const gs_capsule_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_pill_vs_triangle(const gs_pill_t* a, gs_vqs* xform_a, const gs_triangle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_pill_vs_pill(const gs_pill_t* a, gs_vqs* xform_a, const gs_pill_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_pill_vs_circle(const gs_pill_t* a, gs_vqs* xform_a, const gs_circle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_pill_vs_quad(const gs_pill_t* a, gs_vqs* xform_a, const gs_quad_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_pill_vs_quad_2d(const gs_pill_t* a, gs_vqs* xform_a, const gs_quad_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_pill_vs_circle_2d(const gs_pill_t* a, gs_vqs* xform_a, const gs_circle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_pill_vs_triangle_2d(const gs_pill_t* a, gs_vqs* xform_a, const gs_triangle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
-GS_API_DECL int32_t gs_pill_vs_pill_2d(const gs_pill_t* a, gs_vqs* xform_a, const gs_pill_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res);
+// 2D Shapes (eventually)
 
 /* Hit */
 
 /*==== Support Functions ====*/
 
 // Support function typedef for GJK collision detection
-typedef gs_vec3 (* gs_gjk_support_func_t)(const void* collider, gs_vqs* xform, gs_vec3 search_dir);
+typedef void (* gs_support_func_t)(const void* collider, const gs_vqs* xform, const gs_vec3* dir, gs_vec3* out);
 
-GS_API_DECL gs_vec3 gs_gjk_support_poly(const gs_poly_t* p, gs_phys_xform_t* xform, gs_vec3 search_dir);
-GS_API_DECL gs_vec3 gs_gjk_support_sphere(const gs_sphere_t* s, gs_phys_xform_t* xform, gs_vec3 search_dir);
-GS_API_DECL gs_vec3 gs_gjk_support_aabb(const gs_aabb_t* a, gs_phys_xform_t* xform, gs_vec3 search_dir);
-GS_API_DECL gs_vec3 gs_gjk_support_cylinder(const gs_cylinder_t* c, gs_phys_xform_t* xform, gs_vec3 search_dir);
-GS_API_DECL gs_vec3 gs_gjk_support_cone(const gs_cone_t* c, gs_phys_xform_t* xform, gs_vec3 search_dir);
-GS_API_DECL gs_vec3 gs_gjk_support_capsule(const gs_capsule_t* c, gs_phys_xform_t* xform, gs_vec3 search_dir);
-GS_API_DECL gs_vec3 gs_gjk_support_quad(const gs_quad_t* c, gs_phys_xform_t* xform, gs_vec3 search_dir);
-GS_API_DECL gs_vec3 gs_gjk_support_triangle(const gs_triangle_t* c, gs_phys_xform_t* xform, gs_vec3 search_dir);
-GS_API_DECL gs_vec3 gs_gjk_support_circle(const gs_circle_t* c, gs_phys_xform_t* xform, gs_vec3 search_dir);
-GS_API_DECL gs_vec3 gs_gjk_support_pill(const gs_pill_t* c, gs_phys_xform_t* xform, gs_vec3 search_dir);
+GS_API_DECL void gs_support_poly(const void* p, const gs_vqs* xform, const gs_vec3* dir, gs_vec3* out);
+GS_API_DECL void gs_support_sphere(const void* s, const gs_vqs* xform, const gs_vec3* dir, gs_vec3* out);
+GS_API_DECL void gs_support_aabb(const void* a, const gs_vqs* xform, const gs_vec3* dir, gs_vec3* out);
+GS_API_DECL void gs_support_cylinder(const void* c, const gs_vqs* xform, const gs_vec3* dir, gs_vec3* out);
+GS_API_DECL void gs_support_cone(const void* c, const gs_vqs* xform, const gs_vec3* dir, gs_vec3* out);
+GS_API_DECL void gs_support_capsule(const void* c, const gs_vqs* xform, const gs_vec3* dir, gs_vec3* out);
 
 /*==== GJK ====*/
 
@@ -329,13 +259,6 @@ typedef struct gs_gjk_polytope_face_t {
     gs_vec3 normal;
 } gs_gjk_polytope_face_t;
 
-typedef struct gs_gjk_contact_info_t {
-    int32_t hit;
-    gs_vec3 normal;
-    float depth;
-    gs_vec3 points[2];
-} gs_gjk_contact_info_t;
-
 typedef struct gs_gjk_epa_edge_t {
     gs_vec3 normal;
     uint32_t index;
@@ -343,16 +266,32 @@ typedef struct gs_gjk_epa_edge_t {
     gs_gjk_support_point_t a, b;
 } gs_gjk_epa_edge_t;
 
-typedef struct gs_gjk_collider_info_t {
-    const void* collider;
-    gs_gjk_support_func_t func;
-    gs_phys_xform_t* xform;
-} gs_gjk_collider_info_t;
+// GS_API_DECL int32_t gs_gjk(const gs_gjk_collider_info_t* ci0, const gs_gjk_collider_info_t* ci1, gs_gjk_dimension dimension, gs_contact_info_t* res);
+// GS_API_DECL gs_contact_info_t gs_gjk_epa(const gs_gjk_simplex_t* simplex, const gs_gjk_collider_info_t* ci0, const gs_gjk_collider_info_t* ci1);
+// GS_API_DECL gs_contact_info_t gs_gjk_epa_2d(const gs_gjk_simplex_t* simplex, const gs_gjk_collider_info_t* ci0, const gs_gjk_collider_info_t* ci1);
+// GS_API_DECL gs_gjk_collider_info_t gs_gjk_collider_info(void* c, gs_support_func_t f, gs_phys_xform_t* t);
 
-GS_API_DECL int32_t gs_gjk(const gs_gjk_collider_info_t* ci0, const gs_gjk_collider_info_t* ci1, gs_gjk_dimension dimension, gs_gjk_contact_info_t* res);
-GS_API_DECL gs_gjk_contact_info_t gs_gjk_epa(const gs_gjk_simplex_t* simplex, const gs_gjk_collider_info_t* ci0, const gs_gjk_collider_info_t* ci1);
-GS_API_DECL gs_gjk_contact_info_t gs_gjk_epa_2d(const gs_gjk_simplex_t* simplex, const gs_gjk_collider_info_t* ci0, const gs_gjk_collider_info_t* ci1);
-GS_API_DECL gs_gjk_collider_info_t gs_gjk_collider_info(void* c, gs_gjk_support_func_t f, gs_phys_xform_t* t);
+/*==== CCD ====*/
+
+#ifndef GS_PHYSICS_NO_CCD
+
+#include "../external/ccd/src/ccd/ccd_vec3.h"
+
+// Internal collision object conversion handle
+typedef struct _gs_collision_obj_handle_t 
+{
+    const void* obj;
+    gs_support_func_t support;
+    const gs_vqs* xform;
+} _gs_collision_obj_handle_t;
+
+// Internal support function for all ccd callbacks (will pass in user function through this cb), 
+// this way I can keep everything consistent, only expose gs related APIs, wrap any 3rd party libs, 
+// and possibly change internals in the future to custom implementations without breaking anything.
+GS_API_DECL void _gs_ccd_support_func(const void* _obj, const ccd_vec3_t* _dir, ccd_vec3_t* _out);
+GS_API_DECL int32_t _gs_ccd_gjk(const _gs_collision_obj_handle_t* c0, const _gs_collision_obj_handle_t* c1, gs_contact_info_t* res);
+
+#endif // GS_PHYSICS_NO_CCD
 
 /*==== Physics System ====*/
 
@@ -471,1004 +410,364 @@ GS_API_DECL gs_raycast_data_t  gs_physics_scene_raycast(gs_physics_scene_t* scen
 
 #ifdef GS_PHYSICS_IMPL
 
-/*==== Util ====*/
-
-GS_API_DECL gs_phys_xform_t gs_phys_xform_from_vqs(gs_vqs* vqs)
-{
-    gs_phys_xform_t xform = gs_default_val();
-    xform.rs = gs_mat3_rsq(vqs->rotation.v, vqs->scale);
-    xform.inv_rs = gs_mat3_inverse(xform.rs);
-    xform.scale = vqs->scale;
-    xform.rot = vqs->rotation;
-    xform.pos = vqs->position;
-    return xform;
-}
-
-GS_API_DECL gs_gjk_collider_info_t gs_gjk_collider_info(void* c, gs_gjk_support_func_t f, gs_phys_xform_t* t)
-{
-    gs_gjk_collider_info_t info = gs_default_val();
-    info.collider = c;
-    info.func = f;
-    info.xform = t;
-    return info;
-}
-
-// Default 3d version
-int32_t _gs_gjk_internal(
-    void* c0, gs_vqs* xform_a, gs_gjk_support_func_t f0, 
-    void* c1, gs_vqs* xform_b, gs_gjk_support_func_t f1, 
-    struct gs_gjk_result_t* res
-)
-{
-    gs_phys_xform_t x0 = xform_a ? gs_phys_xform_from_vqs(xform_a) : gs_ctor(gs_phys_xform_t);
-    gs_phys_xform_t x1 = xform_b ? gs_phys_xform_from_vqs(xform_b) : gs_ctor(gs_phys_xform_t);
-    gs_gjk_collider_info_t ci0 = gs_gjk_collider_info(c0, f0, xform_a ? &x0 : NULL);
-    gs_gjk_collider_info_t ci1 = gs_gjk_collider_info(c1, f1, xform_b ? &x1 : NULL);
-    return gs_gjk(&ci0, &ci1, GS_GJK_DIMENSION_3D, res);
-}
-
-// 2d version
-int32_t _gs_gjk_internal_2d(
-    void* c0, gs_vqs* xform_a, gs_gjk_support_func_t f0, 
-    void* c1, gs_vqs* xform_b, gs_gjk_support_func_t f1, 
-    struct gs_gjk_result_t* res
-)
-{
-    gs_phys_xform_t x0 = xform_a ? gs_phys_xform_from_vqs(xform_a) : gs_ctor(gs_phys_xform_t);
-    gs_phys_xform_t x1 = xform_b ? gs_phys_xform_from_vqs(xform_b) : gs_ctor(gs_phys_xform_t);
-    gs_gjk_collider_info_t ci0 = gs_gjk_collider_info(c0, f0, xform_a ? &x0 : NULL);
-    gs_gjk_collider_info_t ci1 = gs_gjk_collider_info(c1, f1, xform_b ? &x1 : NULL);
-    return gs_gjk(&ci0, &ci1, GS_GJK_DIMENSION_2D, res);
-}
+// Includes
+#ifndef GS_PHYSICS_NO_CCD
+    #include "../external/ccd/libccd.c"
+#endif
 
 /*==== Support Functions =====*/
 
 // Poly
-
-GS_API_DECL gs_vec3 gs_gjk_support_poly(const gs_poly_t* p, gs_phys_xform_t* xform, gs_vec3 dir)
+GS_API_DECL void gs_support_poly(const void* _o, const gs_vqs* xform, const gs_vec3* dir, gs_vec3* out)
 {
-    // Find support in object space (with inverse matrix)
-    dir = xform ? gs_mat3_mul_vec3(xform->inv_rs, dir) : dir;
+    const gs_poly_t* p = (gs_poly_t*)_o;
 
-    // Initial furthest point
-    gs_vec3 res = p->verts[0];
-    float max_dot = gs_vec3_dot(res, dir);
+    // Bring direction vector into rotation space
+    gs_quat qinv = gs_quat_inverse(xform->rotation);
+    gs_vec3 d = gs_quat_rotate(qinv, *dir);
 
-    for (int32_t i = 1; i < p->cnt; ++i) {
-        float d = gs_vec3_dot(dir, p->verts[i]);
-        if (d > max_dot) {
-            max_dot = d;
-            res = p->verts[i];
+    // Iterate over all points, find dot farthest in direction of d
+    double max_dot, dot = 0.0;
+    max_dot = (double)-FLT_MAX;
+    for (uint32_t i = 0; i < p->cnt; i++) 
+    {
+        dot = (double)gs_vec3_dot(d, p->verts[i]);
+        if (dot > max_dot) {
+            *out = p->verts[i];
+            max_dot = dot;
         }
     }
 
-    // Conver to world space
-    res = xform ? gs_vec3_add(gs_mat3_mul_vec3(xform->rs, res), xform->pos) : res;
-
-    return res;
+    // Transform support point by rotation and translation of object
+    *out = gs_quat_rotate(xform->rotation, *out);
+    *out = gs_vec3_mul(xform->scale, *out);
+    *out = gs_vec3_add(xform->position, *out);
 }
 
 // Sphere
-
-GS_API_DECL gs_vec3 gs_gjk_support_sphere(const gs_sphere_t* s, gs_phys_xform_t* xform, gs_vec3 dir)
+GS_API_DECL void gs_support_sphere(const void* _o, const gs_vqs* xform, const gs_vec3* dir, gs_vec3* out)
 {
-    // Bring direction into object space (inv matrix)
-    dir = xform ? gs_mat3_mul_vec3(xform->inv_rs, dir) : dir;
-
-    // Calculate support point
-    gs_vec3 res = gs_vec3_add(gs_vec3_scale(gs_vec3_norm(dir), s->r), s->c);
-
-    // Convert to world space
-    res = xform ? gs_vec3_add(gs_mat3_mul_vec3(xform->rs, res), xform->pos) : res;
-
-    return res;
+    // Support function is made according to Gino van den Bergen's paper
+    //  A Fast and Robust CCD Implementation for Collision Detection of
+    //  Convex Objects
+    const gs_sphere_t* s = (gs_sphere_t*)_o;
+    float scl = gs_max(xform->scale.x, gs_max(xform->scale.z, xform->scale.y));
+    *out = gs_vec3_add(gs_vec3_scale(gs_vec3_norm(*dir), scl * s->r), gs_vec3_add(xform->position, s->c));
 }
 
 // AABB
-
-GS_API_DECL gs_vec3 gs_gjk_support_aabb(const gs_aabb_t* a, gs_phys_xform_t* xform, gs_vec3 dir)
+GS_API_DECL void gs_support_aabb(const void* _o, const gs_vqs* xform, const gs_vec3* dir, gs_vec3* out)
 {
-    // Find support in object space (with inverse matrix)
-    dir = xform ? gs_mat3_mul_vec3(xform->inv_rs, dir) : dir;
+    const gs_aabb_t* a = (gs_aabb_t*)_o;
 
-    // Calculate support point now in object space
-    gs_vec3 res = gs_default_val();
-    res.x = (dir.x > 0.f) ? a->max.x : a->min.x;
-    res.y = (dir.y > 0.f) ? a->max.y : a->min.y;
-    res.z = (dir.z > 0.f) ? a->max.z : a->min.z;
+    // Bring direction vector into rotation space
+    gs_quat qinv = gs_quat_inverse(xform->rotation);
+    gs_vec3 d = gs_quat_rotate(qinv, *dir);
 
-    // Convert to world space
-    res = xform ? gs_vec3_add(gs_mat3_mul_vec3(xform->rs, res), xform->pos) : res;
+    // Compute half coordinates and sign for aabb (scale by transform)
+    const float hx = (a->max.x - a->min.x) * 0.5f * xform->scale.x;
+    const float hy = (a->max.y - a->min.y) * 0.5f * xform->scale.y;
+    const float hz = (a->max.z - a->min.z) * 0.5f * xform->scale.z;
+    gs_vec3 s = gs_vec3_sign(d);
 
-    return res;
-}
+    // Compure support for aabb
+    *out = gs_v3(s.x * hx, s.y * hy, s.z * hz);
 
-// Cone
-
-#define MAX_CONE_PTS 10
-GS_API_DECL gs_vec3 gs_gjk_support_cone(const gs_cone_t* c, gs_phys_xform_t* xform, gs_vec3 dir)
-{
-    // Disc and point for support functions, using base information
-    gs_vec3 pts[MAX_CONE_PTS] = gs_default_val();
-    const float step = 360.f / (float)MAX_CONE_PTS;
-    for (uint32_t i = 0; i < MAX_CONE_PTS - 1; ++i) {
-        float a = gs_deg2rad(step * (float)i);
-        pts[i] = gs_v3(sinf(a) * c->r, c->base.y, cosf(a) * c->r);
-    }
-    pts[MAX_CONE_PTS - 1] = gs_vec3_add(c->base, gs_v3(0.f, c->height, 0.f));
-
-    // Find support in object space (with inverse matrix)
-    dir = xform ? gs_mat3_mul_vec3(xform->inv_rs, dir) : dir;
-
-    // Initial furthest point
-    gs_vec3 res = pts[0];
-    float max_dot = gs_vec3_dot(res, dir);
-
-    for (int32_t i = 1; i < MAX_CONE_PTS; ++i) {
-        float d = gs_vec3_dot(dir, pts[i]);
-        if (d > max_dot) {
-            max_dot = d;
-            res = pts[i];
-        }
-    }
-
-    // Convert to world space
-    res = xform ? gs_vec3_add(gs_mat3_mul_vec3(xform->rs, res), xform->pos) : res;
-
-    return res;
+    // Transform support point by rotation and translation of object
+    *out = gs_quat_rotate(xform->rotation, *out);
+    *out = gs_vec3_add(xform->position, *out);
 }
 
 // Cylinder
-
-GS_API_DECL gs_vec3 gs_gjk_support_cylinder(const gs_cylinder_t* c, gs_phys_xform_t* xform, gs_vec3 dir)
+GS_API_DECL void gs_support_cylinder(const void* _o, const gs_vqs* xform, const gs_vec3* dir, gs_vec3* out)
 {
-    dir = xform ? gs_mat3_mul_vec3(xform->inv_rs, dir) : dir;
+    // Support function is made according to Gino van den Bergen's paper
+    //  A Fast and Robust CCD Implementation for Collision Detection of
+    //  Convex Objects
 
-    gs_vec3 dir_xz = gs_v3(dir.x, 0.f, dir.z);
-    gs_vec3 res = gs_vec3_scale(gs_vec3_norm(dir_xz), c->r);
-    res.y = (dir.y > 0.f) ? c->base.y + c->height : c->base.y;
+    const gs_cylinder_t* c = (const gs_cylinder_t*)_o;
 
-    // Conver to world space
-    res = xform ? gs_vec3_add(gs_mat3_mul_vec3(xform->rs, res), xform->pos) : res;
+    // Bring direction vector into rotation space
+    gs_quat qinv = gs_quat_inverse(xform->rotation);
+    gs_vec3 d = gs_quat_rotate(qinv, *dir);
 
-    return res;
+    // Compute support point (cylinder is standing on y axis, half height at origin)
+    double zdist = sqrt(d.x * d.x + d.z * d.z);
+    double hh = (double)c->height * 0.5 * xform->scale.y;
+    if (zdist == 0.0) 
+    {
+        *out = gs_v3(0.0, gs_vec3_signY(d) * hh, 0.0);
+    }
+    else 
+    {
+        double r = (double)c->r / zdist;
+        *out = gs_v3(r * d.x * xform->scale.x, gs_vec3_signY(d) * hh, r * d.z * xform->scale.z);
+    }
+
+    // Transform support point into world space
+    *out = gs_quat_rotate(xform->rotation, *out);
+    *out = gs_vec3_add(gs_vec3_add(xform->position, c->base), *out);
 }
 
 // Capsule
-
-GS_API_DECL gs_vec3 gs_gjk_support_capsule(const gs_capsule_t* c, gs_phys_xform_t* xform, gs_vec3 dir)
+GS_API_DECL void gs_support_capsule(const void* _o, const gs_vqs* xform, const gs_vec3* dir, gs_vec3* out)
 {
-    // Find search dir in object space
-    dir = xform ? gs_mat3_mul_vec3(xform->inv_rs, dir) : dir;
+    const gs_capsule_t* c = (const gs_capsule_t*)_o;
 
-    // Compute result
-    gs_vec3 res = gs_vec3_scale(gs_vec3_norm(dir), c->r);
+    // Bring direction vector into rotation space
+    gs_quat qinv = gs_quat_inverse(xform->rotation);
+    gs_vec3 d = gs_quat_rotate(qinv, *dir);
 
-    // Find y
-    res.y = (dir.y > 0.f) ? c->base.y + c->height + c->r : c->base.y - c->r;
+    // Compute support point (cone is standing on y axis, half height at origin)
+    const float s = gs_max(xform->scale.x, xform->scale.z);
+    *out = gs_vec3_scale(gs_vec3_norm(d), c->r * s);
+    double hh = (double)c->height * 0.5 * xform->scale.y;
 
-    // Convert to world space
-    res = xform ? gs_vec3_add(gs_mat3_mul_vec3(xform->rs, res), xform->pos) : res;
+    if (gs_vec3_dot(d, GS_YAXIS) > 0.0) {
+        out->y += hh;
+    } else {
+        out->y -= hh;
+    }
 
-    return res;
+    // Transform support point into world space
+    *out = gs_quat_rotate(xform->rotation, *out);
+    *out = gs_vec3_add(gs_vec3_add(xform->position, c->base), *out);
 }
 
-// Quad
-
-GS_API_DECL gs_vec3 gs_gjk_support_quad(const gs_quad_t* q, gs_phys_xform_t* xform, gs_vec3 dir)
+// Cone
+GS_API_DECL void gs_support_cone(const void* _o, const gs_vqs* xform, const gs_vec3* dir, gs_vec3* out)
 {
-    // Find support in object space (with inverse matrix)
-    dir = xform ? gs_mat3_mul_vec3(xform->inv_rs, dir) : dir;
-    dir.z = 0.f;
+    const gs_cone_t* c = (const gs_cone_t*)_o;
 
-    // Calculate support point now in object space
-    gs_vec3 res = gs_default_val();
-    res.x = (dir.x > 0.f) ? q->max.x : q->min.x;
-    res.y = (dir.y > 0.f) ? q->max.y : q->min.y;
-    res.z = 0.f;
+    // Bring direction vector into rotation space
+    gs_quat qinv = gs_quat_inverse(xform->rotation);
+    gs_vec3 d = gs_quat_rotate(qinv, *dir);
 
-    // Convert to world space
-    res = xform ? gs_vec3_add(gs_mat3_mul_vec3(xform->rs, res), xform->pos) : res;
+    // Compute support point (cone is standing on y axis, half height at origin)
+    double sin_angle = c->r / sqrt((double)c->r * (double)c->r + (double)c->height * (double)c->height);
+    double hh = (double)c->height * 0.5 * xform->scale.y;
+    double len = sqrt(gs_vec3_len2(d));
 
-    return res;
-}
+    if (d.y > len * sin_angle)
+    {
+        *out = gs_v3(0.0f, (float)hh, 0.0f);
+    }
+    else
+    {
+        double s = sqrt(d.x * d.x + d.z * d.z);
+        if (s > (double)GS_GJK_EPSILON)
+        {
+            double _d = (double)c->r / s;
+            *out = gs_v3(d.x * _d * xform->scale.x, (float)-hh, d.z * _d * xform->scale.z);
+        }
+        else
+        {
+            *out = gs_v3(0.0, (float)-hh, 0.0);
+        }
+    }
 
-// Triangle
-GS_API_DECL gs_vec3 gs_gjk_support_triangle(const gs_triangle_t* t, gs_phys_xform_t* xform, gs_vec3 dir)
-{
-    // Cache points
-    gs_vec3 a = gs_v3(t->a.x, t->a.y, 0.f);
-    gs_vec3 b = gs_v3(t->b.x, t->b.y, 0.f);
-    gs_vec3 c = gs_v3(t->c.x, t->c.y, 0.f);
-
-    // Find support in object space (with inverse matrix)
-    dir = xform ? gs_mat3_mul_vec3(xform->inv_rs, dir) : dir;
-    dir.z = 0.f;
-
-    // Find farther point from direction
-    gs_vec3 res = gs_default_val();
-    res = gs_vec3_dot(dir, a) > gs_vec3_dot(dir, b) ? a : b;
-    res = gs_vec3_dot(dir, res) > gs_vec3_dot(dir, c) ? res : c;
-
-    // Convert to world space
-    res = xform ? gs_vec3_add(gs_mat3_mul_vec3(xform->rs, res), xform->pos) : res;
-
-    return res;
-}
-
-// Circle
-
-GS_API_DECL gs_vec3 gs_gjk_support_circle(const gs_circle_t* c, gs_phys_xform_t* xform, gs_vec3 dir)
-{
-    // Circle is in XY plane
-    // Bring direction into object space (inv matrix)
-    dir = xform ? gs_mat3_mul_vec3(xform->inv_rs, dir) : dir;
-
-    // Calculate support point
-    dir.z = 0.f;
-    gs_vec3 res = gs_vec3_add(gs_vec3_scale(gs_vec3_norm(dir), c->r), gs_v3(c->c.x, c->c.y, 0.f));
-
-    // Convert to world space
-    res = xform ? gs_vec3_add(gs_mat3_mul_vec3(xform->rs, res), xform->pos) : res;
-
-    return res;
-}
-
-// Pill
-
-GS_API_DECL gs_vec3 gs_gjk_support_pill(const gs_pill_t* c, gs_phys_xform_t* xform, gs_vec3 dir)
-{
-    // Find search dir in object space
-    dir = xform ? gs_mat3_mul_vec3(xform->inv_rs, dir) : dir;
-
-    // Compute result
-    gs_vec3 dir_xy = gs_v3(dir.x, dir.y, 0.f);
-    gs_vec3 res = gs_vec3_scale(gs_vec3_norm(dir_xy), c->r);
-
-    // Find y
-    res.y = (dir_xy.y > 0.f) ? c->base.y + c->height + c->r : c->base.y - c->r;
-
-    // Convert to world space
-    res = xform ? gs_vec3_add(gs_mat3_mul_vec3(xform->rs, res), xform->pos) : res;
-
-    return res;
+    // Transform support point into world space
+    *out = gs_quat_rotate(xform->rotation, *out);
+    *out = gs_vec3_add(gs_vec3_add(xform->position, c->base), *out);
 }
 
 /*==== Collision Shapes ====*/
 
 /* Line/Segment */
 
-GS_API_DECL float gs_line_closest_line(float* t1, float* t2, gs_vec3* c1, gs_vec3* c2, gs_line_t l, gs_line_t m) 
+GS_API_DECL gs_line_t gs_line_closest_line(const gs_line_t* l, gs_vec3 p)
 {
-    gs_vec3 r, d1, d2;
-    d1 = gs_vec3_sub(l.b, l.a); /* direction vector segment s1 */
-    d2 = gs_vec3_sub(m.b, m.a); /* direction vector segment s2 */
-    r = gs_vec3_sub(l.a, m.a);
-
-    float i = gs_vec3_dot(d1, d1);
-    float e = gs_vec3_dot(d2, d2);
-    float f = gs_vec3_dot(d2, r);
-
-    if (i <= FLT_EPSILON && e <= FLT_EPSILON) {
-        /* both segments degenerate into points */
-        gs_vec3 d12;
-        *t1 = *t2 = 0.0f;
-        *c1 = l.a;
-        *c2 = m.a;
-        d12 = gs_vec3_sub(*c1, *c2);
-        return gs_vec3_dot(d12,d12);
-    }
-    if (i > FLT_EPSILON) {
-        float c = gs_vec3_dot(d1,r);
-        if (e > FLT_EPSILON) {
-            /* non-degenerate case */
-            float b = gs_vec3_dot(d1,d2);
-            float denom = i*e - b*b;
-
-            /* compute closest point on L1/L2 if not parallel else pick any t2 */
-            if (denom != 0.0f)
-                *t1 = gs_clamp(0.0f, (b*f - c*e) / denom, 1.0f);
-            else *t1 = 0.0f;
-
-            /* cmpute point on L2 closest to S1(s) */
-            *t2 = (b*(*t1) + f) / e;
-            if (*t2 < 0.0f) {
-                *t2 = 0.0f;
-                *t1 = gs_clamp(0.0f, -c/i, 1.0f);
-            } else if (*t2 > 1.0f) {
-                *t2 = 1.0f;
-                *t1 = gs_clamp(0.0f, (b-c)/i, 1.0f);
-            }
-        } else {
-            /* second segment degenerates into a point */
-            *t1 = gs_clamp(0.0f, -c/i, 1.0f);
-            *t2 = 0.0f;
-        }
-    } else {
-        /* first segment degenerates into a point */
-        *t2 = gs_clamp(0.0f, f/e, 1.0f);
-        *t1 = 0.0f;
-    }
-    /* calculate closest points */
-    gs_vec3 n, d12;
-    n = gs_vec3_scale(d1, *t1);
-    *c1 = gs_vec3_add(l.a, n);
-    n = gs_vec3_scale(d2, *t2);
-    *c2 = gs_vec3_add(m.a, n);
-
-    /* calculate squared distance */
-    d12 = gs_vec3_sub(*c1, *c2);
-    return gs_vec3_dot(d12,d12);
+    gs_vec3 cp = gs_line_closest_point(l, p);
+    return gs_line(p, cp);
 }
 
-/* Sphere */
-
-GS_API_DECL int32_t gs_sphere_vs_sphere(const gs_sphere_t* a, gs_vqs* xform_a, const gs_sphere_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
+GS_API_DECL gs_vec3 gs_line_closest_point(const gs_line_t* l, gs_vec3 p)
 {
-    // Specialized, non-gjk function
-    gs_vec3 wa = xform_a ? gs_vec3_add(xform_a->position, a->c) : a->c;
-    gs_vec3 wb = xform_b ? gs_vec3_add(xform_b->position, b->c) : b->c;
-
-    // Only uniform scale allowed for spheres
-    float as = xform_a ? gs_max(gs_max(xform_a->scale.x, xform_a->scale.y), xform_a->scale.z) : 1.f;
-    float bs = xform_a ? gs_max(gs_max(xform_b->scale.x, xform_b->scale.y), xform_b->scale.z) : 1.f;
-
-    gs_vec3 d = gs_vec3_sub(wb, wa);
-    float r = as * a->r + bs * b->r;
-    float d2 = gs_vec3_dot(d,d);
-    if (d2 > r*r) return false;
-
-    float l = sqrtf(d2);
-    float linv = 1.0f / ((l != 0) ? l: 1.0f);
-
-    if (res)
-    {
-        res->normal = gs_vec3_scale(d, linv);
-        res->depth = r - l;
-        d = gs_vec3_scale(res->normal, b->r * bs);
-        res->points[0] = gs_vec3_add(wa, d);
-        res->points[1] = gs_vec3_sub(wb, d);
-        res->hit = true;
-    }
-
-    return true;
+    gs_vec3 pt = gs_default_val();
+    gs_vec3 ab = gs_vec3_sub(l->b, l->a);
+    gs_vec3 pa = gs_vec3_sub(p, l->a);
+    float t = gs_vec3_dot(pa, ab) / gs_vec3_dot(ab, ab); 
+    t = gs_clamp(t, 0.f, 1.f);
+    pt = gs_vec3_add(l->a, gs_vec3_scale(ab, t));
+    return pt;
 }
 
-GS_API_DECL int32_t gs_sphere_vs_aabb(const gs_sphere_t* a, gs_vqs* xform_a, const gs_aabb_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
+GS_API_DECL gs_vec3 gs_line_direction(const gs_line_t* l)
 {
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_sphere, b, xform_b, gs_gjk_support_aabb, res);
-}
-
-GS_API_DECL int32_t gs_sphere_vs_poly(const gs_sphere_t* a, gs_vqs* xform_a, const gs_poly_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_sphere, b, xform_b, gs_gjk_support_poly, res);
-}
-
-GS_API_DECL int32_t gs_sphere_vs_cylinder(const gs_sphere_t* a, gs_vqs* xform_a, const gs_cylinder_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_sphere, b, xform_b, gs_gjk_support_cylinder, res);
-}
-
-GS_API_DECL int32_t gs_sphere_vs_cone(const gs_sphere_t* a, gs_vqs* xform_a, const gs_cone_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_sphere, b, xform_b, gs_gjk_support_cone, res);
-}
-
-GS_API_DECL int32_t gs_sphere_vs_capsule(const gs_sphere_t* a, gs_vqs* xform_a, const gs_capsule_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_sphere, b, xform_b, gs_gjk_support_capsule, res);
-}
-
-GS_API_DECL int32_t gs_sphere_vs_quad(const gs_sphere_t* a, gs_vqs* xform_a, const gs_quad_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_sphere, b, xform_b, gs_gjk_support_quad, res);
-}
-
-GS_API_DECL int32_t gs_sphere_vs_triangle(const gs_sphere_t* a, gs_vqs* xform_a, const gs_triangle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_sphere, b, xform_b, gs_gjk_support_triangle, res);
-}
-
-GS_API_DECL int32_t gs_sphere_vs_circle(const gs_sphere_t* a, gs_vqs* xform_a, const gs_circle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_sphere, b, xform_b, gs_gjk_support_circle, res);
-}
-
-GS_API_DECL int32_t gs_sphere_vs_pill(const gs_sphere_t* a, gs_vqs* xform_a, const gs_pill_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_sphere, b, xform_b, gs_gjk_support_pill, res);
-}
-
-/* AABB */
-
-GS_API_DECL int32_t gs_aabb_vs_aabb(const gs_aabb_t* a, gs_vqs* xform_a, const gs_aabb_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    // NOTE(john): If neither have transforms, then can default to less expensive AABB vs. AABB check
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_aabb, b, xform_b, gs_gjk_support_aabb, res);
-}
-
-GS_API_DECL int32_t gs_aabb_vs_sphere(const gs_aabb_t* a, gs_vqs* xform_a, const gs_sphere_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_aabb, b, xform_b, gs_gjk_support_sphere, res);
-}
-
-GS_API_DECL int32_t gs_aabb_vs_poly(const gs_aabb_t* a, gs_vqs* xform_a, const gs_poly_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_aabb, b, xform_b, gs_gjk_support_poly, res);
-}
-
-GS_API_DECL int32_t gs_aabb_vs_cylinder(const gs_aabb_t* a, gs_vqs* xform_a, const gs_cylinder_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_aabb, b, xform_b, gs_gjk_support_cylinder, res);
-}
-
-GS_API_DECL int32_t gs_aabb_vs_cone(const gs_aabb_t* a, gs_vqs* xform_a, const gs_cone_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_aabb, b, xform_b, gs_gjk_support_cone, res);
-}
-
-GS_API_DECL int32_t gs_aabb_vs_capsule(const gs_aabb_t* a, gs_vqs* xform_a, const gs_capsule_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_aabb, b, xform_b, gs_gjk_support_capsule, res);
-}
-
-GS_API_DECL int32_t gs_aabb_vs_quad(const gs_aabb_t* a, gs_vqs* xform_a, const gs_quad_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_aabb, b, xform_b, gs_gjk_support_quad, res);
-}
-
-GS_API_DECL int32_t gs_aabb_vs_triangle(const gs_aabb_t* a, gs_vqs* xform_a, const gs_triangle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_aabb, b, xform_b, gs_gjk_support_triangle, res);
-}
-
-GS_API_DECL int32_t gs_aabb_vs_circle(const gs_aabb_t* a, gs_vqs* xform_a, const gs_circle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_aabb, b, xform_b, gs_gjk_support_circle, res);
-}
-
-GS_API_DECL int32_t gs_aabb_vs_pill(const gs_aabb_t* a, gs_vqs* xform_a, const gs_pill_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_aabb, b, xform_b, gs_gjk_support_pill, res);
+    return gs_vec3_norm(gs_vec3_sub(l->b, l->a)); 
 }
 
 /* Plane */
 
-/* Capsule */
-
-GS_API_DECL int32_t gs_capsule_vs_aabb(const gs_capsule_t* a, gs_vqs* xform_a, const gs_aabb_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
+// Modified from: https://graphics.stanford.edu/~mdfisher/Code/Engine/Plane.cpp.html
+GS_API_DECL gs_plane_t gs_plane_from_pt_normal(gs_vec3 pt, gs_vec3 n)
 {
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_capsule, b, xform_b, gs_gjk_support_aabb, res);
+    gs_plane_t p = gs_plane();
+    gs_vec3 nn = gs_vec3_norm(n);
+    p.a = nn.x; p.b = nn.y; p.c = nn.z;
+    p.d = -gs_vec3_dot(pt, nn);
+    return p;
 }
 
-GS_API_DECL int32_t gs_capsule_vs_sphere(const gs_capsule_t* a, gs_vqs* xform_a, const gs_sphere_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
+GS_API_DECL gs_plane_t gs_plane_from_pts(gs_vec3 a, gs_vec3 b, gs_vec3 c)
 {
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_capsule, b, xform_b, gs_gjk_support_sphere, res);
+    gs_vec3 n = gs_vec3_norm(gs_vec3_cross(gs_vec3_sub(b, a), gs_vec3_sub(c, a)));
+    return gs_plane_from_pt_normal(a, n);
 }
 
-GS_API_DECL int32_t gs_capsule_vs_poly(const gs_capsule_t* a, gs_vqs* xform_a, const gs_poly_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
+GS_API_DECL gs_vec3 gs_plane_normal(const gs_plane_t* p)
 {
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_capsule, b, xform_b, gs_gjk_support_poly, res);
+    return gs_vec3_norm(gs_v3(p->a, p->b, p->c));
 }
 
-GS_API_DECL int32_t gs_capsule_vs_cylinder(const gs_capsule_t* a, gs_vqs* xform_a, const gs_cylinder_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
+GS_API_DECL gs_vec3 gs_plane_closest_point(const gs_plane_t* p, gs_vec3 pt)
 {
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_capsule, b, xform_b, gs_gjk_support_cylinder, res);
+    return gs_vec3_sub(pt, gs_vec3_scale(gs_plane_normal(p), gs_plane_signed_distance(p, pt)));
 }
 
-GS_API_DECL int32_t gs_capsule_vs_cone(const gs_capsule_t* a, gs_vqs* xform_a, const gs_cone_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
+GS_API_DECL float gs_plane_signed_distance(const gs_plane_t* p, gs_vec3 pt)
 {
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_capsule, b, xform_b, gs_gjk_support_cone, res);
+    return (p->a * pt.x + p->b * pt.y + p->c * pt.z + p->d);
 }
 
-GS_API_DECL int32_t gs_capsule_vs_capsule(const gs_capsule_t* a, gs_vqs* xform_a, const gs_capsule_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
+GS_API_DECL float gs_plane_unsigned_distance(const gs_plane_t* p, gs_vec3 pt)
 {
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_capsule, b, xform_b, gs_gjk_support_capsule, res);
+    return fabsf(gs_plane_signed_distance(p, pt));
 }
 
-GS_API_DECL int32_t gs_capsule_vs_quad(const gs_capsule_t* a, gs_vqs* xform_a, const gs_quad_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
+GS_API_DECL gs_plane_t gs_plane_normalized(const gs_plane_t* p)
 {
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_capsule, b, xform_b, gs_gjk_support_quad, res);
+    gs_plane_t pn = gs_plane();
+    float d = sqrtf(p->a * p->a + p->b * p->b + p->c * p->c);
+    pn.a = p->a / d; pn.b = p->b / d; pn.c = p->c / d; pn.d = p->d / d;
+    return pn;
 }
 
-GS_API_DECL int32_t gs_capsule_vs_triangle(const gs_capsule_t* a, gs_vqs* xform_a, const gs_triangle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
+GS_API_DECL int32_t gs_plane_vs_sphere(const gs_plane_t* a, gs_vqs* xform_a, const gs_sphere_t* b, gs_vqs* xform_b, struct gs_contact_info_t* res)
 {
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_capsule, b, xform_b, gs_gjk_support_triangle, res);
-}
+    // Cache necesary transforms, matrices
+    gs_mat4 mat = xform_a ? gs_vqs_to_mat4(xform_a) : gs_mat4_identity();
+    gs_mat4 inv = xform_a ? gs_mat4_inverse(mat) : gs_mat4_identity();
+    gs_vqs local = gs_vqs_relative_transform(xform_a, xform_b);
 
-GS_API_DECL int32_t gs_capsule_vs_circle(const gs_capsule_t* a, gs_vqs* xform_a, const gs_circle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_capsule, b, xform_b, gs_gjk_support_circle, res);
-}
+    // Transform sphere center into local cone space
+    gs_vec3 sc = xform_a ? gs_mat4_mul_vec3(inv, xform_b ? gs_vec3_add(xform_b->position, b->c) : b->c) : b->c;
 
-GS_API_DECL int32_t gs_capsule_vs_pill(const gs_capsule_t* a, gs_vqs* xform_a, const gs_pill_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_capsule, b, xform_b, gs_gjk_support_pill, res);
+    // Determine closest point from sphere center to plane
+    gs_vec3 cp = gs_plane_closest_point(a, sc);
+
+    // Determine if sphere is intersecting this point
+    float sb = xform_b ? gs_max(local.scale.x, gs_max(local.scale.y, local.scale.z)) : 1.f;
+    gs_vec3 dir = gs_vec3_sub(cp, sc);
+    gs_vec3 n = gs_vec3_norm(dir);
+    float d = gs_vec3_len(dir);
+    float r = sb * b->r;
+
+    if (d > r) 
+    {
+        return false;
+    }
+
+    // Construct contact information
+    if (res) 
+    {
+        res->hit = true;
+        res->depth = (r - d);
+        res->normal = gs_mat4_mul_vec3(mat, n); 
+        res->point = gs_mat4_mul_vec3(mat, cp);
+    }
+
+    return true;    
 }
 
 /* Ray */
 
-
-/* Poly */
-
-GS_API_DECL int32_t gs_poly_vs_poly(const gs_poly_t* a, gs_vqs* xform_a, const gs_poly_t* b, gs_vqs* xform_b, gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_poly, b, xform_b, gs_gjk_support_poly, res);
-}
-
-GS_API_DECL int32_t gs_poly_vs_sphere(const gs_poly_t* a, gs_vqs* xform_a, const gs_sphere_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_poly, b, xform_b, gs_gjk_support_sphere, res);
-}
-
-GS_API_DECL int32_t gs_poly_vs_aabb(const gs_poly_t* a, gs_vqs* xform_a, const gs_aabb_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_poly, b, xform_b, gs_gjk_support_aabb, res);
-}
-
-GS_API_DECL int32_t gs_poly_vs_cylinder(const gs_poly_t* a, gs_vqs* xform_a, const gs_cylinder_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_poly, b, xform_b, gs_gjk_support_cylinder, res);
-}
-
-GS_API_DECL int32_t gs_poly_vs_cone(const gs_poly_t* a, gs_vqs* xform_a, const gs_cone_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_poly, b, xform_b, gs_gjk_support_cone, res);
-}
-
-GS_API_DECL int32_t gs_poly_vs_capsule(const gs_poly_t* a, gs_vqs* xform_a, const gs_capsule_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_poly, b, xform_b, gs_gjk_support_capsule, res);
-}
-
-GS_API_DECL int32_t gs_poly_vs_quad(const gs_poly_t* a, gs_vqs* xform_a, const gs_quad_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_poly, b, xform_b, gs_gjk_support_quad, res);
-}
-
-GS_API_DECL int32_t gs_poly_vs_triangle(const gs_poly_t* a, gs_vqs* xform_a, const gs_triangle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_poly, b, xform_b, gs_gjk_support_triangle, res);
-}
-
-GS_API_DECL int32_t gs_poly_vs_circle(const gs_poly_t* a, gs_vqs* xform_a, const gs_circle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_poly, b, xform_b, gs_gjk_support_circle, res);
-}
-
-GS_API_DECL int32_t gs_poly_vs_pill(const gs_poly_t* a, gs_vqs* xform_a, const gs_pill_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_poly, b, xform_b, gs_gjk_support_pill, res);
-}
-
 /* Frustum */
-
-/* Cylinder */
-
-GS_API_DECL int32_t gs_cylinder_vs_cylinder(const gs_cylinder_t* a, gs_vqs* xform_a, const gs_cylinder_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_cylinder, b, xform_b, gs_gjk_support_cylinder, res);
-}
-
-GS_API_DECL int32_t gs_cylinder_vs_sphere(const gs_cylinder_t* a, gs_vqs* xform_a, const gs_sphere_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return gs_sphere_vs_cylinder(b, xform_b, a, xform_a, res);
-}
-
-GS_API_DECL int32_t gs_cylinder_vs_aabb(const gs_cylinder_t* a, gs_vqs* xform_a, const gs_aabb_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_cylinder, b, xform_b, gs_gjk_support_aabb, res);
-}
-
-GS_API_DECL int32_t gs_cylinder_vs_poly(const gs_cylinder_t* a, gs_vqs* xform_a, const gs_poly_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_cylinder, b, xform_b, gs_gjk_support_poly, res);
-}
-
-GS_API_DECL int32_t gs_cylinder_vs_cone(const gs_cylinder_t* a, gs_vqs* xform_a, const gs_cone_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_cylinder, b, xform_b, gs_gjk_support_cone, res);
-}
-
-GS_API_DECL int32_t gs_cylinder_vs_capsule(const gs_cylinder_t* a, gs_vqs* xform_a, const gs_capsule_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_cylinder, b, xform_b, gs_gjk_support_capsule, res);
-}
-
-GS_API_DECL int32_t gs_cylinder_vs_quad(const gs_cylinder_t* a, gs_vqs* xform_a, const gs_quad_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_cylinder, b, xform_b, gs_gjk_support_quad, res);
-}
-
-GS_API_DECL int32_t gs_cylinder_vs_triangle(const gs_cylinder_t* a, gs_vqs* xform_a, const gs_triangle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_cylinder, b, xform_b, gs_gjk_support_triangle, res);
-}
-
-GS_API_DECL int32_t gs_cylinder_vs_circle(const gs_cylinder_t* a, gs_vqs* xform_a, const gs_circle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_cylinder, b, xform_b, gs_gjk_support_circle, res);
-}
-
-GS_API_DECL int32_t gs_cylinder_vs_pill(const gs_cylinder_t* a, gs_vqs* xform_a, const gs_pill_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_cylinder, b, xform_b, gs_gjk_support_pill, res);
-}
-
-/* Cone */
-
-GS_API_DECL int32_t gs_cone_vs_cone(const gs_cone_t* a, gs_vqs* xform_a, const gs_cone_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_cone, b, xform_b, gs_gjk_support_cone, res);
-}
-
-GS_API_DECL int32_t gs_cone_vs_sphere(const gs_cone_t* a, gs_vqs* xform_a, const gs_sphere_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_cone, b, xform_b, gs_gjk_support_sphere, res);
-}
-
-GS_API_DECL int32_t gs_cone_vs_aabb(const gs_cone_t* a, gs_vqs* xform_a, const gs_aabb_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_cone, b, xform_b, gs_gjk_support_aabb, res);
-}
-
-GS_API_DECL int32_t gs_cone_vs_poly(const gs_cone_t* a, gs_vqs* xform_a, const gs_poly_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_cone, b, xform_b, gs_gjk_support_poly, res);
-}
-
-GS_API_DECL int32_t gs_cone_vs_cylinder(const gs_cone_t* a, gs_vqs* xform_a, const gs_cylinder_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_cone, b, xform_b, gs_gjk_support_cylinder, res);
-}
-
-GS_API_DECL int32_t gs_cone_vs_capsule(const gs_cone_t* a, gs_vqs* xform_a, const gs_capsule_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_cone, b, xform_b, gs_gjk_support_capsule, res);
-}
-
-GS_API_DECL int32_t gs_cone_vs_quad(const gs_cone_t* a, gs_vqs* xform_a, const gs_quad_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_cone, b, xform_b, gs_gjk_support_quad, res);
-}
-
-GS_API_DECL int32_t gs_cone_vs_triangle(const gs_cone_t* a, gs_vqs* xform_a, const gs_triangle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_cone, b, xform_b, gs_gjk_support_triangle, res);
-}
-
-GS_API_DECL int32_t gs_cone_vs_circle(const gs_cone_t* a, gs_vqs* xform_a, const gs_circle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_cone, b, xform_b, gs_gjk_support_circle, res);
-}
-
-GS_API_DECL int32_t gs_cone_vs_pill(const gs_cone_t* a, gs_vqs* xform_a, const gs_pill_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_cone, b, xform_b, gs_gjk_support_pill, res);
-}
-
-/* Quad */
-
-GS_API_DECL int32_t gs_quad_vs_quad(const gs_quad_t* a, gs_vqs* xform_a, const gs_quad_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_quad, b, xform_b, gs_gjk_support_quad, res);
-}
-
-GS_API_DECL int32_t gs_quad_vs_sphere(const gs_quad_t* a, gs_vqs* xform_a, const gs_sphere_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_quad, b, xform_b, gs_gjk_support_sphere, res);
-}
-
-GS_API_DECL int32_t gs_quad_vs_aabb(const gs_quad_t* a, gs_vqs* xform_a, const gs_aabb_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_quad, b, xform_b, gs_gjk_support_aabb, res);
-}
-
-GS_API_DECL int32_t gs_quad_vs_poly(const gs_quad_t* a, gs_vqs* xform_a, const gs_poly_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_quad, b, xform_b, gs_gjk_support_poly, res);
-}
-
-GS_API_DECL int32_t gs_quad_vs_cone(const gs_quad_t* a, gs_vqs* xform_a, const gs_cone_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_quad, b, xform_b, gs_gjk_support_cone, res);
-}
-
-GS_API_DECL int32_t gs_quad_vs_cylinder(const gs_quad_t* a, gs_vqs* xform_a, const gs_cylinder_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_quad, b, xform_b, gs_gjk_support_cylinder, res);
-}
-
-GS_API_DECL int32_t gs_quad_vs_capsule(const gs_quad_t* a, gs_vqs* xform_a, const gs_capsule_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_quad, b, xform_b, gs_gjk_support_capsule, res);
-}
-
-GS_API_DECL int32_t gs_quad_vs_triangle(const gs_quad_t* a, gs_vqs* xform_a, const gs_triangle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_quad, b, xform_b, gs_gjk_support_triangle, res);
-}
-
-GS_API_DECL int32_t gs_quad_vs_circle(const gs_quad_t* a, gs_vqs* xform_a, const gs_circle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_quad, b, xform_b, gs_gjk_support_circle, res);
-}
-
-GS_API_DECL int32_t gs_quad_vs_pill(const gs_quad_t* a, gs_vqs* xform_a, const gs_pill_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_quad, b, xform_b, gs_gjk_support_pill, res);
-}
-
-GS_API_DECL int32_t gs_quad_vs_triangle_2d(const gs_quad_t* a, gs_vqs* xform_a, const gs_triangle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal_2d(a, xform_a, gs_gjk_support_quad, b, xform_b, gs_gjk_support_triangle, res);
-}
-
-GS_API_DECL int32_t gs_quad_vs_quad_2d(const gs_quad_t* a, gs_vqs* xform_a, const gs_quad_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal_2d(a, xform_a, gs_gjk_support_quad, b, xform_b, gs_gjk_support_quad, res);
-}
-
-GS_API_DECL int32_t gs_quad_vs_circle_2d(const gs_quad_t* a, gs_vqs* xform_a, const gs_circle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal_2d(a, xform_a, gs_gjk_support_quad, b, xform_b, gs_gjk_support_circle, res);
-}
-
-GS_API_DECL int32_t gs_quad_vs_pill_2d(const gs_quad_t* a, gs_vqs* xform_a, const gs_pill_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal_2d(a, xform_a, gs_gjk_support_quad, b, xform_b, gs_gjk_support_pill, res);
-}
-
-/* Circle */
-
-GS_API_DECL int32_t gs_circle_vs_sphere(const gs_circle_t* a, gs_vqs* xform_a, const gs_sphere_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_circle, b, xform_b, gs_gjk_support_sphere, res);
-}
-
-GS_API_DECL int32_t gs_circle_vs_aabb(const gs_circle_t* a, gs_vqs* xform_a, const gs_aabb_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_circle, b, xform_b, gs_gjk_support_aabb, res);
-}
-
-GS_API_DECL int32_t gs_circle_vs_poly(const gs_circle_t* a, gs_vqs* xform_a, const gs_poly_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_circle, b, xform_b, gs_gjk_support_poly, res);
-}
-
-GS_API_DECL int32_t gs_circle_vs_cone(const gs_circle_t* a, gs_vqs* xform_a, const gs_cone_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_circle, b, xform_b, gs_gjk_support_cone, res);
-}
-
-GS_API_DECL int32_t gs_circle_vs_cylinder(const gs_circle_t* a, gs_vqs* xform_a, const gs_cylinder_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_circle, b, xform_b, gs_gjk_support_cylinder, res);
-}
-
-GS_API_DECL int32_t gs_circle_vs_capsule(const gs_circle_t* a, gs_vqs* xform_a, const gs_capsule_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_circle, b, xform_b, gs_gjk_support_capsule, res);
-}
-
-GS_API_DECL int32_t gs_circle_vs_triangle(const gs_circle_t* a, gs_vqs* xform_a, const gs_triangle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_circle, b, xform_b, gs_gjk_support_triangle, res);
-}
-
-GS_API_DECL int32_t gs_circle_vs_pill(const gs_circle_t* a, gs_vqs* xform_a, const gs_pill_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_circle, b, xform_b, gs_gjk_support_pill, res);
-}
-
-GS_API_DECL int32_t gs_circle_vs_circle(const gs_circle_t* a, gs_vqs* xform_a, const gs_circle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_circle, b, xform_b, gs_gjk_support_circle, res);
-}
-
-GS_API_DECL int32_t gs_circle_vs_quad(const gs_circle_t* a, gs_vqs* xform_a, const gs_quad_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_circle, b, xform_b, gs_gjk_support_quad, res);
-}
-
-GS_API_DECL int32_t gs_circle_vs_quad_2d(const gs_circle_t* a, gs_vqs* xform_a, const gs_quad_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal_2d(a, xform_a, gs_gjk_support_circle, b, xform_b, gs_gjk_support_quad, res);
-}
-
-GS_API_DECL int32_t gs_circle_vs_circle_2d(const gs_circle_t* a, gs_vqs* xform_a, const gs_circle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    // Specialized, non-gjk function
-    gs_vec3 c0 = gs_v3(a->c.x, a->c.y, 0.f);
-    gs_vec3 c1 = gs_v3(b->c.x, b->c.y, 0.f);
-    gs_vec3 wa = xform_a ? gs_vec3_add(xform_a->position, c0) : c0;
-    gs_vec3 wb = xform_b ? gs_vec3_add(xform_b->position, c1) : c1;
-    wa.z = 0.f;
-    wb.z = 0.f;
-
-    // Only uniform scale allowed for spheres
-    float as = xform_a ? gs_max(gs_max(xform_a->scale.x, xform_a->scale.y), xform_a->scale.z) : 1.f;
-    float bs = xform_a ? gs_max(gs_max(xform_b->scale.x, xform_b->scale.y), xform_b->scale.z) : 1.f;
-
-    gs_vec3 d = gs_vec3_sub(wb, wa);
-    float r = as * a->r + bs * b->r;
-    float d2 = gs_vec3_dot(d,d);
-    if (d2 > r*r) return false;
-
-    float l = sqrtf(d2);
-    float linv = 1.0f / ((l != 0) ? l: 1.0f);
-
-    if (res)
-    {
-        res->normal = gs_vec3_scale(d, linv);
-        res->depth = r - l;
-        d = gs_vec3_scale(res->normal, b->r * bs);
-        res->points[0] = gs_vec3_add(wa, d);
-        res->points[1] = gs_vec3_sub(wb, d);
-        res->hit = true;
-    }
-
-    return true;
-}
-
-GS_API_DECL int32_t gs_circle_vs_triangle_2d(const gs_circle_t* a, gs_vqs* xform_a, const gs_triangle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal_2d(a, xform_a, gs_gjk_support_circle, b, xform_b, gs_gjk_support_triangle, res);
-}
-
-GS_API_DECL int32_t gs_circle_vs_pill_2d(const gs_circle_t* a, gs_vqs* xform_a, const gs_pill_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal_2d(a, xform_a, gs_gjk_support_circle, b, xform_b, gs_gjk_support_pill, res);
-}
-
-/* Pill (2D Capsule) */
-GS_API_DECL int32_t gs_pill_vs_sphere(const gs_pill_t* a, gs_vqs* xform_a, const gs_sphere_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_pill, b, xform_b, gs_gjk_support_sphere, res);
-}
-
-GS_API_DECL int32_t gs_pill_vs_aabb(const gs_pill_t* a, gs_vqs* xform_a, const gs_aabb_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_pill, b, xform_b, gs_gjk_support_aabb, res);
-}
-
-GS_API_DECL int32_t gs_pill_vs_poly(const gs_pill_t* a, gs_vqs* xform_a, const gs_poly_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_pill, b, xform_b, gs_gjk_support_poly, res);
-}
-
-GS_API_DECL int32_t gs_pill_vs_cone(const gs_pill_t* a, gs_vqs* xform_a, const gs_cone_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_pill, b, xform_b, gs_gjk_support_cone, res);
-}
-
-GS_API_DECL int32_t gs_pill_vs_cylinder(const gs_pill_t* a, gs_vqs* xform_a, const gs_cylinder_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_pill, b, xform_b, gs_gjk_support_cylinder, res);
-}
-
-GS_API_DECL int32_t gs_pill_vs_capsule(const gs_pill_t* a, gs_vqs* xform_a, const gs_capsule_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_pill, b, xform_b, gs_gjk_support_capsule, res);
-}
-
-GS_API_DECL int32_t gs_pill_vs_triangle(const gs_pill_t* a, gs_vqs* xform_a, const gs_triangle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_pill, b, xform_b, gs_gjk_support_triangle, res);
-}
-
-GS_API_DECL int32_t gs_pill_vs_pill(const gs_pill_t* a, gs_vqs* xform_a, const gs_pill_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_pill, b, xform_b, gs_gjk_support_pill, res);
-}
-
-GS_API_DECL int32_t gs_pill_vs_circle(const gs_pill_t* a, gs_vqs* xform_a, const gs_circle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_pill, b, xform_b, gs_gjk_support_circle, res);
-}
-
-GS_API_DECL int32_t gs_pill_vs_quad(const gs_pill_t* a, gs_vqs* xform_a, const gs_quad_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_pill, b, xform_b, gs_gjk_support_quad, res);
-}
-
-GS_API_DECL int32_t gs_pill_vs_quad_2d(const gs_pill_t* a, gs_vqs* xform_a, const gs_quad_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal_2d(a, xform_a, gs_gjk_support_pill, b, xform_b, gs_gjk_support_quad, res);
-}
-
-GS_API_DECL int32_t gs_pill_vs_circle_2d(const gs_pill_t* a, gs_vqs* xform_a, const gs_circle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal_2d(a, xform_a, gs_gjk_support_pill, b, xform_b, gs_gjk_support_circle, res);
-}
-
-GS_API_DECL int32_t gs_pill_vs_triangle_2d(const gs_pill_t* a, gs_vqs* xform_a, const gs_triangle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal_2d(a, xform_a, gs_gjk_support_pill, b, xform_b, gs_gjk_support_triangle, res);
-}
-
-GS_API_DECL int32_t gs_pill_vs_pill_2d(const gs_pill_t* a, gs_vqs* xform_a, const gs_pill_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal_2d(a, xform_a, gs_gjk_support_pill, b, xform_b, gs_gjk_support_pill, res);
-}
-
-/* Triangle */
-
-GS_API_DECL int32_t gs_triangle_vs_triangle(const gs_triangle_t* a, gs_vqs* xform_a, const gs_triangle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_triangle, b, xform_b, gs_gjk_support_triangle, res);
-}
-
-GS_API_DECL int32_t gs_triangle_vs_quad(const gs_triangle_t* a, gs_vqs* xform_a, const gs_quad_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_triangle, b, xform_b, gs_gjk_support_quad, res);
-}
-
-GS_API_DECL int32_t gs_triangle_vs_sphere(const gs_triangle_t* a, gs_vqs* xform_a, const gs_sphere_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_triangle, b, xform_b, gs_gjk_support_sphere, res);
-}
-
-GS_API_DECL int32_t gs_triangle_vs_aabb(const gs_triangle_t* a, gs_vqs* xform_a, const gs_aabb_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_triangle, b, xform_b, gs_gjk_support_aabb, res);
-}
-
-GS_API_DECL int32_t gs_triangle_vs_poly(const gs_triangle_t* a, gs_vqs* xform_a, const gs_poly_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_triangle, b, xform_b, gs_gjk_support_poly, res);
-}
-
-GS_API_DECL int32_t gs_triangle_vs_cone(const gs_triangle_t* a, gs_vqs* xform_a, const gs_cone_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_triangle, b, xform_b, gs_gjk_support_cone, res);
-}
-
-GS_API_DECL int32_t gs_triangle_vs_cylinder(const gs_triangle_t* a, gs_vqs* xform_a, const gs_cylinder_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_triangle, b, xform_b, gs_gjk_support_cylinder, res);
-}
-
-GS_API_DECL int32_t gs_triangle_vs_capsule(const gs_triangle_t* a, gs_vqs* xform_a, const gs_capsule_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal(a, xform_a, gs_gjk_support_triangle, b, xform_b, gs_gjk_support_capsule, res);
-}
-
-GS_API_DECL int32_t gs_triangle_vs_triangle_2d(const gs_triangle_t* a, gs_vqs* xform_a, const gs_triangle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal_2d(a, xform_a, gs_gjk_support_triangle, b, xform_b, gs_gjk_support_triangle, res);
-}
-
-GS_API_DECL int32_t gs_triangle_vs_quad_2d(const gs_triangle_t* a, gs_vqs* xform_a, const gs_quad_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal_2d(a, xform_a, gs_gjk_support_triangle, b, xform_b, gs_gjk_support_quad, res);
-}
-
-GS_API_DECL int32_t gs_triangle_vs_circle_2d(const gs_triangle_t* a, gs_vqs* xform_a, const gs_circle_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal_2d(a, xform_a, gs_gjk_support_triangle, b, xform_b, gs_gjk_support_circle, res);
-}
-
-GS_API_DECL int32_t gs_triangle_vs_pill_2d(const gs_triangle_t* a, gs_vqs* xform_a, const gs_pill_t* b, gs_vqs* xform_b, struct gs_gjk_contact_info_t* res)
-{
-    return _gs_gjk_internal_2d(a, xform_a, gs_gjk_support_triangle, b, xform_b, gs_gjk_support_pill, res);
-}
 
 /* Hit */
 
+#define _GS_COLLIDE_FUNC_IMPL(_TA, _TB, _F0, _F1)\
+    GS_API_DECL int32_t gs_##_TA##_vs_##_TB(const gs_##_TA##_t* a, const gs_vqs* xa, const gs_##_TB##_t* b, const gs_vqs* xb, gs_contact_info_t* r)\
+    {\
+        return _gs_ccd_gjk_internal(a, xa, (_F0), b, xb, (_F1), r);\
+    }
+
+/* Sphere */
+
+// _GS_COLLIDE_FUNC_IMPL(sphere, sphere, gs_support_sphere, gs_support_sphere);      // Sphere vs. Sphere
+GS_API_DECL int32_t gs_sphere_vs_sphere(const gs_sphere_t* a, const gs_vqs* xform_a, const gs_sphere_t* b, const gs_vqs* xform_b, gs_contact_info_t* res)
+{
+    return _gs_ccd_gjk_internal(a, xform_a, gs_support_sphere, b, xform_b, gs_support_sphere, res);
+}
+_GS_COLLIDE_FUNC_IMPL(sphere, cylinder, gs_support_sphere, gs_support_cylinder);  // Sphere vs. Cylinder
+_GS_COLLIDE_FUNC_IMPL(sphere, cone, gs_support_sphere, gs_support_cone);          // Sphere vs. Cone
+_GS_COLLIDE_FUNC_IMPL(sphere, aabb, gs_support_sphere, gs_support_aabb);          // Sphere vs. AABB
+_GS_COLLIDE_FUNC_IMPL(sphere, capsule, gs_support_sphere, gs_support_capsule);    // Sphere vs. Capsule
+_GS_COLLIDE_FUNC_IMPL(sphere, poly, gs_support_sphere, gs_support_poly);          // Sphere vs. Poly
+
+/* AABB */
+
+_GS_COLLIDE_FUNC_IMPL(aabb, aabb, gs_support_aabb, gs_support_aabb);          // AABB vs. AABB
+_GS_COLLIDE_FUNC_IMPL(aabb, cylinder, gs_support_aabb, gs_support_cylinder);  // AABB vs. Cylinder
+_GS_COLLIDE_FUNC_IMPL(aabb, cone, gs_support_aabb, gs_support_cone);          // AABB vs. Cone
+_GS_COLLIDE_FUNC_IMPL(aabb, sphere, gs_support_aabb, gs_support_sphere);      // AABB vs. AABB
+_GS_COLLIDE_FUNC_IMPL(aabb, capsule, gs_support_aabb, gs_support_capsule);    // AABB vs. Capsule
+_GS_COLLIDE_FUNC_IMPL(aabb, poly, gs_support_aabb, gs_support_poly);          // AABB vs. Poly
+
+/* Capsule */
+
+_GS_COLLIDE_FUNC_IMPL(capsule, capsule, gs_support_capsule, gs_support_capsule);    // Capsule vs. Capsule
+_GS_COLLIDE_FUNC_IMPL(capsule, cylinder, gs_support_capsule, gs_support_cylinder);  // Capsule vs. Cylinder
+_GS_COLLIDE_FUNC_IMPL(capsule, cone, gs_support_capsule, gs_support_cone);          // Capsule vs. Cone
+_GS_COLLIDE_FUNC_IMPL(capsule, sphere, gs_support_capsule, gs_support_sphere);      // Capsule vs. Sphere
+_GS_COLLIDE_FUNC_IMPL(capsule, aabb, gs_support_capsule, gs_support_aabb);          // Capsule vs. AABB
+_GS_COLLIDE_FUNC_IMPL(capsule, poly, gs_support_capsule, gs_support_poly);          // Capsule vs. Poly
+
+/* Poly */
+
+_GS_COLLIDE_FUNC_IMPL(poly, poly, gs_support_poly, gs_support_poly);          // Poly vs. Poly
+_GS_COLLIDE_FUNC_IMPL(poly, cylinder, gs_support_poly, gs_support_cylinder);  // Poly vs. Cylinder
+_GS_COLLIDE_FUNC_IMPL(poly, cone, gs_support_poly, gs_support_cone);          // Poly vs. Cone
+_GS_COLLIDE_FUNC_IMPL(poly, sphere, gs_support_poly, gs_support_sphere);      // Poly vs. Sphere
+_GS_COLLIDE_FUNC_IMPL(poly, aabb, gs_support_poly, gs_support_aabb);          // Poly vs. AABB
+_GS_COLLIDE_FUNC_IMPL(poly, capsule, gs_support_poly, gs_support_capsule);    // Poly vs. Capsule
+
+/* Cylinder */
+
+_GS_COLLIDE_FUNC_IMPL(cylinder, cylinder, gs_support_cylinder, gs_support_cylinder);  // Cylinder vs. Cylinder
+_GS_COLLIDE_FUNC_IMPL(cylinder, poly, gs_support_poly, gs_support_poly);              // Cylinder vs. Poly
+_GS_COLLIDE_FUNC_IMPL(cylinder, cone, gs_support_cylinder, gs_support_cone);          // Cylinder vs. Cone
+_GS_COLLIDE_FUNC_IMPL(cylinder, sphere, gs_support_cylinder, gs_support_sphere);      // Cylinder vs. Sphere
+_GS_COLLIDE_FUNC_IMPL(cylinder, aabb, gs_support_cylinder, gs_support_aabb);          // Cylinder vs. AABB
+_GS_COLLIDE_FUNC_IMPL(cylinder, capsule, gs_support_cylinder, gs_support_capsule);    // Cylinder vs. Capsule
+
+/* Cone */
+
+_GS_COLLIDE_FUNC_IMPL(cone, cone, gs_support_cone, gs_support_cone);          // Cone vs. Cone
+_GS_COLLIDE_FUNC_IMPL(cone, poly, gs_support_poly, gs_support_poly);          // Cone vs. Poly
+_GS_COLLIDE_FUNC_IMPL(cone, cylinder, gs_support_cone, gs_support_cylinder);  // Cone vs. Cylinder
+_GS_COLLIDE_FUNC_IMPL(cone, sphere, gs_support_cone, gs_support_sphere);      // Cone vs. Sphere
+_GS_COLLIDE_FUNC_IMPL(cone, aabb, gs_support_cone, gs_support_aabb);          // Cone vs. AABB
+_GS_COLLIDE_FUNC_IMPL(cone, capsule, gs_support_cone, gs_support_capsule);    // Cone vs. Capsule
+
 /*==== GKJ ====*/
 
+// Need 2D GJK/EPA impl in external (modify from chipmunk 2d)
+
 // Internal functions
+/*
 bool gs_gjk_check_if_simplex_contains_origin(gs_gjk_simplex_t* simplex, gs_vec3* search_dir, gs_gjk_dimension dimension);
 void gs_gjk_simplex_push(gs_gjk_simplex_t* simplex, gs_gjk_support_point_t p);
 void gs_gjk_simplex_push_back(gs_gjk_simplex_t* simplex, gs_gjk_support_point_t p);
+void gs_gjk_simplex_push_front(gs_gjk_simplex_t* simplex, gs_gjk_support_point_t p);
 void gs_gjk_simplex_insert(gs_gjk_simplex_t* simplex, uint32_t idx, gs_gjk_support_point_t p);
 void gs_gjk_bary(gs_vec3 p, gs_vec3 a, gs_vec3 b, gs_vec3 c, float* u, float* v, float* w);
-gs_gjk_epa_edge_t gs_gjk_epa_find_closest_edge(gs_gjk_simplex_t* simplex);
+// gs_gjk_epa_edge_t gs_gjk_epa_find_closest_edge(gs_gjk_simplex_t* simplex);
 gs_gjk_support_point_t gs_gjk_generate_support_point(const gs_gjk_collider_info_t* ci0, const gs_gjk_collider_info_t* ci1, gs_vec3 dir);
+gs_gjk_epa_edge_t gs_gjk_epa_find_closest_edge(gs_dyn_array(gs_gjk_support_point_t) polytope);
 
 // Modified from: https://github.com/Nightmask3/Physics-Framework/blob/master/PhysicsFramework/PhysicsManager.cpp
-int32_t gs_gjk(const gs_gjk_collider_info_t* ci0, const gs_gjk_collider_info_t* ci1, gs_gjk_dimension dimension, gs_gjk_contact_info_t* res)
+int32_t gs_gjk(const gs_gjk_collider_info_t* ci0, const gs_gjk_collider_info_t* ci1, gs_gjk_dimension dimension, gs_contact_info_t* res)
 {
     // Simplex simplex;
     gs_gjk_simplex_t simplex = gs_default_val();
@@ -1583,9 +882,34 @@ void gs_gjk_simplex_push_back(gs_gjk_simplex_t* simplex, gs_gjk_support_point_t 
     simplex->points[simplex->ct - 1] = p;
 }
 
+void gs_gjk_simplex_push_front(gs_gjk_simplex_t* simplex, gs_gjk_support_point_t p)
+{
+    if (simplex->ct == 3) {
+        simplex->points[3] = simplex->points[2];
+        simplex->points[2] = simplex->points[1];
+        simplex->points[1] = simplex->points[0];
+        simplex->points[0] = p;
+    }
+    else if (simplex->ct == 2) {
+        simplex->points[2] = simplex->points[1];
+        simplex->points[1] = simplex->points[0];
+        simplex->points[0] = p;
+    }
+    simplex->ct = gs_min(simplex->ct + 1, 4);
+}
+
 void gs_gjk_simplex_insert(gs_gjk_simplex_t* simplex, uint32_t idx, gs_gjk_support_point_t p)
 {
+    // Need more points (this is where polytope comes into play, I think...)
+    // Splice the simplex by index
+
     if (idx > 4) return;
+
+    simplex->ct = gs_min(simplex->ct + 1, 4);
+
+    for (int32_t i = simplex->ct - 1; i > idx; i--)
+        simplex->points[i] = simplex->points[i - 1];
+
     simplex->points[idx] = p;
 }
 
@@ -1848,13 +1172,13 @@ GS_API_DECL void gs_gjk_bary(gs_vec3 p, gs_vec3 a, gs_vec3 b, gs_vec3 c, float* 
 }
 
 //Expanding Polytope Algorithm
-GS_API_DECL gs_gjk_contact_info_t gs_gjk_epa(
+GS_API_DECL gs_contact_info_t gs_gjk_epa(
     const gs_gjk_simplex_t* simplex, 
     const gs_gjk_collider_info_t* ci0, 
     const gs_gjk_collider_info_t* ci1
 )
 {
-    gs_gjk_contact_info_t res = {0};
+    gs_contact_info_t res = {0};
 
     // Cache pointers for collider 0
     void* c0 = ci0->collider;
@@ -2035,64 +1359,29 @@ GS_API_DECL gs_gjk_contact_info_t gs_gjk_epa(
 }
 
 // Expanding Polytope Algorithm 2D
-GS_API_DECL gs_gjk_contact_info_t gs_gjk_epa_2d(
+GS_API_DECL gs_contact_info_t gs_gjk_epa_2d(
     const gs_gjk_simplex_t* simplex, 
     const gs_gjk_collider_info_t* ci0, 
     const gs_gjk_collider_info_t* ci1
 )
 {
-    gs_gjk_contact_info_t res = gs_default_val();
+    gs_dyn_array(gs_gjk_support_point_t) polytope = NULL;
+    gs_contact_info_t res = gs_default_val();
     gs_gjk_support_point_t p = gs_default_val();
-    if (simplex->ct == 1)
-    {
-        const gs_vec3 search_dirs[] = {
-            gs_v3(1.0f, 0.0f, 0.f),
-            gs_v3(-1.0f, 0.0f, 0.f),
-            gs_v3(0.0f, 1.0f, 0.f),
-            gs_v3(0.0f, -1.0f, 0.f)
-        };
 
-        for (int32_t i = 0; i < 4; ++i)
-        {
-            p = gs_gjk_generate_support_point(ci0, ci1, search_dirs[i]);
-
-            // Grab direction from first point on face at p to i
-            gs_vec3 dir = gs_vec3_sub(p.minkowski_hull_vert, simplex->a.minkowski_hull_vert);
-
-            if (gs_vec3_len2(dir) >= 0.0001f)
-            {
-                gs_gjk_simplex_push_back(simplex, p);
-                // simplex.push_back(next_support_point);
-
-                break;
-            }
-        }
+    // Copy over simplex into polytope array
+    for (uint32_t i = 0; i < simplex->ct; ++i) {
+        gs_dyn_array_push(polytope, simplex->points[i]);
     }
 
-    if (simplex->ct == 2)
-    {
-        // AB
-        gs_vec3 ab = gs_vec3_sub(simplex->a.minkowski_hull_vert, simplex->b.minkowski_hull_vert);
-        gs_vec3 sd3 = gs_vec3_cross(gs_vec3_cross(gs_v3(ab.x, ab.y, 0.f), 
-            gs_vec3_neg(gs_v3(simplex->b.minkowski_hull_vert.x, simplex->b.minkowski_hull_vert.y, 0.f))), gs_v3(ab.x, ab.y, 0.f));
-        gs_vec3 search_dir = gs_default_val();
-        search_dir.x = sd3.x;
-        search_dir.y = sd3.y;
-        p = gs_gjk_generate_support_point(ci0, ci1, search_dir);
-        gs_vec3 dir = gs_vec3_sub(p.minkowski_hull_vert, simplex->a.minkowski_hull_vert);
-
-        if (gs_vec3_len2(dir) < 0.0001f)
-        {
-            p = gs_gjk_generate_support_point(ci0, ci1, gs_vec3_neg(search_dir));
-        }
-        gs_gjk_simplex_push_back(simplex, p);
-    }
-
+    // p = gs_gjk_generate_support_point(ci0, ci1, gs_v3s(1.f));
+    // gs_gjk_simplex_push_front(simplex, p);
     gs_gjk_epa_edge_t e = gs_default_val();
     uint32_t iterations = 0;
     while (iterations < GS_EPA_MAX_NUM_ITERATIONS)
     {
-        e = gs_gjk_epa_find_closest_edge(simplex);
+        // Find closest edge to origin from simplex
+        e = gs_gjk_epa_find_closest_edge(polytope);
         p = gs_gjk_generate_support_point(ci0, ci1, e.normal);
 
         double d = (double)gs_vec3_dot(p.minkowski_hull_vert, e.normal);
@@ -2100,57 +1389,91 @@ GS_API_DECL gs_gjk_contact_info_t gs_gjk_epa_2d(
         // Success, calculate results
         if (d - e.distance < GS_EPA_TOLERANCE)
         {
-            // Cache local pointers
-            // gs_gjk_polytope_face_t* f = &faces[closest_face];
-            // gs_vec3* n = &e.normal;
-            // gs_gjk_support_point_t* sp0 = &e.a;
-            // gs_gjk_support_point_t* sp1 = &e.b;
-            // gs_gjk_support_point_t* sp2 = &f->points[2];
-            // gs_vec3* p0 = &sp0->minkowski_hull_vert;
-            // gs_vec3* p1 = &sp1->minkowski_hull_vert;
-            // gs_vec3* p2 = &sp2->minkowski_hull_vert;
-
             // Normal and depth information
-            res.hit = true;
             res.normal = gs_vec3_norm(e.normal);
-            res.depth = e.distance;
-
-            gs_vec3 line_vec = gs_vec3_sub(e.a.minkowski_hull_vert, e.b.minkowski_hull_vert);
-            gs_vec3 projO = gs_vec3_scale(gs_vec3_scale(line_vec, 1.f / gs_vec3_len2(line_vec)), gs_vec3_dot(line_vec, gs_vec3_neg(e.b.minkowski_hull_vert)));
-            float s, t;
-            s = sqrt(gs_vec3_len2(projO) / gs_vec3_len2(line_vec));
-            t = 1.f - s;
-            int32_t next_idx = (e.index + 1) % simplex->ct;
-
-            res.points[0] = gs_vec3_add(gs_vec3_scale(simplex->points[e.index].support_a, s), gs_vec3_scale(simplex->points[next_idx].support_a, t));
-            res.points[1] = gs_vec3_add(gs_vec3_scale(simplex->points[e.index].support_b, s), gs_vec3_scale(simplex->points[next_idx].support_b, t));
-
+            res.depth = d;
             break;
         }
         else
         {
-            gs_gjk_simplex_insert(simplex, e.index + 1, p);
+            // Need to think about this more. This is fucked.
+            // Need an "expanding" simplex, that only allows for unique points to be included.
+            // This is just overwriting. I need to actually insert then push back.
+            // gs_gjk_simplex_insert(simplex, e.index + 1, p);
+            // Insert into polytope array at idx + 1
+            for (uint32_t i = 0; i < gs_dyn_array_size(polytope); ++i)
+            {
+               gs_vec3* p = &polytope[i].minkowski_hull_vert; 
+               gs_printf("<%.2f, %.2f>, ", p->x, p->y);
+            }
+            gs_dyn_array_push(polytope, p);
+
+            for (int32_t i = gs_dyn_array_size(polytope) - 1; i > e.index + 1; i--)
+                polytope[i] = polytope[i - 1];
+
+            polytope[e.index + 1] = p;
+
+            gs_println("pts after: ");
+            for (uint32_t i = 0; i < gs_dyn_array_size(polytope); ++i)
+            {
+               gs_vec3* p = &polytope[i].minkowski_hull_vert; 
+               gs_printf("<%.2f, %.2f>, ", p->x, p->y);
+            }
         }
 
         // Increment iterations
         iterations++;
     }
 
-    gs_vec3 line_vec = gs_vec3_sub(e.a.minkowski_hull_vert, e.b.minkowski_hull_vert);
-    gs_vec3 projO = gs_vec3_scale(gs_vec3_scale(line_vec, 1.f / gs_vec3_len2(line_vec)), gs_vec3_dot(line_vec, gs_vec3_neg(e.b.minkowski_hull_vert)));
-    float s, t;
-    s = sqrt(gs_vec3_len2(projO) / gs_vec3_len2(line_vec));
-    t = 1.f - s;
-    int32_t next_idx = (e.index + 1) % simplex->ct;
+    // gs_vec3 line_vec = gs_vec3_sub(e.a.minkowski_hull_vert, e.b.minkowski_hull_vert);
+    // gs_vec3 projO = gs_vec3_scale(gs_vec3_scale(line_vec, 1.f / gs_vec3_len2(line_vec)), gs_vec3_dot(line_vec, gs_vec3_neg(e.b.minkowski_hull_vert)));
+    // float s, t;
+    // s = sqrt(gs_vec3_len2(projO) / gs_vec3_len2(line_vec));
+    // t = 1.f - s;
+    // int32_t next_idx = (e.index + 1) % simplex->ct;
     res.hit = true;
-    res.points[0] = gs_vec3_add(gs_vec3_scale(simplex->points[e.index].support_a, s), gs_vec3_scale(simplex->points[next_idx].support_a, t));
-    res.points[1] = gs_vec3_add(gs_vec3_scale(simplex->points[e.index].support_b, s), gs_vec3_scale(simplex->points[next_idx].support_b, t));
+    // res.points[0] = gs_vec3_add(gs_vec3_scale(simplex->points[e.index].support_a, s), gs_vec3_scale(simplex->points[next_idx].support_a, t));
+    // res.points[1] = gs_vec3_add(gs_vec3_scale(simplex->points[e.index].support_b, s), gs_vec3_scale(simplex->points[next_idx].support_b, t));
 
     return res;
 
 }
 
-gs_gjk_epa_edge_t gs_gjk_epa_find_closest_edge(gs_gjk_simplex_t* simplex)
+gs_gjk_epa_edge_t gs_gjk_epa_find_closest_edge(gs_dyn_array(gs_gjk_support_point_t) polytope)
+{
+   gs_gjk_epa_edge_t res = gs_default_val();
+   float min_dist = FLT_MAX;
+   uint32_t min_index = 0;
+   gs_vec3 min_normal = gs_default_val();
+   for (uint32_t i = 0; i < gs_dyn_array_size(polytope); ++i)
+   {
+        uint32_t j = (i + 1) % gs_dyn_array_size(polytope);
+        gs_gjk_support_point_t* a = &polytope[0];
+        gs_gjk_support_point_t* b = &polytope[1];
+        gs_vec3 dir = gs_vec3_sub(b->minkowski_hull_vert, a->minkowski_hull_vert);
+        gs_vec3 norm = gs_vec3_norm(gs_v3(dir.y, -dir.x, 0.f));
+        float dist = gs_vec3_dot(norm, a->minkowski_hull_vert);
+
+        // If distance is negative, then we need to correct for winding order mistakes
+        if (dist < 0) {
+            dist *= -1;
+            norm = gs_vec3_neg(norm);
+        }
+
+        // Check for min distance
+        if (dist < min_dist) {
+            min_dist = dist;
+            min_normal = norm;
+            min_index = j;
+        }
+   }
+   res.index = min_index;
+   res.normal = min_normal;
+   res.distance = min_dist;
+   return res;
+}
+
+gs_gjk_epa_edge_t gs_gjk_epa_find_closest_edge2(gs_gjk_simplex_t* simplex)
 {
     gs_gjk_epa_edge_t result = gs_default_val();
     uint32_t next_idx = 0;
@@ -2162,11 +1485,12 @@ gs_gjk_epa_edge_t gs_gjk_epa_find_closest_edge(gs_gjk_simplex_t* simplex)
     {
         next_idx = (i + 1) % simplex->ct;
         edge = gs_vec3_sub(simplex->points[next_idx].minkowski_hull_vert, simplex->points[i].minkowski_hull_vert);
-        norm_3d = gs_vec3_cross(gs_vec3_cross(gs_v3(edge.x, edge.y, 0), 
-            gs_v3(simplex->points[i].minkowski_hull_vert.x, simplex->points[i].minkowski_hull_vert.y, 0.f)), gs_v3(edge.x, edge.y, 0.f));
+        norm_3d = gs_vec3_triple_cross_product(gs_v3(edge.x, edge.y, 0), 
+            gs_v3(simplex->points[i].minkowski_hull_vert.x, simplex->points[i].minkowski_hull_vert.y, 0.f), 
+            gs_v3(edge.x, edge.y, 0.f));
         norm.x = norm_3d.x;
         norm.y = norm_3d.y;
-        
+
         norm = gs_vec3_norm(norm);
         curr_dist = gs_vec3_dot(norm, simplex->points[i].minkowski_hull_vert);
         if (curr_dist < min_dist)
@@ -2181,6 +1505,93 @@ gs_gjk_epa_edge_t gs_gjk_epa_find_closest_edge(gs_gjk_simplex_t* simplex)
     }
 
     return result;
+}
+*/
+
+/*===== CCD ======*/
+
+// Useful CCD conversions
+void _gs_ccdv32gsv3(const ccd_vec3_t* _in, gs_vec3* _out)
+{
+    // Safe check against NaNs
+    if (gs_is_nan(_in->v[0]) || gs_is_nan(_in->v[1]) || gs_is_nan(_in->v[2])) return;
+    *_out = gs_ctor(gs_vec3, _in->v[0], _in->v[1], _in->v[2]);
+}
+
+void _gs_gsv32ccdv3(const gs_vec3* _in, ccd_vec3_t* _out)
+{
+    ccdVec3Set(_out, CCD_REAL(_in->x), CCD_REAL(_in->y), CCD_REAL(_in->z));
+}
+
+int32_t _gs_ccd_gjk_internal(
+    void* c0, gs_vqs* xform_a, gs_support_func_t f0,
+    void* c1, gs_vqs* xform_b, gs_support_func_t f1,
+    gs_contact_info_t* res
+
+)
+{
+    // Convert to appropriate gjk internals, then call ccd
+    ccd_t ccd = gs_default_val();
+    CCD_INIT(&ccd);
+
+    // set up ccd_t struct
+    ccd.support1       = _gs_ccd_support_func;  // support function for first object
+    ccd.support2       = _gs_ccd_support_func;  // support function for second object
+    ccd.max_iterations = 100;                   // maximal number of iterations
+    ccd.epa_tolerance  = 0.0001;                // maximal tolerance for epa to succeed
+
+    // Default transforms
+    gs_vqs _xa = gs_vqs_default(), _xb = gs_vqs_default();
+
+    // Collision object 1
+    _gs_collision_obj_handle_t h0 = gs_default_val();
+    h0.support = f0;
+    h0.obj = c0;
+    h0.xform = xform_a ? xform_a : &_xa;
+
+    // Collision object 2
+    _gs_collision_obj_handle_t h1 = gs_default_val();
+    h1.support = f1;
+    h1.obj = c1;
+    h1.xform = xform_b ? xform_b : &_xb;
+
+    // Call ccd, cache results into res for user
+    ccd_real_t depth = CCD_REAL(0.0);
+    ccd_vec3_t n = gs_ctor(ccd_vec3_t, 0.f, 0.f, 0.f), p = gs_ctor(ccd_vec3_t, 0.f, 0.f, 0.f);
+    int32_t r = ccdGJKPenetration(&h0, &h1, &ccd, &depth, &n, &p);
+    bool32 hit = r >= 0 && !gs_is_nan(n.v[0]) && !gs_is_nan(n.v[1]) && !gs_is_nan(n.v[2]);
+
+    if (hit && res)
+    {
+        res->hit = true;
+        res->depth = (float)depth;
+        _gs_ccdv32gsv3(&p, &res->point);
+        _gs_ccdv32gsv3(&n, &res->normal);
+    }
+
+    return r;
+}
+
+// typedef void (*ccd_support_fn)(const void *obj, const ccd_vec3_t *dir,
+//                                ccd_vec3_t *vec);
+
+// Internal support function for gs -> ccd
+GS_API_DECL void _gs_ccd_support_func(const void* _obj, const ccd_vec3_t* _dir, ccd_vec3_t* _out)
+{
+    const _gs_collision_obj_handle_t* obj = (const _gs_collision_obj_handle_t*)_obj;
+    if (obj->support) 
+    {
+        // Temp copy conversion for direction vector
+        gs_vec3 dir = gs_default_val(), out = gs_default_val();
+        _gs_ccdv32gsv3((const ccd_vec3_t*)_dir, &dir);
+
+        // Call user provided support function
+        // Think I found it...
+        obj->support(obj->obj, obj->xform, &dir, &out);
+
+        // Copy over out result for ccd
+        _gs_gsv32ccdv3(&out, (ccd_vec3_t*)_out);
+    }
 }
 
 #endif // GS_PHYSICS_IMPL
