@@ -456,6 +456,10 @@ gs_gfxt_mesh_t gs_gfxt_mesh_create_from_file(const char* path, gs_gfxt_mesh_impo
     if (gs_string_compare_equal(file_ext, "gltf")) {
         gs_gfxt_load_gltf_data_from_file(path, options, &meshes, &mesh_count);
     }
+    // GLB
+    if (gs_string_compare_equal(file_ext, "glb")) {
+        gs_gfxt_load_gltf_data_from_file(path, options, &meshes, &mesh_count);
+    }
     else {
         gs_println("Warning:GFXT:MeshLoadFromFile:File extension not supported: %s, file: %s", file_ext, path);
         return mesh;
