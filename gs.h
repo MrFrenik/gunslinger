@@ -2112,7 +2112,7 @@ uint32_t gs_slot_array_insert_func(void** indices, void** data, void* val, size_
     } while (0)
 
 #define gs_slot_array_exists(__SA, __SID)\
-    (__SID < gs_slot_array_size(__SA))
+    ((__SA) && (__SID) < (uint32_t)gs_dyn_array_size((__SA)->indices) && (__SA)->indices[__SID] != GS_SLOT_ARRAY_INVALID_HANDLE)
 
  #define gs_slot_array_get(__SA, __SID)\
     ((__SA)->data[(__SA)->indices[(__SID) % gs_dyn_array_size(((__SA)->indices))]])
@@ -2169,14 +2169,17 @@ uint32_t gs_slot_array_insert_func(void** indices, void** data, void* val, size_
 // Slot array iterator new
 typedef uint32_t gs_slot_array_iter;
 
-#define gs_slot_array_iter_new(__SA) 0
-
 #define gs_slot_array_iter_valid(__SA, __IT)\
-    ((__IT) < (uint32_t)gs_dyn_array_size((__SA)->indices))
+    gs_slot_array_exists(__SA, __IT)
 
 gs_force_inline
-void __gs_slot_array_iter_advance_func(gs_dyn_array(uint32_t) indices, uint32_t* it)
+void _gs_slot_array_iter_advance_func(gs_dyn_array(uint32_t) indices, uint32_t* it)
 {
+    if (!indices) {
+       *it = GS_SLOT_ARRAY_INVALID_HANDLE; 
+        return;
+    }
+
     (*it)++;
     for (; *it < (uint32_t)gs_dyn_array_size(indices); ++*it)
     {\
@@ -2187,8 +2190,25 @@ void __gs_slot_array_iter_advance_func(gs_dyn_array(uint32_t) indices, uint32_t*
     }\
 }
 
+gs_force_inline
+uint32_t _gs_slot_array_iter_find_first_valid_index(gs_dyn_array(uint32_t) indices)
+{
+    if (!indices) return GS_SLOT_ARRAY_INVALID_HANDLE;
+
+    for (uint32_t i = 0; i < (uint32_t)gs_dyn_array_size(indices); ++i)
+    {
+        if (indices[i] != GS_SLOT_ARRAY_INVALID_HANDLE)
+        {
+            return i;
+        }
+    }
+    return GS_SLOT_ARRAY_INVALID_HANDLE;
+}
+
+#define gs_slot_array_iter_new(__SA) (_gs_slot_array_iter_find_first_valid_index((__SA) ? (__SA)->indices : NULL))
+
 #define gs_slot_array_iter_advance(__SA, __IT)\
-    __gs_slot_array_iter_advance_func((__SA)->indices, &(__IT))
+    _gs_slot_array_iter_advance_func((__SA) ? (__SA)->indices : NULL, &(__IT))
 
 #define gs_slot_array_iter_get(__SA, __IT)\
     gs_slot_array_get(__SA, __IT)

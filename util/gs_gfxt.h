@@ -497,6 +497,15 @@ bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_opti
         return false;
     }
 
+    // World matrix for node (NOTE(john): This isn't correct for multiple nodes. At all.)
+    gs_mat4 world_mat = gs_mat4_identity();
+    for (uint32_t i = 0; i < data->nodes_count; ++i)
+    {
+    	// Get world transformation for node
+    	cgltf_node* node = &data->nodes[i];
+		cgltf_node_transform_world(node, (float*)&world_mat.elements);
+    }
+
     // Type of index data
     size_t index_element_size = options ? options->index_buffer_element_size : 0;
 
@@ -539,6 +548,7 @@ bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_opti
             gs_byte_buffer_clear(&v_data);
             gs_byte_buffer_clear(&i_data);
 
+            // Collect all provided attribute data for each vertex that's available in gltf data
             #define __GFXT_GLTF_PUSH_ATTR(ATTR, TYPE, COUNT, ARR, ARR_TYPE, LAYOUTS, LAYOUT_TYPE)\
                 do {\
                     int32_t N = 0;\
@@ -574,7 +584,30 @@ bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_opti
                 switch (data->meshes[i].primitives[p].attributes[a].type)
                 {
                     case cgltf_attribute_type_position: {
-                        __GFXT_GLTF_PUSH_ATTR(attr, float, 3, positions, gs_vec3, layouts, GS_GFXT_MESH_ATTRIBUTE_TYPE_POSITION);
+                        // __GFXT_GLTF_PUSH_ATTR(attr, float, 3, positions, gs_vec3, layouts, GS_GFXT_MESH_ATTRIBUTE_TYPE_POSITION);
+	                    int32_t N = 0;
+	                    float* BUF = (float*)attr->buffer_view->buffer->data + attr->buffer_view->offset/sizeof(float) + attr->offset/sizeof(float);
+	                    gs_assert(BUF);
+	                    float V[3] = gs_default_val();
+	                    /* For each vertex */
+	                    for (uint32_t k = 0; k < attr->count; k++)
+	                    {
+	                        /* For each element */
+	                        for (int l = 0; l < 3; l++) {
+	                            V[l] = BUF[N + l];
+	                        }
+	                        N += (int32_t)(attr->stride/sizeof(float));
+	                        /* Add to temp data array */
+	                        gs_vec3 ELEM = gs_default_val();
+	                        memcpy((void*)&ELEM, (void*)V, sizeof(gs_vec3));
+	                        // Transform into world space
+	                        ELEM = gs_mat4_mul_vec3(world_mat, ELEM);
+	                        gs_dyn_array_push(positions, ELEM);
+	                    }
+	                    /* Push into layout */
+	                    gs_gfxt_mesh_layout_t LAYOUT = gs_default_val();
+	                    LAYOUT.type = GS_GFXT_MESH_ATTRIBUTE_TYPE_POSITION;
+	                    gs_dyn_array_push(layouts, LAYOUT);
                     } break;
 
                     case cgltf_attribute_type_normal: {
@@ -590,7 +623,32 @@ bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_opti
                     } break;
 
                     case cgltf_attribute_type_color: {
-                        __GFXT_GLTF_PUSH_ATTR(attr, uint8_t, 4, colors, gs_color_t, layouts, GS_GFXT_MESH_ATTRIBUTE_TYPE_COLOR);
+                    	// Need to parse color as sRGB then convert to gs_color_t
+	                    int32_t N = 0;
+	                    float* BUF = (float*)attr->buffer_view->buffer->data + attr->buffer_view->offset/sizeof(float) + attr->offset/sizeof(float);
+	                    gs_assert(BUF);
+	                    float V[4] = gs_default_val();
+	                    /* For each vertex */\
+	                    for (uint32_t k = 0; k < attr->count; k++)
+	                    {
+	                        /* For each element */
+	                        for (int l = 0; l < 4; l++) {
+	                            V[l] = BUF[N + l];
+	                        }
+	                        N += (int32_t)(attr->stride/sizeof(float));
+	                        /* Add to temp data array */
+	                        gs_color_t ELEM = gs_default_val();
+	                        // Need to convert over now
+	                        ELEM.r = (uint8_t)(V[0] * 255.f);
+	                        ELEM.g = (uint8_t)(V[1] * 255.f);
+	                        ELEM.b = (uint8_t)(V[2] * 255.f);
+	                        ELEM.a = 255; 
+	                        gs_dyn_array_push(colors, ELEM);
+	                    }
+	                    /* Push into layout */
+	                    gs_gfxt_mesh_layout_t LAYOUT = gs_default_val();
+	                    LAYOUT.type = GS_GFXT_MESH_ATTRIBUTE_TYPE_COLOR;
+	                    gs_dyn_array_push(layouts, LAYOUT);
                     } break;
 
                     // Not sure what to do with these for now
