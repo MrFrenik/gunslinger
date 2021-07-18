@@ -116,6 +116,7 @@ typedef struct gs_meta_class_t
 {
     gs_meta_property_t* properties;
     uint32_t property_count;
+    const char* name;
 } gs_meta_class_t;
 
 typedef struct gs_meta_registry_t
@@ -131,18 +132,10 @@ typedef struct gs_meta_class_decl_t
 
 GS_API_DECL gs_meta_registry_t gs_meta_registry_new();
 GS_API_DECL const char* gs_meta_typestr(gs_meta_property_type type);
+GS_API_PRIVATE uint64_t _gs_meta_register_class_impl(gs_meta_registry_t* meta, const char* name, const gs_meta_class_decl_t* decl);
 
 #define gs_meta_register_class(META, T, DECL)\
-    do {\
-        gs_meta_class_decl_t* decl = ((DECL));\
-        uint32_t ct = decl->size / sizeof(gs_meta_property_t);\
-        size_t sz = sizeof(gs_meta_property_t) * ct;\
-        gs_meta_class_t cls = gs_default_val();\
-        cls.property_count = ct;\
-        cls.properties = gs_malloc(sz);\
-        memcpy(cls.properties, decl->properties, sz);\
-        gs_hash_table_insert((META)->meta_classes, gs_hash_str64(gs_to_str(T)), cls);\
-    } while (0)
+    _gs_meta_register_class_impl((META), gs_to_str(T), (DECL))
 
 #define gs_meta_get_class(META, T)\
     gs_hash_table_getp((META)->meta_classes, gs_hash_str64(gs_to_str(T)))
@@ -177,6 +170,19 @@ GS_API_PRIVATE gs_meta_property_t _gs_meta_property_impl(const char* name, uint3
     mp.offset = offset;
     mp.type = type;
     return mp;
+}
+
+GS_API_PRIVATE uint64_t _gs_meta_register_class_impl(gs_meta_registry_t* meta, const char* name, const gs_meta_class_decl_t* decl)
+{
+    uint32_t ct = decl->size / sizeof(gs_meta_property_t);
+    gs_meta_class_t cls = gs_default_val();
+    cls.property_count = ct;
+    cls.properties = gs_malloc(decl->size);
+    cls.name = name;
+    memcpy(cls.properties, decl->properties, decl->size);
+    uint64_t id = gs_hash_str64(name);
+    gs_hash_table_insert(meta->meta_classes, id, cls);
+    return id;
 }
 
 GS_API_PRIVATE gs_meta_property_type_info_t _gs_meta_property_type_decl_impl(const char* name, uint32_t id)
