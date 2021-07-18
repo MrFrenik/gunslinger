@@ -135,13 +135,13 @@ GS_API_DECL void gs_meta_registry_free(gs_meta_registry_t* meta);
 GS_API_DECL const char* gs_meta_typestr(gs_meta_property_type type);
 GS_API_PRIVATE uint64_t _gs_meta_register_class_impl(gs_meta_registry_t* meta, const char* name, const gs_meta_class_decl_t* decl);
 
-#define gs_meta_register_class(META, T, DECL)\
+#define gs_meta_class_register(META, T, DECL)\
     _gs_meta_register_class_impl((META), gs_to_str(T), (DECL))
 
-#define gs_meta_get_class(META, T)\
+#define gs_meta_class_get(META, T)\
     gs_hash_table_getp((META)->meta_classes, gs_hash_str64(gs_to_str(T)))
 
-#define gs_meta_get_class_w_id(META, ID)\
+#define gs_meta_class_get_w_id(META, ID)\
     gs_hash_table_getp((META)->meta_classes, (ID));
 
 #define gs_meta_getv(OBJ, T, PROP)\
