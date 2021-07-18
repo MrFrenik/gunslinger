@@ -94,13 +94,13 @@ typedef struct _ccd_vec3_t ccd_vec3_t;
 /**
  * Holds origin (0,0,0) - this variable is meant to be read-only!
  */
-CCD_EXPORT extern ccd_vec3_t *ccd_vec3_origin;
+CCD_EXPORT ccd_vec3_t *ccd_vec3_origin;
 
 /**
  * Array of points uniformly distributed on unit sphere.
  */
-CCD_EXPORT extern ccd_vec3_t *ccd_points_on_sphere;
-CCD_EXPORT extern size_t ccd_points_on_sphere_len;
+CCD_EXPORT ccd_vec3_t *ccd_points_on_sphere;
+CCD_EXPORT size_t ccd_points_on_sphere_len;
 
 /** Returns sign of value. */
 _ccd_inline int ccdSign(ccd_real_t val);

@@ -602,7 +602,7 @@ GS_API_DECL gs_vec3 gs_line_direction(const gs_line_t* l)
 // Modified from: https://graphics.stanford.edu/~mdfisher/Code/Engine/Plane.cpp.html
 GS_API_DECL gs_plane_t gs_plane_from_pt_normal(gs_vec3 pt, gs_vec3 n)
 {
-    gs_plane_t p = gs_plane();
+    gs_plane_t p = gs_default_val();
     gs_vec3 nn = gs_vec3_norm(n);
     p.a = nn.x; p.b = nn.y; p.c = nn.z;
     p.d = -gs_vec3_dot(pt, nn);
@@ -637,7 +637,7 @@ GS_API_DECL float gs_plane_unsigned_distance(const gs_plane_t* p, gs_vec3 pt)
 
 GS_API_DECL gs_plane_t gs_plane_normalized(const gs_plane_t* p)
 {
-    gs_plane_t pn = gs_plane();
+    gs_plane_t pn = gs_default_val();
     float d = sqrtf(p->a * p->a + p->b * p->b + p->c * p->c);
     pn.a = p->a / d; pn.b = p->b / d; pn.c = p->c / d; pn.d = p->d / d;
     return pn;
