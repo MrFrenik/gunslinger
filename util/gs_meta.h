@@ -131,6 +131,7 @@ typedef struct gs_meta_class_decl_t
 } gs_meta_class_decl_t;
 
 GS_API_DECL gs_meta_registry_t gs_meta_registry_new();
+GS_API_DECL void gs_meta_registry_free(gs_meta_registry_t* meta);
 GS_API_DECL const char* gs_meta_typestr(gs_meta_property_type type);
 GS_API_PRIVATE uint64_t _gs_meta_register_class_impl(gs_meta_registry_t* meta, const char* name, const gs_meta_class_decl_t* decl);
 
@@ -161,6 +162,21 @@ GS_API_DECL gs_meta_registry_t gs_meta_registry_new()
 {
     gs_meta_registry_t meta = gs_default_val();
     return meta;
+}
+
+GS_API_DECL void gs_meta_registry_free(gs_meta_registry_t* meta)
+{
+    // Free all entries in classes
+    for (
+        gs_hash_table_iter it = gs_hash_table_iter_new(meta->meta_classes);
+        gs_hash_table_iter_valid(meta->meta_classes, it);
+        gs_hash_table_iter_advance(meta->meta_classes, it)
+    ) 
+    {
+        gs_meta_class_t* cls = gs_hash_table_iter_getp(meta->meta_classes, it);
+        gs_free(cls->properties);
+    }
+    gs_hash_table_free(meta->meta_classes);
 }
 
 GS_API_PRIVATE gs_meta_property_t _gs_meta_property_impl(const char* name, uint32_t offset, gs_meta_property_type_info_t type)
