@@ -5797,7 +5797,7 @@ GS_API_DECL void gs_byte_buffer_memset(gs_byte_buffer_t* buffer, uint8_t val)
 GS_API_DECL gs_memory_block_t gs_memory_block_new(size_t sz)
 {
     gs_memory_block_t mem = gs_default_val();
-    mem.data = gs_malloc(sz);
+    mem.data = (uint8_t*)gs_malloc(sz);
     memset(mem.data, 0, sz);
     mem.size = sz;
     return mem;
@@ -5852,7 +5852,7 @@ GS_API_DECL size_t gs_memory_calc_padding_w_header(size_t base_address, size_t a
 GS_API_DECL gs_linear_allocator_t gs_linear_allocator_new(size_t sz)
 {
     gs_linear_allocator_t la = gs_default_val();
-    la.memory = gs_malloc(sz);
+    la.memory = (uint8_t*)gs_malloc(sz);
     memset(la.memory, 0, sz);
     la.offset = 0;
     la.total_size = sz;
@@ -6000,22 +6000,25 @@ GS_API_DECL void* gs_paged_allocator_allocate(gs_paged_allocator_t* pa)
     }
     else 
     {
-        gs_paged_allocator_page_t* page = _gs_malloc_init_impl(pa->block_size * pa->blocks_per_page + sizeof(gs_paged_allocator_page_t));
+        gs_paged_allocator_page_t* page = (gs_paged_allocator_page_t*)_gs_malloc_init_impl(pa->block_size * pa->blocks_per_page + sizeof(gs_paged_allocator_page_t));
         pa->page_count++;
 
         page->next = pa->pages;
-        page->data = gs_ptr_add(page, sizeof(gs_paged_allocator_page_t));
+        page->data = (gs_paged_allocator_block_t*)gs_ptr_add(page, sizeof(gs_paged_allocator_page_t));
         pa->pages = page;
+
+// #define gs_ptr_add(P, BYTES) \
+//     (((uint8_t*)P + (BYTES)))
 
         uint32_t bppmo = pa->blocks_per_page - 1;
         for (uint32_t i = 0; i < bppmo; ++i)
         {
-            gs_paged_allocator_block_t* node = gs_ptr_add(page->data, pa->block_size * i);
-            gs_paged_allocator_block_t* next = gs_ptr_add(page->data, pa->block_size * (i + 1));
+            gs_paged_allocator_block_t* node = (gs_paged_allocator_block_t*)gs_ptr_add(page->data, pa->block_size * i);
+            gs_paged_allocator_block_t* next = (gs_paged_allocator_block_t*)gs_ptr_add(page->data, pa->block_size * (i + 1));
             node->next = next;
         }
 
-        gs_paged_allocator_block_t* last = gs_ptr_add(page->data, pa->block_size * bppmo);
+        gs_paged_allocator_block_t* last = (gs_paged_allocator_block_t*)gs_ptr_add(page->data, pa->block_size * bppmo);
         last->next = NULL;
 
         pa->free_list = page->data->next;
@@ -6075,12 +6078,12 @@ GS_API_DECL void gs_paged_allocator_clear(gs_paged_allocator_t* pa)
 GS_API_DECL gs_heap_allocator_t gs_heap_allocate_new()
 {
     gs_heap_allocator_t ha = gs_default_val();
-    ha.memory = _gs_malloc_init_impl(GS_HEAP_ALLOC_DEFAULT_SIZE);
+    ha.memory = (gs_heap_allocator_header_t*)_gs_malloc_init_impl(GS_HEAP_ALLOC_DEFAULT_SIZE);
     ha.memory->next = NULL;
     ha.memory->prev = NULL;
     ha.memory->size = GS_HEAP_ALLOC_DEFAULT_SIZE;
 
-    ha.free_blocks = _gs_malloc_init_impl(sizeof(gs_heap_allocator_free_block_t) * GS_HEAP_ALLOC_DEFAULT_CAPCITY);
+    ha.free_blocks = (gs_heap_allocator_free_block_t*)_gs_malloc_init_impl(sizeof(gs_heap_allocator_free_block_t) * GS_HEAP_ALLOC_DEFAULT_CAPCITY);
     ha.free_block_count = 1;
     ha.free_block_capacity = GS_HEAP_ALLOC_DEFAULT_CAPCITY;
 
@@ -6118,7 +6121,7 @@ GS_API_DECL void* gs_heap_allocator_allocate(gs_heap_allocator_t* ha, size_t sz)
     }
 
     gs_heap_allocator_header_t* node = first_fit->header;
-    gs_heap_allocator_header_t* new_node = gs_ptr_add(node, size_needed);
+    gs_heap_allocator_header_t* new_node = (gs_heap_allocator_header_t*)gs_ptr_add(node, size_needed);
     node->size = size_needed;
 
     first_fit->size -= size_needed;
