@@ -488,7 +488,7 @@ bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_opti
 
     // GLTF
     if (gs_string_compare_equal(file_ext, "gltf")) {
-	    file_data = gs_platform_read_file_contents(path, "r", &len);
+	    file_data = gs_platform_read_file_contents(path, "rb", &len);
 	    gs_println("GFXT:Loading GLTF: %s", path);
     }
     // GLB
