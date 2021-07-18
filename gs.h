@@ -534,6 +534,12 @@
    #define GS_API_DECL   extern
 #endif
 
+#ifdef __cplusplus
+   #define GS_API_PRIVATE   extern "C"
+#else
+   #define GS_API_PRIVATE   extern
+#endif
+
 /*===================
 // PLATFORM DEFINES
 ===================*/

@@ -450,6 +450,7 @@ void ma_audio_commit(ma_device* device, void* output, const void* input, ma_uint
     // Mutex not working for pushing samples back. Need to copy sample data OVER at a synced position.
     // Add sample data into byte buffer to push back, but this has to be done to sync with audio
     // thread so that it's consistent and smooth feeding.
+    // This mutex is doing NOTHING
     gs_audio_mutex_lock(audio);
     {
         for (
@@ -562,10 +563,9 @@ void ma_audio_commit(ma_device* device, void* output, const void* input, ma_uint
         }
 
         // Destroy instances
-        // for (uint32_t i = 0; i < destroy_count; ++i) {
-            // gs_println("destroying: %zu", handles_to_destroy[i]);
-            // gs_slot_array_erase(audio->instances, handles_to_destroy[i]);
-        // }
+        for (uint32_t i = 0; i < destroy_count; ++i) {
+            gs_slot_array_erase(audio->instances, handles_to_destroy[i]);
+        }
     }
 
     gs_audio_mutex_unlock(audio);
