@@ -5631,6 +5631,66 @@ GS_API_DECL gs_app_desc_t gs_main(int32_t argc, char** argv);
 
 #ifdef GS_IMPL
 
+/*=============================
+// GS_PLATFORM
+=============================*/
+
+// Default provided platform implementations (these will be removed eventually)
+#ifndef GS_PLATFORM_IMPL_CUSTOM
+
+#if (defined GS_PLATFORM_WIN || defined GS_PLATFORM_APPLE || defined GS_PLATFORM_LINUX)
+
+        #define GS_PLATFORM_IMPL_GLFW
+
+    #elif (defined GS_PLATFORM_WEB)
+
+        #define GS_PLATFORM_IMPL_EMSCRIPTEN
+
+    #elif (defined GS_PLATFORM_ANDROID)
+
+        #define GS_PLATFORM_IMPL_ANDROID
+
+    #endif
+#endif
+
+#ifdef GS_PLATFORM_IMPL_FILE
+#include GS_PLATFORM_IMPL_FILE
+#endif
+
+#include "impl/gs_platform_impl.h"
+
+/*=============================
+// GS_GRAPHICS
+=============================*/
+
+#ifndef GS_GRAPHICS_IMPL_CUSTOM
+
+#if (defined GS_PLATFORM_WIN || defined GS_PLATFORM_APPLE || defined GS_PLATFORM_LINUX)
+
+#define GS_GRAPHICS_IMPL_OPENGL_CORE
+
+#else
+
+#define GS_GRAPHICS_IMPL_OPENGL_ES
+
+#endif
+
+#endif
+
+#include "impl/gs_graphics_impl.h"
+
+/*=============================
+// GS_AUDIO
+=============================*/
+
+#ifndef GS_AUDIO_IMPL_CUSTOM
+
+#define GS_AUDIO_IMPL_MINIAUDIO
+
+#endif
+
+#include "impl/gs_audio_impl.h"
+
 /*========================
 // gs_byte_buffer
 ========================*/
@@ -6356,65 +6416,6 @@ bool32_t gs_util_load_texture_data_from_memory(const void* memory, size_t sz, in
     return true;
 }
 
-/*=============================
-// GS_PLATFORM
-=============================*/
-
-// Default provided platform implementations (these will be removed eventually)
-#ifndef GS_PLATFORM_IMPL_CUSTOM
-
-    #if (defined GS_PLATFORM_WIN || defined GS_PLATFORM_APPLE || defined GS_PLATFORM_LINUX)
-
-        #define GS_PLATFORM_IMPL_GLFW
-
-    #elif (defined GS_PLATFORM_WEB)
-
-        #define GS_PLATFORM_IMPL_EMSCRIPTEN
-
-    #elif (defined GS_PLATFORM_ANDROID)
-
-        #define GS_PLATFORM_IMPL_ANDROID
-
-    #endif
-#endif
-
-#ifdef GS_PLATFORM_IMPL_FILE
-    #include GS_PLATFORM_IMPL_FILE
-#endif
-
-#include "impl/gs_platform_impl.h"
-
-/*=============================
-// GS_GRAPHICS
-=============================*/
-
-#ifndef GS_GRAPHICS_IMPL_CUSTOM
-
-    #if (defined GS_PLATFORM_WIN || defined GS_PLATFORM_APPLE || defined GS_PLATFORM_LINUX)
-
-        #define GS_GRAPHICS_IMPL_OPENGL_CORE
-
-    #else
-
-        #define GS_GRAPHICS_IMPL_OPENGL_ES
-
-    #endif
-
-#endif
-
-#include "impl/gs_graphics_impl.h"
-
-/*=============================
-// GS_AUDIO
-=============================*/
-
-#ifndef GS_AUDIO_IMPL_CUSTOM
-
-    #define GS_AUDIO_IMPL_MINIAUDIO
-
-#endif
-
-#include "impl/gs_audio_impl.h"
 
 /*==========================
 // GS_ASSET_TYPES
