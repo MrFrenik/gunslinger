@@ -116,14 +116,15 @@ GS_API_PRIVATE gs_meta_property_t _gs_meta_property_impl(const char* name, uint3
 
 typedef struct gs_meta_class_t
 {
-    gs_meta_property_t* properties;
-    uint32_t property_count;
-    const char* name;
+    gs_meta_property_t* properties;   // Property list
+    uint32_t property_count;          // Number of properties in list
+    const char* name;                 // Display name of class
+    uint64_t base;                    // Parent class
 } gs_meta_class_t;
 
 typedef struct gs_meta_registry_t
 {
-    gs_hash_table(u64, gs_meta_class_t) meta_classes;
+    gs_hash_table(u64, gs_meta_class_t) classes;
 } gs_meta_registry_t;
 
 typedef struct gs_meta_class_decl_t
@@ -135,16 +136,17 @@ typedef struct gs_meta_class_decl_t
 GS_API_DECL gs_meta_registry_t gs_meta_registry_new();
 GS_API_DECL void gs_meta_registry_free(gs_meta_registry_t* meta);
 GS_API_DECL const char* gs_meta_typestr(gs_meta_property_type type);
-GS_API_PRIVATE uint64_t _gs_meta_register_class_impl(gs_meta_registry_t* meta, const char* name, const gs_meta_class_decl_t* decl);
+GS_API_DECL bool32 gs_meta_has_base_class(const gs_meta_registry_t* meta, const gs_meta_class_t* cls);
+GS_API_PRIVATE uint64_t _gs_meta_register_class_impl(gs_meta_registry_t* meta, const char* name, const char* base, const gs_meta_class_decl_t* decl);
 
-#define gs_meta_class_register(META, T, DECL)\
-    _gs_meta_register_class_impl((META), gs_to_str(T), (DECL))
+#define gs_meta_class_register(META, T, BASE, DECL)\
+    _gs_meta_register_class_impl((META), gs_to_str(T), gs_to_str(BASE), (DECL))
 
 #define gs_meta_class_get(META, T)\
-    gs_hash_table_getp((META)->meta_classes, gs_hash_str64(gs_to_str(T)))
+    gs_hash_table_getp((META)->classes, gs_hash_str64(gs_to_str(T)))
 
 #define gs_meta_class_get_w_id(META, ID)\
-    gs_hash_table_getp((META)->meta_classes, (ID));
+    gs_hash_table_getp((META)->classes, (ID));
 
 #define gs_meta_getv(OBJ, T, PROP)\
     (*((T*)((uint8_t*)(OBJ) + (PROP)->offset)))
@@ -170,15 +172,15 @@ GS_API_DECL void gs_meta_registry_free(gs_meta_registry_t* meta)
 {
     // Free all entries in classes
     for (
-        gs_hash_table_iter it = gs_hash_table_iter_new(meta->meta_classes);
-        gs_hash_table_iter_valid(meta->meta_classes, it);
-        gs_hash_table_iter_advance(meta->meta_classes, it)
+        gs_hash_table_iter it = gs_hash_table_iter_new(meta->classes);
+        gs_hash_table_iter_valid(meta->classes, it);
+        gs_hash_table_iter_advance(meta->classes, it)
     ) 
     {
-        gs_meta_class_t* cls = gs_hash_table_iter_getp(meta->meta_classes, it);
+        gs_meta_class_t* cls = gs_hash_table_iter_getp(meta->classes, it);
         gs_free(cls->properties);
     }
-    gs_hash_table_free(meta->meta_classes);
+    gs_hash_table_free(meta->classes);
 }
 
 GS_API_PRIVATE gs_meta_property_t _gs_meta_property_impl(const char* name, uint32_t offset, gs_meta_property_type_info_t type)
@@ -190,16 +192,17 @@ GS_API_PRIVATE gs_meta_property_t _gs_meta_property_impl(const char* name, uint3
     return mp;
 }
 
-GS_API_PRIVATE uint64_t _gs_meta_register_class_impl(gs_meta_registry_t* meta, const char* name, const gs_meta_class_decl_t* decl)
+GS_API_PRIVATE uint64_t _gs_meta_register_class_impl(gs_meta_registry_t* meta, const char* name, const char* base, const gs_meta_class_decl_t* decl)
 {
     uint32_t ct = decl->size / sizeof(gs_meta_property_t);
     gs_meta_class_t cls = gs_default_val();
     cls.property_count = ct;
     cls.properties = gs_malloc(decl->size);
     cls.name = name;
+    cls.base = base ? gs_hash_str64(base) : gs_hash_str64("NULL");
     memcpy(cls.properties, decl->properties, decl->size);
     uint64_t id = gs_hash_str64(name);
-    gs_hash_table_insert(meta->meta_classes, id, cls);
+    gs_hash_table_insert(meta->classes, id, cls);
     return id;
 }
 
@@ -211,7 +214,12 @@ GS_API_PRIVATE gs_meta_property_type_info_t _gs_meta_property_type_decl_impl(con
     return info;
 }
 
-#undef GS_META_IMPL
+GS_API_DECL bool32 gs_meta_has_base_class(const gs_meta_registry_t* meta, const gs_meta_class_t* cls)
+{
+    return (gs_hash_table_key_exists(meta->classes, cls->base));
+}
+
+#undef GS_META_IMP
 
 #endif // GS_META_IMPL
 #endif // __GS_META_H__
