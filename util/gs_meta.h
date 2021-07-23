@@ -69,6 +69,7 @@ typedef enum gs_meta_property_type
     GS_META_PROPERTY_TYPE_MAT3,
     GS_META_PROPERTY_TYPE_MAT4,
     GS_META_PROPERTY_TYPE_VQS,
+    GS_META_PROPERTY_TYPE_UUID,
     GS_META_PROPERTY_TYPE_SIZE_T,       // Used for pointers or size_t variables
     GS_META_PROPERTY_TYPE_STR,          // Used for const char*, char*
     GS_META_PROPERTY_TYPE_COUNT
@@ -97,6 +98,7 @@ GS_API_PRIVATE gs_meta_property_type_info_t _gs_meta_property_type_decl_impl(con
 #define GS_META_PROPERTY_TYPE_INFO_MAT3     _gs_meta_property_type_decl(gs_mat3, GS_META_PROPERTY_TYPE_MAT3)
 #define GS_META_PROPERTY_TYPE_INFO_MAT4     _gs_meta_property_type_decl(gs_mat4, GS_META_PROPERTY_TYPE_MAT4)
 #define GS_META_PROPERTY_TYPE_INFO_VQS      _gs_meta_property_type_decl(gs_vqs, GS_META_PROPERTY_TYPE_VQS)
+#define GS_META_PROPERTY_TYPE_INFO_UUID      _gs_meta_property_type_decl(gs_uuid_t, GS_META_PROPERTY_TYPE_UUID)
 #define GS_META_PROPERTY_TYPE_INFO_SIZE_T   _gs_meta_property_type_decl(size_t, GS_META_PROPERTY_TYPE_SIZE_T)
 #define GS_META_PROPERTY_TYPE_INFO_STR      _gs_meta_property_type_decl(char*, GS_META_PROPERTY_TYPE_STR)
 

@@ -6423,6 +6423,49 @@ bool32_t gs_util_load_texture_data_from_memory(const void* memory, size_t sz, in
 
 bool gs_asset_texture_load_from_file(const char* path, void* out, gs_graphics_texture_desc_t* desc, bool32_t flip_on_load, bool32_t keep_data)
 {
+    gs_asset_texture_t* t = (gs_asset_texture_t*)out;
+
+    memset(&t->desc, 0, sizeof(gs_graphics_texture_desc_t));
+
+    if (desc) {
+        t->desc = *desc;
+    } else {
+        t->desc.format = GS_GRAPHICS_TEXTURE_FORMAT_RGBA8;
+        t->desc.min_filter = GS_GRAPHICS_TEXTURE_FILTER_LINEAR;
+        t->desc.mag_filter = GS_GRAPHICS_TEXTURE_FILTER_LINEAR;
+        t->desc.wrap_s = GS_GRAPHICS_TEXTURE_WRAP_REPEAT;
+        t->desc.wrap_t = GS_GRAPHICS_TEXTURE_WRAP_REPEAT;
+    }
+
+    // Load texture data
+    FILE* f = fopen(path, "rb");
+    if (!f) {
+        return false;
+    }
+
+    int32_t comp = 0;
+    stbi_set_flip_vertically_on_load(flip_on_load);
+    t->desc.data = (uint8_t*)stbi_load_from_file(f, (int32_t*)&t->desc.width, (int32_t*)&t->desc.height, (uint32_t*)&comp, STBI_rgb_alpha);
+
+    if (!t->desc.data) {
+        fclose(f);
+        return false;
+    }
+
+    t->hndl = gs_graphics_texture_create(&t->desc);
+
+    if (!keep_data) {
+        gs_free(t->desc.data);
+        t->desc.data = NULL;
+    }
+
+    fclose(f);
+    return true;
+}
+
+/*
+bool gs_asset_texture_load_from_file(const char* path, void* out, gs_graphics_texture_desc_t* desc, bool32_t flip_on_load, bool32_t keep_data)
+{
     size_t len = 0;
     char* file_data = gs_platform_read_file_contents(path, "rb", &len);
     gs_assert(file_data);
@@ -6430,6 +6473,7 @@ bool gs_asset_texture_load_from_file(const char* path, void* out, gs_graphics_te
     gs_free(file_data);
     return ret;
 }
+ */
 
 bool gs_asset_texture_load_from_memory(const void* memory, size_t sz, void* out, gs_graphics_texture_desc_t* desc, bool32_t flip_on_load, bool32_t keep_data)
 {
