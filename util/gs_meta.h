@@ -119,28 +119,32 @@ typedef struct gs_meta_class_t
     gs_meta_property_t* properties;   // Property list
     uint32_t property_count;          // Number of properties in list
     const char* name;                 // Display name of class
-    uint64_t base;                    // Parent class
+    uint64_t id;                      // Class ID
+    uint64_t base;                    // Parent class ID
 } gs_meta_class_t;
 
 typedef struct gs_meta_registry_t
 {
     gs_hash_table(u64, gs_meta_class_t) classes;
+    void* user_data;
 } gs_meta_registry_t;
 
 typedef struct gs_meta_class_decl_t
 {
     gs_meta_property_t* properties;
     size_t size;
+    const char* name;                   // Display name of class
+    const char* base;                   // Base parent class name (will be used for hash id, NULL for invalid id)
 } gs_meta_class_decl_t;
 
 GS_API_DECL gs_meta_registry_t gs_meta_registry_new();
 GS_API_DECL void gs_meta_registry_free(gs_meta_registry_t* meta);
 GS_API_DECL const char* gs_meta_typestr(gs_meta_property_type type);
 GS_API_DECL bool32 gs_meta_has_base_class(const gs_meta_registry_t* meta, const gs_meta_class_t* cls);
-GS_API_PRIVATE uint64_t _gs_meta_register_class_impl(gs_meta_registry_t* meta, const char* name, const char* base, const gs_meta_class_decl_t* decl);
+GS_API_DECL  uint64_t gs_meta_class_register(gs_meta_registry_t* meta, const gs_meta_class_decl_t* decl);
 
-#define gs_meta_class_register(META, T, BASE, DECL)\
-    _gs_meta_register_class_impl((META), gs_to_str(T), gs_to_str(BASE), (DECL))
+//#define gs_meta_class_register(META, T, BASE, DECL)\
+//    _gs_meta_register_class_impl((META), gs_to_str(T), gs_to_str(BASE), (DECL))
 
 #define gs_meta_class_get(META, T)\
     gs_hash_table_getp((META)->classes, gs_hash_str64(gs_to_str(T)))
@@ -192,16 +196,16 @@ GS_API_PRIVATE gs_meta_property_t _gs_meta_property_impl(const char* name, uint3
     return mp;
 }
 
-GS_API_PRIVATE uint64_t _gs_meta_register_class_impl(gs_meta_registry_t* meta, const char* name, const char* base, const gs_meta_class_decl_t* decl)
+GS_API_PRIVATE uint64_t gs_meta_class_register(gs_meta_registry_t* meta, const gs_meta_class_decl_t* decl)
 {
     uint32_t ct = decl->size / sizeof(gs_meta_property_t);
     gs_meta_class_t cls = gs_default_val();
-    cls.property_count = ct;
     cls.properties = gs_malloc(decl->size);
-    cls.name = name;
-    cls.base = base ? gs_hash_str64(base) : gs_hash_str64("NULL");
+    cls.name = decl->name;
+    cls.base = decl->base ? gs_hash_str64(decl->base) : gs_hash_str64("NULL");
     memcpy(cls.properties, decl->properties, decl->size);
-    uint64_t id = gs_hash_str64(name);
+    uint64_t id = gs_hash_str64(decl->name);
+    cls.id = id;
     gs_hash_table_insert(meta->classes, id, cls);
     return id;
 }
