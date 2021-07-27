@@ -89,13 +89,12 @@ typedef struct gs_gfxt_uniform_block_desc_t {
 
 typedef struct gs_gfxt_uniform_block_lookup_key_t {
 	char name[64];
-	uint64_t hash;
 } gs_gfxt_uniform_block_lookup_key_t;
 
 typedef struct gs_gfxt_uniform_block_t {
-	gs_dyn_array(gs_gfxt_uniform_t) uniforms;							 // Raw uniform handle array
-	gs_hash_table(gs_gfxt_uniform_block_lookup_key_t, uint32_t) lookup;	 // Index lookup table (used for byte buffer offsets in material uni. data)
-	size_t size;													     // Total size of material data for entire block
+	gs_dyn_array(gs_gfxt_uniform_t) uniforms;	 // Raw uniform handle array
+	gs_hash_table(uint64_t, uint32_t) lookup;	 // Index lookup table (used for byte buffer offsets in material uni. data)
+	size_t size;								 // Total size of material data for entire block
 } gs_gfxt_uniform_block_t;
 
 // Pipeline
@@ -271,15 +270,13 @@ gs_gfxt_uniform_block_t gs_gfxt_uniform_block_create(gs_gfxt_uniform_block_desc_
 		}
 
 		// Add uniform to block with name as key
-		gs_gfxt_uniform_block_lookup_key_t key = gs_default_val();
-		memcpy(key.name, ud->name, 64);
-		key.hash = gs_hash_str64(ud->name);
+//		gs_gfxt_uniform_block_lookup_key_t key = gs_default_val();
+//		memcpy(key.name, ud->name, 64);
+		uint64_t key = gs_hash_str64(ud->name);
 		gs_dyn_array_push(block.uniforms, u);
 		gs_hash_table_insert(block.lookup, key, gs_dyn_array_size(block.uniforms) - 1);
 	}
 	block.size = offset;
-
-	gs_println("bs: %zu, ls: %zu", block.size, gs_hash_table_size(block.lookup));
 
 	return block;
 }
@@ -385,9 +382,9 @@ void gs_gfxt_material_set_uniform(gs_gfxt_material_t* mat, const char* name, voi
 	gs_gfxt_pipeline_t* pip = GS_GFXT_RAW_DATA(&mat->desc.pip_func, gs_gfxt_pipeline_t);
 	gs_assert(pip);
 
-	gs_gfxt_uniform_block_lookup_key_t key = gs_default_val();
-	key.hash = gs_hash_str64(name);
-	memcpy(key.name, name, 64);
+//	gs_gfxt_uniform_block_lookup_key_t key = gs_default_val();
+//	memcpy(key.name, name, 64);
+	uint64_t key = gs_hash_str64(name);
 	if (!gs_hash_table_key_exists(pip->ublock.lookup, key)) return;
 
 	// Based on name, need to get uniform
