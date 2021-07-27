@@ -87,10 +87,15 @@ typedef struct gs_gfxt_uniform_block_desc_t {
 	size_t layout_size;									// Size of layout in bytes
 } gs_gfxt_uniform_block_desc_t;
 
+typedef struct gs_gfxt_uniform_block_lookup_key_t {
+	char name[64];
+	uint64_t hash;
+} gs_gfxt_uniform_block_lookup_key_t;
+
 typedef struct gs_gfxt_uniform_block_t {
-	gs_dyn_array(gs_gfxt_uniform_t) uniforms;			// Raw uniform handle array
-	gs_hash_table(uint64_t, uint32_t) lookup;			// Index lookup table (used for byte buffer offsets in material uni. data)
-	size_t size;										// Total size of material data for entire block
+	gs_dyn_array(gs_gfxt_uniform_t) uniforms;							 // Raw uniform handle array
+	gs_hash_table(gs_gfxt_uniform_block_lookup_key_t, uint32_t) lookup;	 // Index lookup table (used for byte buffer offsets in material uni. data)
+	size_t size;													     // Total size of material data for entire block
 } gs_gfxt_uniform_block_t;
 
 // Pipeline
@@ -185,9 +190,13 @@ GS_API_DECL gs_gfxt_mesh_t 			gs_gfxt_mesh_create(gs_gfxt_mesh_desc_t* desc);
 GS_API_DECL gs_gfxt_renderable_t 	gs_gfxt_renderable_create(gs_gfxt_renderable_desc_t* desc);
 GS_API_DECL gs_gfxt_uniform_block_t gs_gfxt_uniform_block_create(gs_gfxt_uniform_block_desc_t* desc);
 
+// Copy
+GS_API_DECL gs_gfxt_material_t gs_gfxt_material_deep_copy(const gs_gfxt_material_t* src);
+
 // Material API
 GS_API_DECL void gs_gfxt_material_set_uniform(gs_gfxt_material_t* mat, const char* name, void* data);
 GS_API_DECL void gs_gfxt_material_bind(gs_command_buffer_t* cb, gs_gfxt_material_t* mat);
+GS_API_DECL void gs_gfxt_material_bind_uniforms(gs_command_buffer_t* cb, gs_gfxt_material_t* mat);
 
 // Mesh API
 GS_API_DECL void gs_gfxt_mesh_draw(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh);
@@ -232,6 +241,7 @@ gs_gfxt_uniform_block_t gs_gfxt_uniform_block_create(gs_gfxt_uniform_block_desc_
 	// Iterate through layout, construct uniforms, place them into hash table
 	uint32_t offset = 0;
 	uint32_t ct = desc->layout_size / sizeof(gs_gfxt_uniform_desc_t);
+	gs_println("layout size: %zu, CT: %zu", ct, desc->layout_size);
 	for (uint32_t i = 0; i < ct; ++i)
 	{
 		gs_gfxt_uniform_desc_t* ud = &desc->layout[i];
@@ -261,10 +271,15 @@ gs_gfxt_uniform_block_t gs_gfxt_uniform_block_create(gs_gfxt_uniform_block_desc_
 		}
 
 		// Add uniform to block with name as key
+		gs_gfxt_uniform_block_lookup_key_t key = gs_default_val();
+		memcpy(key.name, ud->name, 64);
+		key.hash = gs_hash_str64(ud->name);
 		gs_dyn_array_push(block.uniforms, u);
-		gs_hash_table_insert(block.lookup, gs_hash_str64(ud->name), gs_dyn_array_size(block.uniforms) - 1);
+		gs_hash_table_insert(block.lookup, key, gs_dyn_array_size(block.uniforms) - 1);
 	}
 	block.size = offset;
+
+	gs_println("bs: %zu, ls: %zu", block.size, gs_hash_table_size(block.lookup));
 
 	return block;
 }
@@ -353,6 +368,14 @@ gs_gfxt_renderable_t gs_gfxt_renderable_create(gs_gfxt_renderable_desc_t* desc)
 	return rend;
 }
 
+// Copy API
+GS_API_DECL gs_gfxt_material_t gs_gfxt_material_deep_copy(const gs_gfxt_material_t* src)
+{
+	gs_gfxt_material_t mat = gs_gfxt_material_create(&src->desc);
+	gs_byte_buffer_copy_contents(&mat.uniform_data, &src->uniform_data);
+	return mat;
+}
+
 // Material API
 GS_API_DECL
 void gs_gfxt_material_set_uniform(gs_gfxt_material_t* mat, const char* name, void* data)
@@ -362,11 +385,13 @@ void gs_gfxt_material_set_uniform(gs_gfxt_material_t* mat, const char* name, voi
 	gs_gfxt_pipeline_t* pip = GS_GFXT_RAW_DATA(&mat->desc.pip_func, gs_gfxt_pipeline_t);
 	gs_assert(pip);
 
-	u64 hash = gs_hash_str64(name);
-	if (!gs_hash_table_key_exists(pip->ublock.lookup, hash)) return;
+	gs_gfxt_uniform_block_lookup_key_t key = gs_default_val();
+	key.hash = gs_hash_str64(name);
+	memcpy(key.name, name, 64);
+	if (!gs_hash_table_key_exists(pip->ublock.lookup, key)) return;
 
 	// Based on name, need to get uniform
-	uint32_t uidx = gs_hash_table_get(pip->ublock.lookup, hash);
+	uint32_t uidx = gs_hash_table_get(pip->ublock.lookup, key);
 	gs_gfxt_uniform_t* u = &pip->ublock.uniforms[uidx];
 
 	// Seek to offset
@@ -387,8 +412,17 @@ void gs_gfxt_material_set_uniform(gs_gfxt_material_t* mat, const char* name, voi
 	}
 }
 
-GS_API_DECL 
+GS_API_DECL
 void gs_gfxt_material_bind(gs_command_buffer_t* cb, gs_gfxt_material_t* mat)
+{
+    // Binds the pipeline
+	gs_gfxt_pipeline_t* pip = GS_GFXT_RAW_DATA(&mat->desc.pip_func, gs_gfxt_pipeline_t);
+	gs_assert(pip);
+	gs_graphics_bind_pipeline(cb, pip->hndl);
+}
+
+GS_API_DECL 
+void gs_gfxt_material_bind_uniforms(gs_command_buffer_t* cb, gs_gfxt_material_t* mat)
 {
 	if (!mat) return;
 

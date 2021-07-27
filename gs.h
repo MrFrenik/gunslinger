@@ -5735,6 +5735,13 @@ void gs_byte_buffer_resize(gs_byte_buffer_t* buffer, size_t sz)
     buffer->capacity = (uint32_t)sz;
 }
 
+void gs_byte_buffer_copy_contents(gs_byte_buffer_t* dst, gs_byte_buffer_t* src)
+{
+    gs_byte_buffer_seek_to_beg(dst);
+    gs_byte_buffer_seek_to_beg(src);
+    gs_byte_buffer_write_bulk(dst, src->data, src->size);
+}
+
 void gs_byte_buffer_seek_to_beg(gs_byte_buffer_t* buffer)
 {
     buffer->position = 0;
