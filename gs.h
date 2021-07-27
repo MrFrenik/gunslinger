@@ -1010,9 +1010,9 @@ void gs_util_get_file_extension
         while (*at)
         {
             char c = *at;
-            buffer[ i++ ] = *at++;
+            buffer[i++] = *at++;
         }
-        buffer[ i ] = '\0';
+        buffer[i] = '\0';
     }
 }
 
