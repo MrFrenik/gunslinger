@@ -1409,7 +1409,14 @@ void* gs_platform_create_window_internal(const char* title, uint32_t width, uint
     // Set whether or not the screen is resizable
     glfwWindowHint(GLFW_RESIZABLE, (window_hints & GS_WINDOW_FLAGS_NO_RESIZE) != GS_WINDOW_FLAGS_NO_RESIZE);
 
-    GLFWwindow* window = glfwCreateWindow(width, height, title, NULL, NULL);
+    // Get primary monitor if fullscreen
+    GLFWmonitor* monitor = NULL;
+    if ((window_hints & GS_WINDOW_FLAGS_FULLSCREEN) == GS_WINDOW_FLAGS_FULLSCREEN)
+    {
+        monitor = glfwGetPrimaryMonitor();
+    }
+
+    GLFWwindow* window = glfwCreateWindow(width, height, title, monitor, NULL);
     if (window == NULL)
     {
         gs_println("Failed to create window.");
