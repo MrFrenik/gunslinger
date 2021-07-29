@@ -6452,7 +6452,7 @@ bool gs_asset_texture_load_from_file(const char* path, void* out, gs_graphics_te
 
     int32_t comp = 0;
     stbi_set_flip_vertically_on_load(flip_on_load);
-    t->desc.data = (uint8_t*)stbi_load_from_file(f, (int32_t*)&t->desc.width, (int32_t*)&t->desc.height, (uint32_t*)&comp, STBI_rgb_alpha);
+    t->desc.data = (uint8_t*)stbi_load_from_file(f, (int32_t*)&t->desc.width, (int32_t*)&t->desc.height, (int32_t*)&comp, STBI_rgb_alpha);
 
     if (!t->desc.data) {
         fclose(f);
