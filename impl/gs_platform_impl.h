@@ -1543,6 +1543,20 @@ bool32_t gs_platform_window_fullscreen(uint32_t handle)
     return glfwGetWindowMonitor(win) != NULL;
 }
 
+void gs_platform_window_position(uint32_t handle, uint32_t* x, uint32_t y)
+{
+    GLFWwindow* win = __glfw_window_from_handle(gs_engine_instance()->ctx.platform, handle);
+    glfwGetWindowPos(win, (int32_t*)x, (int32_t*)y);
+}
+
+gs_vec2 gs_platform_window_positionv(uint32_t handle)
+{
+    GLFWwindow* win = __glfw_window_from_handle(gs_engine_subsystem(platform), handle);
+    int32_t x, y;
+    glfwGetWindowPos(win, &x, &y);
+    return gs_v2((float)x, (float)y);
+}
+
 void gs_platform_set_window_size(uint32_t handle, uint32_t w, uint32_t h)
 {
     GLFWwindow* win = __glfw_window_from_handle(gs_engine_subsystem(platform), handle);
@@ -1570,6 +1584,18 @@ void gs_platform_set_window_fullscreen(uint32_t handle, bool32_t fullscreen)
     }
 
     glfwSetWindowMonitor(win, monitor, x, y, w, h, GLFW_DONT_CARE);
+}
+
+void gs_platform_set_window_position(uint32_t handle, uint32_t x, uint32_t y)
+{
+    GLFWwindow* win = __glfw_window_from_handle(gs_engine_subsystem(platform), handle);
+    glfwSetWindowPos(win, (int32_t)x, (int32_t)y);
+}
+
+void gs_platform_set_window_positionv(uint32_t handle, gs_vec2 v)
+{
+    GLFWwindow* win = __glfw_window_from_handle(gs_engine_subsystem(platform), handle);
+    glfwSetWindowPos(win, (int32_t)v.x, (int32_t)v.y);
 }
 
 void gs_platform_framebuffer_size(uint32_t handle, uint32_t* w, uint32_t* h)
@@ -2282,6 +2308,17 @@ gs_platform_window_fullscreen(uint32_t handle)
     return false;
 }
 
+GS_API_DECL void
+gs_platform_window_position(uint32_t handle, uint32_t* x, uint32_t y)
+{
+}
+
+GS_API_DECL gs_vec2
+gs_platform_window_positionv(uint32_t handle)
+{
+    return gs_v2(0, 0);
+}
+
 GS_API_DECL void     
 gs_platform_set_window_size(uint32_t handle, uint32_t width, uint32_t height)
 {
@@ -2302,6 +2339,16 @@ gs_platform_set_window_sizev(uint32_t handle, gs_vec2 v)
 
 GS_API_DECL void
 gs_platform_set_window_fullscreen(uint32_t handle, bool32_t fullscreen)
+{
+}
+
+GS_API_DECL void
+gs_platform_set_window_position(uint32_t handle, uint32_t x, uint32_t y)
+{
+}
+
+GS_API_DECL void
+gs_platform_set_window_positionv(uint32_t handle, gs_vec2 v)
 {
 }
 
@@ -3236,6 +3283,17 @@ gs_platform_window_fullscreen(uint32_t handle)
     return false;
 }
 
+GS_API_DECL void
+gs_platform_window_position(uint32_t handle, uint32_t* x, uint32_t y)
+{
+}
+
+GS_API_DECL gs_vec2
+gs_platform_window_positionv(uint32_t handle)
+{
+    return gs_v2(0, 0);
+}
+
 GS_API_DECL void     
 gs_platform_set_window_size(uint32_t handle, uint32_t width, uint32_t height)
 {
@@ -3248,6 +3306,16 @@ gs_platform_set_window_sizev(uint32_t handle, gs_vec2 v)
 
 GS_API_DECL void
 gs_platform_set_window_fullscreen(uint32_t handle, bool32_t fullscreen)
+{
+}
+
+GS_API_DECL void
+gs_platform_set_window_position(uint32_t handle, uint32_t x, uint32_t y)
+{
+}
+
+GS_API_DECL void
+gs_platform_set_window_positionv(uint32_t handle, gs_vec2 v)
 {
 }
 

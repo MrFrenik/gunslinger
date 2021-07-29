@@ -4808,9 +4808,13 @@ GS_API_DECL void     gs_platform_window_size(uint32_t handle, uint32_t* width, u
 GS_API_DECL uint32_t gs_platform_window_width(uint32_t handle);
 GS_API_DECL uint32_t gs_platform_window_height(uint32_t handle);
 GS_API_DECL bool32_t gs_platform_window_fullscreen(uint32_t handle);
+GS_API_DECL gs_vec2  gs_platform_window_positionv(uint32_t handle);
+GS_API_DECL void     gs_platform_window_position(uint32_t handle, uint32_t* x, uint32_t y);
 GS_API_DECL void     gs_platform_set_window_size(uint32_t handle, uint32_t width, uint32_t height);
 GS_API_DECL void     gs_platform_set_window_sizev(uint32_t handle, gs_vec2 v);
 GS_API_DECL void     gs_platform_set_window_fullscreen(uint32_t handle, bool32_t fullscreen);
+GS_API_DECL void     gs_platform_set_window_position(uint32_t handle, uint32_t x, uint32_t y);
+GS_API_DECL void     gs_platform_set_window_positionv(uint32_t handle, gs_vec2 v);
 GS_API_DECL void     gs_platform_set_cursor(uint32_t handle, gs_platform_cursor cursor);
 GS_API_DECL void     gs_platform_set_dropped_files_callback(uint32_t handle, gs_dropped_files_callback_t cb);
 GS_API_DECL void     gs_platform_set_window_close_callback(uint32_t handle, gs_window_close_callback_t cb);
