@@ -1537,6 +1537,12 @@ uint32_t gs_platform_window_height(uint32_t handle)
     return h;
 }
 
+bool32_t gs_platform_window_fullscreen(uint32_t handle)
+{
+    GLFWwindow* win = __glfw_window_from_handle(gs_engine_subsystem(platform), handle);
+    return glfwGetWindowMonitor(win) != NULL;
+}
+
 void gs_platform_set_window_size(uint32_t handle, uint32_t w, uint32_t h)
 {
     GLFWwindow* win = __glfw_window_from_handle(gs_engine_subsystem(platform), handle);
@@ -1547,6 +1553,23 @@ void gs_platform_set_window_sizev(uint32_t handle, gs_vec2 v)
 {
     GLFWwindow* win = __glfw_window_from_handle(gs_engine_subsystem(platform), handle);
     glfwSetWindowSize(win, (uint32_t)v.x, (uint32_t)v.y);
+}
+
+void gs_platform_set_window_fullscreen(uint32_t handle, bool32_t fullscreen)
+{
+    GLFWwindow* win = __glfw_window_from_handle(gs_engine_subsystem(platform), handle);
+    GLFWmonitor* monitor = NULL;
+
+    int32_t x, y, w, h;
+    glfwGetWindowPos(win, &x, &y);
+    glfwGetWindowSize(win, &w, &h);
+
+    if (fullscreen)
+    {
+        monitor = glfwGetPrimaryMonitor();
+    }
+
+    glfwSetWindowMonitor(win, monitor, x, y, w, h, GLFW_DONT_CARE);
 }
 
 void gs_platform_framebuffer_size(uint32_t handle, uint32_t* w, uint32_t* h)
@@ -2253,6 +2276,12 @@ gs_platform_window_height(uint32_t handle)
     return (uint32_t)ems->canvas_height;
 }
 
+GS_API_DECL bool32_t
+gs_platform_window_fullscreen(uint32_t handle)
+{
+    return false;
+}
+
 GS_API_DECL void     
 gs_platform_set_window_size(uint32_t handle, uint32_t width, uint32_t height)
 {
@@ -2269,6 +2298,11 @@ gs_platform_set_window_sizev(uint32_t handle, gs_vec2 v)
     emscripten_set_canvas_element_size(ems->canvas_name, (uint32_t)v.x, (uint32_t)v.y);
     ems->canvas_width = (uint32_t)v.x;
     ems->canvas_height = (uint32_t)v.y;
+}
+
+GS_API_DECL void
+gs_platform_set_window_fullscreen(uint32_t handle, bool32_t fullscreen)
+{
 }
 
 GS_API_DECL void     
@@ -3196,6 +3230,12 @@ gs_platform_window_height(uint32_t handle)
     return android->egl.height;
 }
 
+GS_API_DECL bool32_t
+gs_platform_window_fullscreen(uint32_t handle)
+{
+    return false;
+}
+
 GS_API_DECL void     
 gs_platform_set_window_size(uint32_t handle, uint32_t width, uint32_t height)
 {
@@ -3203,6 +3243,11 @@ gs_platform_set_window_size(uint32_t handle, uint32_t width, uint32_t height)
 
 GS_API_DECL void     
 gs_platform_set_window_sizev(uint32_t handle, gs_vec2 v)
+{
+}
+
+GS_API_DECL void
+gs_platform_set_window_fullscreen(uint32_t handle, bool32_t fullscreen)
 {
 }
 
