@@ -1513,7 +1513,7 @@ void _gs_ccdv32gsv3(const ccd_vec3_t* _in, gs_vec3* _out)
 {
     // Safe check against NaNs
     if (gs_is_nan(_in->v[0]) || gs_is_nan(_in->v[1]) || gs_is_nan(_in->v[2])) return;
-    *_out = gs_ctor(gs_vec3, _in->v[0], _in->v[1], _in->v[2]);
+    *_out = gs_ctor(gs_vec3, (float)_in->v[0], (float)_in->v[1], (float)_in->v[2]);
 }
 
 void _gs_gsv32ccdv3(const gs_vec3* _in, ccd_vec3_t* _out)
