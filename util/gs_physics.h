@@ -270,6 +270,8 @@ typedef struct gs_gjk_epa_edge_t {
 // GS_API_DECL gs_contact_info_t gs_gjk_epa(const gs_gjk_simplex_t* simplex, const gs_gjk_collider_info_t* ci0, const gs_gjk_collider_info_t* ci1);
 // GS_API_DECL gs_contact_info_t gs_gjk_epa_2d(const gs_gjk_simplex_t* simplex, const gs_gjk_collider_info_t* ci0, const gs_gjk_collider_info_t* ci1);
 // GS_API_DECL gs_gjk_collider_info_t gs_gjk_collider_info(void* c, gs_support_func_t f, gs_phys_xform_t* t);
+//
+GS_API_PRIVATE int32_t _gs_ccd_gjk_internal(const void* c0, const gs_vqs* xform_a, gs_support_func_t f0, const void* c1, const gs_vqs* xform_b, gs_support_func_t f1, gs_contact_info_t* res);
 
 /*==== CCD ====*/
 
@@ -694,11 +696,7 @@ GS_API_DECL int32_t gs_plane_vs_sphere(const gs_plane_t* a, gs_vqs* xform_a, con
 
 /* Sphere */
 
-// _GS_COLLIDE_FUNC_IMPL(sphere, sphere, gs_support_sphere, gs_support_sphere);      // Sphere vs. Sphere
-GS_API_DECL int32_t gs_sphere_vs_sphere(const gs_sphere_t* a, const gs_vqs* xform_a, const gs_sphere_t* b, const gs_vqs* xform_b, gs_contact_info_t* res)
-{
-    return _gs_ccd_gjk_internal(a, xform_a, gs_support_sphere, b, xform_b, gs_support_sphere, res);
-}
+_GS_COLLIDE_FUNC_IMPL(sphere, sphere, gs_support_sphere, gs_support_sphere);      // Sphere vs. Sphere 
 _GS_COLLIDE_FUNC_IMPL(sphere, cylinder, gs_support_sphere, gs_support_cylinder);  // Sphere vs. Cylinder
 _GS_COLLIDE_FUNC_IMPL(sphere, cone, gs_support_sphere, gs_support_cone);          // Sphere vs. Cone
 _GS_COLLIDE_FUNC_IMPL(sphere, aabb, gs_support_sphere, gs_support_aabb);          // Sphere vs. AABB
@@ -1523,9 +1521,9 @@ void _gs_gsv32ccdv3(const gs_vec3* _in, ccd_vec3_t* _out)
     ccdVec3Set(_out, CCD_REAL(_in->x), CCD_REAL(_in->y), CCD_REAL(_in->z));
 }
 
-int32_t _gs_ccd_gjk_internal(
-    void* c0, gs_vqs* xform_a, gs_support_func_t f0,
-    void* c1, gs_vqs* xform_b, gs_support_func_t f1,
+GS_API_PRIVATE int32_t _gs_ccd_gjk_internal(
+    const void* c0, const gs_vqs* xform_a, gs_support_func_t f0,
+    const void* c1, const gs_vqs* xform_b, gs_support_func_t f1,
     gs_contact_info_t* res
 
 )

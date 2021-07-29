@@ -132,12 +132,12 @@ _ccd_inline int ccdListEmpty(const ccd_list_t *head)
     return head->next == head;
 }
 
-_ccd_inline void ccdListAppend(ccd_list_t *l, ccd_list_t *new)
+_ccd_inline void ccdListAppend(ccd_list_t *l, ccd_list_t *n)
 {
-    new->prev = l->prev;
-    new->next = l;
-    l->prev->next = new;
-    l->prev = new;
+    n->prev = l->prev;
+    n->next = l;
+    l->prev->next = n;
+    l->prev = n;
 }
 
 _ccd_inline void ccdListDel(ccd_list_t *item)
