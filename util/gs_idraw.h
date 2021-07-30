@@ -158,6 +158,7 @@ GS_API_DECL void gsi_defaults(gs_immediate_draw_t* gsi);
 // Final Submit / Merge
 GS_API_DECL void gsi_draw(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb);
 GS_API_DECL void gsi_render_pass_submit(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, gs_color_t clear_color);
+GS_API_DECL void gsi_render_pass_submit_ex(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, gs_graphics_clear_action_t* action);
 
 // Core Matrix Functions
 GS_API_DECL void gsi_push_matrix(gs_immediate_draw_t* gsi, gsi_matrix_type type);
@@ -1563,6 +1564,19 @@ void gsi_render_pass_submit(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, g
 	action.color[3] = (float)c.a / 255.f;
 	gs_graphics_clear_desc_t clear = gs_default_val();
 	clear.actions = &action;
+	gs_renderpass pass = gs_default_val();
+	gs_vec2 fb = gs_platform_framebuffer_sizev(gs_platform_main_window());
+	gs_graphics_begin_render_pass(cb, pass);
+	gs_graphics_set_viewport(cb, 0, 0, (int32_t)fb.x, (int32_t)fb.y);
+	gs_graphics_clear(cb, &clear);
+	gsi_draw(gsi, cb);
+	gs_graphics_end_render_pass(cb);
+}
+
+GS_API_DECL void gsi_render_pass_submit_ex(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, gs_graphics_clear_action_t* action)
+{
+    gs_graphics_clear_desc_t clear = gs_default_val();
+    clear.actions = action;
 	gs_renderpass pass = gs_default_val();
 	gs_vec2 fb = gs_platform_framebuffer_sizev(gs_platform_main_window());
 	gs_graphics_begin_render_pass(cb, pass);

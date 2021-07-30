@@ -1575,9 +1575,27 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                                 {
                                     case GSGL_UNIFORMTYPE_FLOAT: 
                                     {
+                                        // Need to read bulk data for array.
                                         gs_assert(u->size == sizeof(float));
                                         gs_byte_buffer_read_bulkc(&cb->commands, float, v, u->size);
                                         glUniform1f(u->location, v);
+
+                                        /*
+                                        switch (u->count)
+                                        {
+                                            // Upload single
+                                            case 0: case 1: {
+                                                gs_byte_buffer_read_bulkc(&cb->commands, float, v, u->size);
+                                                glUniform1f(u->location, v);
+                                            } break; 
+
+                                            // Upload array
+                                            default: {
+                                                 glUniform1fv(u->location, count, v);
+                                            } break;
+                                        } 
+                                        */
+
                                     } break;
 
                                     case GSGL_UNIFORMTYPE_INT: 
