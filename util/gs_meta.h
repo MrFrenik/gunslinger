@@ -200,7 +200,7 @@ GS_API_PRIVATE uint64_t gs_meta_class_register(gs_meta_registry_t* meta, const g
 {
     uint32_t ct = decl->size / sizeof(gs_meta_property_t);
     gs_meta_class_t cls = gs_default_val();
-    cls.properties = gs_malloc(decl->size);
+    cls.properties = (gs_meta_property_t*)gs_malloc(decl->size);
     cls.name = decl->name;
     cls.base = decl->base ? gs_hash_str64(decl->base) : gs_hash_str64("NULL");
     memcpy(cls.properties, decl->properties, decl->size);

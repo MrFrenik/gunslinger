@@ -5375,15 +5375,15 @@ GS_API_DECL void           gs_graphics_shutdown(gs_graphics_t* graphics);
 GS_API_DECL                gs_graphics_info_t* gs_graphics_info();
 
 /* Resource Creation */
-GS_API_DECL gs_handle(gs_graphics_texture_t)        gs_graphics_texture_create(gs_graphics_texture_desc_t* desc);
-GS_API_DECL gs_handle(gs_graphics_uniform_t)        gs_graphics_uniform_create(gs_graphics_uniform_desc_t* desc);
-GS_API_DECL gs_handle(gs_graphics_shader_t)         gs_graphics_shader_create(gs_graphics_shader_desc_t* desc);
-GS_API_DECL gs_handle(gs_graphics_vertex_buffer_t)  gs_graphics_vertex_buffer_create(gs_graphics_vertex_buffer_desc_t* desc);
-GS_API_DECL gs_handle(gs_graphics_index_buffer_t)   gs_graphics_index_buffer_create(gs_graphics_index_buffer_desc_t* desc);
-GS_API_DECL gs_handle(gs_graphics_uniform_buffer_t) gs_graphics_uniform_buffer_create(gs_graphics_uniform_buffer_desc_t* desc);
-GS_API_DECL gs_handle(gs_graphics_framebuffer_t)    gs_graphics_framebuffer_create(gs_graphics_framebuffer_desc_t* desc);
-GS_API_DECL gs_handle(gs_graphics_render_pass_t)    gs_graphics_render_pass_create(gs_graphics_render_pass_desc_t* desc);
-GS_API_DECL gs_handle(gs_graphics_pipeline_t)       gs_graphics_pipeline_create(gs_graphics_pipeline_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_texture_t)        gs_graphics_texture_create(const gs_graphics_texture_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_uniform_t)        gs_graphics_uniform_create(const gs_graphics_uniform_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_shader_t)         gs_graphics_shader_create(const gs_graphics_shader_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_vertex_buffer_t)  gs_graphics_vertex_buffer_create(const gs_graphics_vertex_buffer_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_index_buffer_t)   gs_graphics_index_buffer_create(const gs_graphics_index_buffer_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_uniform_buffer_t) gs_graphics_uniform_buffer_create(const gs_graphics_uniform_buffer_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_framebuffer_t)    gs_graphics_framebuffer_create(const gs_graphics_framebuffer_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_render_pass_t)    gs_graphics_render_pass_create(const gs_graphics_render_pass_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_pipeline_t)       gs_graphics_pipeline_create(const gs_graphics_pipeline_desc_t* desc);
 
 /* Resource Destruction */
 GS_API_DECL void gs_graphics_texture_destroy(gs_handle(gs_graphics_texture_t) hndl);
