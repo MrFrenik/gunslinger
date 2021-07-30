@@ -50,6 +50,7 @@ typedef struct gsgl_uniform_t {
     uint32_t location;              // Location of uniform
     size_t size;                    // Total data size of uniform
     uint32_t sid;                   // Shader id (should probably inverse this, but I don't want to force a map lookup)
+    uint32_t count;                 // Count (used for arrays)
 } gsgl_uniform_t;
 
 // When a user passes in a uniform layout, that handle could then pass to a WHOLE list of uniforms (if describing a struct)
@@ -736,6 +737,7 @@ gs_handle(gs_graphics_uniform_t) gs_graphics_uniform_create(const gs_graphics_un
         u.name = layout->fname;
         u.type = gsgl_uniform_type_to_gl_uniform_type(layout->type);
         u.size = gsgl_uniform_data_size_in_bytes(layout->type);
+        u.count = layout->count;
         u.location = UINT32_MAX;
 
         // Add to size of ul

@@ -4541,9 +4541,9 @@ GS_API_DECL void  gs_platform_update(gs_platform_t* platform);    // Update plat
 GS_API_DECL float  gs_platform_delta_time();
 
 // Platform UUID
-GS_API_DECL gs_uuid_t gs_platform_generate_uuid();
+GS_API_DECL gs_uuid_t gs_platform_uuid_generate();
 GS_API_DECL void      gs_platform_uuid_to_string(char* temp_buffer, const gs_uuid_t* uuid); // Expects a temp buffer with at least 32 bytes
-GS_API_DECL uint32_t  gs_platform_hash_uuid(const gs_uuid_t* uuid);
+GS_API_DECL uint32_t  gs_platform_uuid_hash(const gs_uuid_t* uuid);
 
 // Platform Input
 GS_API_DECL void      gs_platform_update_input(gs_platform_input_t* input);
@@ -5091,15 +5091,16 @@ typedef struct gs_graphics_uniform_layout_desc_t
 {
     gs_graphics_uniform_type type;                  // Type of field
     const char* fname;                              // Name of field (required for implicit APIs, like OpenGL/ES)
+    uint32_t count;                                 // Count variable (used for arrays such as glUniformXXXv)
 } gs_graphics_uniform_layout_desc_t;
 
 /* Graphics Uniform Desc */
 typedef struct gs_graphics_uniform_desc_t
 {
     gs_graphics_shader_stage_type stage;
-    const char* name;
-    gs_graphics_uniform_layout_desc_t* layout;
-    size_t layout_size;
+    const char* name;                               // Name of uniform (required for OpenGL/ES, WebGL)
+    gs_graphics_uniform_layout_desc_t* layout;      // Layout array for uniform data
+    size_t layout_size;                             // Size of uniform data in bytes
 } gs_graphics_uniform_desc_t;
 
 typedef struct gs_graphics_buffer_update_desc_t
@@ -7036,11 +7037,11 @@ gs_engine_t* gs_engine_create(gs_app_desc_t app_desc)
         // Set frame rate for application
         gs_engine_subsystem(platform)->time.max_fps = app_desc.frame_rate;
 
-        // Set vsync for video
-        gs_platform_enable_vsync(app_desc.enable_vsync);
-
         // Construct main window
         gs_platform_create_window(app_desc.window_title, app_desc.window_width, app_desc.window_height);
+
+        // Set vsync for video
+        gs_platform_enable_vsync(app_desc.enable_vsync); 
 
         // Construct graphics api 
         gs_engine_subsystem(graphics) = gs_graphics_create();

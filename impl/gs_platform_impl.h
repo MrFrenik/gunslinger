@@ -78,7 +78,7 @@ float gs_platform_delta_time()
 
 /*== Platform UUID ==*/
 
-struct gs_uuid_t gs_platform_generate_uuid()
+struct gs_uuid_t gs_platform_uuid_generate()
 {
     gs_uuid_t uuid;
 
@@ -145,7 +145,7 @@ void gs_platform_uuid_to_string(char* tmp_buffer, const gs_uuid_t* uuid)
     );
 }
 
-uint32_t gs_platform_hash_uuid(const gs_uuid_t* uuid)
+uint32_t gs_platform_uuid_hash(const gs_uuid_t* uuid)
 {
     char temp_buffer[] = gs_uuid_temp_str_buffer();
     gs_platform_uuid_to_string(temp_buffer, uuid);
