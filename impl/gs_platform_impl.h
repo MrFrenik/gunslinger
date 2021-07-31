@@ -180,7 +180,7 @@ GS_API_DECL void gs_platform_dir_iter_init(gs_platform_dir_iter_t* iter, const c
 		hndl->hfind = FindFirstFile(".\\assets\\*", &hndl->fdata);
 		if (hndl->hfind == INVALID_HANDLE_VALUE) 
                 {
-			gs_println("error: gs_platform_dir_iter_create:FindFirstFile failed (%s)\n", GetLastError());
+			gs_println("error: gs_platform_dir_iter_create:FindFirstFile failed (%d)\n", GetLastError());
 			gs_free(iter->hndl);
 			iter->hndl = NULL;
 		} 
