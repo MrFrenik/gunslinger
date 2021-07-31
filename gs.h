@@ -4501,6 +4501,7 @@ typedef void (* gs_character_callback_t)(void*, uint32_t code_point);
 
 typedef struct gs_platform_dir_iter_t
 {
+	char root_path[GS_PLATFORM_DIR_MAX_STR_SZ]; // Root starting path of current iterator
 	char path[GS_PLATFORM_DIR_MAX_STR_SZ]; 		// Path of current iterator
 	bool32 is_dir;								// If iterator is a directory
 	bool32 is_recursive;						// If iterator is recursive

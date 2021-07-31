@@ -158,7 +158,7 @@ uint32_t gs_platform_uuid_hash(const gs_uuid_t* uuid)
 
 	typedef struct gs_platform_dir_data_t 
 	{
-		WIN32_FIND_DATA fdata;
+		WIN32_FIND_DATAA fdata;
 		HANDLE hfind;
 	} gs_platform_dir_data_t;
 
@@ -166,36 +166,39 @@ uint32_t gs_platform_uuid_hash(const gs_uuid_t* uuid)
 
 #endif
 
-GS_API_DECL void gs_platform_dir_iter_init(gs_platform_dir_iter_t* iter, const char* path, bool32 recursive)
+GS_API_DECL gs_platform_dir_iter_t gs_platform_dir_iter_create(const char* path, bool32 recursive)
 {
-	memcpy(iter->path, path, GS_PLATFORM_DIR_MAX_STR_SZ);
-	iter->is_recursive = recursive;
+    gs_platform_dir_iter_t iter = gs_default_val();
+	memcpy(iter.root_path, path, GS_PLATFORM_DIR_MAX_STR_SZ);
+	iter.is_recursive = recursive;
 
 	// Depending on internal implementation, set pointer to something specific
 	#if (defined  GS_PLATFORM_WIN)
 
 		// Look for some windows shit
-		iter->hndl = gs_malloc_init(gs_platform_dir_data_t);
-		gs_platform_dir_data_t* hndl = (gs_platform_dir_data_t*)iter->hndl;
-		hndl->hfind = FindFirstFile(".\\assets\\*", &hndl->fdata);
+		iter.hndl = gs_malloc_init(gs_platform_dir_data_t);
+		gs_platform_dir_data_t* hndl = (gs_platform_dir_data_t*)iter.hndl;
+		hndl->hfind = FindFirstFileA(".\\assets\\*", &hndl->fdata);
 		if (hndl->hfind == INVALID_HANDLE_VALUE) 
-                {
+        {
 			gs_println("error: gs_platform_dir_iter_create:FindFirstFile failed (%d)\n", GetLastError());
-			gs_free(iter->hndl);
-			iter->hndl = NULL;
+			gs_free(iter.hndl);
+			iter.hndl = NULL;
 		} 
 
 		// Set whether is directory
-		iter->is_dir = (hndl->fdata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+		iter.is_dir = (hndl->fdata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
 
 		// Copy file path name
-		memcpy(iter->path, hndl->fdata.cFileName, GS_PLATFORM_DIR_MAX_STR_SZ);
+		memcpy(iter.path, hndl->fdata.cFileName, GS_PLATFORM_DIR_MAX_STR_SZ);
 
 	#elif (defined GS_PLATFORM_APPLE || defined GS_PLATFORM_LINUX)
 
 		// Look for some unix shit
 
 	#endif
+
+    return iter;
 }
 
 GS_API_DECL bool32 gs_platform_dir_iter_valid(gs_platform_dir_iter_t* iter)
@@ -207,11 +210,15 @@ GS_API_DECL bool32 gs_platform_dir_iter_valid(gs_platform_dir_iter_t* iter)
 		gs_platform_dir_data_t* hndl = (gs_platform_dir_data_t*)iter->hndl;
 
 		// Just try to read iter data for now
-		int32_t ret = FindNextFile(hndl->hfind, &hndl->fdata);
+		int32_t ret = FindNextFileA(hndl->hfind, &hndl->fdata);
 
 		// Clear data
 		if (!ret)
 		{
+            // Close handle
+            FindClose(hndl->hfind);
+
+            // Free data handle
 			gs_free(iter->hndl);
 			iter->hndl = NULL;
 			return false;
