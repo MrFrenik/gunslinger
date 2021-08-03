@@ -178,7 +178,7 @@ GS_API_DECL gs_platform_dir_iter_t gs_platform_dir_iter_create(const char* path,
 		// Look for some windows shit
 		iter.hndl = gs_malloc_init(gs_platform_dir_data_t);
 		gs_platform_dir_data_t* hndl = (gs_platform_dir_data_t*)iter.hndl;
-		hndl->hfind = FindFirstFileA(".\\assets\\*", &hndl->fdata);
+		hndl->hfind = FindFirstFileA(path, &hndl->fdata);
 		if (hndl->hfind == INVALID_HANDLE_VALUE) 
         {
 			gs_println("error: gs_platform_dir_iter_create:FindFirstFile failed (%d)\n", GetLastError());
