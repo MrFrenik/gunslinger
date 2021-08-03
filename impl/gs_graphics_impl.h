@@ -127,6 +127,17 @@ typedef struct gsgl_data_t
     gs_slot_array(gsgl_pipeline_t)      pipelines;
     gs_slot_array(gsgl_render_pass_t)   render_passes;
 
+    // All the required uniform data for strict aliasing.
+    struct {
+        gs_dyn_array(uint32_t)  ui32; 
+        gs_dyn_array(int32_t)   i32; 
+        gs_dyn_array(float)     flt; 
+        gs_dyn_array(gs_vec2)   vec2; 
+        gs_dyn_array(gs_vec3)   vec3; 
+        gs_dyn_array(gs_vec4)   vec4; 
+        gs_dyn_array(gs_mat4)   mat4; 
+    } uniform_data;
+
     // Cached data between draw calls (to minimize state changes)
     gsgl_data_cache_t cache;
 
@@ -556,6 +567,15 @@ void gs_graphics_destroy(gs_graphics_t* graphics)
     gs_slot_array_free(ogl->pipelines);
     gs_slot_array_free(ogl->render_passes);
     gs_slot_array_free(ogl->uniform_buffers);
+
+    // Free uniform data array
+    gs_dyn_array_free(ogl->uniform_data.mat4);
+    gs_dyn_array_free(ogl->uniform_data.vec4);
+    gs_dyn_array_free(ogl->uniform_data.vec3);
+    gs_dyn_array_free(ogl->uniform_data.vec2);
+    gs_dyn_array_free(ogl->uniform_data.flt);
+    gs_dyn_array_free(ogl->uniform_data.i32);
+    gs_dyn_array_free(ogl->uniform_data.ui32);
 
     gs_free(graphics);
     graphics = NULL;
@@ -1576,58 +1596,81 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                                 {
                                     case GSGL_UNIFORMTYPE_FLOAT: 
                                     {
-                                        // Need to read bulk data for array.
+                                        // Need to read bulk data for array.  
                                         gs_assert(u->size == sizeof(float)); 
+                                        gs_dyn_array_clear(ogl->uniform_data.flt);
                                         uint32_t ct = u->count ? u->count : 1;
                                         size_t sz = ct * u->size;
-                                        glUniform1fv(u->location, ct, (float*)(cb->commands.data + cb->commands.position)); 
-                                        gs_byte_buffer_advance_position(&cb->commands, sz); 
-
+                                        gs_for_range(ct) {
+                                            gs_byte_buffer_readc(&cb->commands, float, v);
+                                            gs_dyn_array_push(ogl->uniform_data.flt, v);
+                                        }
+                                        glUniform1fv(u->location, ct, ogl->uniform_data.flt); 
                                     } break;
 
                                     case GSGL_UNIFORMTYPE_INT: 
                                     {
                                         gs_assert(u->size == sizeof(int32_t)); 
+                                        gs_dyn_array_clear(ogl->uniform_data.i32);
                                         uint32_t ct = u->count ? u->count : 1;
                                         size_t sz = ct * u->size;
-                                        glUniform1iv(u->location, ct, (int32_t*)(cb->commands.data + cb->commands.position)); 
-                                        gs_byte_buffer_advance_position(&cb->commands, sz); 
+                                        gs_for_range(ct) {
+                                            gs_byte_buffer_readc(&cb->commands, int32_t, v);
+                                            gs_dyn_array_push(ogl->uniform_data.i32, v);
+                                        }
+                                        glUniform1iv(u->location, ct, ogl->uniform_data.i32); 
                                     } break;
 
                                     case GSGL_UNIFORMTYPE_VEC2: 
                                     {
                                         gs_assert(u->size == sizeof(gs_vec2)); 
+                                        gs_dyn_array_clear(ogl->uniform_data.vec2);
                                         uint32_t ct = u->count ? u->count : 1;
                                         size_t sz = ct * u->size;
-                                        glUniform2fv(u->location, ct, (float*)(cb->commands.data + cb->commands.position)); 
-                                        gs_byte_buffer_advance_position(&cb->commands, sz); 
+                                        gs_for_range(ct) {
+                                            gs_byte_buffer_readc(&cb->commands, gs_vec2, v);
+                                            gs_dyn_array_push(ogl->uniform_data.vec2, v);
+                                        }
+                                        glUniform2fv(u->location, ct, (float*)ogl->uniform_data.vec2); 
                                     } break;
 
                                     case GSGL_UNIFORMTYPE_VEC3: 
                                     {
                                         gs_assert(u->size == sizeof(gs_vec3));
+                                        gs_dyn_array_clear(ogl->uniform_data.vec3);
                                         uint32_t ct = u->count ? u->count : 1;
                                         size_t sz = ct * u->size;
-                                        glUniform3fv(u->location, ct, (float*)(cb->commands.data + cb->commands.position)); 
-                                        gs_byte_buffer_advance_position(&cb->commands, sz);
+                                        gs_for_range(ct) {
+                                            gs_byte_buffer_readc(&cb->commands, gs_vec3, v);
+                                            gs_dyn_array_push(ogl->uniform_data.vec3, v);
+                                        }
+                                        glUniform3fv(u->location, ct, (float*)ogl->uniform_data.vec3); 
                                     } break;
 
                                     case GSGL_UNIFORMTYPE_VEC4: 
                                     { 
                                         gs_assert(u->size == sizeof(gs_vec4));
+                                        gs_dyn_array_clear(ogl->uniform_data.vec4);
                                         uint32_t ct = u->count ? u->count : 1;
                                         size_t sz = ct * u->size;
-                                        glUniform4fv(u->location, ct, (float*)(cb->commands.data + cb->commands.position)); 
-                                        gs_byte_buffer_advance_position(&cb->commands, sz); 
+                                        gs_for_range(ct) {
+                                            gs_byte_buffer_readc(&cb->commands, gs_vec4, v);
+                                            gs_dyn_array_push(ogl->uniform_data.vec4, v);
+                                        }
+                                        glUniform4fv(u->location, ct, (float*)ogl->uniform_data.vec4); 
                                     } break;
 
                                     case GSGL_UNIFORMTYPE_MAT4: 
-                                    {
+                                    { 
                                         gs_assert(u->size == sizeof(gs_mat4)); 
+                                        gs_dyn_array_clear(ogl->uniform_data.mat4);
                                         uint32_t ct = u->count ? u->count : 1;
-                                        size_t sz = ct * u->size;
-                                        glUniformMatrix4fv(u->location, ct, false, (float*)(cb->commands.data + cb->commands.position)); 
-                                        gs_byte_buffer_advance_position(&cb->commands, sz); 
+                                        size_t sz = ct * u->size; 
+                                        gs_for_range(ct) {
+                                            gs_byte_buffer_readc(&cb->commands, gs_mat4, v);
+                                            gs_dyn_array_push(ogl->uniform_data.mat4, v);
+                                        }
+                                        glUniformMatrix4fv(u->location, ct, false, (float*)ogl->uniform_data.mat4); 
                                     } break;
 
                                     case GSGL_UNIFORMTYPE_SAMPLER2D:
