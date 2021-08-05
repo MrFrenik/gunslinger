@@ -4495,19 +4495,6 @@ typedef void (* gs_dropped_files_callback_t)(void*, int32_t count, const char** 
 typedef void (* gs_window_close_callback_t)(void*);
 typedef void (* gs_character_callback_t)(void*, uint32_t code_point);
 
-// Directory
-
-#define GS_PLATFORM_DIR_MAX_STR_SZ 			1024
-
-typedef struct gs_platform_dir_iter_t
-{
-	char root_path[GS_PLATFORM_DIR_MAX_STR_SZ]; // Root starting path of current iterator
-	char path[GS_PLATFORM_DIR_MAX_STR_SZ]; 		// Path of current iterator
-	bool32 is_dir;								// If iterator is a directory
-	bool32 is_recursive;						// If iterator is recursive
-	void* hndl;									// Platform necessary handle for internal data
-} gs_platform_dir_iter_t;
-
 /*===============================================================================================
 // Platform Interface
 ===============================================================================================*/
@@ -4557,10 +4544,6 @@ GS_API_DECL float  gs_platform_delta_time();
 GS_API_DECL gs_uuid_t gs_platform_uuid_generate();
 GS_API_DECL void      gs_platform_uuid_to_string(char* temp_buffer, const gs_uuid_t* uuid); // Expects a temp buffer with at least 32 bytes
 GS_API_DECL uint32_t  gs_platform_uuid_hash(const gs_uuid_t* uuid);
-
-// Platform Directory
-GS_API_DECL gs_platform_dir_iter_t gs_platform_dir_iter_create(const char* path, bool32 recursive);
-GS_API_DECL bool32 gs_platform_dir_iter_valid(gs_platform_dir_iter_t* iter);
 
 // Platform Input
 GS_API_DECL void      gs_platform_update_input(gs_platform_input_t* input);

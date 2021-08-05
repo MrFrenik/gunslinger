@@ -25,6 +25,8 @@
 
 #if !( defined GS_PLATFORM_WIN )
     #include <sys/stat.h>
+#else
+	#include "../external/dirent/dirent.h"
 #endif
 
 /*== Platform Window ==*/
@@ -150,93 +152,6 @@ uint32_t gs_platform_uuid_hash(const gs_uuid_t* uuid)
     char temp_buffer[] = gs_uuid_temp_str_buffer();
     gs_platform_uuid_to_string(temp_buffer, uuid);
     return (gs_hash_str(temp_buffer));
-}
-
-/*=== Platform Directory ===*/
-
-#ifdef GS_PLATFORM_WIN
-
-	typedef struct gs_platform_dir_data_t 
-	{
-		WIN32_FIND_DATAA fdata;
-		HANDLE hfind;
-	} gs_platform_dir_data_t;
-
-#elif (defined GS_PLATFORM_APPLE || defined GS_PLATFORM_LINUX)
-
-#endif
-
-GS_API_DECL gs_platform_dir_iter_t gs_platform_dir_iter_create(const char* path, bool32 recursive)
-{
-    gs_platform_dir_iter_t iter = gs_default_val();
-	memcpy(iter.root_path, path, GS_PLATFORM_DIR_MAX_STR_SZ);
-	iter.is_recursive = recursive;
-
-	// Depending on internal implementation, set pointer to something specific
-	#if (defined  GS_PLATFORM_WIN)
-
-		// Look for some windows shit
-		iter.hndl = gs_malloc_init(gs_platform_dir_data_t);
-		gs_platform_dir_data_t* hndl = (gs_platform_dir_data_t*)iter.hndl;
-		hndl->hfind = FindFirstFileA(path, &hndl->fdata);
-		if (hndl->hfind == INVALID_HANDLE_VALUE) 
-        {
-			gs_println("error: gs_platform_dir_iter_create:FindFirstFile failed (%d)\n", GetLastError());
-			gs_free(iter.hndl);
-			iter.hndl = NULL;
-		} 
-
-		// Set whether is directory
-		iter.is_dir = (hndl->fdata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
-
-		// Copy file path name
-		memcpy(iter.path, hndl->fdata.cFileName, GS_PLATFORM_DIR_MAX_STR_SZ);
-
-	#elif (defined GS_PLATFORM_APPLE || defined GS_PLATFORM_LINUX)
-
-		// Look for some unix shit
-
-	#endif
-
-    return iter;
-}
-
-GS_API_DECL bool32 gs_platform_dir_iter_valid(gs_platform_dir_iter_t* iter)
-{
-	if (!iter || !iter->hndl) return false;
-
-	#ifdef GS_PLATFORM_WIN
-
-		gs_platform_dir_data_t* hndl = (gs_platform_dir_data_t*)iter->hndl;
-
-		// Just try to read iter data for now
-		int32_t ret = FindNextFileA(hndl->hfind, &hndl->fdata);
-
-		// Clear data
-		if (!ret)
-		{
-            // Close handle
-            FindClose(hndl->hfind);
-
-            // Free data handle
-			gs_free(iter->hndl);
-			iter->hndl = NULL;
-			return false;
-		}
-
-		// Set whether is directory
-		iter->is_dir = (hndl->fdata.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
-
-		// Copy file path name
-		memcpy(iter->path, hndl->fdata.cFileName, GS_PLATFORM_DIR_MAX_STR_SZ);
-
-		return true;
-
-	#elif (defined GS_PLATFORM_APPLE || defined GS_PLATFORM_LINUX)
-
-		return false;
-
-	#endif
 }
 
 #define __gs_input()\
