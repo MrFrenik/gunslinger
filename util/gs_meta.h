@@ -43,10 +43,27 @@
  *  @{
  */
 
+#define GS_META_PROPERTY_FLAG_POINTER 		 0x01
+#define GS_META_PROPERTY_FLAG_DOUBLE_POINTER 0x02
+
 typedef struct gs_meta_property_type_info_t 
 {
-    const char* name;       // Used for display name
-    uint32_t id;            // Id used for lookups and associations (most likely by enum)
+    const char* name;   // Used for display name
+    uint32_t id;        // Id used for lookups and associations (most likely by enum)
+	uint32_t flags;		// Number of times this field needs to be dereferenced
+	union
+	{
+		struct
+		{
+			uint64_t enum_id;
+		} enum_info;
+
+		struct 
+		{
+			uint32_t key_id;
+			uint32_t val_id;
+		} container_info;
+	} info;
 } gs_meta_property_type_info_t;
 
 // Default meta property type ids
@@ -72,6 +89,7 @@ typedef enum gs_meta_property_type
     GS_META_PROPERTY_TYPE_UUID,
     GS_META_PROPERTY_TYPE_SIZE_T,       // Used for pointers or size_t variables
     GS_META_PROPERTY_TYPE_STR,          // Used for const char*, char*
+	GS_META_PROPERTY_TYPE_OBJ,
     GS_META_PROPERTY_TYPE_COUNT
 } gs_meta_property_type;
 
@@ -98,21 +116,23 @@ GS_API_PRIVATE gs_meta_property_type_info_t _gs_meta_property_type_decl_impl(con
 #define GS_META_PROPERTY_TYPE_INFO_MAT3     _gs_meta_property_type_decl(gs_mat3, GS_META_PROPERTY_TYPE_MAT3)
 #define GS_META_PROPERTY_TYPE_INFO_MAT4     _gs_meta_property_type_decl(gs_mat4, GS_META_PROPERTY_TYPE_MAT4)
 #define GS_META_PROPERTY_TYPE_INFO_VQS      _gs_meta_property_type_decl(gs_vqs, GS_META_PROPERTY_TYPE_VQS)
-#define GS_META_PROPERTY_TYPE_INFO_UUID      _gs_meta_property_type_decl(gs_uuid_t, GS_META_PROPERTY_TYPE_UUID)
+#define GS_META_PROPERTY_TYPE_INFO_UUID     _gs_meta_property_type_decl(gs_uuid_t, GS_META_PROPERTY_TYPE_UUID)
 #define GS_META_PROPERTY_TYPE_INFO_SIZE_T   _gs_meta_property_type_decl(size_t, GS_META_PROPERTY_TYPE_SIZE_T)
 #define GS_META_PROPERTY_TYPE_INFO_STR      _gs_meta_property_type_decl(char*, GS_META_PROPERTY_TYPE_STR)
+#define GS_META_PROPERTY_TYPE_INFO_OBJ      _gs_meta_property_type_decl(object, GS_META_PROPERTY_TYPE_OBJ)
 
 typedef struct gs_meta_property_t
 {
     const char* name;           
     uint32_t offset;            
+	const char* type_name;
     gs_meta_property_type_info_t type;
 } gs_meta_property_t;
 
-GS_API_PRIVATE gs_meta_property_t _gs_meta_property_impl(const char* name, uint32_t offset, gs_meta_property_type_info_t type);
+GS_API_PRIVATE gs_meta_property_t _gs_meta_property_impl(const char* field_type_name, const char* field, uint32_t offset, gs_meta_property_type_info_t type);
 
-#define gs_meta_property(CLS, FIELD, TYPE)\
-    _gs_meta_property_impl(gs_to_str(FIELD), gs_offset(CLS, FIELD), TYPE)
+#define gs_meta_property(CLS, FIELD_TYPE_NAME, FIELD, TYPE)\
+    _gs_meta_property_impl(gs_to_str(FIELD_TYPE_NAME), gs_to_str(FIELD), gs_offset(CLS, FIELD), TYPE)
 
 typedef struct gs_meta_class_t
 {
@@ -147,10 +167,13 @@ GS_API_DECL  uint64_t gs_meta_class_register(gs_meta_registry_t* meta, const gs_
 //    _gs_meta_register_class_impl((META), gs_to_str(T), gs_to_str(BASE), (DECL))
 
 #define gs_meta_class_get(META, T)\
-    gs_hash_table_getp((META)->classes, gs_hash_str64(gs_to_str(T)))
+    (gs_hash_table_getp((META)->classes, gs_hash_str64(gs_to_str(T))))
+
+#define gs_meta_class_get_w_name(META, NAME)\
+	(gs_hash_table_getp((META)->classes, gs_hash_str64(NAME)))
 
 #define gs_meta_class_get_w_id(META, ID)\
-    gs_hash_table_getp((META)->classes, (ID));
+    (gs_hash_table_getp((META)->classes, (ID)))
 
 #define gs_meta_getv(OBJ, T, PROP)\
     (*((T*)((uint8_t*)(OBJ) + (PROP)->offset)))
@@ -187,10 +210,11 @@ GS_API_DECL void gs_meta_registry_free(gs_meta_registry_t* meta)
     gs_hash_table_free(meta->classes);
 }
 
-GS_API_PRIVATE gs_meta_property_t _gs_meta_property_impl(const char* name, uint32_t offset, gs_meta_property_type_info_t type)
+GS_API_PRIVATE gs_meta_property_t _gs_meta_property_impl(const char* field_type_name, const char* field, uint32_t offset, gs_meta_property_type_info_t type)
 {
     gs_meta_property_t mp = gs_default_val();
-    mp.name = name;
+    mp.name = field;
+	mp.type_name = field_type_name;
     mp.offset = offset;
     mp.type = type;
     return mp;
@@ -201,6 +225,7 @@ GS_API_PRIVATE uint64_t gs_meta_class_register(gs_meta_registry_t* meta, const g
     uint32_t ct = decl->size / sizeof(gs_meta_property_t);
     gs_meta_class_t cls = gs_default_val();
     cls.properties = (gs_meta_property_t*)gs_malloc(decl->size);
+	cls.property_count = ct;
     cls.name = decl->name;
     cls.base = decl->base ? gs_hash_str64(decl->base) : gs_hash_str64("NULL");
     memcpy(cls.properties, decl->properties, decl->size);
