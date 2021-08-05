@@ -1925,6 +1925,9 @@ uint32_t gs_hash_table_get_key_index_func(void** data, void* key, size_t key_len
     ((__HT)->tmp_key = (__HTK),\
         (gs_hash_table_get_key_index_func((void**)&(__HT->data), (void*)&(__HT->tmp_key), sizeof(__HT->tmp_key), sizeof(__HT->tmp_val), __HT->stride, __HT->klpvl) != GS_HASH_TABLE_INVALID_INDEX))
 
+#define gs_hash_table_exists(__HT, __HTK)\
+		(__HT && gs_hash_table_key_exists((__HT), (__HTK)))
+
 #define gs_hash_table_erase(__HT, __HTK)\
     do {\
         /* Get idx for key */\
