@@ -542,7 +542,7 @@
 
 /*===================
 // PLATFORM DEFINES
-===================*/
+===================*/ 
 
 /* Platform Android */
 #if (defined __ANDROID__)
@@ -556,6 +556,8 @@
 
 /* Platform Windows */
 #elif (defined _WIN32 || defined _WIN64)
+
+    #define __USE_MINGW_ANSI_STDIO  1
 
     // Necessary windows defines before including windows.h, because it's retarded.
     #define OEMRESOURCE
@@ -5452,7 +5454,7 @@ typedef gs_handle(gs_graphics_pipeline_t)    gs_pipeline;
 
 /** @addtogroup gs_util
  *  @{
- */
+ */ 
 
 // Texture
 typedef struct gs_asset_texture_t
