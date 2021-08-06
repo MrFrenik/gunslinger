@@ -635,6 +635,17 @@ gs_result gs_platform_write_file_contents_default_impl(const char* file_path, co
     return GS_RESULT_FAILURE;
 }
 
+GS_API_DECL bool gs_platform_dir_exists_default_impl(const char* dir_path)
+{
+	DIR* dir = opendir(dir_path);
+	if (dir)
+	{
+		closedir(dir);
+		return true;
+	}
+	return false;
+}
+
 bool gs_platform_file_exists_default_impl(const char* file_path)
 {
     const char* path = file_path;
