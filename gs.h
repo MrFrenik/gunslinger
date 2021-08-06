@@ -1224,6 +1224,26 @@ void gs_fprintln
     gs_fprintf(fp, "\n");
 }
 
+gs_force_inline
+void gs_fprintln_t
+(
+	FILE* fp, 
+	uint32_t tabs,
+	const char* fmt, 
+	...
+)
+{
+    va_list args;
+    va_start(args, fmt);
+	for (uint32_t i = 0; i < tabs; ++i)
+	{
+		gs_fprintf(fp, "\t");
+	}
+    vfprintf(fp, fmt, args);
+    va_end(args);
+    gs_fprintf(fp, "\n");
+}
+
 #ifdef __MINGW32__
 #define gs_snprintf(__NAME, __SZ, __FMT, ...) __mingw_snprintf(__NAME, __SZ, __FMT, ## __VA_ARGS__)
 #else

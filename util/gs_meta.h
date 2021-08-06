@@ -79,6 +79,7 @@ typedef enum gs_meta_property_type
     GS_META_PROPERTY_TYPE_S64,
     GS_META_PROPERTY_TYPE_F32,
     GS_META_PROPERTY_TYPE_F64,
+	GS_META_PROPERTY_TYPE_ENUM,
     GS_META_PROPERTY_TYPE_VEC2,
     GS_META_PROPERTY_TYPE_VEC3,
     GS_META_PROPERTY_TYPE_VEC4,
@@ -109,6 +110,7 @@ GS_API_PRIVATE gs_meta_property_type_info_t _gs_meta_property_type_decl_impl(con
 #define GS_META_PROPERTY_TYPE_INFO_S64      _gs_meta_property_type_decl(int64_t, GS_META_PROPERTY_TYPE_S64)
 #define GS_META_PROPERTY_TYPE_INFO_F32      _gs_meta_property_type_decl(float, GS_META_PROPERTY_TYPE_F32)
 #define GS_META_PROPERTY_TYPE_INFO_F64      _gs_meta_property_type_decl(double, GS_META_PROPERTY_TYPE_F64)
+#define GS_META_PROPERTY_TYPE_INFO_ENUM     _gs_meta_property_type_decl(enum, GS_META_PROPERTY_TYPE_ENUM)
 #define GS_META_PROPERTY_TYPE_INFO_VEC2     _gs_meta_property_type_decl(gs_vec2, GS_META_PROPERTY_TYPE_VEC2)
 #define GS_META_PROPERTY_TYPE_INFO_VEC3     _gs_meta_property_type_decl(gs_vec3, GS_META_PROPERTY_TYPE_VEC3)
 #define GS_META_PROPERTY_TYPE_INFO_VEC4     _gs_meta_property_type_decl(gs_vec4, GS_META_PROPERTY_TYPE_VEC4)
@@ -129,6 +131,11 @@ typedef struct gs_meta_property_t
     gs_meta_property_type_info_t type;
 } gs_meta_property_t;
 
+typedef struct gs_meta_enum_value_t 
+{
+	const char* name;
+} gs_meta_enum_value_t;
+
 GS_API_PRIVATE gs_meta_property_t _gs_meta_property_impl(const char* field_type_name, const char* field, uint32_t offset, gs_meta_property_type_info_t type);
 
 #define gs_meta_property(CLS, FIELD_TYPE_NAME, FIELD, TYPE)\
@@ -143,9 +150,18 @@ typedef struct gs_meta_class_t
     uint64_t base;                    // Parent class ID
 } gs_meta_class_t;
 
+typedef struct gs_meta_enum_t
+{
+	gs_meta_enum_value_t* values;	// Value list
+	uint32_t value_count;			// Count of enum values
+	const char* name;				// Name of enum
+	uint64_t id;					// Enum id
+} gs_meta_enum_t;
+
 typedef struct gs_meta_registry_t
 {
-    gs_hash_table(u64, gs_meta_class_t) classes;
+    gs_hash_table(uint64_t, gs_meta_class_t) classes;
+	gs_hash_table(uint64_t, gs_meta_enum_t) enums; 
     void* user_data;
 } gs_meta_registry_t;
 
@@ -157,11 +173,19 @@ typedef struct gs_meta_class_decl_t
     const char* base;                   // Base parent class name (will be used for hash id, NULL for invalid id)
 } gs_meta_class_decl_t;
 
+typedef struct gs_meta_enum_decl_t
+{
+    gs_meta_enum_value_t* values;
+    size_t size;
+    const char* name;                   // Display name of class
+} gs_meta_enum_decl_t;
+
 GS_API_DECL gs_meta_registry_t gs_meta_registry_new();
 GS_API_DECL void gs_meta_registry_free(gs_meta_registry_t* meta);
 GS_API_DECL const char* gs_meta_typestr(gs_meta_property_type type);
 GS_API_DECL bool32 gs_meta_has_base_class(const gs_meta_registry_t* meta, const gs_meta_class_t* cls);
-GS_API_DECL  uint64_t gs_meta_class_register(gs_meta_registry_t* meta, const gs_meta_class_decl_t* decl);
+GS_API_DECL uint64_t gs_meta_class_register(gs_meta_registry_t* meta, const gs_meta_class_decl_t* decl);
+GS_API_DECL uint64_t gs_meta_enum_register(gs_meta_registry_t* meta, const gs_meta_enum_decl_t* decl);
 
 //#define gs_meta_class_register(META, T, BASE, DECL)\
 //    _gs_meta_register_class_impl((META), gs_to_str(T), gs_to_str(BASE), (DECL))
@@ -232,6 +256,20 @@ GS_API_PRIVATE uint64_t gs_meta_class_register(gs_meta_registry_t* meta, const g
     uint64_t id = gs_hash_str64(decl->name);
     cls.id = id;
     gs_hash_table_insert(meta->classes, id, cls);
+    return id;
+}
+
+GS_API_DECL uint64_t gs_meta_enum_register(gs_meta_registry_t* meta, const gs_meta_enum_decl_t* decl)
+{
+    uint32_t ct = decl->size / sizeof(gs_meta_enum_value_t);
+    gs_meta_enum_t enm = gs_default_val();
+    enm.values = (gs_meta_enum_value_t*)gs_malloc(decl->size);
+	enm.value_count = ct;
+    enm.name = decl->name;
+    memcpy(enm.values, decl->values, decl->size);
+    uint64_t id = gs_hash_str64(decl->name);
+    enm.id = id;
+    gs_hash_table_insert(meta->enums, id, enm);
     return id;
 }
 
