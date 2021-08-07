@@ -626,6 +626,12 @@ gs_result gs_audio_init(gs_audio_t* audio)
 
 gs_result gs_audio_shutdown(gs_audio_t* audio)
 {
+    miniaudio_data_t* ma = (miniaudio_data_t*)audio->user_data; 
+
+    ma_context_uninit(&ma->context);
+    ma_device_uninit(&ma->device);
+    ma_mutex_init(&ma->lock);
+    
     return GS_RESULT_SUCCESS;
 }
 
