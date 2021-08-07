@@ -92,7 +92,7 @@ typedef enum gs_meta_property_type
     GS_META_PROPERTY_TYPE_STR,          // Used for const char*, char*
 	GS_META_PROPERTY_TYPE_OBJ,
     GS_META_PROPERTY_TYPE_COUNT
-} gs_meta_property_type;
+} gs_meta_property_type; 
 
 GS_API_PRIVATE gs_meta_property_type_info_t _gs_meta_property_type_decl_impl(const char* name, uint32_t id);
 
@@ -141,6 +141,11 @@ GS_API_PRIVATE gs_meta_property_t _gs_meta_property_impl(const char* field_type_
 #define gs_meta_property(CLS, FIELD_TYPE_NAME, FIELD, TYPE)\
     _gs_meta_property_impl(gs_to_str(FIELD_TYPE_NAME), gs_to_str(FIELD), gs_offset(CLS, FIELD), TYPE)
 
+typedef struct gs_meta_vtable_t
+{
+    gs_hash_table(uint64_t, void*) funcs;   // Hash function name to function pointer
+} gs_meta_vtable_t;
+
 typedef struct gs_meta_class_t
 {
     gs_meta_property_t* properties;   // Property list
@@ -148,6 +153,7 @@ typedef struct gs_meta_class_t
     const char* name;                 // Display name of class
     uint64_t id;                      // Class ID
     uint64_t base;                    // Parent class ID
+    gs_meta_vtable_t vtable;          // VTable for class
 } gs_meta_class_t;
 
 typedef struct gs_meta_enum_t
@@ -170,7 +176,8 @@ typedef struct gs_meta_class_decl_t
     gs_meta_property_t* properties;
     size_t size;
     const char* name;                   // Display name of class
-    const char* base;                   // Base parent class name (will be used for hash id, NULL for invalid id)
+    const char* base;                   // Base parent class name (will be used for hash id, NULL for invalid id) 
+    gs_meta_vtable_t* vtable;           // Vtable
 } gs_meta_class_decl_t;
 
 typedef struct gs_meta_enum_decl_t
@@ -255,6 +262,7 @@ GS_API_PRIVATE uint64_t gs_meta_class_register(gs_meta_registry_t* meta, const g
     memcpy(cls.properties, decl->properties, decl->size);
     uint64_t id = gs_hash_str64(decl->name);
     cls.id = id;
+    cls.vtable = decl->vtable ? *decl->vtable : cls.vtable;
     gs_hash_table_insert(meta->classes, id, cls);
     return id;
 }

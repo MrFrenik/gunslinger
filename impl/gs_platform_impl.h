@@ -25,6 +25,7 @@
 
 #if !( defined GS_PLATFORM_WIN )
     #include <sys/stat.h>
+    #include <dirent.h>
 #else
 	#include "../external/dirent/dirent.h"
 #endif
