@@ -2961,13 +2961,13 @@ gs_vec4_ctor(f32 _x, f32 _y, f32 _z, f32 _w)
 gs_inline gs_vec4
 gs_vec4_add(gs_vec4 v0, gs_vec4 v1) 
 {
-    return gs_vec4_ctor(v0.x + v1.y, v0.y + v1.y, v0.z + v1.z, v0.w + v1.w);
+    return gs_vec4_ctor(v0.x + v1.x, v0.y + v1.y, v0.z + v1.z, v0.w + v1.w);
 }
 
 gs_inline gs_vec4
 gs_vec4_sub(gs_vec4 v0, gs_vec4 v1) 
 {
-    return gs_vec4_ctor(v0.x - v1.y, v0.y - v1.y, v0.z - v1.z, v0.w - v1.w);
+    return gs_vec4_ctor(v0.x - v1.x, v0.y - v1.y, v0.z - v1.z, v0.w - v1.w);
 }
 
 gs_inline gs_vec4
