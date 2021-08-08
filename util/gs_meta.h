@@ -154,6 +154,7 @@ typedef struct gs_meta_class_t
     uint64_t id;                      // Class ID
     uint64_t base;                    // Parent class ID
     gs_meta_vtable_t vtable;          // VTable for class
+    size_t size;                      // Size of class in bytes (for heap allocations)
 } gs_meta_class_t;
 
 typedef struct gs_meta_enum_t
@@ -178,6 +179,7 @@ typedef struct gs_meta_class_decl_t
     const char* name;                   // Display name of class
     const char* base;                   // Base parent class name (will be used for hash id, NULL for invalid id) 
     gs_meta_vtable_t* vtable;           // Vtable
+    size_t cls_size;                    // Size of class in bytes
 } gs_meta_class_decl_t;
 
 typedef struct gs_meta_enum_decl_t
@@ -269,6 +271,7 @@ GS_API_PRIVATE uint64_t gs_meta_class_register(gs_meta_registry_t* meta, const g
     uint64_t id = gs_hash_str64(decl->name);
     cls.id = id;
     cls.vtable = decl->vtable ? *decl->vtable : cls.vtable;
+    cls.size = decl->cls_size;
     gs_hash_table_insert(meta->classes, id, cls);
     return id;
 }
