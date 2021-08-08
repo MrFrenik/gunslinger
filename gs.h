@@ -701,6 +701,15 @@ typedef bool32_t          bool32;
 
 #define gs_int2voidp(I) (void*)(uintptr_t)(I)
 
+#define gs_if(INIT, CHECK, ...)\
+    do {\
+        INIT;\
+        if (CHECK)\
+        {\
+            __VA_ARGS__\
+        }\
+    } while (0) 
+
 /*===================================
 // Memory Allocation Utils
 ===================================*/
