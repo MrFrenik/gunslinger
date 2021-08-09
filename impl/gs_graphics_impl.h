@@ -27,9 +27,9 @@ gs_graphics_info_t* gs_graphics_info()
 #if (defined GS_GRAPHICS_IMPL_OPENGL_CORE || defined GS_GRAPHICS_IMPL_OPENGL_ES)
 
 #ifdef GS_GRAPHICS_IMPL_OPENGL_CORE
-    #define CHECK_GL_CORE(__VA_ARGS__) __VA_ARGS__
+    #define CHECK_GL_CORE(...) __VA_ARGS__
 #else
-    #define CHECK_GL_CORE(__VA_ARGS__) gs_empty_instruction(void)
+    #define CHECK_GL_CORE(...) gs_empty_instruction(void)
 #endif
 
 typedef enum gsgl_uniform_type

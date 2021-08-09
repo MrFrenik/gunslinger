@@ -602,7 +602,7 @@ char* gs_platform_read_file_contents_default_impl(const char* file_path, const c
         read_sz = gs_platform_file_size_in_bytes(file_path);
         buffer = (char*)gs_malloc(read_sz + 1);
         if (buffer) {
-            fread(buffer, 1, read_sz, fp);
+           size_t _r = fread(buffer, 1, read_sz, fp);
         }
         buffer[read_sz] = '\0';
         fclose(fp);

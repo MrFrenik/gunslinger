@@ -5488,7 +5488,7 @@ int stb_fullpath(char *abs, int abs_size, char *rel)
       return STB_TRUE;
    } else {
       int n;
-      getcwd(abs, abs_size);
+      char* _c = getcwd(abs, abs_size);
       n = strlen(abs);
       if (n+(int) strlen(rel)+2 <= abs_size) {
          abs[n] = '/';
@@ -5963,7 +5963,7 @@ char *stb_fget_string(FILE *f, void *p)
    int len = stb_fget_varlenu(f);
    if (len > 4096) return NULL;
    s = p ? stb_malloc_string(p, len+1) : (char *) malloc(len+1);
-   fread(s, 1, len, f);
+   size_t _s = fread(s, 1, len, f);
    s[len] = 0;
    return s;
 }
@@ -10474,7 +10474,7 @@ char *stb_decompress_fromfile(char *filename, unsigned int *len)
    n = ftell(f);
    fseek(f, 0, SEEK_SET);
    p = (unsigned char * ) malloc(n); if (p == NULL) return NULL;
-   fread(p, 1, n, f);
+   size_t _s = fread(p, 1, n, f);
    fclose(f);
    if (p == NULL) return NULL;
    if (p[0] != 0x57 || p[1] != 0xBc || p[2] || p[3]) { free(p); return NULL; }

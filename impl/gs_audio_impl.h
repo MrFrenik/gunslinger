@@ -123,7 +123,7 @@ bool32_t gs_audio_load_mp3_data_from_file
     uint64_t total_pcm_frame_count = 0;
     drmp3_config cfg = gs_default_val();
     *samples =  drmp3_open_memory_and_read_pcm_frames_s16(
-            file_data, len, &cfg, &total_pcm_frame_count, NULL);
+            file_data, len, &cfg, (drmp3_uint64*)&total_pcm_frame_count, NULL);
     gs_free(file_data);
 
     if (!*samples) {
