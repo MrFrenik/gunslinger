@@ -6,8 +6,8 @@
 	All Rights Reserved
 =================================================================*/
 
-#ifndef __GS_IDRAW_H__
-#define __GS_IDRAW_H__
+#ifndef GS_IDRAW_H
+#define GS_IDRAW_H
 
 /*
 	USAGE: (IMPORTANT)
@@ -2314,27 +2314,8 @@ GS_API_DECL const char* GSGetDefaultCompressedFontDataTTFBase85()
 		Lighting:
 		Matrices:
 		Pipeline:
-*/
+*/ 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#endif // __GS_IDRAW_H__
+#endif // GS_IDRAW_H
 

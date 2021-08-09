@@ -5,8 +5,8 @@
     All Rights Reserved
 =================================================================*/
 
-#ifndef __GS_META_H__
-#define __GS_META_H__
+#ifndef GS_META_H
+#define GS_META_H
 
 /*
     USAGE: (IMPORTANT)
@@ -327,5 +327,5 @@ GS_API_DECL void** _gs_meta_func_get_internal_w_id(const gs_meta_registry_t* met
 #undef GS_META_IMP
 
 #endif // GS_META_IMPL
-#endif // __GS_META_H__
+#endif // GS_META_H
 

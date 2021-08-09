@@ -36,8 +36,8 @@
 
 =================================================================================================================*/
 
-#ifndef __GS_INCLUDED_H__
-#define __GS_INCLUDED_H__
+#ifndef GS_H
+#define GS_H
 
 /*═█═════════════════════════════════════════════════════════════════════════════════════█═╗
 ████ ██████╗ ██╗   ██╗███╗   ██╗███████╗██╗     ██╗███╗   ██╗ ██████╗ ███████╗██████╗ ██████═█
@@ -4824,34 +4824,33 @@ typedef struct gs_audio_instance_decl_t
 typedef gs_audio_instance_decl_t gs_audio_instance_t;
 gs_handle_decl(gs_audio_instance_t);
 
+typedef void (* gs_audio_commit)(int16_t* output, uint32_t num_channels, uint32_t sample_rate, uint32_t frame_count);
+
 /*=============================
 // Audio Interface
 =============================*/
 
 typedef struct gs_audio_t
 {
-    /* Audio source data cache */
+    // Audio source data cache
     gs_slot_array(gs_audio_source_t) sources;
 
-    /* Audio instance data cache */
+    // Audio instance data cache
     gs_slot_array(gs_audio_instance_t) instances;
 
-    /* Max global volume setting */
+    // Max global volume setting
     float max_audio_volume;
 
-    /* Min global volume setting */
+    // Min global volume setting
     float min_audio_volume;
 
-    /* Samples to actually write to hardware */
-    void* sample_out;
+    // Samples to actually write to hardware
+    void* sample_out; 
 
-    /* Amount of samples to write */
-    uint32_t sample_count_to_output;    
+    // Custom user commit function
+    gs_audio_commit commit;
 
-    /* Samples per second for hardware */
-    uint32_t samples_per_second;
-
-    /* User data for custom impl */
+    // User data for custom impl
     void* user_data;
 } gs_audio_t;
 
@@ -4864,6 +4863,9 @@ GS_API_DECL gs_audio_t* gs_audio_create();
 GS_API_DECL void        gs_audio_destroy(gs_audio_t* audio);
 GS_API_DECL gs_result   gs_audio_init(gs_audio_t* audio);
 GS_API_DECL gs_result   gs_audio_shutdown(gs_audio_t* audio);
+
+// Register commit function
+GS_API_DECL void gs_audio_register_commit(gs_audio_commit commit);
 
 /* Audio create source */
 GS_API_DECL gs_handle(gs_audio_source_t) gs_audio_load_from_file(const char* file_path);
@@ -7728,13 +7730,8 @@ void gs_engine_quit()
 }
 
 #undef GS_IMPL
-#endif // GS_IMPL
-
-// #ifdef __cplusplus
-// }
-// #endif // c++
-
-#endif // __GS_INCLUDED_H__
+#endif // GS_IMPL 
+#endif // GS_H
 
 /*
     Layout decl

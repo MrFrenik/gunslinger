@@ -5,8 +5,8 @@
 	All Rights Reserved
 =================================================================*/
 
-#ifndef __GS_GFXT_H__
-#define __GS_GFXT_H__
+#ifndef GS_GFXT_H
+#define GS_GFXT_H
 
 /*
 	USAGE: (IMPORTANT)
@@ -1065,9 +1065,8 @@ gs_handle(gs_graphics_texture_t) gs_gfxt_texture_generate_default()
     return gs_graphics_texture_create(&desc);
 }
 
-#endif // GS_GFXT_IMPL
-
-#endif // __GS_GFXT_H__
+#endif // GS_GFXT_IMPL 
+#endif // GS_GFXT_H
 
 
 

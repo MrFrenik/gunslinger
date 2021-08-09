@@ -5,8 +5,8 @@
     All Rights Reserved
 =================================================================*/
 
-#ifndef __GS_PLATFORM_IMPL_H__
-#define __GS_PLATFORM_IMPL_H__
+#ifndef GS_PLATFORM_IMPL_H
+#define GS_PLATFORM_IMPL_H
 
 /*=================================
 // Default Platform Implemenattion

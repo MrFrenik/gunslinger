@@ -5,8 +5,8 @@
     All Rights Reserved
 =================================================================*/
 
-#ifndef __GS_GRAPHICS_IMPL_H__
-#define __GS_GRAPHICS_IMPL_H__
+#ifndef GS_GRAPHICS_IMPL_H
+#define GS_GRAPHICS_IMPL_H
 
 #ifndef GS_GRAPHICS_IMPL_CUSTOM
     #define GS_GRAPHICS_IMPL_DEFAULT
@@ -2165,5 +2165,5 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
 }
 
 #endif // GS_GRAPHICS_IMPL_OPENGL
-#endif // __GS_GRAPHICS_IMPL_H__
+#endif // GS_GRAPHICS_IMPL_H
 

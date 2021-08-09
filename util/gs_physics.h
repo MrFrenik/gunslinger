@@ -6,8 +6,8 @@
     All Rights Reserved
 =================================================================*/
 
-#ifndef __GS_PHYSICS_H__
-#define __GS_PHYSICS_H__
+#ifndef GS_PHYSICS_H
+#define GS_PHYSICS_H
 
 /*
     USAGE: (IMPORTANT)
@@ -1593,7 +1593,7 @@ GS_API_DECL void _gs_ccd_support_func(const void* _obj, const ccd_vec3_t* _dir, 
 }
 
 #endif // GS_PHYSICS_IMPL
-#endif // __GS_PHYSICS_H__
+#endif // GS_PHYSICS_H
 
 
 

@@ -5,8 +5,8 @@
 	All Rights Reserved
 =================================================================*/
 
-#ifndef __GS_ASSET_H__
-#define __GS_ASSET_H__
+#ifndef GS_ASSET_H
+#define GS_ASSET_H
 
 /*
 	USAGE: (IMPORTANT)
@@ -250,7 +250,7 @@ void gs_asset_default_load_from_file(const char* path, void* out)
 #undef GS_ASSET_IMPL
 #endif // GS_ASSET_IMPL 
 
-#endif // __GS_ASSET_H__
+#endif // GS_ASSET_H
 
 
 

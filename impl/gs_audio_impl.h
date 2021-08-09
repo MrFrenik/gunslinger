@@ -5,8 +5,8 @@
     All Rights Reserved
 =================================================================*/
 
-#ifndef __GS_AUDIO_IMPL_H__
-#define __GS_AUDIO_IMPL_H__
+#ifndef GS_AUDIO_IMPL_H
+#define GS_AUDIO_IMPL_H
 
 // Define default platform implementation if certain platforms are enabled
 #if (defined GS_AUDIO_IMPL_MINIAUDIO)
@@ -434,6 +434,18 @@ void gs_audio_mutex_unlock(gs_audio_t* audio)
     ma_mutex_unlock(&ma->lock);
 }
 
+s16 do_distortion(int16_t sample)
+{
+    // Bring sample into -1/1 range (float)
+    float v = gs_map_range((float)SHRT_MIN, (float)SHRT_MAX, -1.f, 1.f, (float)sample); 
+
+    const float pre_gain = 10.f;
+    v = tanhf(pre_gain * sin(v)); 
+
+    // Bring back into range
+    return gs_map_range(-1.f, 1.f, (float)SHRT_MIN, (float)SHRT_MAX, v);
+} 
+
 void ma_audio_commit(ma_device* device, void* output, const void* input, ma_uint32 frame_count)
 {
     gs_audio_t* audio = gs_engine_subsystem(audio);
@@ -447,10 +459,13 @@ void ma_audio_commit(ma_device* device, void* output, const void* input, ma_uint
     if (!audio->instances) 
         return;
 
-    // Mutex not working for pushing samples back. Need to copy sample data OVER at a synced position.
-    // Add sample data into byte buffer to push back, but this has to be done to sync with audio
-    // thread so that it's consistent and smooth feeding.
-    // This mutex is doing NOTHING
+
+    // Call user commit function
+    if (audio->commit)
+    {
+        audio->commit(output, 2, ma->device_config.sampleRate, frame_count);
+    } 
+
     gs_audio_mutex_lock(audio);
     {
         for (
@@ -514,27 +529,13 @@ void ma_audio_commit(ma_device* device, void* output, const void* input, ma_uint
 
                     start_left_sample = (s16)(first_left_sample + (second_left_sample - first_left_sample) * (start_sample_position / channels - (u64)(start_sample_position / channels)));
                     start_right_sample = (s16)(first_right_sample + (second_right_sample - first_right_sample) * (start_sample_position / channels - (u64)(start_sample_position / channels)));
-                }
-
-                {
-                    u64 left_index = (u64)target_sample_position;
-                    if(channels > 1)
-                    {
-                        left_index &= ~((u64)(0x01));
-                    }
-                    u64 right_index = left_index + (channels - 1);
-                    
-                    s16 first_left_sample = samples[left_index];
-                    s16 first_right_sample = samples[right_index];
-                    s16 second_left_sample = samples[left_index + channels];
-                    s16 second_right_sample = samples[right_index + channels];
-                    
-                    target_left_sample = (s16)(first_left_sample + (second_left_sample - first_left_sample) * (target_sample_position / channels - (u64)(target_sample_position / channels)));
-                    target_right_sample = (s16)(first_right_sample + (second_right_sample - first_right_sample) * (target_sample_position / channels - (u64)(target_sample_position / channels)));
-                }
+                } 
 
                 s16 left_sample = (s16)((((s64)start_left_sample + (s64)target_left_sample) / 2) * sample_volume);
                 s16 right_sample = (s16)((((s64)start_right_sample + (s64)target_right_sample) / 2) * sample_volume);
+
+                // I suppose here could pass this to user to add sample data? Not sure the best way to handle stuff like this, honestly...  
+                // Try distortion for samples
 
                 *sample_out++ += left_sample;  // Left
                 *sample_out++ += right_sample; // Right
@@ -606,6 +607,24 @@ gs_result gs_audio_init(gs_audio_t* audio)
     config.dataCallback = &ma_audio_commit;
     config.pUserData = NULL;
 
+    
+    ma_device_info* pPlaybackDeviceInfos; 
+    ma_uint32 playbackDeviceCount;
+    ma_device_info* pCaptureDeviceInfos; 
+    ma_uint32 captureDeviceCount;
+    ma_uint32 iDevice;
+
+    result = ma_context_get_devices(&output->context, &pPlaybackDeviceInfos, &playbackDeviceCount, &pCaptureDeviceInfos, &captureDeviceCount);
+    if (result != MA_SUCCESS) {
+        gs_assert(false);
+    }
+
+    gs_println("Capture Device Count: %zu", captureDeviceCount);
+    for (iDevice = 0; iDevice < captureDeviceCount; ++iDevice)
+    {
+        gs_println("%zu: %s", iDevice, pCaptureDeviceInfos[iDevice].name);
+    }
+
     output->device_config = config;
 
     if ((ma_device_init(NULL, &output->device_config, &output->device)) != MA_SUCCESS) {
@@ -624,6 +643,13 @@ gs_result gs_audio_init(gs_audio_t* audio)
     return GS_RESULT_SUCCESS;
 }
 
+// Register commit function
+GS_API_DECL void gs_audio_register_commit(gs_audio_commit commit)
+{
+    gs_audio_t* audio = gs_engine_subsystem(audio);
+    audio->commit = commit;
+}
+
 gs_result gs_audio_shutdown(gs_audio_t* audio)
 {
     miniaudio_data_t* ma = (miniaudio_data_t*)audio->user_data; 
@@ -638,7 +664,7 @@ gs_result gs_audio_shutdown(gs_audio_t* audio)
 #undef GS_AUDIO_IMPL_MINIAUDIO
 #endif // GS_AUDIO_IMPL_MINIAUDIO
 
-#endif // __GS_AUDIO_IMPL_H__
+#endif // GS_AUDIO_IMPL_H
 
 
 
