@@ -199,7 +199,7 @@ GS_API_DECL void gs_gfxt_material_bind_uniforms(gs_command_buffer_t* cb, gs_gfxt
 
 // Mesh API
 GS_API_DECL void gs_gfxt_mesh_draw(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh);
-GS_API_DECL gs_gfxt_mesh_t gs_gfxt_mesh_create_from_file(const char* file, gs_gfxt_mesh_import_options_t* options);
+GS_API_DECL gs_gfxt_mesh_t gs_gfxt_mesh_load_from_file(const char* file, gs_gfxt_mesh_import_options_t* options);
 GS_API_DECL bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_options_t* options, gs_gfxt_mesh_raw_data_t** out, uint32_t* mesh_count);
 
 // Util API
@@ -485,7 +485,7 @@ void* gs_gfxt_raw_data_default_impl(GS_GFXT_HNDL hndl, void* user_data)
 }
 
 GS_API_DECL 
-gs_gfxt_mesh_t gs_gfxt_mesh_create_from_file(const char* path, gs_gfxt_mesh_import_options_t* options)
+gs_gfxt_mesh_t gs_gfxt_mesh_load_from_file(const char* path, gs_gfxt_mesh_import_options_t* options)
 {
 	gs_gfxt_mesh_t mesh = gs_default_val();
 
