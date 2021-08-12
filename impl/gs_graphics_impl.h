@@ -1025,6 +1025,68 @@ gs_handle(gs_graphics_pipeline_t) gs_graphics_pipeline_create(const gs_graphics_
     return (gs_handle_create(gs_graphics_pipeline_t, gs_slot_array_insert(ogl->pipelines, pipe)));
 }
 
+// Resource Updates (main thread only) 
+//
+GS_API_DECL void gs_graphics_vertex_buffer_update(gs_handle(gs_graphics_vertex_buffer_t) hndl, gs_graphics_vertex_buffer_desc_t* desc)
+{ 
+    /*
+    void __gs_graphics_update_buffer_internal(gs_command_buffer_t* cb, 
+        uint32_t id, 
+        gs_graphics_buffer_type type,
+        gs_graphics_buffer_usage_type usage, 
+        size_t sz, 
+        size_t offset, 
+        gs_graphics_buffer_update_type update_type,
+        void* data)
+    {
+        // Write command
+        gs_byte_buffer_write(&cb->commands, u32, (u32)GS_OPENGL_OP_REQUEST_BUFFER_UPDATE);
+        cb->num_commands++;
+
+        // Write handle id
+        gs_byte_buffer_write(&cb->commands, uint32_t, id);
+        // Write type
+        gs_byte_buffer_write(&cb->commands, gs_graphics_buffer_type, type);
+        // Write usage
+        gs_byte_buffer_write(&cb->commands, gs_graphics_buffer_usage_type, usage);
+        // Write data size
+        gs_byte_buffer_write(&cb->commands, size_t, sz);
+        // Write data offset
+        gs_byte_buffer_write(&cb->commands, size_t, offset);
+        // Write data update type
+        gs_byte_buffer_write(&cb->commands, gs_graphics_buffer_update_type, update_type);
+        // Write data
+        gs_byte_buffer_write_bulk(&cb->commands, data, sz);
+    } 
+    __gs_graphics_update_buffer_internal(cb, hndl.id, GS_GRAPHICS_BUFFER_VERTEX, desc->usage, desc->size, desc->update.offset, desc->update.type, desc->data);
+    */
+
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
+    gsgl_buffer_t buffer = gs_slot_array_get(ogl->vertex_buffers, hndl.id);
+    glBindBuffer(GL_ARRAY_BUFFER, buffer); 
+    int32_t glusage = gsgl_buffer_usage_to_gl_enum(desc->usage);
+    switch (desc->update.type) 
+    {
+        case GS_GRAPHICS_BUFFER_UPDATE_SUBDATA: glBufferSubData(GL_ARRAY_BUFFER, desc->update.offset, desc->size, desc->data); break;
+        default:                                glBufferData(GL_ARRAY_BUFFER, desc->size, desc->data, glusage); break;
+    }
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+GS_API_DECL void gs_graphics_index_buffer_update(gs_handle(gs_graphics_index_buffer_t) hndl, gs_graphics_index_buffer_desc_t* desc)
+{
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
+    gsgl_buffer_t buffer = gs_slot_array_get(ogl->index_buffers, hndl.id);
+    int32_t glusage = gsgl_buffer_usage_to_gl_enum(desc->usage);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, buffer);
+    switch (desc->update.type) {
+l:
+        case GS_GRAPHICS_BUFFER_UPDATE_SUBDATA: glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, desc->update.offset, desc->size, desc->data); break;
+        default:                                glBufferData(GL_ELEMENT_ARRAY_BUFFER, desc->size, desc->data, glusage); break;
+    }
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+}
+
 /* Resource Destruction */
 void gs_graphics_texture_destroy(gs_handle(gs_graphics_texture_t) hndl)
 {

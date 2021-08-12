@@ -5516,6 +5516,10 @@ GS_API_DECL gs_handle(gs_graphics_framebuffer_t)    gs_graphics_framebuffer_crea
 GS_API_DECL gs_handle(gs_graphics_render_pass_t)    gs_graphics_render_pass_create(const gs_graphics_render_pass_desc_t* desc);
 GS_API_DECL gs_handle(gs_graphics_pipeline_t)       gs_graphics_pipeline_create(const gs_graphics_pipeline_desc_t* desc);
 
+// Resource Updates (main thread only) 
+GS_API_DECL void gs_graphics_vertex_buffer_update(gs_handle(gs_graphics_vertex_buffer_t) hndl, gs_graphics_vertex_buffer_desc_t* desc); 
+GS_API_DECL void gs_graphics_index_buffer_update(gs_handle(gs_graphics_index_buffer_t) hndl, gs_graphics_index_buffer_desc_t* desc);
+
 /* Resource Destruction */
 GS_API_DECL void gs_graphics_texture_destroy(gs_handle(gs_graphics_texture_t) hndl);
 GS_API_DECL void gs_graphics_shader_destroy(gs_handle(gs_graphics_shader_t) hndl);
@@ -5544,10 +5548,14 @@ GS_API_DECL void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb);
 
 #ifndef GS_NO_SHORT_NAME
     
-typedef gs_handle(gs_graphics_shader_t)      gs_shader;
-typedef gs_handle(gs_graphics_texture_t)     gs_texture;
-typedef gs_handle(gs_graphics_render_pass_t) gs_renderpass;
-typedef gs_handle(gs_graphics_pipeline_t)    gs_pipeline;
+typedef gs_handle(gs_graphics_shader_t)         gs_shader;
+typedef gs_handle(gs_graphics_texture_t)        gs_texture;
+typedef gs_handle(gs_graphics_render_pass_t)    gs_renderpass;
+typedef gs_handle(gs_graphics_pipeline_t)       gs_pipeline;
+typedef gs_handle(gs_graphics_vertex_buffer_t)  gs_vbo;
+typedef gs_handle(gs_graphics_index_buffer_t)   gs_ibo;
+typedef gs_handle(gs_graphics_uniform_buffer_t) gs_ubo;
+typedef gs_handle(gs_graphics_uniform_t)        gs_uniform;
 
 #endif
 

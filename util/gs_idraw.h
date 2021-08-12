@@ -1057,8 +1057,8 @@ void gsi_rectvd(gs_immediate_draw_t* gsi, gs_vec2 xy, gs_vec2 wh, gs_vec2 uv0, g
 GS_API_DECL void gsi_rect3Dv(gs_immediate_draw_t* gsi, gs_vec3 min, gs_vec3 max, gs_vec2 uv0, gs_vec2 uv1, gs_color_t c, gs_graphics_primitive_type type)
 {
 	const gs_vec3 vt0 = min;
-	const gs_vec3 vt1 = gs_v3(min.x, max.y, min.z);
-	const gs_vec3 vt2 = gs_v3(max.x, min.y, max.z);
+	const gs_vec3 vt1 = gs_v3(max.x, min.y, min.z);
+	const gs_vec3 vt2 = gs_v3(min.x, max.y, max.z);
 	const gs_vec3 vt3 = max;
 
 	switch (type)
@@ -1083,11 +1083,13 @@ GS_API_DECL void gsi_rect3Dv(gs_immediate_draw_t* gsi, gs_vec3 min, gs_vec3 max,
 				const float v1 = uv1.y;
 
 				// First triangle
+				gsi_c4ub(gsi, 255, 0, 0, 255);
 				gsi_tc2f(gsi, u0, v0); gsi_v3fv(gsi, vt0);
 				gsi_tc2f(gsi, u1, v0); gsi_v3fv(gsi, vt3);
 				gsi_tc2f(gsi, u0, v1); gsi_v3fv(gsi, vt1);
 
 				// Second triangle
+				gsi_c4ub(gsi, c.r, c.g, c.b, c.a);
 				gsi_tc2f(gsi, u1, v0); gsi_v3fv(gsi, vt0);
 				gsi_tc2f(gsi, u1, v1); gsi_v3fv(gsi, vt2);
 				gsi_tc2f(gsi, u0, v1); gsi_v3fv(gsi, vt3);

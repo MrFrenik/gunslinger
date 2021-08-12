@@ -463,7 +463,7 @@ void ma_audio_commit(ma_device* device, void* output, const void* input, ma_uint
     // Call user commit function
     if (audio->commit)
     {
-        audio->commit(output, 2, ma->device_config.sampleRate, frame_count);
+        audio->commit((int16_t*)output, 2, ma->device_config.sampleRate, frame_count);
     } 
 
     gs_audio_mutex_lock(audio);

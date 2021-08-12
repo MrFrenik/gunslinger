@@ -193,7 +193,7 @@ GS_API_DECL gs_gfxt_uniform_block_t gs_gfxt_uniform_block_create(const gs_gfxt_u
 GS_API_DECL gs_gfxt_material_t gs_gfxt_material_deep_copy(gs_gfxt_material_t* src);
 
 // Material API
-GS_API_DECL void gs_gfxt_material_set_uniform(gs_gfxt_material_t* mat, const char* name, void* data);
+GS_API_DECL void gs_gfxt_material_set_uniform(gs_gfxt_material_t* mat, const char* name, const void* data);
 GS_API_DECL void gs_gfxt_material_bind(gs_command_buffer_t* cb, gs_gfxt_material_t* mat);
 GS_API_DECL void gs_gfxt_material_bind_uniforms(gs_command_buffer_t* cb, gs_gfxt_material_t* mat);
 
@@ -388,7 +388,7 @@ GS_API_DECL gs_gfxt_material_t gs_gfxt_material_deep_copy(gs_gfxt_material_t* sr
 
 // Material API
 GS_API_DECL
-void gs_gfxt_material_set_uniform(gs_gfxt_material_t* mat, const char* name, void* data)
+void gs_gfxt_material_set_uniform(gs_gfxt_material_t* mat, const char* name, const void* data)
 {
 	if (!mat || !name || !data) return;
 
