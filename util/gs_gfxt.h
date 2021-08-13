@@ -442,12 +442,13 @@ void gs_gfxt_material_bind_uniforms(gs_command_buffer_t* cb, gs_gfxt_material_t*
 	// Grab uniform layout from pipeline
 	for (uint32_t i = 0; i < gs_dyn_array_size(pip->ublock.uniforms); ++i) {
 		gs_gfxt_uniform_t* u = &pip->ublock.uniforms[i];
-		gs_graphics_bind_desc_t bind = gs_default_val();
+        gs_graphics_bind_desc_t bind = gs_default_val(); 
 		gs_graphics_bind_uniform_desc_t uniforms[1];
 		uniforms[0].uniform = u->hndl;
 		uniforms[0].data = (mat->uniform_data.data + u->offset);
 		uniforms[0].binding = u->binding;
-
+        bind.uniforms.desc = uniforms;
+        bind.uniforms.size = sizeof(uniforms); 
 		gs_graphics_apply_bindings(cb, &bind);
 	}
 }

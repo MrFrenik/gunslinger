@@ -6473,7 +6473,8 @@ gs_mat4 gs_camera_get_proj(gs_camera_t* cam, s32 view_width, s32 view_height)
             f32 distance = 0.5f * (cam->far_plane - cam->near_plane);
             const f32 ortho_scale = cam->ortho_scale;
             const f32 aspect_ratio = _ar;
-            proj_mat = gs_mat4_ortho
+            proj_mat = gs_mat4_transpose(gs_mat4_ortho
+            /*
             (
                 -ortho_scale * aspect_ratio, 
                 ortho_scale * aspect_ratio, 
@@ -6482,14 +6483,15 @@ gs_mat4 gs_camera_get_proj(gs_camera_t* cam, s32 view_width, s32 view_height)
                 -distance, 
                 distance    
             );
-            // (
-            //  0.f, 
-            //  view_width, 
-            //  view_height, 
-            //  0.f, 
-            //  cam->near_plane, 
-            //  cam->far_plane  
-            //);
+            */
+            (
+                -(float)view_width * 0.5f * ortho_scale, 
+                (float)view_width * 0.5f * ortho_scale, 
+                (float)view_height * 0.5f * ortho_scale, 
+                -(float)view_height * 0.5f * ortho_scale, 
+                cam->near_plane, 
+                cam->far_plane  
+            ));
         } break;
     }
 
