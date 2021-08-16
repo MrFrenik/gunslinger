@@ -240,7 +240,6 @@ gs_gfxt_uniform_block_t gs_gfxt_uniform_block_create(const gs_gfxt_uniform_block
 	// Iterate through layout, construct uniforms, place them into hash table
 	uint32_t offset = 0;
 	uint32_t ct = desc->layout_size / sizeof(gs_gfxt_uniform_desc_t);
-	gs_println("layout size: %zu, CT: %zu", ct, desc->layout_size);
 	for (uint32_t i = 0; i < ct; ++i)
 	{
 		gs_gfxt_uniform_desc_t* ud = &desc->layout[i];
@@ -933,10 +932,10 @@ gs_gfxt_mesh_t gs_gfxt_mesh_unit_quad_generate(gs_gfxt_mesh_import_options_t* op
 
 	gs_vec3 v_pos[] = {
 	    // Positions
-	    gs_v3(-0.5f, -0.5f, 0.f), // Top Left
-	    gs_v3(0.5f, -0.5f, 0.f),  // Top Right 
-	    gs_v3(-0.5f,  0.5f, 0.f), // Bottom Left
-	    gs_v3(0.5f,  0.5f, 0.f)   // Bottom Right
+	    gs_v3(-1.0f, -1.0f, 0.f), // Top Left
+	    gs_v3(+1.0f, -1.0f, 0.f), // Top Right 
+	    gs_v3(-1.0f, +1.0f, 0.f), // Bottom Left
+	    gs_v3(+1.0f, +1.0f, 0.f)  // Bottom Right
 	};
 
 	// Vertex data for quad
@@ -959,7 +958,7 @@ gs_gfxt_mesh_t gs_gfxt_mesh_unit_quad_generate(gs_gfxt_mesh_import_options_t* op
 	};
 
 	// Generate necessary vertex data to push vertex buffer
-	gs_gfxt_mesh_primitive_t prim = {0};
+	gs_gfxt_mesh_primitive_t prim = gs_default_val();
 	prim.count = 6;
 
 	gs_gfxt_mesh_layout_t mlayout[2] = gs_default_val();

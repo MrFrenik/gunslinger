@@ -5551,6 +5551,7 @@ GS_API_DECL void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb);
 typedef gs_handle(gs_graphics_shader_t)         gs_shader;
 typedef gs_handle(gs_graphics_texture_t)        gs_texture;
 typedef gs_handle(gs_graphics_render_pass_t)    gs_renderpass;
+typedef gs_handle(gs_graphics_framebuffer_t)    gs_framebuffer;
 typedef gs_handle(gs_graphics_pipeline_t)       gs_pipeline;
 typedef gs_handle(gs_graphics_vertex_buffer_t)  gs_vbo;
 typedef gs_handle(gs_graphics_index_buffer_t)   gs_ibo;
