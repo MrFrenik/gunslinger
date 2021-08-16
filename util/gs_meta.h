@@ -197,13 +197,16 @@ GS_API_DECL uint64_t gs_meta_class_register(gs_meta_registry_t* meta, const gs_m
 GS_API_DECL uint64_t gs_meta_enum_register(gs_meta_registry_t* meta, const gs_meta_enum_decl_t* decl); 
 
 #define gs_meta_class_get(META, T)\
-    (gs_hash_table_getp((META)->classes, gs_hash_str64(gs_to_str(T))))
+    (gs_hash_table_getp((META)->classes, gs_hash_str64(gs_to_str(T)))) 
 
 #define gs_meta_class_get_w_name(META, NAME)\
 	(gs_hash_table_getp((META)->classes, gs_hash_str64(NAME)))
 
 #define gs_meta_class_get_w_id(META, ID)\
     (gs_hash_table_getp((META)->classes, (ID)))
+
+#define gs_meta_class_exists(META, ID)\
+    (gs_hash_table_exists((META)->classes, ID))
 
 #define gs_meta_getv(OBJ, T, PROP)\
     (*((T*)((uint8_t*)(OBJ) + (PROP)->offset)))
