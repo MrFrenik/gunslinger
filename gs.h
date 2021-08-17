@@ -3983,6 +3983,31 @@ gs_inline gs_mat4 gs_vqs_to_mat4(const gs_vqs* transform)
 }
 
 /*================================================================================
+// Random
+================================================================================*/
+
+// From: https://github.com/ESultanik/mtwister
+
+#define GS_STATE_VECTOR_LENGTH 624
+#define GS_STATE_VECTOR_M      397 /* changes to STATE_VECTOR_LENGTH also require changes to this */
+
+typedef struct gs_mt_rand_t 
+{
+  uint64_t mt[GS_STATE_VECTOR_LENGTH];
+  int32_t index;
+} gs_mt_rand_t;
+
+#ifndef GS_NO_SHORT_NAME
+    typedef gs_mt_rand_t    gs_rand;
+#endif
+
+GS_API_DECL gs_mt_rand_t gs_rand_seed(uint64_t seed);
+GS_API_DECL uint64_t gs_rand_gen_long(gs_mt_rand_t* rand);
+GS_API_DECL double gs_rand_gen(gs_mt_rand_t* rand);
+GS_API_DECL double gs_rand_gen_range(gs_mt_rand_t* rand, double min, double max);
+GS_API_DECL uint64_t gs_rand_gen_range_long(gs_mt_rand_t* rand, int32_t min, int32_t max);
+
+/*================================================================================
 // Camera
 ================================================================================*/
 
@@ -6347,7 +6372,92 @@ GS_API_DECL void* gs_heap_allocator_allocate(gs_heap_allocator_t* ha, size_t sz)
 GS_API_DECL void gs_heap_allocator_deallocate(gs_heap_allocator_t* ha, void* memory)
 {
     // Fill this out...
+} 
+
+/*========================
+// Random
+========================*/ 
+
+/* An implementation of the MT19937 Algorithm for the Mersenne Twister
+ * by Evan Sultanik.  Based upon the pseudocode in: M. Matsumoto and
+ * T. Nishimura, "Mersenne Twister: A 623-dimensionally
+ * equidistributed uniform pseudorandom number generator," ACM
+ * Transactions on Modeling and Computer Simulation Vol. 8, No. 1,
+ * January pp.3-30 1998.
+ *
+ * http://www.sultanik.com/Mersenne_twister
+ */
+
+#define GS_RAND_UPPER_MASK          0x80000000
+#define GS_RAND_LOWER_MASK          0x7fffffff
+#define GS_RAND_TEMPERING_MASK_B    0x9d2c5680
+#define GS_RAND_TEMPERING_MASK_C    0xefc60000 
+
+GS_API_PRIVATE void _gs_rand_seed_impl(gs_mt_rand_t* rand, uint64_t seed) 
+{
+  /* set initial seeds to mt[STATE_VECTOR_LENGTH] using the generator
+   * from Line 25 of Table 1 in: Donald Knuth, "The Art of Computer
+   * Programming," Vol. 2 (2nd Ed.) pp.102.
+   */
+  rand->mt[0] = seed & 0xffffffff;
+  for (rand->index = 1; rand->index < GS_STATE_VECTOR_LENGTH; rand->index++) 
+  {
+    rand->mt[rand->index] = (6069 * rand->mt[rand->index-1]) & 0xffffffff;
+  }
 }
+
+GS_API_DECL gs_mt_rand_t gs_rand_seed(uint64_t seed) 
+{
+  gs_mt_rand_t rand;
+  _gs_rand_seed_impl(&rand, seed);
+  return rand;
+}
+
+GS_API_DECL uint64_t gs_rand_gen_long(gs_mt_rand_t* rand) 
+{
+  uint64_t y;
+  static uint64_t mag[2] = {0x0, 0x9908b0df}; /* mag[x] = x * 0x9908b0df for x = 0,1 */
+  if(rand->index >= GS_STATE_VECTOR_LENGTH || rand->index < 0) {
+    /* generate GS_STATE_VECTOR_LENGTH words at a time */
+    int kk;
+    if(rand->index >= GS_STATE_VECTOR_LENGTH+1 || rand->index < 0) {
+      _gs_rand_seed_impl(rand, 4357);
+    }
+    for(kk=0; kk<GS_STATE_VECTOR_LENGTH-GS_STATE_VECTOR_M; kk++) {
+      y = (rand->mt[kk] & GS_RAND_UPPER_MASK) | (rand->mt[kk+1] & GS_RAND_LOWER_MASK);
+      rand->mt[kk] = rand->mt[kk+GS_STATE_VECTOR_M] ^ (y >> 1) ^ mag[y & 0x1];
+    }
+    for(; kk<GS_STATE_VECTOR_LENGTH-1; kk++) {
+      y = (rand->mt[kk] & GS_RAND_UPPER_MASK) | (rand->mt[kk+1] & GS_RAND_LOWER_MASK);
+      rand->mt[kk] = rand->mt[kk+(GS_STATE_VECTOR_M-GS_STATE_VECTOR_LENGTH)] ^ (y >> 1) ^ mag[y & 0x1];
+    }
+    y = (rand->mt[GS_STATE_VECTOR_LENGTH-1] & GS_RAND_UPPER_MASK) | (rand->mt[0] & GS_RAND_LOWER_MASK);
+    rand->mt[GS_STATE_VECTOR_LENGTH-1] = rand->mt[GS_STATE_VECTOR_M-1] ^ (y >> 1) ^ mag[y & 0x1];
+    rand->index = 0;
+  }
+  y = rand->mt[rand->index++];
+  y ^= (y >> 11);
+  y ^= (y << 7) & GS_RAND_TEMPERING_MASK_B;
+  y ^= (y << 15) & GS_RAND_TEMPERING_MASK_C;
+  y ^= (y >> 18);
+  return y;
+}
+
+GS_API_DECL double gs_rand_gen(gs_mt_rand_t* rand) 
+{
+  return((double)gs_rand_gen_long(rand) / (uint64_t)0xffffffff);
+}
+
+GS_API_DECL uint64_t gs_rand_gen_range_long(gs_mt_rand_t* rand, int32_t min, int32_t max)
+{
+    double v = (gs_map_range(0.0, 1.0, (float)min, (float)max, (float)gs_rand_gen(rand)));
+    return (uint64_t)round(v);
+}
+
+GS_API_DECL double gs_rand_gen_range(gs_mt_rand_t* rand, double min, double max)
+{
+    return gs_map_range(0.0, 1.0, min, max, gs_rand_gen(rand));
+} 
 
 /*=============================
 // Camera
@@ -6475,7 +6585,6 @@ gs_mat4 gs_camera_get_proj(gs_camera_t* cam, s32 view_width, s32 view_height)
             const f32 ortho_scale = cam->ortho_scale;
             const f32 aspect_ratio = _ar;
             proj_mat = gs_mat4_transpose(gs_mat4_ortho
-            /*
             (
                 -ortho_scale * aspect_ratio, 
                 ortho_scale * aspect_ratio, 
@@ -6483,15 +6592,6 @@ gs_mat4 gs_camera_get_proj(gs_camera_t* cam, s32 view_width, s32 view_height)
                 ortho_scale, 
                 -distance, 
                 distance    
-            );
-            */
-            (
-                -(float)view_width * 0.5f * ortho_scale, 
-                (float)view_width * 0.5f * ortho_scale, 
-                (float)view_height * 0.5f * ortho_scale, 
-                -(float)view_height * 0.5f * ortho_scale, 
-                cam->near_plane, 
-                cam->far_plane  
             ));
         } break;
     }
