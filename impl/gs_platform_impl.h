@@ -1390,7 +1390,7 @@ void  gs_platform_enable_vsync(int32_t enabled)
 }
 
 /*== OpenGL debug callback == */
-void __gs_platform_gl_debug(GLenum source, GLenum type, GLuint id, GLenum severity,
+void GLAPIENTRY __gs_platform_gl_debug(GLenum source, GLenum type, GLuint id, GLenum severity,
                             GLsizei len, const GLchar* msg, const void* user)
 {
     if (severity != GL_DEBUG_SEVERITY_NOTIFICATION)
