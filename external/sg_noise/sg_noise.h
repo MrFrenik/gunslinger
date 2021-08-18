@@ -237,7 +237,7 @@ float sg_noise2( float x, float y )
     iy0 = iy0 & 0xff;
     
     t = SG_FADE( fy0 );
-    s = SG_FADE( fx0 );
+    s = SG_FADE( fx0 ); 
 
     nx0 = sg_grad2(SG_PERM[ix0 + SG_PERM[iy0]], fx0, fy0);
     nx1 = sg_grad2(SG_PERM[ix0 + SG_PERM[iy1]], fx0, fy1);
@@ -245,7 +245,7 @@ float sg_noise2( float x, float y )
 
     nx0 = sg_grad2(SG_PERM[ix1 + SG_PERM[iy0]], fx1, fy0);
     nx1 = sg_grad2(SG_PERM[ix1 + SG_PERM[iy1]], fx1, fy1);
-    n1 = SG_LERP(t, nx0, nx1);
+    n1 = SG_LERP(t, nx0, nx1); 
 
     return 0.507f * ( SG_LERP( s, n0, n1 ) );
 }

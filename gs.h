@@ -4008,6 +4008,22 @@ GS_API_DECL double gs_rand_gen_range(gs_mt_rand_t* rand, double min, double max)
 GS_API_DECL uint64_t gs_rand_gen_range_long(gs_mt_rand_t* rand, int32_t min, int32_t max);
 
 /*================================================================================
+// Noise
+================================================================================*/
+
+// Perlin noise
+GS_API_DECL float gs_perlin1(float x);
+GS_API_DECL float gs_perlin2(float x, float y);
+GS_API_DECL float gs_perlin3(float x, float y, float z);
+GS_API_DECL float gs_perlin4(float x, float y, float z, float w);
+
+// Perlin periodic noise
+GS_API_DECL float gs_perlin1p(float x, int32_t px);
+GS_API_DECL float gs_perlin2p(float x, float y, int32_t px, int32_t py);
+GS_API_DECL float gs_perlin3p(float x, float y, float z, int32_t px, int32_t py, int32_t pz);
+GS_API_DECL float gs_perlin4p(float x, float y, float z, float w, int32_t px, int32_t py, int32_t pz, int32_t pw);
+
+/*================================================================================
 // Camera
 ================================================================================*/
 
@@ -6459,6 +6475,55 @@ GS_API_DECL double gs_rand_gen_range(gs_mt_rand_t* rand, double min, double max)
 {
     return gs_map_range(0.0, 1.0, min, max, gs_rand_gen(rand));
 } 
+
+/*================================================================================
+// Noise
+================================================================================*/ 
+
+#define SG_NOISE_IMPL
+#include "external/sg_noise/sg_noise.h"
+
+// Perlin noise
+GS_API_DECL float gs_perlin1(float x)
+{
+    return sg_noise1(x);
+}
+
+GS_API_DECL float gs_perlin2(float x, float y)
+{
+    return sg_noise2(x, y);
+}
+
+GS_API_DECL float gs_perlin3(float x, float y, float z)
+{
+    return sg_noise3(x, y, z);
+}
+
+GS_API_DECL float gs_perlin4(float x, float y, float z, float w)
+{
+    return sg_noise4(x, y, z, w);
+}
+
+// Perlin periodic noise
+GS_API_DECL float gs_perlin1p(float x, int32_t px)
+{
+    return sg_pnoise1(x, px);
+}
+
+GS_API_DECL float gs_perlin2p(float x, float y, int32_t px, int32_t py)
+{
+    return sg_pnoise2(x, y, px, py);
+}
+
+GS_API_DECL float gs_perlin3p(float x, float y, float z, int32_t px, int32_t py, int32_t pz)
+{
+    return sg_pnoise3(x, y, z, px, py, pz);
+}
+
+GS_API_DECL float gs_perlin4p(float x, float y, float z, float w, int32_t px, int32_t py, int32_t pz, int32_t pw)
+{
+    return sg_pnoise4(x, y, z, w, px, py, pz, pw);
+}
 
 /*=============================
 // Camera
