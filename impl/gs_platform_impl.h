@@ -773,6 +773,12 @@ void gs_platform_init(gs_platform_t* pf)
                 // glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
                 // glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
                 // glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+                if (pf->settings.video.graphics.debug)
+                {
+                    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+                    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+                    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+                }
             #endif
             // glfwSwapInterval(platform->settings.video.vsync_enabled);
             // glfwSwapInterval(0);
@@ -1383,6 +1389,16 @@ void  gs_platform_enable_vsync(int32_t enabled)
     glfwSwapInterval(enabled ? 1 : 0);
 }
 
+/*== OpenGL debug callback == */
+void __gs_platform_gl_debug(GLenum source, GLenum type, GLuint id, GLenum severity,
+                            GLsizei len, const GLchar* msg, const void* user)
+{
+    if (severity != GL_DEBUG_SEVERITY_NOTIFICATION)
+    {
+        gs_println("GL: %s", msg);
+    }
+}
+
 /*== Platform Window == */
 
 void* gs_platform_create_window_internal(const char* title, uint32_t width, uint32_t height)
@@ -1423,6 +1439,10 @@ void* gs_platform_create_window_internal(const char* title, uint32_t width, uint
             case GS_PLATFORM_VIDEO_DRIVER_TYPE_OPENGL: 
             {
                 gs_println("OpenGL Version: %s", glGetString(GL_VERSION));
+                if (gs_engine_subsystem(platform)->settings.video.graphics.debug)
+                {
+                    glDebugMessageCallback(__gs_platform_gl_debug, NULL);
+                }
             } break;
 
             default: break;
