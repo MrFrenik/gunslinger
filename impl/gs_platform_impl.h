@@ -1543,7 +1543,7 @@ bool32_t gs_platform_window_fullscreen(uint32_t handle)
     return glfwGetWindowMonitor(win) != NULL;
 }
 
-void gs_platform_window_position(uint32_t handle, uint32_t* x, uint32_t y)
+void gs_platform_window_position(uint32_t handle, uint32_t* x, uint32_t* y)
 {
     GLFWwindow* win = __glfw_window_from_handle(gs_engine_instance()->ctx.platform, handle);
     glfwGetWindowPos(win, (int32_t*)x, (int32_t*)y);
@@ -2309,7 +2309,7 @@ gs_platform_window_fullscreen(uint32_t handle)
 }
 
 GS_API_DECL void
-gs_platform_window_position(uint32_t handle, uint32_t* x, uint32_t y)
+gs_platform_window_position(uint32_t handle, uint32_t* x, uint32_t* y)
 {
 }
 
@@ -3284,7 +3284,7 @@ gs_platform_window_fullscreen(uint32_t handle)
 }
 
 GS_API_DECL void
-gs_platform_window_position(uint32_t handle, uint32_t* x, uint32_t y)
+gs_platform_window_position(uint32_t handle, uint32_t* x, uint32_t* y)
 {
 }
 
