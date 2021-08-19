@@ -58,11 +58,11 @@ void gs_platform_destroy(gs_platform_t* platform)
     platform = NULL;
 }
 
-uint32_t gs_platform_create_window(const char* title, uint32_t width, uint32_t height)
+uint32_t gs_platform_create_window(const char* title, uint32_t width, uint32_t height, uint32_t monitor_index)
 {
     gs_assert(gs_engine_instance() != NULL);
     gs_platform_t* platform = gs_engine_subsystem(platform);
-    void* win = gs_platform_create_window_internal(title, width, height);
+    void* win = gs_platform_create_window_internal(title, width, height, monitor_index);
     return (gs_slot_array_insert(platform->windows, win));
 }
 
@@ -1401,7 +1401,7 @@ void GLAPIENTRY __gs_platform_gl_debug(GLenum source, GLenum type, GLuint id, GL
 
 /*== Platform Window == */
 
-void* gs_platform_create_window_internal(const char* title, uint32_t width, uint32_t height)
+void* gs_platform_create_window_internal(const char* title, uint32_t width, uint32_t height, uint32_t monitor_index)
 {
     // Grab window hints from application desc
     u32 window_hints = gs_engine_instance()->ctx.app.window_flags;
@@ -1409,11 +1409,16 @@ void* gs_platform_create_window_internal(const char* title, uint32_t width, uint
     // Set whether or not the screen is resizable
     glfwWindowHint(GLFW_RESIZABLE, (window_hints & GS_WINDOW_FLAGS_NO_RESIZE) != GS_WINDOW_FLAGS_NO_RESIZE);
 
-    // Get primary monitor if fullscreen
+    // Get monitor if fullscreen
     GLFWmonitor* monitor = NULL;
     if ((window_hints & GS_WINDOW_FLAGS_FULLSCREEN) == GS_WINDOW_FLAGS_FULLSCREEN)
     {
-        monitor = glfwGetPrimaryMonitor();
+        int monitor_count;
+        GLFWmonitor** monitors = glfwGetMonitors(&monitor_count);
+        if (monitor_index < monitor_count)
+        {
+            monitor = monitors[monitor_index];
+        }
     }
 
     GLFWwindow* window = glfwCreateWindow(width, height, title, monitor, NULL);
@@ -1580,7 +1585,13 @@ void gs_platform_set_window_fullscreen(uint32_t handle, bool32_t fullscreen)
 
     if (fullscreen)
     {
-        monitor = glfwGetPrimaryMonitor();
+        uint32_t monitor_index = gs_engine_instance()->ctx.app.monitor_index;
+        int monitor_count;
+        GLFWmonitor** monitors = glfwGetMonitors(&monitor_count);
+        if (monitor_index < monitor_count)
+        {
+            monitor = monitors[monitor_index];
+        }
     }
 
     glfwSetWindowMonitor(win, monitor, x, y, w, h, GLFW_DONT_CARE);
@@ -2261,7 +2272,7 @@ gs_platform_mouse_set_position(uint32_t handle, float x, float y)
 }
 
 GS_API_DECL void*    
-gs_platform_create_window_internal(const char* title, uint32_t width, uint32_t height)
+gs_platform_create_window_internal(const char* title, uint32_t width, uint32_t height, uint32_t monitor_index)
 {
     // Nothing for now, since we just create this internally...
     return NULL;
@@ -3234,7 +3245,7 @@ gs_platform_lock_mouse(uint32_t handle, bool32_t lock)
 }
 
 GS_API_DECL void*    
-gs_platform_create_window_internal(const char* title, uint32_t width, uint32_t height)
+gs_platform_create_window_internal(const char* title, uint32_t width, uint32_t height, uint32_t monitor_index)
 {
     return NULL;
 }
