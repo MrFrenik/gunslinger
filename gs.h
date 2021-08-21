@@ -4659,6 +4659,7 @@ typedef struct gs_platform_event_t
 typedef void (* gs_dropped_files_callback_t)(void*, int32_t count, const char** file_paths);
 typedef void (* gs_window_close_callback_t)(void*);
 typedef void (* gs_character_callback_t)(void*, uint32_t code_point);
+typedef void (* gs_framebuffer_resize_callback_t)(void*, int32_t width, int32_t height);
 
 /*===============================================================================================
 // Platform Interface
@@ -4810,14 +4811,17 @@ GS_API_DECL uint32_t gs_platform_window_height(uint32_t handle);
 GS_API_DECL void     gs_platform_set_window_size(uint32_t handle, uint32_t width, uint32_t height);
 GS_API_DECL void     gs_platform_set_window_sizev(uint32_t handle, gs_vec2 v);
 GS_API_DECL void     gs_platform_set_cursor(uint32_t handle, gs_platform_cursor cursor);
-GS_API_DECL void     gs_platform_set_dropped_files_callback(uint32_t handle, gs_dropped_files_callback_t cb);
-GS_API_DECL void     gs_platform_set_window_close_callback(uint32_t handle, gs_window_close_callback_t cb);
-GS_API_DECL void     gs_platform_set_character_callback(uint32_t handle, gs_character_callback_t cb);
 GS_API_DECL void*    gs_platform_raw_window_handle(uint32_t handle);
 GS_API_DECL gs_vec2  gs_platform_framebuffer_sizev(uint32_t handle);
 GS_API_DECL void     gs_platform_framebuffer_size(uint32_t handle, uint32_t* w, uint32_t* h);
 GS_API_DECL uint32_t gs_platform_framebuffer_width(uint32_t handle);
 GS_API_DECL uint32_t gs_platform_framebuffer_height(uint32_t handle);
+
+// Platform callbacks
+GS_API_DECL void     gs_platform_set_framebuffer_resize_callback(uint32_t handle, gs_framebuffer_resize_callback_t cb);
+GS_API_DECL void     gs_platform_set_dropped_files_callback(uint32_t handle, gs_dropped_files_callback_t cb);
+GS_API_DECL void     gs_platform_set_window_close_callback(uint32_t handle, gs_window_close_callback_t cb);
+GS_API_DECL void     gs_platform_set_character_callback(uint32_t handle, gs_character_callback_t cb);
 
 /** @} */ // end of gs_platform
 
