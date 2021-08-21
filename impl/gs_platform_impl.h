@@ -1452,25 +1452,33 @@ void* gs_platform_create_window_internal(const char* title, uint32_t width, uint
     return window;
 }
 
-void gs_platform_set_dropped_files_callback(uint32_t handle, gs_dropped_files_callback_t cb)
+// Platform callbacks
+GS_API_DECL void gs_platform_set_dropped_files_callback(uint32_t handle, gs_dropped_files_callback_t cb)
 {
     gs_platform_t* platform = gs_engine_subsystem(platform);
     GLFWwindow* win = __glfw_window_from_handle(platform, handle);
     glfwSetDropCallback(win, (GLFWdropfun)cb);
 }
 
-void  gs_platform_set_window_close_callback(uint32_t handle, gs_window_close_callback_t cb)
+GS_API_DECL void gs_platform_set_window_close_callback(uint32_t handle, gs_window_close_callback_t cb)
 {
     gs_platform_t* platform = gs_engine_subsystem(platform);
     GLFWwindow* win = __glfw_window_from_handle(platform, handle);
     glfwSetWindowCloseCallback(win, (GLFWwindowclosefun)cb);
 }
 
-void gs_platform_set_character_callback(uint32_t handle, gs_character_callback_t cb)
+GS_API_DECL void gs_platform_set_character_callback(uint32_t handle, gs_character_callback_t cb)
 {
     gs_platform_t* platform = gs_engine_subsystem(platform);
     GLFWwindow* win = __glfw_window_from_handle(platform, handle);
     glfwSetCharCallback(win, (GLFWcharfun)cb);
+}
+
+GS_API_DECL void gs_platform_set_framebuffer_resize_callback(uint32_t handle, gs_framebuffer_resize_callback_t cb)
+{
+    gs_platform_t* platform = gs_engine_subsystem(platform);
+    GLFWwindow* win = __glfw_window_from_handle(platform, handle);
+    glfwSetFramebufferSizeCallback(win, (GLFWframebuffersizefun)cb);
 }
 
 void gs_platform_mouse_set_position(uint32_t handle, float x, float y)
