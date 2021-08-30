@@ -869,6 +869,23 @@ gs_string_length(const char* txt)
     return sz;
 }
 
+// Copy a string
+// Returns the number of characters copied
+gs_force_inline size_t
+gs_string_copy(char* dest, const char* src, size_t destsz)
+{
+    size_t n = 0;
+    for (n; n < destsz; ++n)
+    {
+        dest[n] = src[n];
+        if (dest[n] == '\0')
+        {
+            break;
+        }
+    }
+    return n;
+}
+
 // Expects null terminated strings
 gs_force_inline b32 
 gs_string_compare_equal
@@ -877,23 +894,17 @@ gs_string_compare_equal
     const char*     cmp 
 )
 {
-    // Grab sizes of both strings
-    uint32_t a_sz = gs_string_length(txt);
-    uint32_t b_sz = gs_string_length(cmp);
-
-    // Return false if sizes do not match
-    if (a_sz != b_sz) 
+    for (uint32_t i = 0; ; ++i)
     {
-        return false;
-    }
-
-    for(uint32_t i = 0; i < a_sz; ++i) 
-    {
-        if (*txt++ != *cmp++)
+        if (txt[i] != cmp[i])
         {
             return false;
         }
-    };
+        if (txt[i] == '\0' || cmp[i] == '\0')
+        {
+            break;
+        }
+    }
 
     return true;
 }
@@ -906,27 +917,22 @@ gs_string_compare_equal_n
     uint32_t n 
 )
 {
-    uint32_t a_sz = gs_string_length(txt);
-    uint32_t b_sz = gs_string_length(cmp);
-
-    // Not enough characters to do operation
-    if (a_sz < n || b_sz < n)
+    for (uint32_t i = 0; i < n; ++i)
     {
-        return false;
-    }
-
-    for (uint32_t i = 0; i < n; ++i) 
-    {
-        if (*txt++ != *cmp++)
+        if (txt[i] != cmp[i])
         {
             return false;
         }
-    };
+        if (txt[i] == '\0' || cmp[i] == '\0')
+        {
+            break;
+        }
+    }
 
     return true;
 }
 
-gs_force_inline void
+gs_force_inline size_t
 gs_util_str_to_lower
 (
     const char* src,
@@ -934,23 +940,33 @@ gs_util_str_to_lower
     size_t buffer_sz
 )
 {
-    size_t src_sz = gs_string_length(src);
-    size_t len = gs_min(src_sz, buffer_sz);
+    size_t n = 0;
 
-    for (uint32_t i = 0; i < len; ++i) {
-        buffer[i] = tolower(src[i]);
+    for (; n < buffer_sz; ++n) {
+        buffer[n] = tolower(src[n]);
+        if (buffer[n] == '\0')
+        {
+            break;
+        }
     }
+
+    return n;
 }
 
 gs_force_inline b32
 gs_util_str_is_numeric(const char* str)
 {
-    const char* at = str;
-    while (at && *at)
+    if (str == NULL)
     {
-        while (*at == '\n' || *at == '\t' || *at == ' ' || *at == '\r') at++;;
-        char c = *at++;
-        if (c >= '0' && c <= '9')
+        return false;
+    }
+
+    for (; str[0] != '\0'; ++str)
+    {
+        const char c = str[0];
+        // Skip whitespace
+        while (c == '\n' || c == '\t' || c == ' ' || c == '\r') ++str;
+        if (c < '0' || c > '9')
         {
             return false;
         } 
@@ -980,9 +996,9 @@ char* gs_read_file_contents_into_string_null_term
         if (buffer)
         {
             fread(buffer, 1, sz, fp);
+            buffer[sz] = '\0';
         }
         fclose(fp);
-        buffer[sz] = '\0';
         if (_sz) *_sz = sz;
     }
     return buffer;
@@ -1001,41 +1017,43 @@ b32 gs_util_file_exists(const char* file_path)
 }
 
 gs_force_inline 
-void gs_util_get_file_extension
+size_t gs_util_get_file_extension
 (
     char* buffer,
     uint32_t buffer_size,
     const char* file_path 
 )
 {
-    uint32_t str_len = gs_string_length(file_path);
-    const char* at = (file_path + str_len - 1);
-    while (*at != '.' && at != file_path)
+    uint32_t n = 0;
+    // Find the start of the extension
+    const char* ext = NULL;
+    for (uint32_t i = 0; file_path[i] != '\0'; ++i)
     {
-        at--;
+        if (file_path[i] == '.' && file_path[i + 1] != '\0')
+        {
+            ext = &file_path[i + 1];
+        }
     }
 
-    if (*at == '.')
+    // Copy the extension, if found
+    if (ext != NULL)
     {
-        at++;
-        uint32_t i = 0; 
-        while (*at)
-        {
-            char c = *at;
-            buffer[i++] = *at++;
-        }
-        buffer[i] = '\0';
+        n = gs_string_copy(buffer, ext, buffer_size);
     }
+
+    return n;
 }
 
 gs_force_inline 
-void gs_util_get_dir_from_file
+size_t gs_util_get_dir_from_file
 (
     char* buffer, 
     uint32_t buffer_size,
     const char* file_path 
 )
 {
+    size_t n = 0;
+
     uint32_t str_len = gs_string_length(file_path);
     const char* end = (file_path + str_len);
     for (uint32_t i = 0; i < str_len; ++i)
@@ -1047,20 +1065,23 @@ void gs_util_get_dir_from_file
     }
 
     size_t dir_len = end - file_path;
-    memcpy(buffer, file_path, gs_min(buffer_size, dir_len + 1));
+    n = gs_string_copy(buffer, file_path, gs_min(buffer_size, dir_len));
     if (dir_len + 1 <= buffer_size) {
         buffer[dir_len] = '\0';
     }
+
+    return n;
 }
 
 gs_force_inline 
-void gs_util_get_file_name
+size_t gs_util_get_file_name
 (
     char* buffer, 
     uint32_t buffer_size,
     const char* file_path 
 )
 {
+    size_t n = 0;
     uint32_t str_len = gs_string_length(file_path);
     const char* file_start = file_path;
     const char* file_end = (file_path + str_len);
@@ -1077,14 +1098,16 @@ void gs_util_get_file_name
     }
 
     size_t dir_len = file_end - file_start;
-    memcpy(buffer, file_start, gs_min(buffer_size, dir_len + 1));
+    n = gs_string_copy(buffer, file_start, gs_min(buffer_size, dir_len));
     if (dir_len + 1 <= buffer_size) {
         buffer[dir_len] = '\0';
     }
+
+    return n;
 }
 
 gs_force_inline 
-void gs_util_string_substring
+size_t gs_util_string_substring
 (
     const char* src,
     char* dst,
@@ -1093,27 +1116,19 @@ void gs_util_string_substring
     uint32_t end
 )
 {
-    uint32_t str_len = gs_string_length(src);
-    if (end > str_len) {
-        end = str_len;
-    }
-    if (start > str_len) {
-        start = str_len;
+    uint32_t len = gs_string_length(src);
+    if (start > len)
+    {
+        start = len;
     }
 
-    const char* at = src + start;
-    const char* e = src + end;
-    uint32_t ct = 0;
-    while (at && *at != '\0' && at != e)
-    {
-        dst[ ct ] = *at;
-        at++;
-        ct++;
-    }
+    size_t n = gs_string_copy(dst, &src[start], gs_min(end - start, sz));
+    dst[n] = '\0';
+    return n;
 }
 
 gs_force_inline 
-void gs_util_string_remove_character
+size_t gs_util_string_remove_character
 (
     const char* src,
     char* buffer, 
@@ -1121,41 +1136,45 @@ void gs_util_string_remove_character
     char delimiter
 )
 {
-    uint32_t ct = 0;
-    uint32_t str_len = gs_string_length(src);
-    const char* at = src;
-    while (at && *at != '\0' && ct < buffer_size)
+    uint32_t n = 0;
+    for (uint32_t i = 0; i < buffer_size; ++i)
     {
-        char c = *at; 
-        if (c != delimiter) {
-            buffer[ ct ] = c;
-            ct++;
+        if (src[i] != delimiter)
+        {
+            buffer[n] = src[i];
+            if (buffer[n] == '\0')
+            {
+                break;
+            }
+            ++n;
         }
-        at++;
     }
+
+    return n;
 }
 
 gs_force_inline 
-void gs_util_string_replace
+size_t gs_util_string_replace
 (
-    const char* source_str, 
+    const char* src, 
     char* buffer, 
     uint32_t buffer_size, 
     char delimiter,
     char replace 
 )
 {
-    uint32_t str_len = gs_string_length(source_str);
-    const char* at = source_str;
-    while (at && *at != '\0')
+    uint32_t n = 0;
+    for (uint32_t i = 0; i < buffer_size; ++i)
     {
-        char c = *at; 
-        if (c == delimiter) {
-            c = replace;
+        buffer[n] = (src[i] != delimiter) ? src[i] : replace;
+        if (buffer[n] == '\0')
+        {
+            break;
         }
-        buffer[(at - source_str)] = c;
-        at++;
+        ++n;
     }
+
+    return n;
 }
 
 gs_force_inline 
