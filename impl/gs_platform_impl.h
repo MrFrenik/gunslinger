@@ -58,11 +58,11 @@ void gs_platform_destroy(gs_platform_t* platform)
     platform = NULL;
 }
 
-uint32_t gs_platform_create_window(const char* title, uint32_t width, uint32_t height)
+uint32_t gs_platform_create_window(const char* title, uint32_t width, uint32_t height, uint32_t monitor_index)
 {
     gs_assert(gs_engine_instance() != NULL);
     gs_platform_t* platform = gs_engine_subsystem(platform);
-    void* win = gs_platform_create_window_internal(title, width, height);
+    void* win = gs_platform_create_window_internal(title, width, height, monitor_index);
     return (gs_slot_array_insert(platform->windows, win));
 }
 
@@ -1401,7 +1401,7 @@ void GLAPIENTRY __gs_platform_gl_debug(GLenum source, GLenum type, GLuint id, GL
 
 /*== Platform Window == */
 
-void* gs_platform_create_window_internal(const char* title, uint32_t width, uint32_t height)
+void* gs_platform_create_window_internal(const char* title, uint32_t width, uint32_t height, uint32_t monitor_index)
 {
     // Grab window hints from application desc
     u32 window_hints = gs_engine_instance()->ctx.app.window_flags;
@@ -1409,7 +1409,19 @@ void* gs_platform_create_window_internal(const char* title, uint32_t width, uint
     // Set whether or not the screen is resizable
     glfwWindowHint(GLFW_RESIZABLE, (window_hints & GS_WINDOW_FLAGS_NO_RESIZE) != GS_WINDOW_FLAGS_NO_RESIZE);
 
-    GLFWwindow* window = glfwCreateWindow(width, height, title, NULL, NULL);
+    // Get monitor if fullscreen
+    GLFWmonitor* monitor = NULL;
+    if ((window_hints & GS_WINDOW_FLAGS_FULLSCREEN) == GS_WINDOW_FLAGS_FULLSCREEN)
+    {
+        int monitor_count;
+        GLFWmonitor** monitors = glfwGetMonitors(&monitor_count);
+        if (monitor_index < monitor_count)
+        {
+            monitor = monitors[monitor_index];
+        }
+    }
+
+    GLFWwindow* window = glfwCreateWindow(width, height, title, monitor, NULL);
     if (window == NULL)
     {
         gs_println("Failed to create window.");
@@ -1538,6 +1550,26 @@ uint32_t gs_platform_window_height(uint32_t handle)
     return h;
 }
 
+bool32_t gs_platform_window_fullscreen(uint32_t handle)
+{
+    GLFWwindow* win = __glfw_window_from_handle(gs_engine_subsystem(platform), handle);
+    return glfwGetWindowMonitor(win) != NULL;
+}
+
+void gs_platform_window_position(uint32_t handle, uint32_t* x, uint32_t* y)
+{
+    GLFWwindow* win = __glfw_window_from_handle(gs_engine_instance()->ctx.platform, handle);
+    glfwGetWindowPos(win, (int32_t*)x, (int32_t*)y);
+}
+
+gs_vec2 gs_platform_window_positionv(uint32_t handle)
+{
+    GLFWwindow* win = __glfw_window_from_handle(gs_engine_subsystem(platform), handle);
+    int32_t x, y;
+    glfwGetWindowPos(win, &x, &y);
+    return gs_v2((float)x, (float)y);
+}
+
 void gs_platform_set_window_size(uint32_t handle, uint32_t w, uint32_t h)
 {
     GLFWwindow* win = __glfw_window_from_handle(gs_engine_subsystem(platform), handle);
@@ -1548,6 +1580,41 @@ void gs_platform_set_window_sizev(uint32_t handle, gs_vec2 v)
 {
     GLFWwindow* win = __glfw_window_from_handle(gs_engine_subsystem(platform), handle);
     glfwSetWindowSize(win, (uint32_t)v.x, (uint32_t)v.y);
+}
+
+void gs_platform_set_window_fullscreen(uint32_t handle, bool32_t fullscreen)
+{
+    GLFWwindow* win = __glfw_window_from_handle(gs_engine_subsystem(platform), handle);
+    GLFWmonitor* monitor = NULL;
+
+    int32_t x, y, w, h;
+    glfwGetWindowPos(win, &x, &y);
+    glfwGetWindowSize(win, &w, &h);
+
+    if (fullscreen)
+    {
+        uint32_t monitor_index = gs_engine_instance()->ctx.app.monitor_index;
+        int monitor_count;
+        GLFWmonitor** monitors = glfwGetMonitors(&monitor_count);
+        if (monitor_index < monitor_count)
+        {
+            monitor = monitors[monitor_index];
+        }
+    }
+
+    glfwSetWindowMonitor(win, monitor, x, y, w, h, GLFW_DONT_CARE);
+}
+
+void gs_platform_set_window_position(uint32_t handle, uint32_t x, uint32_t y)
+{
+    GLFWwindow* win = __glfw_window_from_handle(gs_engine_subsystem(platform), handle);
+    glfwSetWindowPos(win, (int32_t)x, (int32_t)y);
+}
+
+void gs_platform_set_window_positionv(uint32_t handle, gs_vec2 v)
+{
+    GLFWwindow* win = __glfw_window_from_handle(gs_engine_subsystem(platform), handle);
+    glfwSetWindowPos(win, (int32_t)v.x, (int32_t)v.y);
 }
 
 void gs_platform_framebuffer_size(uint32_t handle, uint32_t* w, uint32_t* h)
@@ -2213,7 +2280,7 @@ gs_platform_mouse_set_position(uint32_t handle, float x, float y)
 }
 
 GS_API_DECL void*    
-gs_platform_create_window_internal(const char* title, uint32_t width, uint32_t height)
+gs_platform_create_window_internal(const char* title, uint32_t width, uint32_t height, uint32_t monitor_index)
 {
     // Nothing for now, since we just create this internally...
     return NULL;
@@ -2254,6 +2321,23 @@ gs_platform_window_height(uint32_t handle)
     return (uint32_t)ems->canvas_height;
 }
 
+GS_API_DECL bool32_t
+gs_platform_window_fullscreen(uint32_t handle)
+{
+    return false;
+}
+
+GS_API_DECL void
+gs_platform_window_position(uint32_t handle, uint32_t* x, uint32_t* y)
+{
+}
+
+GS_API_DECL gs_vec2
+gs_platform_window_positionv(uint32_t handle)
+{
+    return gs_v2(0, 0);
+}
+
 GS_API_DECL void     
 gs_platform_set_window_size(uint32_t handle, uint32_t width, uint32_t height)
 {
@@ -2270,6 +2354,21 @@ gs_platform_set_window_sizev(uint32_t handle, gs_vec2 v)
     emscripten_set_canvas_element_size(ems->canvas_name, (uint32_t)v.x, (uint32_t)v.y);
     ems->canvas_width = (uint32_t)v.x;
     ems->canvas_height = (uint32_t)v.y;
+}
+
+GS_API_DECL void
+gs_platform_set_window_fullscreen(uint32_t handle, bool32_t fullscreen)
+{
+}
+
+GS_API_DECL void
+gs_platform_set_window_position(uint32_t handle, uint32_t x, uint32_t y)
+{
+}
+
+GS_API_DECL void
+gs_platform_set_window_positionv(uint32_t handle, gs_vec2 v)
+{
 }
 
 GS_API_DECL void     
@@ -3154,7 +3253,7 @@ gs_platform_lock_mouse(uint32_t handle, bool32_t lock)
 }
 
 GS_API_DECL void*    
-gs_platform_create_window_internal(const char* title, uint32_t width, uint32_t height)
+gs_platform_create_window_internal(const char* title, uint32_t width, uint32_t height, uint32_t monitor_index)
 {
     return NULL;
 }
@@ -3197,6 +3296,23 @@ gs_platform_window_height(uint32_t handle)
     return android->egl.height;
 }
 
+GS_API_DECL bool32_t
+gs_platform_window_fullscreen(uint32_t handle)
+{
+    return false;
+}
+
+GS_API_DECL void
+gs_platform_window_position(uint32_t handle, uint32_t* x, uint32_t* y)
+{
+}
+
+GS_API_DECL gs_vec2
+gs_platform_window_positionv(uint32_t handle)
+{
+    return gs_v2(0, 0);
+}
+
 GS_API_DECL void     
 gs_platform_set_window_size(uint32_t handle, uint32_t width, uint32_t height)
 {
@@ -3204,6 +3320,21 @@ gs_platform_set_window_size(uint32_t handle, uint32_t width, uint32_t height)
 
 GS_API_DECL void     
 gs_platform_set_window_sizev(uint32_t handle, gs_vec2 v)
+{
+}
+
+GS_API_DECL void
+gs_platform_set_window_fullscreen(uint32_t handle, bool32_t fullscreen)
+{
+}
+
+GS_API_DECL void
+gs_platform_set_window_position(uint32_t handle, uint32_t x, uint32_t y)
+{
+}
+
+GS_API_DECL void
+gs_platform_set_window_positionv(uint32_t handle, gs_vec2 v)
 {
 }
 

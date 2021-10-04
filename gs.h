@@ -4749,7 +4749,7 @@ GS_API_DECL bool      gs_platform_poll_events(gs_platform_event_t* evt, bool32_t
 GS_API_DECL void      gs_platform_add_event(gs_platform_event_t* evt);
 
 // Platform Window
-GS_API_DECL uint32_t gs_platform_create_window(const char* title, uint32_t width, uint32_t height);
+GS_API_DECL uint32_t gs_platform_create_window(const char* title, uint32_t width, uint32_t height, uint32_t monitor_index);
 GS_API_DECL uint32_t gs_platform_main_window();
 
 // Platform File IO (this all needs to be made available for impl rewrites)
@@ -4802,14 +4802,20 @@ GS_API_DECL gs_platform_keycode  gs_platform_codepoint_to_key(uint32_t code);
 GS_API_DECL void                 gs_platform_mouse_set_position(uint32_t handle, float x, float y);
 GS_API_DECL void                 gs_platform_lock_mouse(uint32_t handle, bool32_t lock);
 
-GS_API_DECL void*    gs_platform_create_window_internal(const char* title, uint32_t width, uint32_t height);
+GS_API_DECL void*    gs_platform_create_window_internal(const char* title, uint32_t width, uint32_t height, uint32_t monitor_index);
 GS_API_DECL void     gs_platform_window_swap_buffer(uint32_t handle);
 GS_API_DECL gs_vec2  gs_platform_window_sizev(uint32_t handle);
 GS_API_DECL void     gs_platform_window_size(uint32_t handle, uint32_t* width, uint32_t* height);
 GS_API_DECL uint32_t gs_platform_window_width(uint32_t handle);
 GS_API_DECL uint32_t gs_platform_window_height(uint32_t handle);
+GS_API_DECL bool32_t gs_platform_window_fullscreen(uint32_t handle);
+GS_API_DECL gs_vec2  gs_platform_window_positionv(uint32_t handle);
+GS_API_DECL void     gs_platform_window_position(uint32_t handle, uint32_t* x, uint32_t* y);
 GS_API_DECL void     gs_platform_set_window_size(uint32_t handle, uint32_t width, uint32_t height);
 GS_API_DECL void     gs_platform_set_window_sizev(uint32_t handle, gs_vec2 v);
+GS_API_DECL void     gs_platform_set_window_fullscreen(uint32_t handle, bool32_t fullscreen);
+GS_API_DECL void     gs_platform_set_window_position(uint32_t handle, uint32_t x, uint32_t y);
+GS_API_DECL void     gs_platform_set_window_positionv(uint32_t handle, gs_vec2 v);
 GS_API_DECL void     gs_platform_set_cursor(uint32_t handle, gs_platform_cursor cursor);
 GS_API_DECL void*    gs_platform_raw_window_handle(uint32_t handle);
 GS_API_DECL gs_vec2  gs_platform_framebuffer_sizev(uint32_t handle);
@@ -5749,6 +5755,7 @@ typedef struct gs_app_desc_t
     uint32_t window_width;
     uint32_t window_height;
     uint32_t window_flags;
+    uint32_t monitor_index;
     float frame_rate;
     bool32 enable_vsync;
     bool32 is_running;
@@ -7769,7 +7776,7 @@ gs_engine_t* gs_engine_create(gs_app_desc_t app_desc)
         gs_engine_subsystem(platform)->time.max_fps = app_desc.frame_rate;
 
         // Construct main window
-        gs_platform_create_window(app_desc.window_title, app_desc.window_width, app_desc.window_height);
+        gs_platform_create_window(app_desc.window_title, app_desc.window_width, app_desc.window_height, app_desc.monitor_index);
 
         // Set vsync for video
         gs_platform_enable_vsync(app_desc.enable_vsync); 
