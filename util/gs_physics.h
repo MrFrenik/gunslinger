@@ -708,7 +708,7 @@ _GS_COLLIDE_FUNC_IMPL(sphere, poly, gs_support_sphere, gs_support_poly);        
 _GS_COLLIDE_FUNC_IMPL(aabb, aabb, gs_support_aabb, gs_support_aabb);          // AABB vs. AABB
 _GS_COLLIDE_FUNC_IMPL(aabb, cylinder, gs_support_aabb, gs_support_cylinder);  // AABB vs. Cylinder
 _GS_COLLIDE_FUNC_IMPL(aabb, cone, gs_support_aabb, gs_support_cone);          // AABB vs. Cone
-_GS_COLLIDE_FUNC_IMPL(aabb, sphere, gs_support_aabb, gs_support_sphere);      // AABB vs. AABB
+_GS_COLLIDE_FUNC_IMPL(aabb, sphere, gs_support_aabb, gs_support_sphere);      // AABB vs. Sphere
 _GS_COLLIDE_FUNC_IMPL(aabb, capsule, gs_support_aabb, gs_support_capsule);    // AABB vs. Capsule
 _GS_COLLIDE_FUNC_IMPL(aabb, poly, gs_support_aabb, gs_support_poly);          // AABB vs. Poly
 
