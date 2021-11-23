@@ -214,14 +214,14 @@ GS_API_DECL uint64_t gs_meta_enum_register(gs_meta_registry_t* meta, const gs_me
 #define gs_meta_getvp(OBJ, T, PROP)\
     (((T*)((uint8_t*)(OBJ) + (PROP)->offset))) 
 
-#define gs_meta_func_getp(CLS, NAME)\
+#define gs_meta_func_get(CLS, NAME)\
     (_gs_meta_func_get_internal(CLS, gs_to_str(NAME))); 
 
-#define gs_meta_func_getp_w_id(META, ID, NAME)\
+#define gs_meta_func_get_w_id(META, ID, NAME)\
     (_gs_meta_func_get_internal_w_id(META, ID, gs_to_str(NAME))); 
 
-GS_API_DECL void** _gs_meta_func_get_internal(const gs_meta_class_t* cls, const char* func_name);
-GS_API_DECL void** _gs_meta_func_get_internal_w_id(const gs_meta_registry_t* meta, uint64_t id, const char* func_name);
+GS_API_DECL void* _gs_meta_func_get_internal(const gs_meta_class_t* cls, const char* func_name);
+GS_API_DECL void* _gs_meta_func_get_internal_w_id(const gs_meta_registry_t* meta, uint64_t id, const char* func_name);
 
 // Reflection Utils
 
@@ -306,23 +306,23 @@ GS_API_DECL bool32 gs_meta_has_base_class(const gs_meta_registry_t* meta, const 
     return (gs_hash_table_key_exists(meta->classes, cls->base));
 }
 
-GS_API_DECL void** _gs_meta_func_get_internal(const gs_meta_class_t* cls, const char* func_name)
+GS_API_DECL void* _gs_meta_func_get_internal(const gs_meta_class_t* cls, const char* func_name)
 {
     uint64_t hash = gs_hash_str64(func_name);
     if (gs_hash_table_exists(cls->vtable.funcs, hash))
     {
-        return gs_hash_table_getp(cls->vtable.funcs, hash);
+        return gs_hash_table_get(cls->vtable.funcs, hash);
     }
     return NULL;
 }
 
-GS_API_DECL void** _gs_meta_func_get_internal_w_id(const gs_meta_registry_t* meta, uint64_t id, const char* func_name)
+GS_API_DECL void* _gs_meta_func_get_internal_w_id(const gs_meta_registry_t* meta, uint64_t id, const char* func_name)
 {
     const gs_meta_class_t* cls = gs_hash_table_getp(meta->classes, id);
     uint64_t hash = gs_hash_str64(func_name);
     if (gs_hash_table_exists(cls->vtable.funcs, hash))
     {
-        return gs_hash_table_getp(cls->vtable.funcs, hash);
+        return gs_hash_table_get(cls->vtable.funcs, hash);
     }
     return NULL;
 }
