@@ -311,7 +311,8 @@ gs_immediate_draw_t gs_immediate_draw_new()
 	gs_graphics_uniform_layout_desc_t uldesc = gs_default_val();
 	uldesc.type = GS_GRAPHICS_UNIFORM_MAT4;
 	gs_graphics_uniform_desc_t udesc = gs_default_val();
-	udesc.name = "u_mvp";
+	memcpy(udesc.name, "u_mvp", 64);
+    gs_println("HERE");
 	udesc.layout = &uldesc;
 	gsi.uniform = gs_graphics_uniform_create(&udesc);
 
@@ -319,7 +320,7 @@ gs_immediate_draw_t gs_immediate_draw_new()
 	gs_graphics_uniform_layout_desc_t sldesc = gs_default_val(); 
 	sldesc.type = GS_GRAPHICS_UNIFORM_SAMPLER2D;
 	gs_graphics_uniform_desc_t sbdesc = gs_default_val();
-	sbdesc.name = "u_tex";
+	memcpy(sbdesc.name, "u_tex", 64);
 	sbdesc.layout = &sldesc;
 	gsi.sampler = gs_graphics_uniform_create(&sbdesc); 
 
@@ -355,13 +356,13 @@ gs_immediate_draw_t gs_immediate_draw_new()
 	gs_graphics_shader_desc_t sdesc = gs_default_val();
 	sdesc.sources = gsi_sources;
 	sdesc.size = sizeof(gsi_sources);
-	sdesc.name = "gs_immediate_default_fill_shader";
+	memcpy(sdesc.name, "gs_immediate_default_fill_shader", 64);
 
 	// Vertex attr layout
     gs_graphics_vertex_attribute_desc_t gsi_vattrs[3] = gs_default_val();
-    gsi_vattrs[0].format = GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3; gsi_vattrs[0].name = "a_position";
-    gsi_vattrs[1].format = GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2; gsi_vattrs[1].name = "a_uv";
-    gsi_vattrs[2].format = GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE4; gsi_vattrs[2].name = "a_color";
+    gsi_vattrs[0].format = GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3; memcpy(gsi_vattrs[0].name, "a_position", 64);
+    gsi_vattrs[1].format = GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2; memcpy(gsi_vattrs[1].name, "a_uv", 64);
+    gsi_vattrs[2].format = GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE4; memcpy(gsi_vattrs[2].name, "a_color", 64);
 
 	// Iterate through attribute list, then create custom pipelines requested.
 	gs_handle(gs_graphics_shader_t) shader = gs_graphics_shader_create(&sdesc);

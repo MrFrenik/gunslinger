@@ -45,7 +45,7 @@ typedef enum gsgl_uniform_type
 
 /* Uniform (stores samplers as well as primitive uniforms) */
 typedef struct gsgl_uniform_t {
-    const char* name;               // Name of uniform to find location
+    char name[64];               // Name of uniform to find location
     gsgl_uniform_type type;         // Type of uniform data
     uint32_t location;              // Location of uniform
     size_t size;                    // Total data size of uniform
@@ -56,12 +56,12 @@ typedef struct gsgl_uniform_t {
 // When a user passes in a uniform layout, that handle could then pass to a WHOLE list of uniforms (if describing a struct)
 typedef struct gsgl_uniform_list_t {
     size_t size;                                // Total size of uniform data
-    const char* name;                           // Base name of uniform
+    char name[64];                           // Base name of uniform
     gs_dyn_array(gsgl_uniform_t) uniforms;      // Individual uniforms in list
 } gsgl_uniform_list_t;
 
 typedef struct gsgl_uniform_buffer_t {
-    const char* name;
+    char name[64];
     uint32_t location;
     size_t size;
     uint32_t ubo;
@@ -744,7 +744,7 @@ gs_handle(gs_graphics_uniform_t) gs_graphics_uniform_create(const gs_graphics_un
 
     // Construct list for uniform handles
     gsgl_uniform_list_t ul = gs_default_val();
-    ul.name = desc->name;
+    memcpy(ul.name, desc->name, 64);
 
     // Iterate layout, construct individual handles
     for (uint32_t i = 0; i < ct; ++i)
@@ -754,7 +754,7 @@ gs_handle(gs_graphics_uniform_t) gs_graphics_uniform_create(const gs_graphics_un
         // Cache layout
         gs_graphics_uniform_layout_desc_t* layout = &desc->layout[i];
 
-        u.name = layout->fname;
+        memcpy(u.name, layout->fname, 64);
         u.type = gsgl_uniform_type_to_gl_uniform_type(layout->type);
         u.size = gsgl_uniform_data_size_in_bytes(layout->type);
         u.count = layout->count ? layout->count : 1;
@@ -824,7 +824,7 @@ gs_handle(gs_graphics_uniform_buffer_t) gs_graphics_uniform_buffer_create(const 
     }
 
     gsgl_uniform_buffer_t u = gs_default_val();
-    u.name = desc->name;
+    memcpy(u.name, desc->name, 64);
     u.size = desc->size;
     u.location = UINT32_MAX;
 

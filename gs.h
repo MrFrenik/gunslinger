@@ -5248,7 +5248,7 @@ typedef struct gs_graphics_shader_desc_t
 {
     gs_graphics_shader_source_desc_t* sources;  // Array of shader source descriptions
     size_t size;                    // Size in bytes of shader source desc array
-    const char* name;               // Optional (for logging and debugging mainly)
+    char name[64];               // Optional (for logging and debugging mainly)
 } gs_graphics_shader_desc_t;
 
 /* Graphics Texture Desc */
@@ -5271,7 +5271,7 @@ typedef struct gs_graphics_texture_desc_t
 typedef struct gs_graphics_uniform_layout_desc_t
 {
     gs_graphics_uniform_type type;                  // Type of field
-    const char* fname;                              // Name of field (required for implicit APIs, like OpenGL/ES)
+    char fname[64];                              // Name of field (required for implicit APIs, like OpenGL/ES)
     uint32_t count;                                 // Count variable (used for arrays such as glUniformXXXv)
 } gs_graphics_uniform_layout_desc_t;
 
@@ -5279,7 +5279,7 @@ typedef struct gs_graphics_uniform_layout_desc_t
 typedef struct gs_graphics_uniform_desc_t
 {
     gs_graphics_shader_stage_type stage;
-    const char* name;                               // Name of uniform (required for OpenGL/ES, WebGL)
+    char name[64];                               // Name of uniform (required for OpenGL/ES, WebGL)
     gs_graphics_uniform_layout_desc_t* layout;      // Layout array for uniform data
     size_t layout_size;                             // Size of uniform data in bytes
 } gs_graphics_uniform_desc_t;
@@ -5473,7 +5473,7 @@ typedef struct gs_graphics_compute_state_desc_t
 
 /* Graphics Vertex Attribute Desc */
 typedef struct gs_graphics_vertex_attribute_desc_t {
-    const char* name;                                   // Attribute name (required for lower versions of OpenGL and ES)
+    char name[64];                                   // Attribute name (required for lower versions of OpenGL and ES)
     gs_graphics_vertex_attribute_type format;           // Format for vertex attribute
     size_t stride;                                      // Total stride of vertex layout (optional, calculated by default)
     size_t offset;                                      // Offset of this vertex from base pointer of data (optional, calaculated by default)

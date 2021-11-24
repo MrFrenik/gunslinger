@@ -69,9 +69,10 @@ typedef struct gs_gfxt_raw_data_func_desc_t {
 
 // Uniforms/Uniform blocks
 typedef struct gs_gfxt_uniform_desc_t {
-	const char* name;									// Name of uniform (for binding to shader)
+	char name[64];									// Name of uniform (for binding to shader)
 	gs_graphics_uniform_type type;						// Type of uniform: GS_GRAPHICS_UNIFORM_VEC2, GS_GRAPHICS_UNIFORM_VEC3, etc.
 	uint32_t binding;									// Binding for this uniform in shader
+    gs_graphics_shader_stage_type stage;                // Shader stage for this uniform
 } gs_gfxt_uniform_desc_t;
 
 typedef struct gs_gfxt_uniform_t {
@@ -84,7 +85,7 @@ typedef struct gs_gfxt_uniform_t {
 
 typedef struct gs_gfxt_uniform_block_desc_t {
 	gs_gfxt_uniform_desc_t* layout;						// Layout for all uniform data for this block to hold
-	size_t layout_size;									// Size of layout in bytes
+	size_t size;									    // Size of layout in bytes
 } gs_gfxt_uniform_block_desc_t;
 
 typedef struct gs_gfxt_uniform_block_lookup_key_t {
@@ -239,7 +240,7 @@ gs_gfxt_uniform_block_t gs_gfxt_uniform_block_create(const gs_gfxt_uniform_block
 
 	// Iterate through layout, construct uniforms, place them into hash table
 	uint32_t offset = 0;
-	uint32_t ct = desc->layout_size / sizeof(gs_gfxt_uniform_desc_t);
+	uint32_t ct = desc->size / sizeof(gs_gfxt_uniform_desc_t);
 	for (uint32_t i = 0; i < ct; ++i)
 	{
 		gs_gfxt_uniform_desc_t* ud = &desc->layout[i];
@@ -248,7 +249,7 @@ gs_gfxt_uniform_block_t gs_gfxt_uniform_block_create(const gs_gfxt_uniform_block
 		gs_graphics_uniform_desc_t u_desc = gs_default_val();
 		gs_graphics_uniform_layout_desc_t u_layout = gs_default_val();
 		u_layout.type = ud->type;
-		u_desc.name = ud->name;
+		memcpy(u_desc.name, ud->name, 64);
 		u_desc.layout = &u_layout;  		
 		u.hndl = gs_graphics_uniform_create(&u_desc);
 		u.binding = ud->binding;
@@ -306,6 +307,7 @@ gs_gfxt_material_t gs_gfxt_material_create(gs_gfxt_material_desc_t* desc)
 	// Set desc information to defaults if not provided.
 	if (!desc->pip_func.func) desc->pip_func.func = gs_gfxt_raw_data_default_impl;
 	gs_gfxt_pipeline_t* pip = GS_GFXT_RAW_DATA(&desc->pip_func, gs_gfxt_pipeline_t);
+    gs_println("pip: %zu", pip);
 	gs_assert(pip);
 
 	mat.desc = *desc;
@@ -392,6 +394,7 @@ void gs_gfxt_material_set_uniform(gs_gfxt_material_t* mat, const char* name, con
 	if (!mat || !name || !data) return;
 
 	gs_gfxt_pipeline_t* pip = GS_GFXT_RAW_DATA(&mat->desc.pip_func, gs_gfxt_pipeline_t);
+    gs_println("pip: %zu", pip);
 	gs_assert(pip);
 
 //	gs_gfxt_uniform_block_lookup_key_t key = gs_default_val();
