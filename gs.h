@@ -5019,15 +5019,6 @@ gs_enum_decl(gs_graphics_shader_stage_type,
     GS_GRAPHICS_SHADER_STAGE_COMPUTE
 );
 
-/* Blend Equation Type */
-gs_enum_decl(gs_graphics_blend_equation_type,
-    GS_GRAPHICS_BLEND_EQUATION_ADD,
-    GS_GRAPHICS_BLEND_EQUATION_SUBTRACT,
-    GS_GRAPHICS_BLEND_EQUATION_REVERSE_SUBTRACT,
-    GS_GRAPHICS_BLEND_EQUATION_MIN,
-    GS_GRAPHICS_BLEND_EQUATION_MAX
-);
-
 /* Winding Order Type */
 gs_enum_decl(gs_graphics_winding_order_type,
     GS_GRAPHICS_WINDING_ORDER_CW,
@@ -5040,6 +5031,15 @@ gs_enum_decl(gs_graphics_face_culling_type,
     GS_GRAPHICS_FACE_CULLING_BACK,
     GS_GRAPHICS_FACE_CULLING_FRONT_AND_BACK
 );
+
+/* Blend Equation Type */
+gs_enum_decl(gs_graphics_blend_equation_type,
+    GS_GRAPHICS_BLEND_EQUATION_ADD,
+    GS_GRAPHICS_BLEND_EQUATION_SUBTRACT,
+    GS_GRAPHICS_BLEND_EQUATION_REVERSE_SUBTRACT,
+    GS_GRAPHICS_BLEND_EQUATION_MIN,
+    GS_GRAPHICS_BLEND_EQUATION_MAX
+); 
 
 /* Blend Mode Type */
 gs_enum_decl(gs_graphics_blend_mode_type,
