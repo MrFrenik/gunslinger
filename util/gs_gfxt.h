@@ -70,22 +70,22 @@ typedef struct gs_gfxt_raw_data_func_desc_t {
 // Uniforms/Uniform blocks
 typedef struct gs_gfxt_uniform_desc_t {
 	char name[64];									// Name of uniform (for binding to shader)
-	gs_graphics_uniform_type type;						// Type of uniform: GS_GRAPHICS_UNIFORM_VEC2, GS_GRAPHICS_UNIFORM_VEC3, etc.
-	uint32_t binding;									// Binding for this uniform in shader
-    gs_graphics_shader_stage_type stage;                // Shader stage for this uniform
+	gs_graphics_uniform_type type;					// Type of uniform: GS_GRAPHICS_UNIFORM_VEC2, GS_GRAPHICS_UNIFORM_VEC3, etc.
+	uint32_t binding;								// Binding for this uniform in shader
+    gs_graphics_shader_stage_type stage;            // Shader stage for this uniform
 } gs_gfxt_uniform_desc_t;
 
 typedef struct gs_gfxt_uniform_t {
-	gs_handle(gs_graphics_uniform_t) hndl;				// Graphics handle resource for actual uniform
-	uint32_t offset;									// Individual offset for this uniform in material byte buffer data
-	uint32_t binding;									// Binding for this uniform
-	size_t size;										// Size of this uniform data in bytes
-	gs_graphics_uniform_type type;						// Type of this uniform
+	gs_handle(gs_graphics_uniform_t) hndl;			// Graphics handle resource for actual uniform
+	uint32_t offset;								// Individual offset for this uniform in material byte buffer data
+	uint32_t binding;								// Binding for this uniform
+	size_t size;									// Size of this uniform data in bytes
+	gs_graphics_uniform_type type;					// Type of this uniform
 } gs_gfxt_uniform_t;
 
 typedef struct gs_gfxt_uniform_block_desc_t {
-	gs_gfxt_uniform_desc_t* layout;						// Layout for all uniform data for this block to hold
-	size_t size;									    // Size of layout in bytes
+	gs_gfxt_uniform_desc_t* layout;					// Layout for all uniform data for this block to hold
+	size_t size;								    // Size of layout in bytes
 } gs_gfxt_uniform_block_desc_t;
 
 typedef struct gs_gfxt_uniform_block_lookup_key_t {
@@ -105,8 +105,8 @@ typedef struct gs_gfxt_pipeline_desc_t {
 } gs_gfxt_pipeline_desc_t;
 
 typedef struct gs_gfxt_pipeline_t {
-	gs_handle(gs_graphics_pipeline_t) hndl;				// Graphics handle resource for actual pipeline
-	gs_gfxt_uniform_block_t ublock;						// Uniform block for holding all uniform data
+	gs_handle(gs_graphics_pipeline_t) hndl;		// Graphics handle resource for actual pipeline
+	gs_gfxt_uniform_block_t ublock;				// Uniform block for holding all uniform data
 } gs_gfxt_pipeline_t;
 
 // Material
@@ -146,9 +146,11 @@ typedef struct gs_gfxt_mesh_raw_data_t {
 
 typedef struct gs_gfxt_mesh_import_options_t {
     gs_gfxt_mesh_layout_t* layout;        // Mesh attribute layout array
-    size_t layout_size;                    // Size of mesh attribute layout array in bytes
+    size_t size;                    // Size of mesh attribute layout array in bytes
     size_t index_buffer_element_size;      // Size of index data size in bytes
 } gs_gfxt_mesh_import_options_t;
+
+GS_API_DECL void gs_gfxt_mesh_import_options_free(gs_gfxt_mesh_import_options_t* opt);
 
 typedef struct gs_gfxt_mesh_desc_t {
     gs_gfxt_mesh_raw_data_t* meshes;   // Mesh data array
@@ -167,13 +169,13 @@ typedef struct gs_gfxt_mesh_t {
 
 // Renderable
 typedef struct gs_gfxt_renderable_desc_t {
-	gs_gfxt_raw_data_func_desc_t mesh;			// Description for retrieving raw mesh pointer data from handle.
-	gs_gfxt_raw_data_func_desc_t material;		// Description for retrieving raw material pointer data from handle.
+	gs_gfxt_raw_data_func_desc_t mesh;		// Description for retrieving raw mesh pointer data from handle.
+	gs_gfxt_raw_data_func_desc_t material;	// Description for retrieving raw material pointer data from handle.
 } gs_gfxt_renderable_desc_t;
 
 typedef struct gs_gfxt_renderable_t {
-	gs_gfxt_renderable_desc_t desc;			// Renderable description object
-	gs_mat4 model_matrix;					// Model matrix for renderable
+	gs_gfxt_renderable_desc_t desc;		// Renderable description object
+	gs_mat4 model_matrix;				// Model matrix for renderable
 } gs_gfxt_renderable_t;
 
 // Graphics scene
@@ -254,21 +256,7 @@ gs_gfxt_uniform_block_t gs_gfxt_uniform_block_create(const gs_gfxt_uniform_block
 		u.hndl = gs_graphics_uniform_create(&u_desc);
 		u.binding = ud->binding;
 		u.offset = offset;
-		u.type = ud->type;
-
-		/*
-		gs_gfxt_uniform_t u = {
-			.hndl = gs_graphics_uniform_create (
-		        &(gs_graphics_uniform_desc_t) {
-		            .name = ud->name,
-		            .layout = &(gs_graphics_uniform_layout_desc_t){.type = ud->type}
-		        }
-			),
-			.binding = ud->binding,
-			.offset = offset,
-			.type = ud->type
-		};
-		*/
+		u.type = ud->type; 
 
 		// Add to data offset based on type
 		switch (ud->type) {
@@ -283,8 +271,6 @@ gs_gfxt_uniform_block_t gs_gfxt_uniform_block_create(const gs_gfxt_uniform_block
 		}
 
 		// Add uniform to block with name as key
-//		gs_gfxt_uniform_block_lookup_key_t key = gs_default_val();
-//		memcpy(key.name, ud->name, 64);
 		uint64_t key = gs_hash_str64(ud->name);
 		gs_dyn_array_push(block.uniforms, u);
 		gs_hash_table_insert(block.lookup, key, gs_dyn_array_size(block.uniforms) - 1);
@@ -307,7 +293,6 @@ gs_gfxt_material_t gs_gfxt_material_create(gs_gfxt_material_desc_t* desc)
 	// Set desc information to defaults if not provided.
 	if (!desc->pip_func.func) desc->pip_func.func = gs_gfxt_raw_data_default_impl;
 	gs_gfxt_pipeline_t* pip = GS_GFXT_RAW_DATA(&desc->pip_func, gs_gfxt_pipeline_t);
-    gs_println("pip: %zu", pip);
 	gs_assert(pip);
 
 	mat.desc = *desc;
@@ -394,11 +379,9 @@ void gs_gfxt_material_set_uniform(gs_gfxt_material_t* mat, const char* name, con
 	if (!mat || !name || !data) return;
 
 	gs_gfxt_pipeline_t* pip = GS_GFXT_RAW_DATA(&mat->desc.pip_func, gs_gfxt_pipeline_t);
-    gs_println("pip: %zu", pip);
 	gs_assert(pip);
 
-//	gs_gfxt_uniform_block_lookup_key_t key = gs_default_val();
-//	memcpy(key.name, name, 64);
+    // Get key for name lookup
 	uint64_t key = gs_hash_str64(name);
 	if (!gs_hash_table_key_exists(pip->ublock.lookup, key)) return;
 
@@ -487,6 +470,14 @@ void* gs_gfxt_raw_data_default_impl(GS_GFXT_HNDL hndl, void* user_data)
 	return hndl;
 }
 
+GS_API_DECL void gs_gfxt_mesh_import_options_free(gs_gfxt_mesh_import_options_t* opt)
+{
+    if (opt->layout)
+    {
+        gs_dyn_array_free(opt->layout);
+    }
+}
+
 GS_API_DECL 
 gs_gfxt_mesh_t gs_gfxt_mesh_load_from_file(const char* path, gs_gfxt_mesh_import_options_t* options)
 {
@@ -523,12 +514,13 @@ gs_gfxt_mesh_t gs_gfxt_mesh_load_from_file(const char* path, gs_gfxt_mesh_import
 	mdesc.size = mesh_count * sizeof(gs_gfxt_mesh_raw_data_t);
 
     // Construct mesh from raw data
-	/*
+    /*
     mesh = gs_gfxt_mesh_create(&(gs_gfxt_mesh_desc_t) {
     	.meshes = meshes, 
     	.size = mesh_count * sizeof(gs_gfxt_mesh_raw_data_t)
     });
-	*/
+    */
+    mesh = gs_gfxt_mesh_create(&mdesc);
 
     return mesh;
 }
@@ -837,7 +829,7 @@ bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_opti
 
 	            // Grab mesh layout pointer to use
 	            gs_gfxt_mesh_layout_t* layoutp = options ? options->layout : layouts;
-	            uint32_t layout_ct = options ? options->layout_size / sizeof(gs_gfxt_mesh_layout_t) : gs_dyn_array_size(layouts);
+	            uint32_t layout_ct = options ? options->size / sizeof(gs_gfxt_mesh_layout_t) : gs_dyn_array_size(layouts);
 
 	            // Iterate layout to fill data buffers according to provided layout
 	            {
@@ -969,7 +961,7 @@ gs_gfxt_mesh_t gs_gfxt_mesh_unit_quad_generate(gs_gfxt_mesh_import_options_t* op
 	mlayout[1].type = GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD;
 	gs_gfxt_mesh_import_options_t def_options = gs_default_val();
 	def_options.layout = mlayout;
-	def_options.layout_size = 2 * sizeof(gs_gfxt_mesh_layout_t);
+	def_options.size = 2 * sizeof(gs_gfxt_mesh_layout_t);
 	def_options.index_buffer_element_size = sizeof(uint32_t);
 
 	/*
@@ -978,14 +970,14 @@ gs_gfxt_mesh_t gs_gfxt_mesh_unit_quad_generate(gs_gfxt_mesh_import_options_t* op
 			{.type = GS_GFXT_MESH_ATTRIBUTE_TYPE_POSITION},
 			{.type = GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD}
 		},
-		.layout_size = 2 * sizeof(gs_gfxt_mesh_layout_t),
+		.size = 2 * sizeof(gs_gfxt_mesh_layout_t),
 		.index_buffer_element_size = sizeof(uint32_t)
 	};
 	*/
 
 	// If no decl, then just use default layout
 	gs_gfxt_mesh_import_options_t* moptions = options ? options : &def_options; 
-	uint32_t ct = moptions->layout_size / sizeof(gs_asset_mesh_layout_t);
+	uint32_t ct = moptions->size / sizeof(gs_asset_mesh_layout_t);
 	gs_byte_buffer_t vbuffer = gs_byte_buffer_new();
 
 	// For each vertex

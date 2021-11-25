@@ -1025,6 +1025,27 @@ gs_handle(gs_graphics_pipeline_t) gs_graphics_pipeline_create(const gs_graphics_
     return (gs_handle_create(gs_graphics_pipeline_t, gs_slot_array_insert(ogl->pipelines, pipe)));
 }
 
+GS_API_DECL void gs_graphics_pipeline_desc_query(gs_handle(gs_graphics_pipeline_t) hndl, gs_graphics_pipeline_desc_t* out)
+{
+    if (!out) return;
+
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data; 
+    gsgl_pipeline_t* pip =  gs_slot_array_getp(ogl->pipelines, hndl.id); 
+
+    // Add states
+    out->blend = pip->blend;
+    out->depth = pip->depth;
+    out->raster = pip->raster;
+    out->stencil = pip->stencil;
+    out->compute = pip->compute;
+
+    // Add layout
+    uint32_t ct = gs_dyn_array_size(pip->layout);
+    for (uint32_t i = 0; i < ct; ++i) {
+        gs_dyn_array_push(out->layout.attrs, pip->layout[i]);
+    } 
+}
+
 // Resource Updates (main thread only) 
 //
 GS_API_DECL void gs_graphics_vertex_buffer_update(gs_handle(gs_graphics_vertex_buffer_t) hndl, gs_graphics_vertex_buffer_desc_t* desc)

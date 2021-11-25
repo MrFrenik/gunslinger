@@ -5547,16 +5547,16 @@ typedef struct gs_graphics_t
 // Graphics API
 ==========================*/
 
-/* Graphics Interface Creation / Initialization / Shutdown / Destruction */
+// Graphics Interface Creation / Initialization / Shutdown / Destruction
 GS_API_DECL gs_graphics_t* gs_graphics_create();
 GS_API_DECL void           gs_graphics_destroy(gs_graphics_t* graphics);
 GS_API_DECL void           gs_graphics_init(gs_graphics_t* graphics);
 GS_API_DECL void           gs_graphics_shutdown(gs_graphics_t* graphics);
 
-/* Graphics Info Object Query */
+// Graphics Info Object Query
 GS_API_DECL                gs_graphics_info_t* gs_graphics_info();
 
-/* Resource Creation */
+// Resource Creation
 GS_API_DECL gs_handle(gs_graphics_texture_t)        gs_graphics_texture_create(const gs_graphics_texture_desc_t* desc);
 GS_API_DECL gs_handle(gs_graphics_uniform_t)        gs_graphics_uniform_create(const gs_graphics_uniform_desc_t* desc);
 GS_API_DECL gs_handle(gs_graphics_shader_t)         gs_graphics_shader_create(const gs_graphics_shader_desc_t* desc);
@@ -5567,23 +5567,26 @@ GS_API_DECL gs_handle(gs_graphics_framebuffer_t)    gs_graphics_framebuffer_crea
 GS_API_DECL gs_handle(gs_graphics_render_pass_t)    gs_graphics_render_pass_create(const gs_graphics_render_pass_desc_t* desc);
 GS_API_DECL gs_handle(gs_graphics_pipeline_t)       gs_graphics_pipeline_create(const gs_graphics_pipeline_desc_t* desc);
 
+// Resource Queries
+GS_API_DECL void gs_graphics_pipeline_desc_query(gs_handle(gs_graphics_pipeline_t) hndl, gs_graphics_pipeline_desc_t* out);
+
 // Resource Updates (main thread only) 
 GS_API_DECL void gs_graphics_vertex_buffer_update(gs_handle(gs_graphics_vertex_buffer_t) hndl, gs_graphics_vertex_buffer_desc_t* desc); 
 GS_API_DECL void gs_graphics_index_buffer_update(gs_handle(gs_graphics_index_buffer_t) hndl, gs_graphics_index_buffer_desc_t* desc);
 
-/* Resource Destruction */
+// Resource Destruction
 GS_API_DECL void gs_graphics_texture_destroy(gs_handle(gs_graphics_texture_t) hndl);
 GS_API_DECL void gs_graphics_shader_destroy(gs_handle(gs_graphics_shader_t) hndl);
 GS_API_DECL void gs_graphics_render_pass_destroy(gs_handle(gs_graphics_render_pass_t) hndl);
 GS_API_DECL void gs_graphics_pipeline_destroy(gs_handle(gs_graphics_pipeline_t) hndl);
 
-/* Resource In-Flight Update*/
+// Resource In-Flight Update
 GS_API_DECL void gs_graphics_texture_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);
 GS_API_DECL void gs_graphics_vertex_buffer_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_vertex_buffer_t) hndl, gs_graphics_vertex_buffer_desc_t* desc);
 GS_API_DECL void gs_graphics_index_buffer_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_index_buffer_t) hndl, gs_graphics_index_buffer_desc_t* desc);
 GS_API_DECL void gs_graphics_uniform_buffer_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_uniform_buffer_t) hndl, gs_graphics_uniform_buffer_desc_t* desc);
 
-/* Pipeline / Pass / Bind / Draw */
+// Pipeline / Pass / Bind / Draw
 GS_API_DECL void gs_graphics_begin_render_pass(gs_command_buffer_t* cb, gs_handle(gs_graphics_render_pass_t) hndl);
 GS_API_DECL void gs_graphics_end_render_pass(gs_command_buffer_t* cb);
 GS_API_DECL void gs_graphics_set_viewport(gs_command_buffer_t* cb, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
@@ -5594,7 +5597,7 @@ GS_API_DECL void gs_graphics_apply_bindings(gs_command_buffer_t* cb, gs_graphics
 GS_API_DECL void gs_graphics_draw(gs_command_buffer_t* cb, gs_graphics_draw_desc_t* desc);
 GS_API_DECL void gs_graphics_dispatch_compute(gs_command_buffer_t* cb, uint32_t num_x_groups, uint32_t num_y_groups, uint32_t num_z_groups);
 
-/* Submission (Main Thread) */
+// Submission (Main Thread)
 GS_API_DECL void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb);
 
 #ifndef GS_NO_SHORT_NAME
@@ -7471,8 +7474,8 @@ GS_API_DECL gs_token_t gs_lexer_c_next_token(gs_lexer_t* lex)
 	t.text = lex->at;
 	t.len = 1;
 
-	if (lex->can_lex(lex))
-	{
+	if (lex->can_lex(lex)) 
+    { 
 		char c = *lex->at;
 		switch (c)
 		{
@@ -7644,7 +7647,7 @@ GS_API_DECL bool gs_lexer_require_token_text(gs_lexer_t* lex, const char* match)
 {
 	// Store current position and token
 	const char* at = lex->at;
-	gs_token_t cur_t = lex->current_token;
+	gs_token_t cur_t = lex->current_token; 
 
 	// Get next token
 	gs_token_t next_t = lex->next_token(lex);
