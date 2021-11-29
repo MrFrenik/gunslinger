@@ -73,6 +73,7 @@ typedef struct gs_gfxt_uniform_desc_t {
 	gs_graphics_uniform_type type;					// Type of uniform: GS_GRAPHICS_UNIFORM_VEC2, GS_GRAPHICS_UNIFORM_VEC3, etc.
 	uint32_t binding;								// Binding for this uniform in shader
     gs_graphics_shader_stage_type stage;            // Shader stage for this uniform
+    gs_graphics_access_type access_type;            // Access type for this uniform (compute only)
 } gs_gfxt_uniform_desc_t;
 
 typedef struct gs_gfxt_uniform_t {
@@ -81,6 +82,7 @@ typedef struct gs_gfxt_uniform_t {
 	uint32_t binding;								// Binding for this uniform
 	size_t size;									// Size of this uniform data in bytes
 	gs_graphics_uniform_type type;					// Type of this uniform
+    gs_graphics_access_type access_type;            // Access type of uniform (compute only)
 } gs_gfxt_uniform_t;
 
 typedef struct gs_gfxt_uniform_block_desc_t {
@@ -96,7 +98,7 @@ typedef struct gs_gfxt_uniform_block_t {
 	gs_dyn_array(gs_gfxt_uniform_t) uniforms;	 // Raw uniform handle array
 	gs_hash_table(uint64_t, uint32_t) lookup;	 // Index lookup table (used for byte buffer offsets in material uni. data)
 	size_t size;								 // Total size of material data for entire block
-} gs_gfxt_uniform_block_t;
+} gs_gfxt_uniform_block_t; 
 
 // Pipeline
 typedef struct gs_gfxt_pipeline_desc_t {
@@ -117,7 +119,8 @@ typedef struct gs_gfxt_material_desc_t {
 typedef struct gs_gfxt_material_t {
 	gs_gfxt_material_desc_t desc;				// Material description object
 	gs_byte_buffer_t uniform_data;				// Byte buffer of actual uniform data to send to GPU
-} gs_gfxt_material_t;
+    gs_byte_buffer_t image_buffer_data;         // Image buffer data
+} gs_gfxt_material_t; 
 
 // Mesh
 gs_enum_decl(gs_gfxt_mesh_attribute_type,
@@ -242,6 +245,7 @@ gs_gfxt_uniform_block_t gs_gfxt_uniform_block_create(const gs_gfxt_uniform_block
 
 	// Iterate through layout, construct uniforms, place them into hash table
 	uint32_t offset = 0;
+    uint32_t image2D_offset = 0;
 	uint32_t ct = desc->size / sizeof(gs_gfxt_uniform_desc_t);
 	for (uint32_t i = 0; i < ct; ++i)
 	{
@@ -253,10 +257,23 @@ gs_gfxt_uniform_block_t gs_gfxt_uniform_block_create(const gs_gfxt_uniform_block
 		u_layout.type = ud->type;
 		memcpy(u_desc.name, ud->name, 64);
 		u_desc.layout = &u_layout;  		
-		u.hndl = gs_graphics_uniform_create(&u_desc);
 		u.binding = ud->binding;
-		u.offset = offset;
 		u.type = ud->type; 
+
+        // Determine offset/hndl
+        switch (ud->type)
+        {
+            case GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F:
+            {
+                u.offset = image2D_offset;
+            } break;
+
+            default:
+            {
+		        u.hndl = gs_graphics_uniform_create(&u_desc);
+		        u.offset = offset;
+            } break; 
+        }
 
 		// Add to data offset based on type
 		switch (ud->type) {
@@ -268,6 +285,10 @@ gs_gfxt_uniform_block_t gs_gfxt_uniform_block_create(const gs_gfxt_uniform_block
 		    case GS_GRAPHICS_UNIFORM_VEC4:		offset += sizeof(gs_vec4); break;
 		    case GS_GRAPHICS_UNIFORM_MAT4:		offset += sizeof(gs_mat4); break;
 		    case GS_GRAPHICS_UNIFORM_SAMPLER2D: offset += sizeof(gs_handle(gs_graphics_texture_t)); break;
+            case GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F: 
+            {
+                image2D_offset += sizeof(gs_handle(gs_graphics_texture_t));
+            } break;
 		}
 
 		// Add uniform to block with name as key
@@ -297,6 +318,7 @@ gs_gfxt_material_t gs_gfxt_material_create(gs_gfxt_material_desc_t* desc)
 
 	mat.desc = *desc;
 	mat.uniform_data = gs_byte_buffer_new();
+    mat.image_buffer_data = gs_byte_buffer_new();
 
 	gs_byte_buffer_resize(&mat.uniform_data, pip->ublock.size);
 	gs_byte_buffer_memset(&mat.uniform_data, 0);
@@ -389,9 +411,16 @@ void gs_gfxt_material_set_uniform(gs_gfxt_material_t* mat, const char* name, con
 	uint32_t uidx = gs_hash_table_get(pip->ublock.lookup, key);
 	gs_gfxt_uniform_t* u = &pip->ublock.uniforms[uidx];
 
-	// Seek to offset
+	// Seek to beginning of data
 	gs_byte_buffer_seek_to_beg(&mat->uniform_data);	
-	gs_byte_buffer_advance_position(&mat->uniform_data, u->offset);
+	gs_byte_buffer_seek_to_beg(&mat->image_buffer_data);	
+
+    // Advance by offset
+    switch (u->type)
+    {
+        case GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F:   gs_byte_buffer_advance_position(&mat->image_buffer_data, u->offset); break;
+        default:                                    gs_byte_buffer_advance_position(&mat->uniform_data, u->offset); break; 
+    }
 
 	switch (u->type)
 	{
@@ -404,6 +433,9 @@ void gs_gfxt_material_set_uniform(gs_gfxt_material_t* mat, const char* name, con
 	    case GS_GRAPHICS_UNIFORM_SAMPLER2D: {
 	    	gs_byte_buffer_write(&mat->uniform_data, gs_handle(gs_graphics_texture_t), *(gs_handle(gs_graphics_texture_t)*)data);
 	    } break;
+        case GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F: {
+	    	gs_byte_buffer_write(&mat->image_buffer_data, gs_handle(gs_graphics_texture_t), *(gs_handle(gs_graphics_texture_t)*)data);
+        } break;
 	}
 }
 
@@ -425,16 +457,37 @@ void gs_gfxt_material_bind_uniforms(gs_command_buffer_t* cb, gs_gfxt_material_t*
 	gs_assert(pip);
 
 	// Grab uniform layout from pipeline
-	for (uint32_t i = 0; i < gs_dyn_array_size(pip->ublock.uniforms); ++i) {
+	for (uint32_t i = 0; i < gs_dyn_array_size(pip->ublock.uniforms); ++i) 
+    { 
 		gs_gfxt_uniform_t* u = &pip->ublock.uniforms[i];
         gs_graphics_bind_desc_t bind = gs_default_val(); 
-		gs_graphics_bind_uniform_desc_t uniforms[1];
-		uniforms[0].uniform = u->hndl;
-		uniforms[0].data = (mat->uniform_data.data + u->offset);
-		uniforms[0].binding = u->binding;
-        bind.uniforms.desc = uniforms;
-        bind.uniforms.size = sizeof(uniforms); 
-		gs_graphics_apply_bindings(cb, &bind);
+
+        // Need to buffer these up so it's a single call...
+        switch (u->type)
+        {
+            case GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F:
+            {
+                gs_graphics_bind_image_buffer_desc_t ibuffer[1];
+                ibuffer[0].tex = *(gs_handle(gs_graphics_texture_t)*)(mat->image_buffer_data.data + u->offset);
+                ibuffer[0].binding = u->binding;
+                ibuffer[0].access = GS_GRAPHICS_ACCESS_WRITE_ONLY;
+                bind.image_buffers.desc = ibuffer;
+                bind.image_buffers.size = sizeof(ibuffer);
+                gs_graphics_apply_bindings(cb, &bind);
+            } break;
+
+            default:
+            {
+                gs_graphics_bind_uniform_desc_t uniforms[1];
+                uniforms[0].uniform = u->hndl;
+                uniforms[0].data = (mat->uniform_data.data + u->offset);
+                uniforms[0].binding = u->binding;
+                bind.uniforms.desc = uniforms;
+                bind.uniforms.size = sizeof(uniforms); 
+                gs_graphics_apply_bindings(cb, &bind);
+            } break;
+        }
+
 	}
 }
 
