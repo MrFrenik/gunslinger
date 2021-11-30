@@ -84,6 +84,8 @@ typedef struct gs_immediate_cache_t
 	gs_dyn_array(gs_mat4) projection;
 	/* Mode stack*/
 	gs_dyn_array(gsi_matrix_type) modes;
+	/* Flip texture in fragment shader in case y axis is reversed by projection matrix*/
+	bool flip_tex;
 	/* UV */
 	gs_vec2 uv;
 	/* Color */
@@ -109,6 +111,8 @@ typedef struct gs_immediate_draw_t
 	gs_hash_table(gsi_pipeline_state_attr_t, gs_handle(gs_graphics_pipeline_t)) pipeline_table;
 	/* Uniform buffer */
 	gs_handle(gs_graphics_uniform_t) uniform;
+	/* Uniform flip texture flag */
+	gs_handle(gs_graphics_uniform_t) flip_tex;
 	/* Uniform sampler */
 	gs_handle(gs_graphics_uniform_t) sampler;
 	/* Dynamic array of vertex data to update */
@@ -244,11 +248,12 @@ GSI_GL_VERSION_STR
 "layout(location = 1) in vec2 a_uv;\n"
 "layout(location = 2) in vec4 a_color;\n"
 "uniform mat4 u_mvp;\n"
+"uniform bool flip_tex;\n"
 "out vec2 uv;\n"
 "out vec4 color;\n"
 "void main() {\n"
 "  gl_Position = u_mvp * vec4(a_position, 1.0);\n"
-"  uv = a_uv;\n"
+"  uv = flip_tex ? vec2(a_uv.s, 1.0 - a_uv.t) : a_uv;\n"
 "  color = a_color;\n"
 "}\n";
 
@@ -288,6 +293,7 @@ void gsi_reset(gs_immediate_draw_t* gsi)
 	gs_dyn_array_push(gsi->cache.projection, gs_mat4_identity());
 	gs_dyn_array_push(gsi->cache.modes, GSI_MATRIX_MODELVIEW);
 
+	gsi->cache.flip_tex = false;
 	gsi->cache.texture = gsi->tex_default;
 	gsi->cache.pipeline = gsi_pipeline_state_default();
 	gsi->cache.pipeline.prim_type = 0x00;
@@ -315,6 +321,14 @@ gs_immediate_draw_t gs_immediate_draw_new()
     gs_println("HERE");
 	udesc.layout = &uldesc;
 	gsi.uniform = gs_graphics_uniform_create(&udesc);
+
+	// Flip texture flag
+	gs_graphics_uniform_layout_desc_t fldesc = gs_default_val();
+	fldesc.type = GS_GRAPHICS_UNIFORM_BOOL;
+	gs_graphics_uniform_desc_t fdesc = gs_default_val();
+	fdesc.name = "flip_tex";
+	fdesc.layout = &fldesc;
+	gsi.flip_tex = gs_graphics_uniform_create(&fdesc);
 
 	// Create sampler buffer 
 	gs_graphics_uniform_layout_desc_t sldesc = gs_default_val(); 
@@ -541,9 +555,10 @@ void gsi_flush(gs_immediate_draw_t* gsi)
 	gs_graphics_bind_vertex_buffer_desc_t vbuffer = gs_default_val();
 	vbuffer.buffer = gsi->vbo;
 
-	gs_graphics_bind_uniform_desc_t ubinds[2] = gs_default_val();
+	gs_graphics_bind_uniform_desc_t ubinds[3] = gs_default_val();
 	ubinds[0].uniform = gsi->uniform; ubinds[0].data = &mvp;
-	ubinds[1].uniform = gsi->sampler; ubinds[1].data = &gsi->cache.texture; ubinds[1].binding = 0;
+	ubinds[1].uniform = gsi->flip_tex; ubinds[1].data = &gsi->cache.flip_tex;
+	ubinds[2].uniform = gsi->sampler; ubinds[2].data = &gsi->cache.texture; ubinds[2].binding = 0;
 
     // Bindings for all buffers: vertex, uniform, sampler
     gs_graphics_bind_desc_t binds = gs_default_val();
@@ -653,6 +668,7 @@ void gsi_defaults(gs_immediate_draw_t* gsi)
 	gsi_flush(gsi);
 
 	// Set defaults for cache
+	gsi->cache.flip_tex = false;
 	gsi->cache.texture = gsi->tex_default;
 	gsi->cache.pipeline = gsi_pipeline_state_default();
 	gsi->cache.pipeline.prim_type = 0x00;
@@ -832,26 +848,29 @@ void gsi_camera(gs_immediate_draw_t* gsi, gs_camera_t* cam)
 	// Just grab main window for now. Will need to grab top of viewport stack in future
 	gs_vec2 ws = gs_platform_window_sizev(gs_platform_main_window());	
 	gsi_load_matrix(gsi, gs_camera_get_view_projection(cam, (s32)ws.x, (s32)ws.y));
+	gsi->cache.flip_tex = false;
 }
 
 void gsi_camera2D(gs_immediate_draw_t* gsi)
 {
 	// Flush previous
 	gsi_flush(gsi);
-	// Puts the camera in center of screen, 0,0 is bottom left corner
+	// Puts the camera from center of screen where (-1,-1) is bottom left to screen coordinates (pixels with origin at top left, means y axis is flipped)
 	gs_vec2 ws = gs_platform_window_sizev(gs_platform_main_window());
 	gs_vec2 hws = gs_vec2_scale(ws, 0.5f);
 	gs_camera_t c = gs_camera_default();
 	c.transform.position = gs_vec3_add(c.transform.position, gs_v3(hws.x, hws.y, -1.f));
 	f32 l = -ws.x / 2.f; 
 	f32 r = ws.x / 2.f;
-	f32 b = ws.y / 2.f;
+	f32 b = ws.y / 2.f; // The sign of this line with the below line's sign flip y axis
 	f32 tp = -ws.y / 2.f;
 	gs_mat4 ortho = gs_mat4_transpose(gs_mat4_ortho(
 		l, r, b, tp, 0.1f, 100.f
 	));
 	ortho = gs_mat4_mul(ortho, gs_camera_get_view(&c));
 	gsi_load_matrix(gsi, ortho);
+	// Need to flip texture as y axis is now inverted with the above matrix
+	gsi->cache.flip_tex = true;
 }
 
 void gsi_camera3D(gs_immediate_draw_t* gsi)
@@ -860,6 +879,7 @@ void gsi_camera3D(gs_immediate_draw_t* gsi)
 	gsi_flush(gsi);
 	gs_camera_t c = gs_camera_perspective();
 	gsi_camera(gsi, &c);
+	gsi->cache.flip_tex = false;
 }
 
 // Shape Drawing Utils

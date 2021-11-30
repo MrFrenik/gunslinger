@@ -5070,6 +5070,7 @@ gs_enum_decl(gs_graphics_shader_language_type,
 
 /* Uniform Type */
 gs_enum_decl(gs_graphics_uniform_type,
+    GS_GRAPHICS_UNIFORM_BOOL,
     GS_GRAPHICS_UNIFORM_FLOAT,
     GS_GRAPHICS_UNIFORM_INT,
     GS_GRAPHICS_UNIFORM_VEC2,
