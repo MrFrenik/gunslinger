@@ -119,6 +119,8 @@ typedef struct gs_immediate_draw_t
 	gs_immediate_cache_t cache;
 	/* Internal Command Buffer */
 	gs_command_buffer_t commands;
+    /* Window handle this context is bound to */
+    uint32_t window_handle;
 
 } gs_immediate_draw_t;
 
@@ -129,7 +131,7 @@ typedef struct gs_immediate_draw_t
 #endif
 
 // Create / Init / Shutdown / Free
-GS_API_DECL gs_immediate_draw_t gs_immediate_draw_new();
+GS_API_DECL gs_immediate_draw_t gs_immediate_draw_new(uint32_t window_handle);
 GS_API_DECL void                gs_immediate_draw_free(gs_immediate_draw_t* gsi);
 
 // Get pipeline from state
@@ -155,6 +157,9 @@ GS_API_DECL void gsi_stencil_enabled(gs_immediate_draw_t* gsi, bool enabled);
 GS_API_DECL void gsi_face_cull_enabled(gs_immediate_draw_t* gsi, bool enabled);
 GS_API_DECL void gsi_defaults(gs_immediate_draw_t* gsi);
 
+// View/Scissor commands
+GS_API_DECL void gsi_set_view_scissor(gs_immediate_draw_t* gsi, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
+
 // Final Submit / Merge
 GS_API_DECL void gsi_draw(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb);
 GS_API_DECL void gsi_render_pass_submit(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, gs_color_t clear_color);
@@ -173,7 +178,7 @@ GS_API_DECL void gsi_rotatefv(gs_immediate_draw_t* gsi, float angle, gs_vec3 v);
 GS_API_DECL void gsi_transf(gs_immediate_draw_t* gsi, float x, float y, float z);
 GS_API_DECL void gsi_scalef(gs_immediate_draw_t* gsi, float x, float y, float z);
 
-// Matrix Utils
+// Camera Utils
 GS_API_DECL void gsi_camera(gs_immediate_draw_t* gsi, gs_camera_t* cam);
 GS_API_DECL void gsi_camera2D(gs_immediate_draw_t* gsi);
 GS_API_DECL void gsi_camera3D(gs_immediate_draw_t* gsi);
@@ -296,7 +301,7 @@ void gsi_reset(gs_immediate_draw_t* gsi)
 }
 
 // Create / Init / Shutdown / Free
-gs_immediate_draw_t gs_immediate_draw_new()
+gs_immediate_draw_t gs_immediate_draw_new(uint32_t window_handle)
 {
 	gs_immediate_draw_t gsi = gs_default_val();
 	memset(&gsi, 0, sizeof(gsi));
@@ -306,6 +311,9 @@ gs_immediate_draw_t gs_immediate_draw_new()
 
 	// Init command buffer
 	gsi.commands = gs_command_buffer_new();	// Not totally sure on the syntax for new vs. create
+
+    // Set window handle
+    gsi.window_handle = window_handle;
 
 	// Create uniform buffer
 	gs_graphics_uniform_layout_desc_t uldesc = gs_default_val();
@@ -830,7 +838,7 @@ void gsi_scalef(gs_immediate_draw_t* gsi, float x, float y, float z)
 void gsi_camera(gs_immediate_draw_t* gsi, gs_camera_t* cam)
 {
 	// Just grab main window for now. Will need to grab top of viewport stack in future
-	gs_vec2 ws = gs_platform_window_sizev(gs_platform_main_window());	
+	gs_vec2 ws = gs_platform_window_sizev(gsi->window_handle);	
 	gsi_load_matrix(gsi, gs_camera_get_view_projection(cam, (s32)ws.x, (s32)ws.y));
 }
 
@@ -839,7 +847,7 @@ void gsi_camera2D(gs_immediate_draw_t* gsi)
 	// Flush previous
 	gsi_flush(gsi);
 	// Puts the camera in center of screen, 0,0 is bottom left corner
-	gs_vec2 ws = gs_platform_window_sizev(gs_platform_main_window());
+	gs_vec2 ws = gs_platform_window_sizev(gsi->window_handle);
 	gs_vec2 hws = gs_vec2_scale(ws, 0.5f);
 	gs_camera_t c = gs_camera_default();
 	c.transform.position = gs_vec3_add(c.transform.position, gs_v3(hws.x, hws.y, -1.f));
@@ -1084,7 +1092,7 @@ GS_API_DECL void gsi_rect3Dv(gs_immediate_draw_t* gsi, gs_vec3 min, gs_vec3 max,
 				const float v1 = uv1.y;
 
 				// First triangle
-				gsi_c4ub(gsi, 255, 0, 0, 255);
+				gsi_c4ub(gsi, c.r, c.g, c.b, c.a);
 				gsi_tc2f(gsi, u0, v0); gsi_v3fv(gsi, vt0);
 				gsi_tc2f(gsi, u1, v0); gsi_v3fv(gsi, vt3);
 				gsi_tc2f(gsi, u0, v1); gsi_v3fv(gsi, vt1);
@@ -1489,6 +1497,12 @@ void gsi_text(gs_immediate_draw_t* gsi, float x, float y, const char* text, cons
 
 	gs_mat4 rot = gs_mat4_rotatev(gs_deg2rad(-180.f), GS_XAXIS);
 
+    // Get total dimensions of text
+    gs_vec2 td = gs_asset_font_get_text_dimensions(fp, text, -1);
+    
+    // Move text to accomdate height
+    y += td.y;
+
 	// Needs to be fixed in here. Not elsewhere.
 	gsi_begin(gsi, GS_GRAPHICS_PRIMITIVE_TRIANGLES);
 	{
@@ -1542,6 +1556,16 @@ void gsi_text(gs_immediate_draw_t* gsi, float x, float y, const char* text, cons
 	gsi_end(gsi);
 }
 
+// View/Scissor commands
+GS_API_DECL void gsi_set_view_scissor(gs_immediate_draw_t* gsi, uint32_t x, uint32_t y, uint32_t w, uint32_t h)
+{
+    // Flush previous
+    gsi_flush(gsi);
+
+    // Set graphics viewport scissor
+    gs_graphics_set_view_scissor(&gsi->commands, x, y, w, h); 
+}
+
 // Final Submit / Merge
 void gsi_draw(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb)
 {
@@ -1568,7 +1592,7 @@ void gsi_render_pass_submit(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, g
 	gs_graphics_clear_desc_t clear = gs_default_val();
 	clear.actions = &action;
 	gs_renderpass pass = gs_default_val();
-	gs_vec2 fb = gs_platform_framebuffer_sizev(gs_platform_main_window());
+	gs_vec2 fb = gs_platform_framebuffer_sizev(gsi->window_handle);
 	gs_graphics_begin_render_pass(cb, pass);
 	gs_graphics_set_viewport(cb, 0, 0, (int32_t)fb.x, (int32_t)fb.y);
 	gs_graphics_clear(cb, &clear);
@@ -1581,7 +1605,7 @@ GS_API_DECL void gsi_render_pass_submit_ex(gs_immediate_draw_t* gsi, gs_command_
     gs_graphics_clear_desc_t clear = gs_default_val();
     clear.actions = action;
 	gs_renderpass pass = gs_default_val();
-	gs_vec2 fb = gs_platform_framebuffer_sizev(gs_platform_main_window());
+	gs_vec2 fb = gs_platform_framebuffer_sizev(gsi->window_handle);
 	gs_graphics_begin_render_pass(cb, pass);
 	gs_graphics_set_viewport(cb, 0, 0, (int32_t)fb.x, (int32_t)fb.y);
 	gs_graphics_clear(cb, &clear);

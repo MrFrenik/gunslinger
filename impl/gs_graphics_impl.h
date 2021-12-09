@@ -1190,13 +1190,13 @@ void gs_graphics_set_viewport(gs_command_buffer_t* cb, uint32_t x, uint32_t y, u
 }
 
 void gs_graphics_set_view_scissor(gs_command_buffer_t* cb, uint32_t x, uint32_t y, uint32_t w, uint32_t h)
-{
+{ 
     __ogl_push_command(cb, GS_OPENGL_OP_SET_VIEW_SCISSOR, {
         gs_byte_buffer_write(&cb->commands, uint32_t, x);
         gs_byte_buffer_write(&cb->commands, uint32_t, y);
         gs_byte_buffer_write(&cb->commands, uint32_t, w);
         gs_byte_buffer_write(&cb->commands, uint32_t, h);
-    });
+    }); 
 }
 
 void gs_graphics_texture_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc)
@@ -1526,7 +1526,7 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                 gs_byte_buffer_readc(&cb->commands, uint32_t, x);
                 gs_byte_buffer_readc(&cb->commands, uint32_t, y);
                 gs_byte_buffer_readc(&cb->commands, uint32_t, w);
-                gs_byte_buffer_readc(&cb->commands, uint32_t, h);
+                gs_byte_buffer_readc(&cb->commands, uint32_t, h); 
 
                 glEnable(GL_SCISSOR_TEST);
                 glScissor(x, y, w, h);

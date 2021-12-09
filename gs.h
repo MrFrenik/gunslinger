@@ -1911,6 +1911,8 @@ void __gs_hash_table_init_impl(void** ht, size_t sz)
 gs_force_inline
 uint32_t gs_hash_table_get_key_index_func(void** data, void* key, size_t key_len, size_t val_len, size_t stride, size_t klpvl)
 {
+    if (!data || !key) return GS_HASH_TABLE_INVALID_INDEX;
+
     // Need a better way to handle this. Can't do it like this anymore.
     // Need to fix this. Seriously messing me up.
     uint32_t capacity = gs_dyn_array_capacity(*data);
@@ -4544,6 +4546,7 @@ typedef enum gs_platform_event_type
 {
     GS_PLATFORM_EVENT_MOUSE,
     GS_PLATFORM_EVENT_KEY,
+    GS_PLATFORM_EVENT_TEXT,
     GS_PLATFORM_EVENT_WINDOW,
     GS_PLATFORM_EVENT_TOUCH,
     GS_PLATFORM_EVENT_APP
@@ -4609,6 +4612,11 @@ typedef struct gs_platform_window_event_t
     gs_platform_window_action_type action;
 } gs_platform_window_event_t;
 
+typedef struct gs_platform_text_event_t
+{
+    uint32_t codepoint;
+} gs_platform_text_event_t;
+
 typedef enum gs_platform_touch_action_type
 {
     GS_PLATFORM_TOUCH_DOWN,
@@ -4652,6 +4660,7 @@ typedef struct gs_platform_event_t
         gs_platform_window_event_t  window;
         gs_platform_touch_event_t   touch;
         gs_platform_app_event_t     app;
+        gs_platform_text_event_t    text;
     };
     uint32_t idx;
 } gs_platform_event_t;
@@ -5652,7 +5661,7 @@ typedef struct gs_asset_font_t
 
 GS_API_DECL bool gs_asset_font_load_from_file(const char* path, void* out, uint32_t point_size);
 GS_API_DECL bool gs_asset_font_load_from_memory(const void* memory, size_t sz, void* out, uint32_t point_size);
-GS_API_DECL gs_vec2 gs_asset_font_get_text_dimensions(const gs_asset_font_t* font, const char* text);
+GS_API_DECL gs_vec2 gs_asset_font_get_text_dimensions(const gs_asset_font_t* font, const char* text, int32_t len);
 
 // Audio
 typedef struct gs_asset_audio_t
@@ -6921,7 +6930,7 @@ bool gs_asset_font_load_from_memory(const void* memory, size_t sz, void* out, ui
     return success;
 }
 
-GS_API_DECL gs_vec2 gs_asset_font_get_text_dimensions(const gs_asset_font_t* fp, const char* text)
+GS_API_DECL gs_vec2 gs_asset_font_get_text_dimensions(const gs_asset_font_t* fp, const char* text, int32_t len)
 {
     gs_vec2 dimensions = gs_v2s(0.f);
 

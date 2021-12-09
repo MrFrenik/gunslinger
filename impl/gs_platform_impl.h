@@ -736,6 +736,7 @@ void gs_platform_file_extension_default_impl(char* buffer, size_t buffer_sz, con
 
 // Forward Decls.
 void __glfw_key_callback(GLFWwindow* window, s32 key, s32 scancode, s32 action, s32 mods);
+void __glfw_char_callback(GLFWwindow* window, uint32_t codepoint);
 void __glfw_mouse_button_callback(GLFWwindow* window, s32 button, s32 action, s32 mods);
 void __glfw_mouse_cursor_position_callback(GLFWwindow* window, f64 x, f64 y);
 void __glfw_mouse_scroll_wheel_callback(GLFWwindow* window, f64 xoffset, f64 yoffset);
@@ -1211,6 +1212,19 @@ gs_platform_mouse_button_code __glfw_button_to_gs_mouse_button(s32 code)
     return GS_MOUSE_BUTTON_CODE_COUNT;
 }
 
+void __glfw_char_callback(GLFWwindow* window, uint32_t codepoint)
+{
+    // Grab platform instance from engine
+    gs_platform_t* platform = gs_engine_subsystem(platform); 
+
+    gs_platform_event_t evt = gs_default_val();
+    evt.type = GS_PLATFORM_EVENT_TEXT;
+    evt.text.codepoint = codepoint;
+
+    // Add action
+    gs_platform_add_event(&evt);
+}
+
 void __glfw_key_callback(GLFWwindow* window, s32 code, s32 scancode, s32 action, s32 mods) 
 {
     // Grab platform instance from engine
@@ -1432,6 +1446,7 @@ void* gs_platform_create_window_internal(const char* title, uint32_t width, uint
     // Callbacks for window
     glfwMakeContextCurrent(window);
     glfwSetKeyCallback(window, &__glfw_key_callback);
+    glfwSetCharCallback(window, &__glfw_char_callback);
     glfwSetMouseButtonCallback(window, &__glfw_mouse_button_callback);
     glfwSetCursorEnterCallback(window, &__glfw_mouse_cursor_enter_callback);
     glfwSetCursorPosCallback(window, &__glfw_mouse_cursor_position_callback);
