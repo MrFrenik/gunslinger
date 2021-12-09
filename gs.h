@@ -5661,7 +5661,8 @@ typedef struct gs_asset_font_t
 
 GS_API_DECL bool gs_asset_font_load_from_file(const char* path, void* out, uint32_t point_size);
 GS_API_DECL bool gs_asset_font_load_from_memory(const void* memory, size_t sz, void* out, uint32_t point_size);
-GS_API_DECL gs_vec2 gs_asset_font_get_text_dimensions(const gs_asset_font_t* font, const char* text, int32_t len);
+GS_API_DECL gs_vec2 gs_asset_font_text_dimensions(const gs_asset_font_t* font, const char* text, int32_t len);
+GS_API_DECL float gs_asset_font_max_height(const gs_asset_font_t* font);
 
 // Audio
 typedef struct gs_asset_audio_t
@@ -6930,7 +6931,26 @@ bool gs_asset_font_load_from_memory(const void* memory, size_t sz, void* out, ui
     return success;
 }
 
-GS_API_DECL gs_vec2 gs_asset_font_get_text_dimensions(const gs_asset_font_t* fp, const char* text, int32_t len)
+GS_API_DECL float gs_asset_font_max_height(const gs_asset_font_t* fp)
+{
+    if (!fp) return 0.f;
+    float h = 0.f, x = 0.f, y = 0.f;
+    const char* txt = "1l`'f()ABCDEFGHIJKLMNOjPQqSTU!";
+    while (txt[0] != '\0')
+    {
+        char c = txt[0];
+        if (c >= 32 && c <= 127) 
+        {
+            stbtt_aligned_quad q = gs_default_val();
+            stbtt_GetBakedQuad((stbtt_bakedchar*)fp->glyphs, fp->texture.desc.width, fp->texture.desc.height, c - 32, &x, &y, &q, 1);
+            h = gs_max(gs_max(h, fabsf(q.y0)), fabsf(q.y1));
+        }
+        txt++;
+    };
+    return h;
+} 
+
+GS_API_DECL gs_vec2 gs_asset_font_text_dimensions(const gs_asset_font_t* fp, const char* text, int32_t len)
 {
     gs_vec2 dimensions = gs_v2s(0.f);
 
@@ -6938,7 +6958,7 @@ GS_API_DECL gs_vec2 gs_asset_font_get_text_dimensions(const gs_asset_font_t* fp,
     float x = 0.f;
     float y = 0.f;
 
-    while (text[0] != '\0')
+    while (text[0] != '\0' && len--)
     {
         char c = text[0];
         if (c >= 32 && c <= 127) 

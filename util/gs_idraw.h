@@ -1498,10 +1498,12 @@ void gsi_text(gs_immediate_draw_t* gsi, float x, float y, const char* text, cons
 	gs_mat4 rot = gs_mat4_rotatev(gs_deg2rad(-180.f), GS_XAXIS);
 
     // Get total dimensions of text
-    gs_vec2 td = gs_asset_font_get_text_dimensions(fp, text, -1);
+    gs_vec2 td = gs_asset_font_text_dimensions(fp, text, -1);
+    float th = gs_asset_font_max_height(fp);
     
     // Move text to accomdate height
-    y += td.y;
+    // y += td.y;
+    y += th;
 
 	// Needs to be fixed in here. Not elsewhere.
 	gsi_begin(gsi, GS_GRAPHICS_PRIMITIVE_TRIANGLES);
