@@ -45,14 +45,14 @@ typedef enum gs_dx11_op_code_type
 
 typedef ID3D11Buffer	*gsdx11_buffer_t;
 
-typedef struct _TAG_gsdx11_shader_t
+typedef struct _TAG_gsdx11_shader
 {
-	union
-	{
-		ID3D11VertexShader		*vs;
-		ID3D11PixelShader 		*ps;
-	};
-	ID3DBlob 					*blob; // need the bytecode for creating input layouts
+	ID3D11VertexShader		*vs;
+	ID3D11PixelShader 		*ps;
+
+ 	// need the bytecode for creating input layouts
+	ID3DBlob 				*vsblob,
+							*psblob;
 } gsdx11_shader_t;
 
 typedef struct _TAG_gsdx11_pipeline
@@ -343,38 +343,46 @@ gs_graphics_shader_create(const gs_graphics_shader_desc_t *desc)
 	HRESULT								hr;
 	gsdx11_data_t						*dx11;
 	ID3DBlob							*err_blob;
-	void								*shader_src = desc->sources[0].source;
-	size_t								shader_len = strlen(shader_src) + 1;
+	void								*shader_src;
+	size_t								shader_len;
 	gsdx11_shader_t						shader;
-	uint32_t							shader_type = desc->sources[0].type;
+	uint32_t							shader_type;
 	gs_handle(gs_graphics_shader_t)		hndl;
+	uint32_t							cnt;
 
 
 	dx11 = (gsdx11_data_t *)gs_engine_subsystem(graphics)->user_data;
+	cnt = (uint32_t)desc->size / (uint32_t)sizeof(gs_graphics_shader_source_desc_t);
 
 	// TODO(matthew): Check the error blob
-	// TODO(matthew): Make this support multiple shader sources eventually
-	switch (shader_type)
+	for (uint32_t i = 0; i < cnt; i++)
 	{
-		case GS_GRAPHICS_SHADER_STAGE_VERTEX:
+		shader_src = desc->sources[i].source;
+		shader_len = strlen(shader_src) + 1;
+		shader_type = desc->sources[i].type;
+
+		switch (shader_type)
 		{
-			hr = D3DCompile(shader_src, shader_len, NULL, NULL, NULL, "main", "vs_5_0",
-					0, 0, &shader.blob, &err_blob);
-			hr = ID3D11Device_CreateVertexShader(dx11->device, ID3D10Blob_GetBufferPointer(shader.blob),
-					ID3D10Blob_GetBufferSize(shader.blob), 0, &shader.vs);
-			hndl = gs_handle_create(gs_graphics_shader_t, gs_slot_array_insert(dx11->shaders, shader));
-			/* printf("v: %p\n", shader.vs); */
-		} break;
-		case GS_GRAPHICS_SHADER_STAGE_FRAGMENT:
-		{
-			hr = D3DCompile(shader_src, shader_len, NULL, NULL, NULL, "main", "ps_5_0",
-					0, 0, &shader.blob, &err_blob);
-			hr = ID3D11Device_CreatePixelShader(dx11->device, ID3D10Blob_GetBufferPointer(shader.blob),
-					ID3D10Blob_GetBufferSize(shader.blob), 0, &shader.ps);
-			hndl = gs_handle_create(gs_graphics_shader_t, gs_slot_array_insert(dx11->shaders, shader));
-			/* printf("p: %p\n", shader.ps); */
-		} break;
+			case GS_GRAPHICS_SHADER_STAGE_VERTEX:
+			{
+				hr = D3DCompile(shader_src, shader_len, NULL, NULL, NULL, "main", "vs_5_0",
+						0, 0, &shader.vsblob, &err_blob);
+				hr = ID3D11Device_CreateVertexShader(dx11->device, ID3D10Blob_GetBufferPointer(shader.vsblob),
+						ID3D10Blob_GetBufferSize(shader.vsblob), 0, &shader.vs);
+				/* printf("v: %p\n", shader.vs); */
+			} break;
+			case GS_GRAPHICS_SHADER_STAGE_FRAGMENT:
+			{
+				hr = D3DCompile(shader_src, shader_len, NULL, NULL, NULL, "main", "ps_5_0",
+						0, 0, &shader.psblob, &err_blob);
+				hr = ID3D11Device_CreatePixelShader(dx11->device, ID3D10Blob_GetBufferPointer(shader.psblob),
+						ID3D10Blob_GetBufferSize(shader.psblob), 0, &shader.ps);
+				/* printf("p: %p\n", shader.ps); */
+			} break;
+		}
 	}
+
+	hndl = gs_handle_create(gs_graphics_shader_t, gs_slot_array_insert(dx11->shaders, shader));
 
 	return hndl;
 }

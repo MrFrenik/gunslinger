@@ -26,7 +26,7 @@
 gs_command_buffer_t						cb			= {0};
 gs_handle(gs_graphics_vertex_buffer_t)	vbo     	= {0};
 gs_handle(gs_graphics_index_buffer_t)	ibo			= {0};
-gs_handle(gs_graphics_shader_t) 		shaders[2] 	= {0};
+gs_handle(gs_graphics_shader_t) 		shader     	= {0};
 gs_graphics_t *graphics;
 gsdx11_data_t *dx11;
 
@@ -49,25 +49,25 @@ void init()
 	ID3DBlob							*vsblob,
 										*psblob;
 	gs_graphics_shader_desc_t 			shader_desc = {0};
-	gs_graphics_shader_source_desc_t	src_desc = {0};
+	gs_graphics_shader_source_desc_t	sources[2] = {0};
 
 	vs_src = gs_read_file_contents_into_string_null_term("vertex.hlsl", "rb", &sz);
 	ps_src = gs_read_file_contents_into_string_null_term("pixel.hlsl", "rb", &sz);
 
-	src_desc.type = GS_GRAPHICS_SHADER_STAGE_VERTEX;
-	src_desc.source = vs_src;
-	shader_desc.sources = &src_desc;
-	shader_desc.size = 1;
-	shaders[0] = gs_graphics_shader_create(&shader_desc);
+	sources[0].type = GS_GRAPHICS_SHADER_STAGE_VERTEX;
+	sources[0].source = vs_src;
+	sources[1].type = GS_GRAPHICS_SHADER_STAGE_FRAGMENT;
+	sources[1].source = ps_src;
 
-	src_desc.type = GS_GRAPHICS_SHADER_STAGE_FRAGMENT;
-	src_desc.source = ps_src;
-	shaders[1] = gs_graphics_shader_create(&shader_desc);
+	shader_desc.sources = sources;
+	shader_desc.size = sizeof(sources);
 
-	vs = gs_slot_array_get(dx11->shaders, 1).vs;
-	ps = gs_slot_array_get(dx11->shaders, 2).ps;
-	vsblob = gs_slot_array_get(dx11->shaders, 1).blob;
-	psblob = gs_slot_array_get(dx11->shaders, 2).blob;
+	shader = gs_graphics_shader_create(&shader_desc);
+
+	vs = gs_slot_array_get(dx11->shaders, shader.id).vs;
+	ps = gs_slot_array_get(dx11->shaders, shader.id).ps;
+	vsblob = gs_slot_array_get(dx11->shaders, shader.id).vsblob;
+	psblob = gs_slot_array_get(dx11->shaders, shader.id).psblob;
 
 	ID3D11DeviceContext_VSSetShader(dx11->context, vs, 0, 0);
 	ID3D11DeviceContext_PSSetShader(dx11->context, ps, 0, 0);
