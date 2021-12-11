@@ -47,22 +47,23 @@ void init()
 										*ps_src;
 	ID3DBlob							*vsblob,
 										*psblob;
-	gs_graphics_shader_desc_t 			shader_desc = {0};
-	gs_graphics_shader_source_desc_t	sources[2] = {0};
 	gs_graphics_pipeline_desc_t			pipe_desc = {0};
+
 
 	vs_src = gs_read_file_contents_into_string_null_term("vertex.hlsl", "rb", &sz);
 	ps_src = gs_read_file_contents_into_string_null_term("pixel.hlsl", "rb", &sz);
 
-	sources[0].type = GS_GRAPHICS_SHADER_STAGE_VERTEX;
-	sources[0].source = vs_src;
-	sources[1].type = GS_GRAPHICS_SHADER_STAGE_FRAGMENT;
-	sources[1].source = ps_src;
+    shader = gs_graphics_shader_create (
+        &(gs_graphics_shader_desc_t) {
+            .sources = (gs_graphics_shader_source_desc_t[]) {
+                {.type = GS_GRAPHICS_SHADER_STAGE_VERTEX, .source = vs_src},
+                {.type = GS_GRAPHICS_SHADER_STAGE_FRAGMENT, .source = ps_src}
+            }, 
+            .size = 2 * sizeof(gs_graphics_shader_source_desc_t),
+            .name = "triangle"
+        }
+    );
 
-	shader_desc.sources = sources;
-	shader_desc.size = sizeof(sources);
-
-	shader = gs_graphics_shader_create(&shader_desc);
 
 	vsblob = gs_slot_array_get(dx11->shaders, shader.id).vsblob;
 	psblob = gs_slot_array_get(dx11->shaders, shader.id).psblob;
@@ -76,30 +77,21 @@ void init()
 
 	UINT	 stride = 3 * sizeof(float),
 			 offset = 0;
-	gs_graphics_vertex_buffer_desc_t desc = {0};
 	float v_data[] =
 	{
 		0.0f, 0.5f, 0.5f,
 		0.5f, -0.5f, 0.5f,
 		-0.5f, -0.5f, 0.5f,
-		0.8f, 0.5f, 0.5f
-	};
-	UINT idx_data[] =
-	{
-		0, 1, 2,
-		0, 2, 3
 	};
 
-	desc.data = v_data;
-	desc.size = sizeof(v_data);
-	vbo = gs_graphics_vertex_buffer_create(&desc);
-
-	desc.data = idx_data;
-	desc.size = sizeof(idx_data);
-	ibo = gs_graphics_index_buffer_create(&desc);
-
+    vbo = gs_graphics_vertex_buffer_create(
+        &(gs_graphics_vertex_buffer_desc_t) {
+            .data = v_data,
+            .size = sizeof(v_data)
+        }
+    );
+	
 	ID3D11DeviceContext_IASetVertexBuffers(dx11->context, 0, 1, (gs_slot_array_getp(dx11->vertex_buffers, 1)), &stride, &offset);
-	ID3D11DeviceContext_IASetIndexBuffer(dx11->context, gs_slot_array_get(dx11->index_buffers, 1), DXGI_FORMAT_R32_UINT, 0);
 
 	///////////////////////////////////////////////////////////////////////////
 	// Input Layout Setup
@@ -126,17 +118,15 @@ void update()
 		gs_engine_quit();
 
 	// RENDER
-	float bgcolor[] = {0.1, 0.1, 0.1, 1.0};
 	gs_graphics_clear_desc_t clear = {0};
 
-	clear.actions = &(gs_graphics_clear_action_t){.color = {0.1f, 0.3f, 0.9f, 1.0f}};
+	clear.actions = &(gs_graphics_clear_action_t){.color = {0.1f, 0.1f, 0.1f, 1.0f}};
 
 	gs_graphics_clear(&cb, &clear);
-	/* gs_graphics_set_viewport(&cb, 0, 0, SCR_WIDTH / 2, SCR_HEIGHT / 2); */
 	gs_graphics_bind_pipeline(&cb, pipe);
 	gs_graphics_submit_command_buffer(&cb);
 
-	ID3D11DeviceContext_DrawIndexed(dx11->context, 6, 0, 0);
+	ID3D11DeviceContext_Draw(dx11->context, 3, 0);
 	IDXGISwapChain_Present(dx11->swapchain, 0, 0);
 }
 
