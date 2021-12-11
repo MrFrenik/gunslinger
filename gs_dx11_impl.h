@@ -370,6 +370,12 @@ gs_graphics_texture_create(const gs_graphics_texture_desc_t* desc)
 // Command Buffers Ops
 =============================*/
 
+/*
+	// Structure of command: 
+		- Op code
+		- Data packet
+*/
+
 #define __dx11_push_command(__cb, __op_code, ...)												\
 do 																								\
 {																								\
@@ -402,6 +408,76 @@ void
 gs_graphics_clear(gs_command_buffer_t *cb,
 				  gs_graphics_clear_desc_t *desc)
 {
+
+	__dx11_push_command(cb, GS_DX11_OP_CLEAR,
+	{
+        uint32_t count = !desc->actions ? 0 : !desc->size ? 1 : (uint32_t)((size_t)desc->size / (size_t)sizeof(gs_graphics_clear_action_t));
+        gs_byte_buffer_write(&cb->commands, uint32_t, count);
+        for (uint32_t i = 0; i < count; ++i)
+		{
+            gs_byte_buffer_write(&cb->commands, gs_graphics_clear_action_t, desc->actions[i]);
+        }
+	});
+}
+
+/* Submission (Main Thread) */
+void
+gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
+{
+	gsdx11_data_t		*dx11;
+
+
+	dx11 = (gsdx11_data_t *)gs_engine_subsystem(graphics)->user_data;
+
+	// Set read pos to beginning
+	gs_byte_buffer_seek_to_beg(&cb->commands);
+
+	// For each command in buffer
+	gs_for_range(cb->num_commands)
+	{
+		// Read op code
+		gs_byte_buffer_readc(&cb->commands, gs_dx11_op_code_type, op_code);
+
+		switch (op_code)
+		{
+			case GS_DX11_OP_BEGIN_RENDER_PASS:
+			{} break;
+
+			case GS_DX11_OP_END_RENDER_PASS:
+			{} break;
+
+			case GS_DX11_OP_CLEAR:
+			{
+				gs_byte_buffer_readc(&cb->commands, uint32_t, action_count);
+				for (uint32_t j = 0; j < action_count; j++)
+				{
+					uint32_t bit = 0x00;
+
+					gs_byte_buffer_readc(&cb->commands, gs_graphics_clear_action_t, action);
+
+					// No clear
+					if (action.flag & GS_GRAPHICS_CLEAR_NONE)
+						continue;
+
+					if (action.flag & GS_GRAPHICS_CLEAR_COLOR || action.flag == 0x00)
+					{
+						float bgcolor[4] = {action.color[0], action.color[1], action.color[2], action.color[3]};
+						ID3D11DeviceContext_ClearRenderTargetView(dx11->context, dx11->rtv, bgcolor);
+					}
+					if (action.flag & GS_GRAPHICS_CLEAR_DEPTH || action.flag == 0x00)
+					{
+						bit |= D3D11_CLEAR_DEPTH;
+					}
+					if (action.flag & GS_GRAPHICS_CLEAR_STENCIL || action.flag == 0x00)
+					{
+						bit |= D3D11_CLEAR_STENCIL;
+					}
+
+					ID3D11DeviceContext_ClearDepthStencilView(dx11->context, dx11->dsv, bit, 1.0f, 0);
+				}
+			} break;
+		}
+	}
 }
 
 #endif // GS_DX11_IMPL_H

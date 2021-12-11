@@ -20,6 +20,7 @@
 #include "gs/gs.h"
 
 // All necessary graphics data for this example (shader source/vertex data)
+gs_command_buffer_t						cb			= {0};
 gs_handle(gs_graphics_vertex_buffer_t)	vbo     	= {0};
 gs_handle(gs_graphics_index_buffer_t)	ibo			= {0};
 gs_handle(gs_graphics_shader_t) 		shaders[2] 	= {0};
@@ -29,8 +30,10 @@ gsdx11_data_t *dx11;
 void init()
 {
 	HRESULT 				hr;
+
 	graphics = gs_engine_subsystem(graphics);
 	dx11 = (gsdx11_data_t *)graphics->user_data;
+	cb = gs_command_buffer_new();
 
 	///////////////////////////////////////////////////////////////////////////
 	// Shader Setup
@@ -122,9 +125,12 @@ void update()
 
 	// RENDER
 	float bgcolor[] = {0.1, 0.1, 0.1, 1.0};
+	gs_graphics_clear_desc_t clear = {0};
 
-	ID3D11DeviceContext_ClearRenderTargetView(dx11->context, dx11->rtv, bgcolor);
-	ID3D11DeviceContext_ClearDepthStencilView(dx11->context, dx11->dsv, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+	clear.actions = &(gs_graphics_clear_action_t){.color = {0.1f, 0.3f, 0.9f, 1.0f}};
+
+	gs_graphics_clear(&cb, &clear);
+	gs_graphics_submit_command_buffer(&cb);
 
 	ID3D11DeviceContext_DrawIndexed(dx11->context, 6, 0, 0);
 	IDXGISwapChain_Present(dx11->swapchain, 0, 0);
