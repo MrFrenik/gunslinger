@@ -36,6 +36,7 @@ typedef enum gs_dx11_op_code_type
 	GS_DX11_OP_CLEAR,
 	GS_DX11_OP_BIND_PIPELINE,
 	GS_DX11_OP_APPLY_BINDINGS,
+	GS_DX11_OP_DRAW,
 	GS_DX11_OP_COUNT
 } gs_dx11_op_code_type;
 
@@ -75,8 +76,21 @@ typedef struct _TAG_gsdx11_pipeline
     gs_graphics_raster_state_desc_t raster;
     /* gs_graphics_stencil_state_desc_t stencil; */
     /* gs_graphics_compute_state_desc_t compute; */
-    /* gs_dyn_array(gs_graphics_vertex_attribute_desc_t) layout; */
+    gs_dyn_array(gs_graphics_vertex_attribute_desc_t) layout;
 } gsdx11_pipeline_t;
+
+typedef struct _TAG_gsdx11_vertex_buffer_decl
+{
+	gsdx11_buffer_t						vbo;
+	gs_graphics_vertex_data_type		data_type;
+	size_t								offset;
+} gsdx11_vertex_buffer_decl_t;
+
+typedef struct _TAG_gsdx11_data_cache
+{
+	gs_dyn_array(gsdx11_vertex_buffer_decl_t)	vdecls;
+	gs_handle(gs_graphics_pipeline_t)			pipeline;
+} gsdx11_data_cache_t;
 
 // Internal DX11 data
 typedef struct _tag_gsdx11_data
@@ -100,6 +114,9 @@ typedef struct _tag_gsdx11_data
 	// initialization, so might as well save them here.
 	ID3D11RasterizerState				*raster_state;
 	D3D11_VIEWPORT						viewport;
+
+	// Cached data between draw / state change calls
+	gsdx11_data_cache_t					cache;
 } gsdx11_data_t;
 
 /*=============================
@@ -408,11 +425,20 @@ gs_graphics_pipeline_create(const gs_graphics_pipeline_desc_t* desc)
 	gsdx11_data_t							*dx11;
 	gsdx11_pipeline_t						pipe = gs_default_val();
 	gs_handle(gs_graphics_pipeline_t)		hndl;
+	uint32_t								cnt;
 
 	dx11 = (gsdx11_data_t*)gs_engine_subsystem(graphics)->user_data;
 
 	// add state
 	pipe.raster = desc->raster;
+
+	// add layout
+   	cnt = (uint32_t)desc->layout.size / (uint32_t)sizeof(gs_graphics_vertex_attribute_desc_t);
+	gs_dyn_array_reserve(pipe.layout, cnt);
+	for (uint32_t i = 0; i < cnt; i++)
+	{
+		gs_dyn_array_push(pipe.layout, desc->layout.attrs[i]);
+	}
 
 	hndl = gs_handle_create(gs_graphics_pipeline_t, gs_slot_array_insert(dx11->pipelines, pipe));
 
@@ -530,7 +556,7 @@ gs_graphics_apply_bindings(gs_command_buffer_t *cb,
 	gs_byte_buffer_write(&cb->commands, uint32_t, cnt);
 
 	// vertex buffers
-	for (uint32_t i; i < vcnt; i++)
+	for (uint32_t i = 0; i < vcnt; i++)
 	{
 		gs_graphics_bind_vertex_buffer_desc_t *decl = &binds->vertex_buffers.desc[i];
 		gs_byte_buffer_write(&cb->commands, gs_graphics_bind_type, GS_GRAPHICS_BIND_VERTEX_BUFFER);
@@ -550,6 +576,21 @@ gs_graphics_bind_pipeline(gs_command_buffer_t *cb,
 		gs_byte_buffer_write(&cb->commands, uint32_t, hndl.id);
 	});
 }
+
+void
+gs_graphics_draw(gs_command_buffer_t *cb,
+				 gs_graphics_draw_desc_t *desc)
+{
+    __dx11_push_command(cb, GS_DX11_OP_DRAW, {
+        gs_byte_buffer_write(&cb->commands, uint32_t, desc->start);
+        gs_byte_buffer_write(&cb->commands, uint32_t, desc->count);
+        gs_byte_buffer_write(&cb->commands, uint32_t, desc->instances);
+        gs_byte_buffer_write(&cb->commands, uint32_t, desc->base_vertex);
+        gs_byte_buffer_write(&cb->commands, uint32_t, desc->range.start);
+        gs_byte_buffer_write(&cb->commands, uint32_t, desc->range.end);
+    });
+}
+	
 
 /* Submission (Main Thread) */
 void
@@ -623,11 +664,42 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
 				ID3D11DeviceContext_RSSetViewports(dx11->context, 1, &dx11->viewport);
 			};
 
+			case GS_DX11_OP_APPLY_BINDINGS:
+			{
+				gs_byte_buffer_readc(&cb->commands, uint32_t, cnt);
+
+				for (uint32_t i = 0; i < cnt; i++)
+				{
+					gs_byte_buffer_readc(&cb->commands, gs_graphics_bind_type, type);
+
+					switch (type)
+					{
+						case GS_GRAPHICS_BIND_VERTEX_BUFFER:
+						{
+							gsdx11_vertex_buffer_decl_t vbo_decl = gs_default_val();
+
+							gs_byte_buffer_readc(&cb->commands, uint32_t, id);
+							gs_byte_buffer_readc(&cb->commands, size_t, offset);
+							gs_byte_buffer_readc(&cb->commands, gs_graphics_vertex_data_type, data_type);
+
+							vbo_decl.vbo = gs_slot_array_get(dx11->vertex_buffers, id);
+							vbo_decl.offset = offset;
+							vbo_decl.data_type = data_type;
+
+							// Cache buffer for later when we receive the layout info
+							gs_dyn_array_push(dx11->cache.vdecls, vbo_decl);
+						} break;
+					}
+				}
+			} break;
+
 			case GS_DX11_OP_BIND_PIPELINE:
 			{
 				gsdx11_pipeline_t *pipe;
 
 				gs_byte_buffer_readc(&cb->commands, uint32_t, pipe_id);
+
+				dx11->cache.pipeline = gs_handle_create(gs_graphics_pipeline_t, pipe_id);
 
 				pipe = gs_slot_array_getp(dx11->pipelines, pipe_id);
 
@@ -642,6 +714,34 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
 					if (shader.tag & GS_DX11_SHADER_TYPE_PIXEL)
 						ID3D11DeviceContext_PSSetShader(dx11->context, shader.ps, 0, 0);
 				}
+			} break;
+
+			case GS_DX11_OP_DRAW:
+			{
+				gsdx11_pipeline_t *pipe = gs_slot_array_getp(dx11->pipelines, dx11->cache.pipeline.id);
+				bool is_instanced = false;
+
+                if (gs_dyn_array_empty(dx11->cache.vdecls)) {
+                    gs_println("Error:DX11:Draw: No vertex buffer bound.");
+                    gs_assert(false);
+                }
+
+				for (uint32_t i = 0; i < gs_dyn_array_size(pipe->layout); i++)
+				{
+					uint32_t vbo_slot = pipe->layout[i].buffer_idx;
+					gsdx11_vertex_buffer_decl_t vdecl = dx11->cache.vdecls[vbo_slot];
+					gsdx11_buffer_t vbo = vdecl.vbo;
+					size_t stride, offset;
+
+					// Manual override for setting divisor(step rate)/stride/offset
+                    bool is_manual = pipe->layout[i].stride | pipe->layout[i].divisor | pipe->layout[i].offset | vdecl.data_type == GS_GRAPHICS_VERTEX_DATA_NONINTERLEAVED;
+					stride = pipe->layout[i].stride; // TODO(matthew): Handle the other case, we're only considering no stride for now.
+					offset = vdecl.offset; // TODO(matthew): Again, handle the other case (see L2051).
+
+					// TODO(matthew): make this take the buffer slot instead of 'i'
+					ID3D11DeviceContext_IASetVertexBuffers(dx11->context, i, 1, &vbo, &stride, &offset);
+				}
+				
 			} break;
 		}
 	}
