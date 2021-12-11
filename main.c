@@ -101,8 +101,6 @@ void init()
             .size = sizeof(v_data)
         }
     );
-	
-	/* ID3D11DeviceContext_IASetVertexBuffers(dx11->context, 0, 1, (gs_slot_array_getp(dx11->vertex_buffers, 1)), &stride, &offset); */
 
 	///////////////////////////////////////////////////////////////////////////
 	// Input Layout Setup

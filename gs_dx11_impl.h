@@ -664,35 +664,6 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
 				ID3D11DeviceContext_RSSetViewports(dx11->context, 1, &dx11->viewport);
 			};
 
-			case GS_DX11_OP_APPLY_BINDINGS:
-			{
-				gs_byte_buffer_readc(&cb->commands, uint32_t, cnt);
-
-				for (uint32_t i = 0; i < cnt; i++)
-				{
-					gs_byte_buffer_readc(&cb->commands, gs_graphics_bind_type, type);
-
-					switch (type)
-					{
-						case GS_GRAPHICS_BIND_VERTEX_BUFFER:
-						{
-							gsdx11_vertex_buffer_decl_t vbo_decl = gs_default_val();
-
-							gs_byte_buffer_readc(&cb->commands, uint32_t, id);
-							gs_byte_buffer_readc(&cb->commands, size_t, offset);
-							gs_byte_buffer_readc(&cb->commands, gs_graphics_vertex_data_type, data_type);
-
-							vbo_decl.vbo = gs_slot_array_get(dx11->vertex_buffers, id);
-							vbo_decl.offset = offset;
-							vbo_decl.data_type = data_type;
-
-							// Cache buffer for later when we receive the layout info
-							gs_dyn_array_push(dx11->cache.vdecls, vbo_decl);
-						} break;
-					}
-				}
-			} break;
-
 			case GS_DX11_OP_BIND_PIPELINE:
 			{
 				gsdx11_pipeline_t *pipe;
@@ -716,32 +687,60 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
 				}
 			} break;
 
-			case GS_DX11_OP_DRAW:
+			case GS_DX11_OP_APPLY_BINDINGS:
 			{
 				gsdx11_pipeline_t *pipe = gs_slot_array_getp(dx11->pipelines, dx11->cache.pipeline.id);
-				bool is_instanced = false;
+				gs_byte_buffer_readc(&cb->commands, uint32_t, cnt);
 
-                if (gs_dyn_array_empty(dx11->cache.vdecls)) {
-                    gs_println("Error:DX11:Draw: No vertex buffer bound.");
-                    gs_assert(false);
-                }
-
-				for (uint32_t i = 0; i < gs_dyn_array_size(pipe->layout); i++)
+				for (uint32_t i = 0; i < cnt; i++)
 				{
-					uint32_t vbo_slot = pipe->layout[i].buffer_idx;
-					gsdx11_vertex_buffer_decl_t vdecl = dx11->cache.vdecls[vbo_slot];
-					gsdx11_buffer_t vbo = vdecl.vbo;
-					size_t stride, offset;
+					gs_byte_buffer_readc(&cb->commands, gs_graphics_bind_type, type);
 
-					// Manual override for setting divisor(step rate)/stride/offset
-                    bool is_manual = pipe->layout[i].stride | pipe->layout[i].divisor | pipe->layout[i].offset | vdecl.data_type == GS_GRAPHICS_VERTEX_DATA_NONINTERLEAVED;
-					stride = pipe->layout[i].stride; // TODO(matthew): Handle the other case, we're only considering no stride for now.
-					offset = vdecl.offset; // TODO(matthew): Again, handle the other case (see L2051).
+					switch (type)
+					{
+						case GS_GRAPHICS_BIND_VERTEX_BUFFER:
+						{
+							gsdx11_buffer_t vbo;
+							UINT vbo_slot = pipe->layout[i].buffer_idx;
+							UINT stride = pipe->layout[i].stride; // TODO(matthew): Handle the other case, we're only considering no stride for now.
 
-					// TODO(matthew): make this take the buffer slot instead of 'i'
-					ID3D11DeviceContext_IASetVertexBuffers(dx11->context, i, 1, &vbo, &stride, &offset);
+							gs_byte_buffer_readc(&cb->commands, uint32_t, id);
+							gs_byte_buffer_readc(&cb->commands, size_t, offset);
+							gs_byte_buffer_readc(&cb->commands, gs_graphics_vertex_data_type, data_type);
+
+							vbo = gs_slot_array_get(dx11->vertex_buffers, id);
+
+							ID3D11DeviceContext_IASetVertexBuffers(dx11->context, vbo_slot, 1, &vbo, &stride, &offset);
+						} break;
+					}
 				}
-				
+			} break;
+
+			case GS_DX11_OP_DRAW:
+			{
+				/* gsdx11_pipeline_t *pipe = gs_slot_array_getp(dx11->pipelines, dx11->cache.pipeline.id); */
+				/* bool is_instanced = false; */
+
+                /* if (gs_dyn_array_empty(dx11->cache.vdecls)) { */
+                    /* gs_println("Error:DX11:Draw: No vertex buffer bound."); */
+                    /* gs_assert(false); */
+                /* } */
+
+				/* for (uint32_t i = 0; i < gs_dyn_array_size(pipe->layout); i++) */
+				/* { */
+				/* 	uint32_t vbo_slot = pipe->layout[i].buffer_idx; */
+				/* 	gsdx11_vertex_buffer_decl_t vdecl = dx11->cache.vdecls[vbo_slot]; */
+				/* 	gsdx11_buffer_t vbo = vdecl.vbo; */
+				/* 	size_t stride, offset; */
+
+				/* 	// Manual override for setting divisor(step rate)/stride/offset */
+                    /* bool is_manual = pipe->layout[i].stride | pipe->layout[i].divisor | pipe->layout[i].offset | vdecl.data_type == GS_GRAPHICS_VERTEX_DATA_NONINTERLEAVED; */
+				/* 	stride = pipe->layout[i].stride; // TODO(matthew): Handle the other case, we're only considering no stride for now. */
+				/* 	offset = vdecl.offset; // TODO(matthew): Again, handle the other case (see L2051). */
+
+				/* 	// TODO(matthew): make this take the buffer slot instead of 'i' */
+				/* 	ID3D11DeviceContext_IASetVertexBuffers(dx11->context, i, 1, &vbo, &stride, &offset); */
+				/* } */
 			} break;
 		}
 	}
