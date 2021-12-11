@@ -2,10 +2,10 @@
     * Copyright: 2020 John Jackson
     * simple_triangle
 
-    The purpose of this example is to demonstrate how to explicitly construct 
+    The purpose of this example is to demonstrate how to explicitly construct
     GPU resources to use for your application to render a basic triangle.
 
-    Included: 
+    Included:
         * Construct vertex/index buffers from user defined declarations
         * Construct shaders from source
         * Construct pipelines
@@ -71,7 +71,7 @@ void init()
 	UINT	 stride = 3 * sizeof(float),
 			 offset = 0;
 	gs_graphics_vertex_buffer_desc_t desc = {0};
-	float v_data[] = 
+	float v_data[] =
 	{
 		0.0f, 0.5f, 0.5f,
 		0.5f, -0.5f, 0.5f,
@@ -89,7 +89,6 @@ void init()
 
 	ID3D11InputLayout				*Layout;
 	D3D11_INPUT_ELEMENT_DESC		LayoutDesc;
-	D3D11_VIEWPORT					Viewport;
 
 	LayoutDesc.SemanticName = "POSITION";
 	LayoutDesc.SemanticIndex = 0;
@@ -102,34 +101,6 @@ void init()
 	hr = ID3D11Device_CreateInputLayout(dx11->device, &LayoutDesc, 1, ID3D10Blob_GetBufferPointer(vsblob), ID3D10Blob_GetBufferSize(vsblob), &Layout);
 	ID3D11DeviceContext_IASetInputLayout(dx11->context, Layout);
 	ID3D11DeviceContext_IASetPrimitiveTopology(dx11->context, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-	Viewport.TopLeftX = 0;
-	Viewport.TopLeftY = 0;
-	Viewport.Width = 800;
-	Viewport.Height = 600;
-	Viewport.MinDepth = 0.0f;
-	Viewport.MaxDepth = 1.0f;
-	ID3D11DeviceContext_RSSetViewports(dx11->context, 1, &Viewport);
-
- 	///////////////////////////////////////////////////////////////////////////
-    // Rasterizer Setup
-
-    ID3D11RasterizerState       *RasterState;
-    D3D11_RASTERIZER_DESC       RasterStateDesc;
-
-    RasterStateDesc.FillMode = D3D11_FILL_SOLID;
-    RasterStateDesc.CullMode = D3D11_CULL_NONE;
-    RasterStateDesc.FrontCounterClockwise = FALSE;
-    RasterStateDesc.DepthBias = 0;
-    RasterStateDesc.DepthBiasClamp = 0.0f;
-    RasterStateDesc.SlopeScaledDepthBias = 0.0f;
-    RasterStateDesc.DepthClipEnable = FALSE;
-    RasterStateDesc.ScissorEnable = FALSE;
-    RasterStateDesc.MultisampleEnable = FALSE;
-    RasterStateDesc.AntialiasedLineEnable = FALSE;
-
-	hr = ID3D11Device_CreateRasterizerState(dx11->device, &RasterStateDesc, &RasterState);
-    ID3D11DeviceContext_RSSetState(dx11->context, RasterState);
 }
 
 void update()
@@ -151,10 +122,11 @@ gs_app_desc_t gs_main(int32_t argc, char** argv)
 {
     return (gs_app_desc_t)
 	{
-		.window_width = 800,
-		.window_height = 600,
+		.window_width = 1024,
+		.window_height = 768,
+		.window_title = "DX11 Test",
         .init = init,
 		.update = update
     };
-}   
+}
 

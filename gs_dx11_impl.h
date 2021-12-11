@@ -8,9 +8,6 @@
 #ifndef GS_DX11_IMPL_H
 #define GS_DX11_IMPL_H
 
-#define SCR_WIDTH 800
-#define SCR_HEIGHT 600
-
 /*=============================
 // Headers
 =============================*/
@@ -56,6 +53,13 @@ typedef struct _tag_gsdx11_data
 	IDXGISwapChain						*swapchain;
 	ID3D11RenderTargetView				*rtv;
 	ID3D11DepthStencilView				*dsv;
+	// NOTE(matthew): putting these here for now, although doing so is probably
+	// unnecesary. The raster_state will likely turn into an array of raster
+	// states if we add functionality for doing multiple render passes.
+	// At the end of the day, we need to set up these two as part of DX11
+	// initialization, so might as well save them here.
+	ID3D11RasterizerState				*raster_state;
+	D3D11_VIEWPORT						viewport;
 } gsdx11_data_t;
 
 /*=============================
@@ -154,6 +158,7 @@ gs_graphics_destroy(gs_graphics_t *graphics)
 	gs_free(graphics);
 }
 
+// TODO(matthew): create viewport + raster state in here as well
 void
 gs_graphics_init(gs_graphics_t *graphics)
 {
@@ -167,6 +172,9 @@ gs_graphics_init(gs_graphics_t *graphics)
 	void						*gs_window;
 	HWND						hwnd = 0;
 	gsdx11_shader_t				s = {0}; // TODO(matthew): bulletproof this, empty struct for now
+    D3D11_RASTERIZER_DESC       raster_state_desc = {0};
+    uint32_t 					window_width = gs_engine_subsystem(app).window_width,
+    							window_height  = gs_engine_subsystem(app).window_height;
 
 
 	dx11 = (gsdx11_data_t *)graphics->user_data;
@@ -183,8 +191,8 @@ gs_graphics_init(gs_graphics_t *graphics)
 	// instance, we are forcing the window to be windowed by default; later,
 	// we should check the gs_app_desc_t to see if the window should be
 	// windowed or fullscreen.
-    buffer_desc.Width = SCR_WIDTH;
-    buffer_desc.Height = SCR_HEIGHT;
+    buffer_desc.Width = window_width;
+    buffer_desc.Height = window_height;
     buffer_desc.RefreshRate.Denominator = 1;
     buffer_desc.RefreshRate.Numerator = 60;
     buffer_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -199,8 +207,8 @@ gs_graphics_init(gs_graphics_t *graphics)
     swapchain_desc.Windowed = TRUE;
     swapchain_desc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
 
-    ds_desc.Width = SCR_WIDTH;
-    ds_desc.Height = SCR_HEIGHT;
+    ds_desc.Width = window_width;
+    ds_desc.Height = window_height;
     ds_desc.MipLevels = 1;
     ds_desc.ArraySize = 1;
     ds_desc.Format = DXGI_FORMAT_D32_FLOAT;
@@ -216,6 +224,16 @@ gs_graphics_init(gs_graphics_t *graphics)
     hr = ID3D11Device_CreateTexture2D(dx11->device, &ds_desc, 0, &ds_buffer);
     hr = ID3D11Device_CreateDepthStencilView(dx11->device, ds_buffer, NULL, &dx11->dsv);
     ID3D11DeviceContext_OMSetRenderTargets(dx11->context, 1, &dx11->rtv, dx11->dsv);
+
+	dx11->viewport.Width = window_width;
+	dx11->viewport.Height = window_height;
+	dx11->viewport.MaxDepth = 1.0f;
+	ID3D11DeviceContext_RSSetViewports(dx11->context, 1, &dx11->viewport);
+
+	raster_state_desc.FillMode = D3D11_FILL_SOLID;
+	raster_state_desc.CullMode = D3D11_CULL_NONE;
+	hr = ID3D11Device_CreateRasterizerState(dx11->device, &raster_state_desc, &dx11->raster_state);
+    ID3D11DeviceContext_RSSetState(dx11->context, dx11->raster_state);
 }
 
 
@@ -324,12 +342,12 @@ gs_graphics_shader_create(const gs_graphics_shader_desc_t *desc)
 	return hndl;
 }
 
-void           
+void
 gs_graphics_shutdown(gs_graphics_t* graphics)
 {
 }
 
-gs_handle(gs_graphics_texture_t)        
+gs_handle(gs_graphics_texture_t)
 gs_graphics_texture_create(const gs_graphics_texture_desc_t* desc)
 {
 }
