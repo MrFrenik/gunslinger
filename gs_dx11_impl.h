@@ -202,13 +202,14 @@ gs_graphics_vertex_buffer_create(const gs_graphics_vertex_buffer_desc_t *desc)
 gs_handle(gs_graphics_shader_t)
 gs_graphics_shader_create(const gs_graphics_shader_desc_t *desc)
 {
-	HRESULT				hr;
-	gsdx11_data_t		*dx11;
-	ID3DBlob			*err_blob;
-	void 				*shader_src = desc->sources[0].source;
-	size_t				shader_len = strlen(shader_src) + 1;
-	gsdx11_shader_t		shader;
-	uint32_t			shader_type = desc->sources[0].type;
+	HRESULT								hr;
+	gsdx11_data_t						*dx11;
+	ID3DBlob							*err_blob;
+	void								*shader_src = desc->sources[0].source;
+	size_t								shader_len = strlen(shader_src) + 1;
+	gsdx11_shader_t						shader;
+	uint32_t							shader_type = desc->sources[0].type;
+	gs_handle(gs_graphics_shader_t)		hndl;
 
 
 	// TODO(matthew): Check the error blob
@@ -221,6 +222,7 @@ gs_graphics_shader_create(const gs_graphics_shader_desc_t *desc)
 					0, 0, &shader.blob, &err_blob);
 			hr = ID3D11Device_CreateVertexShader(g_device, ID3D10Blob_GetBufferPointer(shader.blob),
 					ID3D10Blob_GetBufferSize(shader.blob), 0, &shader.vs);
+			hndl = gs_handle_create(gs_graphics_shader_t, gs_slot_array_insert(dx11->shaders, shader.vs));
 		};
 		case GS_GRAPHICS_SHADER_STAGE_FRAGMENT:
 		{
@@ -228,10 +230,11 @@ gs_graphics_shader_create(const gs_graphics_shader_desc_t *desc)
 					0, 0, &shader.blob, &err_blob);
 			hr = ID3D11Device_CreatePixelShader(g_device, ID3D10Blob_GetBufferPointer(shader.blob),
 					ID3D10Blob_GetBufferSize(shader.blob), 0, &shader.ps);
+			hndl = gs_handle_create(gs_graphics_shader_t, gs_slot_array_insert(dx11->shaders, shader.ps));
 		};
 	}
 
-	return gs_handle_create(gs_graphics_shader_t, gs_slot_array_insert(dx11->shaders, shader));
+	return hndl;
 }
 
 #endif // GS_DX11_IMPL_H

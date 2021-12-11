@@ -26,6 +26,13 @@
 // ID3D11Device *Device;
 // Device->CreateBuffer(...) ===> ID3D11Device_CreateBuffer(Device, ...);
 
+// TODO(matthew): gunslinger uses u32 IDs for it's handle system. This works
+// well because GL returns u32 handles for it's objects. However, DX11 uses
+// actual types. What we can do is send the ptr of the object for creating the
+// handle, however this will break on x64 due to 64bit pointers. This is the
+// only method I see of staying consistent with gunslinger's handle API, but
+// this is a very big hole that needs to be looked at later.
+
 #ifndef GS_DX11_H
 #define GS_DX11_H
 
