@@ -26,13 +26,6 @@
 // Globals
 =============================*/
 
-// NOTE(matthew): put these in the global data struct?
-ID3D11Device *g_device;
-ID3D11DeviceContext *g_context;
-IDXGISwapChain *g_swapchain;
-ID3D11RenderTargetView *g_rtv;
-ID3D11DepthStencilView *g_dsv;
-
 /*=============================
 // Structures
 =============================*/
@@ -54,6 +47,13 @@ typedef struct _tag_gsdx11_data
 {
 	gs_slot_array(gsdx11_shader_t)	shaders;
 	gs_slot_array(gsdx11_buffer_t)	vertex_buffers;
+
+	// Global data that I'll just put here since it's appropriate
+	ID3D11Device 					*device;
+	ID3D11DeviceContext				*context;
+	IDXGISwapChain 					*swapchain;
+	ID3D11RenderTargetView 			*rtv;
+	ID3D11DepthStencilView 			*dsv;
 } gsdx11_data_t;
 
 /*=============================
@@ -156,12 +156,12 @@ gs_graphics_init(gs_graphics_t *graphics)
 
     hr = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL,
 			D3D11_CREATE_DEVICE_DEBUG, 0, 0, D3D11_SDK_VERSION, &swapchain_desc,
-			&g_swapchain, &g_device,NULL, &g_context);
-    hr = IDXGISwapChain_GetBuffer(g_swapchain, 0, &IID_ID3D11Texture2D, (void **)&backbuffer);
-    hr = ID3D11Device_CreateRenderTargetView(g_device, backbuffer, NULL, &g_rtv);
-    hr = ID3D11Device_CreateTexture2D(g_device, &ds_desc, 0, &ds_buffer);
-    hr = ID3D11Device_CreateDepthStencilView(g_device, ds_buffer, NULL, &g_dsv);
-    ID3D11DeviceContext_OMSetRenderTargets(g_context, 1, &g_rtv, g_dsv);
+			&dx11->swapchain, &dx11->device,NULL, &dx11->context);
+    hr = IDXGISwapChain_GetBuffer(dx11->swapchain, 0, &IID_ID3D11Texture2D, (void **)&backbuffer);
+    hr = ID3D11Device_CreateRenderTargetView(dx11->device, backbuffer, NULL, &dx11->rtv);
+    hr = ID3D11Device_CreateTexture2D(dx11->device, &ds_desc, 0, &ds_buffer);
+    hr = ID3D11Device_CreateDepthStencilView(dx11->device, ds_buffer, NULL, &dx11->dsv);
+    ID3D11DeviceContext_OMSetRenderTargets(dx11->context, 1, &dx11->rtv, dx11->dsv);
 }
 
 
@@ -190,9 +190,9 @@ gs_graphics_vertex_buffer_create(const gs_graphics_vertex_buffer_desc_t *desc)
 	buffer_data.pSysMem = desc->data;
 
 	if (desc->data)
-		hr = ID3D11Device_CreateBuffer(g_device, &buffer_desc, &buffer_data, &buffer);
+		hr = ID3D11Device_CreateBuffer(dx11->device, &buffer_desc, &buffer_data, &buffer);
 	else
-		hr = ID3D11Device_CreateBuffer(g_device, &buffer_desc, NULL, &buffer);
+		hr = ID3D11Device_CreateBuffer(dx11->device, &buffer_desc, NULL, &buffer);
 
 	hndl = gs_handle_create(gs_graphics_vertex_buffer_t, gs_slot_array_insert(dx11->vertex_buffers, buffer));
 
@@ -221,7 +221,7 @@ gs_graphics_shader_create(const gs_graphics_shader_desc_t *desc)
 		{
 			hr = D3DCompile(shader_src, shader_len, NULL, NULL, NULL, "main", "vs_5_0",
 					0, 0, &shader.blob, &err_blob);
-			hr = ID3D11Device_CreateVertexShader(g_device, ID3D10Blob_GetBufferPointer(shader.blob),
+			hr = ID3D11Device_CreateVertexShader(dx11->device, ID3D10Blob_GetBufferPointer(shader.blob),
 					ID3D10Blob_GetBufferSize(shader.blob), 0, &shader.vs);
 			hndl = gs_handle_create(gs_graphics_shader_t, gs_slot_array_insert(dx11->shaders, shader));
 		};
@@ -229,7 +229,7 @@ gs_graphics_shader_create(const gs_graphics_shader_desc_t *desc)
 		{
 			hr = D3DCompile(shader_src, shader_len, NULL, NULL, NULL, "main", "ps_5_0",
 					0, 0, &shader.blob, &err_blob);
-			hr = ID3D11Device_CreatePixelShader(g_device, ID3D10Blob_GetBufferPointer(shader.blob),
+			hr = ID3D11Device_CreatePixelShader(dx11->device, ID3D10Blob_GetBufferPointer(shader.blob),
 					ID3D10Blob_GetBufferSize(shader.blob), 0, &shader.ps);
 			hndl = gs_handle_create(gs_graphics_shader_t, gs_slot_array_insert(dx11->shaders, shader));
 		};
