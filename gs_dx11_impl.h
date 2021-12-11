@@ -57,11 +57,43 @@ typedef struct _tag_gsdx11_data
 } gsdx11_data_t;
 
 /*=============================
+// Utility Functions
+=============================*/
+
+// NOTE(matthew): Putting these here for organization purposes (have them all
+// in one place without needing to look back at the ogl implementation). These
+// will be filled out on a needs basis, many are not required at the time of
+// writing this. Also note that some of these may be invalid for DX11, in
+// which case they just get scraped, or we determine their DX11 equivalents
+// (ie, no uniforms in DX11... what then??).
+int32_t 			gsdx11_buffer_usage_to_dx11_enum(gs_graphics_buffer_usage_type type);
+uint32_t		 	gsdx11_access_type_to_dx11_access_type(gs_graphics_access_type type);
+uint32_t		 	gsdx11_texture_wrap_to_dx11_texture_wrap(gs_graphics_texture_wrapping_type type);
+uint32_t		 	gsdx11_texture_format_to_dx11_data_type(gs_graphics_texture_format_type type);
+uint32_t		 	gsdx11_texture_format_to_dx11_texture_format(gs_graphics_texture_format_type type);
+uint32_t		 	gsdx11_texture_format_to_dx11_texture_internal_format(gs_graphics_texture_format_type type);
+uint32_t		 	gsdx11_shader_stage_to_dx11_stage(gs_graphics_shader_stage_type type);
+uint32_t		 	gsdx11_primitive_to_dx11_primitive(gs_graphics_primitive_type type);
+uint32_t		 	gsdx11_blend_equation_to_dx11_blend_eq(gs_graphics_blend_equation_type eq);
+uint32_t		 	gsdx11_blend_mode_to_dx11_blend_mode(gs_graphics_blend_mode_type type, uint32_t def);
+uint32_t		 	gsdx11_cull_face_to_dx11_cull_face(gs_graphics_face_culling_type type);
+uint32_t		 	gsdx11_winding_order_to_dx11_winding_order(gs_graphics_winding_order_type type);
+uint32_t		 	gsdx11_depth_func_to_dx11_depth_func(gs_graphics_depth_func_type type);
+uint32_t		 	gsdx11_stencil_func_to_dx11_stencil_func(gs_graphics_stencil_func_type type);
+uint32_t			gsdx11_stencil_op_to_dx11_stencil_op(gs_graphics_stencil_op_type type);
+gsgl_uniform_type	gsdx11_uniform_type_to_dx11_uniform_type(gs_graphics_uniform_type gstype); // NOTE(matthew): DX11 doesn't have uniforms!
+uint32_t 			gsdx11_index_buffer_size_to_dx11_index_type(size_t sz);
+size_t 				gsdx11_get_byte_size_of_vertex_attribute(gs_graphics_vertex_attribute_type type);
+size_t 				gsdx11_calculate_vertex_size_in_bytes(gs_graphics_vertex_attribute_desc_t* layout, uint32_t count);
+size_t  			gsdx11_get_vertex_attr_byte_offest(gs_dyn_array(gs_graphics_vertex_attribute_desc_t); layout, uint32_t idx);
+size_t 				gsdx11_uniform_data_size_in_bytes(gs_graphics_uniform_type type);
+
+/*=============================
 // Graphics Initialization
 =============================*/
 
-// Initialize DX11 specific data (device, context, swapchain  etc.)
-void gs_graphics_init(gs_graphics_t *graphics);
+/* // Initialize DX11 specific data (device, context, swapchain  etc.) */
+/* void gs_graphics_init(gs_graphics_t *graphics); */
 
 /*=============================
 // Resource Creation
@@ -76,6 +108,13 @@ void gs_graphics_init(gs_graphics_t *graphics);
 /*=============================================================================
 // ===== DX11 Implementation =============================================== //
 =============================================================================*/
+
+/*=============================
+// Utility Functions
+=============================*/
+
+
+
 
 /*=============================
 // Graphics Initialization
@@ -129,6 +168,12 @@ gs_graphics_init(gs_graphics_t *graphics)
 	gs_slot_array_insert(dx11->shaders, s);
 	gs_slot_array_insert(dx11->vertex_buffers, 0);
 
+	// TODO(matthew): we're filling out many of these with predetermined
+	// values for now. This is only for development purpsoes. In the future,
+	// we'll want to map gunslinger application options to these. For
+	// instance, we are forcing the window to be windowed by default; later,
+	// we should check the gs_app_desc_t to see if the window should be
+	// windowed or fullscreen.
     buffer_desc.Width = SCR_WIDTH;
     buffer_desc.Height = SCR_HEIGHT;
     buffer_desc.RefreshRate.Denominator = 1;
@@ -142,7 +187,7 @@ gs_graphics_init(gs_graphics_t *graphics)
     swapchain_desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     swapchain_desc.BufferCount = 1;
     swapchain_desc.OutputWindow = hWnd; // TODO: NEED TO GET THIS WINDOW HANDLE
-    swapchain_desc.Windowed = true;
+    swapchain_desc.Windowed = TRUE;
     swapchain_desc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
 
     ds_desc.Width = SCR_WIDTH;
