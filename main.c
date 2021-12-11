@@ -19,6 +19,9 @@
 #include "gs_dx11_impl.h"
 #include "gs/gs.h"
 
+#define SCR_WIDTH	1024
+#define SCR_HEIGHT	768
+
 // All necessary graphics data for this example (shader source/vertex data)
 gs_command_buffer_t						cb			= {0};
 gs_handle(gs_graphics_vertex_buffer_t)	vbo     	= {0};
@@ -130,6 +133,7 @@ void update()
 	clear.actions = &(gs_graphics_clear_action_t){.color = {0.1f, 0.3f, 0.9f, 1.0f}};
 
 	gs_graphics_clear(&cb, &clear);
+	/* gs_graphics_set_viewport(&cb, 0, 0, SCR_WIDTH / 2, SCR_HEIGHT / 2); */
 	gs_graphics_submit_command_buffer(&cb);
 
 	ID3D11DeviceContext_DrawIndexed(dx11->context, 6, 0, 0);

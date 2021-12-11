@@ -32,6 +32,7 @@ typedef enum gs_dx11_op_code_type
 {
 	GS_DX11_OP_BEGIN_RENDER_PASS = 0x00,
 	GS_DX11_OP_END_RENDER_PASS,
+	GS_DX11_OP_SET_VIEWPORT,
 	GS_DX11_OP_CLEAR,
 	GS_DX11_OP_COUNT
 } gs_dx11_op_code_type;
@@ -371,7 +372,7 @@ gs_graphics_texture_create(const gs_graphics_texture_desc_t* desc)
 =============================*/
 
 /*
-	// Structure of command: 
+	// Structure of command:
 		- Op code
 		- Data packet
 */
@@ -417,6 +418,22 @@ gs_graphics_clear(gs_command_buffer_t *cb,
 		{
             gs_byte_buffer_write(&cb->commands, gs_graphics_clear_action_t, desc->actions[i]);
         }
+	});
+}
+
+void
+gs_graphics_set_viewport(gs_command_buffer_t *cb,
+						 uint32_t x,
+						 uint32_t y,
+						 uint32_t w,
+						 uint32_t h)
+{
+	__dx11_push_command(cb, GS_DX11_OP_SET_VIEWPORT,
+	{
+		gs_byte_buffer_write(&cb->commands, uint32_t, x);
+		gs_byte_buffer_write(&cb->commands, uint32_t, y);
+		gs_byte_buffer_write(&cb->commands, uint32_t, w);
+		gs_byte_buffer_write(&cb->commands, uint32_t, h);
 	});
 }
 
@@ -476,6 +493,21 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
 					ID3D11DeviceContext_ClearDepthStencilView(dx11->context, dx11->dsv, bit, 1.0f, 0);
 				}
 			} break;
+
+			case GS_DX11_OP_SET_VIEWPORT:
+			{
+				gs_byte_buffer_readc(&cb->commands, uint32_t, x);
+				gs_byte_buffer_readc(&cb->commands, uint32_t, y);
+				gs_byte_buffer_readc(&cb->commands, uint32_t, w);
+				gs_byte_buffer_readc(&cb->commands, uint32_t, h);
+
+				dx11->viewport.TopLeftX = x;
+				dx11->viewport.TopLeftY = y;
+				dx11->viewport.Width = w;
+				dx11->viewport.Height = h;
+
+				ID3D11DeviceContext_RSSetViewports(dx11->context, 1, &dx11->viewport);
+			};
 		}
 	}
 }
