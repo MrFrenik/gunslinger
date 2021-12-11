@@ -212,6 +212,7 @@ gs_graphics_shader_create(const gs_graphics_shader_desc_t *desc)
 	gs_handle(gs_graphics_shader_t)		hndl;
 
 
+	dx11 = (gsdx11_data_t *)gs_engine_subsystem(graphics)->user_data;
 	// TODO(matthew): Check the error blob
 	// TODO(matthew): Make this support multiple shader sources eventually
 	switch (shader_type)
@@ -222,7 +223,7 @@ gs_graphics_shader_create(const gs_graphics_shader_desc_t *desc)
 					0, 0, &shader.blob, &err_blob);
 			hr = ID3D11Device_CreateVertexShader(g_device, ID3D10Blob_GetBufferPointer(shader.blob),
 					ID3D10Blob_GetBufferSize(shader.blob), 0, &shader.vs);
-			hndl = gs_handle_create(gs_graphics_shader_t, gs_slot_array_insert(dx11->shaders, shader.vs));
+			hndl = gs_handle_create(gs_graphics_shader_t, gs_slot_array_insert(dx11->shaders, shader));
 		};
 		case GS_GRAPHICS_SHADER_STAGE_FRAGMENT:
 		{
@@ -230,7 +231,7 @@ gs_graphics_shader_create(const gs_graphics_shader_desc_t *desc)
 					0, 0, &shader.blob, &err_blob);
 			hr = ID3D11Device_CreatePixelShader(g_device, ID3D10Blob_GetBufferPointer(shader.blob),
 					ID3D10Blob_GetBufferSize(shader.blob), 0, &shader.ps);
-			hndl = gs_handle_create(gs_graphics_shader_t, gs_slot_array_insert(dx11->shaders, shader.ps));
+			hndl = gs_handle_create(gs_graphics_shader_t, gs_slot_array_insert(dx11->shaders, shader));
 		};
 	}
 
