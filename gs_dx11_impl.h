@@ -34,6 +34,8 @@ typedef enum gs_dx11_op_code_type
 	GS_DX11_OP_END_RENDER_PASS,
 	GS_DX11_OP_SET_VIEWPORT,
 	GS_DX11_OP_CLEAR,
+	GS_DX11_OP_BIND_PIPELINE,
+	GS_DX11_OP_APPLY_BINDINGS,
 	GS_DX11_OP_COUNT
 } gs_dx11_op_code_type;
 
@@ -41,17 +43,27 @@ typedef enum gs_dx11_op_code_type
 // Structures
 =============================*/
 
+typedef ID3D11Buffer	*gsdx11_buffer_t;
+
 typedef struct _TAG_gsdx11_shader_t
 {
 	union
 	{
-		ID3D11VertexShader *vs;
-		ID3D11PixelShader *ps;
+		ID3D11VertexShader		*vs;
+		ID3D11PixelShader 		*ps;
 	};
-	ID3DBlob *blob; // need the bytecode for creating input layouts
+	ID3DBlob 					*blob; // need the bytecode for creating input layouts
 } gsdx11_shader_t;
 
-typedef ID3D11Buffer	*gsdx11_buffer_t;
+typedef struct _TAG_gsdx11_pipeline
+{
+    /* gs_graphics_blend_state_desc_t blend; */
+    /* gs_graphics_depth_state_desc_t depth; */
+    /* gs_graphics_raster_state_desc_t raster; */
+    /* gs_graphics_stencil_state_desc_t stencil; */
+    /* gs_graphics_compute_state_desc_t compute; */
+    gs_dyn_array(gs_graphics_vertex_attribute_desc_t) layout;
+} gsdx11_pipeline_t;
 
 // Internal DX11 data
 typedef struct _tag_gsdx11_data
@@ -59,6 +71,7 @@ typedef struct _tag_gsdx11_data
 	gs_slot_array(gsdx11_shader_t)		shaders;
 	gs_slot_array(gsdx11_buffer_t)		vertex_buffers;
 	gs_slot_array(gsdx11_buffer_t)		index_buffers;
+	gs_slot_array(gsdx11_pipeline_t)	pipelines;
 
 	// Global data that I'll just put here since it's appropriate
 	ID3D11Device						*device;
@@ -127,6 +140,9 @@ size_t 				gsdx11_uniform_data_size_in_bytes(gs_graphics_uniform_type type);
 
 /* // Create a shader */
 /* gs_handle(gs_graphics_shader_t) gs_graphics_shader_create(const gs_graphics_shader_desc_t *desc); */
+
+/* // Create a pipeline object */
+/* gs_handle(gs_graphics_pipeline_t) gs_graphics_pipeline_create(const gs_graphics_pipeline_desc_t* desc) */
 
 /*=============================================================================
 // ===== DX11 Implementation =============================================== //
@@ -363,6 +379,29 @@ gs_graphics_shader_create(const gs_graphics_shader_desc_t *desc)
 	return hndl;
 }
 
+gs_handle(gs_graphics_pipeline_t)
+gs_graphics_pipeline_create(const gs_graphics_pipeline_desc_t* desc)
+{
+	gsdx11_data_t							*dx11;
+	gsdx11_pipeline_t						pipe = gs_default_val();
+	uint32_t								cnt, i;
+	gs_handle(gs_graphics_pipeline_t)		hndl;
+
+	dx11 = (gsdx11_data_t*)gs_engine_subsystem(graphics)->user_data;
+
+	// add layouts
+    cnt = (uint32_t)desc->layout.size / (uint32_t)sizeof(gs_graphics_vertex_attribute_desc_t);
+	gs_dyn_array_reserve(pipe.layout, cnt);
+	for (i = 0; i < cnt; i++)
+	{
+		gs_dyn_array_push(pipe.layout, desc->layout.attrs[i]);
+	}
+
+	hndl = gs_handle_create(gs_graphics_pipeline_t, gs_slot_array_insert(dx11->pipelines, pipe));
+
+	return hndl;
+}
+
 gs_handle(gs_graphics_texture_t)
 gs_graphics_texture_create(const gs_graphics_texture_desc_t* desc)
 {
@@ -450,6 +489,48 @@ gs_graphics_set_viewport(gs_command_buffer_t *cb,
 		gs_byte_buffer_write(&cb->commands, uint32_t, y);
 		gs_byte_buffer_write(&cb->commands, uint32_t, w);
 		gs_byte_buffer_write(&cb->commands, uint32_t, h);
+	});
+}
+
+void
+gs_graphics_apply_bindings(gs_command_buffer_t *cb,
+						   gs_graphics_bind_desc_t *binds)
+{
+	gsdx11_data_t		*dx11;
+	uint32_t			vcnt, // vertex buffers to bind
+						cnt; // total objects to bind
+
+
+	dx11 = (gsdx11_data_t*)gs_engine_subsystem(graphics)->user_data;
+	vcnt = binds->vertex_buffers.desc ? binds->vertex_buffers.size ? binds->vertex_buffers.size / sizeof(gs_graphics_bind_vertex_buffer_desc_t) : 1 : 0;
+	cnt = vcnt;
+	
+	// increment commands
+	gs_byte_buffer_write(&cb->commands, u32, (u32)GS_DX11_OP_APPLY_BINDINGS);
+	cb->num_commands++;
+
+	// just vertex buffers for now
+	gs_byte_buffer_write(&cb->commands, uint32_t, cnt);
+
+	// vertex buffers
+	for (uint32_t i; i < vcnt; i++)
+	{
+		gs_graphics_bind_vertex_buffer_desc_t *decl = &binds->vertex_buffers.desc[i];
+		gs_byte_buffer_write(&cb->commands, gs_graphics_bind_type, GS_GRAPHICS_BIND_VERTEX_BUFFER);
+		gs_byte_buffer_write(&cb->commands, uint32_t, decl->buffer.id);
+		gs_byte_buffer_write(&cb->commands, size_t, decl->offset);
+		gs_byte_buffer_write(&cb->commands, gs_graphics_vertex_data_type, decl->data_type);
+	}
+}
+
+void
+gs_graphics_bind_pipeline(gs_command_buffer_t *cb,
+						  gs_handle(gs_graphics_pipeline_t) hndl)
+{
+	// NOTE(matthew): See John's note in the GL impl.
+	__dx11_push_command(cb, GS_DX11_OP_BIND_PIPELINE,
+	{
+		gs_byte_buffer_write(&cb->commands, uint32_t, hndl.id);
 	});
 }
 
