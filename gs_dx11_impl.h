@@ -45,15 +45,16 @@ typedef ID3D11Buffer	*gsdx11_buffer_t;
 // Internal DX11 data
 typedef struct _tag_gsdx11_data
 {
-	gs_slot_array(gsdx11_shader_t)	shaders;
-	gs_slot_array(gsdx11_buffer_t)	vertex_buffers;
+	gs_slot_array(gsdx11_shader_t)		shaders;
+	gs_slot_array(gsdx11_buffer_t)		vertex_buffers;
+	gs_slot_array(gsdx11_buffer_t)		index_buffers;
 
 	// Global data that I'll just put here since it's appropriate
-	ID3D11Device 					*device;
-	ID3D11DeviceContext				*context;
-	IDXGISwapChain 					*swapchain;
-	ID3D11RenderTargetView 			*rtv;
-	ID3D11DepthStencilView 			*dsv;
+	ID3D11Device						*device;
+	ID3D11DeviceContext					*context;
+	IDXGISwapChain						*swapchain;
+	ID3D11RenderTargetView				*rtv;
+	ID3D11DepthStencilView				*dsv;
 } gsdx11_data_t;
 
 /*=============================
@@ -81,11 +82,11 @@ uint32_t		 	gsdx11_winding_order_to_dx11_winding_order(gs_graphics_winding_order
 uint32_t		 	gsdx11_depth_func_to_dx11_depth_func(gs_graphics_depth_func_type type);
 uint32_t		 	gsdx11_stencil_func_to_dx11_stencil_func(gs_graphics_stencil_func_type type);
 uint32_t			gsdx11_stencil_op_to_dx11_stencil_op(gs_graphics_stencil_op_type type);
-gsgl_uniform_type	gsdx11_uniform_type_to_dx11_uniform_type(gs_graphics_uniform_type gstype); // NOTE(matthew): DX11 doesn't have uniforms!
+void				gsdx11_uniform_type_to_dx11_uniform_type(gs_graphics_uniform_type gstype); // NOTE(matthew): DX11 doesn't have uniforms!
 uint32_t 			gsdx11_index_buffer_size_to_dx11_index_type(size_t sz);
 size_t 				gsdx11_get_byte_size_of_vertex_attribute(gs_graphics_vertex_attribute_type type);
 size_t 				gsdx11_calculate_vertex_size_in_bytes(gs_graphics_vertex_attribute_desc_t* layout, uint32_t count);
-size_t  			gsdx11_get_vertex_attr_byte_offest(gs_dyn_array(gs_graphics_vertex_attribute_desc_t); layout, uint32_t idx);
+size_t  			gsdx11_get_vertex_attr_byte_offest(gs_dyn_array(gs_graphics_vertex_attribute_desc_t) layout, uint32_t idx);
 size_t 				gsdx11_uniform_data_size_in_bytes(gs_graphics_uniform_type type);
 
 /*=============================
@@ -101,6 +102,9 @@ size_t 				gsdx11_uniform_data_size_in_bytes(gs_graphics_uniform_type type);
 
 /* // Create a vertex buffer */
 /* gs_handle(gs_graphics_vertex_buffer_t) gs_graphics_vertex_buffer_create(const gs_graphics_vertex_buffer_desc_t *desc); */
+
+/* // Create an index buffer */
+/* gs_handle(gs_graphics_index_buffer_t) gs_graphics_index_buffer_create(const gs_graphics_index_buffer_desc_t* desc) */
 
 /* // Create a shader */
 /* gs_handle(gs_graphics_shader_t) gs_graphics_shader_create(const gs_graphics_shader_desc_t *desc); */
@@ -232,6 +236,7 @@ gs_graphics_vertex_buffer_create(const gs_graphics_vertex_buffer_desc_t *desc)
 	// the data in the desc. Will need to create functions that map GS enums
 	// to DX11 enums.
 	buffer_desc.Usage = D3D11_USAGE_DEFAULT;
+	buffer_desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 	buffer_data.pSysMem = desc->data;
 
 	if (desc->data)
@@ -240,6 +245,33 @@ gs_graphics_vertex_buffer_create(const gs_graphics_vertex_buffer_desc_t *desc)
 		hr = ID3D11Device_CreateBuffer(dx11->device, &buffer_desc, NULL, &buffer);
 
 	hndl = gs_handle_create(gs_graphics_vertex_buffer_t, gs_slot_array_insert(dx11->vertex_buffers, buffer));
+
+	return hndl;
+}
+
+gs_handle(gs_graphics_index_buffer_t)
+gs_graphics_index_buffer_create(const gs_graphics_index_buffer_desc_t* desc)
+{
+	HRESULT										hr;
+	ID3D11Buffer								*buffer;
+	D3D11_BUFFER_DESC							buffer_desc = {0};
+	D3D11_SUBRESOURCE_DATA						buffer_data = {0};
+	gsdx11_data_t								*dx11;
+	gs_handle(gs_graphics_index_buffer_t)		hndl = gs_default_val();
+
+
+	dx11 = (gsdx11_data_t *)gs_engine_subsystem(graphics)->user_data;
+	buffer_desc.ByteWidth = desc->size;
+	buffer_desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	buffer_desc.Usage = D3D11_USAGE_DEFAULT;
+	buffer_data.pSysMem = desc->data;
+
+	if (desc->data)
+		hr = ID3D11Device_CreateBuffer(dx11->device, &buffer_desc, &buffer_data, &buffer);
+	else
+		hr = ID3D11Device_CreateBuffer(dx11->device, &buffer_desc, NULL, &buffer);
+
+	hndl = gs_handle_create(gs_graphics_index_buffer_t, gs_slot_array_insert(dx11->index_buffers, buffer));
 
 	return hndl;
 }
