@@ -20,7 +20,8 @@
 #include "gs/gs.h"
 
 // All necessary graphics data for this example (shader source/vertex data)
-gs_handle(gs_graphics_vertex_buffer_t)	vbo     = {0};
+gs_handle(gs_graphics_vertex_buffer_t)	vbo     	= {0};
+gs_handle(gs_graphics_index_buffer_t)	ibo			= {0};
 gs_handle(gs_graphics_shader_t) 		shaders[2] 	= {0};
 gs_graphics_t *graphics;
 gsdx11_data_t *dx11;
@@ -75,14 +76,25 @@ void init()
 	{
 		0.0f, 0.5f, 0.5f,
 		0.5f, -0.5f, 0.5f,
-		-0.5f, -0.5f, 0.5f
+		-0.5f, -0.5f, 0.5f,
+		0.8f, 0.5f, 0.5f
+	};
+	UINT idx_data[] =
+	{
+		0, 1, 2,
+		0, 2, 3
 	};
 
 	desc.data = v_data;
 	desc.size = sizeof(v_data);
 	vbo = gs_graphics_vertex_buffer_create(&desc);
 
+	desc.data = idx_data;
+	desc.size = sizeof(idx_data);
+	ibo = gs_graphics_index_buffer_create(&desc);
+
 	ID3D11DeviceContext_IASetVertexBuffers(dx11->context, 0, 1, (gs_slot_array_getp(dx11->vertex_buffers, 1)), &stride, &offset);
+	ID3D11DeviceContext_IASetIndexBuffer(dx11->context, gs_slot_array_get(dx11->index_buffers, 1), DXGI_FORMAT_R32_UINT, 0);
 
 	///////////////////////////////////////////////////////////////////////////
 	// Input Layout Setup
@@ -114,7 +126,7 @@ void update()
 	ID3D11DeviceContext_ClearRenderTargetView(dx11->context, dx11->rtv, bgcolor);
 	ID3D11DeviceContext_ClearDepthStencilView(dx11->context, dx11->dsv, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
-	ID3D11DeviceContext_Draw(dx11->context, 3, 0);
+	ID3D11DeviceContext_DrawIndexed(dx11->context, 6, 0, 0);
 	IDXGISwapChain_Present(dx11->swapchain, 0, 0);
 }
 
