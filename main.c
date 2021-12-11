@@ -58,7 +58,7 @@ void init()
             .sources = (gs_graphics_shader_source_desc_t[]) {
                 {.type = GS_GRAPHICS_SHADER_STAGE_VERTEX, .source = vs_src},
                 {.type = GS_GRAPHICS_SHADER_STAGE_FRAGMENT, .source = ps_src}
-            }, 
+            },
             .size = 2 * sizeof(gs_graphics_shader_source_desc_t),
             .name = "triangle"
         }
@@ -81,13 +81,11 @@ void init()
             }
         }
     );
-	
+
 
 	///////////////////////////////////////////////////////////////////////////
 	// Buffer Setup
 
-	UINT	 stride = 3 * sizeof(float),
-			 offset = 0;
 	float v_data[] =
 	{
 		0.0f, 0.5f, 0.5f,
@@ -101,25 +99,12 @@ void init()
             .size = sizeof(v_data)
         }
     );
+}
 
-	///////////////////////////////////////////////////////////////////////////
-	// Input Layout Setup
-
-	ID3D11InputLayout				*Layout;
-	D3D11_INPUT_ELEMENT_DESC		LayoutDesc;
-
-	LayoutDesc.SemanticName = "POSITION";
-	LayoutDesc.SemanticIndex = 0;
-	LayoutDesc.Format = DXGI_FORMAT_R32G32B32_FLOAT;
-	LayoutDesc.InputSlot = 0;
-	LayoutDesc.AlignedByteOffset = 0;
-	LayoutDesc.InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-	LayoutDesc.InstanceDataStepRate = 0;
-
-	hr = ID3D11Device_CreateInputLayout(dx11->device, &LayoutDesc, 1, ID3D10Blob_GetBufferPointer(vsblob), ID3D10Blob_GetBufferSize(vsblob), &Layout);
-	ID3D11DeviceContext_IASetInputLayout(dx11->context, Layout);
-	ID3D11DeviceContext_IASetPrimitiveTopology(dx11->context, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
+void update()
+{
+    if (gs_platform_key_pressed(GS_KEYCODE_ESC))
+		gs_engine_quit();
 	// RENDER
 	gs_graphics_clear_desc_t clear = {0};
 
@@ -129,17 +114,11 @@ void init()
 
 	clear.actions = &(gs_graphics_clear_action_t){.color = {0.1f, 0.1f, 0.1f, 1.0f}};
 
-	gs_graphics_clear(&cb, &clear);
-	gs_graphics_bind_pipeline(&cb, pipe);
-    gs_graphics_apply_bindings(&cb, &binds);                                   // Bind all bindings (just vertex buffer)
-	gs_graphics_draw(&cb, &(gs_graphics_draw_desc_t){.start = 0, .count = 3});
-}
-
-void update()
-{
-    if (gs_platform_key_pressed(GS_KEYCODE_ESC))
-		gs_engine_quit();
-
+		gs_graphics_clear(&cb, &clear);
+		gs_graphics_bind_pipeline(&cb, pipe);
+		gs_graphics_apply_bindings(&cb, &binds);                                   // Bind all bindings (just vertex buffer)
+		gs_graphics_draw(&cb, &(gs_graphics_draw_desc_t){.start = 0, .count = 3});
+		gs_graphics_end_render_pass(&cb);
 	gs_graphics_submit_command_buffer(&cb);
 
 	ID3D11DeviceContext_Draw(dx11->context, 3, 0);

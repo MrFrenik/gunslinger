@@ -88,8 +88,12 @@ typedef struct _TAG_gsdx11_vertex_buffer_decl
 
 typedef struct _TAG_gsdx11_data_cache
 {
+	// NOTE(matthew): do we still need this??
 	gs_dyn_array(gsdx11_vertex_buffer_decl_t)	vdecls;
 	gs_handle(gs_graphics_pipeline_t)			pipeline;
+	gs_dyn_array(D3D11_INPUT_ELEMENT_DESC)		layout_descs;
+	ID3D11InputLayout							*layout;
+	gsdx11_shader_t								shader;
 } gsdx11_data_cache_t;
 
 // Internal DX11 data
@@ -129,6 +133,33 @@ typedef struct _tag_gsdx11_data
 // writing this. Also note that some of these may be invalid for DX11, in
 // which case they just get scraped, or we determine their DX11 equivalents
 // (ie, no uniforms in DX11... what then??).
+DXGI_FORMAT
+gsdx11_vertex_attrib_to_dxgi_format(gs_graphics_vertex_attribute_type type)
+{
+	DXGI_FORMAT format;
+
+
+	switch (type)
+	{
+		case GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT4:		format = DXGI_FORMAT_R32G32B32A32_FLOAT; break;
+		case GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3:		format = DXGI_FORMAT_R32G32B32_FLOAT; break;
+		case GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2:       format = DXGI_FORMAT_R32G32_FLOAT; break;
+		case GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT:        format = DXGI_FORMAT_R32_FLOAT; break;
+		// TODO(matthew): should these be UINT or UNORM??
+		case GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT4:		format = DXGI_FORMAT_R32G32B32A32_UINT; break;
+		case GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT3:		format = DXGI_FORMAT_R32G32B32_UINT; break;
+		case GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT2:       format = DXGI_FORMAT_R32G32_UINT; break;
+		case GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT:        format = DXGI_FORMAT_R32_UINT; break;
+		case GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE4:		format = DXGI_FORMAT_R8G8B8A8_UINT; break;
+		// TODO(matthew): fix this case! no such format in DXGI
+		/* case GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE3:		format = DXGI_FORMAT_R8G8B8_UINT; break; */
+		case GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE2:       format = DXGI_FORMAT_R8G8_UINT; break;
+		case GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE:        format = DXGI_FORMAT_R8_UINT; break;
+	}
+
+	return format;
+}
+
 int32_t 			gsdx11_buffer_usage_to_dx11_enum(gs_graphics_buffer_usage_type type);
 uint32_t		 	gsdx11_access_type_to_dx11_access_type(gs_graphics_access_type type);
 uint32_t		 	gsdx11_texture_wrap_to_dx11_texture_wrap(gs_graphics_texture_wrapping_type type);
@@ -547,7 +578,7 @@ gs_graphics_apply_bindings(gs_command_buffer_t *cb,
 	dx11 = (gsdx11_data_t*)gs_engine_subsystem(graphics)->user_data;
 	vcnt = binds->vertex_buffers.desc ? binds->vertex_buffers.size ? binds->vertex_buffers.size / sizeof(gs_graphics_bind_vertex_buffer_desc_t) : 1 : 0;
 	cnt = vcnt;
-	
+
 	// increment commands
 	gs_byte_buffer_write(&cb->commands, u32, (u32)GS_DX11_OP_APPLY_BINDINGS);
 	cb->num_commands++;
@@ -590,7 +621,7 @@ gs_graphics_draw(gs_command_buffer_t *cb,
         gs_byte_buffer_write(&cb->commands, uint32_t, desc->range.end);
     });
 }
-	
+
 
 /* Submission (Main Thread) */
 void
@@ -612,11 +643,17 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
 
 		switch (op_code)
 		{
+			// TODO(matthew): Create the input layout here, then cache it?
 			case GS_DX11_OP_BEGIN_RENDER_PASS:
 			{} break;
 
+			// TODO(matthew): Destroy the cached input layout here
 			case GS_DX11_OP_END_RENDER_PASS:
-			{} break;
+			{
+				// TODO(matthew): figure out why this isn't being deleted
+				ID3D11InputLayout_Release(dx11->cache.layout);
+				printf("released!...\r\n");
+			} break;
 
 			case GS_DX11_OP_CLEAR:
 			{
@@ -670,6 +707,7 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
 
 				gs_byte_buffer_readc(&cb->commands, uint32_t, pipe_id);
 
+				// cache the pipeline since we'll need it when binding data
 				dx11->cache.pipeline = gs_handle_create(gs_graphics_pipeline_t, pipe_id);
 
 				pipe = gs_slot_array_getp(dx11->pipelines, pipe_id);
@@ -679,11 +717,13 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
 				if (pipe->raster.shader.id && gs_slot_array_exists(dx11->shaders, pipe->raster.shader.id))
 				{
 					gsdx11_shader_t shader = gs_slot_array_get(dx11->shaders, pipe->raster.shader.id);
-					
+
 					if (shader.tag & GS_DX11_SHADER_TYPE_VERTEX)
 						ID3D11DeviceContext_VSSetShader(dx11->context, shader.vs, 0, 0);
 					if (shader.tag & GS_DX11_SHADER_TYPE_PIXEL)
 						ID3D11DeviceContext_PSSetShader(dx11->context, shader.ps, 0, 0);
+
+					dx11->cache.shader = shader;
 				}
 			} break;
 
@@ -703,6 +743,7 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
 							gsdx11_buffer_t vbo;
 							UINT vbo_slot = pipe->layout[i].buffer_idx;
 							UINT stride = pipe->layout[i].stride; // TODO(matthew): Handle the other case, we're only considering no stride for now.
+							D3D11_INPUT_ELEMENT_DESC layout_desc = gs_default_val();
 
 							gs_byte_buffer_readc(&cb->commands, uint32_t, id);
 							gs_byte_buffer_readc(&cb->commands, size_t, offset);
@@ -710,8 +751,28 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
 
 							vbo = gs_slot_array_get(dx11->vertex_buffers, id);
 
+							layout_desc.SemanticName = pipe->layout[i].name;
+							layout_desc.Format = gsdx11_vertex_attrib_to_dxgi_format(pipe->layout[i].format);
+							layout_desc.InputSlot = vbo_slot;
+							layout_desc.AlignedByteOffset = offset;
+							// layout_desc.InputSlotClass TODO(matthew): handle instancing case!
+
+							gs_dyn_array_push(dx11->cache.layout_descs, layout_desc);
+
 							ID3D11DeviceContext_IASetVertexBuffers(dx11->context, vbo_slot, 1, &vbo, &stride, &offset);
 						} break;
+					}
+
+					if (!dx11->cache.layout)
+					{
+						ID3D11Device_CreateInputLayout(dx11->device, dx11->cache.layout_descs,
+								gs_dyn_array_size(dx11->cache.layout_descs),
+							   ID3D10Blob_GetBufferPointer(dx11->cache.shader.vsblob),
+							   ID3D10Blob_GetBufferSize(dx11->cache.shader.vsblob),
+							   &dx11->cache.layout);
+						ID3D11DeviceContext_IASetInputLayout(dx11->context, dx11->cache.layout);
+						// NOTE(matthew): set this as the default for now
+						ID3D11DeviceContext_IASetPrimitiveTopology(dx11->context, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 					}
 				}
 			} break;
