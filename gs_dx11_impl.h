@@ -8,11 +8,16 @@
 #ifndef GS_DX11_IMPL_H
 #define GS_DX11_IMPL_H
 
+#define SCR_WIDTH 800
+#define SCR_HEIGHT 600
+
 /*=============================
 // Headers
 =============================*/
 
 #include "gs_dx11.h"
+#define CINTERFACE
+#define COBJMACROS
 #include <d3d11.h>
 #include <d3dcommon.h>
 #include <d3dcompiler.h>
@@ -20,6 +25,8 @@
 /*=============================
 // Globals
 =============================*/
+
+// NOTE(matthew): put these in the global data struct?
 ID3D11Device *g_device;
 ID3D11DeviceContext *g_context;
 IDXGISwapChain *g_swapchain;
@@ -30,13 +37,16 @@ ID3D11DepthStencilView *g_dsv;
 // Structures
 =============================*/
 
-// TODO(matthew): Figure out what type to use for the shaders, since DX11
-// doesn't use u32 handles for it's objects. We could have a slot array for
-// each shader type, which works given that the shader_create() function will
-// iterate through the shader sources and insert them into the array on a case
-// by case basis. We could also just make this a void * and ignore typing,
-// which is fine for C but C++ will probably yell at us.
-typedef ID3D11 		gsdx11_shader_t;
+typedef struct _TAG_gsdx11_shader_t
+{
+	union
+	{
+		ID3D11VertexShader *vs;
+		ID3D11PixelShader *ps;
+	};
+	ID3DBlob *blob; // need the bytecode for creating input layouts
+} gsdx11_shader_t;
+
 typedef ID3D11Buffer	*gsdx11_buffer_t;
 
 // Internal DX11 data
@@ -101,7 +111,7 @@ gs_graphics_destroy(gs_graphics_t *graphics)
 }
 
 void
-gs_graphics_init(gs_graphics_t *graphics);
+gs_graphics_init(gs_graphics_t *graphics)
 {
 	HRESULT                     hr;
     ID3D11Texture2D             *backbuffer,
@@ -110,10 +120,13 @@ gs_graphics_init(gs_graphics_t *graphics);
     DXGI_SWAP_CHAIN_DESC        swapchain_desc = {0};
     D3D11_TEXTURE2D_DESC        ds_desc = {0};
 	gsdx11_data_t				*dx11 = (gsdx11_data_t *)graphics->user_data;
+	void						*gs_window = gs_engine_subsystem(platform)->windows;
+	HWND						hWnd = 0;
+	gsdx11_shader_t				s = {0}; // TODO(matthew): bulletproof this, empty struct for now
 
 
 	// TODO(matthew): could add a 'render targets' field eventually
-	gs_slot_array_insert(dx11->shaders, 0);
+	gs_slot_array_insert(dx11->shaders, s);
 	gs_slot_array_insert(dx11->vertex_buffers, 0);
 
     buffer_desc.Width = SCR_WIDTH;
@@ -144,11 +157,11 @@ gs_graphics_init(gs_graphics_t *graphics);
     hr = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL,
 			D3D11_CREATE_DEVICE_DEBUG, 0, 0, D3D11_SDK_VERSION, &swapchain_desc,
 			&g_swapchain, &g_device,NULL, &g_context);
-    hr = g_swapchain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void **)&backbuffer);
-    hr = g_device->CreateRenderTargetView(backbuffer, NULL, &g_rtv);
-    hr = g_device->CreateTexture2D(&ds_desc, 0, &ds_buffer);
-    hr = g_device->CreateDepthStencilView(ds_buffer, NULL, &g_dsv);
-    g_context->OMSetRenderTargets(1, &g_rtv, g_dsv);
+    hr = IDXGISwapChain_GetBuffer(g_swapchain, 0, &IID_ID3D11Texture2D, (void **)&backbuffer);
+    hr = ID3D11Device_CreateRenderTargetView(g_device, backbuffer, NULL, &g_rtv);
+    hr = ID3D11Device_CreateTexture2D(g_device, &ds_desc, 0, &ds_buffer);
+    hr = ID3D11Device_CreateDepthStencilView(g_device, ds_buffer, NULL, &g_dsv);
+    ID3D11DeviceContext_OMSetRenderTargets(g_context, 1, &g_rtv, g_dsv);
 }
 
 
@@ -168,7 +181,7 @@ gs_graphics_vertex_buffer_create(const gs_graphics_vertex_buffer_desc_t *desc)
 	gs_handle(gs_graphics_vertex_buffer_t)		hndl = gs_default_val();
 
 
-	dx11 = (dx11_data_t *)gs_engine_subsystem(graphics)->user_data;
+	dx11 = (gsdx11_data_t *)gs_engine_subsystem(graphics)->user_data;
 	buffer_desc.ByteWidth = desc->size;
 	// TODO(matthew): Later, we need to map more of these fields according to
 	// the data in the desc. Will need to create functions that map GS enums
@@ -177,11 +190,11 @@ gs_graphics_vertex_buffer_create(const gs_graphics_vertex_buffer_desc_t *desc)
 	buffer_data.pSysMem = desc->data;
 
 	if (desc->data)
-		hr = g_device->CreateBuffer(&buffer_desc, &buffer_data, &buffer);
+		hr = ID3D11Device_CreateBuffer(g_device, &buffer_desc, &buffer_data, &buffer);
 	else
-		hr = g_device->CreateBuffer(&buffer_desc, NULL, &buffer);
+		hr = ID3D11Device_CreateBuffer(g_device, &buffer_desc, NULL, &buffer);
 
-	hndl = gs_handle_creat(gs_graphics_vertex_buffer_t, gs_slot_array_insert(dx11->vertex_buffers), buffer);
+	hndl = gs_handle_create(gs_graphics_vertex_buffer_t, gs_slot_array_insert(dx11->vertex_buffers, buffer));
 
 	return hndl;
 }
@@ -190,7 +203,10 @@ gs_handle(gs_graphics_shader_t)
 gs_graphics_shader_create(const gs_graphics_shader_desc_t *desc)
 {
 	gsdx11_data_t		*dx11;
-	ID3DBlob			blob;
+	ID3DBlob			*blob;
+	gsdx11_shader_t		s = {0};
+
+	return gs_handle_create(gs_graphics_shader_t, gs_slot_array_insert(dx11->shaders, s));
 }
 
 #endif // GS_DX11_IMPL_H

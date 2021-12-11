@@ -30,6 +30,8 @@
 #define GS_DX11_H
 
 #include "gs/gs.h"
+/* #define GLFW_EXPOSE_NATIVE_WIN32 */
+/* #include "glfw3native.h" */
 
 typedef struct _TAG_gs_dx11_video_settings
 {
@@ -43,6 +45,6 @@ typedef union _TAG_gs_dx11_graphics_api_settings
 {
 	gs_dx11_video_settings_t 	dx11;
 	bool32						debug;
-} gs_graphics_api_settings_t;
+} gs_dx11_graphics_api_settings_t;
 
 #endif // GS_DX11_H
