@@ -802,6 +802,13 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
 				/* 	// TODO(matthew): make this take the buffer slot instead of 'i' */
 				/* 	ID3D11DeviceContext_IASetVertexBuffers(dx11->context, i, 1, &vbo, &stride, &offset); */
 				/* } */
+
+				// TODO(matthew): handle instancing + indexed rendering eventually
+				gs_byte_buffer_readc(&cb->commands, uint32_t, start);
+				gs_byte_buffer_readc(&cb->commands, uint32_t, count);
+
+				ID3D11DeviceContext_Draw(dx11->context, count, start);
+				IDXGISwapChain_Present(dx11->swapchain, 0, 0);
 			} break;
 		}
 	}

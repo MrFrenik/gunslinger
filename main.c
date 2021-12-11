@@ -45,10 +45,6 @@ void init()
 	size_t								sz;
 	char								*vs_src,
 										*ps_src;
-	ID3DBlob							*vsblob,
-										*psblob;
-	gs_graphics_pipeline_desc_t			pipe_desc = {0};
-
 
 	vs_src = gs_read_file_contents_into_string_null_term("vertex.hlsl", "rb", &sz);
 	ps_src = gs_read_file_contents_into_string_null_term("pixel.hlsl", "rb", &sz);
@@ -64,10 +60,6 @@ void init()
         }
     );
 
-
-	vsblob = gs_slot_array_get(dx11->shaders, shader.id).vsblob;
-	psblob = gs_slot_array_get(dx11->shaders, shader.id).psblob;
-
     pipe = gs_graphics_pipeline_create (
         &(gs_graphics_pipeline_desc_t) {
             .raster = {
@@ -81,7 +73,6 @@ void init()
             }
         }
     );
-
 
 	///////////////////////////////////////////////////////////////////////////
 	// Buffer Setup
@@ -120,9 +111,6 @@ void update()
 		gs_graphics_draw(&cb, &(gs_graphics_draw_desc_t){.start = 0, .count = 3});
 		gs_graphics_end_render_pass(&cb);
 	gs_graphics_submit_command_buffer(&cb);
-
-	ID3D11DeviceContext_Draw(dx11->context, 3, 0);
-	IDXGISwapChain_Present(dx11->swapchain, 0, 0);
 }
 
 gs_app_desc_t gs_main(int32_t argc, char** argv)
