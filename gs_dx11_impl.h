@@ -308,7 +308,8 @@ gs_graphics_shader_create(const gs_graphics_shader_desc_t *desc)
 			hr = ID3D11Device_CreateVertexShader(dx11->device, ID3D10Blob_GetBufferPointer(shader.blob),
 					ID3D10Blob_GetBufferSize(shader.blob), 0, &shader.vs);
 			hndl = gs_handle_create(gs_graphics_shader_t, gs_slot_array_insert(dx11->shaders, shader));
-		};
+			printf("v: %p\n", shader.vs);
+		} break;
 		case GS_GRAPHICS_SHADER_STAGE_FRAGMENT:
 		{
 			hr = D3DCompile(shader_src, shader_len, NULL, NULL, NULL, "main", "ps_5_0",
@@ -316,7 +317,8 @@ gs_graphics_shader_create(const gs_graphics_shader_desc_t *desc)
 			hr = ID3D11Device_CreatePixelShader(dx11->device, ID3D10Blob_GetBufferPointer(shader.blob),
 					ID3D10Blob_GetBufferSize(shader.blob), 0, &shader.ps);
 			hndl = gs_handle_create(gs_graphics_shader_t, gs_slot_array_insert(dx11->shaders, shader));
-		};
+			printf("p: %p\n", shader.ps);
+		} break;
 	}
 
 	return hndl;

@@ -20,7 +20,8 @@
 #include "gs/gs.h"
 
 // All necessary graphics data for this example (shader source/vertex data)
-gs_handle(gs_graphics_vertex_buffer_t)   vbo     = {0};
+gs_handle(gs_graphics_vertex_buffer_t)	vbo     = {0};
+gs_handle(gs_graphics_shader_t) 		shaders[2] 	= {0};
 gs_graphics_t *graphics;
 gsdx11_data_t *dx11;
 
@@ -33,17 +34,34 @@ void init()
 	///////////////////////////////////////////////////////////////////////////
 	// Shader Setup
 
-	ID3D11VertexShader 		*vs;
-	ID3D11PixelShader		*ps;
-	ID3DBlob				*vsblob,
-							*psblob;
+	ID3D11VertexShader					*vs;
+	ID3D11PixelShader					*ps;
+	size_t								sz;
+	char								*vs_src,
+										*ps_src;
+	ID3DBlob							*vsblob,
+										*psblob;
+	gs_graphics_shader_desc_t 			shader_desc = {0};
+	gs_graphics_shader_source_desc_t	src_desc = {0};
 
-	hr = D3DCompileFromFile(L"vertex.hlsl", NULL, NULL, "main", "vs_5_0", NULL, NULL, &vsblob, NULL);
-	hr = D3DCompileFromFile(L"pixel.hlsl", NULL, NULL, "main", "ps_5_0", NULL, NULL, &psblob, NULL);
-	hr = ID3D11Device_CreateVertexShader(dx11->device, ID3D10Blob_GetBufferPointer(vsblob),
-			ID3D10Blob_GetBufferSize(vsblob), NULL, &vs);
-	hr = ID3D11Device_CreatePixelShader(dx11->device, ID3D10Blob_GetBufferPointer(psblob),
-			ID3D10Blob_GetBufferSize(psblob), NULL, &ps);
+	vs_src = gs_read_file_contents_into_string_null_term("vertex.hlsl", "rb", &sz);
+	ps_src = gs_read_file_contents_into_string_null_term("pixel.hlsl", "rb", &sz);
+
+	src_desc.type = GS_GRAPHICS_SHADER_STAGE_VERTEX;
+	src_desc.source = vs_src;
+	shader_desc.sources = &src_desc;
+	shader_desc.size = 1;
+	shaders[0] = gs_graphics_shader_create(&shader_desc);
+
+	src_desc.type = GS_GRAPHICS_SHADER_STAGE_FRAGMENT;
+	src_desc.source = ps_src;
+	shaders[1] = gs_graphics_shader_create(&shader_desc);
+
+	vs = gs_slot_array_get(dx11->shaders, 1).vs;
+	ps = gs_slot_array_get(dx11->shaders, 2).ps;
+	vsblob = gs_slot_array_get(dx11->shaders, 1).blob;
+	psblob = gs_slot_array_get(dx11->shaders, 2).blob;
+
 	ID3D11DeviceContext_VSSetShader(dx11->context, vs, 0, 0);
 	ID3D11DeviceContext_PSSetShader(dx11->context, ps, 0, 0);
 
