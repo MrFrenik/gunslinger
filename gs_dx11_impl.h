@@ -21,6 +21,7 @@
 #include <d3d11.h>
 #include <d3dcommon.h>
 #include <d3dcompiler.h>
+#include <stdio.h>
 
 /*=============================
 // Globals
@@ -162,11 +163,15 @@ gs_graphics_init(gs_graphics_t *graphics)
     DXGI_MODE_DESC              buffer_desc = {0};
     DXGI_SWAP_CHAIN_DESC        swapchain_desc = {0};
     D3D11_TEXTURE2D_DESC        ds_desc = {0};
-	gsdx11_data_t				*dx11 = (gsdx11_data_t *)graphics->user_data;
-	void						*gs_window = gs_engine_subsystem(platform)->windows;
-	HWND						hWnd = 0;
+	gsdx11_data_t				*dx11;
+	void						*gs_window;
+	HWND						hwnd = 0;
 	gsdx11_shader_t				s = {0}; // TODO(matthew): bulletproof this, empty struct for now
 
+
+	dx11 = (gsdx11_data_t *)graphics->user_data;
+	gs_window = gs_slot_array_get(gs_engine_subsystem(platform)->windows, 1);
+	hwnd = glfwGetWin32Window(gs_window);
 
 	// TODO(matthew): could add a 'render targets' field eventually
 	gs_slot_array_insert(dx11->shaders, s);
@@ -190,7 +195,7 @@ gs_graphics_init(gs_graphics_t *graphics)
     swapchain_desc.SampleDesc.Count = 1;
     swapchain_desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     swapchain_desc.BufferCount = 1;
-    swapchain_desc.OutputWindow = hWnd; // TODO: NEED TO GET THIS WINDOW HANDLE
+    swapchain_desc.OutputWindow = hwnd; // TODO: NEED TO GET THIS WINDOW HANDLE
     swapchain_desc.Windowed = TRUE;
     swapchain_desc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
 
@@ -245,6 +250,8 @@ gs_graphics_vertex_buffer_create(const gs_graphics_vertex_buffer_desc_t *desc)
 		hr = ID3D11Device_CreateBuffer(dx11->device, &buffer_desc, NULL, &buffer);
 
 	hndl = gs_handle_create(gs_graphics_vertex_buffer_t, gs_slot_array_insert(dx11->vertex_buffers, buffer));
+	printf("1: %p\r\n", buffer);
+	printf("2: %p\n", (gs_slot_array_getp(dx11->vertex_buffers, 1)));
 
 	return hndl;
 }
@@ -313,6 +320,16 @@ gs_graphics_shader_create(const gs_graphics_shader_desc_t *desc)
 	}
 
 	return hndl;
+}
+
+void           
+gs_graphics_shutdown(gs_graphics_t* graphics)
+{
+}
+
+gs_handle(gs_graphics_texture_t)        
+gs_graphics_texture_create(const gs_graphics_texture_desc_t* desc)
+{
 }
 
 #endif // GS_DX11_IMPL_H
