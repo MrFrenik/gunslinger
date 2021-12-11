@@ -25,6 +25,18 @@
 =============================*/
 
 /*=============================
+// Enums
+=============================*/
+
+typedef enum gs_dx11_op_code_type
+{
+	GS_DX11_OP_BEGIN_RENDER_PASS = 0x00,
+	GS_DX11_OP_END_RENDER_PASS,
+	GS_DX11_OP_CLEAR,
+	GS_DX11_OP_COUNT
+} gs_dx11_op_code_type;
+
+/*=============================
 // Structures
 =============================*/
 
@@ -349,6 +361,46 @@ gs_graphics_shutdown(gs_graphics_t* graphics)
 
 gs_handle(gs_graphics_texture_t)
 gs_graphics_texture_create(const gs_graphics_texture_desc_t* desc)
+{
+}
+
+
+
+/*=============================
+// Command Buffers Ops
+=============================*/
+
+#define __dx11_push_command(__cb, __op_code, ...)												\
+do 																								\
+{																								\
+	gsdx11_data_t *__gsdx11_data = (gsdx11_data_t *)gs_engine_subsystem(graphics)->user_data;	\
+	gs_byte_buffer_write(&__cb->commands, u32, (u32)__op_code);									\
+	__VA_ARGS__																					\
+	__cb->num_commands++;																		\
+} while (0)
+
+void
+gs_graphics_begin_render_pass(gs_command_buffer_t *cb,
+							  gs_handle(gs_graphics_render_pass_t) hndl)
+{
+	__dx11_push_command(cb, GS_DX11_OP_BEGIN_RENDER_PASS,
+	{
+		gs_byte_buffer_write(&cb->commands, uint32_t, hndl.id);
+	});
+}
+
+void
+gs_graphics_end_render_pass(gs_command_buffer_t *cb)
+{
+	__dx11_push_command(cb, GS_DX11_OP_END_RENDER_PASS,
+	{
+		// Nothing...
+	});
+}
+
+void
+gs_graphics_clear(gs_command_buffer_t *cb,
+				  gs_graphics_clear_desc_t *desc)
 {
 }
 
