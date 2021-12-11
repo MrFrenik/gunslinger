@@ -66,6 +66,7 @@ typedef struct _tag_gsdx11_data
 	IDXGISwapChain						*swapchain;
 	ID3D11RenderTargetView				*rtv;
 	ID3D11DepthStencilView				*dsv;
+
 	// NOTE(matthew): putting these here for now, although doing so is probably
 	// unnecesary. The raster_state will likely turn into an array of raster
 	// states if we add functionality for doing multiple render passes.
@@ -171,7 +172,6 @@ gs_graphics_destroy(gs_graphics_t *graphics)
 	gs_free(graphics);
 }
 
-// TODO(matthew): create viewport + raster state in here as well
 void
 gs_graphics_init(gs_graphics_t *graphics)
 {
@@ -183,7 +183,7 @@ gs_graphics_init(gs_graphics_t *graphics)
     D3D11_TEXTURE2D_DESC        ds_desc = {0};
 	gsdx11_data_t				*dx11;
 	void						*gs_window;
-	HWND						hwnd = 0;
+	HWND						hwnd;
 	gsdx11_shader_t				s = {0}; // TODO(matthew): bulletproof this, empty struct for now
     D3D11_RASTERIZER_DESC       raster_state_desc = {0};
     uint32_t 					window_width = gs_engine_subsystem(app).window_width,
@@ -216,7 +216,7 @@ gs_graphics_init(gs_graphics_t *graphics)
     swapchain_desc.SampleDesc.Count = 1;
     swapchain_desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     swapchain_desc.BufferCount = 1;
-    swapchain_desc.OutputWindow = hwnd; // TODO: NEED TO GET THIS WINDOW HANDLE
+    swapchain_desc.OutputWindow = hwnd;
     swapchain_desc.Windowed = TRUE;
     swapchain_desc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
 
@@ -250,6 +250,12 @@ gs_graphics_init(gs_graphics_t *graphics)
 }
 
 
+void
+gs_graphics_shutdown(gs_graphics_t* graphics)
+{
+}
+
+
 
 /*=============================
 // Resource Creation
@@ -267,10 +273,11 @@ gs_graphics_vertex_buffer_create(const gs_graphics_vertex_buffer_desc_t *desc)
 
 
 	dx11 = (gsdx11_data_t *)gs_engine_subsystem(graphics)->user_data;
-	buffer_desc.ByteWidth = desc->size;
+
 	// TODO(matthew): Later, we need to map more of these fields according to
 	// the data in the desc. Will need to create functions that map GS enums
 	// to DX11 enums.
+	buffer_desc.ByteWidth = desc->size;
 	buffer_desc.Usage = D3D11_USAGE_DEFAULT;
 	buffer_desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 	buffer_data.pSysMem = desc->data;
@@ -281,8 +288,8 @@ gs_graphics_vertex_buffer_create(const gs_graphics_vertex_buffer_desc_t *desc)
 		hr = ID3D11Device_CreateBuffer(dx11->device, &buffer_desc, NULL, &buffer);
 
 	hndl = gs_handle_create(gs_graphics_vertex_buffer_t, gs_slot_array_insert(dx11->vertex_buffers, buffer));
-	printf("1: %p\r\n", buffer);
-	printf("2: %p\n", (gs_slot_array_getp(dx11->vertex_buffers, 1)));
+	/* printf("1: %p\r\n", buffer); */
+	/* printf("2: %p\n", (gs_slot_array_getp(dx11->vertex_buffers, 1))); */
 
 	return hndl;
 }
@@ -328,6 +335,7 @@ gs_graphics_shader_create(const gs_graphics_shader_desc_t *desc)
 
 
 	dx11 = (gsdx11_data_t *)gs_engine_subsystem(graphics)->user_data;
+
 	// TODO(matthew): Check the error blob
 	// TODO(matthew): Make this support multiple shader sources eventually
 	switch (shader_type)
@@ -339,7 +347,7 @@ gs_graphics_shader_create(const gs_graphics_shader_desc_t *desc)
 			hr = ID3D11Device_CreateVertexShader(dx11->device, ID3D10Blob_GetBufferPointer(shader.blob),
 					ID3D10Blob_GetBufferSize(shader.blob), 0, &shader.vs);
 			hndl = gs_handle_create(gs_graphics_shader_t, gs_slot_array_insert(dx11->shaders, shader));
-			printf("v: %p\n", shader.vs);
+			/* printf("v: %p\n", shader.vs); */
 		} break;
 		case GS_GRAPHICS_SHADER_STAGE_FRAGMENT:
 		{
@@ -348,16 +356,11 @@ gs_graphics_shader_create(const gs_graphics_shader_desc_t *desc)
 			hr = ID3D11Device_CreatePixelShader(dx11->device, ID3D10Blob_GetBufferPointer(shader.blob),
 					ID3D10Blob_GetBufferSize(shader.blob), 0, &shader.ps);
 			hndl = gs_handle_create(gs_graphics_shader_t, gs_slot_array_insert(dx11->shaders, shader));
-			printf("p: %p\n", shader.ps);
+			/* printf("p: %p\n", shader.ps); */
 		} break;
 	}
 
 	return hndl;
-}
-
-void
-gs_graphics_shutdown(gs_graphics_t* graphics)
-{
 }
 
 gs_handle(gs_graphics_texture_t)
@@ -370,12 +373,25 @@ gs_graphics_texture_create(const gs_graphics_texture_desc_t* desc)
 /*=============================
 // Command Buffers Ops
 =============================*/
-
 /*
 	// Structure of command:
 		- Op code
 		- Data packet
 */
+
+// TODO(matthew): This system works fine for now, however it's probably not
+// thread safe if we start using multiple command buffers. We can fix this by
+// using DX11 command lists. This would involve creating deferred contexts in
+// the internal DX11 data for use on multiple threads, as well as having a
+// unique command list for each thread that calls into gunslinger's command
+// buffer API (need to think of how this could be done).
+// We could call ID3D11DeviceContext::FinishCommandList in begin_render_pass()
+// to clear the context state, and then again in end_render_pass() to record
+// all the commands we wish to batch together into a single command buffer.
+// Then, in submit_buffer(), we simply execute the given command list (again,
+// need a way to store these for different threads so that they can be accessed
+// later on, namely NOW).
+// Ignore this for now, as it is a long term thing.
 
 #define __dx11_push_command(__cb, __op_code, ...)												\
 do 																								\
@@ -513,3 +529,4 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
 }
 
 #endif // GS_DX11_IMPL_H
+

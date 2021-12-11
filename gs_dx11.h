@@ -9,23 +9,6 @@
 	implementation should live as per John's indication.
 */
 
-// TODO(matthew): we need to get the hWnd so that it can be sent to DX11.
-// NOTE(matthew): GLFW provides a function, glfwGetWin32Window which
-// returns the hWnd of the specified window. Looks like we can just use this.
-// However, at some point in the future we may opt to write our own native
-// Win32 platform layer to 1) make DX11/12 backends a bit simpler, 2) remove
-// the GLFW dependency on Windows.
-
-// TODO(matthew): DX11 is natively a C++ API, this goes against gunslinger's
-// design as being a purely C API.
-// NOTE(matthew): DX11 also provides a C interface that can be used instead of
-// the C++ one. Looks like we just need #define CINTERFACE before #include
-// d3d11.h. Will ask John to see if we can use the C++ API, or if we must use
-// the C interface.
-// Convention doesn't change much. For instance:
-// ID3D11Device *Device;
-// Device->CreateBuffer(...) ===> ID3D11Device_CreateBuffer(Device, ...);
-
 #ifndef GS_DX11_H
 #define GS_DX11_H
 
