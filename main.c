@@ -27,6 +27,7 @@ gs_command_buffer_t						cb			= {0};
 gs_handle(gs_graphics_vertex_buffer_t)	vbo     	= {0};
 gs_handle(gs_graphics_index_buffer_t)	ibo			= {0};
 gs_handle(gs_graphics_shader_t) 		shader     	= {0};
+gs_handle(gs_graphics_pipeline_t)		pipe		= {0};
 gs_graphics_t *graphics;
 gsdx11_data_t *dx11;
 
@@ -41,8 +42,6 @@ void init()
 	///////////////////////////////////////////////////////////////////////////
 	// Shader Setup
 
-	ID3D11VertexShader					*vs;
-	ID3D11PixelShader					*ps;
 	size_t								sz;
 	char								*vs_src,
 										*ps_src;
@@ -50,6 +49,7 @@ void init()
 										*psblob;
 	gs_graphics_shader_desc_t 			shader_desc = {0};
 	gs_graphics_shader_source_desc_t	sources[2] = {0};
+	gs_graphics_pipeline_desc_t			pipe_desc = {0};
 
 	vs_src = gs_read_file_contents_into_string_null_term("vertex.hlsl", "rb", &sz);
 	ps_src = gs_read_file_contents_into_string_null_term("pixel.hlsl", "rb", &sz);
@@ -64,13 +64,12 @@ void init()
 
 	shader = gs_graphics_shader_create(&shader_desc);
 
-	vs = gs_slot_array_get(dx11->shaders, shader.id).vs;
-	ps = gs_slot_array_get(dx11->shaders, shader.id).ps;
 	vsblob = gs_slot_array_get(dx11->shaders, shader.id).vsblob;
 	psblob = gs_slot_array_get(dx11->shaders, shader.id).psblob;
 
-	ID3D11DeviceContext_VSSetShader(dx11->context, vs, 0, 0);
-	ID3D11DeviceContext_PSSetShader(dx11->context, ps, 0, 0);
+	pipe_desc.raster.shader = shader;
+
+	pipe = gs_graphics_pipeline_create(&pipe_desc);
 
 	///////////////////////////////////////////////////////////////////////////
 	// Buffer Setup
@@ -134,6 +133,7 @@ void update()
 
 	gs_graphics_clear(&cb, &clear);
 	/* gs_graphics_set_viewport(&cb, 0, 0, SCR_WIDTH / 2, SCR_HEIGHT / 2); */
+	gs_graphics_bind_pipeline(&cb, pipe);
 	gs_graphics_submit_command_buffer(&cb);
 
 	ID3D11DeviceContext_DrawIndexed(dx11->context, 6, 0, 0);

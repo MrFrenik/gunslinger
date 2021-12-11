@@ -39,6 +39,16 @@ typedef enum gs_dx11_op_code_type
 	GS_DX11_OP_COUNT
 } gs_dx11_op_code_type;
 
+// NOTE(matthew): Created these here instead of using the shader stage type
+// in gs.h because I need to be able to | and & them together. This is so that
+// the shader object (gsdx11_shader_t) can hold what shader(s) it contains so
+// that I can set the appropriate shader when binding the pipeline.
+typedef enum _TAG_gsdx11_shader_type
+{
+	GS_DX11_SHADER_TYPE_VERTEX = 0x01,
+	GS_DX11_SHADER_TYPE_PIXEL = 0x02
+} gsdx11_shader_type;
+
 /*=============================
 // Structures
 =============================*/
@@ -53,16 +63,19 @@ typedef struct _TAG_gsdx11_shader
  	// need the bytecode for creating input layouts
 	ID3DBlob 				*vsblob,
 							*psblob;
+
+	// For identifying what's in the shader object, like a discriminated union
+	gsdx11_shader_type		tag;
 } gsdx11_shader_t;
 
 typedef struct _TAG_gsdx11_pipeline
 {
     /* gs_graphics_blend_state_desc_t blend; */
     /* gs_graphics_depth_state_desc_t depth; */
-    /* gs_graphics_raster_state_desc_t raster; */
+    gs_graphics_raster_state_desc_t raster;
     /* gs_graphics_stencil_state_desc_t stencil; */
     /* gs_graphics_compute_state_desc_t compute; */
-    gs_dyn_array(gs_graphics_vertex_attribute_desc_t) layout;
+    /* gs_dyn_array(gs_graphics_vertex_attribute_desc_t) layout; */
 } gsdx11_pipeline_t;
 
 // Internal DX11 data
@@ -369,6 +382,7 @@ gs_graphics_shader_create(const gs_graphics_shader_desc_t *desc)
 						0, 0, &shader.vsblob, &err_blob);
 				hr = ID3D11Device_CreateVertexShader(dx11->device, ID3D10Blob_GetBufferPointer(shader.vsblob),
 						ID3D10Blob_GetBufferSize(shader.vsblob), 0, &shader.vs);
+				shader.tag |= GS_DX11_SHADER_TYPE_VERTEX;
 				/* printf("v: %p\n", shader.vs); */
 			} break;
 			case GS_GRAPHICS_SHADER_STAGE_FRAGMENT:
@@ -377,6 +391,7 @@ gs_graphics_shader_create(const gs_graphics_shader_desc_t *desc)
 						0, 0, &shader.psblob, &err_blob);
 				hr = ID3D11Device_CreatePixelShader(dx11->device, ID3D10Blob_GetBufferPointer(shader.psblob),
 						ID3D10Blob_GetBufferSize(shader.psblob), 0, &shader.ps);
+				shader.tag |= GS_DX11_SHADER_TYPE_PIXEL;
 				/* printf("p: %p\n", shader.ps); */
 			} break;
 		}
@@ -392,18 +407,12 @@ gs_graphics_pipeline_create(const gs_graphics_pipeline_desc_t* desc)
 {
 	gsdx11_data_t							*dx11;
 	gsdx11_pipeline_t						pipe = gs_default_val();
-	uint32_t								cnt, i;
 	gs_handle(gs_graphics_pipeline_t)		hndl;
 
 	dx11 = (gsdx11_data_t*)gs_engine_subsystem(graphics)->user_data;
 
-	// add layouts
-    cnt = (uint32_t)desc->layout.size / (uint32_t)sizeof(gs_graphics_vertex_attribute_desc_t);
-	gs_dyn_array_reserve(pipe.layout, cnt);
-	for (i = 0; i < cnt; i++)
-	{
-		gs_dyn_array_push(pipe.layout, desc->layout.attrs[i]);
-	}
+	// add state
+	pipe.raster = desc->raster;
 
 	hndl = gs_handle_create(gs_graphics_pipeline_t, gs_slot_array_insert(dx11->pipelines, pipe));
 
@@ -613,6 +622,27 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
 
 				ID3D11DeviceContext_RSSetViewports(dx11->context, 1, &dx11->viewport);
 			};
+
+			case GS_DX11_OP_BIND_PIPELINE:
+			{
+				gsdx11_pipeline_t *pipe;
+
+				gs_byte_buffer_readc(&cb->commands, uint32_t, pipe_id);
+
+				pipe = gs_slot_array_getp(dx11->pipelines, pipe_id);
+
+				// Raster (shader)
+				// (check that the shader is valid)
+				if (pipe->raster.shader.id && gs_slot_array_exists(dx11->shaders, pipe->raster.shader.id))
+				{
+					gsdx11_shader_t shader = gs_slot_array_get(dx11->shaders, pipe->raster.shader.id);
+					
+					if (shader.tag & GS_DX11_SHADER_TYPE_VERTEX)
+						ID3D11DeviceContext_VSSetShader(dx11->context, shader.vs, 0, 0);
+					if (shader.tag & GS_DX11_SHADER_TYPE_PIXEL)
+						ID3D11DeviceContext_PSSetShader(dx11->context, shader.ps, 0, 0);
+				}
+			} break;
 		}
 	}
 }
