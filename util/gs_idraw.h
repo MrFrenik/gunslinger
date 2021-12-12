@@ -95,12 +95,8 @@ typedef struct gs_immediate_cache_t
 
 } gs_immediate_cache_t;
 
-typedef struct gs_immediate_draw_t
+typedef struct gs_immediate_draw_static_data_t
 {
-	/* Handle to vertex buffer resource */
-	gs_handle(gs_graphics_vertex_buffer_t) vbo;
-	/* Handle to index buffer resource */
-	gs_handle(gs_graphics_index_buffer_t) ibo;
 	/* Default texture */
 	gs_handle(gs_graphics_texture_t) tex_default;
 	/* Default font */
@@ -111,6 +107,15 @@ typedef struct gs_immediate_draw_t
 	gs_handle(gs_graphics_uniform_t) uniform;
 	/* Uniform sampler */
 	gs_handle(gs_graphics_uniform_t) sampler;
+
+} gs_immediate_draw_static_data_t;
+
+typedef struct gs_immediate_draw_t
+{
+	/* Handle to vertex buffer resource */
+	gs_handle(gs_graphics_vertex_buffer_t) vbo;
+	/* Handle to index buffer resource */
+	gs_handle(gs_graphics_index_buffer_t) ibo;
 	/* Dynamic array of vertex data to update */
 	gs_dyn_array(gs_immediate_vert_t) vertices;
 	/* Dynamic array of index data to update */
@@ -136,6 +141,9 @@ GS_API_DECL void                gs_immediate_draw_free(gs_immediate_draw_t* gsi)
 
 // Get pipeline from state
 GS_API_DECL gs_handle(gs_graphics_pipeline_t) gsi_get_pipeline(gs_immediate_draw_t* gsi, gsi_pipeline_state_attr_t state);
+
+// Get default font asset pointer
+GS_API_DECL gs_asset_font_t* gsi_default_font();
 
 // Core Vertex Functions
 GS_API_DECL void gsi_begin(gs_immediate_draw_t* gsi, gs_graphics_primitive_type type);
@@ -228,6 +236,11 @@ GS_API_DECL unsigned int gs_decompress(unsigned char* output, unsigned char* inp
 
 #ifdef GS_IMMEDIATE_DRAW_IMPL
 
+// Global instance of immediate draw static data
+gs_immediate_draw_static_data_t* g_gsi = NULL;
+
+#define GSI() g_gsi
+
 #ifndef gsi_smooth_circle_error_rate
     #define gsi_smooth_circle_error_rate  0.5f
 #endif
@@ -239,8 +252,7 @@ const f32 gsi_deg2rad = (f32)GS_PI / 180.f;
     #define GSI_GL_VERSION_STR "#version 300 es\n"
 #else
     #define GSI_GL_VERSION_STR "#version 330 core\n"
-#endif
-
+#endif 
 
 const char* gsi_v_fillsrc =
 GSI_GL_VERSION_STR
@@ -293,36 +305,24 @@ void gsi_reset(gs_immediate_draw_t* gsi)
 	gs_dyn_array_push(gsi->cache.projection, gs_mat4_identity());
 	gs_dyn_array_push(gsi->cache.modes, GSI_MATRIX_MODELVIEW);
 
-	gsi->cache.texture = gsi->tex_default;
+	gsi->cache.texture = GSI()->tex_default;
 	gsi->cache.pipeline = gsi_pipeline_state_default();
 	gsi->cache.pipeline.prim_type = 0x00;
 	gsi->cache.uv = gs_v2(0.f, 0.f);
 	gsi->cache.color = GS_COLOR_WHITE;
 }
 
-// Create / Init / Shutdown / Free
-gs_immediate_draw_t gs_immediate_draw_new(uint32_t window_handle)
+void gs_immediate_draw_static_data_init()
 {
-	gs_immediate_draw_t gsi = gs_default_val();
-	memset(&gsi, 0, sizeof(gsi));
-
-	// Init cache
-	gsi.cache.color = GS_COLOR_WHITE;
-
-	// Init command buffer
-	gsi.commands = gs_command_buffer_new();	// Not totally sure on the syntax for new vs. create
-
-    // Set window handle
-    gsi.window_handle = window_handle;
+    GSI() = gs_malloc_init(gs_immediate_draw_static_data_t);
 
 	// Create uniform buffer
 	gs_graphics_uniform_layout_desc_t uldesc = gs_default_val();
 	uldesc.type = GS_GRAPHICS_UNIFORM_MAT4;
 	gs_graphics_uniform_desc_t udesc = gs_default_val();
 	memcpy(udesc.name, "u_mvp", 64);
-    gs_println("HERE");
 	udesc.layout = &uldesc;
-	gsi.uniform = gs_graphics_uniform_create(&udesc);
+	GSI()->uniform = gs_graphics_uniform_create(&udesc);
 
 	// Create sampler buffer 
 	gs_graphics_uniform_layout_desc_t sldesc = gs_default_val(); 
@@ -330,15 +330,7 @@ gs_immediate_draw_t gs_immediate_draw_new(uint32_t window_handle)
 	gs_graphics_uniform_desc_t sbdesc = gs_default_val();
 	memcpy(sbdesc.name, "u_tex", 64);
 	sbdesc.layout = &sldesc;
-	gsi.sampler = gs_graphics_uniform_create(&sbdesc); 
-
-	// Create vertex buffer 
-	gs_graphics_vertex_buffer_desc_t vdesc = gs_default_val();
-	vdesc.data = NULL;
-	vdesc.size = 0;
-	vdesc.usage = GS_GRAPHICS_BUFFER_USAGE_STREAM;
-
-	gsi.vbo = gs_graphics_vertex_buffer_create(&vdesc);
+	GSI()->sampler = gs_graphics_uniform_create(&sbdesc); 
 
 	// Create default texture (4x4 white) 
 	gs_color_t pixels[16] = gs_default_val();
@@ -352,7 +344,7 @@ gs_immediate_draw_t gs_immediate_draw_new(uint32_t window_handle)
 	tdesc.mag_filter = GS_GRAPHICS_TEXTURE_FILTER_NEAREST;	
 	tdesc.data = pixels;
 
-	gsi.tex_default = gs_graphics_texture_create(&tdesc);
+	GSI()->tex_default = gs_graphics_texture_create(&tdesc);
 
 	// Create shader
 	gs_graphics_shader_source_desc_t vsrc; vsrc.type = GS_GRAPHICS_SHADER_STAGE_VERTEX; vsrc.source = gsi_v_fillsrc;
@@ -404,11 +396,11 @@ gs_immediate_draw_t gs_immediate_draw_new(uint32_t window_handle)
 		pdesc.layout.size = sizeof(gsi_vattrs);
 
 		gs_handle(gs_graphics_pipeline_t) hndl = gs_graphics_pipeline_create(&pdesc);
-		gs_hash_table_insert(gsi.pipeline_table, attr, hndl);
+		gs_hash_table_insert(GSI()->pipeline_table, attr, hndl);
 	} 
 
 	// Create default font
-	gs_asset_font_t* f = &gsi.font_default;
+	gs_asset_font_t* f = &GSI()->font_default;
 	stbtt_fontinfo font = gs_default_val();
 	const char* compressed_ttf_data_base85 = GSGetDefaultCompressedFontDataTTFBase85();
 	s32 compressed_ttf_size = (((s32)strlen(compressed_ttf_data_base85) + 4) / 5) * 4;
@@ -460,6 +452,36 @@ gs_immediate_draw_t gs_immediate_draw_new(uint32_t window_handle)
    	gs_free(buf_decompressed_data);
    	gs_free(alpha_bitmap);
    	gs_free(flipmap);
+}
+
+// Create / Init / Shutdown / Free
+gs_immediate_draw_t gs_immediate_draw_new(uint32_t window_handle)
+{
+    if (!GSI())
+    {  
+        // Construct GSI
+        gs_immediate_draw_static_data_init();
+    }
+
+	gs_immediate_draw_t gsi = gs_default_val();
+	memset(&gsi, 0, sizeof(gsi));
+
+	// Init cache
+	gsi.cache.color = GS_COLOR_WHITE;
+
+	// Init command buffer
+	gsi.commands = gs_command_buffer_new();	// Not totally sure on the syntax for new vs. create
+
+    // Set window handle
+    gsi.window_handle = window_handle; 
+
+	// Create vertex buffer 
+	gs_graphics_vertex_buffer_desc_t vdesc = gs_default_val();
+	vdesc.data = NULL;
+	vdesc.size = 0;
+	vdesc.usage = GS_GRAPHICS_BUFFER_USAGE_STREAM;
+
+	gsi.vbo = gs_graphics_vertex_buffer_create(&vdesc); 
 
 	// Set up cache 
 	gsi_reset(&gsi);
@@ -472,11 +494,17 @@ void gs_immediate_draw_free(gs_immediate_draw_t* gsi)
 	// Free all data
 }
 
+GS_API_DECL gs_asset_font_t* gsi_default_font()
+{
+    if (GSI()) return &GSI()->font_default;
+    return NULL;
+}
+
 gs_handle(gs_graphics_pipeline_t) gsi_get_pipeline(gs_immediate_draw_t* gsi, gsi_pipeline_state_attr_t state)
 {
 	// Bind pipeline
-	gs_assert(gs_hash_table_key_exists(gsi->pipeline_table, state));
-	return gs_hash_table_get(gsi->pipeline_table, state);
+	gs_assert(gs_hash_table_key_exists(GSI()->pipeline_table, state));
+	return gs_hash_table_get(GSI()->pipeline_table, state);
 }
 
 void gs_immediate_draw_set_pipeline(gs_immediate_draw_t* gsi)
@@ -492,8 +520,8 @@ void gs_immediate_draw_set_pipeline(gs_immediate_draw_t* gsi)
 	gsi->cache.pipeline.blend_enabled = gs_clamp(gsi->cache.pipeline.blend_enabled, 0, 1);
 
 	// Bind pipeline
-	gs_assert(gs_hash_table_key_exists(gsi->pipeline_table, gsi->cache.pipeline));
-	gs_graphics_bind_pipeline(&gsi->commands, gs_hash_table_get(gsi->pipeline_table, gsi->cache.pipeline));
+	gs_assert(gs_hash_table_key_exists(GSI()->pipeline_table, gsi->cache.pipeline));
+	gs_graphics_bind_pipeline(&gsi->commands, gs_hash_table_get(GSI()->pipeline_table, gsi->cache.pipeline));
 }
 
 /* Core Vertex Functions */
@@ -550,8 +578,8 @@ void gsi_flush(gs_immediate_draw_t* gsi)
 	vbuffer.buffer = gsi->vbo;
 
 	gs_graphics_bind_uniform_desc_t ubinds[2] = gs_default_val();
-	ubinds[0].uniform = gsi->uniform; ubinds[0].data = &mvp;
-	ubinds[1].uniform = gsi->sampler; ubinds[1].data = &gsi->cache.texture; ubinds[1].binding = 0;
+	ubinds[0].uniform = GSI()->uniform; ubinds[0].data = &mvp;
+	ubinds[1].uniform = GSI()->sampler; ubinds[1].data = &gsi->cache.texture; ubinds[1].binding = 0;
 
     // Bindings for all buffers: vertex, uniform, sampler
     gs_graphics_bind_desc_t binds = gs_default_val();
@@ -652,7 +680,7 @@ void gsi_texture(gs_immediate_draw_t* gsi, gs_handle(gs_graphics_texture_t) text
 	gsi_flush(gsi);
 
 	// Set texture
-	gsi->cache.texture = texture.id && texture.id != UINT32_MAX ? texture : gsi->tex_default;
+	gsi->cache.texture = texture.id && texture.id != UINT32_MAX ? texture : GSI()->tex_default;
 }
 
 // Not working for the moment
@@ -661,7 +689,7 @@ void gsi_defaults(gs_immediate_draw_t* gsi)
 	gsi_flush(gsi);
 
 	// Set defaults for cache
-	gsi->cache.texture = gsi->tex_default;
+	gsi->cache.texture = GSI()->tex_default;
 	gsi->cache.pipeline = gsi_pipeline_state_default();
 	gsi->cache.pipeline.prim_type = 0x00;
 	gsi->cache.uv = gs_v2(0.f, 0.f);
@@ -1490,7 +1518,7 @@ void gsi_text(gs_immediate_draw_t* gsi, float x, float y, const char* text, cons
 {
 	// If no font, set to default
 	if (!fp) {
-		fp = &gsi->font_default;
+		fp = &GSI()->font_default;
 	}
 
 	gsi_texture(gsi, fp->texture.hndl);
