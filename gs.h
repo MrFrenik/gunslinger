@@ -1994,10 +1994,10 @@ uint32_t __gs_find_first_valid_iterator(void* data, size_t key_len, size_t val_l
 
 /* Find first valid iterator idx */
 #define gs_hash_table_iter_new(__HT)\
-    (__gs_find_first_valid_iterator((__HT)->data, sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), 0, (__HT)->stride, (__HT)->klpvl))
+    ((__HT) ? __gs_find_first_valid_iterator((__HT)->data, sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), 0, (__HT)->stride, (__HT)->klpvl) : 0)
 
 #define gs_hash_table_iter_valid(__HT, __IT)\
-    ((__IT) < gs_hash_table_capacity((__HT)))
+    ((__HT) ? (__IT) < gs_hash_table_capacity((__HT)) : false)
 
 // Have to be able to do this for hash table...
 gs_force_inline
@@ -2019,7 +2019,7 @@ void __gs_hash_table_iter_advance_func(void** data, size_t key_len, size_t val_l
     ((__IT) = __gs_find_first_valid_iterator((void**)&(__HT)->data, sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), (__IT), (__HT)->stride, (__HT)->klpvl))
 
 #define gs_hash_table_iter_advance(__HT, __IT)\
-    (__gs_hash_table_iter_advance_func((void**)&(__HT)->data, sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), &(__IT), (__HT)->stride, (__HT)->klpvl))
+    ((__HT) ? __gs_hash_table_iter_advance_func((void**)&(__HT)->data, sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), &(__IT), (__HT)->stride, (__HT)->klpvl) : 0)
 
 #define gs_hash_table_iter_get(__HT, __IT)\
     gs_hash_table_geti(__HT, __IT)
