@@ -1994,7 +1994,7 @@ uint32_t __gs_find_first_valid_iterator(void* data, size_t key_len, size_t val_l
 
 /* Find first valid iterator idx */
 #define gs_hash_table_iter_new(__HT)\
-    (__gs_find_first_valid_iterator((__HT)->data, sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), 0, (__HT)->stride, (__HT)->klpvl))
+    (__HT ? __gs_find_first_valid_iterator((__HT)->data, sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), 0, (__HT)->stride, (__HT)->klpvl) : 0)
 
 #define gs_hash_table_iter_valid(__HT, __IT)\
     ((__IT) < gs_hash_table_capacity((__HT)))
@@ -2213,7 +2213,7 @@ uint32_t gs_slot_array_insert_func(void** indices, void** data, void* val, size_
 typedef uint32_t gs_slot_array_iter;
 
 #define gs_slot_array_iter_valid(__SA, __IT)\
-    gs_slot_array_exists(__SA, __IT)
+    (__SA && gs_slot_array_exists(__SA, __IT))
 
 gs_force_inline
 void _gs_slot_array_iter_advance_func(gs_dyn_array(uint32_t) indices, uint32_t* it)
@@ -2248,7 +2248,7 @@ uint32_t _gs_slot_array_iter_find_first_valid_index(gs_dyn_array(uint32_t) indic
     return GS_SLOT_ARRAY_INVALID_HANDLE;
 }
 
-#define gs_slot_array_iter_new(__SA) (_gs_slot_array_iter_find_first_valid_index((__SA) ? (__SA)->indices : NULL))
+#define gs_slot_array_iter_new(__SA) (_gs_slot_array_iter_find_first_valid_index((__SA) ? (__SA)->indices : 0))
 
 #define gs_slot_array_iter_advance(__SA, __IT)\
     _gs_slot_array_iter_advance_func((__SA) ? (__SA)->indices : NULL, &(__IT))
