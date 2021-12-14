@@ -782,7 +782,7 @@ void
 gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
 {
     gsdx11_data_t       *dx11;
-
+	int qbf = 0;
 
     dx11 = (gsdx11_data_t *)gs_engine_subsystem(graphics)->user_data;
 
@@ -805,8 +805,8 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
             case GS_DX11_OP_END_RENDER_PASS:
             {
                 // TODO(matthew): figure out why this isn't being deleted
-                ID3D11InputLayout_Release(dx11->cache.layout);
-                printf("released!...\r\n");
+                /* ID3D11InputLayout_Release(dx11->cache.layout); */
+                /* printf("released!...\r\n"); */
             } break;
 
             case GS_DX11_OP_CLEAR:
@@ -842,10 +842,6 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
 
             case GS_DX11_OP_REQUEST_BUFFER_UPDATE:
 			{
-				gsdx11_data_t		*dx11;
-
-				dx11 = (gsdx11_data_t *)gs_engine_subsystem(graphics)->user_data;
-
                 // Read handle id
                 gs_byte_buffer_readc(&cb->commands, uint32_t, id);
                 // Read type
@@ -863,7 +859,7 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
 				{
 					case GS_GRAPHICS_BUFFER_UNIFORM:
 					{
-						gsdx11_uniform_buffer_t		*ub;
+						gsdx11_uniform_buffer_t		ub;
 
 						if (!id || !gs_slot_array_exists(dx11->uniform_buffers, id)) {
 							gs_timed_action(60, {
@@ -872,7 +868,7 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
 							continue;
 						}
 
-						ub = gs_slot_array_getp(dx11->uniform_buffers, id);
+						ub = gs_slot_array_get(dx11->uniform_buffers, id);
 
 						switch (update_type)
 						{
@@ -883,15 +879,18 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
 								D3D11_MAPPED_SUBRESOURCE		resource = {0};
 
 								// Map resource to CPU side and sub data
-								ID3D11DeviceContext_Map(dx11->context, ub->cbo, 0, D3D11_MAP_WRITE_DISCARD, 0, &resource);
+								ID3D11DeviceContext_Map(dx11->context, ub.cbo, 0, D3D11_MAP_WRITE_DISCARD, 0, &resource);
 								memcpy(resource.pData,
 									(cb->commands.data + cb->commands.position) + offset,
 									sz);
-								ID3D11DeviceContext_Unmap(dx11->context, ub->cbo, 0);
+								ID3D11DeviceContext_Unmap(dx11->context, ub.cbo, 0);
 							} break;
 						}
 					} break;
 				}
+
+                // Advance past data
+                gs_byte_buffer_advance_position(&cb->commands, sz);
 			} break;
 
             case GS_DX11_OP_SET_VIEWPORT:
@@ -907,7 +906,7 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
                 dx11->viewport.Height = h;
 
                 ID3D11DeviceContext_RSSetViewports(dx11->context, 1, &dx11->viewport);
-            };
+            } break;
 
             case GS_DX11_OP_BIND_PIPELINE:
             {
@@ -976,7 +975,7 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
 							gsdx11_uniform_buffer_t		ub;
 
 							gs_byte_buffer_readc(&cb->commands, uint32_t, id);
-							gs_byte_buffer_readc(&cb->commands, uint32_t, binding);
+							gs_byte_buffer_readc(&cb->commands, size_t, binding);
 							gs_byte_buffer_readc(&cb->commands, size_t, range_offset);
 							gs_byte_buffer_readc(&cb->commands, size_t, range_size);
 
@@ -1046,6 +1045,12 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
             } break;
         }
     }
+
+    // Clear byte buffer of commands
+    gs_byte_buffer_clear(&cb->commands);
+
+    // Set num commands to 0
+    cb->num_commands = 0;
 }
 
 #endif // GS_DX11_IMPL_H
