@@ -530,25 +530,25 @@ gs_graphics_uniform_buffer_create(const gs_graphics_uniform_buffer_desc_t *desc)
 	gsdx11_data_t								*dx11;
 	gsdx11_uniform_buffer_t						ub = gs_default_val();
     D3D11_BUFFER_DESC                           buffer_desc = {0};
+	D3D11_SUBRESOURCE_DATA						buffer_data = {0};
 	gs_handle(gs_graphics_uniform_buffer_t)		hndl;
 
 
 	dx11 = (gsdx11_data_t *)gs_engine_subsystem(graphics)->user_data;
 
-	// Assert if the data has no ID
-	if (desc->name == NULL)
-		gs_println("Warning: Uniform buffer must have a numerical ID for DX11...!");
-
     buffer_desc.ByteWidth = desc->size;
     buffer_desc.Usage = D3D11_USAGE_DEFAULT;
     buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	buffer_data.pSysMem = desc->data;
 
 	ub.size = desc->size;
 
-	hr = ID3D11Device_CreateBuffer(dx11->device, &buffer_desc, NULL,  &ub.cbo);
+	if (desc->data)
+		hr = ID3D11Device_CreateBuffer(dx11->device, &buffer_desc, &buffer_data,  &ub.cbo);
+	else
+		hr = ID3D11Device_CreateBuffer(dx11->device, &buffer_desc, NULL,  &ub.cbo);
 
-	hndl = gs_handle_create(gs_graphics_uniform_buffer_t,
-			gs_slot_array_insert(dx11->uniform_buffers, ub));
+	hndl = gs_handle_create(gs_graphics_uniform_buffer_t, gs_slot_array_insert(dx11->uniform_buffers, ub));
 
 	return hndl;
 }
