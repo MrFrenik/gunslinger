@@ -34,6 +34,7 @@ typedef enum gs_dx11_op_code_type
     GS_DX11_OP_END_RENDER_PASS,
     GS_DX11_OP_SET_VIEWPORT,
     GS_DX11_OP_CLEAR,
+	GS_DX11_OP_REQUEST_BUFFER_UPDATE,
     GS_DX11_OP_BIND_PIPELINE,
     GS_DX11_OP_APPLY_BINDINGS,
     GS_DX11_OP_DRAW,
@@ -537,9 +538,12 @@ gs_graphics_uniform_buffer_create(const gs_graphics_uniform_buffer_desc_t *desc)
 
 	dx11 = (gsdx11_data_t *)gs_engine_subsystem(graphics)->user_data;
 
+	// TODO(matthew): compare these flags to what's specified in the desc (ie,
+	// dynamic, CPU access)
     buffer_desc.ByteWidth = desc->size;
-    buffer_desc.Usage = D3D11_USAGE_DEFAULT;
+    buffer_desc.Usage = D3D11_USAGE_DYNAMIC;
     buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	buffer_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 	buffer_data.pSysMem = desc->data;
 
 	ub.size = desc->size;
@@ -559,6 +563,60 @@ gs_handle(gs_graphics_texture_t)
 gs_graphics_texture_create(const gs_graphics_texture_desc_t* desc)
 {
     // TODO(matthew): empty for now, just putting this here for the compile to work
+}
+
+
+
+/*=============================
+// Resource Updates
+=============================*/
+
+void
+__gs_graphics_update_buffer_internal(gs_command_buffer_t* cb, 
+									 uint32_t id, 
+									 gs_graphics_buffer_type type,
+									 gs_graphics_buffer_usage_type usage, 
+									 size_t sz, 
+									 size_t offset, 
+									 gs_graphics_buffer_update_type update_type,
+									 void* data)
+{
+    // Write command
+    gs_byte_buffer_write(&cb->commands, u32, (u32)GS_DX11_OP_REQUEST_BUFFER_UPDATE);
+    cb->num_commands++;
+
+    // Write handle id
+    gs_byte_buffer_write(&cb->commands, uint32_t, id);
+    // Write type
+    gs_byte_buffer_write(&cb->commands, gs_graphics_buffer_type, type);
+    // Write usage
+    gs_byte_buffer_write(&cb->commands, gs_graphics_buffer_usage_type, usage);
+    // Write data size
+    gs_byte_buffer_write(&cb->commands, size_t, sz);
+    // Write data offset
+    gs_byte_buffer_write(&cb->commands, size_t, offset);
+    // Write data update type
+    gs_byte_buffer_write(&cb->commands, gs_graphics_buffer_update_type, update_type);
+    // Write data
+    gs_byte_buffer_write_bulk(&cb->commands, data, sz);
+}
+
+void
+gs_graphics_uniform_buffer_request_update(gs_command_buffer_t *cb,
+										  gs_handle(gs_graphics_uniform_buffer_t) hndl,
+										  gs_graphics_uniform_buffer_desc_t *desc)
+{
+	gsdx11_data_t		*dx11;
+
+
+	dx11 = (gsdx11_data_t *)gs_engine_subsystem(graphics)->user_data;
+
+	// Return if we receive an invalid handle
+	if (!hndl.id)
+		return;
+
+    __gs_graphics_update_buffer_internal(cb, hndl.id, GS_GRAPHICS_BUFFER_UNIFORM,
+			desc->usage, desc->size, desc->update.offset, desc->update.type, desc->data);
 }
 
 
@@ -682,6 +740,9 @@ gs_graphics_apply_bindings(gs_command_buffer_t *cb,
     for (uint32_t i = 0; i < ubcnt; i++)
     {
         gs_graphics_bind_uniform_buffer_desc_t *decl = &binds->uniform_buffers.desc[i];
+
+		uint32_t id = decl->buffer.id;
+		size_t sz = (size_t)(gs_slot_array_getp(dx11->uniform_buffers, id))->size;
         gs_byte_buffer_write(&cb->commands, gs_graphics_bind_type, GS_GRAPHICS_BIND_UNIFORM_BUFFER);
         gs_byte_buffer_write(&cb->commands, uint32_t, decl->buffer.id);
         gs_byte_buffer_write(&cb->commands, size_t, decl->binding);
@@ -779,6 +840,60 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
                 }
             } break;
 
+            case GS_DX11_OP_REQUEST_BUFFER_UPDATE:
+			{
+				gsdx11_data_t		*dx11;
+
+				dx11 = (gsdx11_data_t *)gs_engine_subsystem(graphics)->user_data;
+
+                // Read handle id
+                gs_byte_buffer_readc(&cb->commands, uint32_t, id);
+                // Read type
+                gs_byte_buffer_readc(&cb->commands, gs_graphics_buffer_type, type);
+                // Read usage
+                gs_byte_buffer_readc(&cb->commands, gs_graphics_buffer_usage_type, usage);
+                // Read data size
+                gs_byte_buffer_readc(&cb->commands, size_t, sz);
+                // Read data offset
+                gs_byte_buffer_readc(&cb->commands, size_t, offset);
+                // Read update type
+                gs_byte_buffer_readc(&cb->commands, gs_graphics_buffer_update_type, update_type);
+
+				switch (type)
+				{
+					case GS_GRAPHICS_BUFFER_UNIFORM:
+					{
+						gsdx11_uniform_buffer_t		*ub;
+
+						if (!id || !gs_slot_array_exists(dx11->uniform_buffers, id)) {
+							gs_timed_action(60, {
+								gs_println("Warning:Bind Uniform Buffer:Uniform %d does not exist.", id);
+							});
+							continue;
+						}
+
+						ub = gs_slot_array_getp(dx11->uniform_buffers, id);
+
+						switch (update_type)
+						{
+							// TODO(matthew): handle the pure recreate case (should be as simple as
+							// a UpdateSubresource(...)).
+							case GS_GRAPHICS_BUFFER_UPDATE_SUBDATA:
+							{
+								D3D11_MAPPED_SUBRESOURCE		resource = {0};
+
+								// Map resource to CPU side and sub data
+								ID3D11DeviceContext_Map(dx11->context, ub->cbo, 0, D3D11_MAP_WRITE_DISCARD, 0, &resource);
+								memcpy(resource.pData,
+									(cb->commands.data + cb->commands.position) + offset,
+									sz);
+								ID3D11DeviceContext_Unmap(dx11->context, ub->cbo, 0);
+							} break;
+						}
+					} break;
+				}
+			} break;
+
             case GS_DX11_OP_SET_VIEWPORT:
             {
                 gs_byte_buffer_readc(&cb->commands, uint32_t, x);
@@ -864,6 +979,13 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
 							gs_byte_buffer_readc(&cb->commands, uint32_t, binding);
 							gs_byte_buffer_readc(&cb->commands, size_t, range_offset);
 							gs_byte_buffer_readc(&cb->commands, size_t, range_size);
+
+                            if (!id || !gs_slot_array_exists(dx11->uniform_buffers, id)) {
+                                gs_timed_action(60, {
+                                    gs_println("Warning:Bind Uniform Buffer:Uniform %d does not exist.", id);
+                                });
+                                continue;
+                            }
 
 							ub = gs_slot_array_get(dx11->uniform_buffers, id);	
 
