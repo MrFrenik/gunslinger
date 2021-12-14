@@ -783,6 +783,7 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
 {
     gsdx11_data_t       *dx11;
 	int qbf = 0;
+	HRESULT hr;
 
     dx11 = (gsdx11_data_t *)gs_engine_subsystem(graphics)->user_data;
 
@@ -879,9 +880,9 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
 								D3D11_MAPPED_SUBRESOURCE		resource = {0};
 
 								// Map resource to CPU side and sub data
-								ID3D11DeviceContext_Map(dx11->context, ub.cbo, 0, D3D11_MAP_WRITE_DISCARD, 0, &resource);
-								memcpy(resource.pData,
-									(cb->commands.data + cb->commands.position) + offset,
+								hr = ID3D11DeviceContext_Map(dx11->context, ub.cbo, 0, D3D11_MAP_WRITE_DISCARD, 0, &resource);
+								memcpy((char *)resource.pData + offset,
+									(cb->commands.data + cb->commands.position),
 									sz);
 								ID3D11DeviceContext_Unmap(dx11->context, ub.cbo, 0);
 							} break;
@@ -950,6 +951,7 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
                             gsdx11_buffer_t                 vbo;
                             UINT                            vbo_slot = pipe->layout[i].buffer_idx;
                             // TODO(matthew): Handle the other case, we're only considering no stride for now.
+							// TODO(matthew): Compute stride based on format if it's not passed as a param.
                             UINT                            stride = pipe->layout[i].stride;
                             D3D11_INPUT_ELEMENT_DESC        layout_desc = gs_default_val();
 
@@ -1041,7 +1043,7 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
                 gs_byte_buffer_readc(&cb->commands, uint32_t, count);
 
                 ID3D11DeviceContext_Draw(dx11->context, count, start);
-                IDXGISwapChain_Present(dx11->swapchain, 0, 0);
+                hr = IDXGISwapChain_Present(dx11->swapchain, 0, 0);
             } break;
         }
     }
