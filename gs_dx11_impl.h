@@ -114,6 +114,7 @@ typedef struct _TAG_gsdx11_uniform_buffer
 {
 	gsdx11_buffer_t cbo;
 	size_t size;
+	gs_graphics_shader_stage_type stage;
 } gsdx11_uniform_buffer_t;
 
 // Internal DX11 data
@@ -542,6 +543,7 @@ gs_graphics_uniform_buffer_create(const gs_graphics_uniform_buffer_desc_t *desc)
 	buffer_data.pSysMem = desc->data;
 
 	ub.size = desc->size;
+	ub.stage = desc->stage;
 
 	if (desc->data)
 		hr = ID3D11Device_CreateBuffer(dx11->device, &buffer_desc, &buffer_data,  &ub.cbo);
@@ -679,7 +681,7 @@ gs_graphics_apply_bindings(gs_command_buffer_t *cb,
 	// uniform buffers
     for (uint32_t i = 0; i < ubcnt; i++)
     {
-        gs_graphics_bind_vertex_buffer_desc_t *decl = &binds->uniform_buffers.desc[i];
+        gs_graphics_bind_uniform_buffer_desc_t *decl = &binds->uniform_buffers.desc[i];
         gs_byte_buffer_write(&cb->commands, gs_graphics_bind_type, GS_GRAPHICS_BIND_UNIFORM_BUFFER);
         gs_byte_buffer_write(&cb->commands, uint32_t, decl->buffer.id);
         gs_byte_buffer_write(&cb->commands, size_t, decl->binding);
@@ -853,6 +855,24 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
 
                             ID3D11DeviceContext_IASetVertexBuffers(dx11->context, vbo_slot, 1, &vbo, &stride, &offset);
                         } break;
+
+						case GS_GRAPHICS_BIND_UNIFORM_BUFFER:
+						{
+							gsdx11_uniform_buffer_t		ub;
+
+							gs_byte_buffer_readc(&cb->commands, uint32_t, id);
+							gs_byte_buffer_readc(&cb->commands, uint32_t, binding);
+							gs_byte_buffer_readc(&cb->commands, size_t, range_offset);
+							gs_byte_buffer_readc(&cb->commands, size_t, range_size);
+
+							ub = gs_slot_array_get(dx11->uniform_buffers, id);	
+
+							if (ub.stage == GS_GRAPHICS_SHADER_STAGE_VERTEX)
+								ID3D11DeviceContext_VSSetConstantBuffers(dx11->context, binding, 1, &ub.cbo);
+							else if (ub.stage == GS_GRAPHICS_SHADER_STAGE_FRAGMENT)
+								ID3D11DeviceContext_PSSetConstantBuffers(dx11->context, binding, 1, &ub.cbo);
+							// TODO(matthew): add compute binding
+						} break;
                     }
 
                     if (!dx11->cache.layout)
