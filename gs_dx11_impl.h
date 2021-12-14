@@ -34,7 +34,7 @@ typedef enum gs_dx11_op_code_type
     GS_DX11_OP_END_RENDER_PASS,
     GS_DX11_OP_SET_VIEWPORT,
     GS_DX11_OP_CLEAR,
-	GS_DX11_OP_REQUEST_BUFFER_UPDATE,
+    GS_DX11_OP_REQUEST_BUFFER_UPDATE,
     GS_DX11_OP_BIND_PIPELINE,
     GS_DX11_OP_APPLY_BINDINGS,
     GS_DX11_OP_DRAW,
@@ -53,13 +53,13 @@ typedef enum _TAG_gsdx11_shader_type
 
 typedef enum _TAG_gsdx11_uniform_type
 {
-	GSDX11_UNIFORMTYPE_FLOAT,
-	GSDX11_UNIFORMTYPE_INT,
-	GSDX11_UNIFORMTYPE_VEC2,
-	GSDX11_UNIFORMTYPE_VEC3,
-	GSDX11_UNIFORMTYPE_VEC4,
-	GSDX11_UNIFORMTYPE_MAT4,
-	GSDX11_UNIFORMTYPE_COUNT
+    GSDX11_UNIFORMTYPE_FLOAT,
+    GSDX11_UNIFORMTYPE_INT,
+    GSDX11_UNIFORMTYPE_VEC2,
+    GSDX11_UNIFORMTYPE_VEC3,
+    GSDX11_UNIFORMTYPE_VEC4,
+    GSDX11_UNIFORMTYPE_MAT4,
+    GSDX11_UNIFORMTYPE_COUNT
 } gsdx11_uniform_type;
 
 /*=============================
@@ -113,9 +113,9 @@ typedef struct _TAG_gsdx11_data_cache
 
 typedef struct _TAG_gsdx11_uniform_buffer
 {
-	gsdx11_buffer_t cbo;
-	size_t size;
-	gs_graphics_shader_stage_type stage;
+    gsdx11_buffer_t cbo;
+    size_t size;
+    gs_graphics_shader_stage_type stage;
 } gsdx11_uniform_buffer_t;
 
 // Internal DX11 data
@@ -124,7 +124,7 @@ typedef struct _TAG_gsdx11_data
     gs_slot_array(gsdx11_shader_t)      shaders;
     gs_slot_array(gsdx11_buffer_t)      vertex_buffers;
     gs_slot_array(gsdx11_buffer_t)      index_buffers;
-	gs_slot_array(gsdx11_uniform_buffer_t) uniform_buffers;
+    gs_slot_array(gsdx11_uniform_buffer_t) uniform_buffers;
     gs_slot_array(gsdx11_pipeline_t)    pipelines;
 
     // Global data that I'll just put here since it's appropriate
@@ -150,16 +150,16 @@ typedef struct _TAG_gsdx11_data
 // they're basically cbuffers.
 /* typedef struct _TAG_gsdx11_uniform */
 /* { */
-/* 	gsdx11_uniform_type type; */
-/* 	uint32_t location; // is this needed? */
-/* 	size_t size; */
+/*  gsdx11_uniform_type type; */
+/*  uint32_t location; // is this needed? */
+/*  size_t size; */
 /* } gsdx11_uniform_t; */
 
 /* typedef struct _TAG_gsdx11_uniform_list */
 /* { */
-/* 	char name[64]; */
-/* 	size_t size; */
-/* 	gs_dyn_array(gsdx11_uniform_t) uniforms; */
+/*  char name[64]; */
+/*  size_t size; */
+/*  gs_dyn_array(gsdx11_uniform_t) uniforms; */
 /* } gsdx11_uniform_list_t; */
 
 /*=============================
@@ -308,7 +308,7 @@ gs_graphics_init(gs_graphics_t *graphics)
     HWND                        hwnd;
     gsdx11_shader_t             s = {0}; // TODO(matthew): bulletproof this, empty struct for now
     gsdx11_pipeline_t           p = {0}; // ^^^
-    gsdx11_uniform_buffer_t		u = {0}; // ^^^
+    gsdx11_uniform_buffer_t     u = {0}; // ^^^
     D3D11_RASTERIZER_DESC       raster_state_desc = {0};
     uint32_t                    window_width = gs_engine_subsystem(app).window_width,
                                 window_height  = gs_engine_subsystem(app).window_height;
@@ -464,7 +464,6 @@ gs_graphics_shader_create(const gs_graphics_shader_desc_t *desc)
     dx11 = (gsdx11_data_t *)gs_engine_subsystem(graphics)->user_data;
     cnt = (uint32_t)desc->size / (uint32_t)sizeof(gs_graphics_shader_source_desc_t);
 
-    // TODO(matthew): Check the error blob
     for (uint32_t i = 0; i < cnt; i++)
     {
         shader_src = desc->sources[i].source;
@@ -477,19 +476,34 @@ gs_graphics_shader_create(const gs_graphics_shader_desc_t *desc)
             {
                 hr = D3DCompile(shader_src, shader_len, NULL, NULL, NULL, "main", "vs_5_0",
                         0, 0, &shader.vsblob, &err_blob);
-                hr = ID3D11Device_CreateVertexShader(dx11->device, ID3D10Blob_GetBufferPointer(shader.vsblob),
-                        ID3D10Blob_GetBufferSize(shader.vsblob), 0, &shader.vs);
-                shader.tag |= GS_DX11_SHADER_TYPE_VERTEX;
-                /* printf("v: %p\n", shader.vs); */
+                if  (err_blob)
+                {
+                    printf("\nDX11 VS COMPILE ERROR...!:\n%s\n%s\n\n", shader_src, (char *)ID3D10Blob_GetBufferPointer(err_blob));
+                    gs_assert(false);
+                }
+                else
+                {
+                    hr = ID3D11Device_CreateVertexShader(dx11->device, ID3D10Blob_GetBufferPointer(shader.vsblob),
+                            ID3D10Blob_GetBufferSize(shader.vsblob), 0, &shader.vs);
+                    shader.tag |= GS_DX11_SHADER_TYPE_VERTEX;
+                }
             } break;
+
             case GS_GRAPHICS_SHADER_STAGE_FRAGMENT:
             {
                 hr = D3DCompile(shader_src, shader_len, NULL, NULL, NULL, "main", "ps_5_0",
                         0, 0, &shader.psblob, &err_blob);
-                hr = ID3D11Device_CreatePixelShader(dx11->device, ID3D10Blob_GetBufferPointer(shader.psblob),
-                        ID3D10Blob_GetBufferSize(shader.psblob), 0, &shader.ps);
-                shader.tag |= GS_DX11_SHADER_TYPE_PIXEL;
-                /* printf("p: %p\n", shader.ps); */
+                if  (err_blob)
+                {
+                    printf("\nDX11 PS COMPILE ERROR...!:\n%s\n%s\n\n", shader_src, (char *)ID3D10Blob_GetBufferPointer(err_blob));
+                    gs_assert(false);
+                }
+                else
+                {
+                    hr = ID3D11Device_CreatePixelShader(dx11->device, ID3D10Blob_GetBufferPointer(shader.psblob),
+                            ID3D10Blob_GetBufferSize(shader.psblob), 0, &shader.ps);
+                    shader.tag |= GS_DX11_SHADER_TYPE_PIXEL;
+                }
             } break;
         }
     }
@@ -529,34 +543,34 @@ gs_handle(gs_graphics_uniform_buffer_t)
 gs_graphics_uniform_buffer_create(const gs_graphics_uniform_buffer_desc_t *desc)
 {
     HRESULT                                     hr;
-	gsdx11_data_t								*dx11;
-	gsdx11_uniform_buffer_t						ub = gs_default_val();
+    gsdx11_data_t                               *dx11;
+    gsdx11_uniform_buffer_t                     ub = gs_default_val();
     D3D11_BUFFER_DESC                           buffer_desc = {0};
-	D3D11_SUBRESOURCE_DATA						buffer_data = {0};
-	gs_handle(gs_graphics_uniform_buffer_t)		hndl;
+    D3D11_SUBRESOURCE_DATA                      buffer_data = {0};
+    gs_handle(gs_graphics_uniform_buffer_t)     hndl;
 
 
-	dx11 = (gsdx11_data_t *)gs_engine_subsystem(graphics)->user_data;
+    dx11 = (gsdx11_data_t *)gs_engine_subsystem(graphics)->user_data;
 
-	// TODO(matthew): compare these flags to what's specified in the desc (ie,
-	// dynamic, CPU access)
+    // TODO(matthew): compare these flags to what's specified in the desc (ie,
+    // dynamic, CPU access)
     buffer_desc.ByteWidth = desc->size;
     buffer_desc.Usage = D3D11_USAGE_DYNAMIC;
     buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	buffer_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	buffer_data.pSysMem = desc->data;
+    buffer_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+    buffer_data.pSysMem = desc->data;
 
-	ub.size = desc->size;
-	ub.stage = desc->stage;
+    ub.size = desc->size;
+    ub.stage = desc->stage;
 
-	if (desc->data)
-		hr = ID3D11Device_CreateBuffer(dx11->device, &buffer_desc, &buffer_data,  &ub.cbo);
-	else
-		hr = ID3D11Device_CreateBuffer(dx11->device, &buffer_desc, NULL,  &ub.cbo);
+    if (desc->data)
+        hr = ID3D11Device_CreateBuffer(dx11->device, &buffer_desc, &buffer_data,  &ub.cbo);
+    else
+        hr = ID3D11Device_CreateBuffer(dx11->device, &buffer_desc, NULL,  &ub.cbo);
 
-	hndl = gs_handle_create(gs_graphics_uniform_buffer_t, gs_slot_array_insert(dx11->uniform_buffers, ub));
+    hndl = gs_handle_create(gs_graphics_uniform_buffer_t, gs_slot_array_insert(dx11->uniform_buffers, ub));
 
-	return hndl;
+    return hndl;
 }
 
 gs_handle(gs_graphics_texture_t)
@@ -572,14 +586,14 @@ gs_graphics_texture_create(const gs_graphics_texture_desc_t* desc)
 =============================*/
 
 void
-__gs_graphics_update_buffer_internal(gs_command_buffer_t* cb, 
-									 uint32_t id, 
-									 gs_graphics_buffer_type type,
-									 gs_graphics_buffer_usage_type usage, 
-									 size_t sz, 
-									 size_t offset, 
-									 gs_graphics_buffer_update_type update_type,
-									 void* data)
+__gs_graphics_update_buffer_internal(gs_command_buffer_t* cb,
+                                     uint32_t id,
+                                     gs_graphics_buffer_type type,
+                                     gs_graphics_buffer_usage_type usage,
+                                     size_t sz,
+                                     size_t offset,
+                                     gs_graphics_buffer_update_type update_type,
+                                     void* data)
 {
     // Write command
     gs_byte_buffer_write(&cb->commands, u32, (u32)GS_DX11_OP_REQUEST_BUFFER_UPDATE);
@@ -603,20 +617,20 @@ __gs_graphics_update_buffer_internal(gs_command_buffer_t* cb,
 
 void
 gs_graphics_uniform_buffer_request_update(gs_command_buffer_t *cb,
-										  gs_handle(gs_graphics_uniform_buffer_t) hndl,
-										  gs_graphics_uniform_buffer_desc_t *desc)
+                                          gs_handle(gs_graphics_uniform_buffer_t) hndl,
+                                          gs_graphics_uniform_buffer_desc_t *desc)
 {
-	gsdx11_data_t		*dx11;
+    gsdx11_data_t       *dx11;
 
 
-	dx11 = (gsdx11_data_t *)gs_engine_subsystem(graphics)->user_data;
+    dx11 = (gsdx11_data_t *)gs_engine_subsystem(graphics)->user_data;
 
-	// Return if we receive an invalid handle
-	if (!hndl.id)
-		return;
+    // Return if we receive an invalid handle
+    if (!hndl.id)
+        return;
 
     __gs_graphics_update_buffer_internal(cb, hndl.id, GS_GRAPHICS_BUFFER_UNIFORM,
-			desc->usage, desc->size, desc->update.offset, desc->update.type, desc->data);
+            desc->usage, desc->size, desc->update.offset, desc->update.type, desc->data);
 }
 
 
@@ -709,9 +723,9 @@ gs_graphics_apply_bindings(gs_command_buffer_t *cb,
                            gs_graphics_bind_desc_t *binds)
 {
     gsdx11_data_t       *dx11;
-    uint32_t            vcnt,	// vertex buffers to bind
-						ubcnt,	// uniform buffers to bind
-                        cnt; 	// total objects to bind
+    uint32_t            vcnt,   // vertex buffers to bind
+                        ubcnt,  // uniform buffers to bind
+                        cnt;    // total objects to bind
 
 
     dx11 = (gsdx11_data_t*)gs_engine_subsystem(graphics)->user_data;
@@ -736,13 +750,13 @@ gs_graphics_apply_bindings(gs_command_buffer_t *cb,
         gs_byte_buffer_write(&cb->commands, gs_graphics_vertex_data_type, decl->data_type);
     }
 
-	// uniform buffers
+    // uniform buffers
     for (uint32_t i = 0; i < ubcnt; i++)
     {
         gs_graphics_bind_uniform_buffer_desc_t *decl = &binds->uniform_buffers.desc[i];
 
-		uint32_t id = decl->buffer.id;
-		size_t sz = (size_t)(gs_slot_array_getp(dx11->uniform_buffers, id))->size;
+        uint32_t id = decl->buffer.id;
+        size_t sz = (size_t)(gs_slot_array_getp(dx11->uniform_buffers, id))->size;
         gs_byte_buffer_write(&cb->commands, gs_graphics_bind_type, GS_GRAPHICS_BIND_UNIFORM_BUFFER);
         gs_byte_buffer_write(&cb->commands, uint32_t, decl->buffer.id);
         gs_byte_buffer_write(&cb->commands, size_t, decl->binding);
@@ -781,9 +795,8 @@ gs_graphics_draw(gs_command_buffer_t *cb,
 void
 gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
 {
+    HRESULT             hr;
     gsdx11_data_t       *dx11;
-	int qbf = 0;
-	HRESULT hr;
 
     dx11 = (gsdx11_data_t *)gs_engine_subsystem(graphics)->user_data;
 
@@ -842,7 +855,7 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
             } break;
 
             case GS_DX11_OP_REQUEST_BUFFER_UPDATE:
-			{
+            {
                 // Read handle id
                 gs_byte_buffer_readc(&cb->commands, uint32_t, id);
                 // Read type
@@ -856,43 +869,43 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
                 // Read update type
                 gs_byte_buffer_readc(&cb->commands, gs_graphics_buffer_update_type, update_type);
 
-				switch (type)
-				{
-					case GS_GRAPHICS_BUFFER_UNIFORM:
-					{
-						gsdx11_uniform_buffer_t		ub;
+                switch (type)
+                {
+                    case GS_GRAPHICS_BUFFER_UNIFORM:
+                    {
+                        gsdx11_uniform_buffer_t     ub;
 
-						if (!id || !gs_slot_array_exists(dx11->uniform_buffers, id)) {
-							gs_timed_action(60, {
-								gs_println("Warning:Bind Uniform Buffer:Uniform %d does not exist.", id);
-							});
-							continue;
-						}
+                        if (!id || !gs_slot_array_exists(dx11->uniform_buffers, id)) {
+                            gs_timed_action(60, {
+                                gs_println("Warning:Bind Uniform Buffer:Uniform %d does not exist.", id);
+                            });
+                            continue;
+                        }
 
-						ub = gs_slot_array_get(dx11->uniform_buffers, id);
+                        ub = gs_slot_array_get(dx11->uniform_buffers, id);
 
-						switch (update_type)
-						{
-							// TODO(matthew): handle the pure recreate case (should be as simple as
-							// a UpdateSubresource(...)).
-							case GS_GRAPHICS_BUFFER_UPDATE_SUBDATA:
-							{
-								D3D11_MAPPED_SUBRESOURCE		resource = {0};
+                        switch (update_type)
+                        {
+                            // TODO(matthew): handle the pure recreate case (should be as simple as
+                            // a UpdateSubresource(...)).
+                            case GS_GRAPHICS_BUFFER_UPDATE_SUBDATA:
+                            {
+                                D3D11_MAPPED_SUBRESOURCE        resource = {0};
 
-								// Map resource to CPU side and sub data
-								hr = ID3D11DeviceContext_Map(dx11->context, ub.cbo, 0, D3D11_MAP_WRITE_DISCARD, 0, &resource);
-								memcpy((char *)resource.pData + offset,
-									(cb->commands.data + cb->commands.position),
-									sz);
-								ID3D11DeviceContext_Unmap(dx11->context, ub.cbo, 0);
-							} break;
-						}
-					} break;
-				}
+                                // Map resource to CPU side and sub data
+                                hr = ID3D11DeviceContext_Map(dx11->context, ub.cbo, 0, D3D11_MAP_WRITE_DISCARD, 0, &resource);
+                                memcpy((char *)resource.pData + offset,
+                                    (cb->commands.data + cb->commands.position),
+                                    sz);
+                                ID3D11DeviceContext_Unmap(dx11->context, ub.cbo, 0);
+                            } break;
+                        }
+                    } break;
+                }
 
                 // Advance past data
                 gs_byte_buffer_advance_position(&cb->commands, sz);
-			} break;
+            } break;
 
             case GS_DX11_OP_SET_VIEWPORT:
             {
@@ -951,7 +964,7 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
                             gsdx11_buffer_t                 vbo;
                             UINT                            vbo_slot = pipe->layout[i].buffer_idx;
                             // TODO(matthew): Handle the other case, we're only considering no stride for now.
-							// TODO(matthew): Compute stride based on format if it's not passed as a param.
+                            // TODO(matthew): Compute stride based on format if it's not passed as a param.
                             UINT                            stride = pipe->layout[i].stride;
                             D3D11_INPUT_ELEMENT_DESC        layout_desc = gs_default_val();
 
@@ -972,14 +985,14 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
                             ID3D11DeviceContext_IASetVertexBuffers(dx11->context, vbo_slot, 1, &vbo, &stride, &offset);
                         } break;
 
-						case GS_GRAPHICS_BIND_UNIFORM_BUFFER:
-						{
-							gsdx11_uniform_buffer_t		ub;
+                        case GS_GRAPHICS_BIND_UNIFORM_BUFFER:
+                        {
+                            gsdx11_uniform_buffer_t     *ub;
 
-							gs_byte_buffer_readc(&cb->commands, uint32_t, id);
-							gs_byte_buffer_readc(&cb->commands, size_t, binding);
-							gs_byte_buffer_readc(&cb->commands, size_t, range_offset);
-							gs_byte_buffer_readc(&cb->commands, size_t, range_size);
+                            gs_byte_buffer_readc(&cb->commands, uint32_t, id);
+                            gs_byte_buffer_readc(&cb->commands, size_t, binding);
+                            gs_byte_buffer_readc(&cb->commands, size_t, range_offset);
+                            gs_byte_buffer_readc(&cb->commands, size_t, range_size);
 
                             if (!id || !gs_slot_array_exists(dx11->uniform_buffers, id)) {
                                 gs_timed_action(60, {
@@ -988,14 +1001,14 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
                                 continue;
                             }
 
-							ub = gs_slot_array_get(dx11->uniform_buffers, id);	
+                            ub = gs_slot_array_getp(dx11->uniform_buffers, id);
 
-							if (ub.stage == GS_GRAPHICS_SHADER_STAGE_VERTEX)
-								ID3D11DeviceContext_VSSetConstantBuffers(dx11->context, binding, 1, &ub.cbo);
-							else if (ub.stage == GS_GRAPHICS_SHADER_STAGE_FRAGMENT)
-								ID3D11DeviceContext_PSSetConstantBuffers(dx11->context, binding, 1, &ub.cbo);
-							// TODO(matthew): add compute binding
-						} break;
+                            if (ub->stage == GS_GRAPHICS_SHADER_STAGE_VERTEX)
+                                ID3D11DeviceContext_VSSetConstantBuffers(dx11->context, binding, 1, &ub->cbo);
+                            else if (ub->stage == GS_GRAPHICS_SHADER_STAGE_FRAGMENT)
+                                ID3D11DeviceContext_PSSetConstantBuffers(dx11->context, binding, 1, &ub->cbo);
+                            // TODO(matthew): add compute binding
+                        } break;
                     }
 
                     if (!dx11->cache.layout)
