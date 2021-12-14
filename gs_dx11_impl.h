@@ -50,6 +50,17 @@ typedef enum _TAG_gsdx11_shader_type
     GS_DX11_SHADER_TYPE_PIXEL = 0x02
 } gsdx11_shader_type;
 
+typedef enum _TAG_gsdx11_uniform_type
+{
+	GSDX11_UNIFORMTYPE_FLOAT,
+	GSDX11_UNIFORMTYPE_INT,
+	GSDX11_UNIFORMTYPE_VEC2,
+	GSDX11_UNIFORMTYPE_VEC3,
+	GSDX11_UNIFORMTYPE_VEC4,
+	GSDX11_UNIFORMTYPE_MAT4,
+	GSDX11_UNIFORMTYPE_COUNT
+} gsdx11_uniform_type;
+
 /*=============================
 // Structures
 =============================*/
@@ -99,12 +110,19 @@ typedef struct _TAG_gsdx11_data_cache
     gsdx11_shader_t                             shader;
 } gsdx11_data_cache_t;
 
+typedef struct _TAG_gsdx11_uniform_buffer
+{
+	gsdx11_buffer_t cbo;
+	size_t size;
+} gsdx11_uniform_buffer_t;
+
 // Internal DX11 data
 typedef struct _TAG_gsdx11_data
 {
     gs_slot_array(gsdx11_shader_t)      shaders;
     gs_slot_array(gsdx11_buffer_t)      vertex_buffers;
     gs_slot_array(gsdx11_buffer_t)      index_buffers;
+	gs_slot_array(gsdx11_uniform_buffer_t) uniform_buffers;
     gs_slot_array(gsdx11_pipeline_t)    pipelines;
 
     // Global data that I'll just put here since it's appropriate
@@ -125,6 +143,22 @@ typedef struct _TAG_gsdx11_data
     // Cached data between draw / state change calls
     gsdx11_data_cache_t                 cache;
 } gsdx11_data_t;
+
+// TODO(matthew): implement these after we figure out uniform buffers, since
+// they're basically cbuffers.
+/* typedef struct _TAG_gsdx11_uniform */
+/* { */
+/* 	gsdx11_uniform_type type; */
+/* 	uint32_t location; // is this needed? */
+/* 	size_t size; */
+/* } gsdx11_uniform_t; */
+
+/* typedef struct _TAG_gsdx11_uniform_list */
+/* { */
+/* 	char name[64]; */
+/* 	size_t size; */
+/* 	gs_dyn_array(gsdx11_uniform_t) uniforms; */
+/* } gsdx11_uniform_list_t; */
 
 /*=============================
 // Utility Functions
@@ -272,6 +306,7 @@ gs_graphics_init(gs_graphics_t *graphics)
     HWND                        hwnd;
     gsdx11_shader_t             s = {0}; // TODO(matthew): bulletproof this, empty struct for now
     gsdx11_pipeline_t           p = {0}; // ^^^
+    gsdx11_uniform_buffer_t		u = {0}; // ^^^
     D3D11_RASTERIZER_DESC       raster_state_desc = {0};
     uint32_t                    window_width = gs_engine_subsystem(app).window_width,
                                 window_height  = gs_engine_subsystem(app).window_height;
@@ -286,6 +321,7 @@ gs_graphics_init(gs_graphics_t *graphics)
     gs_slot_array_insert(dx11->vertex_buffers, 0);
     gs_slot_array_insert(dx11->index_buffers, 0);
     gs_slot_array_insert(dx11->pipelines, p);
+    gs_slot_array_insert(dx11->uniform_buffers, u);
 
     // TODO(matthew): we're filling out many of these with predetermined
     // values for now. This is only for development purpsoes. In the future,
@@ -487,6 +523,36 @@ gs_graphics_pipeline_create(const gs_graphics_pipeline_desc_t* desc)
     return hndl;
 }
 
+gs_handle(gs_graphics_uniform_buffer_t)
+gs_graphics_uniform_buffer_create(const gs_graphics_uniform_buffer_desc_t *desc)
+{
+    HRESULT                                     hr;
+	gsdx11_data_t								*dx11;
+	gsdx11_uniform_buffer_t						ub = gs_default_val();
+    D3D11_BUFFER_DESC                           buffer_desc = {0};
+	gs_handle(gs_graphics_uniform_buffer_t)		hndl;
+
+
+	dx11 = (gsdx11_data_t *)gs_engine_subsystem(graphics)->user_data;
+
+	// Assert if the data has no ID
+	if (desc->name == NULL)
+		gs_println("Warning: Uniform buffer must have a numerical ID for DX11...!");
+
+    buffer_desc.ByteWidth = desc->size;
+    buffer_desc.Usage = D3D11_USAGE_DEFAULT;
+    buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+
+	ub.size = desc->size;
+
+	hr = ID3D11Device_CreateBuffer(dx11->device, &buffer_desc, NULL,  &ub.cbo);
+
+	hndl = gs_handle_create(gs_graphics_uniform_buffer_t,
+			gs_slot_array_insert(dx11->uniform_buffers, ub));
+
+	return hndl;
+}
+
 gs_handle(gs_graphics_texture_t)
 gs_graphics_texture_create(const gs_graphics_texture_desc_t* desc)
 {
@@ -583,13 +649,15 @@ gs_graphics_apply_bindings(gs_command_buffer_t *cb,
                            gs_graphics_bind_desc_t *binds)
 {
     gsdx11_data_t       *dx11;
-    uint32_t            vcnt, // vertex buffers to bind
-                        cnt; // total objects to bind
+    uint32_t            vcnt,	// vertex buffers to bind
+						ubcnt,	// uniform buffers to bind
+                        cnt; 	// total objects to bind
 
 
     dx11 = (gsdx11_data_t*)gs_engine_subsystem(graphics)->user_data;
     vcnt = binds->vertex_buffers.desc ? binds->vertex_buffers.size ? binds->vertex_buffers.size / sizeof(gs_graphics_bind_vertex_buffer_desc_t) : 1 : 0;
-    cnt = vcnt;
+    ubcnt = binds->uniform_buffers.desc ? binds->uniform_buffers.size ? binds->vertex_buffers.size / sizeof(gs_graphics_bind_uniform_buffer_desc_t) : 1 : 0;
+    cnt = vcnt + ubcnt;
 
     // increment commands
     gs_byte_buffer_write(&cb->commands, u32, (u32)GS_DX11_OP_APPLY_BINDINGS);
@@ -606,6 +674,17 @@ gs_graphics_apply_bindings(gs_command_buffer_t *cb,
         gs_byte_buffer_write(&cb->commands, uint32_t, decl->buffer.id);
         gs_byte_buffer_write(&cb->commands, size_t, decl->offset);
         gs_byte_buffer_write(&cb->commands, gs_graphics_vertex_data_type, decl->data_type);
+    }
+
+	// uniform buffers
+    for (uint32_t i = 0; i < ubcnt; i++)
+    {
+        gs_graphics_bind_vertex_buffer_desc_t *decl = &binds->uniform_buffers.desc[i];
+        gs_byte_buffer_write(&cb->commands, gs_graphics_bind_type, GS_GRAPHICS_BIND_UNIFORM_BUFFER);
+        gs_byte_buffer_write(&cb->commands, uint32_t, decl->buffer.id);
+        gs_byte_buffer_write(&cb->commands, size_t, decl->binding);
+        gs_byte_buffer_write(&cb->commands, size_t, decl->range.offset);
+        gs_byte_buffer_write(&cb->commands, size_t, decl->range.size);
     }
 }
 
