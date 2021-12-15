@@ -109,6 +109,7 @@ typedef struct _TAG_gsdx11_data_cache
     gs_dyn_array(D3D11_INPUT_ELEMENT_DESC)      layout_descs;
     ID3D11InputLayout                           *layout;
     gsdx11_shader_t                             shader;
+    gsdx11_buffer_t                             ibo;
 } gsdx11_data_cache_t;
 
 typedef struct _TAG_gsdx11_uniform_buffer
@@ -724,14 +725,16 @@ gs_graphics_apply_bindings(gs_command_buffer_t *cb,
 {
     gsdx11_data_t       *dx11;
     uint32_t            vcnt,   // vertex buffers to bind
+                        icnt,   // index buffers to bind
                         ubcnt,  // uniform buffers to bind
                         cnt;    // total objects to bind
 
 
     dx11 = (gsdx11_data_t*)gs_engine_subsystem(graphics)->user_data;
     vcnt = binds->vertex_buffers.desc ? binds->vertex_buffers.size ? binds->vertex_buffers.size / sizeof(gs_graphics_bind_vertex_buffer_desc_t) : 1 : 0;
+    icnt = binds->index_buffers.desc ? binds->index_buffers.size ? binds->index_buffers.size / sizeof(gs_graphics_bind_index_buffer_desc_t) : 1 : 0;
     ubcnt = binds->uniform_buffers.desc ? binds->uniform_buffers.size ? binds->vertex_buffers.size / sizeof(gs_graphics_bind_uniform_buffer_desc_t) : 1 : 0;
-    cnt = vcnt + ubcnt;
+    cnt = vcnt + icnt + ubcnt;
 
     // increment commands
     gs_byte_buffer_write(&cb->commands, u32, (u32)GS_DX11_OP_APPLY_BINDINGS);
@@ -748,6 +751,15 @@ gs_graphics_apply_bindings(gs_command_buffer_t *cb,
         gs_byte_buffer_write(&cb->commands, uint32_t, decl->buffer.id);
         gs_byte_buffer_write(&cb->commands, size_t, decl->offset);
         gs_byte_buffer_write(&cb->commands, gs_graphics_vertex_data_type, decl->data_type);
+    }
+
+    // index buffers
+    for (uint32_t i = 0; i < icnt; i++)
+    {
+        gs_graphics_bind_index_buffer_desc_t *decl = &binds->index_buffers.desc[i];
+
+        gs_byte_buffer_write(&cb->commands, gs_graphics_bind_type, GS_GRAPHICS_BIND_INDEX_BUFFER);
+        gs_byte_buffer_write(&cb->commands, uint32_t, decl->buffer.id);
     }
 
     // uniform buffers
@@ -985,6 +997,18 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
                             ID3D11DeviceContext_IASetVertexBuffers(dx11->context, vbo_slot, 1, &vbo, &stride, &offset);
                         } break;
 
+                        case GS_GRAPHICS_BIND_INDEX_BUFFER:
+                        {
+                            gsdx11_buffer_t     ibo;
+
+                            gs_byte_buffer_readc(&cb->commands, uint32_t, id);
+
+                            ibo = gs_slot_array_get(dx11->index_buffers, id);
+                            dx11->cache.ibo = ibo;
+
+                            ID3D11DeviceContext_IASetIndexBuffer(dx11->context, ibo, DXGI_FORMAT_R32_UINT, 0);
+                        } break;
+
                         case GS_GRAPHICS_BIND_UNIFORM_BUFFER:
                         {
                             gsdx11_uniform_buffer_t     *ub;
@@ -1047,15 +1071,15 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
                 /*  stride = pipe->layout[i].stride; // TODO(matthew): Handle the other case, we're only considering no stride for now. */
                 /*  offset = vdecl.offset; // TODO(matthew): Again, handle the other case (see L2051). */
 
-                /*  // TODO(matthew): make this take the buffer slot instead of 'i' */
-                /*  ID3D11DeviceContext_IASetVertexBuffers(dx11->context, i, 1, &vbo, &stride, &offset); */
-                /* } */
-
-                // TODO(matthew): handle instancing + indexed rendering eventually
+                // TODO(matthew): handle instancing eventually
                 gs_byte_buffer_readc(&cb->commands, uint32_t, start);
                 gs_byte_buffer_readc(&cb->commands, uint32_t, count);
 
-                ID3D11DeviceContext_Draw(dx11->context, count, start);
+                if (dx11->cache.ibo)
+                    ID3D11DeviceContext_DrawIndexed(dx11->context, count, start, 0);
+                else
+                    ID3D11DeviceContext_Draw(dx11->context, count, start);
+
                 hr = IDXGISwapChain_Present(dx11->swapchain, 0, 0);
             } break;
         }
