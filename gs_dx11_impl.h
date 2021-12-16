@@ -397,7 +397,8 @@ gs_graphics_init(gs_graphics_t *graphics)
     HWND                        hwnd;
     gsdx11_shader_t             s = {0}; // TODO(matthew): bulletproof this, empty struct for now
     gsdx11_pipeline_t           p = {0}; // ^^^
-    gsdx11_uniform_buffer_t     u = {0}; // ^^^
+    gsdx11_uniform_buffer_t     ub = {0}; // ^^^
+	gsdx11_uniform_t			u = {0}; // ^^
     D3D11_RASTERIZER_DESC       raster_state_desc = {0};
     uint32_t                    window_width = gs_engine_subsystem(app).window_width,
                                 window_height  = gs_engine_subsystem(app).window_height;
@@ -412,7 +413,8 @@ gs_graphics_init(gs_graphics_t *graphics)
     gs_slot_array_insert(dx11->vertex_buffers, 0);
     gs_slot_array_insert(dx11->index_buffers, 0);
     gs_slot_array_insert(dx11->pipelines, p);
-    gs_slot_array_insert(dx11->uniform_buffers, u);
+    gs_slot_array_insert(dx11->uniform_buffers, ub);
+    gs_slot_array_insert(dx11->uniforms, u);
 
     // TODO(matthew): we're filling out many of these with predetermined
     // values for now. This is only for development purpsoes. In the future,
@@ -708,10 +710,11 @@ dx11_texture_create_internal(const gs_graphics_texture_desc_t* desc)
 	tex_desc.SampleDesc.Count = 1;
 	tex_desc.SampleDesc.Quality = 0;
 
-	hr = ID3D11Device_CreateTexture2D(dx11->device, &tex.desc, &tex_data, &tex.tex);
+	hr = ID3D11Device_CreateTexture2D(dx11->device, &tex_desc, &tex_data, &tex.tex);
 
 	// Create sampler
-	sampler_desc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR; // NOTE(matthew): fuck it, just use linear for everything for now
+	// NOTE(matthew): fuck it, just use point for everything for now (since that's what the example app needs)
+	sampler_desc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
 	sampler_desc.AddressU = gsdx11_texture_wrap_to_dx11_texture_wrap(desc->wrap_s);
 	sampler_desc.AddressV = gsdx11_texture_wrap_to_dx11_texture_wrap(desc->wrap_t);
 	sampler_desc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
@@ -909,7 +912,7 @@ gs_graphics_apply_bindings(gs_command_buffer_t *cb,
     vcnt = binds->vertex_buffers.desc ? binds->vertex_buffers.size ? binds->vertex_buffers.size / sizeof(gs_graphics_bind_vertex_buffer_desc_t) : 1 : 0;
     icnt = binds->index_buffers.desc ? binds->index_buffers.size ? binds->index_buffers.size / sizeof(gs_graphics_bind_index_buffer_desc_t) : 1 : 0;
     ubcnt = binds->uniform_buffers.desc ? binds->uniform_buffers.size ? binds->uniform_buffers.size / sizeof(gs_graphics_bind_uniform_buffer_desc_t) : 1 : 0;
-	ucnt = binds->uniform_buffers.desc ? binds->uniform_buffers.size ? binds->uniform_buffers.size / sizeof(gs_graphics_bind_uniform_buffer_desc_t) : 1 : 0;
+   	ucnt = binds->uniforms.desc ? binds->uniforms.size ? binds->uniforms.size / sizeof(gs_graphics_bind_uniform_desc_t) : 1 : 0;
 
     cnt = vcnt + icnt + ubcnt + ucnt;
 
@@ -960,12 +963,12 @@ gs_graphics_apply_bindings(gs_command_buffer_t *cb,
 
 		// Get size from uniform list
 		/* size_t sz = gs_slot_array_getp(dx11->uniforms, decl->uniform.id)->size; */
-		size_t sz = 1; // NOTE(matthew): ignore uniform list for now, just assume only 1 uniform bound
+		/* size_t sz = 1; // NOTE(matthew): ignore uniform list for now, just assume only 1 uniform bound */
 		gs_byte_buffer_write(&cb->commands, gs_graphics_bind_type, GS_GRAPHICS_BIND_UNIFORM);
 		gs_byte_buffer_write(&cb->commands, uint32_t, decl->uniform.id);
-		gs_byte_buffer_write(&cb->commands, size_t, sz);
+		gs_byte_buffer_write(&cb->commands, size_t, 1);
 		gs_byte_buffer_write(&cb->commands, uint32_t, decl->binding);
-		gs_byte_buffer_write_bulk(&cb->commands, decl->data, sz);
+		gs_byte_buffer_write_bulk(&cb->commands, decl->data, sizeof(gsdx11_texture_t));
 	}
 
 }
@@ -1158,7 +1161,7 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
                 gsdx11_pipeline_t       *pipe = gs_slot_array_getp(dx11->pipelines, dx11->cache.pipeline.id);
                 gs_byte_buffer_readc(&cb->commands, uint32_t, cnt);
 
-                for (uint32_t i = 0; i < cnt; i++)
+                for (uint32_t j = 0; j < cnt; j++)
                 {
                     gs_byte_buffer_readc(&cb->commands, gs_graphics_bind_type, type);
 
@@ -1166,28 +1169,40 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
                     {
                         case GS_GRAPHICS_BIND_VERTEX_BUFFER:
                         {
-                            gsdx11_buffer_t                 vbo;
-                            UINT                            vbo_slot = pipe->layout[i].buffer_idx;
-                            // TODO(matthew): Handle the other case, we're only considering no stride for now.
-                            // TODO(matthew): Compute stride based on format if it's not passed as a param.
-                            UINT                            stride = pipe->layout[i].stride;
-                            D3D11_INPUT_ELEMENT_DESC        layout_desc = gs_default_val();
+							UINT 				stride = 0,
+												vbo_slot;
+							gsdx11_buffer_t		vbo;
 
-                            gs_byte_buffer_readc(&cb->commands, uint32_t, id);
-                            gs_byte_buffer_readc(&cb->commands, size_t, offset);
-                            gs_byte_buffer_readc(&cb->commands, gs_graphics_vertex_data_type, data_type);
+							gs_byte_buffer_readc(&cb->commands, uint32_t, id);
+							gs_byte_buffer_readc(&cb->commands, size_t, vbo_offset);
+							gs_byte_buffer_readc(&cb->commands, gs_graphics_vertex_data_type, data_type);
 
-                            vbo = gs_slot_array_get(dx11->vertex_buffers, id);
+							for (int i = 0; i < gs_dyn_array_size(pipe->layout); i++)
+							{
+								// TODO(matthew): Handle the other case, we're only considering no stride for now.
+								// TODO(matthew): Compute stride based on format if it's not passed as a param.
+								UINT							offset = pipe->layout[i].offset;
+								D3D11_INPUT_ELEMENT_DESC        layout_desc = gs_default_val();
 
-                            layout_desc.SemanticName = pipe->layout[i].name;
-                            layout_desc.Format = gsdx11_vertex_attrib_to_dxgi_format(pipe->layout[i].format);
-                            layout_desc.InputSlot = vbo_slot;
-                            layout_desc.AlignedByteOffset = offset;
-                            // layout_desc.InputSlotClass TODO(matthew): handle instancing case!
+								// IASetVertexBuffers needs the stride for the whole buffer, not for the subbuffers.
+								// So we simply sum up the strides per subbuffer, and then send that to the function,
+								// since the pipeline layout receives the subbuffer strides/offsets. We need subbuffer
+								// data for creating the input layout, not for binding the whole vbo, and we can only
+								// bind one at a time through GS anyway.
+								stride += pipe->layout[i].stride;
+								vbo = gs_slot_array_get(dx11->vertex_buffers, id);
+								vbo_slot = pipe->layout[i].buffer_idx;
 
-                            gs_dyn_array_push(dx11->cache.layout_descs, layout_desc);
+								layout_desc.SemanticName = pipe->layout[i].name;
+								layout_desc.Format = gsdx11_vertex_attrib_to_dxgi_format(pipe->layout[i].format);
+								layout_desc.InputSlot = vbo_slot;
+								layout_desc.AlignedByteOffset = offset;
+								// layout_desc.InputSlotClass TODO(matthew): handle instancing case!
 
-                            ID3D11DeviceContext_IASetVertexBuffers(dx11->context, vbo_slot, 1, &vbo, &stride, &offset);
+								gs_dyn_array_push(dx11->cache.layout_descs, layout_desc);
+							}
+
+							ID3D11DeviceContext_IASetVertexBuffers(dx11->context, vbo_slot, 1, &vbo, &stride, &vbo_offset);
                         } break;
 
                         case GS_GRAPHICS_BIND_INDEX_BUFFER:
@@ -1233,7 +1248,7 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
 
                             // Get size from uniform list
                             gs_byte_buffer_readc(&cb->commands, uint32_t, id);
-                            // Read data size for uniform list 
+                            // Read data size for uniform list
                             gs_byte_buffer_readc(&cb->commands, size_t, sz);
                             // Read binding from uniform list (could make this a binding list? not sure how to handle this)
                             gs_byte_buffer_readc(&cb->commands, uint32_t, binding);
@@ -1259,25 +1274,25 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
 
 									tex = gs_slot_array_getp(dx11->textures, v.id);
 
-									ID3D11DeviceContext_PSSetShaderResources(dx11->context, binding, 1, &tex->sampler);
-									ID3D11DeviceContext_PSSetSamplers(dx11->context, binding, 1, &tex->srv);
+									ID3D11DeviceContext_PSSetShaderResources(dx11->context, binding, 1, &tex->srv);
+									ID3D11DeviceContext_PSSetSamplers(dx11->context, binding, 1, &tex->sampler);
 								} break;
 							}
 						} break;
                     }
-
-                    if (!dx11->cache.layout)
-                    {
-                        ID3D11Device_CreateInputLayout(dx11->device, dx11->cache.layout_descs,
-                                gs_dyn_array_size(dx11->cache.layout_descs),
-                               ID3D10Blob_GetBufferPointer(dx11->cache.shader.vsblob),
-                               ID3D10Blob_GetBufferSize(dx11->cache.shader.vsblob),
-                               &dx11->cache.layout);
-                        ID3D11DeviceContext_IASetInputLayout(dx11->context, dx11->cache.layout);
-                        // NOTE(matthew): set this as the default for now
-                        ID3D11DeviceContext_IASetPrimitiveTopology(dx11->context, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-                    }
                 }
+
+				if (!dx11->cache.layout)
+				{
+					ID3D11Device_CreateInputLayout(dx11->device, dx11->cache.layout_descs,
+							gs_dyn_array_size(dx11->cache.layout_descs),
+						   ID3D10Blob_GetBufferPointer(dx11->cache.shader.vsblob),
+						   ID3D10Blob_GetBufferSize(dx11->cache.shader.vsblob),
+						   &dx11->cache.layout);
+					ID3D11DeviceContext_IASetInputLayout(dx11->context, dx11->cache.layout);
+					// NOTE(matthew): set this as the default for now
+					ID3D11DeviceContext_IASetPrimitiveTopology(dx11->context, D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+				}
             } break;
 
             case GS_DX11_OP_DRAW:
