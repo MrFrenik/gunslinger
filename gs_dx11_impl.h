@@ -1101,7 +1101,7 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
                                 D3D11_MAPPED_SUBRESOURCE        resource = {0};
 
                                 // Map resource to CPU side and sub data
-                                hr = ID3D11DeviceContext_Map(dx11->context, ub.cbo, 0, D3D11_MAP_WRITE_DISCARD, 0, &resource);
+                                hr = ID3D11DeviceContext_Map(dx11->context, ub.cbo, 0, D3D11_MAP_WRITE_DISCARD | D3D11_MAP_WRITE_NO_OVERWRITE, 0, &resource);
                                 memcpy((char *)resource.pData + offset,
                                     (cb->commands.data + cb->commands.position),
                                     sz);
