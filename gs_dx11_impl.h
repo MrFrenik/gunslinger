@@ -53,12 +53,10 @@ typedef enum _TAG_gsdx11_shader_type
 
 typedef enum _TAG_gsdx11_uniform_type
 {
-    GSDX11_UNIFORMTYPE_FLOAT,
-    GSDX11_UNIFORMTYPE_INT,
-    GSDX11_UNIFORMTYPE_VEC2,
-    GSDX11_UNIFORMTYPE_VEC3,
-    GSDX11_UNIFORMTYPE_VEC4,
-    GSDX11_UNIFORMTYPE_MAT4,
+	// NOTE(matthew): couple Texture2D + SamplerState as one
+	GSDX11_UNIFORMTYPE_TEXTURE2D,
+	/* GSDX11_UNIFORMTYPE_TEXTURE_SAMPLER, */
+	GSDX11_UNIFORMTYPE_BUFFER,
     GSDX11_UNIFORMTYPE_COUNT
 } gsdx11_uniform_type;
 
@@ -128,6 +126,23 @@ typedef struct _TAG_gsdx11_uniform_buffer
     gs_graphics_shader_stage_type stage;
 } gsdx11_uniform_buffer_t;
 
+// TODO(matthew): uniforms will serve as bindable shader resources, such as
+// Texture2D, SamplerState, Buffer, RWBuffer, etc.
+typedef struct _TAG_gsdx11_uniform
+{
+	gsdx11_uniform_type type;
+	gs_graphics_shader_stage_type stage; // NOTE(matthew): assume only bindable to one stage for now
+	uint32_t slot; // is this needed?
+	size_t size;
+} gsdx11_uniform_t;
+
+/* typedef struct _TAG_gsdx11_uniform_list */
+/* { */
+/*  char name[64]; */
+/*  size_t size; */
+/*  gs_dyn_array(gsdx11_uniform_t) uniforms; */
+/* } gsdx11_uniform_list_t; */
+
 // Internal DX11 data
 typedef struct _TAG_gsdx11_data
 {
@@ -135,6 +150,7 @@ typedef struct _TAG_gsdx11_data
     gs_slot_array(gsdx11_buffer_t)      vertex_buffers;
     gs_slot_array(gsdx11_buffer_t)      index_buffers;
     gs_slot_array(gsdx11_uniform_buffer_t) uniform_buffers;
+	gs_slot_array(gsdx11_uniform_t)		uniforms;
 	gs_slot_array(gsdx11_texture_t)		textures;
     gs_slot_array(gsdx11_pipeline_t)    pipelines;
 
@@ -157,21 +173,7 @@ typedef struct _TAG_gsdx11_data
     gsdx11_data_cache_t                 cache;
 } gsdx11_data_t;
 
-// TODO(matthew): implement these after we figure out uniform buffers, since
-// they're basically cbuffers.
-/* typedef struct _TAG_gsdx11_uniform */
-/* { */
-/*  gsdx11_uniform_type type; */
-/*  uint32_t location; // is this needed? */
-/*  size_t size; */
-/* } gsdx11_uniform_t; */
 
-/* typedef struct _TAG_gsdx11_uniform_list */
-/* { */
-/*  char name[64]; */
-/*  size_t size; */
-/*  gs_dyn_array(gsdx11_uniform_t) uniforms; */
-/* } gsdx11_uniform_list_t; */
 
 /*=============================
 // Utility Functions
@@ -181,6 +183,7 @@ DXGI_FORMAT     gsdx11_vertex_attrib_to_dxgi_format(gs_graphics_vertex_attribute
 DXGI_FORMAT		gsdx11_tex_format_to_dxgi_format(gs_graphics_texture_format_type type);
 uint32_t		gsdx11_texture_wrap_to_dx11_texture_wrap(gs_graphics_texture_wrapping_type type);
 uint32_t		gsdx11_texture_filter_to_dx11_texture_filter(gs_graphics_texture_filtering_type min_filter, gs_graphics_texture_filtering_type max_filter, gs_graphics_texture_filtering_type mip_filter);
+size_t           gsdx11_uniform_data_size_in_bytes(gs_graphics_uniform_type type);
 
 // NOTE(matthew): Putting these here for organization purposes (have them all
 // in one place without needing to look back at the ogl implementation). These
@@ -203,12 +206,10 @@ uint32_t		gsdx11_texture_filter_to_dx11_texture_filter(gs_graphics_texture_filte
 /* uint32_t         gsdx11_depth_func_to_dx11_depth_func(gs_graphics_depth_func_type type); */
 /* uint32_t         gsdx11_stencil_func_to_dx11_stencil_func(gs_graphics_stencil_func_type type); */
 /* uint32_t         gsdx11_stencil_op_to_dx11_stencil_op(gs_graphics_stencil_op_type type); */
-/* void             gsdx11_uniform_type_to_dx11_uniform_type(gs_graphics_uniform_type gstype); // NOTE(matthew): DX11 doesn't have uniforms! */
 /* uint32_t         gsdx11_index_buffer_size_to_dx11_index_type(size_t sz); */
 /* size_t           gsdx11_get_byte_size_of_vertex_attribute(gs_graphics_vertex_attribute_type type); */
 /* size_t           gsdx11_calculate_vertex_size_in_bytes(gs_graphics_vertex_attribute_desc_t* layout, uint32_t count); */
 /* size_t           gsdx11_get_vertex_attr_byte_offest(gs_dyn_array(gs_graphics_vertex_attribute_desc_t) layout, uint32_t idx); */
-/* size_t           gsdx11_uniform_data_size_in_bytes(gs_graphics_uniform_type type); */
 
 /*=============================
 // Graphics Initialization
@@ -237,6 +238,9 @@ uint32_t		gsdx11_texture_filter_to_dx11_texture_filter(gs_graphics_texture_filte
 /* gs_handle(gs_graphics_pipeline_t) gs_graphics_pipeline_create(const gs_graphics_pipeline_desc_t* desc) */
 
 gsdx11_texture_t dx11_texture_create_internal(const gs_graphics_texture_desc_t* desc);
+
+/* gs_handle(gs_graphics_uniform_t) gs_graphics_uniform_create(const gs_graphics_uniform_desc_t* desc) */
+
 
 /*=============================================================================
 // ===== DX11 Implementation =============================================== //
@@ -730,6 +734,26 @@ dx11_texture_create_internal(const gs_graphics_texture_desc_t* desc)
 	return tex;
 }
 
+gs_handle(gs_graphics_uniform_t)
+gs_graphics_uniform_create(const gs_graphics_uniform_desc_t* desc)
+{
+	gsdx11_data_t							*dx11;
+	gsdx11_uniform_t						uniform;
+	gs_handle(gs_graphics_uniform_t)		hndl;
+
+
+    dx11 = (gsdx11_data_t *)gs_engine_subsystem(graphics)->user_data;
+
+	// NOTE(matthew): assuming only 2D texture for now
+	uniform.type = GSDX11_UNIFORMTYPE_TEXTURE2D;
+	uniform.size = sizeof(gsdx11_texture_t);
+	uniform.stage = desc->stage;
+
+	hndl = gs_handle_create(gs_graphics_uniform_t, gs_slot_array_insert(dx11->uniforms, uniform));
+
+	return hndl;
+}
+
 
 
 /*=============================
@@ -877,14 +901,17 @@ gs_graphics_apply_bindings(gs_command_buffer_t *cb,
     uint32_t            vcnt,   // vertex buffers to bind
                         icnt,   // index buffers to bind
                         ubcnt,  // uniform buffers to bind
+						ucnt,	// uniforms to bind
                         cnt;    // total objects to bind
 
 
     dx11 = (gsdx11_data_t*)gs_engine_subsystem(graphics)->user_data;
     vcnt = binds->vertex_buffers.desc ? binds->vertex_buffers.size ? binds->vertex_buffers.size / sizeof(gs_graphics_bind_vertex_buffer_desc_t) : 1 : 0;
     icnt = binds->index_buffers.desc ? binds->index_buffers.size ? binds->index_buffers.size / sizeof(gs_graphics_bind_index_buffer_desc_t) : 1 : 0;
-    ubcnt = binds->uniform_buffers.desc ? binds->uniform_buffers.size ? binds->vertex_buffers.size / sizeof(gs_graphics_bind_uniform_buffer_desc_t) : 1 : 0;
-    cnt = vcnt + icnt + ubcnt;
+    ubcnt = binds->uniform_buffers.desc ? binds->uniform_buffers.size ? binds->uniform_buffers.size / sizeof(gs_graphics_bind_uniform_buffer_desc_t) : 1 : 0;
+	ucnt = binds->uniform_buffers.desc ? binds->uniform_buffers.size ? binds->uniform_buffers.size / sizeof(gs_graphics_bind_uniform_buffer_desc_t) : 1 : 0;
+
+    cnt = vcnt + icnt + ubcnt + ucnt;
 
     // increment commands
     gs_byte_buffer_write(&cb->commands, u32, (u32)GS_DX11_OP_APPLY_BINDINGS);
@@ -925,6 +952,22 @@ gs_graphics_apply_bindings(gs_command_buffer_t *cb,
         gs_byte_buffer_write(&cb->commands, size_t, decl->range.offset);
         gs_byte_buffer_write(&cb->commands, size_t, decl->range.size);
     }
+
+	// Uniforms
+	for (uint32_t i = 0; i < ucnt; ++i)
+	{
+		gs_graphics_bind_uniform_desc_t* decl = &binds->uniforms.desc[i];
+
+		// Get size from uniform list
+		/* size_t sz = gs_slot_array_getp(dx11->uniforms, decl->uniform.id)->size; */
+		size_t sz = 1; // NOTE(matthew): ignore uniform list for now, just assume only 1 uniform bound
+		gs_byte_buffer_write(&cb->commands, gs_graphics_bind_type, GS_GRAPHICS_BIND_UNIFORM);
+		gs_byte_buffer_write(&cb->commands, uint32_t, decl->uniform.id);
+		gs_byte_buffer_write(&cb->commands, size_t, sz);
+		gs_byte_buffer_write(&cb->commands, uint32_t, decl->binding);
+		gs_byte_buffer_write_bulk(&cb->commands, decl->data, sz);
+	}
+
 }
 
 void
@@ -1183,6 +1226,44 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
                                 ID3D11DeviceContext_PSSetConstantBuffers(dx11->context, binding, 1, &ub->cbo);
                             // TODO(matthew): add compute binding
                         } break;
+
+                        case GS_GRAPHICS_BIND_UNIFORM:
+						{
+							gsdx11_uniform_t		*u;
+
+                            // Get size from uniform list
+                            gs_byte_buffer_readc(&cb->commands, uint32_t, id);
+                            // Read data size for uniform list 
+                            gs_byte_buffer_readc(&cb->commands, size_t, sz);
+                            // Read binding from uniform list (could make this a binding list? not sure how to handle this)
+                            gs_byte_buffer_readc(&cb->commands, uint32_t, binding);
+
+                            // Check buffer id. If invalid, then we can't operate, and instead just need to pass over the data.
+                            if (!id || !gs_slot_array_exists(dx11->uniforms, id)) {
+                                gs_timed_action(60, {
+                                    gs_println("Warning:Bind Uniform:Uniform %d does not exist.", id);
+                                });
+                                gs_byte_buffer_advance_position(&cb->commands, sz);
+                                continue;
+                            }
+
+							u = gs_slot_array_getp(dx11->uniforms, id);
+
+							switch (u->type)
+							{
+								case GSDX11_UNIFORMTYPE_TEXTURE2D:
+								{
+									gsdx11_texture_t		*tex;
+
+									gs_byte_buffer_read_bulkc(&cb->commands, gs_handle(gs_graphics_texture_t), v, u->size);
+
+									tex = gs_slot_array_getp(dx11->textures, v.id);
+
+									ID3D11DeviceContext_PSSetShaderResources(dx11->context, binding, 1, &tex->sampler);
+									ID3D11DeviceContext_PSSetSamplers(dx11->context, binding, 1, &tex->srv);
+								} break;
+							}
+						} break;
                     }
 
                     if (!dx11->cache.layout)
