@@ -82,6 +82,18 @@ typedef struct _TAG_gsdx11_shader
     gsdx11_shader_type      tag;
 } gsdx11_shader_t;
 
+typedef struct _TAG_gsdx11_texture
+{
+	ID3D11Texture2D	*tex;
+	gs_graphics_texture_desc_t desc;
+	ID3D11SamplerState *sampler;
+	struct
+	{
+		ID3D11ShaderResourceView *srv;
+		ID3D11UnorderedAccessView *uav;
+	} view;
+} gsdx11_texture_t;
+
 typedef struct _TAG_gsdx11_pipeline
 {
     /* gs_graphics_blend_state_desc_t blend; */
@@ -126,6 +138,7 @@ typedef struct _TAG_gsdx11_data
     gs_slot_array(gsdx11_buffer_t)      vertex_buffers;
     gs_slot_array(gsdx11_buffer_t)      index_buffers;
     gs_slot_array(gsdx11_uniform_buffer_t) uniform_buffers;
+	gs_slot_array(gsdx11_texture_t)		textures;
     gs_slot_array(gsdx11_pipeline_t)    pipelines;
 
     // Global data that I'll just put here since it's appropriate
@@ -168,6 +181,8 @@ typedef struct _TAG_gsdx11_data
 =============================*/
 
 DXGI_FORMAT     gsdx11_vertex_attrib_to_dxgi_format(gs_graphics_vertex_attribute_type type);
+DXGI_FORMAT		gsdx11_tex_format_to_dxgi_format(gs_graphics_texture_format_type type);
+/* uint32_t         gsdx11_blend_equation_to_dx11_blend_eq(gs_graphics_blend_equation_type eq); */
 
 // NOTE(matthew): Putting these here for organization purposes (have them all
 // in one place without needing to look back at the ogl implementation). These
@@ -183,7 +198,6 @@ DXGI_FORMAT     gsdx11_vertex_attrib_to_dxgi_format(gs_graphics_vertex_attribute
 /* uint32_t         gsdx11_texture_format_to_dx11_texture_internal_format(gs_graphics_texture_format_type type); */
 /* uint32_t         gsdx11_shader_stage_to_dx11_stage(gs_graphics_shader_stage_type type); */
 /* uint32_t         gsdx11_primitive_to_dx11_primitive(gs_graphics_primitive_type type); */
-/* uint32_t         gsdx11_blend_equation_to_dx11_blend_eq(gs_graphics_blend_equation_type eq); */
 /* uint32_t         gsdx11_blend_mode_to_dx11_blend_mode(gs_graphics_blend_mode_type type, uint32_t def); */
 /* uint32_t         gsdx11_cull_face_to_dx11_cull_face(gs_graphics_face_culling_type type); */
 /* uint32_t         gsdx11_winding_order_to_dx11_winding_order(gs_graphics_winding_order_type type); */
@@ -256,6 +270,33 @@ gsdx11_vertex_attrib_to_dxgi_format(gs_graphics_vertex_attribute_type type)
     }
 
     return format;
+}
+
+DXGI_FORMAT
+gsdx11_tex_format_to_dxgi_format(gs_graphics_texture_format_type type)
+{
+	DXGI_FORMAT		format;
+
+
+	// TODO(matthew): deal with unspecified formats
+	switch (type)
+	{
+		case GS_GRAPHICS_TEXTURE_FORMAT_RGBA8:					format = DXGI_FORMAT_R8G8B8A8_UNORM; break;
+		/* case GS_GRAPHICS_TEXTURE_FORMAT_RGB8:					format = DXGI_FORMAT_; break; */
+		case GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F:				format = DXGI_FORMAT_R16G16B16A16_FLOAT; break;
+		case GS_GRAPHICS_TEXTURE_FORMAT_RGBA32F:				format = DXGI_FORMAT_R32G32B32A32_FLOAT; break;
+		case GS_GRAPHICS_TEXTURE_FORMAT_R8:						format = DXGI_FORMAT_R8_UNORM; break;
+		case GS_GRAPHICS_TEXTURE_FORMAT_A8:						format = DXGI_FORMAT_A8_UNORM; break;
+		/* case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH8:					format = DXGI_FORMAT_; break; */
+		case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH16:				format = DXGI_FORMAT_D16_UNORM; break;
+		/* case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH24:				format = DXGI_FORMAT_; break; */
+		case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH32F:				format = DXGI_FORMAT_D32_FLOAT; break;
+		case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH24_STENCIL8:		format = DXGI_FORMAT_D24_UNORM_S8_UINT; break;
+		case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH32F_STENCIL8:		format = DXGI_FORMAT_D32_FLOAT_S8X24_UINT; break;
+		/* case GS_GRAPHICS_TEXTURE_FORMAT_STENCIL8:				format = DXGI_FORMAT_; break; */
+	}
+
+	return format;
 }
 
 
@@ -577,7 +618,53 @@ gs_graphics_uniform_buffer_create(const gs_graphics_uniform_buffer_desc_t *desc)
 gs_handle(gs_graphics_texture_t)
 gs_graphics_texture_create(const gs_graphics_texture_desc_t* desc)
 {
-    // TODO(matthew): empty for now, just putting this here for the compile to work
+	gsdx11_data_t							*dx11;
+	gsdx11_texture_t						tex;
+	gs_handle(gs_graphics_texture_t)		hndl;
+
+
+	dx11 = (gsdx11_data_t *)gs_engine_subsystem(graphics)->user_data;
+	tex = dx11_texture_create_internal(desc);
+
+	return gs_handle_create(gs_graphics_texture_t, gs_slot_array_insert(dx11->textures, tex));
+}
+
+gsdx11_texture_t
+dx11_texture_create_internal(const gs_graphics_texture_desc_t* desc)
+{
+	gsdx11_data_t				*dx11;
+	gsdx11_texture_t			tex = gs_default_val();
+	D3D11_SUBRESOURCE_DATA		tex_data;
+
+
+	dx11 = (gsdx11_data_t *)gs_engine_subsystem(graphics)->user_data;
+
+	// Create texture
+	tex.desc.Width = desc->width;
+	tex.desc.Height = desc->height;
+	tex.desc.Format = gsdx11_tex_format_to_dxgi_format(desc->format);
+	tex.desc.Usage = D3D11_USAGE_DEFAULT;
+	tex.desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
+	tex.desc.CPUAccessFlags = 0;
+	tex.desc.MiscFlags = 0;
+	tex_data.pSysMem = desc->data;
+	tex_data.SysMemPitch = desc->width * 4; // NOTE(matthew): assuming RGBA8 for now
+	tex_data.SysMemSlicePitch = 0;
+	// NOTE(matthew): we're ignoring mipmaps for now
+	tex.desc.MipLevels = 1;
+	tex.desc.ArraySize = 1;
+	tex.desc.SampleDesc.Count = 1;
+	tex.desc.SampleDesc.Quality = 0;
+
+	hr = ID3D11Device_CreateTexture2D(dx11->device, &tex.desc, &tex_data, &tex.tex);
+
+	// Create sampler
+
+	// Create SRV
+
+	// Create UAV
+
+	return tex;
 }
 
 
