@@ -84,14 +84,11 @@ typedef struct _TAG_gsdx11_shader
 
 typedef struct _TAG_gsdx11_texture
 {
-	ID3D11Texture2D	*tex;
-	gs_graphics_texture_desc_t desc;
-	ID3D11SamplerState *sampler;
-	struct
-	{
-		ID3D11ShaderResourceView *srv;
-		ID3D11UnorderedAccessView *uav;
-	} view;
+	ID3D11Texture2D					*tex;
+	gs_graphics_texture_desc_t		desc;
+	ID3D11SamplerState 				*sampler;
+	ID3D11ShaderResourceView 		*srv;
+	/* ID3D11UnorderedAccessView		*uav; */
 } gsdx11_texture_t;
 
 typedef struct _TAG_gsdx11_pipeline
@@ -182,7 +179,8 @@ typedef struct _TAG_gsdx11_data
 
 DXGI_FORMAT     gsdx11_vertex_attrib_to_dxgi_format(gs_graphics_vertex_attribute_type type);
 DXGI_FORMAT		gsdx11_tex_format_to_dxgi_format(gs_graphics_texture_format_type type);
-/* uint32_t         gsdx11_blend_equation_to_dx11_blend_eq(gs_graphics_blend_equation_type eq); */
+uint32_t		gsdx11_texture_wrap_to_dx11_texture_wrap(gs_graphics_texture_wrapping_type type);
+uint32_t		gsdx11_texture_filter_to_dx11_texture_filter(gs_graphics_texture_filtering_type min_filter, gs_graphics_texture_filtering_type max_filter, gs_graphics_texture_filtering_type mip_filter);
 
 // NOTE(matthew): Putting these here for organization purposes (have them all
 // in one place without needing to look back at the ogl implementation). These
@@ -196,6 +194,7 @@ DXGI_FORMAT		gsdx11_tex_format_to_dxgi_format(gs_graphics_texture_format_type ty
 /* uint32_t         gsdx11_texture_format_to_dx11_data_type(gs_graphics_texture_format_type type); */
 /* uint32_t         gsdx11_texture_format_to_dx11_texture_format(gs_graphics_texture_format_type type); */
 /* uint32_t         gsdx11_texture_format_to_dx11_texture_internal_format(gs_graphics_texture_format_type type); */
+/* uint32_t         gsdx11_blend_equation_to_dx11_blend_eq(gs_graphics_blend_equation_type eq); */
 /* uint32_t         gsdx11_shader_stage_to_dx11_stage(gs_graphics_shader_stage_type type); */
 /* uint32_t         gsdx11_primitive_to_dx11_primitive(gs_graphics_primitive_type type); */
 /* uint32_t         gsdx11_blend_mode_to_dx11_blend_mode(gs_graphics_blend_mode_type type, uint32_t def); */
@@ -236,6 +235,8 @@ DXGI_FORMAT		gsdx11_tex_format_to_dxgi_format(gs_graphics_texture_format_type ty
 
 /* // Create a pipeline object */
 /* gs_handle(gs_graphics_pipeline_t) gs_graphics_pipeline_create(const gs_graphics_pipeline_desc_t* desc) */
+
+gsdx11_texture_t dx11_texture_create_internal(const gs_graphics_texture_desc_t* desc);
 
 /*=============================================================================
 // ===== DX11 Implementation =============================================== //
@@ -297,6 +298,48 @@ gsdx11_tex_format_to_dxgi_format(gs_graphics_texture_format_type type)
 	}
 
 	return format;
+}
+
+uint32_t
+gsdx11_texture_wrap_to_dx11_texture_wrap(gs_graphics_texture_wrapping_type type)
+{
+	uint32_t		wrap;
+
+
+	switch (type)
+	{
+		default:
+		case GS_GRAPHICS_TEXTURE_WRAP_REPEAT:				wrap = D3D11_TEXTURE_ADDRESS_WRAP; break;
+		case GS_GRAPHICS_TEXTURE_WRAP_MIRRORED_REPEAT:		wrap = D3D11_TEXTURE_ADDRESS_MIRROR; break;
+		case GS_GRAPHICS_TEXTURE_WRAP_CLAMP_TO_EDGE:		wrap = D3D11_TEXTURE_ADDRESS_CLAMP; break;
+	}
+
+	return wrap;
+}
+
+uint32_t
+gsdx11_texture_filter_to_dx11_texture_filter(gs_graphics_texture_filtering_type min_filter,
+											 gs_graphics_texture_filtering_type max_filter,
+											 gs_graphics_texture_filtering_type mip_filter)
+{
+	uint32_t		filter = 0;
+
+
+	if (min_filter == GS_GRAPHICS_TEXTURE_FILTER_LINEAR)
+	{
+		if (max_filter == GS_GRAPHICS_TEXTURE_FILTER_LINEAR)
+		{
+			if (mip_filter == GS_GRAPHICS_TEXTURE_FILTER_LINEAR)
+			{
+			}
+		}
+	}
+	else
+	{
+		// ... dont have a 'nearest' sampler in dx11?
+	}
+
+	return filter;
 }
 
 
@@ -632,37 +675,57 @@ gs_graphics_texture_create(const gs_graphics_texture_desc_t* desc)
 gsdx11_texture_t
 dx11_texture_create_internal(const gs_graphics_texture_desc_t* desc)
 {
-	gsdx11_data_t				*dx11;
-	gsdx11_texture_t			tex = gs_default_val();
-	D3D11_SUBRESOURCE_DATA		tex_data;
+	HRESULT								hr;
+	gsdx11_data_t						*dx11;
+	gsdx11_texture_t					tex = gs_default_val();
+	D3D11_TEXTURE2D_DESC				tex_desc;
+	D3D11_SUBRESOURCE_DATA				tex_data;
+	D3D11_SAMPLER_DESC					sampler_desc = gs_default_val();
+	D3D11_SHADER_RESOURCE_VIEW_DESC		srv_desc;
 
 
 	dx11 = (gsdx11_data_t *)gs_engine_subsystem(graphics)->user_data;
 
+	// NOTE(matthew): not everything here is checked in the desc!
 	// Create texture
-	tex.desc.Width = desc->width;
-	tex.desc.Height = desc->height;
-	tex.desc.Format = gsdx11_tex_format_to_dxgi_format(desc->format);
-	tex.desc.Usage = D3D11_USAGE_DEFAULT;
-	tex.desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
-	tex.desc.CPUAccessFlags = 0;
-	tex.desc.MiscFlags = 0;
+	tex_desc.Width = desc->width;
+	tex_desc.Height = desc->height;
+	tex_desc.Format = gsdx11_tex_format_to_dxgi_format(desc->format);
+	tex_desc.Usage = D3D11_USAGE_DEFAULT;
+	tex_desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
+	tex_desc.CPUAccessFlags = 0;
+	tex_desc.MiscFlags = 0;
 	tex_data.pSysMem = desc->data;
 	tex_data.SysMemPitch = desc->width * 4; // NOTE(matthew): assuming RGBA8 for now
 	tex_data.SysMemSlicePitch = 0;
 	// NOTE(matthew): we're ignoring mipmaps for now
-	tex.desc.MipLevels = 1;
-	tex.desc.ArraySize = 1;
-	tex.desc.SampleDesc.Count = 1;
-	tex.desc.SampleDesc.Quality = 0;
+	tex_desc.MipLevels = 1;
+	tex_desc.ArraySize = 1;
+	tex_desc.SampleDesc.Count = 1;
+	tex_desc.SampleDesc.Quality = 0;
 
 	hr = ID3D11Device_CreateTexture2D(dx11->device, &tex.desc, &tex_data, &tex.tex);
 
 	// Create sampler
+	sampler_desc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR; // NOTE(matthew): fuck it, just use linear for everything for now
+	sampler_desc.AddressU = gsdx11_texture_wrap_to_dx11_texture_wrap(desc->wrap_s);
+	sampler_desc.AddressV = gsdx11_texture_wrap_to_dx11_texture_wrap(desc->wrap_t);
+	sampler_desc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+	sampler_desc.MipLODBias = 0.0f;
+	sampler_desc.MaxAnisotropy = 8;
+	sampler_desc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+	sampler_desc.MinLOD = 0.0f;
+	sampler_desc.MaxLOD = D3D11_FLOAT32_MAX;
+
+	hr = ID3D11Device_CreateSamplerState(dx11->device, &sampler_desc, &tex.sampler);
 
 	// Create SRV
+	srv_desc.Format = tex_desc.Format;
+	srv_desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	srv_desc.Texture2D.MipLevels = 1;
+	srv_desc.Texture2D.MostDetailedMip = 0;
 
-	// Create UAV
+	hr = ID3D11Device_CreateShaderResourceView(dx11->device, tex.tex, &srv_desc, &tex.srv);
 
 	return tex;
 }
