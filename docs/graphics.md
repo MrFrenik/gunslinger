@@ -8,15 +8,15 @@ The following functions are used for creating resources, such as vertex buffers,
 
 TODO: add hyperlinking
 
-* gs_graphics_texture_create(const gs_graphics_texture_desc_t* desc)
-* gs_graphics_uniform_create(const gs_graphics_uniform_desc_t* desc)
-* gs_graphics_shader_create(const gs_graphics_shader_desc_t* desc)
-* gs_graphics_vertex_buffer_create(const gs_graphics_vertex_buffer_desc_t* desc)
-* gs_graphics_index_buffer_create(const gs_graphics_index_buffer_desc_t* desc)
-* gs_graphics_uniform_buffer_create(const gs_graphics_uniform_buffer_desc_t* desc)
-* gs_graphics_framebuffer_create(const gs_graphics_framebuffer_desc_t* desc)
-* gs_graphics_render_pass_create(const gs_graphics_render_pass_desc_t* desc)
-* gs_graphics_pipeline_create(const gs_graphics_pipeline_desc_t* desc)
+* gs_graphics_texture_create
+* gs_graphics_uniform_create
+* gs_graphics_shader_create
+* gs_graphics_vertex_buffer_create
+* gs_graphics_index_buffer_create
+* gs_graphics_uniform_buffer_create
+* gs_graphics_framebuffer_create
+* gs_graphics_render_pass_create
+* gs_graphics_pipeline_create
 
 <br />
 
@@ -24,7 +24,9 @@ TODO: add hyperlinking
 Creates a texture resource.
 ```
 gs_handle(gs_graphics_texture_t)
-gs_graphics_texture_create(const gs_graphics_texture_desc_t* desc)
+gs_graphics_texture_create(
+    const gs_graphics_texture_desc_t* desc
+);
 ```
 **Parameters:**
 
@@ -42,7 +44,9 @@ Returns a handle to a texture resource.
 Creates a uniform resource.
 ```
 gs_handle(gs_graphics_uniform_t)
-gs_graphics_uniform_create(const gs_graphics_uniform_desc_t* desc);
+gs_graphics_uniform_create(
+    const gs_graphics_uniform_desc_t* desc
+);
 ```
 **Parameters:**
 
@@ -62,7 +66,9 @@ Returns a handle to a uniform resource.
 Creates a shader resource.
 ```
 gs_handle(gs_graphics_shader_t)
-gs_graphics_shader_create(const gs_graphics_shader_desc_t* desc);
+gs_graphics_shader_create(
+    const gs_graphics_shader_desc_t* desc
+);
 ```
 **Parameters:**
 
@@ -81,7 +87,9 @@ Returns a handle to a shader resource.
 Creates a vertex buffer resource.
 ```
 gs_handle(gs_graphics_vertex_buffer_t)
-gs_graphics_vertex_buffer_create(const gs_graphics_vertex_buffer_desc_t* desc);
+gs_graphics_vertex_buffer_create(
+    const gs_graphics_vertex_buffer_desc_t* desc
+);
 ```
 **Parameters:**
 
@@ -101,7 +109,9 @@ Returns a handle to a vertex buffer resource.
 Creates an index buffer resource.
 ```
 gs_handle(gs_graphics_index_buffer_t)
-gs_graphics_index_buffer_create(const gs_graphics_index_buffer_desc_t* desc);
+gs_graphics_index_buffer_create(
+    const gs_graphics_index_buffer_desc_t* desc
+);
 ```
 **Parameters:**
 
@@ -120,7 +130,9 @@ Returns a handle to an index buffer resource.
 Creates a uniform buffer resource.
 ```
 gs_handle(gs_graphics_uniform_buffer_t)
-gs_graphics_uniform_buffer_create(const gs_graphics_uniform_buffer_desc_t* desc);
+gs_graphics_uniform_buffer_create(
+    const gs_graphics_uniform_buffer_desc_t* desc
+);
 ```
 **Parameters:**
 
@@ -139,7 +151,9 @@ Returns a handle to a uniform buffer resource.
 Creates a framebuffer resource.
 ```
 gs_handle(gs_graphics_framebuffer_t)
-gs_graphics_framebuffer_create(const gs_graphics_framebuffer_desc_t* desc);
+gs_graphics_framebuffer_create(
+    const gs_graphics_framebuffer_desc_t* desc
+);
 ```
 **Parameters:**
 
@@ -160,7 +174,9 @@ Returns a handle to a framebuffer resource.
 Creates a render-pass resource.
 ```
 gs_handle(gs_graphics_render_pass_t)
-gs_graphics_render_pass_create(const gs_graphics_render_pass_desc_t* desc);
+gs_graphics_render_pass_create(
+    const gs_graphics_render_pass_desc_t* desc
+);
 ```
 **Parameters:**
 
@@ -180,7 +196,9 @@ Returns a handle to a render-pass resource.
 Creates a pipeline resource.
 ```
 gs_handle(gs_graphics_pipeline_t)
-gs_graphics_pipeline_create(const gs_graphics_pipeline_desc_t* desc);
+gs_graphics_pipeline_create(
+    const gs_graphics_pipeline_desc_t* desc
+);
 ```
 **Parameters:**
 
@@ -193,6 +211,98 @@ A pointer to a `gs_graphics_pipeline_desc_t` structure that describes the pipeli
 Returns a handle to a pipeline resource.
 
 <br />
+
+### Resource Destruction:
+
+The following functions are used for freeing resources that were created with the above functions.
+
+* gs_graphics_texture_destroy(gs_handle(gs_graphics_texture_t) hndl)
+* gs_graphics_shader_destroy(gs_handle(gs_graphics_shader_t) hndl)
+* gs_graphics_render_pass_destroy(gs_handle(gs_graphics_render_pass_t) hndl)
+* gs_graphics_pipeline_destroy(gs_handle(gs_graphics_pipeline_t) hndl)
+
+<br />
+
+#### gs_graphics_texture_destroy
+Destroys a texture resource.
+```
+void
+gs_graphics_texture_destroy(
+    gs_handle(gs_graphics_texture_t) hndl
+);
+```
+**Parameters:**
+
+`hndl`
+
+A handle to a texture resource.
+
+**Return Value:**
+
+None
+
+<br />
+
+#### gs_graphics_shader_destroy
+Destroys a shader resource.
+```
+void
+gs_graphics_shader_destroy(
+    gs_handle(gs_graphics_shader_t) hndl
+);
+```
+**Parameters:**
+
+`hndl`
+
+A handle to a shader resource.
+
+**Return Value:**
+
+None
+
+<br />
+
+#### gs_graphics_render_pass_destroy
+Destroys a render-pass resource.
+```
+void
+gs_graphics_render_pass_destroy(
+    gs_handle(gs_graphics_render_pass_t) hndl
+);
+```
+**Parameters:**
+
+`hndl`
+
+A handle to a render-pass resource.
+
+**Return Value:**
+
+None
+
+<br />
+
+#### gs_graphics_pipeline_destroy
+Destroys a pipeline resource.
+```
+void
+gs_graphics_pipeline_destroy(
+    gs_handle(gs_graphics_pipeline_t) hndl
+);
+```
+**Parameters:**
+
+`hndl`
+
+A handle to a pipeline resource.
+
+**Return Value:**
+
+None
+
+<br />
+
 
 
 ## Structures
