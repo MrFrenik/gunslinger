@@ -307,6 +307,55 @@ None
 
 ## Structures
 
+#### gs_graphics_shader_source_desc_t
+Describes the source data for a shader resource.
+```
+typedef struct gs_graphics_shader_source_desc_t
+{
+    gs_graphics_shader_stage_type       type;
+    const char*                         source;
+} gs_graphics_shader_source_desc_t;
+```
+**Members**
+
+`type`
+
+Indicates what stage the shader code is for (ie, vertex, fragment, etc.)
+
+`source`
+
+Source code for GLSL/HLSL shader, as an ASCII string.
+
+<br />
+
+#### gs_graphics_shader_desc_t
+Describes a shader resource.
+```
+typedef struct gs_graphics_shader_desc_t
+{
+    gs_graphics_shader_source_desc_t*       sources;
+    size_t                                  size;
+    char                                    name[64];
+} gs_graphics_shader_desc_t;
+```
+
+**Members**
+
+`sources`
+
+Array of `gs_graphics_shader_source_desc_t` containing shader sources.
+
+`size`
+
+Size in bytes of the shader source desc array.
+
+`name`
+
+Optional name for the shader - used internally for logging/debugging.
+
+<br />
+
+
 #### gs_graphics_texture_desc_t
 Describes a texture resource.
 ```
@@ -371,4 +420,292 @@ Texture data to upload (can be NULL).
 `render_target`
 
 Default to false (not a render target).
+
+<br />
+
+#### gs_graphics_uniform_layout_desc_t
+DESC
+```
+```
+
+**Members**
+
+
+
+<br />
+
+#### gs_graphics_uniform_desc_t
+DESC
+```
+```
+
+**Members**
+
+
+
+<br />
+
+#### gs_graphics_buffer_update_desc_t
+DESC
+```
+```
+
+**Members**
+
+
+
+<br />
+
+#### gs_graphics_buffer_base_desc_t
+DESC
+```
+```
+
+**Members**
+
+
+
+<br />
+
+#### gs_graphics_vertex_buffer_desc_t
+DESC
+```
+```
+
+**Members**
+
+
+
+<br />
+
+#### gs_graphics_index_buffer_desc_t
+DESC
+```
+```
+
+**Members**
+
+
+
+<br />
+
+#### gs_graphics_uniform_buffer_desc_t
+DESC
+```
+```
+
+**Members**
+
+
+
+<br />
+
+#### gs_graphics_framebuffer_desc_t
+DESC
+```
+```
+
+**Members**
+
+
+
+<br />
+
+#### gs_graphics_clear_action_t
+DESC
+```
+```
+
+**Members**
+
+
+
+<br />
+
+#### gs_graphics_clear_desc_t
+DESC
+```
+```
+
+**Members**
+
+
+
+<br />
+
+#### gs_graphics_render_pass_desc_t
+DESC
+```
+```
+
+**Members**
+
+
+
+<br />
+
+#### gs_graphics_bind_vertex_buffer_desc_t
+DESC
+```
+```
+
+**Members**
+
+
+
+<br />
+
+#### gs_graphics_bind_index_buffer_desc_t
+DESC
+```
+```
+
+**Members**
+
+
+
+<br />
+
+#### gs_graphics_bind_image_buffer_desc_t
+DESC
+```
+```
+
+**Members**
+
+
+
+<br />
+
+#### gs_graphics_bind_uniform_buffer_desc_t
+DESC
+```
+```
+
+**Members**
+
+
+
+<br />
+
+#### gs_graphics_bind_uniform_desc_t
+DESC
+```
+```
+
+**Members**
+
+
+
+<br />
+
+#### gs_graphics_bind_desc_t
+DESC
+```
+```
+
+**Members**
+
+
+
+<br />
+
+#### gs_graphics_blend_state_desc_t
+DESC
+```
+```
+
+**Members**
+
+
+
+<br />
+
+#### gs_graphics_depth_state_desc_t
+DESC
+```
+```
+
+**Members**
+
+
+
+<br />
+
+#### gs_graphics_stencil_state_desc_t
+DESC
+```
+```
+
+**Members**
+
+
+
+<br />
+
+#### gs_graphics_raster_state_desc_t
+DESC
+```
+```
+
+**Members**
+
+
+
+<br />
+
+#### gs_graphics_compute_state_desc_t
+DESC
+```
+```
+
+**Members**
+
+
+
+<br />
+
+#### gs_graphics_vertex_attribute_desc_t
+DESC
+```
+```
+
+**Members**
+
+
+
+<br />
+
+#### gs_graphics_vertex_layout_desc_t
+DESC
+```
+```
+
+**Members**
+
+
+
+<br />
+
+#### gs_graphics_pipeline_desc_t
+DESC
+```
+```
+
+**Members**
+
+
+
+<br />
+
+#### gs_graphics_draw_desc_t
+DESC
+```
+```
+
+**Members**
+
+
+
+<br />
 
