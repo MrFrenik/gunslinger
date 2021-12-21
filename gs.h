@@ -950,7 +950,7 @@ gs_util_str_is_numeric(const char* str)
     {
         while (*at == '\n' || *at == '\t' || *at == ' ' || *at == '\r') at++;;
         char c = *at++;
-        if (c >= '0' && c <= '9')
+        if (c < '0' || c > '9')
         {
             return false;
         } 
