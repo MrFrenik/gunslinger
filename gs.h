@@ -5578,6 +5578,17 @@ GS_API_DECL gs_handle(gs_graphics_framebuffer_t)    gs_graphics_framebuffer_crea
 GS_API_DECL gs_handle(gs_graphics_render_pass_t)    gs_graphics_render_pass_create(const gs_graphics_render_pass_desc_t* desc);
 GS_API_DECL gs_handle(gs_graphics_pipeline_t)       gs_graphics_pipeline_create(const gs_graphics_pipeline_desc_t* desc);
 
+// Resource Destruction
+GS_API_DECL void gs_graphics_texture_destroy(gs_handle(gs_graphics_texture_t) hndl);
+GS_API_DECL void gs_graphics_uniform_destroy(gs_handle(gs_graphics_uniform_t) hndl);
+GS_API_DECL void gs_graphics_shader_destroy(gs_handle(gs_graphics_shader_t) hndl);
+GS_API_DECL void gs_graphics_vertex_buffer_destroy(gs_handle(gs_graphics_vertex_buffer_t) hndl);
+GS_API_DECL void gs_graphics_index_buffer_destroy(gs_handle(gs_graphics_index_buffer_t) hndl);
+GS_API_DECL void gs_graphics_uniform_buffer_destroy(gs_handle(gs_graphics_uniform_buffer_t) hndl);
+GS_API_DECL void gs_graphics_framebuffer_destroy(gs_handle(gs_graphics_framebuffer_t) hndl);
+GS_API_DECL void gs_graphics_render_pass_destroy(gs_handle(gs_graphics_render_pass_t) hndl);
+GS_API_DECL void gs_graphics_pipeline_destroy(gs_handle(gs_graphics_pipeline_t) hndl); 
+
 // Resource Queries
 GS_API_DECL void gs_graphics_pipeline_desc_query(gs_handle(gs_graphics_pipeline_t) hndl, gs_graphics_pipeline_desc_t* out);
 

@@ -544,19 +544,30 @@ void gs_graphics_destroy(gs_graphics_t* graphics)
 
     gsgl_data_t* ogl = (gsgl_data_t*)graphics->user_data;
 
-    // Free all pipeline data
-    if (ogl->pipelines) {
-        for (uint32_t i = 1; i < (uint32_t)gs_slot_array_size(ogl->pipelines); ++i) {
-            gs_dyn_array_free(ogl->pipelines->data[i].layout);
-        }
-    }
+#define OGL_FREE_DATA(SA, T, FUNC)\
+    do {\
+        for (\
+            gs_slot_array_iter it = 1;\
+            gs_slot_array_iter_valid(SA, it);\
+            gs_slot_array_iter_advance(SA, it)\
+        )\
+        {\
+            gs_handle(T) hndl = gs_default_val();\
+            hndl.id = it;\
+            FUNC(hndl);\
+        }\
+    } while (0)
 
-    // Free all render pass data
-    if (ogl->render_passes) {
-        for (uint32_t i = 1; i < (uint32_t)gs_slot_array_size(ogl->render_passes); ++i) {
-            gs_dyn_array_free(ogl->render_passes->data[i].color);
-        }
-    }
+    // Free all gl data 
+    if (ogl->pipelines)         OGL_FREE_DATA(ogl->pipelines, gs_graphics_pipeline_t, gs_graphics_pipeline_destroy); 
+    if (ogl->shaders)           OGL_FREE_DATA(ogl->shaders, gs_graphics_shader_t, gs_graphics_shader_destroy); 
+    if (ogl->vertex_buffers)    OGL_FREE_DATA(ogl->vertex_buffers, gs_graphics_vertex_buffer_t, gs_graphics_vertex_buffer_destroy);
+    if (ogl->index_buffers)     OGL_FREE_DATA(ogl->index_buffers, gs_graphics_index_buffer_t, gs_graphics_index_buffer_destroy); 
+    if (ogl->render_passes)     OGL_FREE_DATA(ogl->render_passes, gs_graphics_render_pass_t, gs_graphics_render_pass_destroy); 
+    if (ogl->frame_buffers)     OGL_FREE_DATA(ogl->frame_buffers, gs_graphics_framebuffer_t, gs_graphics_framebuffer_destroy); 
+    if (ogl->textures)          OGL_FREE_DATA(ogl->textures, gs_graphics_texture_t, gs_graphics_texture_destroy); 
+    if (ogl->uniforms)          OGL_FREE_DATA(ogl->uniforms, gs_graphics_uniform_t, gs_graphics_uniform_destroy); 
+    if (ogl->uniform_buffers)   OGL_FREE_DATA(ogl->uniform_buffers, gs_graphics_uniform_buffer_t, gs_graphics_uniform_buffer_destroy); 
 
     gs_slot_array_free(ogl->shaders);
     gs_slot_array_free(ogl->vertex_buffers);
@@ -1025,6 +1036,85 @@ gs_handle(gs_graphics_pipeline_t) gs_graphics_pipeline_create(const gs_graphics_
     return (gs_handle_create(gs_graphics_pipeline_t, gs_slot_array_insert(ogl->pipelines, pipe)));
 }
 
+// Resource Destruction
+GS_API_DECL void gs_graphics_texture_destroy(gs_handle(gs_graphics_texture_t) hndl)
+{
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
+    gsgl_texture_t* tex = gs_slot_array_getp(ogl->textures, hndl.id);
+    glDeleteTextures(1, &tex->id);
+    gs_slot_array_erase(ogl->textures, hndl.id);
+}
+
+GS_API_DECL void gs_graphics_uniform_destroy(gs_handle(gs_graphics_uniform_t) hndl)
+{
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data; 
+    gsgl_uniform_list_t* ul = gs_slot_array_getp(ogl->uniforms, hndl.id);
+    gs_dyn_array_free(ul->uniforms);
+    gs_slot_array_erase(ogl->uniforms, hndl.id);
+}
+
+GS_API_DECL void gs_graphics_shader_destroy(gs_handle(gs_graphics_shader_t) hndl)
+{
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
+    glDeleteProgram(gs_slot_array_get(ogl->shaders, hndl.id));
+    gs_slot_array_erase(ogl->shaders, hndl.id);
+}
+
+GS_API_DECL void gs_graphics_vertex_buffer_destroy(gs_handle(gs_graphics_vertex_buffer_t) hndl)
+{
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
+    gsgl_buffer_t buffer = gs_slot_array_get(ogl->vertex_buffers, hndl.id); 
+    glDeleteBuffers(1, &buffer);
+    gs_slot_array_erase(ogl->vertex_buffers, hndl.id);
+}
+
+GS_API_DECL void gs_graphics_index_buffer_destroy(gs_handle(gs_graphics_index_buffer_t) hndl)
+{
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
+    gsgl_buffer_t buffer = gs_slot_array_get(ogl->index_buffers, hndl.id); 
+    glDeleteBuffers(1, &buffer);
+    gs_slot_array_erase(ogl->index_buffers, hndl.id);
+}
+
+GS_API_DECL void gs_graphics_uniform_buffer_destroy(gs_handle(gs_graphics_uniform_buffer_t) hndl)
+{
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
+    gsgl_uniform_buffer_t* u = gs_slot_array_getp(ogl->uniform_buffers, hndl.id);
+
+    // Delete buffer (if needed)
+    glDeleteBuffers(1, &u->ubo);
+
+    // Delete from slot array
+    gs_slot_array_erase(ogl->uniform_buffers, hndl.id);
+}
+
+GS_API_DECL void gs_graphics_framebuffer_destroy(gs_handle(gs_graphics_framebuffer_t) hndl)
+{
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
+    gsgl_buffer_t buffer = gs_slot_array_get(ogl->frame_buffers, hndl.id);
+    glDeleteFramebuffers(1, &buffer);
+    gs_slot_array_erase(ogl->frame_buffers, hndl.id);
+}
+
+GS_API_DECL void gs_graphics_render_pass_destroy(gs_handle(gs_graphics_render_pass_t) hndl)
+{
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
+    gs_slot_array_erase(ogl->render_passes, hndl.id);
+}
+
+GS_API_DECL void gs_graphics_pipeline_destroy(gs_handle(gs_graphics_pipeline_t) hndl)
+{
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
+    gsgl_pipeline_t* pip = gs_slot_array_getp(ogl->pipelines, hndl.id);
+
+    // Free layout
+    gs_dyn_array_free(pip->layout);
+
+    // Erase handles from slot arrays
+    gs_slot_array_erase(ogl->pipelines, hndl.id);
+}
+
+// Resource Query
 GS_API_DECL void gs_graphics_pipeline_desc_query(gs_handle(gs_graphics_pipeline_t) hndl, gs_graphics_pipeline_desc_t* out)
 {
     if (!out) return;
@@ -1106,35 +1196,7 @@ l:
         default:                                glBufferData(GL_ELEMENT_ARRAY_BUFFER, desc->size, desc->data, glusage); break;
     }
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-}
-
-/* Resource Destruction */
-void gs_graphics_texture_destroy(gs_handle(gs_graphics_texture_t) hndl)
-{
-    gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
-    if (gs_slot_array_exists(ogl->textures, hndl.id)) {
-        gsgl_texture_t* tex = gs_slot_array_getp(ogl->textures, hndl.id);
-        gs_assert(tex);
-        glDeleteTextures(1, &tex->id);
-        gs_slot_array_erase(ogl->textures, hndl.id);
-    }
-}
-
-// void gs_graphics_buffer_destroy(gs_handle(gs_graphics_buffer_t) hndl)
-// {
-// }
-
-void gs_graphics_shader_destroy(gs_handle(gs_graphics_shader_t) hndl)
-{
-}
-
-void gs_graphics_render_pass_destroy(gs_handle(gs_graphics_render_pass_t) hndl)
-{
-}
-
-void gs_graphics_pipeline_destroy(gs_handle(gs_graphics_pipeline_t) hndl)
-{
-}
+} 
 
 /* Resource Update*/
 void gs_graphics_texture_update(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc)
