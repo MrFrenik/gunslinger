@@ -495,8 +495,16 @@ gs_graphics_vertex_buffer_create(const gs_graphics_vertex_buffer_desc_t *desc)
     // the data in the desc. Will need to create functions that map GS enums
     // to DX11 enums.
     buffer_desc.ByteWidth = desc->size;
-    buffer_desc.Usage = D3D11_USAGE_DEFAULT;
     buffer_desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	if (desc->usage == GS_GRAPHICS_BUFFER_USAGE_DYNAMIC)
+	{
+		buffer_desc.Usage = D3D11_USAGE_DYNAMIC;
+    	buffer_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	}
+	else
+	{
+		buffer_desc.Usage = D3D11_USAGE_DEFAULT;
+	}
     buffer_data.pSysMem = desc->data;
 
     if (desc->data)
@@ -525,7 +533,15 @@ gs_graphics_index_buffer_create(const gs_graphics_index_buffer_desc_t* desc)
     dx11 = (gsdx11_data_t *)gs_engine_subsystem(graphics)->user_data;
     buffer_desc.ByteWidth = desc->size;
     buffer_desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-    buffer_desc.Usage = D3D11_USAGE_DEFAULT;
+	if (desc->usage == GS_GRAPHICS_BUFFER_USAGE_DYNAMIC)
+	{
+		buffer_desc.Usage = D3D11_USAGE_DYNAMIC;
+    	buffer_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	}
+	else
+	{
+		buffer_desc.Usage = D3D11_USAGE_DEFAULT;
+	}
     buffer_data.pSysMem = desc->data;
 
     if (desc->data)
@@ -646,9 +662,16 @@ gs_graphics_uniform_buffer_create(const gs_graphics_uniform_buffer_desc_t *desc)
     // TODO(matthew): compare these flags to what's specified in the desc (ie,
     // dynamic, CPU access)
     buffer_desc.ByteWidth = desc->size;
-    buffer_desc.Usage = D3D11_USAGE_DYNAMIC;
     buffer_desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-    buffer_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	if (desc->usage == GS_GRAPHICS_BUFFER_USAGE_DYNAMIC)
+	{
+		buffer_desc.Usage = D3D11_USAGE_DYNAMIC;
+    	buffer_desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	}
+	else
+	{
+		buffer_desc.Usage = D3D11_USAGE_DEFAULT;
+	}
     buffer_data.pSysMem = desc->data;
 
     ub.size = desc->size;
