@@ -117,6 +117,7 @@ typedef struct _TAG_gsdx11_data_cache
     ID3D11InputLayout                           *layout;
     gsdx11_shader_t                             shader;
     gsdx11_buffer_t                             ibo;
+	b32											instanced;
 } gsdx11_data_cache_t;
 
 typedef struct _TAG_gsdx11_uniform_buffer
@@ -1182,6 +1183,24 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
             case GS_DX11_OP_APPLY_BINDINGS:
             {
                 gsdx11_pipeline_t       *pipe = gs_slot_array_getp(dx11->pipelines, dx11->cache.pipeline.id);
+				// We need to order layouts by their buffer slot when creating our input layout. The bound
+				// pipeline object tells us how many layout descs need to be set, but they dont tell us
+				// which desc belongs to which buffer. The buffer_idx member, however, does. Furthermore, if
+				// we have a case like the instancing example, we'll need to bind 2 buffers (vertex and instance),
+				// but the first 2 attribs will describe the vertex buffer, and the 3rd attrib will describe the
+				// instance buffer. With the previous approach, this means we'd be filling out 6 layout_descs,
+				// when we only need to fill out 3.
+				// So, instead of iterating over all the descs in a for loop like we were doing before, we will
+				// simple traverse through the whole pipe->layout[] array once, using our layout_idx as an index,
+				// which we increment at the end of each loop. Then, when we finish filling out the layout_desc
+				// props and are ready to move to the next one, we see if the next attrib uses a new buffer slot.
+				// If so, then we set the buffer and move on to filling the layout_desc(s) for the buffer in the
+				// next slot. Otherwise, we continue filling out layout_desc(s) for the buffer in the current slot.
+				// Of course, we also need to make sure that we don't go out of bounds, so we make sure that the
+				// layout_idx does not exceed the layout_cnt.
+				int 					layout_idx = 0,
+										layout_cnt = gs_dyn_array_size(pipe->layout);
+
                 gs_byte_buffer_readc(&cb->commands, uint32_t, cnt);
 
                 for (uint32_t j = 0; j < cnt; j++)
@@ -1195,16 +1214,17 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
 							UINT 				stride = 0,
 												vbo_slot;
 							gsdx11_buffer_t		vbo;
+							int					prev_slot = 0;
 
 							gs_byte_buffer_readc(&cb->commands, uint32_t, id);
 							gs_byte_buffer_readc(&cb->commands, size_t, vbo_offset);
 							gs_byte_buffer_readc(&cb->commands, gs_graphics_vertex_data_type, data_type);
 
-							for (int i = 0; i < gs_dyn_array_size(pipe->layout); i++)
+							do
 							{
 								// TODO(matthew): Handle the other case, we're only considering no stride for now.
 								// TODO(matthew): Compute stride based on format if it's not passed as a param.
-								UINT							offset = pipe->layout[i].offset;
+								UINT							offset = pipe->layout[layout_idx].offset;
 								D3D11_INPUT_ELEMENT_DESC        layout_desc = gs_default_val();
 
 								// IASetVertexBuffers needs the stride for the whole buffer, not for the subbuffers.
@@ -1212,18 +1232,26 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
 								// since the pipeline layout receives the subbuffer strides/offsets. We need subbuffer
 								// data for creating the input layout, not for binding the whole vbo, and we can only
 								// bind one at a time through GS anyway.
-								stride += pipe->layout[i].stride;
+								stride += pipe->layout[layout_idx].stride;
 								vbo = gs_slot_array_get(dx11->vertex_buffers, id);
-								vbo_slot = pipe->layout[i].buffer_idx;
+								vbo_slot = pipe->layout[layout_idx].buffer_idx;
 
-								layout_desc.SemanticName = pipe->layout[i].name;
-								layout_desc.Format = gsdx11_vertex_attrib_to_dxgi_format(pipe->layout[i].format);
+								layout_desc.SemanticName = pipe->layout[layout_idx].name;
+								layout_desc.Format = gsdx11_vertex_attrib_to_dxgi_format(pipe->layout[layout_idx].format);
 								layout_desc.InputSlot = vbo_slot;
 								layout_desc.AlignedByteOffset = offset;
-								// layout_desc.InputSlotClass TODO(matthew): handle instancing case!
+								if (pipe->layout[layout_idx].divisor)
+								{
+									dx11->cache.instanced = TRUE;
+									layout_desc.InputSlotClass = D3D11_INPUT_PER_INSTANCE_DATA;
+									layout_desc.InstanceDataStepRate = pipe->layout[layout_idx].divisor;
+								}
 
 								gs_dyn_array_push(dx11->cache.layout_descs, layout_desc);
-							}
+
+								prev_slot = vbo_slot;
+								layout_idx++;
+							} while ((pipe->layout[layout_idx].buffer_idx == prev_slot) && (layout_idx < layout_cnt));
 
 							ID3D11DeviceContext_IASetVertexBuffers(dx11->context, vbo_slot, 1, &vbo, &stride, &vbo_offset);
                         } break;
@@ -1343,11 +1371,26 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
                 // TODO(matthew): handle instancing eventually
                 gs_byte_buffer_readc(&cb->commands, uint32_t, start);
                 gs_byte_buffer_readc(&cb->commands, uint32_t, count);
+				gs_byte_buffer_readc(&cb->commands, uint32_t, instances);
+				gs_byte_buffer_readc(&cb->commands, uint32_t, base_vertex);
+				gs_byte_buffer_readc(&cb->commands, uint32_t, range_start);
+				gs_byte_buffer_readc(&cb->commands, uint32_t, range_end);
 
                 if (dx11->cache.ibo)
-                    ID3D11DeviceContext_DrawIndexed(dx11->context, count, start, 0);
+				{
+					// TODO(matthew): figure out indexed instancing (shouldn't be hard).
+					/* if (instances) */
+					/* 	ID3D11Devicecontext_DrawIndexedInstanced(3, instances, start, ); */
+					/* else */
+                    	ID3D11DeviceContext_DrawIndexed(dx11->context, count, start, 0);
+				}
                 else
-                    ID3D11DeviceContext_Draw(dx11->context, count, start);
+				{
+					if (instances)
+                    	ID3D11DeviceContext_DrawInstanced(dx11->context, count, instances, start, 0);
+					else
+                    	ID3D11DeviceContext_Draw(dx11->context, count, start);
+				}
 
                 hr = IDXGISwapChain_Present(dx11->swapchain, 0, 0);
             } break;
