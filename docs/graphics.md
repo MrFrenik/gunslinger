@@ -468,90 +468,224 @@ DESC
 <br />
 
 #### gs_graphics_vertex_buffer_desc_t
-DESC
+Describes a vertex buffer resource.
 ```
+typedef struct gs_graphics_vertex_buffer_desc_t
+{
+    void*                                   data;
+    size_t                                  size;
+    gs_graphics_buffer_usage_type           usage;
+    gs_graphics_buffer_update_desc_t        update;
+} gs_graphics_vertex_buffer_desc_t;
 ```
 
 **Members**
 
+`data`
 
+Data to fill the vertex buffer with. Optional; can be NULL.
+
+`size`
+
+Size in bytes of the vertex buffer to be created.
+
+`usage`
+
+Specifies how the buffer's contents may be updated over time.
+See associated enum.
+
+`update`
+
+Specifies how the buffer's are to be updated with `gs_graphics_vertex_buffer_update()`.
+See associated enum.
 
 <br />
 
 #### gs_graphics_index_buffer_desc_t
-DESC
+Describes an index buffer resource.
 ```
+typedef gs_graphics_vertex_buffer_desc_t gs_graphics_index_buffer_desc_t;
 ```
 
 **Members**
 
-
+See definition of `gs_graphics_vertex_buffer_desc_t`.
+NOTE: `update` specifies use for `gs_graphics_index_buffer_update()`.
 
 <br />
 
 #### gs_graphics_uniform_buffer_desc_t
-DESC
+Describes a uniform buffer resource.
 ```
+typedef struct gs_graphics_uniform_buffer_desc_t
+{
+    void* 									data;
+    size_t 									size;
+    gs_graphics_buffer_usage_type 			usage;
+    const char* 							name;
+    gs_graphics_shader_stage_type 			stage;
+    gs_graphics_buffer_update_desc_t		update;
+} gs_graphics_uniform_buffer_desc_t;
 ```
 
 **Members**
 
+`data`
 
+Data to fill the vertex buffer with. Optional; can be NULL.
+
+`size`
+
+Size in bytes of the vertex buffer to be created.
+
+`usage`
+
+Specifies how the buffer's contents may be updated over time.
+See associated enum.
+
+`name`
+
+Name for the buffer; optional, but required for OpenGL/ES & WebGL.
+
+`stage`
+
+Pipeline stage the buffer is to be bound to (ie, vertex, fragment, etc.)
+
+`update`
+
+Specifies how the buffer is to be updated.
 
 <br />
 
 #### gs_graphics_framebuffer_desc_t
-DESC
+Describes a framebuffer resource.
 ```
+typedef struct gs_graphics_framebuffer_desc_t
+{
+    void*		data;
+} gs_graphics_framebuffer_desc_t;
 ```
 
 **Members**
 
+`data`
 
+Data to fill the framebuffer with; optional, can be NULL.
 
 <br />
 
 #### gs_graphics_clear_action_t
-DESC
+Describes the action for clearing the current render target's buffers.
 ```
+typedef struct gs_graphics_clear_action_t
+{
+    gs_graphics_clear_flag		flag;   // Flag to be set (clear color, clear depth, clear stencil, clear all)
+    union
+    {
+        float 		color[4];            // Clear color value
+        float 		depth;               // Clear depth value
+        int32_t		stencil;           // Clear stencil value
+    };
+ } gs_graphics_clear_action_t;
 ```
 
 **Members**
 
+`flag`
 
+Specifies which buffers are to be cleared (color, depth, stencil). Can be OR'd (||) together.
+
+`color`
+
+Value to clear the color buffer with.
+
+`depth`
+
+Value to clear the depth buffer with.
+
+`stencil`
+
+Value to clear the stencil buffer with.
 
 <br />
 
 #### gs_graphics_clear_desc_t
-DESC
+Describes a set of clear actions to be performed.
 ```
+typedef struct gs_graphics_clear_desc_t
+{
+    gs_graphics_clear_action_t*		actions;
+    size_t 							size;
+} gs_graphics_clear_desc_t;
 ```
 
 **Members**
 
+`actions`
 
+Array of clear actions.
+
+`size`
+
+Size of clear action array in bytes.
 
 <br />
 
 #### gs_graphics_render_pass_desc_t
-DESC
+Describes a render-pass resource.
 ```
+typedef struct gs_graphics_render_pass_desc_t
+{
+    gs_handle(gs_graphics_framebuffer_t)		fbo;
+    gs_handle(gs_graphics_texture_t)* 			color;
+    size_t 										color_size;
+    gs_handle(gs_graphics_texture_t)		 	depth;
+    gs_handle(gs_graphics_texture_t)		 	stencil;
+} gs_graphics_render_pass_desc_t;
 ```
 
 **Members**
 
+`fbo`
 
+Framebuffer to bind for render-pass.
+
+`color`
+
+Array of color attachments to be bound (useful for MRT, if supported).
+
+`color_size`
+
+Size of color attachment array.
+
+`depth`
+
+Depth attachment to be bound.
+
+`stencil`
+
+Stencil attachment to be bound.
 
 <br />
 
 #### gs_graphics_bind_vertex_buffer_desc_t
-DESC
+Describes how a vertex buffer is to be bound to the pipeline.
 ```
+typedef struct gs_graphics_bind_vertex_buffer_desc_t
+{
+    gs_handle(gs_graphics_vertex_buffer_t)		buffer;
+    size_t 										offset;
+    gs_graphics_vertex_data_type 				data_type;
+} gs_graphics_bind_vertex_buffer_desc_t;
 ```
 
 **Members**
 
+`buffer`
 
+`offset`
+
+`data_type`
 
 <br />
 
