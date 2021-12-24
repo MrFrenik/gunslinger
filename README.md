@@ -3,7 +3,7 @@
 [![Discord](https://img.shields.io/discord/485178488203116567?label=discord&logo=discord)](https://discord.gg/QXwpETB)
 ![GitHub top language](https://img.shields.io/github/languages/top/mrfrenik/gunslinger?label=c99)
 
-Gunslinger is an [stb-style](https://github.com/nothings/stb), header-only c99 framework for multimedia applications.
+Gunslinger is a header-only c99 framework for multimedia applications.
 
 ## Features
 - Header-only: drag-drop into any project without any additional compiling required.
