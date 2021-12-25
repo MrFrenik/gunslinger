@@ -117,7 +117,6 @@ typedef struct _TAG_gsdx11_data_cache
     ID3D11InputLayout                           *layout;
     gsdx11_shader_t                             shader;
     gsdx11_buffer_t                             ibo;
-	b32											instanced;
 } gsdx11_data_cache_t;
 
 typedef struct _TAG_gsdx11_uniform_buffer
@@ -1242,7 +1241,6 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
 								layout_desc.AlignedByteOffset = offset;
 								if (pipe->layout[layout_idx].divisor)
 								{
-									dx11->cache.instanced = TRUE;
 									layout_desc.InputSlotClass = D3D11_INPUT_PER_INSTANCE_DATA;
 									layout_desc.InstanceDataStepRate = pipe->layout[layout_idx].divisor;
 								}
@@ -1368,7 +1366,6 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
                 /*  stride = pipe->layout[i].stride; // TODO(matthew): Handle the other case, we're only considering no stride for now. */
                 /*  offset = vdecl.offset; // TODO(matthew): Again, handle the other case (see L2051). */
 
-                // TODO(matthew): handle instancing eventually
                 gs_byte_buffer_readc(&cb->commands, uint32_t, start);
                 gs_byte_buffer_readc(&cb->commands, uint32_t, count);
 				gs_byte_buffer_readc(&cb->commands, uint32_t, instances);
@@ -1378,10 +1375,10 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
 
                 if (dx11->cache.ibo)
 				{
-					// TODO(matthew): figure out indexed instancing (shouldn't be hard).
-					/* if (instances) */
-					/* 	ID3D11Devicecontext_DrawIndexedInstanced(3, instances, start, ); */
-					/* else */
+					// TODO(matthew): check other params in the draw_desc
+					if (instances)
+						ID3D11DeviceContext_DrawIndexedInstanced(dx11->context, count, instances, start, 0, 0);
+					else
                     	ID3D11DeviceContext_DrawIndexed(dx11->context, count, start, 0);
 				}
                 else
