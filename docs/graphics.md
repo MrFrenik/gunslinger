@@ -519,12 +519,12 @@ Describes a uniform buffer resource.
 ```
 typedef struct gs_graphics_uniform_buffer_desc_t
 {
-    void* 									data;
-    size_t 									size;
-    gs_graphics_buffer_usage_type 			usage;
-    const char* 							name;
-    gs_graphics_shader_stage_type 			stage;
-    gs_graphics_buffer_update_desc_t		update;
+    void*                                   data;
+    size_t                                  size;
+    gs_graphics_buffer_usage_type           usage;
+    const char*                             name;
+    gs_graphics_shader_stage_type           stage;
+    gs_graphics_buffer_update_desc_t        update;
 } gs_graphics_uniform_buffer_desc_t;
 ```
 
@@ -562,7 +562,7 @@ Describes a framebuffer resource.
 ```
 typedef struct gs_graphics_framebuffer_desc_t
 {
-    void*		data;
+    void*       data;
 } gs_graphics_framebuffer_desc_t;
 ```
 
@@ -579,12 +579,12 @@ Describes the action for clearing the current render target's buffers.
 ```
 typedef struct gs_graphics_clear_action_t
 {
-    gs_graphics_clear_flag		flag;   // Flag to be set (clear color, clear depth, clear stencil, clear all)
+    gs_graphics_clear_flag      flag;   // Flag to be set (clear color, clear depth, clear stencil, clear all)
     union
     {
-        float 		color[4];            // Clear color value
-        float 		depth;               // Clear depth value
-        int32_t		stencil;           // Clear stencil value
+        float       color[4];            // Clear color value
+        float       depth;               // Clear depth value
+        int32_t     stencil;           // Clear stencil value
     };
  } gs_graphics_clear_action_t;
 ```
@@ -614,8 +614,8 @@ Describes a set of clear actions to be performed.
 ```
 typedef struct gs_graphics_clear_desc_t
 {
-    gs_graphics_clear_action_t*		actions;
-    size_t 							size;
+    gs_graphics_clear_action_t*     actions;
+    size_t                          size;
 } gs_graphics_clear_desc_t;
 ```
 
@@ -636,11 +636,11 @@ Describes a render-pass resource.
 ```
 typedef struct gs_graphics_render_pass_desc_t
 {
-    gs_handle(gs_graphics_framebuffer_t)		fbo;
-    gs_handle(gs_graphics_texture_t)* 			color;
-    size_t 										color_size;
-    gs_handle(gs_graphics_texture_t)		 	depth;
-    gs_handle(gs_graphics_texture_t)		 	stencil;
+    gs_handle(gs_graphics_framebuffer_t)        fbo;
+    gs_handle(gs_graphics_texture_t)*           color;
+    size_t                                      color_size;
+    gs_handle(gs_graphics_texture_t)            depth;
+    gs_handle(gs_graphics_texture_t)            stencil;
 } gs_graphics_render_pass_desc_t;
 ```
 
@@ -673,9 +673,9 @@ Describes how a vertex buffer is to be bound to the pipeline.
 ```
 typedef struct gs_graphics_bind_vertex_buffer_desc_t
 {
-    gs_handle(gs_graphics_vertex_buffer_t)		buffer;
-    size_t 										offset;
-    gs_graphics_vertex_data_type 				data_type;
+    gs_handle(gs_graphics_vertex_buffer_t)      buffer;
+    size_t                                      offset;
+    gs_graphics_vertex_data_type                data_type;
 } gs_graphics_bind_vertex_buffer_desc_t;
 ```
 
@@ -683,97 +683,256 @@ typedef struct gs_graphics_bind_vertex_buffer_desc_t
 
 `buffer`
 
+Handle to the vertex buffer to be bound.
+
 `offset`
 
+Offset into the buffer to bind from.
+
 `data_type`
+
+Specifies if the data is interleaved or non-interleaved.
 
 <br />
 
 #### gs_graphics_bind_index_buffer_desc_t
-DESC
+Describes how an index buffer is to be bound to the pipeline.
 ```
+typedef struct gs_graphics_bind_index_buffer_desc_t
+{
+    gs_handle(gs_graphics_index_buffer_t)       buffer;
+} gs_graphics_bind_index_buffer_desc_t;
 ```
 
 **Members**
 
+`buffer`
 
+Handle to the index buffer to be bound.
 
 <br />
 
 #### gs_graphics_bind_image_buffer_desc_t
-DESC
+Specifies how an image buffer is to be bound to the pipeline.
 ```
+typedef struct gs_graphics_bind_image_buffer_desc_t
+{
+    gs_handle(gs_graphics_texture_t)        tex;
+    uint32_t                                binding;
+    gs_graphics_access_type                 access;
+} gs_graphics_bind_image_buffer_desc_t;
 ```
 
 **Members**
 
+`tex`
 
+Handle to the image buffer's texture to be bound.
+
+`binding`
+
+Slot to bind the texture to.
+
+`access`
+
+Specifies read/write permissions.
 
 <br />
 
 #### gs_graphics_bind_uniform_buffer_desc_t
-DESC
+Specifies how a uniform buffer is to be bound to the pipeline.
 ```
+typedef struct gs_graphics_bind_uniform_buffer_desc_t
+{
+    gs_handle(gs_graphics_uniform_buffer_t)     buffer;
+    uint32_t                                    binding;
+    struct
+    {
+        size_t                                  offset;
+        size_t                                  size;
+    } range;
+} gs_graphics_bind_uniform_buffer_desc_t;
 ```
 
 **Members**
 
+`buffer`
 
+Handle to the uniform buffer to be bound.
+
+`binding`
+
+Slot to bind the uniform buffer to.
+
+`offset`
+
+Specify an offset for ranged binds.
+
+`size`
+
+Specify size for ranged binds.
 
 <br />
 
 #### gs_graphics_bind_uniform_desc_t
-DESC
+Specifies how a uniform is to be bound to the pipeline.
 ```
+typedef struct gs_graphics_bind_uniform_desc_t
+{
+    gs_handle(gs_graphics_uniform_t)        uniform;
+    void*                                   data;
+    uint32_t                                binding;   // Base binding for samplers?
+} gs_graphics_bind_uniform_desc_t;
 ```
 
 **Members**
 
+`uniform`
 
+Handle to the uniform to be bound.
+
+`data`
+
+Data to be attached to the uniform.
+
+`binding`
+
+Slot to bind the uniform to. (NOTE: base binding for samplers)?
 
 <br />
 
 #### gs_graphics_bind_desc_t
-DESC
+Specifies a set of bindings to apply to the pipeline.
 ```
+typedef struct gs_graphics_bind_desc_t
+{
+    struct {
+        gs_graphics_bind_vertex_buffer_desc_t*      desc;
+        size_t                                      size;
+    } vertex_buffers;
+
+    struct {
+        gs_graphics_bind_index_buffer_desc_t*       desc;
+        size_t                                      size;
+    } index_buffers;
+
+    struct {
+        gs_graphics_bind_uniform_buffer_desc_t*     desc;
+        size_t                                      size;
+    } uniform_buffers;
+
+    struct {
+        gs_graphics_bind_uniform_desc_t*            desc;
+        size_t                                      size;
+    } uniforms;
+
+    struct {
+        gs_graphics_bind_image_buffer_desc_t*       desc;
+        size_t                                      size;
+    } image_buffers;
+} gs_graphics_bind_desc_t;
 ```
 
 **Members**
 
+`desc`
 
+Array of declarations (NULL by default).
+
+`size`
+
+Size of array in bytes (optional if one is specified).
 
 <br />
 
 #### gs_graphics_blend_state_desc_t
-DESC
+Specifies a blend state.
 ```
+typedef struct gs_graphics_blend_state_desc_t
+{
+    gs_graphics_blend_equation_type     func;
+    gs_graphics_blend_mode_type         src;
+    gs_graphics_blend_mode_type         dst;
+} gs_graphics_blend_state_desc_t;
 ```
 
 **Members**
 
+`func`
 
+Equation function to use for blend ops.
+
+`src`
+
+Source blend mode.
+
+`dst`
+
+Destination blend mode.
 
 <br />
 
 #### gs_graphics_depth_state_desc_t
-DESC
+Specifies a depth state.
 ```
+typedef struct gs_graphics_depth_state_desc_t
+{
+    gs_graphics_depth_func_type     func;
+} gs_graphics_depth_state_desc_t;
 ```
 
 **Members**
 
+`func`
 
+Function to set for depth test.
 
 <br />
 
 #### gs_graphics_stencil_state_desc_t
-DESC
+Specifies a stencil state.
 ```
+typedef struct gs_graphics_stencil_state_desc_t
+{
+    gs_graphics_stencil_func_type       func;
+    uint32_t                            ref;
+    uint32_t                            comp_mask;
+    uint32_t                            write_mask;
+    gs_graphics_stencil_op_type         sfail;
+    gs_graphics_stencil_op_type         dpfail;
+    gs_graphics_stencil_op_type         dppass;
+} gs_graphics_stencil_state_desc_t;
 ```
 
 **Members**
 
+`func`
 
+Function to set for stencil test.
+
+`ref`
+
+Specifies reference val for stencil test.
+
+`comp_mask`
+
+Specifies mask that is ANDed with both ref val and stored stencil val.
+
+`write_mask`
+
+Specifies mask that is ANDed with both ref val and stored stencil val.
+
+`sfail`
+
+Action to take when stencil test fails.
+
+`dpfail`
+
+Action to take when stencil test passes but depth test fails.
+
+`dppass`
+
+Action to take when both stencil test passes and either depth passes or is not enabled.
 
 <br />
 
