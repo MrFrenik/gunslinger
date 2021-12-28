@@ -410,14 +410,14 @@ void gs_immediate_draw_static_data_init()
     unsigned char* buf_decompressed_data = (unsigned char*)gs_malloc(buf_decompressed_size);
     gs_decompress(buf_decompressed_data, (unsigned char*)compressed_ttf_data, (u32)compressed_ttf_size);
 
-	const u32 w = 512;
-	const u32 h = 512;
+	const u32 w = 1024;
+	const u32 h = 1024;
 	const u32 num_comps = 4;
 	u8* alpha_bitmap = (u8*)gs_malloc(w * h);
 	u8* flipmap = (u8*)gs_malloc(w * h * num_comps);
 	memset(alpha_bitmap, 0, w * h);
 	memset(flipmap, 0, w * h * num_comps);
-   	s32 v = stbtt_BakeFontBitmap((u8*)buf_decompressed_data, 0, 16.f, alpha_bitmap, w, h, 32, 96, (stbtt_bakedchar*)f->glyphs); // no guarantee this fits!
+   	s32 v = stbtt_BakeFontBitmap((u8*)buf_decompressed_data, 0, 13.f, alpha_bitmap, w, h, 32, 96, (stbtt_bakedchar*)f->glyphs); // no guarantee this fits!
 
    	// Flip texture
    	u32 r = h - 1;
@@ -441,7 +441,8 @@ void gs_immediate_draw_static_data_init()
    	desc.height = h;
    	desc.data = flipmap;
    	desc.format = GS_GRAPHICS_TEXTURE_FORMAT_RGBA8;
-   	desc.min_filter = GS_GRAPHICS_TEXTURE_FILTER_LINEAR;
+   	desc.min_filter = GS_GRAPHICS_TEXTURE_FILTER_NEAREST;
+   	desc.mag_filter = GS_GRAPHICS_TEXTURE_FILTER_NEAREST;
 
    	// Generate atlas texture for bitmap with bitmap data
    	f->texture.hndl = gs_graphics_texture_create(&desc);
