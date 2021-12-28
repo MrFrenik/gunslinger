@@ -434,18 +434,6 @@ void gs_audio_mutex_unlock(gs_audio_t* audio)
     ma_mutex_unlock(&ma->lock);
 }
 
-s16 do_distortion(int16_t sample)
-{
-    // Bring sample into -1/1 range (float)
-    float v = gs_map_range((float)SHRT_MIN, (float)SHRT_MAX, -1.f, 1.f, (float)sample); 
-
-    const float pre_gain = 10.f;
-    v = tanhf(pre_gain * sin(v)); 
-
-    // Bring back into range
-    return gs_map_range(-1.f, 1.f, (float)SHRT_MIN, (float)SHRT_MAX, v);
-} 
-
 void ma_audio_commit(ma_device* device, void* output, const void* input, ma_uint32 frame_count)
 {
     gs_audio_t* audio = gs_engine_subsystem(audio);
