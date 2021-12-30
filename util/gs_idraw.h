@@ -410,8 +410,8 @@ void gs_immediate_draw_static_data_init()
     unsigned char* buf_decompressed_data = (unsigned char*)gs_malloc(buf_decompressed_size);
     gs_decompress(buf_decompressed_data, (unsigned char*)compressed_ttf_data, (u32)compressed_ttf_size);
 
-	const u32 w = 1024;
-	const u32 h = 1024;
+	const u32 w = 512;
+	const u32 h = 512;
 	const u32 num_comps = 4;
 	u8* alpha_bitmap = (u8*)gs_malloc(w * h);
 	u8* flipmap = (u8*)gs_malloc(w * h * num_comps);
@@ -875,19 +875,11 @@ void gsi_camera2D(gs_immediate_draw_t* gsi)
 {
 	// Flush previous
 	gsi_flush(gsi);
-	// Puts the camera in center of screen, 0,0 is bottom left corner
 	gs_vec2 ws = gs_platform_window_sizev(gsi->window_handle);
-	gs_vec2 hws = gs_vec2_scale(ws, 0.5f);
-	gs_camera_t c = gs_camera_default();
-	c.transform.position = gs_vec3_add(c.transform.position, gs_v3(hws.x, hws.y, -1.f));
-	f32 l = -ws.x / 2.f; 
-	f32 r = ws.x / 2.f;
-	f32 b = ws.y / 2.f;
-	f32 tp = -ws.y / 2.f;
-	gs_mat4 ortho = gs_mat4_transpose(gs_mat4_ortho(
-		l, r, b, tp, 0.1f, 100.f
-	));
-	ortho = gs_mat4_mul(ortho, gs_camera_get_view(&c));
+	f32 l = 0.f, r = ws.x, tp = 0.f, b = ws.y;
+	gs_mat4 ortho = gs_mat4_ortho(
+		l, r, b, tp, -1.f, 1.f
+	);
 	gsi_load_matrix(gsi, ortho);
 }
 

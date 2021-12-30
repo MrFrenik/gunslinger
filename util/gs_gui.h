@@ -102,10 +102,16 @@ enum {
 enum {
 	GS_GUI_COMMAND_JUMP = 1,
 	GS_GUI_COMMAND_CLIP,
-	GS_GUI_COMMAND_RECT,
+    GS_GUI_COMMAND_SHAPE,
 	GS_GUI_COMMAND_TEXT,
 	GS_GUI_COMMAND_ICON,
 	GS_GUI_COMMAND_MAX
+};
+
+enum {
+    GS_GUI_SHAPE_RECT = 1,
+    GS_GUI_SHAPE_CIRCLE, 
+    GS_GUI_SHAPE_TRIANGLE
 };
 
 enum {
@@ -191,15 +197,29 @@ typedef struct gs_gui_context_t gs_gui_context_t;
 typedef uint32_t gs_gui_id;
 typedef GS_GUI_REAL gs_gui_real;
 
+// Shapes
 typedef struct {float x, y, w, h;} gs_gui_rect_t;
-typedef struct {gs_gui_id id; int32_t last_update;} gs_gui_pool_item_t;
+typedef struct {float radius; gs_vec2 center;} gs_gui_circle_t;
+typedef struct {gs_vec2 points[3];} gs_gui_triangle_t;
+
+typedef struct {gs_gui_id id; int32_t last_update;} gs_gui_pool_item_t; 
 
 typedef struct {int32_t type, size;} gs_gui_basecommand_t;
 typedef struct {gs_gui_basecommand_t base; void *dst;} gs_gui_jumpcommand_t;
 typedef struct {gs_gui_basecommand_t base; gs_gui_rect_t rect;} gs_gui_clipcommand_t;
-typedef struct {gs_gui_basecommand_t base; gs_gui_rect_t rect; gs_color_t color;} gs_gui_rectcommand_t;
 typedef struct {gs_gui_basecommand_t base; gs_asset_font_t* font; gs_vec2 pos; gs_color_t color; char str[1];} gs_gui_textcommand_t;
 typedef struct {gs_gui_basecommand_t base; gs_gui_rect_t rect; int32_t id; gs_color_t color;} gs_gui_iconcommand_t;
+typedef struct {
+    gs_gui_basecommand_t base; 
+    uint32_t type;
+    union
+    {
+        gs_gui_rect_t rect;
+        gs_gui_circle_t circle;
+        gs_gui_triangle_t triangle;
+    };
+    gs_color_t color;
+} gs_gui_shapecommand_t;
 
 typedef union 
 {
@@ -207,7 +227,7 @@ typedef union
 	gs_gui_basecommand_t base;
 	gs_gui_jumpcommand_t jump;
 	gs_gui_clipcommand_t clip;
-	gs_gui_rectcommand_t rect;
+	gs_gui_shapecommand_t shape;
 	gs_gui_textcommand_t text;
 	gs_gui_iconcommand_t icon;
 } gs_gui_command_t;
@@ -478,6 +498,8 @@ GS_API_DECL gs_gui_command_t* gs_gui_push_command(gs_gui_context_t *ctx, int32_t
 GS_API_DECL int32_t gs_gui_next_command(gs_gui_context_t *ctx, gs_gui_command_t **cmd);
 GS_API_DECL void gs_gui_set_clip(gs_gui_context_t *ctx, gs_gui_rect_t rect);
 GS_API_DECL void gs_gui_draw_rect(gs_gui_context_t *ctx, gs_gui_rect_t rect, gs_color_t color);
+GS_API_DECL void gs_gui_draw_circle(gs_gui_context_t* ctx, gs_vec2 position, float radius, gs_color_t color);
+GS_API_DECL void gs_gui_draw_triangle(gs_gui_context_t* ctx, gs_vec2 a, gs_vec2 b, gs_vec2 c, gs_color_t color);
 GS_API_DECL void gs_gui_draw_box(gs_gui_context_t *ctx, gs_gui_rect_t rect, gs_color_t color);
 GS_API_DECL void gs_gui_draw_text(gs_gui_context_t *ctx, gs_asset_font_t* font, const char *str, int32_t len, gs_vec2 pos, gs_color_t color);
 GS_API_DECL void gs_gui_draw_icon(gs_gui_context_t *ctx, int32_t id, gs_gui_rect_t rect, gs_color_t color);
@@ -503,6 +525,7 @@ GS_API_DECL void gs_gui_update_control(gs_gui_context_t *ctx, gs_gui_id id, gs_g
 #define gs_gui_header(_CTX, _LABEL)		            gs_gui_header_ex((_CTX), (_LABEL), 0)
 #define gs_gui_begin_treenode(_CTX, _LABEL)	        gs_gui_begin_treenode_ex((_CTX), (_LABEL), 0)
 #define gs_gui_begin_window(_CTX, _TITLE, _RECT)    gs_gui_begin_window_ex((_CTX), (_TITLE), (_RECT), 0)
+#define gs_gui_begin_popup(_CTX, _TITLE, _RECT)     gs_gui_begin_popup_ex((_CTX), (_TITLE), (_RECT), 0)
 #define gs_gui_begin_panel(_CTX, _NAME)			    gs_gui_begin_panel_ex((_CTX), (_NAME), 0)
 #define gs_gui_dock(_CTX, _DST, _SRC, _TYPE)        gs_gui_dock_ex((_CTX), (_DST), (_SRC), (_TYPE), 0.5f)
 #define gs_gui_undock(_CTX, _NAME)                  gs_gui_undock_ex((_CTX), (_NAME))
@@ -521,7 +544,7 @@ GS_API_DECL void gs_gui_end_treenode(gs_gui_context_t* ctx);
 GS_API_DECL int32_t gs_gui_begin_window_ex(gs_gui_context_t * ctx, const char* title, gs_gui_rect_t rect, int32_t opt);
 GS_API_DECL void gs_gui_end_window(gs_gui_context_t* ctx);
 GS_API_DECL void gs_gui_open_popup(gs_gui_context_t* ctx, const char* name);
-GS_API_DECL int32_t gs_gui_begin_popup(gs_gui_context_t* ctx, const char* name, int32_t opt);
+GS_API_DECL int32_t gs_gui_begin_popup_ex(gs_gui_context_t* ctx, const char* name, gs_gui_rect_t r, int32_t opt);
 GS_API_DECL void gs_gui_end_popup(gs_gui_context_t* ctx);
 GS_API_DECL void gs_gui_begin_panel_ex(gs_gui_context_t* ctx, const char* name, int32_t opt);
 GS_API_DECL void gs_gui_end_panel(gs_gui_context_t* ctx);
@@ -579,21 +602,21 @@ static gs_gui_style_t gs_gui_default_style =
 	/* title_height | scrollbar_size | thumb_size */
 	24, 12, 8,
 	{
-		{ 230, 230, 230, 255 }, /* GS_GUI_COLOR_TEXT */
-		{ 20,	20,	20,	255 }, /* GS_GUI_COLOR_BORDER */
-		{ 50,	50,	50,	200 }, /* GS_GUI_COLOR_WINDOWBG */
-		{ 25,	25,	25,	255 }, /* GS_GUI_COLOR_TITLEBG */
-		{ 240, 240, 240, 255 }, /* GS_GUI_COLOR_TITLETEXT */
-		{ 0,	 0,	 0,	 0	 }, /* GS_GUI_COLOR_PANELBG */
-		{ 75,	75,	75,	255 }, /* GS_GUI_COLOR_BUTTON */
-		{ 95,	95,	95,	255 }, /* GS_GUI_COLOR_BUTTONHOVER */
-		{ 115, 115, 115, 255 }, /* GS_GUI_COLOR_BUTTONFOCUS */
-		{ 30,	30,	30,	255 }, /* GS_GUI_COLOR_BASE */
-		{ 35,	35,	35,	255 }, /* GS_GUI_COLOR_BASEHOVER */
-		{ 40,	40,	40,	255 }, /* GS_GUI_COLOR_BASEFOCUS */
-		{ 43,	43,	43,	255 }, /* GS_GUI_COLOR_SCROLLBASE */
-		{ 30,	30,	30,	255 },	/* GS_GUI_COLOR_SCROLLTHUMB */
-		{ 0,	0,	0,	0 }	    /* GS_GUI_COLOR_INVISIBLE */
+		{255,  255, 255,  255}, /* GS_GUI_COLOR_TEXT */
+		{29,	29,  29,  181}, /* GS_GUI_COLOR_BORDER */
+		{25,	25,	 25,  255}, /* GS_GUI_COLOR_WINDOWBG */
+		{28,	28,	 28,  255}, /* GS_GUI_COLOR_TITLEBG */
+		{240,  240, 240,  255}, /* GS_GUI_COLOR_TITLETEXT */
+		{10,	10,  10,   59}, /* GS_GUI_COLOR_PANELBG */
+		{35,	35,	 35,  255}, /* GS_GUI_COLOR_BUTTON */
+		{40,	40,	 40,  255}, /* GS_GUI_COLOR_BUTTONHOVER */
+		{45,   150, 139,  255}, /* GS_GUI_COLOR_BUTTONFOCUS */
+		{20,	20,	 20,  255}, /* GS_GUI_COLOR_BASE */
+		{12,	12,	 12,  255}, /* GS_GUI_COLOR_BASEHOVER */
+		{10,	10,	 10,  255}, /* GS_GUI_COLOR_BASEFOCUS */
+		{22,	22,	 22,  255}, /* GS_GUI_COLOR_SCROLLBASE */
+		{30,	30,	 30,  255},	/* GS_GUI_COLOR_SCROLLTHUMB */
+		{0,	     0,	 0,	   0 }	    /* GS_GUI_COLOR_INVISIBLE */
 	}
 }; 
 
@@ -1767,7 +1790,7 @@ static void gs_gui_draw_splits(gs_gui_context_t* ctx, gs_gui_split_t* split)
                 active && can_draw
             )
             {
-                gs_gui_draw_rect(ctx, r, GS_COLOR_WHITE);
+                gs_gui_draw_rect(ctx, r, ctx->focus_split == split ? ctx->style->colors[GS_GUI_COLOR_BUTTONFOCUS] : ctx->style->colors[GS_GUI_COLOR_BUTTONHOVER]);
                 can_draw = false;
             }
         } 
@@ -1822,7 +1845,7 @@ static void gs_gui_draw_splits(gs_gui_context_t* ctx, gs_gui_split_t* split)
                     active
                 )
                 {
-                    gs_gui_draw_rect(ctx, r, GS_COLOR_WHITE);
+                    gs_gui_draw_rect(ctx, r, ctx->focus_split == split ? ctx->style->colors[GS_GUI_COLOR_BUTTONFOCUS] : ctx->style->colors[GS_GUI_COLOR_BUTTONHOVER]);
                     can_draw = false;
                 }
             }
@@ -2012,7 +2035,7 @@ GS_API_DECL void gs_gui_begin(gs_gui_context_t* ctx)
             r.y -= 10.f;
             r.h += 20.f;
             gs_snprintfc(TMP, 256, "!dockspace%zu", (size_t)split);
-            int32_t opt = GS_GUI_OPT_NOFRAME | GS_GUI_OPT_FORCESETRECT | GS_GUI_OPT_NOMOVE | GS_GUI_OPT_NOTITLE | GS_GUI_OPT_NOSCROLL | GS_GUI_OPT_NOCLIP | GS_GUI_OPT_NODOCK;
+            int32_t opt = GS_GUI_OPT_NOFRAME | GS_GUI_OPT_FORCESETRECT | GS_GUI_OPT_NOMOVE | GS_GUI_OPT_NOTITLE | GS_GUI_OPT_NOSCROLL | GS_GUI_OPT_NOCLIP | GS_GUI_OPT_NODOCK | GS_GUI_OPT_DOCKSPACE;
             gs_gui_begin_window_ex(ctx, TMP, r, opt); 
             {
                 // Set zindex for sorting (always below the bottom most window in this split tree)
@@ -2149,8 +2172,8 @@ static void gs_gui_docking(gs_gui_context_t* ctx)
 
         const float sz = gs_clamp(gs_min(cnt->rect.w * 0.1f, cnt->rect.h * 0.1f), 15.f, 25.f);
         const float off = sz + sz * 0.2f;
-        gs_color_t def_col = gs_color(255, 0, 0, 100);
-        gs_color_t hov_col = gs_color(255, 0, 0, 200);
+        gs_color_t def_col = gs_color_alpha(ctx->style->colors[GS_GUI_COLOR_BUTTONFOCUS], 100); // gs_color(255, 0, 0, 100);
+        gs_color_t hov_col = gs_color_alpha(ctx->style->colors[GS_GUI_COLOR_BUTTONFOCUS], 150); // gs_color(255, 0, 0, 200);
 
         gs_gui_rect_t center = gs_gui_rect(c.x, c.y, sz, sz);
         gs_gui_rect_t left   = gs_gui_rect(c.x - off, c.y, sz, sz);
@@ -2195,17 +2218,23 @@ static void gs_gui_docking(gs_gui_context_t* ctx)
 
             bool is_dockspace = ctx->dockable_root->opt & GS_GUI_OPT_DOCKSPACE;
 
-            // if (!ctx->focus_root->split && !is_dockspace)
-            {
-                gsi_rectvd(dl, gs_v2(center.x, center.y), gs_v2(center.w, center.h), gs_v2s(0.f), gs_v2s(1.f), hov_c ? hov_col : def_col, GS_GRAPHICS_PRIMITIVE_TRIANGLES);
-            }
+            // Draw center rect
+            gsi_rectvd(dl, gs_v2(center.x, center.y), gs_v2(center.w, center.h), gs_v2s(0.f), gs_v2s(1.f), hov_c ? hov_col : def_col, GS_GRAPHICS_PRIMITIVE_TRIANGLES);
+            // gsi_rectvd(dl, gs_v2(center.x, center.y), gs_v2(center.w + 1, center.h), gs_v2s(0.f), gs_v2s(1.f), hov_col, GS_GRAPHICS_PRIMITIVE_LINES);
 
             if (!is_dockspace)
             {
                 gsi_rectvd(dl, gs_v2(left.x, left.y), gs_v2(left.w, left.h), gs_v2s(0.f), gs_v2s(1.f), hov_l ? hov_col : def_col, GS_GRAPHICS_PRIMITIVE_TRIANGLES);
+                // gsi_rectvd(dl, gs_v2(left.x, left.y), gs_v2(left.w, left.h), gs_v2s(0.f), gs_v2s(1.f), hov_col, GS_GRAPHICS_PRIMITIVE_LINES);
+
                 gsi_rectvd(dl, gs_v2(right.x, right.y), gs_v2(right.w, right.h), gs_v2s(0.f), gs_v2s(1.f), hov_r ? hov_col : def_col, GS_GRAPHICS_PRIMITIVE_TRIANGLES);
+                // gsi_rectvd(dl, gs_v2(right.x, right.y), gs_v2(right.w, right.h), gs_v2s(0.f), gs_v2s(1.f), hov_col, GS_GRAPHICS_PRIMITIVE_LINES);
+
                 gsi_rectvd(dl, gs_v2(top.x, top.y), gs_v2(top.w, top.h), gs_v2s(0.f), gs_v2s(1.f), hov_t ? hov_col : def_col, GS_GRAPHICS_PRIMITIVE_TRIANGLES);
+                // gsi_rectvd(dl, gs_v2(top.x, top.y), gs_v2(top.w, top.h), gs_v2s(0.f), gs_v2s(1.f), hov_col, GS_GRAPHICS_PRIMITIVE_LINES);
+
                 gsi_rectvd(dl, gs_v2(bottom.x, bottom.y), gs_v2(bottom.w, bottom.h), gs_v2s(0.f), gs_v2s(1.f), hov_b ? hov_col : def_col, GS_GRAPHICS_PRIMITIVE_TRIANGLES); 
+                // gsi_rectvd(dl, gs_v2(bottom.x, bottom.y), gs_v2(bottom.w, bottom.h), gs_v2s(0.f), gs_v2s(1.f), hov_col, GS_GRAPHICS_PRIMITIVE_LINES); 
             }
 
             const float d = 0.5f;
@@ -2634,23 +2663,43 @@ GS_API_DECL void gs_gui_render(gs_gui_context_t* ctx, gs_command_buffer_t* cb)
             gsi_text(&ctx->gsi, tp->x, tp->y, ts, tf, false, tc->r, tc->g, tc->b, tc->a);
         } break;
 
-        case GS_GUI_COMMAND_RECT:
+        case GS_GUI_COMMAND_SHAPE:
         {
             gsi_texture(&ctx->gsi, gs_handle_invalid(gs_graphics_texture_t));
-            gs_gui_rect_t* r = &cmd->rect.rect; 
-            gs_color_t* c = &cmd->rect.color;
-            gsi_rectvd(&ctx->gsi, gs_v2(r->x, r->y), gs_v2(r->w, r->h), gs_v2s(0.f), gs_v2s(1.f), *c, GS_GRAPHICS_PRIMITIVE_TRIANGLES);
+            gs_color_t* c = &cmd->shape.color;
+
+            switch (cmd->shape.type)
+            {
+                case GS_GUI_SHAPE_RECT:
+                {
+                    gs_gui_rect_t* r = &cmd->shape.rect; 
+                    gsi_rectvd(&ctx->gsi, gs_v2(r->x, r->y), gs_v2(r->w, r->h), gs_v2s(0.f), gs_v2s(1.f), *c, GS_GRAPHICS_PRIMITIVE_TRIANGLES);
+                } break;
+
+                case GS_GUI_SHAPE_CIRCLE:
+                {
+                    // gs_gui_rect_t cr = gs_gui_get_clip_rect(ctx);
+                    // gs_immediate_draw_t* dl = &ctx->overlay_draw_list;
+                    // gsi_rectvd(dl, gs_v2(cr.x, cr.y), gs_v2(cr.w, cr.h), gs_v2s(0.f), gs_v2s(1.f), GS_COLOR_GREEN, GS_GRAPHICS_PRIMITIVE_LINES);
+                    gs_vec2* cp = &cmd->shape.circle.center;
+                    float* r = &cmd->shape.circle.radius;
+                    gsi_circle(&ctx->gsi, cp->x, cp->y, *r, 16, c->r, c->g, c->b, c->a, GS_GRAPHICS_PRIMITIVE_TRIANGLES);
+                } break;
+
+                case GS_GUI_SHAPE_TRIANGLE:
+                {
+                    gs_vec2* pa = &cmd->shape.triangle.points[0];
+                    gs_vec2* pb = &cmd->shape.triangle.points[1];
+                    gs_vec2* pc = &cmd->shape.triangle.points[2];
+                    gsi_trianglev(&ctx->gsi, *pa, *pb, *pc, *c, GS_GRAPHICS_PRIMITIVE_TRIANGLES);
+
+                } break;
+            }
+            
         } break;
 
         case GS_GUI_COMMAND_ICON:
         {
-            /*
-            gsi_texture(&ctx->gsi, ctx->atlas_tex);
-            gs_gui_rect_t src = atlas[cmd->icon.id];
-            int x = cmd->icon.rect.x + (cmd->icon.rect.w - src.w) / 2;
-            int y = cmd->icon.rect.y + (cmd->icon.rect.h - src.h) / 2;
-            __push_quad(&ctx->gsi, (&(mu_Rect){.x = x, .y = y, .w = src.w, .h = src.h}), &src, &cmd->icon.color);
-            */
         } break;
 
         case GS_GUI_COMMAND_CLIP:
@@ -2669,6 +2718,8 @@ GS_API_DECL void gs_gui_render(gs_gui_context_t* ctx, gs_command_buffer_t* cb)
             clip_rect.y = gs_max(clip_rect.y, 0.f);
             clip_rect.w = gs_max(clip_rect.w, 0.f);
             clip_rect.h = gs_max(clip_rect.h, 0.f); 
+
+            // gs_println("clip: <%.2f, %>2f, %.2f, %.2f>", clip_rect.x, fb.y - clip_rect.h - clip_rect.y, clip_rect.w, clip_rect.h);
 
             gsi_set_view_scissor(&ctx->gsi, 
                 (int32_t)(clip_rect.x), 
@@ -2931,11 +2982,62 @@ GS_API_DECL void gs_gui_draw_rect(gs_gui_context_t* ctx, gs_gui_rect_t rect, gs_
 	rect = gs_gui_intersect_rects(rect, gs_gui_get_clip_rect(ctx));
 	if (rect.w > 0 && rect.h > 0) 
     {
-		cmd = gs_gui_push_command(ctx, GS_GUI_COMMAND_RECT, sizeof(gs_gui_rectcommand_t));
-		cmd->rect.rect = rect;
-		cmd->rect.color = color;
+		cmd = gs_gui_push_command(ctx, GS_GUI_COMMAND_SHAPE, sizeof(gs_gui_shapecommand_t));
+        cmd->shape.type = GS_GUI_SHAPE_RECT;
+		cmd->shape.rect = rect;
+		cmd->shape.color = color;
 	}
 } 
+
+GS_API_DECL void gs_gui_draw_circle(gs_gui_context_t* ctx, gs_vec2 position, float radius, gs_color_t color)
+{
+	gs_gui_command_t* cmd;
+    gs_gui_rect_t rect = gs_gui_rect(position.x - radius, position.y - radius, 2.f * radius, 2.f * radius);
+
+	// do clip command if the rect isn't fully contained within the cliprect
+	int32_t clipped = gs_gui_check_clip(ctx, rect);
+	if (clipped == GS_GUI_CLIP_ALL ) {return;}
+	if (clipped == GS_GUI_CLIP_PART) {gs_gui_set_clip(ctx, gs_gui_get_clip_rect(ctx));}
+
+	// do shape command
+	cmd = gs_gui_push_command(ctx, GS_GUI_COMMAND_SHAPE, sizeof(gs_gui_shapecommand_t));
+	cmd->shape.type = GS_GUI_SHAPE_CIRCLE;
+	cmd->shape.circle.center = position;
+	cmd->shape.circle.radius = radius;
+	cmd->shape.color = color;
+
+	// reset clipping if it was set
+	if (clipped) {gs_gui_set_clip(ctx, gs_gui_unclipped_rect);}
+}
+
+GS_API_DECL void gs_gui_draw_triangle(gs_gui_context_t* ctx, gs_vec2 a, gs_vec2 b, gs_vec2 c, gs_color_t color)
+{
+	gs_gui_command_t* cmd;
+
+	// Check each point against rect (if partially clipped, then good
+	int32_t clipped = 0x00; 
+	gs_gui_rect_t clip = gs_gui_get_clip_rect(ctx);
+	int32_t ca = gs_gui_rect_overlaps_vec2(clip, a);
+	int32_t cb = gs_gui_rect_overlaps_vec2(clip, b);
+	int32_t cc = gs_gui_rect_overlaps_vec2(clip, c);
+
+    if (ca && cb && cc) clipped = 0x00; // No clip
+    else if (!ca && !cb && !cc) clipped = GS_GUI_CLIP_ALL;
+	else if (ca || cb || cc) clipped = GS_GUI_CLIP_PART;
+
+    if (clipped == GS_GUI_CLIP_ALL) {return;}
+    if (clipped == GS_GUI_CLIP_PART) {gs_gui_set_clip(ctx, clip);} 
+
+    cmd = gs_gui_push_command(ctx, GS_GUI_COMMAND_SHAPE, sizeof(gs_gui_shapecommand_t));
+    cmd->shape.type = GS_GUI_SHAPE_TRIANGLE;
+    cmd->shape.triangle.points[0] = a;
+    cmd->shape.triangle.points[1] = b;
+    cmd->shape.triangle.points[2] = c;
+    cmd->shape.color = color;
+
+    // Reset clipping if set
+    if (clipped) {gs_gui_set_clip(ctx, gs_gui_unclipped_rect);}
+}
 
 GS_API_DECL void gs_gui_draw_box(gs_gui_context_t* ctx, gs_gui_rect_t rect, gs_color_t color) 
 {
@@ -2954,41 +3056,53 @@ GS_API_DECL void gs_gui_draw_text(gs_gui_context_t* ctx, gs_asset_font_t* font, 
         font = gsi_default_font(); 
     } 
 
-	gs_gui_command_t* cmd;
-    gs_vec2 td = ctx->text_dimensions(font, str, -1);
-	gs_gui_rect_t rect = gs_gui_rect(pos.x, pos.y, td.x, td.y);
-	int32_t clipped = gs_gui_check_clip(ctx, rect);
+#define DRAW_TEXT(TEXT, RECT, COLOR)\
+    do\
+    {\
+        gs_gui_command_t* cmd;\
+        gs_vec2 td = ctx->text_dimensions(font, TEXT, -1);\
+        gs_gui_rect_t rect = (RECT);\
+        int32_t clipped = gs_gui_check_clip(ctx, rect);\
+\
+        if (clipped == GS_GUI_CLIP_ALL)\
+        {\
+            return;\
+        }\
+\
+        if (clipped == GS_GUI_CLIP_PART)\
+        {\
+            gs_gui_rect_t crect = gs_gui_get_clip_rect(ctx);\
+            gs_gui_set_clip(ctx, crect);\
+        }\
+\
+        /* add command */\
+        if (len < 0)\
+        {\
+            len = strlen(TEXT);\
+        }\
+\
+        cmd = gs_gui_push_command(ctx, GS_GUI_COMMAND_TEXT, sizeof(gs_gui_textcommand_t) + len);\
+        memcpy(cmd->text.str, TEXT, len);\
+        cmd->text.str[len] = '\0';\
+        cmd->text.pos = gs_v2(rect.x, rect.y);\
+        cmd->text.color = COLOR;\
+        cmd->text.font = font;\
+\
+        if (clipped)\
+        {\
+            gs_gui_set_clip(ctx, gs_gui_unclipped_rect);\
+        }\
+    } while (0)
 
-	if (clipped == GS_GUI_CLIP_ALL ) 
-    { 
-        return; 
+    // Draw shadow
+    {
+        DRAW_TEXT(str, gs_gui_rect(pos.x + 1.f, pos.y + 1.f, td.x, td.y), gs_color_alpha(GS_COLOR_BLACK, 100));
     }
-
-	if (clipped == GS_GUI_CLIP_PART) 
-    { 
-        gs_gui_rect_t crect = gs_gui_get_clip_rect(ctx);
-	    // gs_gui_draw_box(ctx, crect, GS_COLOR_GREEN);
-	    // gs_gui_draw_box(ctx, rect, GS_COLOR_RED);
-        gs_gui_set_clip(ctx, crect); 
-    }
-
-	/* add command */
-	if (len < 0) 
-    { 
-        len = strlen(str); 
-    }
-
-	cmd = gs_gui_push_command(ctx, GS_GUI_COMMAND_TEXT, sizeof(gs_gui_textcommand_t) + len);
-	memcpy(cmd->text.str, str, len);
-	cmd->text.str[len] = '\0';
-	cmd->text.pos = pos;
-	cmd->text.color = color;
-	cmd->text.font = font;
-
-	if (clipped) 
-    { 
-        gs_gui_set_clip(ctx, gs_gui_unclipped_rect); 
-    }
+    
+    // Draw text
+    {
+        DRAW_TEXT(str, gs_gui_rect(pos.x, pos.y, td.x, td.y), color);
+    } 
 } 
 
 GS_API_DECL void gs_gui_draw_icon(gs_gui_context_t* ctx, int32_t id, gs_gui_rect_t rect, gs_color_t color) 
@@ -3265,6 +3379,7 @@ GS_API_DECL void gs_gui_text(gs_gui_context_t *ctx, const char *text, int32_t wr
 
 		} while (*end && *end != '\n');
 
+        // Draw text
 		gs_gui_draw_text(ctx, font, start, end - start, gs_v2(r.x, r.y), color);
 		p = end + 1;
 
@@ -3365,6 +3480,9 @@ GS_API_DECL int32_t gs_gui_textbox_raw(gs_gui_context_t *ctx, char *buf, int32_t
 
 	/* draw */
 
+    // Textbox border
+    gs_gui_draw_box(ctx, gs_gui_expand_rect(r, 1), ctx->focus == id ? ctx->style->colors[GS_GUI_COLOR_BUTTONFOCUS] : ctx->style->colors[GS_GUI_COLOR_BUTTON]); 
+
     // Textbox bg 
 	gs_gui_draw_control_frame(ctx, id, r, GS_GUI_COLOR_BASE, opt);
 
@@ -3378,15 +3496,15 @@ GS_API_DECL int32_t gs_gui_textbox_raw(gs_gui_context_t *ctx, char *buf, int32_t
 		int32_t ofx = r.w - ctx->style->padding - textw - 1;
 		int32_t textx = r.x + gs_min(ofx, ctx->style->padding);
 		int32_t texty = r.y + (r.h - texth) / 2;
-		int32_t cary = r.y; 
-		gs_gui_draw_box(ctx, gs_gui_rect(textx, texty, textw, texth), GS_COLOR_RED); 
+		int32_t cary = r.y + 1; 
+		// gs_gui_draw_box(ctx, gs_gui_rect(textx, texty, textw, texth), GS_COLOR_RED); 
 		gs_gui_push_clip_rect(ctx, r); 
 
         // Draw text
 		gs_gui_draw_text(ctx, font, buf, -1, gs_v2(textx, texty), color); 
 
         // Draw carret (want it to blink somehow)
-		gs_gui_draw_rect(ctx, gs_gui_rect(textx + textw + 1, cary, 1, r.y), color); 
+		gs_gui_draw_rect(ctx, gs_gui_rect(textx + textw + 1, r.y + 5, 1, r.h - 10), color); 
 
 		gs_gui_pop_clip_rect(ctx);
 	} 
@@ -3564,11 +3682,31 @@ static int32_t _gs_gui_header(gs_gui_context_t *ctx, const char *label, int32_t 
 		gs_gui_draw_control_frame(ctx, id, r, GS_GUI_COLOR_BUTTON, 0);
 	}
 
+    // Draw icon for tree node (make this a callback)
+    /*
 	gs_gui_draw_icon(
 		ctx, expanded ? GS_GUI_ICON_EXPANDED : GS_GUI_ICON_COLLAPSED,
 		gs_gui_rect(r.x, r.y, r.h, r.h), ctx->style->colors[GS_GUI_COLOR_TEXT]);
+    */
+    const float sz = 6.f;
+    if (expanded)
+    {
+        gs_vec2 a = {r.x + sz / 2.f, r.y + (r.h - sz) / 2.f};
+        gs_vec2 b = gs_vec2_add(a, gs_v2(sz, 0.f));
+        gs_vec2 c = gs_vec2_add(a, gs_v2(sz / 2.f, sz));
+        gs_gui_draw_triangle(ctx, a, b, c, ctx->style->colors[GS_GUI_COLOR_TEXT]);
+    }
+    else
+    {
+        gs_vec2 a = {r.x + sz / 2.f, r.y + (r.h - sz) / 2.f};
+        gs_vec2 b = gs_vec2_add(a, gs_v2(sz, sz / 2.f));
+        gs_vec2 c = gs_vec2_add(a, gs_v2(0.f, sz));
+        gs_gui_draw_triangle(ctx, a, b, c, ctx->style->colors[GS_GUI_COLOR_TEXT]);
+    }
+
+    // Draw text for treenode
 	r.x += r.h - ctx->style->padding;
-	r.w -= r.h - ctx->style->padding;
+	r.w -= r.h - ctx->style->padding; 
 	gs_gui_draw_control_text(ctx, label, r, GS_GUI_COLOR_TEXT, 0);
 
 	return expanded ? GS_GUI_RES_ACTIVE : 0;
@@ -3581,7 +3719,7 @@ GS_API_DECL int32_t gs_gui_header_ex(gs_gui_context_t *ctx, const char *label, i
 
 GS_API_DECL int32_t gs_gui_begin_treenode_ex(gs_gui_context_t *ctx, const char *label, int32_t opt) 
 {
-	int32_t res = gs_gui_header(ctx, label, 1, opt);
+	int32_t res = _gs_gui_header(ctx, label, 1, opt);
 	if (res & GS_GUI_RES_ACTIVE) 
     {
 		gs_gui_get_layout(ctx)->indent += ctx->style->indent;
@@ -3641,8 +3779,6 @@ int32_t gs_gui_begin_window_ex(gs_gui_context_t* ctx, const char* title, gs_gui_
     bool new_frame = cnt->frame != ctx->frame;
 
     const float split_size = GS_GUI_SPLIT_SIZE;
-
-    // gs_println("%s: %zu", cnt->name, cnt->zindex);
 
 	gs_gui_stack_push(ctx->id_stack, id); 
 
@@ -4093,7 +4229,7 @@ int32_t gs_gui_begin_window_ex(gs_gui_context_t* ctx, const char* title, gs_gui_
             if (in_root && gs_gui_rect_overlaps_vec2(r, ctx->mouse_pos))
             {
                 gs_immediate_draw_t* dl = &ctx->overlay_draw_list;
-                gsi_rectvd(dl, gs_v2(r.x, r.y), gs_v2(r.w, r.h), gs_v2s(0.f), gs_v2s(1.f), GS_COLOR_WHITE, GS_GRAPHICS_PRIMITIVE_LINES);
+                // gsi_rectvd(dl, gs_v2(r.x, r.y), gs_v2(r.w, r.h), gs_v2s(0.f), gs_v2s(1.f), GS_COLOR_WHITE, GS_GRAPHICS_PRIMITIVE_LINES);
                 hovered = true;
             }
 
@@ -4142,9 +4278,9 @@ int32_t gs_gui_begin_window_ex(gs_gui_context_t* ctx, const char* title, gs_gui_
 				}
 			}
 
-            gs_color_t def = gs_color(50, 50, 50, 255);
-            gs_color_t hov = gs_color(70, 70, 70, 255);
-            gs_color_t act = GS_COLOR_GREEN; // gs_color(90, 90, 90, 255); 
+            gs_color_t def = ctx->style->colors[GS_GUI_COLOR_BUTTON]; // gs_color(50, 50, 50, 255);
+            gs_color_t hov = ctx->style->colors[GS_GUI_COLOR_BUTTONHOVER]; // gs_color(70, 70, 70, 255);
+            gs_color_t act = ctx->style->colors[GS_GUI_COLOR_BUTTONFOCUS]; GS_COLOR_GREEN; // gs_color(90, 90, 90, 255); 
 
 			gs_gui_push_clip_rect(ctx, gs_gui_expand_rect(cnt->rect, 1));
 
@@ -4192,35 +4328,9 @@ int32_t gs_gui_begin_window_ex(gs_gui_context_t* ctx, const char* title, gs_gui_
 	if (~opt & GS_GUI_OPT_NOFRAME && cnt->flags & GS_GUI_WINDOW_FLAGS_VISIBLE) 
     {
 		gs_gui_draw_box(ctx, gs_gui_expand_rect(cnt->rect, 1), ctx->style->colors[GS_GUI_COLOR_BORDER]); 
-	} 
+	}
 
-    { 
-        gs_gui_push_container_body(ctx, cnt, body, opt); 
-
-        // do `resize` handles (sides of rect)
-        if (~cnt->opt & GS_GUI_OPT_NORESIZE && ~root_cnt->opt & GS_GUI_OPT_NORESIZE && new_frame) 
-        {
-            int32_t sz = ctx->style->title_height;
-            gs_gui_id id = gs_gui_get_id(ctx, "!resize", 7);
-            gs_gui_rect_t r = gs_gui_rect(cnt->rect.x + cnt->rect.w - sz, cnt->rect.y + cnt->rect.h - sz, sz, sz);
-            gs_gui_update_control(ctx, id, r, opt);
-            if (id == ctx->focus && ctx->mouse_down == GS_GUI_MOUSE_LEFT) 
-            { 
-                if (root_split)
-                {
-                    gs_gui_request_t req = gs_default_val();
-                    req.type = GS_GUI_SPLIT_RESIZE_SE;
-                    req.split = root_split;
-                    gs_dyn_array_push(ctx->requests, req);
-                }
-                else
-                {
-                    cnt->rect.w = gs_max(96, cnt->rect.w + ctx->mouse_delta.x);
-                    cnt->rect.h = gs_max(64, cnt->rect.h + ctx->mouse_delta.y);
-                }
-            }
-        } 
-    }
+    gs_gui_push_container_body(ctx, cnt, body, opt);
 
 	/* close if this is a popup window and elsewhere was clicked */
 	if (opt & GS_GUI_OPT_POPUP && ctx->mouse_pressed && ctx->hover_root != cnt) 
@@ -4247,6 +4357,10 @@ GS_API_DECL void gs_gui_end_window(gs_gui_context_t *ctx)
 { 
     gs_gui_container_t* cnt = gs_gui_get_current_container(ctx); 
 
+    // Get root container
+    gs_gui_container_t* root_cnt = gs_gui_get_root_container(ctx, cnt);
+
+    // Get splits
     gs_gui_split_t* split = gs_gui_get_split(ctx, cnt);
     gs_gui_split_t* root_split = gs_gui_get_root_split(ctx, cnt); 
 
@@ -4258,7 +4372,47 @@ GS_API_DECL void gs_gui_end_window(gs_gui_context_t *ctx)
     // Pop clip for rect
     if (~cnt->opt & GS_GUI_OPT_NOCLIP) 
     {
-	    gs_gui_pop_clip_rect(ctx); 
+        gs_gui_pop_clip_rect(ctx); 
+    } 
+
+    // do `resize` handles (sides of rect)
+    if (~cnt->opt & GS_GUI_OPT_NORESIZE && ~root_cnt->opt & GS_GUI_OPT_NORESIZE && new_frame && ~cnt->opt & GS_GUI_OPT_DOCKSPACE) 
+    {
+        int32_t sz = ctx->style->title_height;
+        gs_gui_id id = gs_gui_get_id(ctx, "!resize", 7);
+        gs_gui_rect_t r = gs_gui_rect(cnt->rect.x + cnt->rect.w - sz, cnt->rect.y + cnt->rect.h - sz, sz, sz);
+        gs_gui_update_control(ctx, id, r, opt);
+        if (id == ctx->focus && ctx->mouse_down == GS_GUI_MOUSE_LEFT) 
+        { 
+            if (root_split)
+            {
+                gs_gui_request_t req = gs_default_val();
+                req.type = GS_GUI_SPLIT_RESIZE_SE;
+                req.split = root_split;
+                gs_dyn_array_push(ctx->requests, req);
+            }
+            else
+            {
+                cnt->rect.w = gs_max(96, cnt->rect.w + ctx->mouse_delta.x);
+                cnt->rect.h = gs_max(64, cnt->rect.h + ctx->mouse_delta.y);
+            }
+        }
+
+        // Draw resize icon (this will also be a callback)
+        const uint32_t grid = 8;
+        const float w = r.w / (float)grid;
+        const float h = r.h / (float)grid;
+        const float m = 1.f;
+        const float o = 5.f;
+
+        gs_color_t col = ctx->focus == id ? ctx->style->colors[GS_GUI_COLOR_BUTTONFOCUS] : ctx->hover == id ? ctx->style->colors[GS_GUI_COLOR_BUTTONHOVER] : ctx->style->colors[GS_GUI_COLOR_BUTTON]; 
+
+        gs_gui_draw_rect(ctx, gs_gui_rect(r.x + w * grid - o, r.y + h * (grid - 2) - o, w - m, h - m), col);
+        gs_gui_draw_rect(ctx, gs_gui_rect(r.x + w * grid - o, r.y + h * (grid - 1) - o, w - m, h - m), col);
+        gs_gui_draw_rect(ctx, gs_gui_rect(r.x + w * (grid - 1) - o, r.y + h * (grid - 1) - o, w - m, h - m), col);
+        gs_gui_draw_rect(ctx, gs_gui_rect(r.x + w * grid - o, r.y + h * grid - o, w - m, h - m), col);
+        gs_gui_draw_rect(ctx, gs_gui_rect(r.x + w * (grid - 1) - o, r.y + h * grid - o, w - m, h - m), col);
+        gs_gui_draw_rect(ctx, gs_gui_rect(r.x + w * (grid - 2) - o, r.y + h * grid - o, w - m, h - m), col);
     } 
 
     #define _gui_window_resize_ctrl(ID, RECT, MOUSE, SPLIT_TYPE, MOD_KEY, ...)\
@@ -4615,10 +4769,10 @@ GS_API_DECL void gs_gui_open_popup(gs_gui_context_t* ctx, const char* name)
 	gs_gui_bring_to_front(ctx, cnt);
 } 
 
-GS_API_DECL int32_t gs_gui_begin_popup(gs_gui_context_t* ctx, const char* name, int32_t opt) 
+GS_API_DECL int32_t gs_gui_begin_popup_ex(gs_gui_context_t* ctx, const char* name, gs_gui_rect_t r, int32_t opt)
 {
 	opt |= (GS_GUI_OPT_POPUP | GS_GUI_OPT_NODOCK | GS_GUI_OPT_CLOSED); 
-	return gs_gui_begin_window_ex(ctx, name, gs_gui_rect(0, 0, 100, 100), opt);
+	return gs_gui_begin_window_ex(ctx, name, r, opt);
 } 
 
 GS_API_DECL void gs_gui_end_popup(gs_gui_context_t *ctx) 

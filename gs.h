@@ -3198,7 +3198,10 @@ gs_mat3_inverse(gs_mat3 m)
 
 typedef struct gs_mat4
 {
-    f32 elements[16];
+	union {
+		gs_vec4 rows[4];
+		f32 elements[16]; 
+	};
 } gs_mat4;
 
 gs_inline gs_mat4 
@@ -5659,8 +5662,10 @@ GS_API_DECL bool gs_asset_texture_load_from_memory(const void* memory, size_t sz
 // Font
 typedef struct gs_baked_char_t
 {
-   u16 x0,y0,x1,y1;
-   f32 xoff,yoff,xadvance;
+	uint32_t codepoint;
+	uint16_t x0, y0, x1, y1;
+	float xoff, yoff, advance;
+	uint32_t width, height;
 } gs_baked_char_t;
 
 typedef struct gs_asset_font_t
@@ -5668,6 +5673,9 @@ typedef struct gs_asset_font_t
     void* font_info;
     gs_baked_char_t glyphs[96];
     gs_asset_texture_t texture;
+	float ascent;
+	float descent;
+	float line_gap;
 } gs_asset_font_t; 
 
 GS_API_DECL bool gs_asset_font_load_from_file(const char* path, void* out, uint32_t point_size);
@@ -6718,6 +6726,7 @@ void gs_camera_offset_orientation(gs_camera_t* cam, f32 yaw, f32 pitch)
 #endif
 
 #ifndef GS_NO_STB_TRUETYPE
+    // #define STBTT_RASTERIZER_VERSION 0
     #define STB_TRUETYPE_IMPLEMENTATION
 #endif
 
@@ -6887,14 +6896,13 @@ bool gs_asset_font_load_from_memory(const void* memory, size_t sz, void* out, ui
     if (!point_size) {
         gs_println("Warning: Font: Point size not declared. Setting to default 16.");
         point_size = 16;
-    }
+    } 
 
-    stbtt_fontinfo font = gs_default_val();
-    const u32 w = 512;
-    const u32 h = 512;
-    const u32 num_comps = 4;
-    u8* alpha_bitmap = (u8*)gs_malloc(w * h);
-    u8* flipmap = (u8*)gs_malloc(w * h * num_comps);
+    const uint32_t w = 512;
+    const uint32_t h = 512;
+    const uint32_t num_comps = 4;
+    u8* alpha_bitmap = (uint8_t*)gs_malloc(w * h);
+    u8* flipmap = (uint8_t*)gs_malloc(w * h * num_comps);
     memset(alpha_bitmap, 0, w * h);
     memset(flipmap, 0, w * h * num_comps);
     s32 v = stbtt_BakeFontBitmap((u8*)memory, 0, (float)point_size, alpha_bitmap, w, h, 32, 96, (stbtt_bakedchar*)f->glyphs); // no guarantee this fits!
@@ -6914,14 +6922,15 @@ bool gs_asset_font_load_from_memory(const void* memory, size_t sz, void* out, ui
             flipmap[i1 + 3] = a;
         }
         r--;
-    }
+    } 
 
     gs_graphics_texture_desc_t desc = gs_default_val();
     desc.width = w;
     desc.height = h;
     desc.data = flipmap;
     desc.format = GS_GRAPHICS_TEXTURE_FORMAT_RGBA8;
-    desc.min_filter = GS_GRAPHICS_TEXTURE_FILTER_LINEAR;
+    desc.min_filter = GS_GRAPHICS_TEXTURE_FILTER_NEAREST;
+    desc.mag_filter = GS_GRAPHICS_TEXTURE_FILTER_NEAREST;
 
     // Generate atlas texture for bitmap with bitmap data
     f->texture.hndl = gs_graphics_texture_create(&desc);
