@@ -1136,8 +1136,17 @@ GS_API_DECL void gs_graphics_pipeline_desc_query(gs_handle(gs_graphics_pipeline_
     } 
 }
 
+GS_API_DECL void gs_graphics_texture_desc_query(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* out)
+{
+    if (!out) return;
+
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data; 
+    gsgl_texture_t* tex = gs_slot_array_getp(ogl->textures, hndl.id);
+    *out = tex->desc;
+}
+
 // Resource Updates (main thread only) 
-//
+
 GS_API_DECL void gs_graphics_vertex_buffer_update(gs_handle(gs_graphics_vertex_buffer_t) hndl, gs_graphics_vertex_buffer_desc_t* desc)
 { 
     /*
