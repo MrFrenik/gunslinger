@@ -3386,7 +3386,7 @@ GS_API_DECL void gs_gui_set_clip(gs_gui_context_t* ctx, gs_gui_rect_t rect)
 GS_API_DECL void gs_gui_draw_rect(gs_gui_context_t* ctx, gs_gui_rect_t rect, gs_color_t color) 
 {
 	gs_gui_command_t* cmd;
-	// rect = gs_gui_intersect_rects(rect, gs_gui_get_clip_rect(ctx));
+	rect = gs_gui_intersect_rects(rect, gs_gui_get_clip_rect(ctx));
 	if (rect.w > 0 && rect.h > 0) 
     {
 		cmd = gs_gui_push_command(ctx, GS_GUI_COMMAND_SHAPE, sizeof(gs_gui_shapecommand_t));
