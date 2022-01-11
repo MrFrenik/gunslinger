@@ -5150,6 +5150,12 @@ gs_enum_decl(gs_graphics_buffer_update_type,
     GS_GRAPHICS_BUFFER_UPDATE_SUBDATA
 );
 
+gs_enum_decl(gs_graphics_access_type,
+    GS_GRAPHICS_ACCESS_READ_ONLY,
+    GS_GRAPHICS_ACCESS_WRITE_ONLY,
+    GS_GRAPHICS_ACCESS_READ_WRITE
+);
+
 /* Texture Format */
 gs_enum_decl(gs_graphics_texture_format_type,
     GS_GRAPHICS_TEXTURE_FORMAT_RGBA8,
@@ -5199,8 +5205,9 @@ gs_enum_decl(gs_graphics_bind_type,
     GS_GRAPHICS_BIND_VERTEX_BUFFER,
     GS_GRAPHICS_BIND_INDEX_BUFFER,
     GS_GRAPHICS_BIND_UNIFORM_BUFFER,
-    GS_GRAPHICS_BIND_UNIFORM,
-    GS_GRAPHICS_BIND_IMAGE_BUFFER
+    GS_GRAPHICS_BIND_STORAGE_BUFFER,
+    GS_GRAPHICS_BIND_IMAGE_BUFFER,
+    GS_GRAPHICS_BIND_UNIFORM
 );
 
 /* Depth Function Type */
@@ -5245,6 +5252,7 @@ gs_handle_decl(gs_graphics_texture_t);
 gs_handle_decl(gs_graphics_vertex_buffer_t);
 gs_handle_decl(gs_graphics_index_buffer_t);
 gs_handle_decl(gs_graphics_uniform_buffer_t);
+gs_handle_decl(gs_graphics_storage_buffer_t);
 gs_handle_decl(gs_graphics_framebuffer_t);
 gs_handle_decl(gs_graphics_uniform_t);
 gs_handle_decl(gs_graphics_render_pass_t);
@@ -5332,6 +5340,16 @@ typedef struct gs_graphics_uniform_buffer_desc_t
     gs_graphics_buffer_update_desc_t update;
 } gs_graphics_uniform_buffer_desc_t;
 
+typedef struct gs_graphics_storage_buffer_desc_t
+{
+    void* data;
+    size_t size;
+    char name[64];                               
+    gs_graphics_buffer_usage_type usage;
+    gs_graphics_access_type access;
+    gs_graphics_buffer_update_desc_t update;
+} gs_graphics_storage_buffer_desc_t;
+
 typedef struct gs_graphics_framebuffer_desc_t 
 {
     void* data;
@@ -5376,13 +5394,6 @@ typedef enum gs_graphics_vertex_data_type
     GS_GRAPHICS_VERTEX_DATA_NONINTERLEAVED
 } gs_graphics_vertex_data_type;
 
-typedef enum gs_graphics_access_type
-{
-    GS_GRAPHICS_ACCESS_READ_ONLY = 0x00,
-    GS_GRAPHICS_ACCESS_WRITE_ONLY,
-    GS_GRAPHICS_ACCESS_READ_WRITE,
-} gs_graphics_access_type;
-
 typedef struct gs_graphics_bind_vertex_buffer_desc_t {
     gs_handle(gs_graphics_vertex_buffer_t) buffer;
     size_t offset;
@@ -5405,8 +5416,13 @@ typedef struct gs_graphics_bind_uniform_buffer_desc_t {
     struct {
         size_t offset;      // Specify an offset for ranged binds.
         size_t size;        // Specify size for ranged binds.
-    } range;
+    } range; 
 } gs_graphics_bind_uniform_buffer_desc_t;
+
+typedef struct gs_graphics_bind_storage_buffer_desc_t {
+    gs_handle(gs_graphics_storage_buffer_t) buffer;
+    uint32_t binding;
+} gs_graphics_bind_storage_buffer_desc_t;
 
 typedef struct gs_graphics_bind_uniform_desc_t {
     gs_handle(gs_graphics_uniform_t) uniform;
@@ -5441,6 +5457,12 @@ typedef struct gs_graphics_bind_desc_t
         gs_graphics_bind_image_buffer_desc_t* desc;
         size_t size;
     } image_buffers;
+
+    struct {
+        gs_graphics_bind_storage_buffer_desc_t* desc;
+        size_t size;
+    } storage_buffers;
+
 } gs_graphics_bind_desc_t;
 
 /* Graphics Blend State Desc */
@@ -5577,6 +5599,7 @@ GS_API_DECL gs_handle(gs_graphics_shader_t)         gs_graphics_shader_create(co
 GS_API_DECL gs_handle(gs_graphics_vertex_buffer_t)  gs_graphics_vertex_buffer_create(const gs_graphics_vertex_buffer_desc_t* desc);
 GS_API_DECL gs_handle(gs_graphics_index_buffer_t)   gs_graphics_index_buffer_create(const gs_graphics_index_buffer_desc_t* desc);
 GS_API_DECL gs_handle(gs_graphics_uniform_buffer_t) gs_graphics_uniform_buffer_create(const gs_graphics_uniform_buffer_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_storage_buffer_t) gs_graphics_storage_buffer_create(const gs_graphics_storage_buffer_desc_t* desc);
 GS_API_DECL gs_handle(gs_graphics_framebuffer_t)    gs_graphics_framebuffer_create(const gs_graphics_framebuffer_desc_t* desc);
 GS_API_DECL gs_handle(gs_graphics_render_pass_t)    gs_graphics_render_pass_create(const gs_graphics_render_pass_desc_t* desc);
 GS_API_DECL gs_handle(gs_graphics_pipeline_t)       gs_graphics_pipeline_create(const gs_graphics_pipeline_desc_t* desc);
@@ -5588,6 +5611,7 @@ GS_API_DECL void gs_graphics_shader_destroy(gs_handle(gs_graphics_shader_t) hndl
 GS_API_DECL void gs_graphics_vertex_buffer_destroy(gs_handle(gs_graphics_vertex_buffer_t) hndl);
 GS_API_DECL void gs_graphics_index_buffer_destroy(gs_handle(gs_graphics_index_buffer_t) hndl);
 GS_API_DECL void gs_graphics_uniform_buffer_destroy(gs_handle(gs_graphics_uniform_buffer_t) hndl);
+GS_API_DECL void gs_graphics_storage_buffer_destroy(gs_handle(gs_graphics_storage_buffer_t) hndl);
 GS_API_DECL void gs_graphics_framebuffer_destroy(gs_handle(gs_graphics_framebuffer_t) hndl);
 GS_API_DECL void gs_graphics_render_pass_destroy(gs_handle(gs_graphics_render_pass_t) hndl);
 GS_API_DECL void gs_graphics_pipeline_destroy(gs_handle(gs_graphics_pipeline_t) hndl); 
@@ -5599,6 +5623,7 @@ GS_API_DECL void gs_graphics_texture_desc_query(gs_handle(gs_graphics_texture_t)
 // Resource Updates (main thread only) 
 GS_API_DECL void gs_graphics_vertex_buffer_update(gs_handle(gs_graphics_vertex_buffer_t) hndl, gs_graphics_vertex_buffer_desc_t* desc); 
 GS_API_DECL void gs_graphics_index_buffer_update(gs_handle(gs_graphics_index_buffer_t) hndl, gs_graphics_index_buffer_desc_t* desc);
+GS_API_DECL void gs_graphics_storage_buffer_update(gs_handle(gs_graphics_storage_buffer_t) hndl, gs_graphics_storage_buffer_desc_t* desc);
 
 // Resource Destruction
 GS_API_DECL void gs_graphics_texture_destroy(gs_handle(gs_graphics_texture_t) hndl);
@@ -5611,6 +5636,7 @@ GS_API_DECL void gs_graphics_texture_request_update(gs_command_buffer_t* cb, gs_
 GS_API_DECL void gs_graphics_vertex_buffer_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_vertex_buffer_t) hndl, gs_graphics_vertex_buffer_desc_t* desc);
 GS_API_DECL void gs_graphics_index_buffer_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_index_buffer_t) hndl, gs_graphics_index_buffer_desc_t* desc);
 GS_API_DECL void gs_graphics_uniform_buffer_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_uniform_buffer_t) hndl, gs_graphics_uniform_buffer_desc_t* desc);
+GS_API_DECL void gs_graphics_storage_buffer_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_storage_buffer_t) hndl, gs_graphics_storage_buffer_desc_t* desc);
 
 // Pipeline / Pass / Bind / Draw
 GS_API_DECL void gs_graphics_begin_render_pass(gs_command_buffer_t* cb, gs_handle(gs_graphics_render_pass_t) hndl);

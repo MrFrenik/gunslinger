@@ -68,6 +68,14 @@ typedef struct gsgl_uniform_buffer_t {
     uint32_t sid;
 } gsgl_uniform_buffer_t;
 
+typedef struct gsgl_storage_buffer_t {
+    char name[64];
+    uint32_t buffer;
+    int32_t access; 
+    size_t size;
+    uint32_t block_idx;
+} gsgl_storage_buffer_t;
+
 /* Pipeline */
 typedef struct gsgl_pipeline_t {
     gs_graphics_blend_state_desc_t blend;
@@ -117,15 +125,16 @@ typedef struct gsgl_data_cache_t
 /* Internal Opengl Data */
 typedef struct gsgl_data_t
 {
-    gs_slot_array(gsgl_shader_t)        shaders;
-    gs_slot_array(gsgl_texture_t)       textures;
-    gs_slot_array(gsgl_buffer_t)        vertex_buffers;
+    gs_slot_array(gsgl_shader_t)         shaders;
+    gs_slot_array(gsgl_texture_t)        textures;
+    gs_slot_array(gsgl_buffer_t)         vertex_buffers;
     gs_slot_array(gsgl_uniform_buffer_t) uniform_buffers;
-    gs_slot_array(gsgl_buffer_t)        index_buffers;
-    gs_slot_array(gsgl_buffer_t)        frame_buffers;
-    gs_slot_array(gsgl_uniform_list_t)  uniforms;
-    gs_slot_array(gsgl_pipeline_t)      pipelines;
-    gs_slot_array(gsgl_render_pass_t)   render_passes;
+    gs_slot_array(gsgl_storage_buffer_t) storage_buffers;
+    gs_slot_array(gsgl_buffer_t)         index_buffers;
+    gs_slot_array(gsgl_buffer_t)         frame_buffers;
+    gs_slot_array(gsgl_uniform_list_t)   uniforms;
+    gs_slot_array(gsgl_pipeline_t)       pipelines;
+    gs_slot_array(gsgl_render_pass_t)    render_passes;
 
     // All the required uniform data for strict aliasing.
     struct {
@@ -568,6 +577,7 @@ void gs_graphics_destroy(gs_graphics_t* graphics)
     if (ogl->textures)          OGL_FREE_DATA(ogl->textures, gs_graphics_texture_t, gs_graphics_texture_destroy); 
     if (ogl->uniforms)          OGL_FREE_DATA(ogl->uniforms, gs_graphics_uniform_t, gs_graphics_uniform_destroy); 
     if (ogl->uniform_buffers)   OGL_FREE_DATA(ogl->uniform_buffers, gs_graphics_uniform_buffer_t, gs_graphics_uniform_buffer_destroy); 
+    // if (ogl->storage_buffers)   OGL_FREE_DATA(ogl->storage_buffers, gs_graphics_storage_buffer_t, gs_graphics_storage_buffer_destroy);
 
     gs_slot_array_free(ogl->shaders);
     gs_slot_array_free(ogl->vertex_buffers);
@@ -578,6 +588,7 @@ void gs_graphics_destroy(gs_graphics_t* graphics)
     gs_slot_array_free(ogl->pipelines);
     gs_slot_array_free(ogl->render_passes);
     gs_slot_array_free(ogl->uniform_buffers);
+    gs_slot_array_free(ogl->storage_buffers);
 
     // Free uniform data array
     gs_dyn_array_free(ogl->uniform_data.mat4);
@@ -607,12 +618,14 @@ void gs_graphics_init(gs_graphics_t* graphics)
     gsgl_pipeline_t pip = gs_default_val();
     gsgl_render_pass_t rp = gs_default_val();
     gsgl_texture_t tex = gs_default_val();
+    gsgl_storage_buffer_t sb = gs_default_val();
 
     gs_slot_array_insert(ogl->uniforms, ul);
     gs_slot_array_insert(ogl->pipelines, pip);
     gs_slot_array_insert(ogl->render_passes, rp);
     gs_slot_array_insert(ogl->uniform_buffers, ub);
     gs_slot_array_insert(ogl->textures, tex);
+    gs_slot_array_insert(ogl->storage_buffers, sb);
 
     // Construct vao then bind
     glGenVertexArrays(1, &ogl->cache.vao);      
@@ -729,7 +742,7 @@ gsgl_texture_t gl_texture_create_internal(const gs_graphics_texture_desc_t* desc
 }
 
 /* Resource Creation */
-gs_handle(gs_graphics_texture_t) gs_graphics_texture_create(const gs_graphics_texture_desc_t* desc)
+GS_API_DECL gs_handle(gs_graphics_texture_t) gs_graphics_texture_create(const gs_graphics_texture_desc_t* desc)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
     gsgl_texture_t tex = gl_texture_create_internal(desc);
@@ -737,7 +750,7 @@ gs_handle(gs_graphics_texture_t) gs_graphics_texture_create(const gs_graphics_te
     return (gs_handle_create(gs_graphics_texture_t, gs_slot_array_insert(ogl->textures, tex)));
 }
 
-gs_handle(gs_graphics_uniform_t) gs_graphics_uniform_create(const gs_graphics_uniform_desc_t* desc)
+GS_API_DECL gs_handle(gs_graphics_uniform_t) gs_graphics_uniform_create(const gs_graphics_uniform_desc_t* desc)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
 
@@ -781,7 +794,7 @@ gs_handle(gs_graphics_uniform_t) gs_graphics_uniform_create(const gs_graphics_un
     return gs_handle_create(gs_graphics_uniform_t, gs_slot_array_insert(ogl->uniforms, ul));
 }
 
-gs_handle(gs_graphics_vertex_buffer_t) gs_graphics_vertex_buffer_create(const gs_graphics_vertex_buffer_desc_t* desc)
+GS_API_DECL gs_handle(gs_graphics_vertex_buffer_t) gs_graphics_vertex_buffer_create(const gs_graphics_vertex_buffer_desc_t* desc)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
     gs_handle(gs_graphics_vertex_buffer_t) hndl = gs_default_val();
@@ -802,7 +815,7 @@ gs_handle(gs_graphics_vertex_buffer_t) gs_graphics_vertex_buffer_create(const gs
     return hndl;
 }
 
-gs_handle(gs_graphics_index_buffer_t) gs_graphics_index_buffer_create(const gs_graphics_index_buffer_desc_t* desc)
+GS_API_DECL gs_handle(gs_graphics_index_buffer_t) gs_graphics_index_buffer_create(const gs_graphics_index_buffer_desc_t* desc)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
     gs_handle(gs_graphics_index_buffer_t) hndl = gs_default_val();
@@ -823,15 +836,14 @@ gs_handle(gs_graphics_index_buffer_t) gs_graphics_index_buffer_create(const gs_g
     return hndl;
 }
 
-gs_handle(gs_graphics_uniform_buffer_t) gs_graphics_uniform_buffer_create(const gs_graphics_uniform_buffer_desc_t* desc)
+GS_API_DECL gs_handle(gs_graphics_uniform_buffer_t) gs_graphics_uniform_buffer_create(const gs_graphics_uniform_buffer_desc_t* desc)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
     gs_handle(gs_graphics_uniform_buffer_t) hndl = gs_default_val();
-    gsgl_buffer_t buffer = 0;
 
      // Assert if data isn't named
     if (desc->name == NULL) {
-        gs_println("Warning: Uniform buffer must be named for OpenGL.");
+        gs_println("Warning: Uniform buffer must be named for Opengl.");
     }
 
     gsgl_uniform_buffer_t u = gs_default_val();
@@ -850,7 +862,39 @@ gs_handle(gs_graphics_uniform_buffer_t) gs_graphics_uniform_buffer_create(const 
     return hndl;
 }
 
-gs_handle(gs_graphics_framebuffer_t) gs_graphics_framebuffer_create(const gs_graphics_framebuffer_desc_t* desc)
+GS_API_DECL gs_handle(gs_graphics_storage_buffer_t) gs_graphics_storage_buffer_create(const gs_graphics_storage_buffer_desc_t* desc)
+{
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
+    gs_handle(gs_graphics_storage_buffer_t) hndl = gs_default_val();
+    gsgl_storage_buffer_t sbo = gs_default_val();
+
+    if (desc->name == NULL) {
+        gs_println("Warning: Storage buffer must be named for Opengl.");
+    }
+
+    if (desc->usage == GS_GRAPHICS_BUFFER_USAGE_STATIC && !desc->data) {
+        gs_println("Error: Storage buffer desc must contain data when GS_GRAPHICS_BUFFER_USAGE_STATIC set.");
+        gs_assert(false);
+    } 
+
+    glGenBuffers(1, &sbo.buffer); 
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo.buffer); 
+    glBufferData(GL_SHADER_STORAGE_BUFFER, desc->size, desc->data, gsgl_buffer_usage_to_gl_enum(desc->usage));
+	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); 
+
+    memcpy(sbo.name, desc->name, 64);
+    sbo.access = desc->access;
+    sbo.size = desc->size;
+    sbo.block_idx = UINT32_MAX;
+
+    hndl = gs_handle_create(gs_graphics_storage_buffer_t, gs_slot_array_insert(ogl->storage_buffers, sbo)); 
+
+    return hndl;
+}
+
+GS_API_DECL gs_handle(gs_graphics_framebuffer_t) gs_graphics_framebuffer_create(const gs_graphics_framebuffer_desc_t* desc)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
     gs_handle(gs_graphics_framebuffer_t) hndl = gs_default_val();
@@ -864,7 +908,7 @@ gs_handle(gs_graphics_framebuffer_t) gs_graphics_framebuffer_create(const gs_gra
 #define GSGL_GRAPHICS_SHADER_PIPELINE_COMPUTE   0x02
 #define GSGL_GRAPHICS_MAX_SID                   128
 
-gs_handle(gs_graphics_shader_t) gs_graphics_shader_create(const gs_graphics_shader_desc_t* desc)
+GS_API_DECL gs_handle(gs_graphics_shader_t) gs_graphics_shader_create(const gs_graphics_shader_desc_t* desc)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
     gsgl_shader_t shader = 0;
@@ -990,7 +1034,7 @@ gs_handle(gs_graphics_shader_t) gs_graphics_shader_create(const gs_graphics_shad
     return (gs_handle_create(gs_graphics_shader_t, gs_slot_array_insert(ogl->shaders, shader)));
 }
 
-gs_handle(gs_graphics_render_pass_t) gs_graphics_render_pass_create(const gs_graphics_render_pass_desc_t* desc)
+GS_API_DECL gs_handle(gs_graphics_render_pass_t) gs_graphics_render_pass_create(const gs_graphics_render_pass_desc_t* desc)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
 
@@ -1012,7 +1056,7 @@ gs_handle(gs_graphics_render_pass_t) gs_graphics_render_pass_create(const gs_gra
     return (gs_handle_create(gs_graphics_render_pass_t, gs_slot_array_insert(ogl->render_passes, pass)));
 }
 
-gs_handle(gs_graphics_pipeline_t) gs_graphics_pipeline_create(const gs_graphics_pipeline_desc_t* desc)
+GS_API_DECL gs_handle(gs_graphics_pipeline_t) gs_graphics_pipeline_create(const gs_graphics_pipeline_desc_t* desc)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
 
@@ -1207,14 +1251,30 @@ l:
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 } 
 
+GS_API_DECL void gs_graphics_storage_buffer_update(gs_handle(gs_graphics_storage_buffer_t) hndl, gs_graphics_storage_buffer_desc_t* desc)
+{
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
+    gsgl_storage_buffer_t* sbo = gs_slot_array_getp(ogl->storage_buffers, hndl.id);
+    if (!sbo)
+    {
+        gs_println("Warning: Storage buffer %zu not found.", hndl.id);
+        return;
+    }
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo->buffer);
+    switch (desc->update.type) 
+    {
+        case GS_GRAPHICS_BUFFER_UPDATE_SUBDATA: glBufferSubData(GL_SHADER_STORAGE_BUFFER, desc->update.offset, desc->size, desc->data); break;
+        default:                                glBufferData(GL_SHADER_STORAGE_BUFFER, desc->size, desc->data, gsgl_buffer_usage_to_gl_enum(desc->usage));
+    }
+	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+}
+
 /* Resource Update*/
 void gs_graphics_texture_update(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc)
 {
 }
-
-// void gs_graphics_buffer_update(gs_handle(gs_graphics_buffer_t) hndl, gs_graphics_buffer_desc_t* desc)
-// {
-// }
 
 #define __ogl_push_command(CB, OP_CODE, ...)\
 do {\
@@ -1364,6 +1424,14 @@ void gs_graphics_uniform_buffer_request_update(gs_command_buffer_t* cb, gs_handl
     __gs_graphics_update_buffer_internal(cb, hndl.id, GS_GRAPHICS_BUFFER_UNIFORM, desc->usage, desc->size, desc->update.offset, desc->update.type, desc->data);
 }
 
+void gs_graphics_storage_buffer_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_storage_buffer_t) hndl, gs_graphics_storage_buffer_desc_t* desc)
+{
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
+
+    // Return if handle not valid
+    if (!hndl.id) return;
+}
+
 void gs_graphics_apply_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t* binds)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_engine_subsystem(graphics)->user_data;
@@ -1380,9 +1448,10 @@ void gs_graphics_apply_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t
         uint32_t uct = binds->uniform_buffers.desc ? binds->uniform_buffers.size ? binds->uniform_buffers.size / sizeof(gs_graphics_bind_uniform_buffer_desc_t) : 1 : 0;
         uint32_t pct = binds->uniforms.desc ? binds->uniforms.size ? binds->uniforms.size / sizeof(gs_graphics_bind_uniform_desc_t) : 1 : 0;
         uint32_t ibc = binds->image_buffers.desc ? binds->image_buffers.size ? binds->image_buffers.size / sizeof(gs_graphics_bind_image_buffer_desc_t) : 1 : 0;
+        uint32_t sbc = binds->storage_buffers.desc ? binds->storage_buffers.size ? binds->storage_buffers.size / sizeof(gs_graphics_bind_storage_buffer_desc_t) : 1 : 0;
 
         // Determine total count to write into command buffer
-        uint32_t ct = vct + ict + uct + ibc + pct;
+        uint32_t ct = vct + ict + uct + pct + ibc + sbc;
         gs_byte_buffer_write(&cb->commands, uint32_t, ct);
 
         // Determine if need to clear any previous vertex buffers (if vct != 0)
@@ -1442,6 +1511,15 @@ void gs_graphics_apply_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t
             gs_byte_buffer_write(&cb->commands, size_t, sz);
             gs_byte_buffer_write(&cb->commands, uint32_t, decl->binding);
             gs_byte_buffer_write_bulk(&cb->commands, decl->data, sz);
+        }
+
+        // Storage buffers
+        for (uint32_t i = 0; i < sbc; ++i)
+        {
+            gs_graphics_bind_storage_buffer_desc_t* decl = &binds->storage_buffers.desc[i];
+            gs_byte_buffer_write(&cb->commands, gs_graphics_bind_type, GS_GRAPHICS_BIND_STORAGE_BUFFER);
+            gs_byte_buffer_write(&cb->commands, uint32_t, decl->buffer.id);
+            gs_byte_buffer_write(&cb->commands, uint32_t, decl->binding);
         }
     };
 }
@@ -1930,6 +2008,82 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
 
                         } break;
 
+                        case GS_GRAPHICS_BIND_STORAGE_BUFFER:
+                        {
+                            gs_byte_buffer_readc(&cb->commands, uint32_t, sb_slot_id);
+                            gs_byte_buffer_readc(&cb->commands, uint32_t, binding);
+
+                            // Grab storage buffer from id
+                            if (!sb_slot_id || !gs_slot_array_exists(ogl->storage_buffers, sb_slot_id)) {
+                                gs_timed_action(60, {
+                                    gs_println("Warning:Bind Storage Buffer:Storage Buffer %d does not exist.", sb_slot_id);
+                                });
+                                continue;
+                            }
+
+                            // Grab currently bound pipeline (TODO(john): assert if this isn't valid)
+                            if (!ogl->cache.pipeline.id || !gs_slot_array_exists(ogl->pipelines, ogl->cache.pipeline.id)){
+                                gs_timed_action(60, {
+                                    gs_println("Warning:Bind Storage Buffer:Pipeline %d does not exist or is not bound.", ogl->cache.pipeline.id);
+                                });
+                                continue;
+                            }
+
+                            gsgl_pipeline_t* pip = gs_slot_array_getp(ogl->pipelines, ogl->cache.pipeline.id);
+
+                            gsgl_storage_buffer_t* sbo = gs_slot_array_getp(ogl->storage_buffers, sb_slot_id); 
+
+                            // Try to manually update data here (this works, but not sure why it doesn't work previously) 
+                            // WHYYYYYYYYYYYYYYYYY
+                            /*
+                            gs_vec4 c = gs_v4(1.0f, 0.0f, 0.0f, 1.0f);
+                            glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo->buffer);
+                            glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(c), &c, GL_DYNAMIC_DRAW);
+                            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+                            glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); 
+                            */
+
+                            // Get bound shader from pipeline (either compute or raster)
+                            uint32_t sid = pip->compute.shader.id ? pip->compute.shader.id : pip->raster.shader.id;
+
+                            if (!sid || !gs_slot_array_exists(ogl->shaders, sid)) {
+                                gs_timed_action(60, {
+                                    gs_println("Warning:Bind Uniform Buffer:Shader %d does not exist.", sid);
+                                });
+                                continue;
+                            }
+
+                            gsgl_shader_t shader = gs_slot_array_get(ogl->shaders, sid);
+
+                            static uint32_t location = UINT32_MAX;
+
+                            if ((sbo->block_idx == UINT32_MAX && sbo->block_idx != UINT32_MAX - 1)) 
+                            {
+                                // Get uniform location based on name and bound shader
+                                sbo->block_idx = glGetProgramResourceIndex(shader, GL_SHADER_STORAGE_BLOCK, sbo->name ? sbo->name : "__EMPTY_BUFFER_NAME");
+
+                                int32_t params[1];
+                                GLenum props[1] = {GL_BUFFER_BINDING};
+                                glGetProgramResourceiv(shader, GL_SHADER_STORAGE_BLOCK, sbo->block_idx, 1, props, 1, NULL, params);
+                                location = (uint32_t)params[0];
+
+                                if (sbo->block_idx >= UINT32_MAX) {
+                                    gs_println("Warning: Bind Storage Buffer: Buffer not found: \"%s\"", sbo->name);
+                                    sbo->block_idx = UINT32_MAX - 1;
+                                } 
+                            } 
+
+                            if (sbo->block_idx < UINT32_MAX - 1)
+                            {
+                                // Not sure what this actually does atm... 
+                                glShaderStorageBlockBinding(shader, sbo->block_idx, location);
+                            } 
+
+                            // This is required
+                            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, sbo->buffer); 
+
+                        } break;
+
                         case GS_GRAPHICS_BIND_IMAGE_BUFFER:
                         {
                             gs_byte_buffer_readc(&cb->commands, uint32_t, tex_slot_id);
@@ -2080,7 +2234,7 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                 }
 
                 // Dispatch shader 
-                CHECK_GL_CORE(
+                CHECK_GL_CORE( 
                     glDispatchCompute(num_x_groups, num_y_groups, num_z_groups); 
                     // Memory barrier (TODO(john): make this specifically set in the pipeline state)
                     glMemoryBarrier(GL_ALL_BARRIER_BITS);
