@@ -181,6 +181,9 @@ void gsgl_pipeline_state()
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glBindTexture(GL_TEXTURE_2D, 0);
+    CHECK_GL_CORE(
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
+    )
     glDisable(GL_SCISSOR_TEST);
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_STENCIL_TEST);
@@ -1624,6 +1627,9 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                 glBindFramebuffer(GL_FRAMEBUFFER, 0);
                 glBindBuffer(GL_ARRAY_BUFFER, 0);
                 glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+                CHECK_GL_CORE(
+                    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
+                );
                 glDisable(GL_SCISSOR_TEST);
                 glDisable(GL_DEPTH_TEST);
                 glDisable(GL_STENCIL_TEST);
@@ -2033,16 +2039,6 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
 
                             gsgl_storage_buffer_t* sbo = gs_slot_array_getp(ogl->storage_buffers, sb_slot_id); 
 
-                            // Try to manually update data here (this works, but not sure why it doesn't work previously) 
-                            // WHYYYYYYYYYYYYYYYYY
-                            /*
-                            gs_vec4 c = gs_v4(1.0f, 0.0f, 0.0f, 1.0f);
-                            glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo->buffer);
-                            glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(c), &c, GL_DYNAMIC_DRAW);
-                            glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-                            glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); 
-                            */
-
                             // Get bound shader from pipeline (either compute or raster)
                             uint32_t sid = pip->compute.shader.id ? pip->compute.shader.id : pip->raster.shader.id;
 
@@ -2235,8 +2231,8 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
 
                 // Dispatch shader 
                 CHECK_GL_CORE( 
-                    glDispatchCompute(num_x_groups, num_y_groups, num_z_groups); 
                     // Memory barrier (TODO(john): make this specifically set in the pipeline state)
+                    glDispatchCompute(num_x_groups, num_y_groups, num_z_groups); 
                     glMemoryBarrier(GL_ALL_BARRIER_BITS);
                 )
             } break;

@@ -74,17 +74,17 @@
 
 #define GS_GUI_SPLIT_SIZE 2.f
 
-#define GS_GUI_MAX_CNT              100 
-#define GS_GUI_COMMANDLIST_SIZE		(256 * 1024 * 4)
-#define GS_GUI_ROOTLIST_SIZE		GS_GUI_MAX_CNT
-#define GS_GUI_CONTAINERSTACK_SIZE	GS_GUI_MAX_CNT
-#define GS_GUI_CLIPSTACK_SIZE		GS_GUI_MAX_CNT
-#define GS_GUI_IDSTACK_SIZE			GS_GUI_MAX_CNT
-#define GS_GUI_LAYOUTSTACK_SIZE		GS_GUI_MAX_CNT
-#define GS_GUI_CONTAINERPOOL_SIZE	GS_GUI_MAX_CNT
-#define GS_GUI_TREENODEPOOL_SIZE	GS_GUI_MAX_CNT
-#define GS_GUI_GS_GUI_SPLIT_SIZE	GS_GUI_MAX_CNT
-#define GS_GUI_GS_GUI_TAB_SIZE		GS_GUI_MAX_CNT
+#define GS_GUI_MAX_CNT              48 
+#define GS_GUI_COMMANDLIST_SIZE		(256 * 1024)
+#define GS_GUI_ROOTLIST_SIZE		32
+#define GS_GUI_CONTAINERSTACK_SIZE	32
+#define GS_GUI_CLIPSTACK_SIZE		32
+#define GS_GUI_IDSTACK_SIZE			32
+#define GS_GUI_LAYOUTSTACK_SIZE		16
+#define GS_GUI_CONTAINERPOOL_SIZE	48
+#define GS_GUI_TREENODEPOOL_SIZE	48
+#define GS_GUI_GS_GUI_SPLIT_SIZE	32
+#define GS_GUI_GS_GUI_TAB_SIZE		32
 #define GS_GUI_MAX_WIDTHS			16
 #define GS_GUI_REAL					float
 #define GS_GUI_REAL_FMT				"%.3g"
@@ -185,7 +185,8 @@ enum {
     GS_GUI_OPT_NODOCK       = (1 << 19),
     GS_GUI_OPT_FULLSCREEN   = (1 << 20),
     GS_GUI_OPT_DOCKSPACE    = (1 << 21),
-    GS_GUI_OPT_NOBRINGTOFRONT = (1 << 22) 
+    GS_GUI_OPT_NOBRINGTOFRONT = (1 << 22), 
+    GS_GUI_OPT_LEFTCLICKONLY = (1 << 23)
 };
 
 enum {
@@ -391,7 +392,11 @@ typedef enum {
     GS_GUI_ELEMENT_STATE_DEFAULT = 0x00,
     GS_GUI_ELEMENT_STATE_HOVER,
     GS_GUI_ELEMENT_STATE_FOCUS,
-    GS_GUI_ELEMENT_STATE_COUNT
+    GS_GUI_ELEMENT_STATE_COUNT,
+    GS_GUI_ELEMENT_STATE_ON_HOVER,
+    GS_GUI_ELEMENT_STATE_ON_FOCUS,
+    GS_GUI_ELEMENT_STATE_OFF_HOVER,
+    GS_GUI_ELEMENT_STATE_OFF_FOCUS
 } gs_gui_element_state;
 
 typedef enum gs_gui_element_type
@@ -428,6 +433,7 @@ typedef enum {
     GS_GUI_STYLE_HEIGHT,
 
     // Padding
+    GS_GUI_STYLE_PADDING, 
     GS_GUI_STYLE_PADDING_LEFT, 
     GS_GUI_STYLE_PADDING_TOP, 
     GS_GUI_STYLE_PADDING_RIGHT, 
@@ -466,14 +472,34 @@ typedef enum {
 
 } gs_gui_style_element_type;
 
+enum {
+    GS_GUI_ANIMATION_DIRECTION_FORWARD = 0x00,
+    GS_GUI_ANIMATION_DIRECTION_BACKWARD
+}; 
+ 
 typedef struct {
     gs_gui_style_element_type type;
     union {
         int32_t value;
         gs_color_t color;
-        void* data;
+        gs_asset_font_t* font;
     }; 
 } gs_gui_style_element_t; 
+
+typedef struct gs_gui_animation_t
+{
+    int16_t max;            // max time
+    int16_t time;           // current time
+    int16_t delay;          // delay
+    int16_t curve;          // curve type
+    int16_t direction;      // current direction
+    int16_t playing;        // whether or not active
+    int16_t iterations;     // number of iterations to play the animation
+    int16_t focus_state;    // cached focus_state from frame (want to delete this somehow)
+    int16_t hover_state;    // cached hover_state from frame (want to delete this somehow)
+    int16_t start_state;    // starting state for animation blend
+    int16_t end_state;      // ending state for animation blend
+} gs_gui_animation_t; 
 
 typedef struct gs_gui_style_t
 {
@@ -481,60 +507,107 @@ typedef struct gs_gui_style_t
     gs_asset_font_t* font;
 
     // dimensions
-	gs_vec2 size;
-	int32_t spacing;        
-	int32_t indent;        
-	int32_t title_height;
-	int32_t scrollbar_size;
-	int32_t thumb_size; 
+	float size[2];
+	int16_t spacing;        
+	int16_t indent;        
+	int16_t title_height;
+	int16_t scrollbar_size;
+	int16_t thumb_size; 
 
     // colors
 	gs_color_t colors[GS_GUI_COLOR_MAX]; 
 
     // padding/margin
     int32_t padding[4];
-    int32_t margin[4];
+    int16_t margin[4];
 
     // border
-    int32_t border_width;
-    int32_t border_radius;
+    int16_t border_width;
+    int16_t border_radius;
 
     // flex direction / justification / alignment
-    int32_t direction; 
-    int32_t justify_content;
-    int32_t align_content;
+    int16_t direction; 
+    int16_t justify_content;
+    int16_t align_content;
 
     // shadow x/y
-    int32_t shadow_x;
-    int32_t shadow_y; 
+    int16_t shadow_x;
+    int16_t shadow_y;
 
 } gs_gui_style_t; 
 
+// Keep animation properties lists within style sheet to look up
+
+typedef struct gs_gui_animation_property_t
+{
+    gs_gui_style_element_type type;
+    int16_t time;
+    int16_t delay;
+} gs_gui_animation_property_t;
+
+typedef struct gs_gui_animation_property_list_t
+{
+    gs_dyn_array(gs_gui_animation_property_t) properties[3];
+} gs_gui_animation_property_list_t; 
+
 typedef struct gs_gui_style_sheet_t {
-    gs_gui_style_t styles[GS_GUI_ELEMENT_COUNT][GS_GUI_ELEMENT_STATE_COUNT];
+    gs_gui_style_t styles[GS_GUI_ELEMENT_COUNT][3]; // default | hovered | focused
+    gs_hash_table(gs_gui_element_type, gs_gui_animation_property_list_t) animations;
 } gs_gui_style_sheet_t;
 
 typedef struct gs_gui_style_sheet_element_desc_t {
 
     struct { 
-        gs_gui_style_element_t* styles;    
-        size_t size; 
+
+        struct {
+            gs_gui_style_element_t* data;
+            size_t size;
+        } style;
+
+        struct {
+            gs_gui_animation_property_t* data;
+            size_t size;
+        } animation;
+
     } all; 
 
     struct {
-        gs_gui_style_element_t* styles;    
-        size_t size; 
+
+        struct {
+            gs_gui_style_element_t* data;    
+            size_t size; 
+        } style;
+
+        struct {
+            gs_gui_animation_property_t* data;
+            size_t size;
+        } animation;
+
     } def;
 
     struct {
-        gs_gui_style_element_t* styles;    
-        size_t size; 
+        struct {
+            gs_gui_style_element_t* data;    
+            size_t size; 
+        } style;
+
+        struct {
+            gs_gui_animation_property_t* data;
+            size_t size;
+        } animation;
     } hover;
 
     struct {
-        gs_gui_style_element_t* styles;    
-        size_t size; 
-    } focus;
+        struct {
+            gs_gui_style_element_t* data;    
+            size_t size; 
+        } style;
+
+        struct {
+            gs_gui_animation_property_t* data;
+            size_t size;
+        } animation;
+    } focus; 
 
 } gs_gui_style_sheet_element_desc_t;
 
@@ -584,22 +657,19 @@ typedef struct gs_gui_request_t
 
 typedef struct gs_gui_context_t 
 { 
-	// Callbacks
-    int32_t (*text_width)(gs_asset_font_t* font, const char* text, int32_t len);
-    int32_t (*text_height)(gs_asset_font_t* font, const char* text, int32_t len);
-    int32_t (*font_height)(gs_asset_font_t* font);
-    gs_vec2 (*text_dimensions)(gs_asset_font_t* font, const char* text, int32_t len);
-	void (*draw_frame)(gs_gui_context_t *ctx, gs_gui_rect_t rect, int32_t elementid, int32_t state);
-
 	// Core state
-	gs_gui_style_t _style;              
 	gs_gui_style_t* style;              // Active style
-    gs_gui_style_sheet_t _style_sheet;  // Default style sheet
     gs_gui_style_sheet_t* style_sheet;  // Active style sheet
 	gs_gui_id hover;
 	gs_gui_id focus;
 	gs_gui_id last_id;
+    gs_gui_id state_switch_id;          // Id that had a state switch
+    int32_t switch_state;
     gs_gui_id lock_focus;
+    int32_t last_hover_state;
+    int32_t last_focus_state;
+    gs_gui_id prev_hover;
+    gs_gui_id prev_focus;
 	gs_gui_rect_t last_rect;
 	int32_t last_zindex;
 	int32_t updated_focus;
@@ -620,7 +690,6 @@ typedef struct gs_gui_context_t
     gs_gui_id           lock_hover_id;
 	char number_edit_buf[GS_GUI_MAX_FMT];
 	gs_gui_id number_edit;
-    gs_vec2 framebuffer;
     gs_gui_alt_drag_mode_type alt_drag_mode;
     gs_dyn_array(gs_gui_request_t) requests;
 
@@ -655,7 +724,9 @@ typedef struct gs_gui_context_t
     uint32_t window_hndl;
     gs_immediate_draw_t gsi;
     gs_immediate_draw_t overlay_draw_list;                                  
-    gs_handle(gs_graphics_texture_t) atlas_tex;
+
+    // Active Transitions
+    gs_hash_table(gs_gui_id, gs_gui_animation_t) animations;
 
     // Callbacks
     struct {
@@ -664,21 +735,98 @@ typedef struct gs_gui_context_t
 
 } gs_gui_context_t; 
 
-// Need better layout tools to simulate flexbox mechanics
-/*
-   gs_gui_layout_row(ctx, 2, {);
-   gs_gui_push_style(ctx, (gs_gui_style_t){.margin = 20, .justify = JUSTIFY_CENTER, .align = ALIGN_CENTER}); 
-   gs_gui_pop_style(ctx);
-   gs_gui_layout_col();
-*/
+typedef struct 
+{ 
+	// Core state
+	gs_gui_style_t* style;              // Active style
+    gs_gui_style_sheet_t* style_sheet;  // Active style sheet   
+	gs_gui_id hover;
+	gs_gui_id focus;
+	gs_gui_id last_id;
+    gs_gui_id lock_focus;
+	gs_gui_rect_t last_rect;
+	int32_t last_zindex;
+	int32_t updated_focus;
+	int32_t frame;
+	gs_gui_container_t* hover_root;
+	gs_gui_container_t* next_hover_root;
+	gs_gui_container_t* scroll_target;
+    gs_gui_container_t* focus_root;
+    gs_gui_container_t* next_focus_root;
+    gs_gui_container_t* dockable_root;
+    gs_gui_container_t* prev_dockable_root;
+    gs_gui_container_t* docked_root;
+    gs_gui_container_t* undock_root;
+    gs_gui_split_t*     focus_split;
+    gs_gui_split_t*     next_hover_split;
+    gs_gui_split_t*     hover_split;
+    gs_gui_id           next_lock_hover_id;
+    gs_gui_id           lock_hover_id;
+	char number_edit_buf[GS_GUI_MAX_FMT];
+	gs_gui_id number_edit;
+    gs_gui_alt_drag_mode_type alt_drag_mode;
+    gs_dyn_array(gs_gui_request_t) requests;
+
+	// Stacks
+	gs_gui_stack(gs_gui_container_t*, GS_GUI_CONTAINERSTACK_SIZE) container_stack;
+
+    gs_dyn_array(uint8_t) command_list;
+    gs_dyn_array(gs_gui_container_t*) root_list;
+    gs_dyn_array(gs_gui_rect_t) clip_stack;
+    gs_dyn_array(gs_gui_id) id_stack;
+    gs_dyn_array(gs_gui_layout_t) layout_stack;
+
+    /*
+	gs_gui_stack(uint8_t, GS_GUI_COMMANDLIST_SIZE) command_list;
+	gs_gui_stack(gs_gui_container_t*, GS_GUI_ROOTLIST_SIZE) root_list;
+	gs_gui_stack(gs_gui_rect_t, GS_GUI_CLIPSTACK_SIZE) clip_stack;
+	gs_gui_stack(gs_gui_id, GS_GUI_IDSTACK_SIZE) id_stack;
+	gs_gui_stack(gs_gui_layout_t, GS_GUI_LAYOUTSTACK_SIZE) layout_stack;
+    */
+
+	// Retained state pools
+	gs_gui_pool_item_t container_pool[GS_GUI_CONTAINERPOOL_SIZE];
+	// gs_gui_container_t containers[GS_GUI_CONTAINERPOOL_SIZE];
+	gs_gui_pool_item_t treenode_pool[GS_GUI_TREENODEPOOL_SIZE];
+
+    gs_slot_array(gs_gui_split_t) splits;
+    gs_slot_array(gs_gui_tab_bar_t) tab_bars;
+
+	// Input state
+	gs_vec2 mouse_pos;
+	gs_vec2 last_mouse_pos;
+	gs_vec2 mouse_delta;
+	gs_vec2 scroll_delta;
+	int16_t mouse_down;
+	int16_t mouse_pressed;
+	int16_t key_down;
+	int16_t key_pressed;
+	char input_text[32]; 
+
+    // Backend resources
+    uint32_t window_hndl;
+    gs_immediate_draw_t gsi;
+    gs_immediate_draw_t overlay_draw_list;                                  
+
+    // Active Transitions
+    gs_hash_table(gs_gui_id, gs_gui_animation_t) animations;
+
+    // Callbacks
+    struct {
+        gs_gui_on_draw_button_callback button;
+    } callbacks;
+
+} gs_gui_context_pruned_t; 
 
 gs_gui_rect_t gs_gui_rect(float x, float y, float w, float h);
 
 GS_API_DECL void gs_gui_init(gs_gui_context_t *ctx, uint32_t window_hndl);
 GS_API_DECL void gs_gui_begin(gs_gui_context_t *ctx);
 GS_API_DECL void gs_gui_end(gs_gui_context_t *ctx); 
+GS_API_DECL void gs_gui_free(gs_gui_context_t* ctx);
 GS_API_DECL void gs_gui_render(gs_gui_context_t* ctx, gs_command_buffer_t* cb);
 GS_API_DECL void gs_gui_set_focus(gs_gui_context_t *ctx, gs_gui_id id);
+GS_API_DECL void gs_gui_set_hover(gs_gui_context_t *ctx, gs_gui_id id);
 GS_API_DECL gs_gui_id gs_gui_get_id(gs_gui_context_t *ctx, const void *data, int32_t size);
 GS_API_DECL void gs_gui_push_id(gs_gui_context_t *ctx, const void *data, int32_t size);
 GS_API_DECL void gs_gui_pop_id(gs_gui_context_t *ctx);
@@ -698,6 +846,8 @@ GS_API_DECL void gs_gui_tab_item_swap(gs_gui_context_t* ctx, gs_gui_container_t*
 GS_API_DECL gs_gui_container_t* gs_gui_get_root_container(gs_gui_context_t* ctx, gs_gui_container_t* cnt); 
 GS_API_DECL gs_gui_container_t* gs_gui_get_root_container_from_split(gs_gui_context_t* ctx, gs_gui_split_t* split);
 GS_API_DECL gs_gui_container_t* gs_gui_get_parent(gs_gui_context_t* ctx, gs_gui_container_t* cnt);
+GS_API_DECL gs_gui_animation_t* gs_gui_get_animation(gs_gui_context_t* ctx, gs_gui_id id, int32_t elementid); 
+GS_API_DECL gs_gui_style_t gs_gui_animation_get_blend_style(gs_gui_context_t* ctx, gs_gui_animation_t* anim, int32_t elementid);
 
 // styles
 GS_API_DECL gs_gui_style_sheet_t gs_gui_style_sheet_new(gs_gui_context_t* ctx, gs_gui_style_sheet_desc_t* desc);
@@ -738,12 +888,12 @@ GS_API_DECL gs_gui_rect_t gs_gui_layout_next(gs_gui_context_t *ctx);
 GS_API_DECL gs_gui_rect_t gs_gui_layout_anchor(const gs_gui_rect_t* parent, int32_t width, int32_t height, int32_t xoff, int32_t yoff, gs_gui_layout_anchor_type type);
 
 GS_API_DECL void gs_gui_draw_control_frame(gs_gui_context_t* ctx, gs_gui_id id, gs_gui_rect_t rect, int32_t elementid, int32_t opt);
-GS_API_DECL void gs_gui_draw_control_text(gs_gui_context_t* ctx, const char *str, gs_gui_rect_t rect, int32_t elementid, int32_t state, int32_t opt);
+GS_API_DECL void gs_gui_draw_control_text(gs_gui_context_t* ctx, const char *str, gs_gui_rect_t rect, const gs_gui_style_t* style, int32_t opt);
 GS_API_DECL int32_t gs_gui_mouse_over(gs_gui_context_t* ctx, gs_gui_rect_t rect);
 GS_API_DECL void gs_gui_update_control(gs_gui_context_t* ctx, gs_gui_id id, gs_gui_rect_t rect, int32_t opt);
 
 // Widgets
-#define gs_gui_button(_CTX, _LABEL)				    gs_gui_button_ex((_CTX), (_LABEL), 0, GS_GUI_OPT_ALIGNCENTER)
+#define gs_gui_button(_CTX, _LABEL)				    gs_gui_button_ex((_CTX), (_LABEL), 0, GS_GUI_OPT_ALIGNCENTER | GS_GUI_OPT_LEFTCLICKONLY)
 #define gs_gui_textbox(_CTX, _BUF, _BUFSZ)			gs_gui_textbox_ex((_CTX), (_BUF), (_BUFSZ), 0)
 #define gs_gui_slider(_CTX, _VALUE, _LO, _HI)		gs_gui_slider_ex((_CTX), (_VALUE), (_LO), (_HI), 0, GS_GUI_SLIDER_FMT, GS_GUI_OPT_ALIGNCENTER)
 #define gs_gui_number(_CTX, _VALUE, _STEP)			gs_gui_number_ex((_CTX), (_VALUE), (_STEP), GS_GUI_SLIDER_FMT, GS_GUI_OPT_ALIGNCENTER)
@@ -821,14 +971,14 @@ static void gs_gui_hash(gs_gui_id *hash, const void *data, int32_t size)
 static gs_gui_rect_t gs_gui_unclipped_rect = { 0, 0, 0x1000000, 0x1000000 };
 
 // Default styles
-static gs_gui_style_t gs_gui_default_container_style[GS_GUI_ELEMENT_STATE_COUNT]; 
-static gs_gui_style_t gs_gui_default_button_style[GS_GUI_ELEMENT_STATE_COUNT]; 
-static gs_gui_style_t gs_gui_default_div_style[GS_GUI_ELEMENT_STATE_COUNT]; 
-static gs_gui_style_t gs_gui_default_text_style[GS_GUI_ELEMENT_STATE_COUNT]; 
-static gs_gui_style_t gs_gui_default_label_style[GS_GUI_ELEMENT_STATE_COUNT]; 
-static gs_gui_style_t gs_gui_default_panel_style[GS_GUI_ELEMENT_STATE_COUNT]; 
-static gs_gui_style_t gs_gui_default_scroll_style[GS_GUI_ELEMENT_STATE_COUNT]; 
-static gs_gui_style_t gs_gui_default_base_style[GS_GUI_ELEMENT_STATE_COUNT]; 
+static gs_gui_style_t gs_gui_default_container_style[3]; 
+static gs_gui_style_t gs_gui_default_button_style[3]; 
+static gs_gui_style_t gs_gui_default_div_style[3]; 
+static gs_gui_style_t gs_gui_default_text_style[3]; 
+static gs_gui_style_t gs_gui_default_label_style[3]; 
+static gs_gui_style_t gs_gui_default_panel_style[3]; 
+static gs_gui_style_t gs_gui_default_scroll_style[3]; 
+static gs_gui_style_t gs_gui_default_base_style[3]; 
 
 static gs_gui_style_t gs_gui_default_style = 
 {
@@ -858,8 +1008,266 @@ static gs_gui_style_t gs_gui_default_style =
     GS_GUI_ALIGN_CENTER, 
 
     // shadow x/y (0 for disabled)
-    1, 1 
+    1, 1
 }; 
+
+static gs_gui_style_sheet_t gs_gui_default_style_sheet = gs_default_val(); 
+
+GS_API_DECL gs_gui_style_t gs_gui_animation_get_blend_style(gs_gui_context_t* ctx, gs_gui_animation_t* anim, int32_t elementid)
+{
+    gs_gui_style_t ret = gs_default_val(); 
+
+    int32_t focus_state = anim->focus_state;
+    int32_t hover_state = anim->hover_state;
+
+    gs_gui_style_t* s0 = NULL;
+    gs_gui_style_t* s1 = NULL; 
+
+    s0 = &ctx->style_sheet->styles[elementid][anim->start_state];
+    s1 = &ctx->style_sheet->styles[elementid][anim->end_state]; 
+    gs_assert(s0);
+    gs_assert(s1); 
+
+    if (anim->direction == GS_GUI_ANIMATION_DIRECTION_FORWARD) {ret = *s1;}
+    else {ret = *s0;} 
+
+    const gs_gui_animation_property_list_t* list = NULL; 
+    if (gs_hash_table_exists(ctx->style_sheet->animations, elementid)) {
+        list = gs_hash_table_getp(ctx->style_sheet->animations, elementid);
+    } 
+
+    // Get final blend
+    if (s0 != s1 && !gs_dyn_array_empty(list->properties[anim->end_state]))
+    { 
+        // Loop through available transition properties, apply as needed 
+        gs_dyn_array(gs_gui_animation_property_t) props = list->properties[anim->end_state]; 
+
+#define GS_GUI_BLEND_COLOR(TYPE)\
+        do {\
+            gs_color_t* c0 = &s0->colors[TYPE];\
+            gs_color_t* c1 = &s1->colors[TYPE];\
+            float r = 255.f * gs_interp_smooth_step((float)c0->r / 255.f, (float)c1->r / 255.f, t);\
+            float g = 255.f * gs_interp_smooth_step((float)c0->g / 255.f, (float)c1->g / 255.f, t);\
+            float b = 255.f * gs_interp_smooth_step((float)c0->b / 255.f, (float)c1->b / 255.f, t);\
+            float a = 255.f * gs_interp_smooth_step((float)c0->a / 255.f, (float)c1->a / 255.f, t);\
+            ret.colors[TYPE] = gs_color(r, g, b, a);\
+        } while (0)
+
+#define GS_GUI_BLEND_VALUE(FIELD, TYPE)\
+        do {\
+            float v0 = s0->FIELD;\
+            float v1 = s1->FIELD;\
+            ret.FIELD = (TYPE)gs_interp_smooth_step(v0, v1, t);\
+        } while (0) 
+
+        for (uint32_t i = 0; i < gs_dyn_array_size(props); ++i)
+        { 
+            const gs_gui_animation_property_t* prop = &props[i];
+
+            // Determine t based on property and overall animation time...I think
+            float t = 0.f; 
+            switch (anim->direction) 
+            {
+                default:
+                case GS_GUI_ANIMATION_DIRECTION_FORWARD:
+                {
+                    t = gs_clamp(gs_map_range((float)prop->delay, (float)prop->time + (float)prop->delay, 0.f, 1.f, (float)anim->time), 0.f, 1.f);
+                } break;
+
+                case GS_GUI_ANIMATION_DIRECTION_BACKWARD:
+                {
+                    t = gs_clamp(gs_map_range((float)0.f, (float)anim->max - (float)prop->delay, 0.f, 1.f, (float)anim->time), 0.f, 1.f);
+                } break;
+            }
+
+            switch (prop->type)
+            {
+                case GS_GUI_STYLE_BACKGROUND_COLOR: {GS_GUI_BLEND_COLOR(GS_GUI_COLOR_BACKGROUND);} break; 
+                case GS_GUI_STYLE_CONTENT_COLOR:    {GS_GUI_BLEND_COLOR(GS_GUI_COLOR_CONTENT);} break; 
+                case GS_GUI_STYLE_SHADOW_COLOR:     {GS_GUI_BLEND_COLOR(GS_GUI_COLOR_SHADOW);} break; 
+                case GS_GUI_STYLE_BORDER_COLOR:     {GS_GUI_BLEND_COLOR(GS_GUI_COLOR_BORDER);} break; 
+                case GS_GUI_STYLE_WIDTH:            {GS_GUI_BLEND_VALUE(size[0], float);} break;
+                case GS_GUI_STYLE_HEIGHT:           {GS_GUI_BLEND_VALUE(size[1], float);} break;
+                case GS_GUI_STYLE_BORDER_WIDTH:     {GS_GUI_BLEND_VALUE(border_width, float);} break;
+                case GS_GUI_STYLE_MARGIN_BOTTOM:    {GS_GUI_BLEND_VALUE(margin[GS_GUI_MARGIN_BOTTOM], int16_t);} break;
+                case GS_GUI_STYLE_MARGIN_TOP:       {GS_GUI_BLEND_VALUE(margin[GS_GUI_MARGIN_TOP], int16_t);} break;
+                case GS_GUI_STYLE_MARGIN_LEFT:      {GS_GUI_BLEND_VALUE(margin[GS_GUI_MARGIN_LEFT], int16_t);} break;
+                case GS_GUI_STYLE_MARGIN_RIGHT:     {GS_GUI_BLEND_VALUE(margin[GS_GUI_MARGIN_RIGHT], int16_t);} break;
+                case GS_GUI_STYLE_MARGIN: {
+                    GS_GUI_BLEND_VALUE(margin[0], int16_t);
+                    GS_GUI_BLEND_VALUE(margin[1], int16_t);
+                    GS_GUI_BLEND_VALUE(margin[2], int16_t);
+                    GS_GUI_BLEND_VALUE(margin[3], int16_t);
+                } break;
+                case GS_GUI_STYLE_PADDING_BOTTOM:    {GS_GUI_BLEND_VALUE(padding[GS_GUI_PADDING_BOTTOM], int32_t);} break;
+                case GS_GUI_STYLE_PADDING_TOP:       {GS_GUI_BLEND_VALUE(padding[GS_GUI_PADDING_TOP], int32_t);} break;
+                case GS_GUI_STYLE_PADDING_LEFT:      {GS_GUI_BLEND_VALUE(padding[GS_GUI_PADDING_LEFT], int32_t);} break;
+                case GS_GUI_STYLE_PADDING_RIGHT:     {GS_GUI_BLEND_VALUE(padding[GS_GUI_PADDING_RIGHT], int32_t);} break;
+                case GS_GUI_STYLE_PADDING: {
+                    GS_GUI_BLEND_VALUE(padding[0], int32_t);
+                    GS_GUI_BLEND_VALUE(padding[1], int32_t);
+                    GS_GUI_BLEND_VALUE(padding[2], int32_t);
+                    GS_GUI_BLEND_VALUE(padding[3], int32_t);
+                } break;
+                case GS_GUI_STYLE_SHADOW_X:         {GS_GUI_BLEND_VALUE(shadow_x, int16_t);} break;
+                case GS_GUI_STYLE_SHADOW_Y:         {GS_GUI_BLEND_VALUE(shadow_y, int16_t);} break;
+            }
+        } 
+    } 
+
+    return ret;
+}
+
+GS_API_DECL gs_gui_animation_t* gs_gui_get_animation(gs_gui_context_t* ctx, gs_gui_id id, int32_t elementid)
+{ 
+    gs_gui_animation_t* anim = NULL;
+
+    // Construct new animation if necessary to insert
+    if (ctx->state_switch_id == id)
+    { 
+        if (!gs_hash_table_exists(ctx->animations, id))
+        {
+            gs_gui_animation_t val = gs_default_val();
+            gs_hash_table_insert(ctx->animations, id, val);
+        } 
+
+    #define ANIM_GET_TIME(STATE)\
+        do {\
+            const gs_gui_animation_property_list_t* list = NULL;\
+            if (gs_hash_table_exists(ctx->style_sheet->animations, elementid)) {\
+                list = gs_hash_table_getp(ctx->style_sheet->animations, elementid);\
+            }\
+            if (!gs_dyn_array_empty(list->properties[STATE]))\
+            {\
+                gs_dyn_array(gs_gui_animation_property_t) props = list->properties[STATE];\
+                for (uint32_t p = 0; p < gs_dyn_array_size(props); ++p)\
+                {\
+                    if (props[p].time > anim->max) anim->max = props[p].time;\
+                    if (props[p].delay > anim->delay) anim->delay = props[p].delay;\
+                }\
+                anim->max += anim->delay;\
+            }\
+        } while (0)
+
+        anim = gs_hash_table_getp(ctx->animations, id); 
+        anim->playing = true;
+
+        const bool32 valid_eid = (elementid >= 0 && elementid < GS_GUI_ELEMENT_COUNT);
+        int16_t focus_state = 0x00; 
+        int16_t hover_state = 0x00;
+        int16_t direction = 0x00;
+        int16_t start_state = 0x00; 
+        int16_t end_state = 0x00;
+        int16_t time_state = 0x00;
+
+        switch (ctx->switch_state)
+        {
+            case GS_GUI_ELEMENT_STATE_OFF_FOCUS:
+            {
+                if (ctx->hover == id) 
+                {
+                    anim->direction = GS_GUI_ANIMATION_DIRECTION_BACKWARD;
+                    anim->start_state = GS_GUI_ELEMENT_STATE_HOVER;
+                    anim->end_state = GS_GUI_ELEMENT_STATE_FOCUS;
+                    time_state = GS_GUI_ELEMENT_STATE_HOVER;
+                    if (valid_eid) ANIM_GET_TIME(time_state);
+                    anim->time = anim->max;
+                } 
+                else 
+                {
+                    anim->direction = GS_GUI_ANIMATION_DIRECTION_BACKWARD;
+                    anim->start_state = GS_GUI_ELEMENT_STATE_DEFAULT;
+                    anim->end_state = GS_GUI_ELEMENT_STATE_FOCUS;
+                    time_state = GS_GUI_ELEMENT_STATE_DEFAULT;
+                    if (valid_eid) ANIM_GET_TIME(time_state);
+                    anim->time = anim->max;
+                }
+            } break;
+
+            case GS_GUI_ELEMENT_STATE_ON_FOCUS:
+            {
+                anim->direction = GS_GUI_ANIMATION_DIRECTION_FORWARD;
+                anim->start_state = GS_GUI_ELEMENT_STATE_HOVER;
+                anim->end_state = GS_GUI_ELEMENT_STATE_FOCUS;
+                time_state = GS_GUI_ELEMENT_STATE_FOCUS;
+                if (valid_eid) ANIM_GET_TIME(time_state);
+                anim->time = 0.f;
+            } break;
+
+            case GS_GUI_ELEMENT_STATE_OFF_HOVER:
+            {
+                anim->direction = GS_GUI_ANIMATION_DIRECTION_BACKWARD;
+                anim->start_state = GS_GUI_ELEMENT_STATE_DEFAULT;
+                anim->end_state = GS_GUI_ELEMENT_STATE_HOVER;
+                time_state = GS_GUI_ELEMENT_STATE_DEFAULT;
+                if (valid_eid) ANIM_GET_TIME(time_state);
+                anim->time = anim->max;
+            } break;
+
+            case GS_GUI_ELEMENT_STATE_ON_HOVER:
+            {
+                anim->direction = GS_GUI_ANIMATION_DIRECTION_FORWARD;
+                anim->start_state = GS_GUI_ELEMENT_STATE_DEFAULT;
+                anim->end_state = GS_GUI_ELEMENT_STATE_HOVER;
+                time_state = GS_GUI_ELEMENT_STATE_HOVER;
+                if (valid_eid) ANIM_GET_TIME(time_state);
+                anim->time = 0.f;
+            } break;
+        } 
+
+        // Reset state switches and id
+        ctx->state_switch_id = 0; 
+        ctx->switch_state = 0;
+
+        return anim;
+    } 
+
+    // Return if found
+    if (gs_hash_table_exists(ctx->animations, id)) {
+        anim = gs_hash_table_getp(ctx->animations, id);
+    } 
+
+    if (anim && !anim->playing)
+    {
+        gs_hash_table_erase(ctx->animations, id);
+        anim = NULL;
+    } 
+
+    return anim;
+}
+
+GS_API_DECL void gs_gui_animation_update(gs_gui_context_t* ctx, gs_gui_animation_t* anim)
+{
+    const int16_t dt = (int16_t)(gs_platform_delta_time() * 1000.f);
+
+    if (anim->playing)
+    { 
+        // Forward
+        switch (anim->direction)
+        {
+            default: 
+            case (GS_GUI_ANIMATION_DIRECTION_FORWARD):
+            {
+                anim->time += dt; 
+                if (anim->time >= anim->max)
+                {
+                    anim->time = anim->max;
+                    anim->playing = false;
+                }
+            } break;
+
+            case (GS_GUI_ANIMATION_DIRECTION_BACKWARD):
+            {
+                anim->time -= dt; 
+                if (anim->time <= 0)
+                {
+                    anim->time = 0;
+                    anim->playing = false;
+                }
+            } break;
+        } 
+    }
+}
 
 GS_API_DECL gs_gui_rect_t gs_gui_rect(float x, float y, float w, float h) 
 {
@@ -924,7 +1332,7 @@ GS_API_DECL void gs_gui_bring_split_to_front(gs_gui_context_t* ctx, gs_gui_split
     if (c0->type == GS_GUI_SPLIT_NODE_CONTAINER) 
     {
         gs_gui_bring_to_front(ctx, c0->container); 
-        ctx->hover = c0;
+        // ctx->hover = c0;
     }
     else
     {
@@ -935,7 +1343,7 @@ GS_API_DECL void gs_gui_bring_split_to_front(gs_gui_context_t* ctx, gs_gui_split
     if (c1->type == GS_GUI_SPLIT_NODE_CONTAINER) 
     {
         gs_gui_bring_to_front(ctx, c1->container); 
-        ctx->hover = c1;
+        // ctx->hover = c1;
     }
     else
     {
@@ -1222,11 +1630,11 @@ static void gs_gui_pop_container(gs_gui_context_t *ctx)
                             ctx->hover == id ? GS_GUI_ELEMENT_STATE_HOVER : 0x00;           \
 																							\
 			/* draw base and thumb */														\
-			ctx->draw_frame(ctx, base, GS_GUI_ELEMENT_SCROLL, state);						\
+			gs_gui_draw_frame(ctx, base, GS_GUI_ELEMENT_SCROLL, state);						\
 			thumb = base;																    \
 			thumb.h = gs_max(ctx->style->thumb_size, base.h * b->h / cs.y);			        \
 			thumb.y += cnt->scroll.y * (base.h - thumb.h) / maxscroll;						\
-			ctx->draw_frame(ctx, thumb, GS_GUI_ELEMENT_BASE, 0x00);							\
+			gs_gui_draw_frame(ctx, thumb, GS_GUI_ELEMENT_BASE, 0x00);							\
 																							\
 			/* set this as the scroll_target (will get scrolled on mousewheel) */           \
 			/* if the mouse is over it */													\
@@ -1321,32 +1729,32 @@ GS_API_DECL gs_gui_style_sheet_t gs_gui_style_sheet_new(gs_gui_context_t* ctx, g
     gs_gui_style_sheet_t style_sheet = gs_default_val(); 
 
     // Copy all default styles
-    GS_GUI_COPY_STYLES(style_sheet.styles, ctx->_style_sheet.styles, GS_GUI_ELEMENT_CONTAINER);
-    GS_GUI_COPY_STYLES(style_sheet.styles, ctx->_style_sheet.styles, GS_GUI_ELEMENT_DIV);
-    GS_GUI_COPY_STYLES(style_sheet.styles, ctx->_style_sheet.styles, GS_GUI_ELEMENT_LABEL);
-    GS_GUI_COPY_STYLES(style_sheet.styles, ctx->_style_sheet.styles, GS_GUI_ELEMENT_TEXT);
-    GS_GUI_COPY_STYLES(style_sheet.styles, ctx->_style_sheet.styles, GS_GUI_ELEMENT_PANEL);
-    GS_GUI_COPY_STYLES(style_sheet.styles, ctx->_style_sheet.styles, GS_GUI_ELEMENT_BUTTON);
-    GS_GUI_COPY_STYLES(style_sheet.styles, ctx->_style_sheet.styles, GS_GUI_ELEMENT_SCROLL); 
-    GS_GUI_COPY_STYLES(style_sheet.styles, ctx->_style_sheet.styles, GS_GUI_ELEMENT_BASE); 
+    GS_GUI_COPY_STYLES(style_sheet.styles, gs_gui_default_style_sheet.styles, GS_GUI_ELEMENT_CONTAINER);
+    GS_GUI_COPY_STYLES(style_sheet.styles, gs_gui_default_style_sheet.styles, GS_GUI_ELEMENT_DIV);
+    GS_GUI_COPY_STYLES(style_sheet.styles, gs_gui_default_style_sheet.styles, GS_GUI_ELEMENT_LABEL);
+    GS_GUI_COPY_STYLES(style_sheet.styles, gs_gui_default_style_sheet.styles, GS_GUI_ELEMENT_TEXT);
+    GS_GUI_COPY_STYLES(style_sheet.styles, gs_gui_default_style_sheet.styles, GS_GUI_ELEMENT_PANEL);
+    GS_GUI_COPY_STYLES(style_sheet.styles, gs_gui_default_style_sheet.styles, GS_GUI_ELEMENT_BUTTON);
+    GS_GUI_COPY_STYLES(style_sheet.styles, gs_gui_default_style_sheet.styles, GS_GUI_ELEMENT_SCROLL); 
+    GS_GUI_COPY_STYLES(style_sheet.styles, gs_gui_default_style_sheet.styles, GS_GUI_ELEMENT_BASE); 
 
 #define GS_GUI_APPLY_STYLE_ELEMENT(ELEMENT, TYPE)\
     do {\
-        if ((ELEMENT).all.styles)\
+        if ((ELEMENT).all.style.data)\
         {\
-            gs_gui_style_sheet_set_element_styles(&style_sheet, TYPE, -1, (ELEMENT).all.styles, (ELEMENT).all.size);\
+            gs_gui_style_sheet_set_element_styles(&style_sheet, TYPE, -1, (ELEMENT).all.style.data, (ELEMENT).all.style.size);\
         }\
-        else if ((ELEMENT).def.styles)\
+        else if ((ELEMENT).def.style.data)\
         {\
-            gs_gui_style_sheet_set_element_styles(&style_sheet, TYPE, GS_GUI_ELEMENT_STATE_DEFAULT, (ELEMENT).def.styles, (ELEMENT).def.size);\
+            gs_gui_style_sheet_set_element_styles(&style_sheet, TYPE, GS_GUI_ELEMENT_STATE_DEFAULT, (ELEMENT).def.style.data, (ELEMENT).def.style.size);\
         }\
-        if ((ELEMENT).hover.styles)\
+        if ((ELEMENT).hover.style.data)\
         {\
-            gs_gui_style_sheet_set_element_styles(&style_sheet, TYPE, GS_GUI_ELEMENT_STATE_HOVER, (ELEMENT).hover.styles, (ELEMENT).hover.size);\
+            gs_gui_style_sheet_set_element_styles(&style_sheet, TYPE, GS_GUI_ELEMENT_STATE_HOVER, (ELEMENT).hover.style.data, (ELEMENT).hover.style.size);\
         }\
-        if ((ELEMENT).focus.styles)\
+        if ((ELEMENT).focus.style.data)\
         {\
-            gs_gui_style_sheet_set_element_styles(&style_sheet, TYPE, GS_GUI_ELEMENT_STATE_FOCUS, (ELEMENT).focus.styles, (ELEMENT).focus.size);\
+            gs_gui_style_sheet_set_element_styles(&style_sheet, TYPE, GS_GUI_ELEMENT_STATE_FOCUS, (ELEMENT).focus.style.data, (ELEMENT).focus.style.size);\
         }\
     } while (0)
 
@@ -1363,12 +1771,45 @@ GS_API_DECL gs_gui_style_sheet_t gs_gui_style_sheet_new(gs_gui_context_t* ctx, g
         GS_GUI_APPLY_STYLE_ELEMENT(desc->base, GS_GUI_ELEMENT_BASE);
     }
 
+    /*
+typedef struct gs_gui_animation_property_list_t
+{
+    gs_dyn_array(gs_gui_animation_property_t) properties[3];
+} gs_gui_animation_property_list_t; 
+
+typedef struct gs_gui_style_sheet_t {
+    gs_gui_style_t styles[GS_GUI_ELEMENT_COUNT][3]; // default | hovered | focused
+    gs_hash_table(gs_gui_element_type, gs_gui_animation_property_list_t) animations;
+} gs_gui_style_sheet_t;
+*/
+
+    // Apply animations
+    if (desc->button.all.animation.data)
+    {
+        int32_t cnt = desc->button.all.animation.size / sizeof(gs_gui_animation_property_t);
+        if (!gs_hash_table_exists(style_sheet.animations, GS_GUI_ELEMENT_BUTTON)) {
+            gs_gui_animation_property_list_t v = gs_default_val();
+            gs_hash_table_insert(style_sheet.animations, GS_GUI_ELEMENT_BUTTON, v);
+        }
+        gs_gui_animation_property_list_t* list = gs_hash_table_getp(style_sheet.animations, GS_GUI_ELEMENT_BUTTON);
+        gs_assert(list);
+
+        // Register animation properties for all 
+        for (uint32_t i = 0; i < 3; ++i)
+        {
+            for (uint32_t c = 0; c < cnt; ++c)
+            { 
+                gs_dyn_array_push(list->properties[i], desc->button.all.animation.data[c]); 
+            } 
+        } 
+    }
+
     return style_sheet;
 } 
 
 GS_API_DECL void gs_gui_set_style_sheet(gs_gui_context_t* ctx, gs_gui_style_sheet_t* style_sheet)
 {
-    ctx->style_sheet = style_sheet ? style_sheet : &ctx->_style_sheet;
+    ctx->style_sheet = style_sheet ? style_sheet : &gs_gui_default_style_sheet;
 }
 
 GS_API_DECL void gs_gui_style_sheet_set_element_styles(gs_gui_style_sheet_t* ss, gs_gui_element_type element, gs_gui_element_state state, gs_gui_style_element_t* styles, size_t size)
@@ -1397,10 +1838,16 @@ GS_API_DECL void gs_gui_style_sheet_set_element_styles(gs_gui_style_sheet_t* ss,
             switch (se->type)
             {
                 // Width/Height
-                case GS_GUI_STYLE_WIDTH:            cs->size.x = se->value; break;
-                case GS_GUI_STYLE_HEIGHT:           cs->size.y = se->value; break;
+                case GS_GUI_STYLE_WIDTH:            cs->size[0] = se->value; break;
+                case GS_GUI_STYLE_HEIGHT:           cs->size[1] = se->value; break;
 
                 // Padding
+                case GS_GUI_STYLE_PADDING: {
+                    cs->padding[GS_GUI_PADDING_LEFT] = (int32_t)se->value;
+                    cs->padding[GS_GUI_PADDING_TOP] = (int32_t)se->value;
+                    cs->padding[GS_GUI_PADDING_RIGHT] = (int32_t)se->value;
+                    cs->padding[GS_GUI_PADDING_BOTTOM] = (int32_t)se->value;
+                } 
                 case GS_GUI_STYLE_PADDING_LEFT:     cs->padding[GS_GUI_PADDING_LEFT] = (int32_t)se->value; break;     
                 case GS_GUI_STYLE_PADDING_TOP:      cs->padding[GS_GUI_PADDING_TOP] = (int32_t)se->value; break;
                 case GS_GUI_STYLE_PADDING_RIGHT:    cs->padding[GS_GUI_PADDING_RIGHT] = (int32_t)se->value; break;
@@ -1438,7 +1885,7 @@ GS_API_DECL void gs_gui_style_sheet_set_element_styles(gs_gui_style_sheet_t* ss,
                 case GS_GUI_STYLE_SHADOW_COLOR:     cs->colors[GS_GUI_COLOR_SHADOW] = se->color; break;
 
                 // Font
-                case GS_GUI_STYLE_FONT:             cs->font = se->data; break;
+                case GS_GUI_STYLE_FONT:             cs->font = se->font; break;
             }
         }
     }
@@ -1470,10 +1917,16 @@ GS_API_DECL void gs_gui_set_element_style(gs_gui_context_t* ctx, int32_t element
             switch (se->type)
             {
                 // Width/Height
-                case GS_GUI_STYLE_WIDTH:            cs->size.x = se->value; break;
-                case GS_GUI_STYLE_HEIGHT:           cs->size.y = se->value; break;
+                case GS_GUI_STYLE_WIDTH:            cs->size[0] = se->value; break;
+                case GS_GUI_STYLE_HEIGHT:           cs->size[1] = se->value; break;
 
                 // Padding
+                case GS_GUI_STYLE_PADDING: {
+                    cs->padding[GS_GUI_PADDING_LEFT] = (int32_t)se->value;
+                    cs->padding[GS_GUI_PADDING_TOP] = (int32_t)se->value;
+                    cs->padding[GS_GUI_PADDING_RIGHT] = (int32_t)se->value;
+                    cs->padding[GS_GUI_PADDING_BOTTOM] = (int32_t)se->value;
+                } 
                 case GS_GUI_STYLE_PADDING_LEFT:     cs->padding[GS_GUI_PADDING_LEFT] = (int32_t)se->value; break;     
                 case GS_GUI_STYLE_PADDING_TOP:      cs->padding[GS_GUI_PADDING_TOP] = (int32_t)se->value; break;
                 case GS_GUI_STYLE_PADDING_RIGHT:    cs->padding[GS_GUI_PADDING_RIGHT] = (int32_t)se->value; break;
@@ -1511,7 +1964,7 @@ GS_API_DECL void gs_gui_set_element_style(gs_gui_context_t* ctx, int32_t element
                 case GS_GUI_STYLE_SHADOW_COLOR:     cs->colors[GS_GUI_COLOR_SHADOW] = se->color; break;
 
                 // Font
-                case GS_GUI_STYLE_FONT:             cs->font = se->data; break;
+                case GS_GUI_STYLE_FONT:             cs->font = se->font; break;
             }
         }
     }
@@ -2226,28 +2679,22 @@ static void gs_gui_init_default_styles(gs_gui_context_t* ctx)
         DST[0x02] = SRC[0x02];\
     } while (0)
 
-    GS_GUI_COPY(ctx->_style_sheet.styles[GS_GUI_ELEMENT_CONTAINER], gs_gui_default_container_style);
-    GS_GUI_COPY(ctx->_style_sheet.styles[GS_GUI_ELEMENT_DIV], gs_gui_default_div_style);
-    GS_GUI_COPY(ctx->_style_sheet.styles[GS_GUI_ELEMENT_LABEL], gs_gui_default_label_style);
-    GS_GUI_COPY(ctx->_style_sheet.styles[GS_GUI_ELEMENT_TEXT], gs_gui_default_text_style);
-    GS_GUI_COPY(ctx->_style_sheet.styles[GS_GUI_ELEMENT_PANEL], gs_gui_default_panel_style);
-    GS_GUI_COPY(ctx->_style_sheet.styles[GS_GUI_ELEMENT_BUTTON], gs_gui_default_button_style);
-    GS_GUI_COPY(ctx->_style_sheet.styles[GS_GUI_ELEMENT_SCROLL], gs_gui_default_scroll_style);
-    GS_GUI_COPY(ctx->_style_sheet.styles[GS_GUI_ELEMENT_BASE], gs_gui_default_base_style);
+    GS_GUI_COPY(gs_gui_default_style_sheet.styles[GS_GUI_ELEMENT_CONTAINER], gs_gui_default_container_style);
+    GS_GUI_COPY(gs_gui_default_style_sheet.styles[GS_GUI_ELEMENT_DIV], gs_gui_default_div_style);
+    GS_GUI_COPY(gs_gui_default_style_sheet.styles[GS_GUI_ELEMENT_LABEL], gs_gui_default_label_style);
+    GS_GUI_COPY(gs_gui_default_style_sheet.styles[GS_GUI_ELEMENT_TEXT], gs_gui_default_text_style);
+    GS_GUI_COPY(gs_gui_default_style_sheet.styles[GS_GUI_ELEMENT_PANEL], gs_gui_default_panel_style);
+    GS_GUI_COPY(gs_gui_default_style_sheet.styles[GS_GUI_ELEMENT_BUTTON], gs_gui_default_button_style);
+    GS_GUI_COPY(gs_gui_default_style_sheet.styles[GS_GUI_ELEMENT_SCROLL], gs_gui_default_scroll_style);
+    GS_GUI_COPY(gs_gui_default_style_sheet.styles[GS_GUI_ELEMENT_BASE], gs_gui_default_base_style);
 
-	ctx->_style = gs_gui_default_style; 
-	ctx->style = &ctx->_style; 
-    ctx->style_sheet = &ctx->_style_sheet;
+	ctx->style = &gs_gui_default_style; 
+    ctx->style_sheet = &gs_gui_default_style_sheet;
 }
 
 GS_API_DECL void gs_gui_init(gs_gui_context_t *ctx, uint32_t window_hndl)
 { 
 	memset(ctx, 0, sizeof(*ctx));
-    ctx->text_height = gs_gui_text_height;
-    ctx->text_width = gs_gui_text_width;
-    ctx->font_height = gs_gui_font_height;
-    ctx->text_dimensions = gs_gui_text_dimensions;
-	ctx->draw_frame = gs_gui_draw_frame; 
     ctx->gsi = gs_immediate_draw_new(window_hndl); 
     ctx->overlay_draw_list = gs_immediate_draw_new(window_hndl);
     gs_gui_init_default_styles(ctx);
@@ -2260,6 +2707,11 @@ GS_API_DECL void gs_gui_init(gs_gui_context_t *ctx, uint32_t window_hndl)
     gs_gui_tab_bar_t tb = gs_default_val();
     gs_slot_array_insert(ctx->tab_bars, tb);
 } 
+
+GS_API_DECL void gs_gui_free(gs_gui_context_t* ctx)
+{
+    // ...
+}
 
 static const char button_map[256] = {
   [GS_MOUSE_LBUTTON  & 0xff] =  GS_GUI_MOUSE_LEFT,
@@ -2474,7 +2926,7 @@ static void gs_gui_get_split_lowest_zindex(gs_gui_context_t* ctx, gs_gui_split_t
 }
 
 GS_API_DECL void gs_gui_begin(gs_gui_context_t* ctx) 
-{
+{ 
     // Capture event information
     gs_vec2 mouse_pos = gs_platform_mouse_positionv(); 
     gs_platform_event_t evt = gs_default_val(); 
@@ -2581,7 +3033,6 @@ GS_API_DECL void gs_gui_begin(gs_gui_context_t* ctx)
 	ctx->mouse_delta.x = ctx->mouse_pos.x - ctx->last_mouse_pos.x;
 	ctx->mouse_delta.y = ctx->mouse_pos.y - ctx->last_mouse_pos.y;
 	ctx->frame++; 
-    ctx->framebuffer = gs_platform_framebuffer_sizev(ctx->window_hndl); 
 
     // Set up overlay draw list
     gsi_camera2D(&ctx->overlay_draw_list);
@@ -2619,7 +3070,7 @@ GS_API_DECL void gs_gui_begin(gs_gui_context_t* ctx)
 
                 gs_gui_rect_t fr = split->rect;
                 fr.x += GS_GUI_SPLIT_SIZE; fr.y += GS_GUI_SPLIT_SIZE; fr.w -= 2.f * GS_GUI_SPLIT_SIZE; fr.h -= 2.f * GS_GUI_SPLIT_SIZE;
-		        ctx->draw_frame(ctx, fr, GS_GUI_ELEMENT_CONTAINER, 0x00);
+		        gs_gui_draw_frame(ctx, fr, GS_GUI_ELEMENT_CONTAINER, 0x00);
 
                 // Draw splits
                 gs_gui_draw_splits(ctx, split);
@@ -3141,6 +3592,10 @@ GS_API_DECL void gs_gui_end(gs_gui_context_t *ctx)
 	gs_gui_expect(ctx->id_stack.idx == 0);
 	gs_gui_expect(ctx->layout_stack.idx	== 0);
 
+    // Set previous frame ids 
+    // ctx->prev_hover = 0;
+    // ctx->prev_focus = ctx->focus; 
+
 	// Handle scroll input
 	if (ctx->scroll_target) 
     {
@@ -3251,9 +3706,6 @@ GS_API_DECL void gs_gui_render(gs_gui_context_t* ctx, gs_command_buffer_t* cb)
 
                 case GS_GUI_SHAPE_CIRCLE:
                 {
-                    // gs_gui_rect_t cr = gs_gui_get_clip_rect(ctx);
-                    // gs_immediate_draw_t* dl = &ctx->overlay_draw_list;
-                    // gsi_rectvd(dl, gs_v2(cr.x, cr.y), gs_v2(cr.w, cr.h), gs_v2s(0.f), gs_v2s(1.f), GS_COLOR_GREEN, GS_GRAPHICS_PRIMITIVE_LINES);
                     gs_vec2* cp = &cmd->shape.circle.center;
                     float* r = &cmd->shape.circle.radius;
                     gsi_circle(&ctx->gsi, cp->x, cp->y, *r, 16, c->r, c->g, c->b, c->a, GS_GRAPHICS_PRIMITIVE_TRIANGLES);
@@ -3320,10 +3772,18 @@ GS_API_DECL void gs_gui_render(gs_gui_context_t* ctx, gs_command_buffer_t* cb)
     gsi_draw(&ctx->overlay_draw_list, cb);
 }
 
+GS_API_DECL void gs_gui_set_hover(gs_gui_context_t *ctx, gs_gui_id id)
+{
+    ctx->prev_hover = ctx->hover;
+    ctx->hover = id;
+}
+
 GS_API_DECL void gs_gui_set_focus(gs_gui_context_t* ctx, gs_gui_id id) 
 {
+    ctx->prev_focus = ctx->focus;
 	ctx->focus = id;
 	ctx->updated_focus = 1;
+    // gs_println("%zu %zu", ctx->prev_focus, ctx->focus);
 }
 
 GS_API_DECL gs_gui_id gs_gui_get_id(gs_gui_context_t* ctx, const void* data, int32_t size) 
@@ -3331,7 +3791,8 @@ GS_API_DECL gs_gui_id gs_gui_get_id(gs_gui_context_t* ctx, const void* data, int
 	int32_t idx = ctx->id_stack.idx;
 	gs_gui_id res = (idx > 0) ? ctx->id_stack.items[idx - 1] : GS_GUI_HASH_INITIAL;
 	gs_gui_hash(&res, data, size);
-	ctx->last_id = res;
+	ctx->last_id = res; 
+
 	return res;
 }
 
@@ -3642,7 +4103,7 @@ GS_API_DECL void gs_gui_draw_text(gs_gui_context_t* ctx, gs_asset_font_t* font, 
     do\
     {\
         gs_gui_command_t* cmd;\
-        gs_vec2 td = ctx->text_dimensions(font, TEXT, -1);\
+        gs_vec2 td = gs_gui_text_dimensions(font, TEXT, -1);\
         gs_gui_rect_t rect = (RECT);\
         int32_t clipped = gs_gui_check_clip(ctx, rect);\
 \
@@ -3993,8 +4454,8 @@ GS_API_DECL gs_gui_rect_t gs_gui_layout_next(gs_gui_context_t *ctx)
 		res.h = layout->size.y;
 
         // default fallbacks
-        if (res.w == 0) { res.w = style->size.x; }
-        if (res.h == 0) { res.h = style->size.y; }
+        if (res.w == 0) { res.w = style->size[0]; }
+        if (res.h == 0) { res.h = style->size[1]; }
 
         // Not sure about this... should probably iterate through the rest, figure out what's left, then 
         // determine how much to divide up
@@ -4044,17 +4505,15 @@ GS_API_DECL void gs_gui_draw_control_frame(gs_gui_context_t *ctx, gs_gui_id id, 
     int32_t state = ctx->focus == id ? GS_GUI_ELEMENT_STATE_FOCUS : 
                     ctx->hover == id ? GS_GUI_ELEMENT_STATE_HOVER : 
                     0x00;
-	ctx->draw_frame(ctx, rect, elementid, state);
+	gs_gui_draw_frame(ctx, rect, elementid, state);
 } 
 
 GS_API_DECL void gs_gui_draw_control_text(gs_gui_context_t *ctx, const char *str, gs_gui_rect_t rect,
-	int32_t elementid, int32_t state, int32_t opt)
+	const gs_gui_style_t* style, int32_t opt)
 { 
-    gs_gui_style_t* style = &ctx->style_sheet->styles[elementid][state]; 
-
 	gs_vec2 pos = gs_v2(rect.x, rect.y);
 	gs_asset_font_t* font = style->font; 
-    gs_vec2 td = ctx->text_dimensions(font, str, -1);
+    gs_vec2 td = gs_gui_text_dimensions(font, str, -1);
 	int32_t tw = (int32_t)td.x;
     int32_t th = (int32_t)td.y;
 
@@ -4128,6 +4587,8 @@ GS_API_DECL void gs_gui_update_control(gs_gui_context_t *ctx, gs_gui_id id, gs_g
     int32_t mouseover = 0;
     gs_immediate_draw_t* dl = &ctx->overlay_draw_list; 
 
+    // I should do updates in here
+
     if (opt & GS_GUI_OPT_FORCEFOCUS)
     {
         mouseover = gs_gui_rect_overlaps_vec2(gs_gui_get_clip_rect(ctx), ctx->mouse_pos);
@@ -4139,32 +4600,85 @@ GS_API_DECL void gs_gui_update_control(gs_gui_context_t *ctx, gs_gui_id id, gs_g
 
 	if (ctx->focus == id) { ctx->updated_focus = 1; }
 	if (opt & GS_GUI_OPT_NOINTERACT) { return; }
-	if (mouseover && !ctx->mouse_down) { ctx->hover = id; }
+
+    // Check for hold focus here
+	if (mouseover && !ctx->mouse_down) { 
+        gs_gui_set_hover(ctx, id);
+    }
 
 	if (ctx->focus == id) 
-    {
+    { 
+        gs_gui_set_focus(ctx, id);
 		if (ctx->mouse_pressed && !mouseover) { gs_gui_set_focus(ctx, 0); }
 		if (!ctx->mouse_down && ~opt & GS_GUI_OPT_HOLDFOCUS) { gs_gui_set_focus(ctx, 0); }
-	}
+	} 
+
+    if (ctx->prev_hover == id && !mouseover) {ctx->prev_hover = ctx->hover;}
 
 	if (ctx->hover == id) 
-    {
-        // gsi_rectvd(dl, gs_v2(rect.x, rect.y), gs_v2(rect.w, rect.h), gs_v2s(0.f), gs_v2s(1.f), GS_COLOR_RED, GS_GRAPHICS_PRIMITIVE_LINES);
-
+    { 
 		if (ctx->mouse_pressed) 
         {
-			gs_gui_set_focus(ctx, id);
+            if ((opt & GS_GUI_OPT_LEFTCLICKONLY && ctx->mouse_pressed == GS_GUI_MOUSE_LEFT) || (~opt & GS_GUI_OPT_LEFTCLICKONLY))
+            {
+			    gs_gui_set_focus(ctx, id);
+            }
 		} 
         else if (!mouseover) 
         {
-			ctx->hover = 0;
+            gs_gui_set_hover(ctx, 0);
 		}
-	}
+	} 
 
+    // Do state check
     if (ctx->focus == id)
     {
-        // gsi_rectvd(dl, gs_v2(rect.x, rect.y), gs_v2(rect.w, rect.h), gs_v2s(0.f), gs_v2s(1.f), GS_COLOR_GREEN, GS_GRAPHICS_PRIMITIVE_LINES);
+        if (ctx->prev_focus != id)  ctx->last_focus_state = GS_GUI_ELEMENT_STATE_ON_FOCUS; 
+        else                        ctx->last_focus_state = GS_GUI_ELEMENT_STATE_FOCUS; 
     }
+    else
+    {
+        if (ctx->prev_focus == id)  ctx->last_focus_state = GS_GUI_ELEMENT_STATE_OFF_FOCUS; 
+        else                        ctx->last_focus_state = GS_GUI_ELEMENT_STATE_DEFAULT; 
+    }
+
+    if (ctx->hover == id)
+    {
+        if (ctx->prev_hover != id)  ctx->last_hover_state = GS_GUI_ELEMENT_STATE_ON_HOVER;
+        else                        ctx->last_hover_state = GS_GUI_ELEMENT_STATE_HOVER;
+    }
+    else
+    {
+        if (ctx->prev_hover == id) ctx->last_hover_state = GS_GUI_ELEMENT_STATE_OFF_HOVER;
+        else                        ctx->last_hover_state = GS_GUI_ELEMENT_STATE_DEFAULT;
+    }
+
+    if (ctx->prev_focus == id && !ctx->mouse_down && ~opt & GS_GUI_OPT_HOLDFOCUS) {
+        ctx->prev_focus = ctx->focus;
+    }
+
+    if (
+        ctx->last_hover_state == GS_GUI_ELEMENT_STATE_ON_HOVER  || 
+        ctx->last_hover_state == GS_GUI_ELEMENT_STATE_OFF_HOVER || 
+        ctx->last_focus_state == GS_GUI_ELEMENT_STATE_ON_FOCUS  || 
+        ctx->last_focus_state == GS_GUI_ELEMENT_STATE_OFF_FOCUS  
+    )
+    {
+        // Don't have a hover state switch if focused
+        ctx->switch_state = ctx->last_focus_state ? ctx->last_focus_state : ctx->focus != id ? ctx->last_hover_state : GS_GUI_ELEMENT_STATE_DEFAULT; 
+        switch (ctx->switch_state)
+        {
+            case GS_GUI_ELEMENT_STATE_OFF_HOVER:
+            case GS_GUI_ELEMENT_STATE_ON_HOVER:
+            {
+                if (ctx->focus == id || ctx->prev_focus == id) 
+                {
+                    ctx->switch_state = 0x00;
+                }
+            } break;
+        }
+        if (ctx->switch_state && ctx->prev_focus != id) ctx->state_switch_id = id;
+    } 
 } 
 
 GS_API_DECL void gs_gui_text(gs_gui_context_t *ctx, const char *text, int32_t wrap)
@@ -4176,7 +4690,7 @@ GS_API_DECL void gs_gui_text(gs_gui_context_t *ctx, const char *text, int32_t wr
     int32_t sx = ctx->style->shadow_x;
     int32_t sy = ctx->style->shadow_y;
     gs_color_t* sc = &ctx->style->colors[GS_GUI_COLOR_SHADOW];
-    int32_t th = ctx->font_height(font);
+    int32_t th = gs_gui_font_height(font);
 	gs_gui_layout_begin_column(ctx);
 	gs_gui_layout_row(ctx, 1, &width, th);
 
@@ -4193,13 +4707,13 @@ GS_API_DECL void gs_gui_text(gs_gui_context_t *ctx, const char *text, int32_t wr
                 p++; 
             }
 
-            if (wrap) w += ctx->text_width(font, word, p - word);
+            if (wrap) w += gs_gui_text_width(font, word, p - word);
 			if (w > r.w && end != start) 
             { 
                 break; 
             }
 
-			if (wrap) w += ctx->text_width(font, p, 1);
+			if (wrap) w += gs_gui_text_width(font, p, 1);
 			end = p++;
 
 		} while (*end && *end != '\n');
@@ -4215,27 +4729,70 @@ GS_API_DECL void gs_gui_text(gs_gui_context_t *ctx, const char *text, int32_t wr
 
 GS_API_DECL void gs_gui_label(gs_gui_context_t *ctx, const char *text) 
 {
-	gs_gui_draw_control_text(ctx, text, gs_gui_layout_next(ctx), GS_GUI_ELEMENT_LABEL, 0x00, 0x00);
+    const gs_gui_style_t* style = &ctx->style_sheet->styles[GS_GUI_ELEMENT_LABEL][0x00];
+	gs_gui_draw_control_text(ctx, text, gs_gui_layout_next(ctx), style, 0x00);
 } 
+
+static gs_gui_style_t blend = gs_default_val(); 
+
+// Push transient style elements for transitions
+/*
+   // Can you just directly push elements for an element and a state?
+   // Stack of style sheets?
+
+   gs_dyn_array(gs_gui_style_sheet_t) style_sheets;
+
+   Or an active style sheet that gets manipualted?
+
+    gs_gui_push_style_elements(gs_gui_context_t* ctx, int32_t element, int32_state, gs_gs_gui_style_element_t* styles, size_t sz)
+    {
+        // Create a temporary style then push that?
+
+        uint32_t ct = sz / sizeof(gs_gui_style_element_t);
+        for (uint32_t i = 0; i < ct; ++i)
+        {
+        }
+    }
+*/
 
 GS_API_DECL int32_t gs_gui_button_ex(gs_gui_context_t *ctx, const char *label, int32_t icon, int32_t opt) 
 { 
+    // Note(john): clip out early here for performance
+
 	int32_t res = 0;
 	gs_gui_id id = label ? gs_gui_get_id(ctx, label, strlen(label))
 									 : gs_gui_get_id(ctx, &icon, sizeof(icon)); 
 
-    int32_t state = ctx->focus == id ? GS_GUI_ELEMENT_STATE_FOCUS : 
-                    ctx->hover == id ? GS_GUI_ELEMENT_STATE_HOVER : 
-                                       GS_GUI_ELEMENT_STATE_DEFAULT;
+    gs_immediate_draw_t* dl = &ctx->overlay_draw_list;
 
-    gs_gui_style_t* save = gs_gui_push_style(ctx, &ctx->style_sheet->styles[GS_GUI_ELEMENT_BUTTON][state]);
+    gs_gui_style_t blend = gs_default_val();
+    gs_gui_style_t* style = NULL; 
+    gs_gui_animation_t* anim = gs_gui_get_animation(ctx, id, GS_GUI_ELEMENT_BUTTON);
 
+    // Update anim (keep states locally within animation, only way to do this) 
+    if (anim)
+    {
+        gs_gui_animation_update(ctx, anim);
+
+        // Get blended style based on animation
+        blend = gs_gui_animation_get_blend_style(ctx, anim, GS_GUI_ELEMENT_BUTTON); 
+		style = &blend; 
+    }
+    else
+    { 
+        style = ctx->focus == id ? &ctx->style_sheet->styles[GS_GUI_ELEMENT_BUTTON][0x02] : 
+                ctx->hover == id ? &ctx->style_sheet->styles[GS_GUI_ELEMENT_BUTTON][0x01] : 
+                                   &ctx->style_sheet->styles[GS_GUI_ELEMENT_BUTTON][0x00];
+    } 
+
+    // Temporary copy of style
+    gs_gui_style_t* save = gs_gui_push_style(ctx, style); 
 	gs_gui_rect_t r = gs_gui_layout_next(ctx);
-	gs_gui_update_control(ctx, id, r, opt);
+	gs_gui_update_control(ctx, id, r, opt); 
 
 	/* handle click */
-	if (ctx->mouse_pressed == GS_GUI_MOUSE_LEFT && ctx->focus == id) 
-    {
+    if (ctx->mouse_down != GS_GUI_MOUSE_LEFT && ctx->hover == id && ctx->last_focus_state == GS_GUI_ELEMENT_STATE_OFF_FOCUS)
+    { 
 		res |= GS_GUI_RES_SUBMIT;
 	}
 
@@ -4246,10 +4803,16 @@ GS_API_DECL int32_t gs_gui_button_ex(gs_gui_context_t *ctx, const char *label, i
     }
     else
     {
-        gs_gui_draw_control_frame(ctx, id, r, GS_GUI_ELEMENT_BUTTON, opt);
-        if (label) {gs_gui_draw_control_text(ctx, label, r, GS_GUI_ELEMENT_BUTTON, state, opt);}
-        // if (icon) {gs_gui_draw_icon(ctx, icon, r, ctx->style->colors[GS_GUI_COLOR_TEXT]);}
-    }
+        // draw border
+        if (style->colors[GS_GUI_COLOR_BORDER].a) 
+        {
+            gs_gui_draw_box(ctx, gs_gui_expand_rect(r, style->border_width), style->border_width, style->colors[GS_GUI_COLOR_BORDER]);
+        }
+
+        gs_gui_draw_rect(ctx, r, style->colors[GS_GUI_COLOR_BACKGROUND]);
+        if (label) {gs_gui_draw_control_text(ctx, label, r, style, opt);}
+        // if (icon) {gs_gui_draw_icon(ctx, icon, r, ctx->style->colors[GS_GUI_COLOR_TEXT]);} 
+    } 
 
     gs_gui_pop_style(ctx, save);
 
@@ -4279,7 +4842,7 @@ GS_API_DECL int32_t gs_gui_checkbox(gs_gui_context_t *ctx, const char *label, in
 	}
 
 	r = gs_gui_rect(r.x + box.w, r.y, r.w - box.w, r.h);
-	gs_gui_draw_control_text(ctx, label, r, GS_GUI_ELEMENT_TEXT, 0x00, 0);
+	gs_gui_draw_control_text(ctx, label, r, &ctx->style_sheet->styles[GS_GUI_ELEMENT_TEXT][0], 0);
 	return res;
 }
 
@@ -4339,8 +4902,8 @@ GS_API_DECL int32_t gs_gui_textbox_raw(gs_gui_context_t *ctx, char *buf, int32_t
         int32_t sy = style->shadow_y;
 		gs_color_t* sc = &style->colors[GS_GUI_COLOR_SHADOW];
 		gs_asset_font_t* font = style->font; 
-		int32_t textw = ctx->text_width(font, buf, -1);
-        int32_t texth = ctx->font_height(font);
+		int32_t textw = gs_gui_text_width(font, buf, -1);
+        int32_t texth = gs_gui_font_height(font);
 		int32_t ofx = r.w - ctx->style->padding[GS_GUI_PADDING_RIGHT] - textw - 1;
 		int32_t textx = r.x + gs_min(ofx, ctx->style->padding[GS_GUI_PADDING_LEFT]);
 		int32_t texty = r.y + (r.h - texth) / 2;
@@ -4364,8 +4927,8 @@ GS_API_DECL int32_t gs_gui_textbox_raw(gs_gui_context_t *ctx, char *buf, int32_t
         int32_t sx = style->shadow_x;
         int32_t sy = style->shadow_y;
 		gs_color_t* sc = &style->colors[GS_GUI_COLOR_SHADOW];
-		int32_t textw = ctx->text_width(font, buf, -1);
-		int32_t texth = ctx->text_height(font, buf, -1);
+		int32_t textw = gs_gui_text_width(font, buf, -1);
+		int32_t texth = gs_gui_text_height(font, buf, -1);
 		int32_t textx = r.x + ctx->style->padding[GS_GUI_PADDING_LEFT];
 		int32_t texty = r.y + (r.h - texth) / 2;
 		gs_gui_push_clip_rect(ctx, r); 
@@ -4448,7 +5011,7 @@ GS_API_DECL int32_t gs_gui_slider_ex(gs_gui_context_t *ctx, gs_gui_real *value, 
 
 	/* draw text	*/
 	gs_snprintf(buf, GS_GUI_MAX_FMT, fmt, v);
-	gs_gui_draw_control_text(ctx, buf, base, GS_GUI_ELEMENT_TEXT, 0x00, opt);
+	gs_gui_draw_control_text(ctx, buf, base, &ctx->style_sheet->styles[GS_GUI_ELEMENT_TEXT][0], opt);
 
 	return res;
 } 
@@ -4482,7 +5045,7 @@ GS_API_DECL int32_t gs_gui_number_ex(gs_gui_context_t *ctx, gs_gui_real *value, 
 
 	/* draw text	*/
 	gs_snprintf(buf, GS_GUI_MAX_FMT, fmt, *value);
-	gs_gui_draw_control_text(ctx, buf, base, GS_GUI_ELEMENT_TEXT, 0x00, opt);
+	gs_gui_draw_control_text(ctx, buf, base, &ctx->style_sheet->styles[GS_GUI_ELEMENT_TEXT][0], opt);
 
 	return res;
 } 
@@ -4526,7 +5089,7 @@ static int32_t _gs_gui_header(gs_gui_context_t *ctx, const char *label, int32_t 
     {
 		if (ctx->hover == id) 
         { 
-            ctx->draw_frame(ctx, r, GS_GUI_ELEMENT_BUTTON, GS_GUI_ELEMENT_STATE_HOVER); 
+            gs_gui_draw_frame(ctx, r, GS_GUI_ELEMENT_BUTTON, GS_GUI_ELEMENT_STATE_HOVER); 
         } 
 	} 
     else 
@@ -4559,7 +5122,7 @@ static int32_t _gs_gui_header(gs_gui_context_t *ctx, const char *label, int32_t 
     // Draw text for treenode
 	r.x += r.h - ctx->style->padding[GS_GUI_PADDING_TOP];
 	r.w -= r.h - ctx->style->padding[GS_GUI_PADDING_BOTTOM]; 
-	gs_gui_draw_control_text(ctx, label, r, GS_GUI_ELEMENT_TEXT, 0x00, 0);
+	gs_gui_draw_control_text(ctx, label, r, &ctx->style_sheet->styles[GS_GUI_ELEMENT_TEXT][0x00], 0);
 
 	return expanded ? GS_GUI_RES_ACTIVE : 0;
 } 
@@ -4999,7 +5562,7 @@ GS_API_DECL int32_t gs_gui_begin_window_ex(gs_gui_context_t * ctx, const char* t
 	// draw body frame
 	if (~opt & GS_GUI_OPT_NOFRAME && cnt->flags & GS_GUI_WINDOW_FLAGS_VISIBLE) 
     {
-		ctx->draw_frame(ctx, body, GS_GUI_ELEMENT_CONTAINER, 0x00);
+		gs_gui_draw_frame(ctx, body, GS_GUI_ELEMENT_CONTAINER, 0x00);
 	} 
 
     if (split && ~opt & GS_GUI_OPT_NOCLIP && cnt->flags & GS_GUI_WINDOW_FLAGS_VISIBLE)
@@ -5040,8 +5603,7 @@ GS_API_DECL int32_t gs_gui_begin_window_ex(gs_gui_context_t * ctx, const char* t
                 }
                 if (lowest) 
                 {
-                    // BLAH
-                    ctx->draw_frame(ctx, tr, GS_GUI_ELEMENT_PANEL, 0x00);
+                    gs_gui_draw_frame(ctx, tr, GS_GUI_ELEMENT_PANEL, 0x00);
 		            gs_gui_draw_box(ctx, gs_gui_expand_rect(tr, 1), 1, ctx->style->colors[GS_GUI_COLOR_BORDER]);
                 }
             }
@@ -5049,7 +5611,7 @@ GS_API_DECL int32_t gs_gui_begin_window_ex(gs_gui_context_t * ctx, const char* t
 
         else
         {
-            ctx->draw_frame(ctx, tr, GS_GUI_ELEMENT_PANEL, 0x00); 
+            gs_gui_draw_frame(ctx, tr, GS_GUI_ELEMENT_PANEL, 0x00); 
 		    gs_gui_draw_box(ctx, gs_gui_expand_rect(tr, 1), 1, ctx->style->colors[GS_GUI_COLOR_BORDER]);
         }
 
@@ -5148,7 +5710,7 @@ GS_API_DECL int32_t gs_gui_begin_window_ex(gs_gui_context_t * ctx, const char* t
 
             gs_gui_draw_rect(ctx, r, id == ctx->focus ? act : hovered ? hov : tab_focus ? def : inactive); 
             // gs_gui_draw_control_text(ctx, title, tr, tab_focus ? GS_GUI_COLOR_TITLETEXT : GS_GUI_COLOR_TEXT_INACTIVE, 0x00, opt); 
-            gs_gui_draw_control_text(ctx, title, tr, GS_GUI_ELEMENT_LABEL, 0x00, opt); 
+            gs_gui_draw_control_text(ctx, title, tr, &ctx->style_sheet->styles[GS_GUI_ELEMENT_LABEL][0x00], opt); 
 
             gs_gui_pop_clip_rect(ctx); 
 			gs_gui_pop_clip_rect(ctx);
@@ -5678,7 +6240,7 @@ GS_API_DECL void gs_gui_begin_panel_ex(gs_gui_context_t* ctx, const char* name, 
 	
     if (~opt & GS_GUI_OPT_NOFRAME) 
     {
-		ctx->draw_frame(ctx, cnt->rect, GS_GUI_ELEMENT_PANEL, 0x00);
+		gs_gui_draw_frame(ctx, cnt->rect, GS_GUI_ELEMENT_PANEL, 0x00);
 	} 
 
     // Need a way to push/pop syles temp styles

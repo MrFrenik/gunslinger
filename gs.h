@@ -1790,6 +1790,7 @@ typedef enum gs_hash_table_entry_state
         __HMV tmp_val;\
         size_t stride;\
         size_t klpvl;\
+        uint32_t size;\
     }*
 
 // Need a way to create a temporary key so I can take the address of it
@@ -1818,10 +1819,11 @@ void __gs_hash_table_init_impl(void** ht, size_t sz)
         ptrdiff_t klpvl = (uintptr_t)&(__HT->data[0].state) - (uintptr_t)(&__HT->data[0]);\
         (__HT)->stride = (size_t)(diff);\
         (__HT)->klpvl = (size_t)(klpvl);\
+        (__HT)->size = 0;\
     } while (0)
 
 #define gs_hash_table_size(__HT)\
-    ((__HT) != NULL ? gs_dyn_array_size((__HT)->data) : 0)
+    ((__HT) != NULL ? (__HT)->size : 0) // gs_dyn_array_size((__HT)->data) : 0)
 
 #define gs_hash_table_capacity(__HT)\
     ((__HT) != NULL ? gs_dyn_array_capacity((__HT)->data) : 0)
@@ -1903,6 +1905,7 @@ void __gs_hash_table_init_impl(void** ht, size_t sz)
         (__HT)->data[__HSH_IDX].val = (__HMV);\
         (__HT)->data[__HSH_IDX].state = GS_HASH_TABLE_ENTRY_ACTIVE;\
         gs_dyn_array_head((__HT)->data)->size++;\
+        (__HT)->size++;\
     } while (0)
 
 // Need size difference between two entries
@@ -1969,6 +1972,7 @@ uint32_t gs_hash_table_get_key_index_func(void** data, void* key, size_t key_len
         uint32_t __IDX = gs_hash_table_get_key_index_func((void**)&(__HT)->data, (void*)&((__HT)->tmp_key), sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), (__HT)->stride, (__HT)->klpvl);\
         if (__IDX != GS_HASH_TABLE_INVALID_INDEX) {\
             (__HT)->data[__IDX].state = GS_HASH_TABLE_ENTRY_INACTIVE;\
+            (__HT)->size--;\
         }\
     } while (0)
 
