@@ -899,7 +899,7 @@ GS_API_DECL void gs_gui_update_control(gs_gui_context_t* ctx, gs_gui_id id, gs_g
 #define gs_gui_number(_CTX, _VALUE, _STEP)			gs_gui_number_ex((_CTX), (_VALUE), (_STEP), GS_GUI_SLIDER_FMT, GS_GUI_OPT_ALIGNCENTER)
 #define gs_gui_header(_CTX, _LABEL)		            gs_gui_header_ex((_CTX), (_LABEL), 0)
 #define gs_gui_begin_treenode(_CTX, _LABEL)	        gs_gui_begin_treenode_ex((_CTX), (_LABEL), 0)
-#define gs_gui_begin_window(_CTX, _TITLE, _RECT)    gs_gui_begin_window_ex((_CTX), (_TITLE), (_RECT), 0)
+#define gs_gui_begin_window(_CTX, _TITLE, _RECT)    gs_gui_begin_window_ex((_CTX), (_TITLE), (_RECT), 0, 0)
 #define gs_gui_begin_popup(_CTX, _TITLE, _RECT)     gs_gui_begin_popup_ex((_CTX), (_TITLE), (_RECT), 0)
 #define gs_gui_begin_panel(_CTX, _NAME)			    gs_gui_begin_panel_ex((_CTX), (_NAME), 0)
 #define gs_gui_dock(_CTX, _DST, _SRC, _TYPE)        gs_gui_dock_ex((_CTX), (_DST), (_SRC), (_TYPE), 0.5f)
@@ -923,6 +923,7 @@ GS_API_DECL int32_t gs_gui_begin_popup_ex(gs_gui_context_t* ctx, const char* nam
 GS_API_DECL void gs_gui_end_popup(gs_gui_context_t* ctx);
 GS_API_DECL void gs_gui_begin_panel_ex(gs_gui_context_t* ctx, const char* name, int32_t opt);
 GS_API_DECL void gs_gui_end_panel(gs_gui_context_t* ctx);
+GS_API_DECL void gs_gui_style_window(gs_gui_context_t *ctx, gs_gui_style_sheet_t* style_sheet, bool* open);
 
 // Docking
 GS_API_DECL void gs_gui_dock_ex(gs_gui_context_t* ctx, const char* dst, const char* src, int32_t split_type, float ratio);
@@ -1037,7 +1038,7 @@ GS_API_DECL gs_gui_style_t gs_gui_animation_get_blend_style(gs_gui_context_t* ct
     } 
 
     // Get final blend
-    if (s0 != s1 && !gs_dyn_array_empty(list->properties[anim->end_state]))
+    if (list && s0 != s1 && !gs_dyn_array_empty(list->properties[anim->end_state]))
     { 
         // Loop through available transition properties, apply as needed 
         gs_dyn_array(gs_gui_animation_property_t) props = list->properties[anim->end_state]; 
@@ -1120,7 +1121,9 @@ GS_API_DECL gs_gui_style_t gs_gui_animation_get_blend_style(gs_gui_context_t* ct
 
 GS_API_DECL gs_gui_animation_t* gs_gui_get_animation(gs_gui_context_t* ctx, gs_gui_id id, int32_t elementid)
 { 
-    gs_gui_animation_t* anim = NULL;
+    gs_gui_animation_t* anim = NULL; 
+
+    const bool32 valid_eid = (elementid >= 0 && elementid < GS_GUI_ELEMENT_COUNT); 
 
     // Construct new animation if necessary to insert
     if (ctx->state_switch_id == id)
@@ -1137,7 +1140,7 @@ GS_API_DECL gs_gui_animation_t* gs_gui_get_animation(gs_gui_context_t* ctx, gs_g
             if (gs_hash_table_exists(ctx->style_sheet->animations, elementid)) {\
                 list = gs_hash_table_getp(ctx->style_sheet->animations, elementid);\
             }\
-            if (!gs_dyn_array_empty(list->properties[STATE]))\
+            if (list && !gs_dyn_array_empty(list->properties[STATE]))\
             {\
                 gs_dyn_array(gs_gui_animation_property_t) props = list->properties[STATE];\
                 for (uint32_t p = 0; p < gs_dyn_array_size(props); ++p)\
@@ -1152,7 +1155,6 @@ GS_API_DECL gs_gui_animation_t* gs_gui_get_animation(gs_gui_context_t* ctx, gs_g
         anim = gs_hash_table_getp(ctx->animations, id); 
         anim->playing = true;
 
-        const bool32 valid_eid = (elementid >= 0 && elementid < GS_GUI_ELEMENT_COUNT);
         int16_t focus_state = 0x00; 
         int16_t hover_state = 0x00;
         int16_t direction = 0x00;
@@ -1229,6 +1231,7 @@ GS_API_DECL gs_gui_animation_t* gs_gui_get_animation(gs_gui_context_t* ctx, gs_g
 
     if (anim && !anim->playing)
     {
+        // This is causing a crash...
         gs_hash_table_erase(ctx->animations, id);
         anim = NULL;
     } 
@@ -4679,6 +4682,7 @@ GS_API_DECL void gs_gui_update_control(gs_gui_context_t *ctx, gs_gui_id id, gs_g
         }
         if (ctx->switch_state && ctx->prev_focus != id) ctx->state_switch_id = id;
     } 
+
 } 
 
 GS_API_DECL void gs_gui_text(gs_gui_context_t *ctx, const char *text, int32_t wrap)
@@ -4732,28 +4736,6 @@ GS_API_DECL void gs_gui_label(gs_gui_context_t *ctx, const char *text)
     const gs_gui_style_t* style = &ctx->style_sheet->styles[GS_GUI_ELEMENT_LABEL][0x00];
 	gs_gui_draw_control_text(ctx, text, gs_gui_layout_next(ctx), style, 0x00);
 } 
-
-static gs_gui_style_t blend = gs_default_val(); 
-
-// Push transient style elements for transitions
-/*
-   // Can you just directly push elements for an element and a state?
-   // Stack of style sheets?
-
-   gs_dyn_array(gs_gui_style_sheet_t) style_sheets;
-
-   Or an active style sheet that gets manipualted?
-
-    gs_gui_push_style_elements(gs_gui_context_t* ctx, int32_t element, int32_state, gs_gs_gui_style_element_t* styles, size_t sz)
-    {
-        // Create a temporary style then push that?
-
-        uint32_t ct = sz / sizeof(gs_gui_style_element_t);
-        for (uint32_t i = 0; i < ct; ++i)
-        {
-        }
-    }
-*/
 
 GS_API_DECL int32_t gs_gui_button_ex(gs_gui_context_t *ctx, const char *label, int32_t icon, int32_t opt) 
 { 
@@ -5487,7 +5469,7 @@ GS_API_DECL int32_t gs_gui_begin_window_ex(gs_gui_context_t * ctx, const char* t
             br.h -= ctx->style->title_height;
         }
         gs_gui_id id = gs_gui_get_id(ctx, "!body", 5);
-        gs_gui_update_control(ctx, id, br, opt); 
+        // gs_gui_update_control(ctx, id, br, opt); 
 
         // Need to move the entire thing
         if ((id == ctx->focus) && ctx->mouse_down == GS_GUI_MOUSE_LEFT) 
@@ -6254,6 +6236,162 @@ GS_API_DECL void gs_gui_end_panel(gs_gui_context_t *ctx)
 {
 	gs_gui_pop_clip_rect(ctx);
 	gs_gui_pop_container(ctx);
+} 
+
+static uint8_t uint8_slider(gs_gui_context_t *ctx, unsigned char *value, int low, int high) 
+{
+    static float tmp;
+    gs_gui_push_id(ctx, &value, sizeof(value));
+    tmp = *value;
+    int res = gs_gui_slider_ex(ctx, &tmp, low, high, 0, "%.0f", GS_GUI_OPT_ALIGNCENTER);
+    *value = tmp;
+    gs_gui_pop_id(ctx);
+    return res;
+}
+
+static int32_t int32_slider(gs_gui_context_t *ctx, int32_t* value, int32_t low, int32_t high) 
+{
+    static float tmp;
+    gs_gui_push_id(ctx, &value, sizeof(value));
+    tmp = *value;
+    int res = gs_gui_slider_ex(ctx, &tmp, low, high, 0, "%.0f", GS_GUI_OPT_ALIGNCENTER);
+    *value = tmp;
+    gs_gui_pop_id(ctx);
+    return res;
+}
+
+static int16_t int16_slider(gs_gui_context_t *ctx, int16_t* value, int32_t low, int32_t high) 
+{
+    static float tmp;
+    gs_gui_push_id(ctx, &value, sizeof(value));
+    tmp = *value;
+    int res = gs_gui_slider_ex(ctx, &tmp, low, high, 0, "%.0f", GS_GUI_OPT_ALIGNCENTER);
+    *value = tmp;
+    gs_gui_pop_id(ctx);
+    return res;
+} 
+
+GS_API_DECL void gs_gui_style_window(gs_gui_context_t *ctx, gs_gui_style_sheet_t* style_sheet, bool* open) 
+{
+  static struct {const char* label; int32_t idx;} elements[] = {
+    {"container",  GS_GUI_ELEMENT_CONTAINER},
+    {"button",  GS_GUI_ELEMENT_BUTTON} ,
+    {"panel",  GS_GUI_ELEMENT_PANEL},
+    {"label",  GS_GUI_ELEMENT_LABEL},
+    {"text",  GS_GUI_ELEMENT_TEXT},
+    {"scroll",  GS_GUI_ELEMENT_SCROLL},
+    {"base",  GS_GUI_ELEMENT_BASE},
+    {NULL}
+  }; 
+
+  static char* states[] = {
+      "default", 
+      "hover", 
+      "focus"
+  };
+
+  static struct {const char* label; int32_t idx;} colors[] = {
+    {"background",  GS_GUI_COLOR_BACKGROUND},
+    {"content",  GS_GUI_COLOR_CONTENT} ,
+    {"border",  GS_GUI_COLOR_BORDER},
+    {"shadow",  GS_GUI_COLOR_SHADOW},
+    {NULL}
+  }; 
+
+  if (gs_gui_begin_window_ex(ctx, "Style Editor", gs_gui_rect(350, 250, 300, 240), open, 0x00)) 
+  { 
+    for (uint32_t i = 0; elements[i].label; ++i)
+    {
+        int32_t idx = elements[i].idx; 
+
+        if (gs_gui_begin_treenode_ex(ctx, elements[i].label, 0x00))
+        {
+            for (uint32_t j = 0; j < GS_GUI_ELEMENT_STATE_COUNT; ++j)
+            {
+                gs_gui_push_id(ctx, &j, sizeof(j));
+                gs_gui_style_t* s = &style_sheet->styles[idx][j];
+                if (gs_gui_begin_treenode_ex(ctx, states[j], 0x00))
+                {
+                    gs_gui_style_t* save = gs_gui_push_style(ctx, &ctx->style_sheet->styles[GS_GUI_ELEMENT_PANEL][0x00]);
+                    gs_gui_layout_row(ctx, 1, (int[]){-1}, 300);
+                    gs_gui_begin_panel(ctx, states[j]);
+                    {
+                        gs_gui_layout_t* l = gs_gui_get_layout(ctx);
+                        gs_gui_rect_t* r = &l->body; 
+
+                        const float ls = 80;
+
+                        // size
+                        float w = (l->body.w - ls) * 0.35f;
+                        gs_gui_layout_row(ctx, 3, (int[]) {ls, w, w}, 0); 
+                        gs_gui_label(ctx, "size:");
+                        gs_gui_slider(ctx, &s->size[0], 0.f, 100.f);
+                        gs_gui_slider(ctx, &s->size[1], 0.f, 100.f); 
+
+                        // spacing
+                        w = (l->body.w - ls) * 0.7f;
+                        gs_gui_layout_row(ctx, 2, (int[]) {ls, w}, 0); 
+                        gs_gui_label(ctx, "spacing:");
+                        gs_gui_slider(ctx, &s->spacing, 0.f, 100.f);
+
+                        gs_gui_label(ctx, "indent:");
+                        int16_slider(ctx, &s->indent, 0.f, 100.f);
+
+                        gs_gui_label(ctx, "scrollbar_size:");
+                        int16_slider(ctx, &s->scrollbar_size, 0.f, 100.f);
+
+                        gs_gui_label(ctx, "title_height:");
+                        int16_slider(ctx, &s->title_height, 0.f, 100.f);
+
+                        gs_gui_label(ctx, "thumb_size:");
+                        int16_slider(ctx, &s->thumb_size, 0.f, 100.f); 
+
+                        gs_gui_label(ctx, "border_width:");
+                        int16_slider(ctx, &s->border_width, 0.f, 100.f); 
+
+                        gs_gui_label(ctx, "border_radius:");
+                        int16_slider(ctx, &s->border_radius, 0.f, 100.f); 
+
+                        // padding/margin
+                        w = (l->body.w - ls) * 0.2f;
+                        gs_gui_layout_row(ctx, 5, (int[]) {ls, w, w, w, w}, 0); 
+                        gs_gui_label(ctx, "padding:");
+                        int32_slider(ctx, &s->padding[0], 0.f, 100.f); 
+                        int32_slider(ctx, &s->padding[1], 0.f, 100.f); 
+                        int32_slider(ctx, &s->padding[2], 0.f, 100.f); 
+                        int32_slider(ctx, &s->padding[3], 0.f, 100.f); 
+
+                        gs_gui_label(ctx, "margin:");
+                        int16_slider(ctx, &s->margin[0], 0.f, 100.f); 
+                        int16_slider(ctx, &s->margin[1], 0.f, 100.f); 
+                        int16_slider(ctx, &s->margin[2], 0.f, 100.f); 
+                        int16_slider(ctx, &s->margin[3], 0.f, 100.f); 
+
+                        // Colors
+                        int sw = (int32_t)(l->body.w * 0.14);
+                        gs_gui_layout_row(ctx, 6, (int[]) {80, sw, sw, sw, sw, -1}, 0);
+                        for (uint32_t c = 0; c < GS_GUI_COLOR_MAX; ++c)
+                        {
+                            gs_gui_label(ctx, colors[c].label);
+                            uint8_slider(ctx, &s->colors[c].r, 0, 255);
+                            uint8_slider(ctx, &s->colors[c].g, 0, 255);
+                            uint8_slider(ctx, &s->colors[c].b, 0, 255);
+                            uint8_slider(ctx, &s->colors[c].a, 0, 255);
+                            gs_gui_draw_rect(ctx, gs_gui_layout_next(ctx), s->colors[c]);
+                        }
+                    }
+                    gs_gui_end_panel(ctx); 
+                    gs_gui_pop_style(ctx, save);
+
+                    gs_gui_end_treenode(ctx);
+                }
+                gs_gui_pop_id(ctx);
+            }
+            gs_gui_end_treenode(ctx);
+        }
+    } 
+    gs_gui_end_window(ctx);
+  }
 }
 
 #endif // GS_GUI_IMPL 
