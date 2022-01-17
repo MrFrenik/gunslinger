@@ -186,7 +186,8 @@ enum {
     GS_GUI_OPT_FULLSCREEN   = (1 << 20),
     GS_GUI_OPT_DOCKSPACE    = (1 << 21),
     GS_GUI_OPT_NOBRINGTOFRONT = (1 << 22), 
-    GS_GUI_OPT_LEFTCLICKONLY = (1 << 23)
+    GS_GUI_OPT_LEFTCLICKONLY = (1 << 23),
+    GS_GUI_OPT_NOSWITCHSTATE = (1 << 24)
 };
 
 enum {
@@ -873,7 +874,7 @@ GS_API_DECL void gs_gui_set_clip(gs_gui_context_t* ctx, gs_gui_rect_t rect);
 GS_API_DECL void gs_gui_draw_rect(gs_gui_context_t* ctx, gs_gui_rect_t rect, gs_color_t color);
 GS_API_DECL void gs_gui_draw_circle(gs_gui_context_t* ctx, gs_vec2 position, float radius, gs_color_t color);
 GS_API_DECL void gs_gui_draw_triangle(gs_gui_context_t* ctx, gs_vec2 a, gs_vec2 b, gs_vec2 c, gs_color_t color);
-GS_API_DECL void gs_gui_draw_box(gs_gui_context_t* ctx, gs_gui_rect_t rect, int32_t width, gs_color_t color);
+GS_API_DECL void gs_gui_draw_box(gs_gui_context_t* ctx, gs_gui_rect_t rect, uint32_t width, gs_color_t color);
 GS_API_DECL void gs_gui_draw_text(gs_gui_context_t* ctx, gs_asset_font_t* font, const char *str, int32_t len, gs_vec2 pos, gs_color_t color, int32_t shadow_x, int32_t shadow_y, gs_color_t shadow_color);
 GS_API_DECL void gs_gui_draw_icon(gs_gui_context_t* ctx, int32_t id, gs_gui_rect_t rect, gs_color_t color);
 GS_API_DECL void gs_gui_draw_image(gs_gui_context_t* ctx, gs_handle(gs_graphics_texture_t) hndl, gs_gui_rect_t rect, gs_vec2 uv0, gs_vec2 uv1, gs_color_t color);
@@ -1894,7 +1895,7 @@ GS_API_DECL void gs_gui_style_sheet_set_element_styles(gs_gui_style_sheet_t* ss,
     }
 }
 
-GS_API_DECL void gs_gui_set_element_style(gs_gui_context_t* ctx, int32_t element, int32_t state, gs_gui_style_element_t* style, size_t size)
+GS_API_DECL void gs_gui_set_element_style(gs_gui_context_t* ctx, gs_gui_element_type element, gs_gui_element_state state, gs_gui_style_element_t* style, size_t size)
 {
     const uint32_t count = size / sizeof(gs_gui_style_element_t);
     uint32_t idx_cnt = 1;
@@ -3786,7 +3787,6 @@ GS_API_DECL void gs_gui_set_focus(gs_gui_context_t* ctx, gs_gui_id id)
     ctx->prev_focus = ctx->focus;
 	ctx->focus = id;
 	ctx->updated_focus = 1;
-    // gs_println("%zu %zu", ctx->prev_focus, ctx->focus);
 }
 
 GS_API_DECL gs_gui_id gs_gui_get_id(gs_gui_context_t* ctx, const void* data, int32_t size) 
@@ -4298,7 +4298,7 @@ enum {
     GS_GUI_ABSOLUTE = 2
 }; 
 
-GS_API_DECL gs_gui_rect_t gs_gui_layout_anchor(const gs_gui_rect_t* p, int32_t width, int32_t height, int32_t xoff, int32_t yoff, int32_t type)
+GS_API_DECL gs_gui_rect_t gs_gui_layout_anchor(const gs_gui_rect_t* p, int32_t width, int32_t height, int32_t xoff, int32_t yoff, gs_gui_layout_anchor_type type)
 { 
     float w = (float)width;
     float h = (float)height;
@@ -4590,6 +4590,9 @@ GS_API_DECL void gs_gui_update_control(gs_gui_context_t *ctx, gs_gui_id id, gs_g
     int32_t mouseover = 0;
     gs_immediate_draw_t* dl = &ctx->overlay_draw_list; 
 
+    gs_gui_id prev_hov = ctx->prev_hover;
+    gs_gui_id prev_foc = ctx->prev_focus;
+
     // I should do updates in here
 
     if (opt & GS_GUI_OPT_FORCEFOCUS)
@@ -4634,54 +4637,62 @@ GS_API_DECL void gs_gui_update_control(gs_gui_context_t *ctx, gs_gui_id id, gs_g
 	} 
 
     // Do state check
-    if (ctx->focus == id)
+    if (~opt & GS_GUI_OPT_NOSWITCHSTATE)
     {
-        if (ctx->prev_focus != id)  ctx->last_focus_state = GS_GUI_ELEMENT_STATE_ON_FOCUS; 
-        else                        ctx->last_focus_state = GS_GUI_ELEMENT_STATE_FOCUS; 
-    }
-    else
-    {
-        if (ctx->prev_focus == id)  ctx->last_focus_state = GS_GUI_ELEMENT_STATE_OFF_FOCUS; 
-        else                        ctx->last_focus_state = GS_GUI_ELEMENT_STATE_DEFAULT; 
-    }
-
-    if (ctx->hover == id)
-    {
-        if (ctx->prev_hover != id)  ctx->last_hover_state = GS_GUI_ELEMENT_STATE_ON_HOVER;
-        else                        ctx->last_hover_state = GS_GUI_ELEMENT_STATE_HOVER;
-    }
-    else
-    {
-        if (ctx->prev_hover == id) ctx->last_hover_state = GS_GUI_ELEMENT_STATE_OFF_HOVER;
-        else                        ctx->last_hover_state = GS_GUI_ELEMENT_STATE_DEFAULT;
-    }
-
-    if (ctx->prev_focus == id && !ctx->mouse_down && ~opt & GS_GUI_OPT_HOLDFOCUS) {
-        ctx->prev_focus = ctx->focus;
-    }
-
-    if (
-        ctx->last_hover_state == GS_GUI_ELEMENT_STATE_ON_HOVER  || 
-        ctx->last_hover_state == GS_GUI_ELEMENT_STATE_OFF_HOVER || 
-        ctx->last_focus_state == GS_GUI_ELEMENT_STATE_ON_FOCUS  || 
-        ctx->last_focus_state == GS_GUI_ELEMENT_STATE_OFF_FOCUS  
-    )
-    {
-        // Don't have a hover state switch if focused
-        ctx->switch_state = ctx->last_focus_state ? ctx->last_focus_state : ctx->focus != id ? ctx->last_hover_state : GS_GUI_ELEMENT_STATE_DEFAULT; 
-        switch (ctx->switch_state)
+        if (ctx->focus == id)
         {
-            case GS_GUI_ELEMENT_STATE_OFF_HOVER:
-            case GS_GUI_ELEMENT_STATE_ON_HOVER:
-            {
-                if (ctx->focus == id || ctx->prev_focus == id) 
-                {
-                    ctx->switch_state = 0x00;
-                }
-            } break;
+            if (ctx->prev_focus != id)  ctx->last_focus_state = GS_GUI_ELEMENT_STATE_ON_FOCUS; 
+            else                        ctx->last_focus_state = GS_GUI_ELEMENT_STATE_FOCUS; 
         }
-        if (ctx->switch_state && ctx->prev_focus != id) ctx->state_switch_id = id;
-    } 
+        else
+        {
+            if (ctx->prev_focus == id)  ctx->last_focus_state = GS_GUI_ELEMENT_STATE_OFF_FOCUS; 
+            else                        ctx->last_focus_state = GS_GUI_ELEMENT_STATE_DEFAULT; 
+        }
+
+        if (ctx->hover == id)
+        {
+            if (ctx->prev_hover != id)  ctx->last_hover_state = GS_GUI_ELEMENT_STATE_ON_HOVER;
+            else                        ctx->last_hover_state = GS_GUI_ELEMENT_STATE_HOVER;
+        }
+        else
+        {
+            if (ctx->prev_hover == id) ctx->last_hover_state = GS_GUI_ELEMENT_STATE_OFF_HOVER;
+            else                        ctx->last_hover_state = GS_GUI_ELEMENT_STATE_DEFAULT;
+        }
+
+        if (ctx->prev_focus == id && !ctx->mouse_down && ~opt & GS_GUI_OPT_HOLDFOCUS) {
+            ctx->prev_focus = ctx->focus;
+        }
+
+        if (
+            ctx->last_hover_state == GS_GUI_ELEMENT_STATE_ON_HOVER  || 
+            ctx->last_hover_state == GS_GUI_ELEMENT_STATE_OFF_HOVER || 
+            ctx->last_focus_state == GS_GUI_ELEMENT_STATE_ON_FOCUS  || 
+            ctx->last_focus_state == GS_GUI_ELEMENT_STATE_OFF_FOCUS  
+        )
+        {
+            // Don't have a hover state switch if focused
+            ctx->switch_state = ctx->last_focus_state ? ctx->last_focus_state : ctx->focus != id ? ctx->last_hover_state : GS_GUI_ELEMENT_STATE_DEFAULT; 
+            switch (ctx->switch_state)
+            {
+                case GS_GUI_ELEMENT_STATE_OFF_HOVER:
+                case GS_GUI_ELEMENT_STATE_ON_HOVER:
+                {
+                    if (ctx->focus == id || ctx->prev_focus == id) 
+                    {
+                        ctx->switch_state = 0x00;
+                    }
+                } break;
+            }
+            if (ctx->switch_state && ctx->prev_focus != id) ctx->state_switch_id = id;
+        } 
+    }
+    else
+    {
+        ctx->prev_focus = prev_foc;
+        ctx->prev_hover = prev_hov;
+    }
 
 } 
 
@@ -5469,7 +5480,7 @@ GS_API_DECL int32_t gs_gui_begin_window_ex(gs_gui_context_t * ctx, const char* t
             br.h -= ctx->style->title_height;
         }
         gs_gui_id id = gs_gui_get_id(ctx, "!body", 5);
-        // gs_gui_update_control(ctx, id, br, opt); 
+        // gs_gui_update_control(ctx, id, br, (opt | GS_GUI_OPT_NOSWITCHSTATE)); 
 
         // Need to move the entire thing
         if ((id == ctx->focus) && ctx->mouse_down == GS_GUI_MOUSE_LEFT) 
