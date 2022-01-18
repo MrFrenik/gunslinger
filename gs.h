@@ -869,6 +869,8 @@ gs_string_length(const char* txt)
     return sz;
 }
 
+#define gs_strlen gs_string_length
+
 // Expects null terminated strings
 gs_force_inline b32 
 gs_string_compare_equal
