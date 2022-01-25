@@ -63,4 +63,4 @@ gs_app_desc_t gs_main(int32_t argc, char** argv)
 * Write more docs for github
 * Hot-reload util
 * Remove all externals from core framework
-* Add more texture formats (including compressed)
+* Add more texture formats
