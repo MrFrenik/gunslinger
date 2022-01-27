@@ -364,7 +364,8 @@ typedef struct gs_gui_split_t
 } gs_gui_split_t;
 
 typedef enum gs_gui_window_flags { 
-	GS_GUI_WINDOW_FLAGS_VISIBLE	= (1 << 0),
+	GS_GUI_WINDOW_FLAGS_VISIBLE	    = (1 << 0),
+	GS_GUI_WINDOW_FLAGS_FIRST_INIT	= (1 << 1)
 } gs_gui_window_flags; 
 
 // Equidistantly sized tabs, based on rect of window
@@ -972,8 +973,8 @@ GS_API_DECL void gs_gui_begin_panel_ex(gs_gui_context_t* ctx, const char* name, 
 GS_API_DECL void gs_gui_end_panel(gs_gui_context_t* ctx);
 
 // Demo windows
-GS_API_DECL int32_t gs_gui_style_window(gs_gui_context_t* ctx, gs_gui_style_sheet_t* style_sheet, bool* open);
-GS_API_DECL int32_t gs_gui_demo_window(gs_gui_context_t* ctx, bool* open);
+GS_API_DECL int32_t gs_gui_style_window(gs_gui_context_t* ctx, gs_gui_style_sheet_t* style_sheet, gs_gui_rect_t rect, bool* open);
+GS_API_DECL int32_t gs_gui_demo_window(gs_gui_context_t* ctx, gs_gui_rect_t rect, bool* open);
 
 // Docking
 GS_API_DECL void gs_gui_dock_ex(gs_gui_context_t* ctx, const char* dst, const char* src, int32_t split_type, float ratio);
@@ -2466,7 +2467,7 @@ GS_API_DECL gs_gui_container_t* gs_gui_get_container_ex(gs_gui_context_t* ctx, g
 	memset(cnt, 0, sizeof(*cnt));
 	cnt->open = 1;
 	cnt->id = id;
-    cnt->flags |= GS_GUI_WINDOW_FLAGS_VISIBLE;
+    cnt->flags |= GS_GUI_WINDOW_FLAGS_VISIBLE | GS_GUI_WINDOW_FLAGS_FIRST_INIT;
 	gs_gui_bring_to_front(ctx, cnt);
 
 	return cnt;
@@ -2503,9 +2504,12 @@ static gs_vec2 gs_gui_text_dimensions(gs_asset_font_t* font, const char* text, i
 
 GS_API_DECL void gs_gui_dock_ex(gs_gui_context_t* ctx, const char* dst, const char* src, int32_t split_type, float ratio)
 {
+    uint32_t f = ctx->frame;
+    if (!f) gs_gui_begin(ctx);
     gs_gui_container_t* dst_cnt = gs_gui_get_container(ctx, dst);
     gs_gui_container_t* src_cnt = gs_gui_get_container(ctx, src); 
     gs_gui_dock_ex_cnt(ctx, dst_cnt, src_cnt, split_type, ratio); 
+    if (f != ctx->frame) gs_gui_end(ctx);
 }
 
 GS_API_DECL void gs_gui_undock_ex(gs_gui_context_t* ctx, const char* name)
@@ -3089,6 +3093,10 @@ static void gs_gui_init_default_styles(gs_gui_context_t* ctx)
     gs_gui_style_t* style = NULL;
 
     // button
+    for (uint32_t i = 0; i < 3; ++i) {
+        style = &gs_gui_default_button_style[i];
+        style->justify_content = GS_GUI_JUSTIFY_CENTER;
+    } 
     gs_gui_default_button_style[GS_GUI_ELEMENT_STATE_DEFAULT].colors[GS_GUI_COLOR_BACKGROUND] = gs_color(35, 35, 35, 255); 
     gs_gui_default_button_style[GS_GUI_ELEMENT_STATE_HOVER].colors[GS_GUI_COLOR_BACKGROUND] = gs_color(40, 40, 40, 255); 
     gs_gui_default_button_style[GS_GUI_ELEMENT_STATE_FOCUS].colors[GS_GUI_COLOR_BACKGROUND] = gs_color(0, 214, 121, 255); 
@@ -5880,8 +5888,12 @@ GS_API_DECL int32_t gs_gui_begin_window_ex(gs_gui_context_t * ctx, const char* t
     gs_gui_split_t* split = gs_gui_get_split(ctx, cnt); 
     gs_gui_split_t* root_split = gs_gui_get_root_split(ctx, cnt); 
 
+    // Get root container
+    gs_gui_container_t* root_cnt = gs_gui_get_root_container(ctx, cnt); 
+
+
     // Cache rect
-	if ((cnt->rect.w == 0.f || opt & GS_GUI_OPT_FORCESETRECT || opt & GS_GUI_OPT_FULLSCREEN) && new_frame) 
+	if ((cnt->rect.w == 0.f || opt & GS_GUI_OPT_FORCESETRECT || opt & GS_GUI_OPT_FULLSCREEN || cnt->flags & GS_GUI_WINDOW_FLAGS_FIRST_INIT) && new_frame) 
     {
         if (opt & GS_GUI_OPT_FULLSCREEN)
         {
@@ -5896,9 +5908,19 @@ GS_API_DECL int32_t gs_gui_begin_window_ex(gs_gui_context_t * ctx, const char* t
             } 
         }
         else
-        {
-            cnt->rect = rect;
+        { 
+            // Set root split rect size
+            if (root_split && root_cnt == cnt)
+            {
+                root_split->rect = rect;
+                gs_gui_update_split(ctx, root_split);
+            } 
+            else
+            {
+                cnt->rect = rect;
+            }
         }
+        cnt->flags = cnt->flags & ~GS_GUI_WINDOW_FLAGS_FIRST_INIT;
     }
 	gs_gui_begin_root_container(ctx, cnt, opt);
 	rect = body = cnt->rect;
@@ -5908,9 +5930,6 @@ GS_API_DECL int32_t gs_gui_begin_window_ex(gs_gui_context_t * ctx, const char* t
     {
         cnt->zindex = 0;
     }
-
-    // Get root container
-    gs_gui_container_t* root_cnt = gs_gui_get_root_container(ctx, cnt);
 
     // If parent cannot move/resize, set to this opt as well
     if (root_cnt->opt & GS_GUI_OPT_NOMOVE)
@@ -5985,12 +6004,10 @@ GS_API_DECL int32_t gs_gui_begin_window_ex(gs_gui_context_t * ctx, const char* t
             {
                 if (split->children[GS_GUI_SPLIT_NODE_CHILD].container == s_cnt)
                 { 
-                    // shsz += cstyle->border_width[1];
                     cnt->rect = gs_gui_rect(sr->x + shsz, sr->y + shsz, sr->w * ratio - 2.f * shsz, sr->h - 2.f * shsz); 
                 }
                 else                
                 {
-                    // shsz += cstyle->border_width[0];
                     cnt->rect = gs_gui_rect(sr->x + sr->w * ratio + shsz, sr->y + shsz, sr->w * (1.f - ratio) - 2.f * shsz, sr->h - 2.f * shsz); 
                 }
 
@@ -6000,12 +6017,10 @@ GS_API_DECL int32_t gs_gui_begin_window_ex(gs_gui_context_t * ctx, const char* t
             {
                 if (split->children[GS_GUI_SPLIT_NODE_PARENT].container == s_cnt)
                 { 
-                    // shsz += cstyle->border_width[0];
                     cnt->rect = gs_gui_rect(sr->x + shsz, sr->y + shsz, sr->w * (1.f - ratio) - 2.f * shsz, sr->h - 2.f * shsz); 
                 }
                 else                
                 { 
-                    // shsz += cstyle->border_width[1];
                     cnt->rect = gs_gui_rect(sr->x + sr->w * (1.f - ratio) + shsz, sr->y + shsz, sr->w * ratio - 2.f * shsz, sr->h - 2.f * shsz); 
                 }
             } break;
@@ -6014,12 +6029,10 @@ GS_API_DECL int32_t gs_gui_begin_window_ex(gs_gui_context_t * ctx, const char* t
             {
                 if (split->children[GS_GUI_SPLIT_NODE_CHILD].container == s_cnt)
                 {
-                    // shsz += cstyle->border_width[2];
                     cnt->rect = gs_gui_rect(sr->x + shsz, sr->y + shsz, sr->w - 2.f * shsz, sr->h * ratio - 2.f * shsz); 
                 }
                 else                
                 {
-                    // shsz += cstyle->border_width[3];
                     cnt->rect = gs_gui_rect(sr->x + shsz, sr->y + sr->h * ratio + shsz, sr->w - 2.f * shsz, sr->h * (1.f - ratio) - 2.f * shsz);
                 } 
             } break;
@@ -6028,12 +6041,10 @@ GS_API_DECL int32_t gs_gui_begin_window_ex(gs_gui_context_t * ctx, const char* t
             { 
                 if (split->children[GS_GUI_SPLIT_NODE_CHILD].container == s_cnt)
                 {
-                    // shsz += cstyle->border_width[3];
                     cnt->rect = gs_gui_rect(sr->x + shsz, sr->y + sr->h * (1.f - ratio) + shsz, sr->w - 2.f * shsz, sr->h * (ratio) - 2.f * shsz);
                 }
                 else                
                 {
-                    // shsz += cstyle->border_width[2];
                     cnt->rect = gs_gui_rect(sr->x + shsz, sr->y + shsz, sr->w - 2.f * shsz, sr->h * (1.f - ratio) - 2.f * shsz); 
                 } 
             } break;
@@ -7017,7 +7028,7 @@ static int16_t int16_slider(gs_gui_context_t *ctx, int16_t* value, int32_t low, 
     return res;
 } 
 
-GS_API_DECL int32_t gs_gui_style_window(gs_gui_context_t *ctx, gs_gui_style_sheet_t* style_sheet, bool* open) 
+GS_API_DECL int32_t gs_gui_style_window(gs_gui_context_t *ctx, gs_gui_style_sheet_t* style_sheet, gs_gui_rect_t rect, bool* open) 
 {
     if (!style_sheet)
     {
@@ -7049,7 +7060,7 @@ GS_API_DECL int32_t gs_gui_style_window(gs_gui_context_t *ctx, gs_gui_style_shee
         {NULL}
     }; 
 
-  if (gs_gui_begin_window_ex(ctx, "Style_Editor", gs_gui_rect(350, 250, 300, 240), open, 0x00)) 
+  if (gs_gui_begin_window_ex(ctx, "Style_Editor", rect, open, 0x00)) 
   { 
     for (uint32_t i = 0; elements[i].label; ++i)
     {
@@ -7153,7 +7164,7 @@ GS_API_DECL int32_t gs_gui_style_window(gs_gui_context_t *ctx, gs_gui_style_shee
   return 0x01;
 } 
 
-GS_API_DECL int32_t gs_gui_demo_window(gs_gui_context_t* ctx, bool* open) 
+GS_API_DECL int32_t gs_gui_demo_window(gs_gui_context_t* ctx, gs_gui_rect_t rect, bool* open) 
 {
     /* 
        Window for all of the available features for gs_gui: 
@@ -7185,7 +7196,7 @@ GS_API_DECL int32_t gs_gui_demo_window(gs_gui_context_t* ctx, bool* open)
             - Style sheets 
     */
 
-    if (gs_gui_begin_window_ex(ctx, "Demo_Window", gs_gui_rect(350, 250, 300, 240), open, 0x00)) 
+    if (gs_gui_begin_window_ex(ctx, "Demo_Window", rect, open, 0x00)) 
     { 
         gs_gui_container_t* win = gs_gui_get_current_container(ctx);
 
@@ -7196,7 +7207,7 @@ GS_API_DECL int32_t gs_gui_demo_window(gs_gui_context_t* ctx, bool* open)
             {
                 gs_gui_layout_row(ctx, 1, (int[]) {-1}, 0);
                 gs_gui_label(ctx, "ABOUT THIS DEMO:");
-                gs_gui_text(ctx, "  - Sections below are demonstrating many aspects of the library."); 
+                gs_gui_text(ctx, "  - Sections below are demonstrating many aspects of the util."); 
             }
             gs_gui_end_panel(ctx);
             gs_gui_end_treenode(ctx);
@@ -7236,7 +7247,7 @@ GS_API_DECL int32_t gs_gui_demo_window(gs_gui_context_t* ctx, bool* open)
             gs_gui_begin_panel(ctx, "#!context_state");
             {
                 char buf[64];
-                gs_gui_layout_row(ctx, 2, (int[]) {65, -1}, 0);
+                gs_gui_layout_row(ctx, 2, (int[]) {80, -1}, 0);
 
                 gs_gui_label(ctx,"Hovered:");
                 gs_snprintf(buf, 64, "%s", ctx->hover_root ? ctx->hover_root->name : "NULL"); gs_gui_label(ctx, buf);
@@ -7253,9 +7264,46 @@ GS_API_DECL int32_t gs_gui_demo_window(gs_gui_context_t* ctx, bool* open)
             gs_gui_end_panel(ctx);
 
             gs_gui_end_treenode(ctx);
+        } 
+
+        if (gs_gui_begin_treenode(ctx, "Widgets"))
+        {
+            gs_gui_layout_row(ctx, 1, (int[]){-10}, 170);
+            gs_gui_begin_panel(ctx, "#!widgets");
+            {
+                gs_gui_layout_row(ctx, 2, (int[]){150, 50}, 0);
+                gs_gui_layout_begin_column(ctx);
+                {
+                    gs_gui_layout_row(ctx, 1, (int[]){0}, 0);
+                    gs_gui_button(ctx, "Button"); 
+
+                    // Label
+                    gs_gui_label(ctx, "Label");
+
+                    // Text
+                    gs_gui_layout_row(ctx, 1, (int[]){150}, 0);
+                    gs_gui_text(ctx, "This is some text");
+
+                    static buf[64]; 
+                    gs_gui_textbox(ctx, buf, 64);                
+                }
+                gs_gui_layout_end_column(ctx);
+
+                gs_gui_layout_begin_column(ctx);
+                {
+                    gs_gui_label(ctx, "(?)");
+                    if (ctx->hover == ctx->last_id) gs_println("HOVERED");
+                }
+                gs_gui_layout_end_column(ctx);
+
+                // #define gs_gui_slider(_CTX, _VALUE, _LO, _HI)		gs_gui_slider_ex((_CTX), (_VALUE), (_LO), (_HI), 0, GS_GUI_SLIDER_FMT, GS_GUI_OPT_ALIGNCENTER)
+                // #define gs_gui_number(_CTX, _VALUE, _STEP)			gs_gui_number_ex((_CTX), (_VALUE), (_STEP), GS_GUI_SLIDER_FMT, GS_GUI_OPT_ALIGNCENTER)
+            }
+            gs_gui_end_panel(ctx); 
+            gs_gui_end_treenode(ctx);
         }
 
-        gs_gui_end_window(ctx);
+        gs_gui_end_window(ctx); 
     }
     return 0x01;
 }

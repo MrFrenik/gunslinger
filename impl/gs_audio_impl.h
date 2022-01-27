@@ -142,7 +142,7 @@ bool32_t gs_audio_load_mp3_data_from_file
 /* Audio create source */
 gs_handle(gs_audio_source_t) gs_audio_load_from_file(const char* file_path)
 {
-    gs_audio_t* audio = gs_engine_subsystem(audio);
+    gs_audio_t* audio = gs_subsystem(audio);
     gs_audio_source_t src = gs_default_val();
     gs_handle(gs_audio_source_t) handle = gs_handle_invalid(gs_audio_source_t);
     bool32_t load_successful = false;
@@ -212,7 +212,7 @@ gs_handle(gs_audio_source_t) gs_audio_load_from_file(const char* file_path)
 /* Audio create instance */
 gs_handle(gs_audio_instance_t) gs_audio_instance_create(gs_audio_instance_decl_t* decl)
 {
-    gs_audio_t* audio = gs_engine_subsystem(audio);
+    gs_audio_t* audio = gs_subsystem(audio);
     gs_audio_mutex_lock(audio);
     gs_handle(gs_audio_instance_t) hndl = gs_handle_create(gs_audio_instance_t, gs_slot_array_insert(audio->instances, *decl));
     gs_audio_mutex_unlock(audio);
@@ -223,7 +223,7 @@ gs_handle(gs_audio_instance_t) gs_audio_instance_create(gs_audio_instance_decl_t
 void gs_audio_play_source(gs_handle(gs_audio_source_t) src, float volume)
 {
     // Construct instance data from source and play
-    gs_audio_t* audio = gs_engine_subsystem(audio);
+    gs_audio_t* audio = gs_subsystem(audio);
     gs_audio_instance_decl_t decl = gs_default_val();
     decl.src = src;
     decl.volume = gs_clamp(volume, audio->min_audio_volume, audio->max_audio_volume);
@@ -234,14 +234,14 @@ void gs_audio_play_source(gs_handle(gs_audio_source_t) src, float volume)
 
 // Helper macros
 #define __gs_audio_inst_valid(INST)\
-    gs_slot_array_handle_valid(gs_engine_subsystem(audio)->instances, INST.id)
+    gs_slot_array_handle_valid(gs_subsystem(audio)->instances, INST.id)
 
 #define __gs_audio_src_valid(SRC)\
-    gs_slot_array_handle_valid(gs_engine_subsystem(audio)->sources, SRC.id)
+    gs_slot_array_handle_valid(gs_subsystem(audio)->sources, SRC.id)
 
 void gs_audio_play(gs_handle(gs_audio_instance_t) inst)
 {
-    gs_audio_t* audio = gs_engine_subsystem(audio);
+    gs_audio_t* audio = gs_subsystem(audio);
     gs_audio_mutex_lock(audio);
     if (__gs_audio_inst_valid(inst)) {
         gs_slot_array_getp(audio->instances, inst.id)->playing = true;
@@ -251,7 +251,7 @@ void gs_audio_play(gs_handle(gs_audio_instance_t) inst)
 
 void gs_audio_pause(gs_handle(gs_audio_instance_t) inst)
 {
-    gs_audio_t* audio = gs_engine_subsystem(audio);
+    gs_audio_t* audio = gs_subsystem(audio);
     gs_audio_mutex_lock(audio);
     if (__gs_audio_inst_valid(inst)) 
     {
@@ -262,7 +262,7 @@ void gs_audio_pause(gs_handle(gs_audio_instance_t) inst)
 
 void gs_audio_stop(gs_handle(gs_audio_instance_t) inst)
 {
-    gs_audio_t* audio = gs_engine_subsystem(audio);
+    gs_audio_t* audio = gs_subsystem(audio);
     gs_audio_mutex_lock(audio);
     if (__gs_audio_inst_valid(inst)) {
         gs_audio_instance_t* ip = gs_slot_array_getp(audio->instances, inst.id);
@@ -274,7 +274,7 @@ void gs_audio_stop(gs_handle(gs_audio_instance_t) inst)
 
 void gs_audio_restart(gs_handle(gs_audio_instance_t) inst)
 {
-    gs_audio_t* audio = gs_engine_subsystem(audio);
+    gs_audio_t* audio = gs_subsystem(audio);
     gs_audio_mutex_lock(audio);
     if (__gs_audio_inst_valid(inst)) 
     {
@@ -286,7 +286,7 @@ void gs_audio_restart(gs_handle(gs_audio_instance_t) inst)
 bool32_t gs_audio_is_playing(gs_handle(gs_audio_instance_t) inst)
 {
     bool32_t playing = false;
-    gs_audio_t* audio = gs_engine_subsystem(audio);
+    gs_audio_t* audio = gs_subsystem(audio);
     gs_audio_mutex_lock(audio);
     if (__gs_audio_inst_valid(inst)) 
     {
@@ -300,14 +300,14 @@ bool32_t gs_audio_is_playing(gs_handle(gs_audio_instance_t) inst)
 void gs_audio_set_instance_data(gs_handle(gs_audio_instance_t) inst, gs_audio_instance_decl_t decl)
 {
     if (__gs_audio_inst_valid(inst)) {
-        *gs_slot_array_getp(gs_engine_subsystem(audio)->instances, inst.id) = decl;
+        *gs_slot_array_getp(gs_subsystem(audio)->instances, inst.id) = decl;
     }
 }
 
 gs_audio_instance_decl_t gs_audio_get_instance_data(gs_handle(gs_audio_instance_t) inst)
 {
     if (__gs_audio_inst_valid(inst)) {
-        return gs_slot_array_get(gs_engine_subsystem(audio)->instances, inst.id);
+        return gs_slot_array_get(gs_subsystem(audio)->instances, inst.id);
     }
     gs_audio_instance_decl_t decl = gs_default_val();
     return decl;
@@ -316,7 +316,7 @@ gs_audio_instance_decl_t gs_audio_get_instance_data(gs_handle(gs_audio_instance_
 float gs_audio_get_volume(gs_handle(gs_audio_instance_t) inst)
 {
     if (__gs_audio_inst_valid(inst)) {
-        return gs_slot_array_getp(gs_engine_subsystem(audio)->instances, inst.id)->volume;
+        return gs_slot_array_getp(gs_subsystem(audio)->instances, inst.id)->volume;
     }
     return 0.f;
 }
@@ -324,7 +324,7 @@ float gs_audio_get_volume(gs_handle(gs_audio_instance_t) inst)
 void gs_audio_set_volume(gs_handle(gs_audio_instance_t) inst, float volume)
 {
     if (__gs_audio_inst_valid(inst)) {
-        gs_slot_array_getp(gs_engine_subsystem(audio)->instances, inst.id)->volume = volume;
+        gs_slot_array_getp(gs_subsystem(audio)->instances, inst.id)->volume = volume;
     }
 }
 
@@ -332,7 +332,7 @@ void gs_audio_set_volume(gs_handle(gs_audio_instance_t) inst, float volume)
 gs_audio_source_t* gs_audio_get_source_data(gs_handle(gs_audio_source_t) src)
 {
     if (__gs_audio_src_valid(src)) {
-        return gs_slot_array_getp(gs_engine_subsystem(audio)->sources, src.id);
+        return gs_slot_array_getp(gs_subsystem(audio)->sources, src.id);
     }
     return NULL;
 }
@@ -340,7 +340,7 @@ gs_audio_source_t* gs_audio_get_source_data(gs_handle(gs_audio_source_t) src)
 void gs_audio_get_runtime(gs_handle(gs_audio_source_t) src, int32_t* minutes_out, int32_t* seconds_out)
 {
     if (__gs_audio_src_valid(src)) {
-        gs_audio_t* audio = gs_engine_subsystem(audio);
+        gs_audio_t* audio = gs_subsystem(audio);
         gs_audio_source_t* sp = gs_slot_array_getp(audio->sources, src.id);
         if (sp)
         {
@@ -381,7 +381,7 @@ void gs_audio_convert_to_runtime(int32_t sample_count, int32_t sample_rate, int3
 int32_t gs_audio_get_sample_count(gs_handle(gs_audio_source_t) src)
 {
     if (__gs_audio_src_valid(src)) {
-        return gs_slot_array_getp(gs_engine_subsystem(audio)->sources, src.id)->sample_count;
+        return gs_slot_array_getp(gs_subsystem(audio)->sources, src.id)->sample_count;
     }
     return 0;
 }
@@ -389,7 +389,7 @@ int32_t gs_audio_get_sample_count(gs_handle(gs_audio_source_t) src)
 int32_t gs_audio_get_sample_rate(gs_handle(gs_audio_source_t) src)
 {
     if (__gs_audio_src_valid(src)) {
-        return gs_slot_array_getp(gs_engine_subsystem(audio)->sources, src.id)->sample_rate;
+        return gs_slot_array_getp(gs_subsystem(audio)->sources, src.id)->sample_rate;
     }
     return 0;
 }
@@ -397,7 +397,7 @@ int32_t gs_audio_get_sample_rate(gs_handle(gs_audio_source_t) src)
 int32_t gs_audio_get_num_channels(gs_handle(gs_audio_source_t) src)
 {
     if (__gs_audio_src_valid(src)) {
-        return gs_slot_array_getp(gs_engine_subsystem(audio)->sources, src.id)->channels;
+        return gs_slot_array_getp(gs_subsystem(audio)->sources, src.id)->channels;
     }
     return 0;
 }
@@ -436,7 +436,7 @@ void gs_audio_mutex_unlock(gs_audio_t* audio)
 
 void ma_audio_commit(ma_device* device, void* output, const void* input, ma_uint32 frame_count)
 {
-    gs_audio_t* audio = gs_engine_subsystem(audio);
+    gs_audio_t* audio = gs_subsystem(audio);
     miniaudio_data_t* ma = (miniaudio_data_t*)audio->user_data;
     memset(output, 0, frame_count * device->playback.channels * ma_get_bytes_per_sample(device->playback.format));
 
@@ -499,8 +499,8 @@ void ma_audio_commit(ma_device* device, void* output, const void* input, ma_uint
                     target_sample_position -= src->sample_count;
                 }
 
-                s16 target_left_sample;
-                s16 target_right_sample;
+                s16 target_left_sample = 0;
+                s16 target_right_sample = 0;
 
                 {
                     u64 left_idx = (u64)start_sample_position;
@@ -521,9 +521,6 @@ void ma_audio_commit(ma_device* device, void* output, const void* input, ma_uint
 
                 s16 left_sample = (s16)((((s64)start_left_sample + (s64)target_left_sample) / 2) * sample_volume);
                 s16 right_sample = (s16)((((s64)start_right_sample + (s64)target_right_sample) / 2) * sample_volume);
-
-                // I suppose here could pass this to user to add sample data? Not sure the best way to handle stuff like this, honestly...  
-                // Try distortion for samples
 
                 *sample_out++ += left_sample;  // Left
                 *sample_out++ += right_sample; // Right
@@ -634,7 +631,7 @@ gs_result gs_audio_init(gs_audio_t* audio)
 // Register commit function
 GS_API_DECL void gs_audio_register_commit(gs_audio_commit commit)
 {
-    gs_audio_t* audio = gs_engine_subsystem(audio);
+    gs_audio_t* audio = gs_subsystem(audio);
     audio->commit = commit;
 }
 

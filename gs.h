@@ -144,9 +144,9 @@
         int32_t main(int32_t argv, char** argc)
         {
             gs_app_desc_t app = {0}; // Fill this with whatever your app needs
-            gs_engine_create(app);   // Create instance of engine for framework and run
-            while (gs_engine_app()->is_running) {
-                gs_engine_frame();
+            gs_create(app);   // Create instance of engine for framework and run
+            while (gs_app()->is_running) {
+                gs_frame();
             }
             return 0;
        }
@@ -5844,42 +5844,42 @@ typedef struct gs_app_desc_t
         all interfaces registered with the engine, including the description 
         for your application.
 */
-typedef struct gs_engine_context_t
+typedef struct gs_context_t
 {
     gs_platform_t* platform;
     gs_graphics_t* graphics;
     gs_audio_t* audio;
     gs_app_desc_t app;
-} gs_engine_context_t;
+} gs_context_t; 
 
-typedef struct gs_engine_t
+typedef struct gs_t
 {
-    gs_engine_context_t ctx;
+    gs_context_t ctx;
     void (* shutdown)();
-} gs_engine_t;
+} gs_t;
 
 /* Desc */
-GS_API_DECL gs_engine_t* gs_engine_create(gs_app_desc_t app_desc);
+GS_API_DECL gs_t* gs_create(gs_app_desc_t app_desc);
 /* Desc */
-GS_API_DECL void gs_engine_destroy();
+GS_API_DECL void gs_destroy();
 /* Desc */
-GS_API_DECL gs_engine_t* gs_engine_instance();
+GS_API_DECL gs_t* gs_instance();
 /* Desc */
-GS_API_DECL gs_engine_context_t* gs_engine_ctx();
+GS_API_DECL gs_context_t* gs_ctx();
 /* Desc */
-GS_API_DECL gs_app_desc_t* gs_engine_app();
+GS_API_DECL gs_app_desc_t* gs_app();
 /* Desc */
-GS_API_DECL void gs_engine_frame();
+GS_API_DECL void gs_frame();
 /* Desc */
-GS_API_DECL void gs_engine_quit();
+GS_API_DECL void gs_quit();
 /* Desc */
 GS_API_DECL gs_app_desc_t gs_main(int32_t argc, char** argv);
 
-#define gs_engine_subsystem(__T)\
-    (gs_engine_instance()->ctx.__T)
+#define gs_subsystem(__T)\
+    (gs_instance()->ctx.__T)
 
-#define gs_engine_user_data(__T)\
-    (__T*)(gs_engine_instance()->ctx.app.user_data)
+#define gs_user_data(__T)\
+    (__T*)(gs_instance()->ctx.app.user_data)
 
 /** @} */ // end of gs_app
 
@@ -7823,12 +7823,12 @@ GS_API_DECL gs_lexer_t gs_lexer_c_ctor(const char* contents)
 void gs_default_app_func();
 void gs_default_main_window_close_callback(void* window);
 
-// Global instance of gunslinger engine (...THERE CAN ONLY BE ONE)
-gs_global gs_engine_t* __g_engine_instance = gs_default_val();
+// Global instance of gunslinger framework (...THERE CAN ONLY BE ONE)
+gs_global gs_t* _gs_instance = gs_default_val();
 
-gs_engine_t* gs_engine_create(gs_app_desc_t app_desc)
+gs_t* gs_create(gs_app_desc_t app_desc)
 {
-    if (gs_engine_instance() == NULL)
+    if (gs_instance() == NULL)
     {
         // Check app desc for defaults
         if (app_desc.window_width == 0)     app_desc.window_width = 800;
@@ -7840,25 +7840,25 @@ gs_engine_t* gs_engine_create(gs_app_desc_t app_desc)
         if (app_desc.init == NULL)          app_desc.init = &gs_default_app_func;
 
         // Construct instance
-        __g_engine_instance = gs_malloc_init(gs_engine_t);
+        _gs_instance = gs_malloc_init(gs_t);
 
-        // Set application description for engine
-        gs_engine_instance()->ctx.app = app_desc;
+        // Set application description for framework
+        gs_instance()->ctx.app = app_desc;
 
         // Set up function pointers
-        gs_engine_instance()->shutdown  = &gs_engine_destroy;
+        gs_instance()->shutdown  = &gs_destroy;
 
         // Need to have video settings passed down from user
-        gs_engine_subsystem(platform) = gs_platform_create();
+        gs_subsystem(platform) = gs_platform_create();
 
         // Enable graphics API debugging
-        gs_engine_subsystem(platform)->settings.video.graphics.debug = app_desc.debug_gfx;
+        gs_subsystem(platform)->settings.video.graphics.debug = app_desc.debug_gfx;
 
         // Default initialization for platform here
-        gs_platform_init(gs_engine_subsystem(platform));
+        gs_platform_init(gs_subsystem(platform));
 
         // Set frame rate for application
-        gs_engine_subsystem(platform)->time.max_fps = app_desc.frame_rate;
+        gs_subsystem(platform)->time.max_fps = app_desc.frame_rate;
 
         // Construct main window
         gs_platform_create_window(app_desc.window_title, app_desc.window_width, app_desc.window_height, app_desc.monitor_index);
@@ -7867,54 +7867,53 @@ gs_engine_t* gs_engine_create(gs_app_desc_t app_desc)
         gs_platform_enable_vsync(app_desc.enable_vsync); 
 
         // Construct graphics api 
-        gs_engine_subsystem(graphics) = gs_graphics_create();
+        gs_subsystem(graphics) = gs_graphics_create();
 
         // Initialize graphics here
-        gs_graphics_init(gs_engine_subsystem(graphics));
+        gs_graphics_init(gs_subsystem(graphics));
 
         // Construct audio api
-        gs_engine_subsystem(audio) = gs_audio_create();
+        gs_subsystem(audio) = gs_audio_create();
 
         // Initialize audio
-        gs_audio_init(gs_engine_subsystem(audio));
+        gs_audio_init(gs_subsystem(audio));
 
         // Initialize application
         app_desc.init();
 
-        gs_engine_ctx()->app.is_running = true;
+        gs_ctx()->app.is_running = true;
 
         // Set default callback for when main window close button is pressed
         gs_platform_set_window_close_callback(gs_platform_main_window(), &gs_default_main_window_close_callback);
     }
 
-    return gs_engine_instance();
+    return gs_instance();
 }
 
-gs_engine_t* gs_engine_instance()
+gs_t* gs_instance()
 {
-    return __g_engine_instance;
+    return _gs_instance;
 }
 
-gs_engine_context_t* gs_engine_ctx()
+gs_context_t* gs_ctx()
 {
-    return &gs_engine_instance()->ctx;
+    return &gs_instance()->ctx;
 }
 
-gs_app_desc_t* gs_engine_app()
+gs_app_desc_t* gs_app()
 {
-    return &gs_engine_instance()->ctx.app;
+    return &gs_instance()->ctx.app;
 }
 
 // Define main frame function for engine to step
-// Get rid of this eventually and just allow for the internal platform layer to decide how to update.
-GS_API_DECL void gs_engine_frame()
+GS_API_DECL void gs_frame()
 {
     // Remove these...
     static uint32_t curr_ticks = 0; 
     static uint32_t prev_ticks = 0;
 
     // Cache platform pointer
-    gs_platform_t* platform = gs_engine_subsystem(platform);
+    gs_platform_t* platform = gs_subsystem(platform);
 
     // Cache times at start of frame
     platform->time.current  = gs_platform_elapsed_time();
@@ -7923,15 +7922,15 @@ GS_API_DECL void gs_engine_frame()
 
     // Update platform and process input
     gs_platform_update(platform);
-    if (!gs_engine_instance()->ctx.app.is_running) {
-        gs_engine_instance()->shutdown();
+    if (!gs_instance()->ctx.app.is_running) {
+        gs_instance()->shutdown();
         return;
     }
 
     // Process application context
-    gs_engine_instance()->ctx.app.update();
-    if (!gs_engine_instance()->ctx.app.is_running) {
-        gs_engine_instance()->shutdown();
+    gs_instance()->ctx.app.update();
+    if (!gs_instance()->ctx.app.is_running) {
+        gs_instance()->shutdown();
         return;
     }
 
@@ -7971,21 +7970,21 @@ GS_API_DECL void gs_engine_frame()
     }
 }
 
-void gs_engine_destroy()
+void gs_destroy()
 {
     // Shutdown application
-    gs_engine_ctx()->app.shutdown();
-    gs_engine_ctx()->app.is_running = false;
+    gs_ctx()->app.shutdown();
+    gs_ctx()->app.is_running = false;
 
     // Shutdown subsystems
-    gs_graphics_shutdown(gs_engine_subsystem(graphics));
-    gs_graphics_destroy(gs_engine_subsystem(graphics));
+    gs_graphics_shutdown(gs_subsystem(graphics));
+    gs_graphics_destroy(gs_subsystem(graphics));
 
-    gs_audio_shutdown(gs_engine_subsystem(audio));
-    gs_audio_destroy(gs_engine_subsystem(audio));
+    gs_audio_shutdown(gs_subsystem(audio));
+    gs_audio_destroy(gs_subsystem(audio));
 
-    gs_platform_shutdown(gs_engine_subsystem(platform)); 
-    gs_platform_destroy(gs_engine_subsystem(platform));
+    gs_platform_shutdown(gs_subsystem(platform)); 
+    gs_platform_destroy(gs_subsystem(platform));
 }
 
 void gs_default_app_func()
@@ -7995,14 +7994,14 @@ void gs_default_app_func()
 
 void gs_default_main_window_close_callback(void* window)
 {
-    gs_engine_instance()->ctx.app.is_running = false;
+    gs_instance()->ctx.app.is_running = false;
 }
 
-void gs_engine_quit()
+void gs_quit()
 {
-#ifndef GS_PLATFORM_WEB
-    gs_engine_instance()->ctx.app.is_running = false;
-#endif
+    #ifndef GS_PLATFORM_WEB
+        gs_instance()->ctx.app.is_running = false;
+    #endif
 }
 
 #undef GS_IMPL
@@ -8255,7 +8254,7 @@ void gs_engine_quit()
 
         int main(int32_t argc, char** argv) 
         {
-            emscripten_set_main_loop(gs_engine_create(gs_main(argc, argv))->run(), 0, true);
+            emscripten_set_main_loop(gs_create(gs_main(argc, argv))->run(), 0, true);
         }
 
 */

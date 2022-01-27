@@ -51,7 +51,7 @@
  *  @{
  */
 
-// Raw data retrieval/Handles
+//=== Raw data retrieval/Handles ===//
 #ifndef GS_GFXT_HNDL
 	#define GS_GFXT_HNDL void*							// Default handle will just be a pointer to the data itself 
 #endif
@@ -67,7 +67,7 @@ typedef struct gs_gfxt_raw_data_func_desc_t {
 	void* user_data;								// Optional user data for function
 } gs_gfxt_raw_data_func_desc_t;
 
-// Uniforms/Uniform blocks
+//=== Uniforms/Uniform blocks ===//
 typedef struct gs_gfxt_uniform_desc_t {
 	char name[64];									// Name of uniform (for binding to shader)
 	gs_graphics_uniform_type type;					// Type of uniform: GS_GRAPHICS_UNIFORM_VEC2, GS_GRAPHICS_UNIFORM_VEC3, etc.
@@ -100,29 +100,10 @@ typedef struct gs_gfxt_uniform_block_t {
 	size_t size;								 // Total size of material data for entire block
 } gs_gfxt_uniform_block_t; 
 
-// Pipeline
-typedef struct gs_gfxt_pipeline_desc_t {
-	gs_graphics_pipeline_desc_t  pip_desc;		// Description for constructing pipeline object
-	gs_gfxt_uniform_block_desc_t ublock_desc;	// Description for constructing uniform block object
-} gs_gfxt_pipeline_desc_t;
+//=== Texture ===//
+typedef gs_handle(gs_graphics_texture_t) gs_gfxt_texture_t;
 
-typedef struct gs_gfxt_pipeline_t {
-	gs_handle(gs_graphics_pipeline_t) hndl;		// Graphics handle resource for actual pipeline
-	gs_gfxt_uniform_block_t ublock;				// Uniform block for holding all uniform data
-} gs_gfxt_pipeline_t;
-
-// Material
-typedef struct gs_gfxt_material_desc_t {
-	gs_gfxt_raw_data_func_desc_t pip_func;	 	// Description for retrieving raw pipeline pointer data from handle.
-} gs_gfxt_material_desc_t;
-
-typedef struct gs_gfxt_material_t {
-	gs_gfxt_material_desc_t desc;				// Material description object
-	gs_byte_buffer_t uniform_data;				// Byte buffer of actual uniform data to send to GPU
-    gs_byte_buffer_t image_buffer_data;         // Image buffer data
-} gs_gfxt_material_t; 
-
-// Mesh
+//=== Mesh ===//
 gs_enum_decl(gs_gfxt_mesh_attribute_type,
     GS_GFXT_MESH_ATTRIBUTE_TYPE_POSITION,
     GS_GFXT_MESH_ATTRIBUTE_TYPE_NORMAL,
@@ -170,7 +151,31 @@ typedef struct gs_gfxt_mesh_t {
 	gs_dyn_array(gs_gfxt_mesh_primitive_t) primitives;
 } gs_gfxt_mesh_t;
 
-// Renderable
+//=== Pipeline ===//
+typedef struct gs_gfxt_pipeline_desc_t {
+	gs_graphics_pipeline_desc_t  pip_desc;		     // Description for constructing pipeline object
+	gs_gfxt_uniform_block_desc_t ublock_desc;	     // Description for constructing uniform block object
+} gs_gfxt_pipeline_desc_t;
+
+typedef struct gs_gfxt_pipeline_t {
+	gs_handle(gs_graphics_pipeline_t) hndl;		     // Graphics handle resource for actual pipeline
+	gs_gfxt_uniform_block_t ublock;				     // Uniform block for holding all uniform data
+    gs_dyn_array(gs_gfxt_mesh_layout_t) mesh_layout;  
+    int16_t index_buffer_element_size;               
+} gs_gfxt_pipeline_t;
+
+//=== Material ===//
+typedef struct gs_gfxt_material_desc_t {
+	gs_gfxt_raw_data_func_desc_t pip_func;	 	// Description for retrieving raw pipeline pointer data from handle.
+} gs_gfxt_material_desc_t;
+
+typedef struct gs_gfxt_material_t {
+	gs_gfxt_material_desc_t desc;				// Material description object
+	gs_byte_buffer_t uniform_data;				// Byte buffer of actual uniform data to send to GPU
+    gs_byte_buffer_t image_buffer_data;         // Image buffer data
+} gs_gfxt_material_t; 
+
+//=== Renderable ===// 
 typedef struct gs_gfxt_renderable_desc_t {
 	gs_gfxt_raw_data_func_desc_t mesh;		// Description for retrieving raw mesh pointer data from handle.
 	gs_gfxt_raw_data_func_desc_t material;	// Description for retrieving raw material pointer data from handle.
@@ -181,29 +186,36 @@ typedef struct gs_gfxt_renderable_t {
 	gs_mat4 model_matrix;				// Model matrix for renderable
 } gs_gfxt_renderable_t;
 
-// Graphics scene
+//=== Graphics scene ===//
 typedef struct gs_gfxt_scene_t {
 	gs_slot_array(gs_gfxt_renderable_t) renderables;
 } gs_gfxt_scene_t;
 
-/*==== API =====*/
+//==== API =====//
 
-// Creation/Destruction
+//=== Creation/Destruction ===// 
 GS_API_DECL gs_gfxt_pipeline_t 	    gs_gfxt_pipeline_create(const gs_gfxt_pipeline_desc_t* desc);
 GS_API_DECL gs_gfxt_material_t 		gs_gfxt_material_create(gs_gfxt_material_desc_t* desc);
 GS_API_DECL gs_gfxt_mesh_t 			gs_gfxt_mesh_create(const gs_gfxt_mesh_desc_t* desc);
 GS_API_DECL gs_gfxt_renderable_t 	gs_gfxt_renderable_create(const gs_gfxt_renderable_desc_t* desc);
 GS_API_DECL gs_gfxt_uniform_block_t gs_gfxt_uniform_block_create(const gs_gfxt_uniform_block_desc_t* desc);
+GS_API_DECL gs_gfxt_texture_t       gs_gfxt_texture_create(gs_graphics_texture_desc_t* desc); 
 
-// Copy
+//=== Resource Loading ===//
+GS_API_DECL gs_gfxt_pipeline_t gs_gfxt_pipeline_load_from_file(const char* path);
+GS_API_DECL gs_gfxt_pipeline_t gs_gfxt_pipeline_load_from_memory(const char* data, size_t sz);
+GS_API_DECL gs_gfxt_texture_t  gs_gfxt_texture_load_from_file(const char* path, gs_graphics_texture_desc_t* desc, bool flip, bool keep_data);
+GS_API_DECL gs_gfxt_texture_t  gs_gfxt_texture_load_from_memory(const char* data, size_t sz, gs_graphics_texture_desc_t* desc, bool flip, bool keep_data);
+
+//=== Copy ===//
 GS_API_DECL gs_gfxt_material_t gs_gfxt_material_deep_copy(gs_gfxt_material_t* src);
 
-// Material API
+//=== Material API ===//
 GS_API_DECL void gs_gfxt_material_set_uniform(gs_gfxt_material_t* mat, const char* name, const void* data);
 GS_API_DECL void gs_gfxt_material_bind(gs_command_buffer_t* cb, gs_gfxt_material_t* mat);
 GS_API_DECL void gs_gfxt_material_bind_uniforms(gs_command_buffer_t* cb, gs_gfxt_material_t* mat);
 
-// Mesh API
+//=== Mesh API ===//
 GS_API_DECL void gs_gfxt_mesh_draw(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh);
 GS_API_DECL gs_gfxt_mesh_t gs_gfxt_mesh_load_from_file(const char* file, gs_gfxt_mesh_import_options_t* options);
 GS_API_DECL bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_options_t* options, gs_gfxt_mesh_raw_data_t** out, uint32_t* mesh_count);
@@ -231,6 +243,7 @@ gs_gfxt_pipeline_t gs_gfxt_pipeline_create(const gs_gfxt_pipeline_desc_t* desc)
 		return pip;
 	}
 
+    pip.index_buffer_element_size = desc->pip_desc.raster.index_buffer_element_size;
 	pip.hndl = gs_graphics_pipeline_create(&desc->pip_desc);
 	pip.ublock = gs_gfxt_uniform_block_create(&desc->ublock_desc);
 	return pip;
@@ -299,6 +312,11 @@ gs_gfxt_uniform_block_t gs_gfxt_uniform_block_create(const gs_gfxt_uniform_block
 	block.size = offset;
 
 	return block;
+}
+
+GS_API_DECL gs_gfxt_texture_t gs_gfxt_texture_create(gs_graphics_texture_desc_t* desc)
+{
+    return gs_graphics_texture_create(desc);
 }
 
 GS_API_DECL 
@@ -386,7 +404,8 @@ gs_gfxt_renderable_t gs_gfxt_renderable_create(const gs_gfxt_renderable_desc_t* 
 	return rend;
 }
 
-// Copy API
+//=== Copy API ===//
+
 GS_API_DECL gs_gfxt_material_t gs_gfxt_material_deep_copy(gs_gfxt_material_t* src)
 {
 	gs_gfxt_material_t mat = gs_gfxt_material_create(&src->desc);
@@ -394,7 +413,8 @@ GS_API_DECL gs_gfxt_material_t gs_gfxt_material_deep_copy(gs_gfxt_material_t* sr
 	return mat;
 }
 
-// Material API
+//=== Material API ===//
+
 GS_API_DECL
 void gs_gfxt_material_set_uniform(gs_gfxt_material_t* mat, const char* name, const void* data)
 {
@@ -654,7 +674,7 @@ bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_opti
     	// Reset matrix
     	world_mat = gs_mat4_identity();
 
-    	gs_println("i: %zu, r: %zu, t: %zu, s: %zu, m: %zu", i, node->has_rotation, node->has_translation, node->has_scale, node->has_matrix);
+    	// gs_println("i: %zu, r: %zu, t: %zu, s: %zu, m: %zu", i, node->has_rotation, node->has_translation, node->has_scale, node->has_matrix);
 
     	// Not sure what "local transform" does, since world gives me the actual world result...probably for animation
     	if (node->has_rotation || node->has_translation || node->has_scale) 
@@ -1112,6 +1132,1219 @@ gs_handle(gs_graphics_texture_t) gs_gfxt_texture_generate_default()
     // Create dynamic texture
     return gs_graphics_texture_create(&desc);
 }
+
+//=== Resource Loading ===//
+
+typedef struct tmp_buffer_t
+{
+    char txt[1024]; 
+} tmp_buffer_t; 
+
+typedef struct gs_shader_io_data_t
+{
+    char type[64];
+    char name[64];
+} gs_shader_io_data_t;
+
+typedef struct gs_pipeline_parse_data_t 
+{ 
+    gs_dyn_array(gs_shader_io_data_t) io_list[3];
+    gs_dyn_array(gs_gfxt_mesh_layout_t) mesh_layout;
+    char* code[3];
+} gs_ppd_t; 
+
+#define gs_parse_warning(TXT, ...)\
+    do {\
+        gs_printf("WARNING::");\
+        gs_printf(TXT, ##__VA_ARGS__);\
+        gs_println("");\
+    } while (0)
+
+#define gs_parse_error(TXT, ASSERT, ...)\
+    do {\
+        gs_printf("ERROR::");\
+        gs_printf(TXT, ##__VA_ARGS__);\
+        gs_println("");\
+        if (ASSERT) gs_assert(false);\
+    } while (0)
+
+#define gs_parse_block(NAME, ...)\
+    do {\
+        gs_println("gs_pipeline_load_from_file::parsing::%s", #NAME);\
+        if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_LBRACE))\
+        {\
+            gs_println("error::gs_pipeline_load_from_file::error parsing raster from .sf resource");\
+            gs_assert(false);\
+        }\
+\
+        uint32_t bc = 1;\
+        while (bc)\
+        {\
+            gs_token_t token = lex->next_token(lex);\
+            switch (token.type)\
+            {\
+                case GS_TOKEN_LBRACE: {bc++;} break;\
+                case GS_TOKEN_RBRACE: {bc--;} break;\
+\
+                case GS_TOKEN_IDENTIFIER:\
+                {\
+                    __VA_ARGS__\
+                }\
+            }\
+        }\
+    } while (0)
+
+const char* gs_get_vertex_attribute_string(gs_graphics_vertex_attribute_type type)
+{ 
+    switch (type)
+    {
+        case GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT:   return "float"; break;
+        case GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2:  return "vec2";  break;
+        case GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3:  return "vec3";  break;
+        case GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT4:  return "vec4";  break;
+        case GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT:    return "int";   break;
+        case GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT2:   return "vec2";  break;
+        case GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT3:   return "vec3";  break;
+        case GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT4:   return "vec4";  break;
+        case GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE:    return "float"; break;
+        case GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE2:   return "vec2"; break;
+        case GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE3:   return "vec3"; break;
+        case GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE4:   return "vec4"; break;
+        default: return "UNKNOWN"; break;
+    }
+}
+
+gs_graphics_vertex_attribute_type gs_get_vertex_attribute_from_token(const gs_token_t* t)
+{ 
+    if (gs_token_compare_text(t, "float"))       return GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT;
+    else if (gs_token_compare_text(t, "float2")) return GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2;
+    else if (gs_token_compare_text(t, "float3")) return GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3;
+    else if (gs_token_compare_text(t, "float4")) return GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT4;
+    else if (gs_token_compare_text(t, "uint4"))  return GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT4;
+    else if (gs_token_compare_text(t, "uint3"))  return GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT3;
+    else if (gs_token_compare_text(t, "uint2"))  return GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT2;
+    else if (gs_token_compare_text(t, "uint"))   return GS_GRAPHICS_VERTEX_ATTRIBUTE_UINT;
+    else if (gs_token_compare_text(t, "byte4"))  return GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE4;
+    else if (gs_token_compare_text(t, "byte3"))  return GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE3;
+    else if (gs_token_compare_text(t, "byte2"))  return GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE2;
+    else if (gs_token_compare_text(t, "byte"))   return GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE;
+    return 0x00;
+}
+
+gs_graphics_uniform_type gs_uniform_type_from_token(const gs_token_t* t)
+{
+    if (gs_token_compare_text(t, "float"))               return GS_GRAPHICS_UNIFORM_FLOAT; 
+    else if (gs_token_compare_text(t, "int"))            return GS_GRAPHICS_UNIFORM_INT;
+    else if (gs_token_compare_text(t, "vec2"))           return GS_GRAPHICS_UNIFORM_VEC2;
+    else if (gs_token_compare_text(t, "vec3"))           return GS_GRAPHICS_UNIFORM_VEC3; 
+    else if (gs_token_compare_text(t, "vec4"))           return GS_GRAPHICS_UNIFORM_VEC4; 
+    else if (gs_token_compare_text(t, "mat4"))           return GS_GRAPHICS_UNIFORM_MAT4; 
+    else if (gs_token_compare_text(t, "sampler2D"))      return GS_GRAPHICS_UNIFORM_SAMPLER2D; 
+    else if (gs_token_compare_text(t, "img2D_rgba32f"))  return GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F; 
+    return 0x00;
+}
+
+const char* gs_uniform_string_from_type(gs_graphics_uniform_type type)
+{
+    switch (type)
+    {
+        case GS_GRAPHICS_UNIFORM_FLOAT:           return "float"; break; 
+        case GS_GRAPHICS_UNIFORM_INT:             return "int"; break;
+        case GS_GRAPHICS_UNIFORM_VEC2:            return "vec2"; break;
+        case GS_GRAPHICS_UNIFORM_VEC3:            return "vec3"; break; 
+        case GS_GRAPHICS_UNIFORM_VEC4:            return "vec4"; break; 
+        case GS_GRAPHICS_UNIFORM_MAT4:            return "mat4"; break;
+        case GS_GRAPHICS_UNIFORM_SAMPLER2D:       return "sampler2D"; break; 
+        case GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F: return "image2D"; break; 
+        default: return "UNKNOWN"; break;
+    }
+    return 0x00;
+}
+
+void gs_parse_uniforms(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd, gs_graphics_shader_stage_type stage)
+{
+    uint32_t image_binding = 0;
+
+    gs_parse_block(
+    PIPELINE::UNIFORMS,
+    {
+        gs_gfxt_uniform_desc_t uniform = {0};
+        uniform.type = gs_uniform_type_from_token(&token); 
+        uniform.stage = stage;
+
+        switch (uniform.type)
+        {
+            default: break;
+
+            case GS_GRAPHICS_UNIFORM_SAMPLER2D:
+            case GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F:
+            {
+                uniform.binding = image_binding++;
+            } break;
+        } 
+
+        if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER)) 
+        { 
+            gs_assert(false);
+        } 
+        token = lex->current_token;
+
+        memcpy(uniform.name, token.text, token.len);
+
+        // Add uniform to ublock descriptor
+        gs_dyn_array_push(desc->ublock_desc.layout, uniform); 
+    });
+}
+
+void gs_parse_in(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd, gs_graphics_shader_stage_type type)
+{
+    gs_parse_block(
+    PIPELINE::IN,
+    {
+    });
+}
+
+void gs_parse_io(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd, gs_graphics_shader_stage_type type)
+{
+    gs_parse_block(
+    PIPELINE::IO,
+    {
+        gs_shader_io_data_t io = {0}; 
+        memcpy(io.type, token.text, token.len);
+
+        switch (type)
+        {
+            case GS_GRAPHICS_SHADER_STAGE_VERTEX:
+            {
+                if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER)) 
+                { 
+                    gs_parse_error(false, "PIPELINE::IO::expected identifier name after type.");
+                } 
+                token = lex->current_token;
+                memcpy(io.name, token.text, token.len);
+                gs_dyn_array_push(ppd->io_list[0], io);
+            } break;
+
+            case GS_GRAPHICS_SHADER_STAGE_FRAGMENT:
+            {
+                if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER)) 
+                {
+                    gs_parse_error(false, "PIPELINE::IO::expected identifier name after type.");
+                }
+                token = lex->current_token;
+                memcpy(io.name, token.text, token.len);
+                gs_dyn_array_push(ppd->io_list[1], io);
+            } break;
+
+            case GS_GRAPHICS_SHADER_STAGE_COMPUTE:
+            {
+                if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_NUMBER)) 
+                {
+                    gs_parse_error(false, "PIPELINE::IO::expected number after type.");
+                }
+                token = lex->current_token;
+                memcpy(io.name, token.text, token.len);
+                gs_dyn_array_push(ppd->io_list[2], io);
+            } break;
+        } 
+    }); 
+}
+
+void gs_parse_code(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd, gs_graphics_shader_stage_type stage)
+{
+	if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_LBRACE)) 
+    { 
+        gs_assert(false);
+    } 
+
+    uint32_t bc = 1; 
+    gs_token_t cur = lex->next_token(lex);
+    gs_token_t token = lex->current_token;
+    while (bc)
+    {
+        switch (token.type)
+        { 
+            case GS_TOKEN_LBRACE: {bc++;} break; 
+            case GS_TOKEN_RBRACE: {bc--;} break; 
+        }
+        token = lex->next_token(lex);
+    }
+
+    const size_t sz = (size_t)(token.text - cur.text - 1);
+    char* code = gs_malloc(sz + 1);
+    memset(code, 0, sz);
+    memcpy(code, cur.text, sz - 1);
+
+    switch (stage)
+    {
+        case GS_GRAPHICS_SHADER_STAGE_VERTEX: ppd->code[0]   = code; break; 
+        case GS_GRAPHICS_SHADER_STAGE_FRAGMENT: ppd->code[1] = code; break;
+        case GS_GRAPHICS_SHADER_STAGE_COMPUTE: ppd->code[2] = code; break;
+    }
+}
+
+gs_gfxt_mesh_attribute_type gs_mesh_attribute_type_from_token(const gs_token_t* token)
+{
+    if (gs_token_compare_text(token, "POSITION"))       return GS_GFXT_MESH_ATTRIBUTE_TYPE_POSITION;
+    else if (gs_token_compare_text(token, "NORMAL"))    return GS_GFXT_MESH_ATTRIBUTE_TYPE_NORMAL;
+    else if (gs_token_compare_text(token, "TEXCOORD"))  return GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD;
+    else if (gs_token_compare_text(token, "COLOR"))     return GS_GFXT_MESH_ATTRIBUTE_TYPE_COLOR;
+
+    // Default
+    return 0x00;
+    // else if (gs_token_compare_text(token, "TANGENT"))   return GS_GFXT_MESH_ATTRIBUTE_TYPE_TANGENT;
+    // else if (gs_token_compare_text(token, "JOINT"))     return GS_GFXT_MESH_ATTRIBUTE_TYPE_JOINT;
+    // else if (gs_token_compare_text(token, "WEIGHT"))    return GS_GFXT_MESH_ATTRIBUTE_TYPE_WEIGHT;
+} 
+
+void gs_parse_vertex_buffer_attributes(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd)
+{
+    gs_parse_block(
+    PIPELINE::VERTEX_BUFFER_ATTRIBUTES,
+    {
+    });
+}
+
+void gs_parse_vertex_mesh_attributes(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd)
+{
+	if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_LBRACE)) 
+    { 
+        gs_assert(false);
+    } 
+
+    uint32_t bc = 1; 
+    while (bc)
+    {
+        gs_token_t token = lex->next_token(lex);
+        switch (token.type)
+        { 
+            case GS_TOKEN_LBRACE: {bc++;} break; 
+            case GS_TOKEN_RBRACE: {bc--;} break;
+            
+            case GS_TOKEN_IDENTIFIER: 
+            {
+                // Get mesh attribute type from  
+                gs_gfxt_mesh_attribute_type mesh_type = gs_mesh_attribute_type_from_token(&token);
+
+                // Build vertex attribute desc
+                gs_graphics_vertex_attribute_desc_t attr = {0}; 
+                // attr.format = gs_get_vertex_attribute_from_token(&token); 
+
+                // Get attribute name
+                if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER))
+                {
+                    gs_assert(false);
+                } 
+
+                token = lex->current_token;
+                memcpy(attr.name, token.text, token.len); 
+
+                switch (mesh_type)
+                {
+                    default: 
+                    {
+                    } break;
+
+                    case GS_GFXT_MESH_ATTRIBUTE_TYPE_POSITION: 
+                    {
+                        attr.format = GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3; 
+                    } break;
+
+                    case GS_GFXT_MESH_ATTRIBUTE_TYPE_NORMAL: 
+                    {
+                        attr.format = GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3; 
+                    } break;
+
+                    case GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD:
+                    {
+                        attr.format = GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2; 
+                    } break;
+
+                    case GS_GFXT_MESH_ATTRIBUTE_TYPE_COLOR:
+                    {
+                        attr.format = GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE4; 
+                    } break;
+
+                    /*
+                    GS_GFXT_MESH_ATTRIBUTE_TYPE_TANGENT,
+                    GS_GFXT_MESH_ATTRIBUTE_TYPE_JOINT,
+                    GS_GFXT_MESH_ATTRIBUTE_TYPE_WEIGHT,
+                    */
+                }
+                
+                // Push back mesh buffer
+                gs_dyn_array_push(ppd->mesh_layout, (gs_gfxt_mesh_layout_t){.type = mesh_type}); 
+
+                // Push back into layout
+                gs_dyn_array_push(desc->pip_desc.layout.attrs, attr);
+
+
+                // TODO(): Need to do idx as well for later...
+            }
+        }
+    }
+}
+
+void gs_parse_vertex_attributes(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd)
+{
+	if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_LBRACE)) 
+    { 
+        gs_assert(false);
+    } 
+
+    uint32_t bc = 1; 
+    while (bc)
+    {
+        gs_token_t token = lex->next_token(lex);
+        switch (token.type)
+        { 
+            case GS_TOKEN_LBRACE: {bc++;} break; 
+            case GS_TOKEN_RBRACE: {bc--;} break;
+            
+            case GS_TOKEN_IDENTIFIER: {
+
+                // Parse mesh attributes
+                if (gs_token_compare_text(&token, "mesh"))
+                {
+                    gs_parse_vertex_mesh_attributes(lex, desc, ppd);
+                }
+
+                // Parse buffer attributes
+                else if (gs_token_compare_text(&token, "buffer"))
+                {
+                    gs_parse_vertex_buffer_attributes(lex, desc, ppd);
+                } 
+
+            } break;
+        }
+    }
+}
+
+void gs_parse_shader_stage(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd, gs_graphics_shader_stage_type stage)
+{
+    gs_parse_block(
+    PIPELINE::SHADER_STAGE,
+    {
+        if (stage == GS_GRAPHICS_SHADER_STAGE_VERTEX && 
+             gs_token_compare_text(&token, "attributes"))
+        {
+            gs_println("parsing attributes...");
+            gs_parse_vertex_attributes(lex, desc, ppd);
+        }
+
+        else if (gs_token_compare_text(&token, "uniforms"))
+        {
+            gs_parse_uniforms(lex, desc, ppd, stage);
+        }
+
+        else if (gs_token_compare_text(&token, "out"))
+        {
+            gs_parse_io(lex, desc, ppd, stage);
+        }
+
+        else if (gs_token_compare_text(&token, "in"))
+        {
+            gs_parse_io(lex, desc, ppd, stage);
+        }
+
+        else if (gs_token_compare_text(&token, "code"))
+        {
+            gs_parse_code(lex, desc, ppd, stage);
+        }
+    }); 
+}
+
+void gs_parse_compute_shader_stage(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd)
+{
+    gs_parse_block(
+    PIPELINE::COMPUTE_SHADER_STAGE,
+    { 
+        if (gs_token_compare_text(&token, "uniforms"))
+        {
+            gs_parse_uniforms(lex, desc, ppd, GS_GRAPHICS_SHADER_STAGE_COMPUTE);
+        }
+
+        else if (gs_token_compare_text(&token, "in"))
+        {
+            gs_parse_in(lex, desc, ppd, GS_GRAPHICS_SHADER_STAGE_COMPUTE);
+        } 
+
+        else if (gs_token_compare_text(&token, "code"))
+        {
+            gs_parse_code(lex, desc, ppd, GS_GRAPHICS_SHADER_STAGE_COMPUTE);
+        }
+    }); 
+}
+
+void gs_parse_shader(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd)
+{ 
+	if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_LBRACE)) 
+    { 
+        gs_println("error::gs_pipeline_load_from_file	::error parsing shader from .sf resource");
+        gs_assert(false);
+    } 
+
+    // Braces
+    uint32_t bc = 1; 
+    while (bc)
+    {
+        gs_token_t token = lex->next_token(lex);
+        switch (token.type)
+        {
+            case GS_TOKEN_LBRACE: {bc++;} break; 
+            case GS_TOKEN_RBRACE: {bc--;} break;
+
+            case GS_TOKEN_IDENTIFIER:
+            {
+                // Vertex shader
+                if (gs_token_compare_text(&token, "vertex"))
+                {
+                    gs_println("parsing vertex shader");
+                    gs_parse_shader_stage(lex, desc, ppd, GS_GRAPHICS_SHADER_STAGE_VERTEX);
+                }
+
+                // Fragment shader
+                else if (gs_token_compare_text(&token, "fragment"))
+                {
+                    gs_println("parsing fragment shader");
+                    gs_parse_shader_stage(lex, desc, ppd, GS_GRAPHICS_SHADER_STAGE_FRAGMENT);
+                } 
+
+                // Compute shader
+                else if (gs_token_compare_text(&token, "compute"))
+                {
+                    gs_println("parsing compute shader");
+                    gs_parse_shader_stage(lex, desc, ppd, GS_GRAPHICS_SHADER_STAGE_COMPUTE);
+                } 
+
+            } break;
+        }
+    }
+}
+
+void gs_parse_depth(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* ppd)
+{
+    gs_parse_block(
+    PIPELINE::DEPTH,
+    { 
+        // Depth function
+        if (gs_token_compare_text(&token, "func"))
+        {
+            if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER))
+            {
+                gs_parse_error(false, "PIPELINE::DEPTH::func type not found after function decl.");
+            }
+
+            token = lex->current_token;
+            
+            if      (gs_token_compare_text(&token, "LESS"))     pdesc->pip_desc.depth.func = GS_GRAPHICS_DEPTH_FUNC_LESS;
+            else if (gs_token_compare_text(&token, "EQUAL"))    pdesc->pip_desc.depth.func = GS_GRAPHICS_DEPTH_FUNC_EQUAL;
+            else if (gs_token_compare_text(&token, "LEQUAL"))   pdesc->pip_desc.depth.func = GS_GRAPHICS_DEPTH_FUNC_LEQUAL;
+            else if (gs_token_compare_text(&token, "GREATER"))  pdesc->pip_desc.depth.func = GS_GRAPHICS_DEPTH_FUNC_GREATER;
+            else if (gs_token_compare_text(&token, "NOTEQUAL")) pdesc->pip_desc.depth.func = GS_GRAPHICS_DEPTH_FUNC_NOTEQUAL;
+            else if (gs_token_compare_text(&token, "GEQUAL"))   pdesc->pip_desc.depth.func = GS_GRAPHICS_DEPTH_FUNC_GEQUAL;
+            else if (gs_token_compare_text(&token, "ALWAYS"))   pdesc->pip_desc.depth.func = GS_GRAPHICS_DEPTH_FUNC_ALWAYS; 
+            else if (gs_token_compare_text(&token, "NEVER"))    pdesc->pip_desc.depth.func = GS_GRAPHICS_DEPTH_FUNC_NEVER; 
+            else
+            {
+                gs_parse_warning("PIPELINE::DEPTH::func type %.*s not valid.", token.len, token.text);
+            }
+        }
+    });
+}
+
+void gs_parse_blend(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* ppd)
+{
+    gs_parse_block(
+    PIPELINE::BLEND,
+    { 
+        // Blend function
+        if (gs_token_compare_text(&token, "func"))
+        { 
+            if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER))
+            {
+                gs_parse_error(false, "PIPELINE::BLEND::func type not found after function decl.");
+            }
+
+            token = lex->current_token;
+            
+            if      (gs_token_compare_text(&token, "ADD"))              pdesc->pip_desc.blend.func = GS_GRAPHICS_BLEND_EQUATION_ADD;
+            else if (gs_token_compare_text(&token, "SUBTRACT"))         pdesc->pip_desc.blend.func = GS_GRAPHICS_BLEND_EQUATION_SUBTRACT;
+            else if (gs_token_compare_text(&token, "REVERSE_SUBTRACT")) pdesc->pip_desc.blend.func = GS_GRAPHICS_BLEND_EQUATION_REVERSE_SUBTRACT;
+            else if (gs_token_compare_text(&token, "MIN"))              pdesc->pip_desc.blend.func = GS_GRAPHICS_BLEND_EQUATION_MIN;
+            else if (gs_token_compare_text(&token, "MAX"))              pdesc->pip_desc.blend.func = GS_GRAPHICS_BLEND_EQUATION_MAX;
+            else
+            {
+                gs_parse_warning("PIPELINE::BLEND::func type %.*s not valid.", token.len, token.text);
+            } 
+        }
+
+        // Source blend
+        else if (gs_token_compare_text(&token, "src"))
+        {
+            if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER))
+            {
+                gs_parse_error(false, "PIPELINE::BLEND::src type not found after decl.");
+            }
+
+            token = lex->current_token;
+            
+            if      (gs_token_compare_text(&token, "ZERO"))                     pdesc->pip_desc.blend.src = GS_GRAPHICS_BLEND_MODE_ZERO;
+            else if (gs_token_compare_text(&token, "ONE"))                      pdesc->pip_desc.blend.src = GS_GRAPHICS_BLEND_MODE_ONE; 
+            else if (gs_token_compare_text(&token, "SRC_COLOR"))                pdesc->pip_desc.blend.src = GS_GRAPHICS_BLEND_MODE_SRC_COLOR; 
+            else if (gs_token_compare_text(&token, "ONE_MINUS_SRC_COLOR"))      pdesc->pip_desc.blend.src = GS_GRAPHICS_BLEND_MODE_ONE_MINUS_SRC_COLOR; 
+            else if (gs_token_compare_text(&token, "DST_COLOR"))                pdesc->pip_desc.blend.src = GS_GRAPHICS_BLEND_MODE_DST_COLOR; 
+            else if (gs_token_compare_text(&token, "ONE_MINUS_DST_COLOR"))      pdesc->pip_desc.blend.src = GS_GRAPHICS_BLEND_MODE_ONE_MINUS_DST_COLOR; 
+            else if (gs_token_compare_text(&token, "SRC_ALPHA"))                pdesc->pip_desc.blend.src = GS_GRAPHICS_BLEND_MODE_SRC_ALPHA; 
+            else if (gs_token_compare_text(&token, "ONE_MINUS_SRC_ALPHA"))      pdesc->pip_desc.blend.src = GS_GRAPHICS_BLEND_MODE_ONE_MINUS_SRC_ALPHA; 
+            else if (gs_token_compare_text(&token, "DST_ALPHA"))                pdesc->pip_desc.blend.src = GS_GRAPHICS_BLEND_MODE_DST_ALPHA; 
+            else if (gs_token_compare_text(&token, "ONE_MINUS_DST_ALPHA"))      pdesc->pip_desc.blend.src = GS_GRAPHICS_BLEND_MODE_ONE_MINUS_DST_ALPHA; 
+            else if (gs_token_compare_text(&token, "CONSTANT_COLOR"))           pdesc->pip_desc.blend.src = GS_GRAPHICS_BLEND_MODE_CONSTANT_COLOR; 
+            else if (gs_token_compare_text(&token, "ONE_MINUS_CONSTANT_COLOR")) pdesc->pip_desc.blend.src = GS_GRAPHICS_BLEND_MODE_ONE_MINUS_CONSTANT_ALPHA; 
+            else if (gs_token_compare_text(&token, "CONSTANT_ALPHA"))           pdesc->pip_desc.blend.src = GS_GRAPHICS_BLEND_MODE_CONSTANT_ALPHA; 
+            else if (gs_token_compare_text(&token, "ONE_MINUS_CONSTANT_ALPHA")) pdesc->pip_desc.blend.src = GS_GRAPHICS_BLEND_MODE_ONE_MINUS_CONSTANT_ALPHA; 
+            else
+            {
+                gs_parse_warning("PIPELINE::BLEND::src type %.*s not valid.", token.len, token.text);
+            } 
+        }
+
+        // Dest blend
+        else if (gs_token_compare_text(&token, "dst"))
+        {
+            if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER))
+            {
+                gs_parse_error(false, "PIPELINE::BLEND::dst type not found after decl.");
+            }
+
+            token = lex->current_token;
+            
+            if      (gs_token_compare_text(&token, "ZERO"))                     pdesc->pip_desc.blend.dst = GS_GRAPHICS_BLEND_MODE_ZERO;
+            else if (gs_token_compare_text(&token, "ONE"))                      pdesc->pip_desc.blend.dst = GS_GRAPHICS_BLEND_MODE_ONE; 
+            else if (gs_token_compare_text(&token, "SRC_COLOR"))                pdesc->pip_desc.blend.dst = GS_GRAPHICS_BLEND_MODE_SRC_COLOR; 
+            else if (gs_token_compare_text(&token, "ONE_MINUS_SRC_COLOR"))      pdesc->pip_desc.blend.dst = GS_GRAPHICS_BLEND_MODE_ONE_MINUS_SRC_COLOR; 
+            else if (gs_token_compare_text(&token, "DST_COLOR"))                pdesc->pip_desc.blend.dst = GS_GRAPHICS_BLEND_MODE_DST_COLOR; 
+            else if (gs_token_compare_text(&token, "ONE_MINUS_DST_COLOR"))      pdesc->pip_desc.blend.dst = GS_GRAPHICS_BLEND_MODE_ONE_MINUS_DST_COLOR; 
+            else if (gs_token_compare_text(&token, "SRC_ALPHA"))                pdesc->pip_desc.blend.dst = GS_GRAPHICS_BLEND_MODE_SRC_ALPHA; 
+            else if (gs_token_compare_text(&token, "ONE_MINUS_SRC_ALPHA"))      pdesc->pip_desc.blend.dst = GS_GRAPHICS_BLEND_MODE_ONE_MINUS_SRC_ALPHA; 
+            else if (gs_token_compare_text(&token, "DST_ALPHA"))                pdesc->pip_desc.blend.dst = GS_GRAPHICS_BLEND_MODE_DST_ALPHA; 
+            else if (gs_token_compare_text(&token, "ONE_MINUS_DST_ALPHA"))      pdesc->pip_desc.blend.dst = GS_GRAPHICS_BLEND_MODE_ONE_MINUS_DST_ALPHA; 
+            else if (gs_token_compare_text(&token, "CONSTANT_COLOR"))           pdesc->pip_desc.blend.dst = GS_GRAPHICS_BLEND_MODE_CONSTANT_COLOR; 
+            else if (gs_token_compare_text(&token, "ONE_MINUS_CONSTANT_COLOR")) pdesc->pip_desc.blend.dst = GS_GRAPHICS_BLEND_MODE_ONE_MINUS_CONSTANT_ALPHA; 
+            else if (gs_token_compare_text(&token, "CONSTANT_ALPHA"))           pdesc->pip_desc.blend.dst = GS_GRAPHICS_BLEND_MODE_CONSTANT_ALPHA; 
+            else if (gs_token_compare_text(&token, "ONE_MINUS_CONSTANT_ALPHA")) pdesc->pip_desc.blend.dst = GS_GRAPHICS_BLEND_MODE_ONE_MINUS_CONSTANT_ALPHA; 
+            else
+            {
+                gs_parse_warning("PIPELINE::BLEND::dst type %.*s not valid.", token.len, token.text);
+            } 
+        }
+
+    });
+}
+
+void gs_parse_stencil(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* ppd)
+{ 
+    gs_parse_block(
+    PIPELINE::STENCIL,
+    { 
+        // Function
+        if (gs_token_compare_text(&token, "func"))
+        {
+            if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER))
+            {
+                gs_parse_error(false, "PIPELINE::STENCIL::func type not found after decl.");
+            }
+
+            else
+            {
+                token = lex->current_token; 
+                
+                if      (gs_token_compare_text(&token, "LESS"))     pdesc->pip_desc.stencil.func = GS_GRAPHICS_STENCIL_FUNC_LESS;
+                else if (gs_token_compare_text(&token, "EQUAL"))    pdesc->pip_desc.stencil.func = GS_GRAPHICS_STENCIL_FUNC_EQUAL;
+                else if (gs_token_compare_text(&token, "LEQUAL"))   pdesc->pip_desc.stencil.func = GS_GRAPHICS_STENCIL_FUNC_LEQUAL;
+                else if (gs_token_compare_text(&token, "GREATER"))  pdesc->pip_desc.stencil.func = GS_GRAPHICS_STENCIL_FUNC_GREATER;
+                else if (gs_token_compare_text(&token, "NOTEQUAL")) pdesc->pip_desc.stencil.func = GS_GRAPHICS_STENCIL_FUNC_NOTEQUAL;
+                else if (gs_token_compare_text(&token, "GEQUAL"))   pdesc->pip_desc.stencil.func = GS_GRAPHICS_STENCIL_FUNC_GEQUAL;
+                else if (gs_token_compare_text(&token, "ALWAYS"))   pdesc->pip_desc.stencil.func = GS_GRAPHICS_STENCIL_FUNC_ALWAYS; 
+                else if (gs_token_compare_text(&token, "NEVER"))    pdesc->pip_desc.stencil.func = GS_GRAPHICS_STENCIL_FUNC_NEVER; 
+                else
+                {
+                    gs_parse_warning("PIPELINE::STENCIL::func type %.*s not valid.", token.len, token.text);
+                } 
+            }
+
+        }
+
+        // Reference value
+        else if (gs_token_compare_text(&token, "ref"))
+        { 
+            if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_NUMBER))
+            {
+                gs_parse_error(false, "PIPELINE::STENCIL::reference value not found after decl."); 
+            }
+
+            else
+            {
+                token = lex->current_token; 
+                gs_snprintfc(TMP, 16, "%.*s", token.len, token.text);
+                pdesc->pip_desc.stencil.ref = atoi(TMP); 
+            }
+        }
+
+        // Component mask
+        else if (gs_token_compare_text(&token, "comp_mask"))
+        { 
+            if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_NUMBER))
+            {
+                gs_parse_error(false, "PIPELINE::STENCIL::component mask value not found after decl."); 
+            }
+
+            else
+            {
+                token = lex->current_token; 
+                gs_snprintfc(TMP, 16, "%.*s", token.len, token.text);
+                pdesc->pip_desc.stencil.comp_mask = atoi(TMP); 
+            }
+        }
+
+        // Write mask
+        else if (gs_token_compare_text(&token, "write_mask"))
+        { 
+            if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_NUMBER))
+            {
+                gs_parse_error(false, "PIPELINE::STENCIL::write mask value not found after decl."); 
+            }
+
+            else
+            {
+                token = lex->current_token; 
+                gs_snprintfc(TMP, 16, "%.*s", token.len, token.text);
+                pdesc->pip_desc.stencil.write_mask = atoi(TMP); 
+            }
+        }
+
+        // Stencil test failure
+        else if (gs_token_compare_text(&token, "sfail"))
+        { 
+            if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER))
+            {
+                gs_parse_error(false, "PIPELINE::STENCIL::sfail value not found after decl."); 
+            }
+
+            else
+            {
+                token = lex->current_token; 
+
+                if (gs_token_compare_text(&token, "KEEP"))              pdesc->pip_desc.stencil.sfail = GS_GRAPHICS_STENCIL_OP_KEEP;
+                else if (gs_token_compare_text(&token, "ZERO"))         pdesc->pip_desc.stencil.sfail = GS_GRAPHICS_STENCIL_OP_ZERO;
+                else if (gs_token_compare_text(&token, "REPLACE"))      pdesc->pip_desc.stencil.sfail = GS_GRAPHICS_STENCIL_OP_REPLACE;
+                else if (gs_token_compare_text(&token, "INCR"))         pdesc->pip_desc.stencil.sfail = GS_GRAPHICS_STENCIL_OP_INCR;
+                else if (gs_token_compare_text(&token, "INCR_WRAP"))    pdesc->pip_desc.stencil.sfail = GS_GRAPHICS_STENCIL_OP_INCR_WRAP;
+                else if (gs_token_compare_text(&token, "DECR"))         pdesc->pip_desc.stencil.sfail = GS_GRAPHICS_STENCIL_OP_DECR;
+                else if (gs_token_compare_text(&token, "DECR_WRAP"))    pdesc->pip_desc.stencil.sfail = GS_GRAPHICS_STENCIL_OP_DECR_WRAP;
+                else if (gs_token_compare_text(&token, "INVERT"))       pdesc->pip_desc.stencil.sfail = GS_GRAPHICS_STENCIL_OP_INVERT;
+                else
+                {
+                    gs_parse_warning("PIPELINE::STENCIL::sfail type %.*s not valid.", token.len, token.text);
+                } 
+            }
+        }
+
+        // Stencil test pass, Depth fail
+        else if (gs_token_compare_text(&token, "dpfail"))
+        { 
+            if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER))
+            {
+                gs_parse_error(false, "PIPELINE::STENCIL::dpfail value not found after decl."); 
+            }
+
+            else
+            {
+                token = lex->current_token; 
+
+                if (gs_token_compare_text(&token, "KEEP"))              pdesc->pip_desc.stencil.dpfail = GS_GRAPHICS_STENCIL_OP_KEEP;
+                else if (gs_token_compare_text(&token, "ZERO"))         pdesc->pip_desc.stencil.dpfail = GS_GRAPHICS_STENCIL_OP_ZERO;
+                else if (gs_token_compare_text(&token, "REPLACE"))      pdesc->pip_desc.stencil.dpfail = GS_GRAPHICS_STENCIL_OP_REPLACE;
+                else if (gs_token_compare_text(&token, "INCR"))         pdesc->pip_desc.stencil.dpfail = GS_GRAPHICS_STENCIL_OP_INCR;
+                else if (gs_token_compare_text(&token, "INCR_WRAP"))    pdesc->pip_desc.stencil.dpfail = GS_GRAPHICS_STENCIL_OP_INCR_WRAP;
+                else if (gs_token_compare_text(&token, "DECR"))         pdesc->pip_desc.stencil.dpfail = GS_GRAPHICS_STENCIL_OP_DECR;
+                else if (gs_token_compare_text(&token, "DECR_WRAP"))    pdesc->pip_desc.stencil.dpfail = GS_GRAPHICS_STENCIL_OP_DECR_WRAP;
+                else if (gs_token_compare_text(&token, "INVERT"))       pdesc->pip_desc.stencil.dpfail = GS_GRAPHICS_STENCIL_OP_INVERT;
+                else
+                {
+                    gs_parse_warning("PIPELINE::STENCIL::dpfail type %.*s not valid.", token.len, token.text);
+                } 
+            }
+        }
+
+        // Stencil test pass, Depth pass
+        else if (gs_token_compare_text(&token, "dppass"))
+        { 
+            if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER))
+            {
+                gs_parse_error(false, "PIPELINE::STENCIL::dppass value not found after decl."); 
+            }
+
+            else
+            {
+                token = lex->current_token; 
+
+                if (gs_token_compare_text(&token, "KEEP"))              pdesc->pip_desc.stencil.dppass = GS_GRAPHICS_STENCIL_OP_KEEP;
+                else if (gs_token_compare_text(&token, "ZERO"))         pdesc->pip_desc.stencil.dppass = GS_GRAPHICS_STENCIL_OP_ZERO;
+                else if (gs_token_compare_text(&token, "REPLACE"))      pdesc->pip_desc.stencil.dppass = GS_GRAPHICS_STENCIL_OP_REPLACE;
+                else if (gs_token_compare_text(&token, "INCR"))         pdesc->pip_desc.stencil.dppass = GS_GRAPHICS_STENCIL_OP_INCR;
+                else if (gs_token_compare_text(&token, "INCR_WRAP"))    pdesc->pip_desc.stencil.dppass = GS_GRAPHICS_STENCIL_OP_INCR_WRAP;
+                else if (gs_token_compare_text(&token, "DECR"))         pdesc->pip_desc.stencil.dppass = GS_GRAPHICS_STENCIL_OP_DECR;
+                else if (gs_token_compare_text(&token, "DECR_WRAP"))    pdesc->pip_desc.stencil.dppass = GS_GRAPHICS_STENCIL_OP_DECR_WRAP;
+                else if (gs_token_compare_text(&token, "INVERT"))       pdesc->pip_desc.stencil.dppass = GS_GRAPHICS_STENCIL_OP_INVERT;
+                else
+                {
+                    gs_parse_warning("PIPELINE::STENCIL::dppass type %.*s not valid.", token.len, token.text);
+                } 
+            }
+        }
+    });
+}
+
+void gs_parse_raster(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* ppd)
+{
+    gs_parse_block(
+    PIPELINE::RASTER,
+    { 
+        // Index Buffer Element Size 
+        if (gs_token_compare_text(&token, "index_buffer_element_size"))
+        { 
+	        if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER))
+            {
+                gs_parse_error(false, "PIPELINE::RASTER::index buffer element size not found.", token.len, token.text);
+            }
+            
+            token = lex->current_token;
+
+            if (gs_token_compare_text(&token, "UINT32") || gs_token_compare_text(&token, "uint32_t") || gs_token_compare_text(&token, "u32"))
+            { 
+                pdesc->pip_desc.raster.index_buffer_element_size = sizeof(uint32_t); 
+            }
+
+            else if (gs_token_compare_text(&token, "UINT16") || gs_token_compare_text(&token, "uint16_t") || gs_token_compare_text(&token, "u16"))
+            {
+                pdesc->pip_desc.raster.index_buffer_element_size = sizeof(uint16_t); 
+            }
+            
+            // Default
+            else
+            {
+                pdesc->pip_desc.raster.index_buffer_element_size = sizeof(uint32_t); 
+            }
+        } 
+
+        // Face culling 
+        if (gs_token_compare_text(&token, "face_culling"))
+        { 
+	        if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER))
+            {
+                gs_parse_error(false, "PIPELINE::RASTER::face culling type not found.");
+            }
+            
+            token = lex->current_token;
+
+            if (gs_token_compare_text(&token, "FRONT"))               pdesc->pip_desc.raster.face_culling = GS_GRAPHICS_FACE_CULLING_FRONT;
+            else if (gs_token_compare_text(&token, "BACK"))           pdesc->pip_desc.raster.face_culling = GS_GRAPHICS_FACE_CULLING_BACK;
+            else if (gs_token_compare_text(&token, "FRONT_AND_BACK")) pdesc->pip_desc.raster.face_culling = GS_GRAPHICS_FACE_CULLING_FRONT_AND_BACK;
+            else
+            {
+                gs_parse_warning("PIPELINE::RASTER::face culling type %.*s not valid.", token.len, token.text);
+            }
+        } 
+
+        // Winding order 
+        if (gs_token_compare_text(&token, "winding_order"))
+        { 
+	        if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER))
+            {
+                gs_parse_error(false, "PIPELINE::RASTER::winding order type not found.");
+            }
+            
+            token = lex->current_token;
+
+            if (gs_token_compare_text(&token, "CW"))         pdesc->pip_desc.raster.face_culling = GS_GRAPHICS_WINDING_ORDER_CW;
+            else if (gs_token_compare_text(&token, "CCW"))   pdesc->pip_desc.raster.face_culling = GS_GRAPHICS_WINDING_ORDER_CCW;
+            else
+            {
+                gs_parse_warning("PIPELINE::RASTER::winding order type %.*s not valid.", token.len, token.text);
+            }
+        } 
+
+        // Primtive 
+        if (gs_token_compare_text(&token, "primitive"))
+        { 
+	        if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER))
+            {
+                gs_parse_error(false, "PIPELINE::RASTER::primitive type not found.");
+            }
+            
+            token = lex->current_token;
+
+            if (gs_token_compare_text(&token, "LINES"))            pdesc->pip_desc.raster.primitive = GS_GRAPHICS_PRIMITIVE_LINES;
+            else if (gs_token_compare_text(&token, "TRIANGLES"))   pdesc->pip_desc.raster.primitive = GS_GRAPHICS_PRIMITIVE_TRIANGLES;
+            else if (gs_token_compare_text(&token, "QUADS"))       pdesc->pip_desc.raster.primitive = GS_GRAPHICS_PRIMITIVE_QUADS;
+            else
+            {
+                gs_parse_warning("PIPELINE::RASTER::primitive type %.*s not valid.", token.len, token.text);
+            }
+        } 
+    });
+}
+
+void gs_parse_pipeline(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd)
+{ 
+    // Get next identifier
+    while (lex->can_lex(lex))
+    {
+        gs_token_t token = lex->next_token(lex);
+        switch (token.type)
+        {
+            case GS_TOKEN_IDENTIFIER:
+            {
+                if (gs_token_compare_text(&token, "shader"))
+                {
+                    gs_println("parsing shader");
+                    gs_parse_shader(lex, desc, ppd);
+                }
+
+                else if (gs_token_compare_text(&token, "raster"))
+                {
+                    gs_parse_raster(lex, desc, ppd); 
+                }
+
+                else if (gs_token_compare_text(&token, "depth"))
+                {
+                    gs_parse_depth(lex, desc, ppd);
+                }
+
+                else if (gs_token_compare_text(&token, "stencil"))
+                {
+                    gs_parse_stencil(lex, desc, ppd);
+                }
+
+                else if (gs_token_compare_text(&token, "blend"))
+                {
+                    gs_parse_blend(lex, desc, ppd);
+                }
+
+            } break;
+        }
+    }
+}
+
+char* gs_pipeline_generate_shader_code(gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* ppd, gs_graphics_shader_stage_type stage)
+{
+    gs_println("GENERATING CODE...");
+
+    // Shaders
+    #ifdef GS_PLATFORM_WEB
+        #define _GS_VERSION_STR "#version 300 es\n"
+    #else
+        #define _GS_VERSION_STR "#version 330 core\n"
+    #endif
+
+    // Source code 
+    char* src = NULL; 
+    uint32_t sidx = 0;
+
+    // Set sidx
+    switch (stage)
+    {
+        case GS_GRAPHICS_SHADER_STAGE_VERTEX:   sidx = 0; break;
+        case GS_GRAPHICS_SHADER_STAGE_FRAGMENT: sidx = 1; break;
+        case GS_GRAPHICS_SHADER_STAGE_COMPUTE:  sidx = 2; break;
+    }
+
+    // Early out for now...
+    if (!ppd->code[sidx])
+    {
+        return src;
+    }
+
+    const char* shader_header = 
+    stage == GS_GRAPHICS_SHADER_STAGE_COMPUTE ? 
+    "#version 430\n" : 
+    _GS_VERSION_STR
+    "precision mediump float;\n";
+
+    // Generate shader code
+    if (ppd->code[sidx])
+    {
+        const size_t header_sz = (size_t)gs_string_length(shader_header);
+        size_t total_sz = gs_string_length(ppd->code[sidx]) + header_sz + 2048;
+        src = gs_malloc(total_sz); 
+        memset(src, 0, total_sz);
+        strncat(src, shader_header, header_sz);
+        
+        // Attributes
+        if (stage == GS_GRAPHICS_SHADER_STAGE_VERTEX)
+        {
+            for (uint32_t i = 0; i < gs_dyn_array_size(pdesc->pip_desc.layout.attrs); ++i)
+            { 
+                const char* aname = pdesc->pip_desc.layout.attrs[i].name;
+                const char* atype = gs_get_vertex_attribute_string(pdesc->pip_desc.layout.attrs[i].format); 
+
+                gs_snprintfc(ATTR, 64, "layout(location = %zu) in %s %s;\n", i, atype, aname);
+                const size_t sz = gs_string_length(ATTR);
+                strncat(src, ATTR, sz);
+            } 
+        }
+
+        // Compute shader image buffer binding
+        uint32_t img_binding = 0;
+
+        // Uniforms
+        for (uint32_t i = 0; i < gs_dyn_array_size(pdesc->ublock_desc.layout); ++i)
+        { 
+            gs_gfxt_uniform_desc_t* udesc = &pdesc->ublock_desc.layout[i]; 
+
+            if (udesc->stage != stage) continue;
+
+            switch (stage)
+            {
+                case GS_GRAPHICS_SHADER_STAGE_COMPUTE:
+                {
+                    // Need to go from uniform type to string
+                    const char* utype = gs_uniform_string_from_type(udesc->type);
+                    const char* uname = udesc->name;
+
+                    switch (udesc->type)
+                    {
+                        default:
+                        {
+                            gs_snprintfc(TMP, 64, "uniform %s %s;\n", utype, uname);
+                            const size_t sz = gs_string_length(TMP);
+                            strncat(src, TMP, sz);
+                        } break;
+
+                        case GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F:
+                        {
+                            gs_snprintfc(TMP, 64, "layout (rgba32f, binding = %zu) uniform image2D %s;\n", img_binding++, uname);
+                            const size_t sz = gs_string_length(TMP);
+                            strncat(src, TMP, sz);
+                        } break;
+                    }
+                } break;
+
+                default:
+                {
+                    // Need to go from uniform type to string
+                    const char* utype = gs_uniform_string_from_type(udesc->type);
+                    const char* uname = udesc->name;
+                    gs_snprintfc(TMP, 64, "uniform %s %s;\n", utype, uname);
+                    const size_t sz = gs_string_length(TMP);
+                    strncat(src, TMP, sz);
+                } break;
+            }
+
+        }
+
+        // Out
+        switch (stage)
+        {
+            case GS_GRAPHICS_SHADER_STAGE_FRAGMENT:
+            case GS_GRAPHICS_SHADER_STAGE_VERTEX:
+            {
+                for (uint32_t i = 0; i < gs_dyn_array_size(ppd->io_list[sidx]); ++i)
+                {
+                    gs_shader_io_data_t* out = &ppd->io_list[sidx][i];
+                    const char* otype = out->type;
+                    const char* oname = out->name;
+                    gs_transient_buffer(TMP, 64);
+                    if (stage == GS_GRAPHICS_SHADER_STAGE_FRAGMENT)
+                    {
+                        gs_snprintf(TMP, 64, "layout(location = %zu) out %s %s;\n", i, otype, oname);
+                    }
+                    else
+                    {
+                        gs_snprintf(TMP, 64, "out %s %s;\n", otype, oname);
+                    }
+                    const size_t sz = gs_string_length(TMP);
+                    strncat(src, TMP, sz); 
+                }
+            } break; 
+
+            default: break;
+        }
+
+        // In
+        switch (stage)
+        {
+            case GS_GRAPHICS_SHADER_STAGE_FRAGMENT:
+            {
+                for (uint32_t i = 0; i < gs_dyn_array_size(ppd->io_list[0]); ++i)
+                {
+                    gs_shader_io_data_t* out = &ppd->io_list[0][i];
+                    const char* otype = out->type;
+                    const char* oname = out->name;
+                    gs_snprintfc(TMP, 64, "in %s %s;\n", otype, oname);
+                    const size_t sz = gs_string_length(TMP);
+                    strncat(src, TMP, sz); 
+                }
+            } break;
+
+            case GS_GRAPHICS_SHADER_STAGE_COMPUTE:
+            {
+                gs_snprintfc(TMP, 64, "layout(");
+                strncat(src, "layout(", 7);
+
+                for (uint32_t i = 0; i < gs_dyn_array_size(ppd->io_list[2]); ++i)
+                {
+                    gs_shader_io_data_t* out = &ppd->io_list[2][i];
+                    const char* otype = out->type;
+                    const char* oname = out->name;
+                    gs_snprintfc(TMP, 64, "%s = %s%s", otype, oname, i == gs_dyn_array_size(ppd->io_list[2]) - 1 ? "" : ", ");
+                    const size_t sz = gs_string_length(TMP);
+                    strncat(src, TMP, sz); 
+                }
+
+                strncat(src, ") in;\n", 7);
+            } break;
+
+            default: break;
+        }
+
+        // Code
+        { 
+            const size_t sz = gs_string_length(ppd->code[sidx]);
+            strncat(src, ppd->code[sidx], sz); 
+        } 
+    } 
+
+    return src;
+}
+
+GS_API_DECL gs_gfxt_pipeline_t gs_gfxt_pipeline_load_from_file(const char* path)
+{
+    // Load file, generate lexer off of file data, parse contents for pipeline information 
+    size_t len = 0;
+    char* file_data = gs_platform_read_file_contents(path, "r", &len);
+    gs_assert(file_data);
+    gs_gfxt_pipeline_t pip = gs_gfxt_pipeline_load_from_memory(file_data, len);
+    gs_free(file_data);
+    return pip;
+}
+
+GS_API_DECL gs_gfxt_pipeline_t gs_gfxt_pipeline_load_from_memory(const char* file_data, size_t sz)
+{ 
+    // Cast to pip
+    gs_gfxt_pipeline_t pip = gs_default_val();
+
+    gs_println("%s", file_data);
+
+    gs_ppd_t ppd = {0};
+    gs_gfxt_pipeline_desc_t pdesc = {0};
+    pdesc.pip_desc.raster.index_buffer_element_size = sizeof(uint32_t); 
+
+	gs_lexer_t lex = gs_lexer_c_ctor(file_data);
+    while (lex.can_lex(&lex))
+    {
+        gs_token_t token = lex.next_token(&lex);
+        switch (token.type)
+        {
+            case GS_TOKEN_IDENTIFIER:
+            {
+                if (gs_token_compare_text(&token, "pipeline"))
+                {
+                    gs_parse_pipeline(&lex, &pdesc, &ppd); 
+                }
+            } break;
+        }
+    }
+
+    // Generate vertex shader code
+    char* v_src = gs_pipeline_generate_shader_code(&pdesc, &ppd, GS_GRAPHICS_SHADER_STAGE_VERTEX); 
+    gs_println("%s", v_src);
+
+    // Generate fragment shader code
+    char* f_src = gs_pipeline_generate_shader_code(&pdesc, &ppd, GS_GRAPHICS_SHADER_STAGE_FRAGMENT); 
+    
+    gs_println("%s", f_src);
+    
+    // Generate compute shader code (need to check for this first)
+    char* c_src = gs_pipeline_generate_shader_code(&pdesc, &ppd, GS_GRAPHICS_SHADER_STAGE_COMPUTE);
+    gs_println("%s", c_src);
+
+    // Construct compute shader
+    if (c_src)
+    {
+        pdesc.pip_desc.compute.shader = gs_graphics_shader_create(&(gs_graphics_shader_desc_t){
+            .sources = (gs_graphics_shader_source_desc_t[]){ 
+                {.type = GS_GRAPHICS_SHADER_STAGE_COMPUTE, .source = c_src}
+            },
+            .size = 1 * sizeof(gs_graphics_shader_source_desc_t),
+            // .name = path
+        }); 
+    }
+
+    // Construct raster shader
+    else
+    {
+        pdesc.pip_desc.raster.shader = gs_graphics_shader_create(&(gs_graphics_shader_desc_t){
+            .sources = (gs_graphics_shader_source_desc_t[]){ 
+                {.type = GS_GRAPHICS_SHADER_STAGE_VERTEX, .source = v_src},
+                {.type = GS_GRAPHICS_SHADER_STAGE_FRAGMENT, .source = f_src}
+            },
+            .size = 2 * sizeof(gs_graphics_shader_source_desc_t),
+            // .name = path
+        }); 
+    }
+    
+
+    // Set up layout
+    pdesc.pip_desc.layout.size = gs_dyn_array_size(pdesc.pip_desc.layout.attrs) * sizeof(gs_graphics_vertex_attribute_desc_t);
+
+    // Set up ublock
+    pdesc.ublock_desc.size = gs_dyn_array_size(pdesc.ublock_desc.layout) * sizeof(gs_gfxt_uniform_desc_t); 
+
+    // Create pipeline
+    pip = gs_gfxt_pipeline_create(&pdesc);
+
+    // Create mesh layout
+    if (ppd.mesh_layout)
+    {
+        for (uint32_t i = 0; i < gs_dyn_array_size(ppd.mesh_layout); ++i)
+        {
+            gs_dyn_array_push(pip.mesh_layout, ppd.mesh_layout[i]);
+        }
+    }
+
+    // Free all malloc'd data 
+    if (v_src) gs_free(v_src);
+    if (f_src) gs_free(f_src); 
+    if (c_src) gs_free(c_src);
+    gs_dyn_array_free(pdesc.pip_desc.layout.attrs);
+    gs_dyn_array_free(pdesc.ublock_desc.layout);
+    gs_dyn_array_free(ppd.mesh_layout);
+    
+    for (uint32_t i = 0; i < 3; ++i)
+    {
+        if (ppd.code[i]) gs_free(ppd.code[i]);
+        gs_dyn_array_free(ppd.io_list[i]);
+    }
+
+    return pip;
+}
+
+GS_API_DECL gs_gfxt_texture_t gs_gfxt_texture_load_from_file(const char* path, gs_graphics_texture_desc_t* desc, bool flip, bool keep_data)
+{
+    gs_asset_texture_t tex = gs_default_val();
+    gs_asset_texture_load_from_file(path, &tex, desc, flip, keep_data);
+    return tex.hndl;
+}
+
+GS_API_DECL gs_gfxt_texture_t gs_gfxt_texture_load_from_memory(const char* data, size_t sz, gs_graphics_texture_desc_t* desc, bool flip, bool keep_data)
+{
+    gs_asset_texture_t tex = gs_default_val(); 
+    gs_asset_texture_load_from_memory(data, sz, &tex, desc, flip, keep_data);
+    return tex.hndl;
+}
+
 
 #endif // GS_GFXT_IMPL 
 #endif // GS_GFXT_H
