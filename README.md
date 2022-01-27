@@ -26,11 +26,6 @@ Gunslinger is a header-only c99 framework for multimedia applications.
 * [Getting Started](https://github.com/MrFrenik/gunslinger/blob/master/docs/getting_started.md)
 * [Containers](https://github.com/MrFrenik/gunslinger/blob/master/docs/containers.md)
 * [Examples](https://github.com/MrFrenik/gs_examples)
-* Platform: WIP
-* Audio: WIP
-* Graphics: WIP
-* Math: WIP
-* Utils: WIP
 
 [//]: # "(* [Platform](https://github.com/MrFrenik/gunslinger/blob/master/docs/platform.md) )"
 [//]: # "(* [Graphics](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md) )" 
@@ -63,4 +58,4 @@ gs_app_desc_t gs_main(int32_t argc, char** argv)
 * Write more docs for github
 * Hot-reload util
 * Remove all externals from core framework
-* Add more texture formats (including compressed)
+* Add more texture formats
