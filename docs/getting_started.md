@@ -25,7 +25,7 @@ Overview of this example:
 * Creates a graphics context with the specified graphics backend. OpenGL modern is provided and selected by default.
 * Creates an audio context with the specified backend for your operating system.
 * Creates a platform context with your operating system as well as a window. 
-* Initializes the `gs_engine_t` instance for the application, which is accessible globally via the `gs_engine_instance()` macro.
+* Initializes the `gs_t` instance for the application, which is accessible globally via the `gs_instance()` macro.
 
 Running this example gives the following result:
 
@@ -51,9 +51,9 @@ It is possible to use gunslinger without this entry point by defining `GS_NO_HIJ
 int32_t main(int32_t argc, char** argv)
 {
    gs_app_desc_t app = {0}; // Fill this with whatever your app needs
-   gs_engine_create(app);   // Create instance of engine for framework and run
-   while (gs_engine_app()->is_running) {
-       gs_engine_frame();
+   gs_create(app);   // Create instance of the framework and run
+   while (gs_app()->is_running) {
+       gs_frame();
    }
    return 0;
 }
@@ -64,7 +64,7 @@ While it is possible to use gunslinger without it controlling the main applicati
 Internally, gunslinger does its best to handle the boiler plate drudge work of implementing (in correct order) 
 the various layers required for a basic hardware accelerated multi-media application program to work. This involves allocating 
 memory for internal data structures for these layers as well initializing them in a particular order so they can inter-operate
-as expected. If you're interested in taking care of this yourself, look at the `gs_engine_run()` function to get a feeling
+as expected. If you're interested in taking care of this yourself, look at the `gs_run()` function to get a feeling
 for how this is being handled.
 ```
 
@@ -128,11 +128,11 @@ gs_app_desc_t gs_main(int32_t argc, char** argv)
 }
 ```
 
-To access a mutable pointer to this data, you can use the `gs_engine_user_data(T)` macro, where `T` is the type of your data.
+To access a mutable pointer to this data, you can use the `gs_user_data(T)` macro, where `T` is the type of your data.
 
 ```c
 void app_init() {
-   your_user_data* data = gs_engine_user_data(your_user_data);
+   your_user_data* data = gs_user_data(your_user_data);
 }
 ```
 
