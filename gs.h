@@ -1556,49 +1556,22 @@ do {\
     __T* gs_macro_cat(__NAME, __LINE__) = &(__NAME);\
     gs_byte_buffer_read_bulk(__BUFFER, (void**)&gs_macro_cat(__NAME, __LINE__), __SZ);
 
-/* Desc */
 GS_API_DECL void gs_byte_buffer_init(gs_byte_buffer_t* buffer);
-
-/* Desc */
-GS_API_DECL gs_byte_buffer_t gs_byte_buffer_new();
-
-/* Desc */
-GS_API_DECL void gs_byte_buffer_free(gs_byte_buffer_t* buffer);
-
-/* Desc */
-GS_API_DECL void gs_byte_buffer_clear(gs_byte_buffer_t* buffer);
-
-/* Desc */
-GS_API_DECL void gs_byte_buffer_resize(gs_byte_buffer_t* buffer, size_t sz);
-
-/* Desc */
-GS_API_DECL void gs_byte_buffer_seek_to_beg(gs_byte_buffer_t* buffer);
-
-/* Desc */
-GS_API_DECL void gs_byte_buffer_seek_to_end(gs_byte_buffer_t* buffer);
-
-/* Desc */
-GS_API_DECL void gs_byte_buffer_advance_position(gs_byte_buffer_t* buffer, size_t sz);
-
-/* Desc */
-GS_API_DECL void gs_byte_buffer_write_str(gs_byte_buffer_t* buffer, const char* str);                   // Expects a null terminated string
-
-/* Desc */
-GS_API_DECL void gs_byte_buffer_read_str(gs_byte_buffer_t* buffer, char* str);                          // Expects an allocated string
-
-/* Desc */
-GS_API_DECL void gs_byte_buffer_write_bulk(gs_byte_buffer_t* buffer, void* src, size_t sz);
-
-/* Desc */
-GS_API_DECL void gs_byte_buffer_read_bulk(gs_byte_buffer_t* buffer, void** dst, size_t sz);
-
-/* Desc */
-GS_API_DECL gs_result gs_byte_buffer_write_to_file(gs_byte_buffer_t* buffer, const char* output_path);  // Assumes that the output directory exists
-
-/* Desc */
-GS_API_DECL gs_result gs_byte_buffer_read_from_file(gs_byte_buffer_t* buffer, const char* file_path);   // Assumes an allocated byte buffer
-
-/* Desc */
+GS_API_DECL gs_byte_buffer_t gs_byte_buffer_new(); 
+GS_API_DECL void gs_byte_buffer_free(gs_byte_buffer_t* buffer); 
+GS_API_DECL void gs_byte_buffer_clear(gs_byte_buffer_t* buffer); 
+GS_API_DECL bool gs_byte_buffer_empty(gs_byte_buffer_t* buffer);
+GS_API_DECL size_t gs_byte_buffer_size(gs_byte_buffer_t* buffer);
+GS_API_DECL void gs_byte_buffer_resize(gs_byte_buffer_t* buffer, size_t sz); 
+GS_API_DECL void gs_byte_buffer_seek_to_beg(gs_byte_buffer_t* buffer); 
+GS_API_DECL void gs_byte_buffer_seek_to_end(gs_byte_buffer_t* buffer); 
+GS_API_DECL void gs_byte_buffer_advance_position(gs_byte_buffer_t* buffer, size_t sz); 
+GS_API_DECL void gs_byte_buffer_write_str(gs_byte_buffer_t* buffer, const char* str);                   // Expects a null terminated string 
+GS_API_DECL void gs_byte_buffer_read_str(gs_byte_buffer_t* buffer, char* str);                          // Expects an allocated string 
+GS_API_DECL void gs_byte_buffer_write_bulk(gs_byte_buffer_t* buffer, void* src, size_t sz); 
+GS_API_DECL void gs_byte_buffer_read_bulk(gs_byte_buffer_t* buffer, void** dst, size_t sz); 
+GS_API_DECL gs_result gs_byte_buffer_write_to_file(gs_byte_buffer_t* buffer, const char* output_path);  // Assumes that the output directory exists 
+GS_API_DECL gs_result gs_byte_buffer_read_from_file(gs_byte_buffer_t* buffer, const char* file_path);   // Assumes an allocated byte buffer 
 GS_API_DECL void gs_byte_buffer_memset(gs_byte_buffer_t* buffer, uint8_t val);
 
 /*===================================
@@ -4006,15 +3979,15 @@ typedef struct gs_mt_rand_t
   int32_t index;
 } gs_mt_rand_t;
 
-#ifndef GS_NO_SHORT_NAME
-    typedef gs_mt_rand_t    gs_rand;
-#endif
-
 GS_API_DECL gs_mt_rand_t gs_rand_seed(uint64_t seed);
 GS_API_DECL uint64_t gs_rand_gen_long(gs_mt_rand_t* rand);
 GS_API_DECL double gs_rand_gen(gs_mt_rand_t* rand);
 GS_API_DECL double gs_rand_gen_range(gs_mt_rand_t* rand, double min, double max);
 GS_API_DECL uint64_t gs_rand_gen_range_long(gs_mt_rand_t* rand, int32_t min, int32_t max);
+
+#ifndef GS_NO_SHORT_NAME
+    typedef gs_mt_rand_t    gs_rand;
+#endif 
 
 /*================================================================================
 // Noise
@@ -5981,6 +5954,16 @@ void gs_byte_buffer_clear(gs_byte_buffer_t* buffer)
     buffer->position = 0;   
 }
 
+bool gs_byte_buffer_empty(gs_byte_buffer_t* buffer)
+{
+    return (buffer->size == 0);
+}
+
+size_t gs_byte_buffer_size(gs_byte_buffer_t* buffer)
+{
+    return buffer->size;
+}
+
 void gs_byte_buffer_resize(gs_byte_buffer_t* buffer, size_t sz)
 {
     uint8_t* data = (uint8_t*)gs_realloc(buffer->data, sz);
@@ -6726,7 +6709,7 @@ gs_mat4 gs_camera_get_proj(gs_camera_t* cam, s32 view_width, s32 view_height)
             f32 distance = 0.5f * (cam->far_plane - cam->near_plane);
             const f32 ortho_scale = cam->ortho_scale;
             const f32 aspect_ratio = _ar;
-            proj_mat = gs_mat4_transpose(gs_mat4_ortho
+            proj_mat = gs_mat4_ortho
             (
                 -ortho_scale * aspect_ratio, 
                 ortho_scale * aspect_ratio, 
@@ -6734,7 +6717,7 @@ gs_mat4 gs_camera_get_proj(gs_camera_t* cam, s32 view_width, s32 view_height)
                 ortho_scale, 
                 -distance, 
                 distance    
-            ));
+            );
         } break;
     }
 

@@ -952,7 +952,9 @@ GS_API_DECL void gs_gui_update_control(gs_gui_context_t* ctx, gs_gui_id id, gs_g
 #define gs_gui_begin_panel(_CTX, _NAME)			    gs_gui_begin_panel_ex((_CTX), (_NAME), 0)
 #define gs_gui_dock(_CTX, _DST, _SRC, _TYPE)        gs_gui_dock_ex((_CTX), (_DST), (_SRC), (_TYPE), 0.5f)
 #define gs_gui_undock(_CTX, _NAME)                  gs_gui_undock_ex((_CTX), (_NAME))
+#define gs_gui_image(_CTX, _HNDL)                   gs_gui_image_ex((_CTX), (_HNDL), gs_v2s(0.f), gs_v2s(1.f), 0)
 
+GS_API_DECL int32_t gs_gui_image_ex(gs_gui_context_t* ctx, gs_handle(gs_graphics_texture_t) hndl, gs_vec2 uv0, gs_vec2 uv1, int32_t opt);
 GS_API_DECL int32_t gs_gui_text_ex(gs_gui_context_t* ctx, const char* text, int32_t text_wrap);
 GS_API_DECL int32_t gs_gui_label(gs_gui_context_t* ctx, const char* text);
 GS_API_DECL int32_t gs_gui_button_ex(gs_gui_context_t* ctx, const char* label, int32_t icon, int32_t opt);
@@ -973,7 +975,7 @@ GS_API_DECL void gs_gui_begin_panel_ex(gs_gui_context_t* ctx, const char* name, 
 GS_API_DECL void gs_gui_end_panel(gs_gui_context_t* ctx);
 
 // Demo windows
-GS_API_DECL int32_t gs_gui_style_window(gs_gui_context_t* ctx, gs_gui_style_sheet_t* style_sheet, gs_gui_rect_t rect, bool* open);
+GS_API_DECL int32_t gs_gui_style_editor(gs_gui_context_t* ctx, gs_gui_style_sheet_t* style_sheet, gs_gui_rect_t rect, bool* open);
 GS_API_DECL int32_t gs_gui_demo_window(gs_gui_context_t* ctx, gs_gui_rect_t rect, bool* open);
 
 // Docking
@@ -5331,6 +5333,53 @@ GS_API_DECL int32_t gs_gui_label(gs_gui_context_t* ctx, const char *text)
     gs_gui_pop_style(ctx, save);
 } 
 
+GS_API_DECL int32_t gs_gui_image_ex(gs_gui_context_t* ctx, gs_handle(gs_graphics_texture_t) hndl, gs_vec2 uv0, gs_vec2 uv1, int32_t opt)
+{
+	int32_t res = 0;
+	gs_gui_id id = gs_gui_get_id(ctx, &hndl, sizeof(hndl));
+
+    gs_gui_style_t style = gs_default_val();
+    gs_gui_animation_t* anim = gs_gui_get_animation(ctx, id, GS_GUI_ELEMENT_BUTTON);
+
+    // Update anim (keep states locally within animation, only way to do this) 
+    if (anim)
+    {
+        gs_gui_animation_update(ctx, anim);
+
+        // Get blended style based on animation
+        style = gs_gui_animation_get_blend_style(ctx, anim, GS_GUI_ELEMENT_BUTTON); 
+    }
+    else
+    { 
+        style = ctx->focus == id ? gs_gui_get_current_element_style(ctx, GS_GUI_ELEMENT_BUTTON, 0x02) : 
+                ctx->hover == id ? gs_gui_get_current_element_style(ctx, GS_GUI_ELEMENT_BUTTON, 0x01) : 
+                                   gs_gui_get_current_element_style(ctx, GS_GUI_ELEMENT_BUTTON, 0x00);
+    } 
+
+    // Temporary copy of style
+    gs_gui_style_t* save = gs_gui_push_style(ctx, &style); 
+	gs_gui_rect_t r = gs_gui_layout_next(ctx);
+	gs_gui_update_control(ctx, id, r, opt);
+
+	/* handle click */
+    if (ctx->mouse_down != GS_GUI_MOUSE_LEFT && ctx->hover == id && ctx->last_focus_state == GS_GUI_ELEMENT_STATE_OFF_FOCUS)
+    { 
+		res |= GS_GUI_RES_SUBMIT;
+	}
+
+    // draw border
+    if (style.colors[GS_GUI_COLOR_BORDER].a) 
+    {
+        gs_gui_draw_box(ctx, gs_gui_expand_rect(r, style.border_width), style.border_width, style.colors[GS_GUI_COLOR_BORDER]);
+    }
+
+    gs_gui_draw_image(ctx, hndl, r, uv0, uv1, style.colors[GS_GUI_COLOR_BACKGROUND]);
+
+    gs_gui_pop_style(ctx, save);
+
+	return res;
+}
+
 GS_API_DECL int32_t gs_gui_button_ex(gs_gui_context_t *ctx, const char *label, int32_t icon, int32_t opt) 
 { 
     // Note(john): clip out early here for performance
@@ -7028,7 +7077,7 @@ static int16_t int16_slider(gs_gui_context_t *ctx, int16_t* value, int32_t low, 
     return res;
 } 
 
-GS_API_DECL int32_t gs_gui_style_window(gs_gui_context_t *ctx, gs_gui_style_sheet_t* style_sheet, gs_gui_rect_t rect, bool* open) 
+GS_API_DECL int32_t gs_gui_style_editor(gs_gui_context_t *ctx, gs_gui_style_sheet_t* style_sheet, gs_gui_rect_t rect, bool* open) 
 {
     if (!style_sheet)
     {

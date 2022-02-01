@@ -158,9 +158,10 @@ typedef struct gs_gfxt_pipeline_desc_t {
 } gs_gfxt_pipeline_desc_t;
 
 typedef struct gs_gfxt_pipeline_t {
-	gs_handle(gs_graphics_pipeline_t) hndl;		     // Graphics handle resource for actual pipeline
-	gs_gfxt_uniform_block_t ublock;				     // Uniform block for holding all uniform data
+	gs_handle(gs_graphics_pipeline_t) hndl;		                    // Graphics handle resource for actual pipeline
+	gs_gfxt_uniform_block_t ublock;				                    // Uniform block for holding all uniform data
     gs_dyn_array(gs_gfxt_mesh_layout_t) mesh_layout;  
+    gs_dyn_array(gs_graphics_vertex_attribute_desc_t) attributes;
     int16_t index_buffer_element_size;               
 } gs_gfxt_pipeline_t;
 
@@ -1150,6 +1151,7 @@ typedef struct gs_pipeline_parse_data_t
 { 
     gs_dyn_array(gs_shader_io_data_t) io_list[3];
     gs_dyn_array(gs_gfxt_mesh_layout_t) mesh_layout;
+    gs_dyn_array(gs_graphics_vertex_attribute_type) vertex_layout;
     char* code[3];
 } gs_ppd_t; 
 
@@ -1387,8 +1389,20 @@ gs_gfxt_mesh_attribute_type gs_mesh_attribute_type_from_token(const gs_token_t* 
 {
     if (gs_token_compare_text(token, "POSITION"))       return GS_GFXT_MESH_ATTRIBUTE_TYPE_POSITION;
     else if (gs_token_compare_text(token, "NORMAL"))    return GS_GFXT_MESH_ATTRIBUTE_TYPE_NORMAL;
-    else if (gs_token_compare_text(token, "TEXCOORD"))  return GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD;
     else if (gs_token_compare_text(token, "COLOR"))     return GS_GFXT_MESH_ATTRIBUTE_TYPE_COLOR;
+    else if (gs_token_compare_text(token, "TEXCOORD0"))  return GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD;
+    else if (gs_token_compare_text(token, "TEXCOORD1"))  return GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD;
+    else if (gs_token_compare_text(token, "TEXCOORD2"))  return GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD;
+    else if (gs_token_compare_text(token, "TEXCOORD3"))  return GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD;
+    else if (gs_token_compare_text(token, "TEXCOORD4"))  return GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD;
+    else if (gs_token_compare_text(token, "TEXCOORD5"))  return GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD;
+    else if (gs_token_compare_text(token, "TEXCOORD6"))  return GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD;
+    else if (gs_token_compare_text(token, "TEXCOORD7"))  return GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD;
+    else if (gs_token_compare_text(token, "TEXCOORD8"))  return GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD;
+    else if (gs_token_compare_text(token, "TEXCOORD9"))  return GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD;
+    else if (gs_token_compare_text(token, "TEXCOORD10"))  return GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD;
+    else if (gs_token_compare_text(token, "TEXCOORD11"))  return GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD;
+    else if (gs_token_compare_text(token, "TEXCOORD12"))  return GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD;
 
     // Default
     return 0x00;
@@ -1422,64 +1436,47 @@ void gs_parse_vertex_mesh_attributes(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* d
             case GS_TOKEN_RBRACE: {bc--;} break;
             
             case GS_TOKEN_IDENTIFIER: 
-            {
-                // Get mesh attribute type from  
-                gs_gfxt_mesh_attribute_type mesh_type = gs_mesh_attribute_type_from_token(&token);
-
-                // Build vertex attribute desc
-                gs_graphics_vertex_attribute_desc_t attr = {0}; 
-                // attr.format = gs_get_vertex_attribute_from_token(&token); 
-
+            { 
                 // Get attribute name
                 if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER))
                 {
                     gs_assert(false);
                 } 
 
-                token = lex->current_token;
-                memcpy(attr.name, token.text, token.len); 
+                gs_token_t token_name = lex->current_token;
 
-                switch (mesh_type)
-                {
-                    default: 
-                    {
-                    } break;
+                #define PUSH_ATTR(MESH_ATTR, VERT_ATTR)\
+                    do {\
+                        gs_gfxt_mesh_layout_t layout = gs_default_val();\
+                        layout.type = GS_GFXT_MESH_ATTRIBUTE_TYPE_##MESH_ATTR;\
+                        gs_dyn_array_push(ppd->mesh_layout, layout);\
+                        gs_graphics_vertex_attribute_desc_t attr = gs_default_val();\
+                        memcpy(attr.name, token_name.text, token_name.len);\
+                        attr.format = GS_GRAPHICS_VERTEX_ATTRIBUTE_##VERT_ATTR;\
+                        gs_dyn_array_push(desc->pip_desc.layout.attrs, attr);\
+                    } while (0)
 
-                    case GS_GFXT_MESH_ATTRIBUTE_TYPE_POSITION: 
-                    {
-                        attr.format = GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3; 
-                    } break;
-
-                    case GS_GFXT_MESH_ATTRIBUTE_TYPE_NORMAL: 
-                    {
-                        attr.format = GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3; 
-                    } break;
-
-                    case GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD:
-                    {
-                        attr.format = GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2; 
-                    } break;
-
-                    case GS_GFXT_MESH_ATTRIBUTE_TYPE_COLOR:
-                    {
-                        attr.format = GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE4; 
-                    } break;
-
-                    /*
-                    GS_GFXT_MESH_ATTRIBUTE_TYPE_TANGENT,
-                    GS_GFXT_MESH_ATTRIBUTE_TYPE_JOINT,
-                    GS_GFXT_MESH_ATTRIBUTE_TYPE_WEIGHT,
-                    */
-                }
-                
-                // Push back mesh buffer
-                gs_dyn_array_push(ppd->mesh_layout, (gs_gfxt_mesh_layout_t){.type = mesh_type}); 
-
-                // Push back into layout
-                gs_dyn_array_push(desc->pip_desc.layout.attrs, attr);
-
-
-                // TODO(): Need to do idx as well for later...
+                if (gs_token_compare_text(&token, "POSITION"))        PUSH_ATTR(POSITION, FLOAT3);
+                else if (gs_token_compare_text(&token, "NORMAL"))     PUSH_ATTR(NORMAL, FLOAT3);
+                else if (gs_token_compare_text(&token, "COLOR"))      PUSH_ATTR(COLOR, BYTE4);
+                else if (gs_token_compare_text(&token, "TEXCOORD"))   PUSH_ATTR(TEXCOORD, FLOAT2);
+                else if (gs_token_compare_text(&token, "TEXCOORD0"))  PUSH_ATTR(TEXCOORD, FLOAT2);
+                else if (gs_token_compare_text(&token, "TEXCOORD1"))  PUSH_ATTR(TEXCOORD, FLOAT2);
+                else if (gs_token_compare_text(&token, "TEXCOORD2"))  PUSH_ATTR(TEXCOORD, FLOAT2);
+                else if (gs_token_compare_text(&token, "TEXCOORD3"))  PUSH_ATTR(TEXCOORD, FLOAT2);
+                else if (gs_token_compare_text(&token, "TEXCOORD4"))  PUSH_ATTR(TEXCOORD, FLOAT2);
+                else if (gs_token_compare_text(&token, "TEXCOORD5"))  PUSH_ATTR(TEXCOORD, FLOAT2);
+                else if (gs_token_compare_text(&token, "TEXCOORD6"))  PUSH_ATTR(TEXCOORD, FLOAT2);
+                else if (gs_token_compare_text(&token, "TEXCOORD8"))  PUSH_ATTR(TEXCOORD, FLOAT2);
+                else if (gs_token_compare_text(&token, "TEXCOORD9"))  PUSH_ATTR(TEXCOORD, FLOAT2);
+                else if (gs_token_compare_text(&token, "TEXCOORD10")) PUSH_ATTR(TEXCOORD, FLOAT2);
+                else if (gs_token_compare_text(&token, "TEXCOORD11")) PUSH_ATTR(TEXCOORD, FLOAT2);
+                else if (gs_token_compare_text(&token, "TEXCOORD12")) PUSH_ATTR(TEXCOORD, FLOAT2);
+                else if (gs_token_compare_text(&token, "FLOAT"))      PUSH_ATTR(WEIGHT, FLOAT4);   
+                else if (gs_token_compare_text(&token, "FLOAT2"))     PUSH_ATTR(TEXCOORD, FLOAT2); 
+                else if (gs_token_compare_text(&token, "FLOAT3"))     PUSH_ATTR(POSITION, FLOAT3);  
+                else if (gs_token_compare_text(&token, "FLOAT4"))     PUSH_ATTR(TANGENT, FLOAT4);  
+                else {}
             }
         }
     }
@@ -1487,37 +1484,7 @@ void gs_parse_vertex_mesh_attributes(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* d
 
 void gs_parse_vertex_attributes(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd)
 {
-	if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_LBRACE)) 
-    { 
-        gs_assert(false);
-    } 
-
-    uint32_t bc = 1; 
-    while (bc)
-    {
-        gs_token_t token = lex->next_token(lex);
-        switch (token.type)
-        { 
-            case GS_TOKEN_LBRACE: {bc++;} break; 
-            case GS_TOKEN_RBRACE: {bc--;} break;
-            
-            case GS_TOKEN_IDENTIFIER: {
-
-                // Parse mesh attributes
-                if (gs_token_compare_text(&token, "mesh"))
-                {
-                    gs_parse_vertex_mesh_attributes(lex, desc, ppd);
-                }
-
-                // Parse buffer attributes
-                else if (gs_token_compare_text(&token, "buffer"))
-                {
-                    gs_parse_vertex_buffer_attributes(lex, desc, ppd);
-                } 
-
-            } break;
-        }
-    }
+    gs_parse_vertex_mesh_attributes(lex, desc, ppd);
 }
 
 void gs_parse_shader_stage(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd, gs_graphics_shader_stage_type stage)
@@ -2311,6 +2278,15 @@ GS_API_DECL gs_gfxt_pipeline_t gs_gfxt_pipeline_load_from_memory(const char* fil
         for (uint32_t i = 0; i < gs_dyn_array_size(ppd.mesh_layout); ++i)
         {
             gs_dyn_array_push(pip.mesh_layout, ppd.mesh_layout[i]);
+        }
+    }
+
+    // Create vertex attribute layout
+    if (pdesc.pip_desc.layout.attrs)
+    {
+        for (uint32_t i = 0; i < gs_dyn_array_size(pdesc.pip_desc.layout.attrs); ++i)
+        {
+            gs_dyn_array_push(pip.attributes, pdesc.pip_desc.layout.attrs[i]);
         }
     }
 

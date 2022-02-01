@@ -49,6 +49,12 @@ gs_enum_decl(gsi_matrix_type,
 	GSI_MATRIX_PROJECTION
 );
 
+typedef enum { 
+    GSI_VATTR_POSITION = 0x00,
+    GSI_VATTR_UV, 
+    GSI_VATTR_COLOR
+} gsi_vattr_type;
+
 // Need a configurable pipeline matrix
 /*
 	depth | stencil | face cull | blend | prim
@@ -76,57 +82,40 @@ typedef struct gs_immediate_vert_t
 
 typedef struct gs_immediate_cache_t
 {
-	/* Pipeline stack */
-	gs_dyn_array(gs_handle(gs_graphics_pipeline_t)) pipelines;
-	/* Modelview stack*/
-	gs_dyn_array(gs_mat4) modelview;
-	/* Projection stack*/
-	gs_dyn_array(gs_mat4) projection;
-	/* Mode stack*/
-	gs_dyn_array(gsi_matrix_type) modes;
-	/* UV */
-	gs_vec2 uv;
-	/* Color */
-	gs_color_t color;
-	/* Texture */
-	gs_handle(gs_graphics_texture_t) texture;
-	// Cached pipeline state attr
+	gs_dyn_array(gs_handle(gs_graphics_pipeline_t)) pipelines; 
+	gs_dyn_array(gs_mat4) modelview; 
+	gs_dyn_array(gs_mat4) projection; 
+	gs_dyn_array(gsi_matrix_type) modes; 
+	gs_vec2 uv; 
+	gs_color_t color; 
+	gs_handle(gs_graphics_texture_t) texture; 
 	gsi_pipeline_state_attr_t pipeline;
-
 } gs_immediate_cache_t;
 
 typedef struct gs_immediate_draw_static_data_t
 {
-	/* Default texture */
 	gs_handle(gs_graphics_texture_t) tex_default;
-	/* Default font */
 	gs_asset_font_t font_default;
-	/* Pipeline state matrix table */
 	gs_hash_table(gsi_pipeline_state_attr_t, gs_handle(gs_graphics_pipeline_t)) pipeline_table;
-	/* Uniform buffer */
 	gs_handle(gs_graphics_uniform_t) uniform;
-	/* Uniform sampler */
-	gs_handle(gs_graphics_uniform_t) sampler;
-
+	gs_handle(gs_graphics_uniform_t) sampler; 
 } gs_immediate_draw_static_data_t;
+
+struct gs_immediate_draw_t;
+
+typedef void (* gsi_flush_cb)(struct gs_immediate_draw_t* gsi, uint32_t draw_count);
 
 typedef struct gs_immediate_draw_t
 {
-	/* Handle to vertex buffer resource */
 	gs_handle(gs_graphics_vertex_buffer_t) vbo;
-	/* Handle to index buffer resource */
 	gs_handle(gs_graphics_index_buffer_t) ibo;
-	/* Dynamic array of vertex data to update */
-	gs_dyn_array(gs_immediate_vert_t) vertices;
-	/* Dynamic array of index data to update */
+	gs_byte_buffer_t vertices;
 	gs_dyn_array(uint16_t) indices;
-	/* Cache */
+    gs_dyn_array(gsi_vattr_type) vattributes;
 	gs_immediate_cache_t cache;
-	/* Internal Command Buffer */
 	gs_command_buffer_t commands;
-    /* Window handle this context is bound to */
-    uint32_t window_handle;
-
+    uint32_t window_handle; 
+    gsi_flush_cb flush_cb;
 } gs_immediate_draw_t;
 
 #ifndef GS_NO_SHORT_NAME
@@ -164,6 +153,8 @@ GS_API_DECL void gsi_depth_enabled(gs_immediate_draw_t* gsi, bool enabled);
 GS_API_DECL void gsi_stencil_enabled(gs_immediate_draw_t* gsi, bool enabled);
 GS_API_DECL void gsi_face_cull_enabled(gs_immediate_draw_t* gsi, bool enabled);
 GS_API_DECL void gsi_defaults(gs_immediate_draw_t* gsi);
+GS_API_DECL void gsi_vattr_list(gs_immediate_draw_t* gsi, gsi_vattr_type* list, size_t sz);
+GS_API_DECL void gsi_set_flush_cb(gs_immediate_draw_t* gsi, gsi_flush_cb cb);
 
 // View/Scissor commands
 GS_API_DECL void gsi_set_view_scissor(gs_immediate_draw_t* gsi, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
@@ -294,12 +285,14 @@ gsi_pipeline_state_attr_t gsi_pipeline_state_default()
 void gsi_reset(gs_immediate_draw_t* gsi)
 {
 	gs_command_buffer_clear(&gsi->commands);
-	gs_dyn_array_clear(gsi->vertices);	
+	gs_byte_buffer_clear(&gsi->vertices);	
 	gs_dyn_array_clear(gsi->indices);	
 	gs_dyn_array_clear(gsi->cache.modelview);
 	gs_dyn_array_clear(gsi->cache.projection);
 	gs_dyn_array_clear(gsi->cache.pipelines);
 	gs_dyn_array_clear(gsi->cache.modes);
+    gs_dyn_array_clear(gsi->vattributes);
+    gsi->flush_cb = NULL;
 
 	gs_dyn_array_push(gsi->cache.modelview, gs_mat4_identity());
 	gs_dyn_array_push(gsi->cache.projection, gs_mat4_identity());
@@ -484,6 +477,8 @@ gs_immediate_draw_t gs_immediate_draw_new(uint32_t window_handle)
 
 	gsi.vbo = gs_graphics_vertex_buffer_create(&vdesc); 
 
+    gsi.vertices = gs_byte_buffer_new();
+
 	// Set up cache 
 	gsi_reset(&gsi);
 
@@ -557,7 +552,7 @@ void gsi_end(gs_immediate_draw_t* gsi)
 void gsi_flush(gs_immediate_draw_t* gsi)
 {
 	// Don't flush if verts empty
-	if (gs_dyn_array_empty(gsi->vertices)) {
+	if (gs_byte_buffer_empty(&gsi->vertices)) {
 		return;
 	}
 
@@ -568,36 +563,51 @@ void gsi_flush(gs_immediate_draw_t* gsi)
 
 	// Update vertex buffer (command buffer version)
 	gs_graphics_vertex_buffer_desc_t vdesc = gs_default_val();
-	vdesc.data = gsi->vertices;
-	vdesc.size = gs_dyn_array_size(gsi->vertices) * sizeof(gs_immediate_vert_t);
+	vdesc.data = gsi->vertices.data;
+	vdesc.size = gs_byte_buffer_size(&gsi->vertices);
 	vdesc.usage = GS_GRAPHICS_BUFFER_USAGE_STREAM;
 
 	gs_graphics_vertex_buffer_request_update(&gsi->commands, gsi->vbo, &vdesc);
 
-	// Set up all binding data
-	gs_graphics_bind_vertex_buffer_desc_t vbuffer = gs_default_val();
-	vbuffer.buffer = gsi->vbo;
+    // Calculate draw count
+    size_t vsz = sizeof(gs_immediate_vert_t);
+    if (gs_dyn_array_size(gsi->vattributes)) {
+        vsz = gs_byte_buffer_size(&gsi->vertices);
+    }
 
-	gs_graphics_bind_uniform_desc_t ubinds[2] = gs_default_val();
-	ubinds[0].uniform = GSI()->uniform; ubinds[0].data = &mvp;
-	ubinds[1].uniform = GSI()->sampler; ubinds[1].data = &gsi->cache.texture; ubinds[1].binding = 0;
+    uint32_t ct = gs_byte_buffer_size(&gsi->vertices) / vsz;
 
-    // Bindings for all buffers: vertex, uniform, sampler
-    gs_graphics_bind_desc_t binds = gs_default_val();
-   	binds.vertex_buffers.desc = &vbuffer; 
-   	binds.uniforms.desc = ubinds;
-   	binds.uniforms.size = sizeof(ubinds);
+    if (gsi->flush_cb)
+    {
+        gsi->flush_cb(gsi, ct);
+    }
+    else
+    {
+        // Set up all binding data
+        gs_graphics_bind_vertex_buffer_desc_t vbuffer = gs_default_val();
+        vbuffer.buffer = gsi->vbo;
 
-   	// Bind bindings
-	gs_graphics_apply_bindings(&gsi->commands, &binds);
+        gs_graphics_bind_uniform_desc_t ubinds[2] = gs_default_val();
+        ubinds[0].uniform = GSI()->uniform; ubinds[0].data = &mvp;
+        ubinds[1].uniform = GSI()->sampler; ubinds[1].data = &gsi->cache.texture; ubinds[1].binding = 0;
 
-	// Submit draw
-	gs_graphics_draw_desc_t draw = gs_default_val();
-	draw.start = 0; draw.count = gs_dyn_array_size(gsi->vertices);
-	gs_graphics_draw(&gsi->commands, &draw);
+        // Bindings for all buffers: vertex, uniform, sampler
+        gs_graphics_bind_desc_t binds = gs_default_val();
+        binds.vertex_buffers.desc = &vbuffer; 
+        binds.uniforms.desc = ubinds;
+        binds.uniforms.size = sizeof(ubinds);
+
+        // Bind bindings
+        gs_graphics_apply_bindings(&gsi->commands, &binds);
+
+        // Submit draw
+        gs_graphics_draw_desc_t draw = gs_default_val();
+        draw.start = 0; draw.count = ct;
+        gs_graphics_draw(&gsi->commands, &draw);
+    } 
 
 	// Clear data
-	gs_dyn_array_clear(gsi->vertices);
+	gs_byte_buffer_clear(&gsi->vertices);
 }
 
 // Core pipeline functions
@@ -670,7 +680,7 @@ void gsi_face_cull_enabled(gs_immediate_draw_t* gsi, bool enabled)
 	gs_immediate_draw_set_pipeline(gsi);
 }
 
-void gsi_texture(gs_immediate_draw_t* gsi, gs_handle(gs_graphics_texture_t) texture)
+GS_API_DECL void gsi_texture(gs_immediate_draw_t* gsi, gs_handle(gs_graphics_texture_t) texture)
 {
 	// Push a new pipeline?
 	if (gsi->cache.texture.id == texture.id) {
@@ -684,8 +694,23 @@ void gsi_texture(gs_immediate_draw_t* gsi, gs_handle(gs_graphics_texture_t) text
 	gsi->cache.texture = texture.id && texture.id != UINT32_MAX ? texture : GSI()->tex_default;
 }
 
-// Not working for the moment
-void gsi_defaults(gs_immediate_draw_t* gsi)
+GS_API_DECL void gsi_vattr_list(gs_immediate_draw_t* gsi, gsi_vattr_type* list, size_t sz)
+{
+    gs_dyn_array_clear(gsi->vattributes);
+
+    uint32_t ct = sz / sizeof(gsi_vattr_type);
+    for (uint32_t i = 0; i < ct; ++i)
+    {
+        gs_dyn_array_push(gsi->vattributes, list[i]);
+    }
+}
+
+GS_API_DECL void gsi_set_flush_cb(gs_immediate_draw_t* gsi, gsi_flush_cb cb)
+{
+    gsi->flush_cb = cb;
+}
+
+GS_API_DECL void gsi_defaults(gs_immediate_draw_t* gsi)
 {
 	gsi_flush(gsi);
 
@@ -695,11 +720,15 @@ void gsi_defaults(gs_immediate_draw_t* gsi)
 	gsi->cache.pipeline.prim_type = 0x00;
 	gsi->cache.uv = gs_v2(0.f, 0.f);
 	gsi->cache.color = GS_COLOR_WHITE;
+    gs_dyn_array_clear(gsi->vattributes);
+
+    // Not sure if it should be done here or not...
+    gsi->flush_cb = NULL;
 
 	gs_immediate_draw_set_pipeline(gsi);
 }
 
-void gsi_tc2fv(gs_immediate_draw_t* gsi, gs_vec2 uv)
+GS_API_DECL void gsi_tc2fv(gs_immediate_draw_t* gsi, gs_vec2 uv)
 {
 	// Set cache register
 	gsi->cache.uv = uv;
@@ -719,12 +748,18 @@ void gsi_c4ub(gs_immediate_draw_t* gsi, uint8_t r, uint8_t g, uint8_t b, uint8_t
 
 void gsi_v3fv(gs_immediate_draw_t* gsi, gs_vec3 p)
 {
-	// Push vert
-	gs_immediate_vert_t v = gs_default_val();
-	v.position = p;
-	v.uv = gsi->cache.uv;
-	v.color = gsi->cache.color;
-	gs_dyn_array_push(gsi->vertices, v);
+    if (gs_byte_buffer_size(&gsi->vattributes))
+    {
+        // Iterate through attributes and push into stream
+    }
+    else
+    {
+	    gs_immediate_vert_t v = gs_default_val();
+        v.position = p;
+        v.uv = gsi->cache.uv;
+        v.color = gsi->cache.color;
+	    gs_byte_buffer_write(&gsi->vertices, gs_immediate_vert_t, v);
+    } 
 }
 
 void gsi_v3f(gs_immediate_draw_t* gsi, float x, float y, float z)
@@ -1925,6 +1960,23 @@ GS_API_DECL const char* GSGetDefaultCompressedFontDataTTFBase85()
 		GS_IVATTR_BYTE2,	-> General byte2  (custom)
 		GS_IVATTR_BYTE,		-> General byte   (custom)
 	};
+
+        // Do GSI stuff
+            gsi_vattr_list(gsi, &(gsi_vattr_type){ 
+                GSI_VATTR_POSITION,
+                GSI_VATTR_UV,
+                GSI_VATTR_COLOR
+            }, 3 * sizeof(gsi_vattr_type);
+            gsi_set_vattr(GSI_VATTR_POSITION, &(gs_vec3){...});
+            gsi_set_vattr(GSI_VATTR_FLOAT4, (float[]){...});
+            gsi_set_vattr(GSI_VATTR_FLOAT3, (float[]){...});
+            gsi_set_vattr(GSI_VATTR_FLOAT2, (float[]){...});
+            gsi_set_vattr(GSI_VATTR_FLOAT, (float[]){...});
+            gsi_flush_cb(gsi, cb);
+            gsi_sphere(gsi, sphere); 
+            gsi_box(gsi, ...);
+            gsi_draw(gsi, cb); 
+            gsi_reset(gsi);
 
 	// This really should be outside the scope of the immediate draw and more into a specific "immediate_shapes" area. 
 	// Don't want this to be too fucking cheesy though...
