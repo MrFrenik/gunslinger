@@ -150,7 +150,7 @@ GS_API_DECL void gsi_depth_enabled(gs_immediate_draw_t* gsi, bool enabled);
 GS_API_DECL void gsi_stencil_enabled(gs_immediate_draw_t* gsi, bool enabled);
 GS_API_DECL void gsi_face_cull_enabled(gs_immediate_draw_t* gsi, bool enabled);
 GS_API_DECL void gsi_defaults(gs_immediate_draw_t* gsi);
-GS_API_DECL void gsi_vattr_list(gs_immediate_draw_t* gsi, gs_asset_mesh_layout_t* layout, size_t sz); 
+GS_API_DECL void gsi_vattr_list(gs_immediate_draw_t* gsi, gsi_vattr_type* layout, size_t sz); 
 GS_API_DECL void gsi_vattr_list_mesh(gs_immediate_draw_t* gsi, gs_asset_mesh_layout_t* layout, size_t sz);
 
 // View/Scissor commands
