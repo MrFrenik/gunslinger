@@ -3879,9 +3879,12 @@ gs_vec3 gs_quat_to_euler(gs_quat* q)
 
 typedef struct 
 {
-    gs_vec3     position;
-    gs_quat     rotation;
-    gs_vec3     scale;      
+    union {
+        gs_vec3 position;
+        gs_vec3 translation;
+    };
+    gs_quat rotation;
+    gs_vec3 scale;      
 } gs_vqs;
 
 gs_inline gs_vqs gs_vqs_ctor(gs_vec3 tns, gs_quat rot, gs_vec3 scl)

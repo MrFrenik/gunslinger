@@ -103,21 +103,9 @@ typedef struct gs_gfxt_uniform_block_t {
 //=== Texture ===//
 typedef gs_handle(gs_graphics_texture_t) gs_gfxt_texture_t;
 
-//=== Mesh ===//
-gs_enum_decl(gs_gfxt_mesh_attribute_type,
-    GS_GFXT_MESH_ATTRIBUTE_TYPE_POSITION,
-    GS_GFXT_MESH_ATTRIBUTE_TYPE_NORMAL,
-    GS_GFXT_MESH_ATTRIBUTE_TYPE_TANGENT,
-    GS_GFXT_MESH_ATTRIBUTE_TYPE_JOINT,
-    GS_GFXT_MESH_ATTRIBUTE_TYPE_WEIGHT,
-    GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD,
-    GS_GFXT_MESH_ATTRIBUTE_TYPE_COLOR
-);
-
-typedef struct gs_gfxt_mesh_layout_t {
-    gs_gfxt_mesh_attribute_type type;     // Type of attribute
-    uint32_t idx;                         // Optional index (for joint/weight/texcoord/color)
-} gs_gfxt_mesh_layout_t;
+//=== Mesh ===// 
+typedef gs_asset_mesh_attribute_type gs_gfxt_mesh_attribute_type;
+typedef gs_asset_mesh_layout_t gs_gfxt_mesh_layout_t;
 
 // Structured/packed raw mesh data
 typedef struct gs_gfxt_mesh_raw_data_t {
@@ -161,8 +149,7 @@ typedef struct gs_gfxt_pipeline_t {
 	gs_handle(gs_graphics_pipeline_t) hndl;		                    // Graphics handle resource for actual pipeline
 	gs_gfxt_uniform_block_t ublock;				                    // Uniform block for holding all uniform data
     gs_dyn_array(gs_gfxt_mesh_layout_t) mesh_layout;  
-    gs_dyn_array(gs_graphics_vertex_attribute_desc_t) attributes;
-    int16_t index_buffer_element_size;               
+    gs_graphics_pipeline_desc_t desc;
 } gs_gfxt_pipeline_t;
 
 //=== Material ===//
@@ -215,6 +202,7 @@ GS_API_DECL gs_gfxt_material_t gs_gfxt_material_deep_copy(gs_gfxt_material_t* sr
 GS_API_DECL void gs_gfxt_material_set_uniform(gs_gfxt_material_t* mat, const char* name, const void* data);
 GS_API_DECL void gs_gfxt_material_bind(gs_command_buffer_t* cb, gs_gfxt_material_t* mat);
 GS_API_DECL void gs_gfxt_material_bind_uniforms(gs_command_buffer_t* cb, gs_gfxt_material_t* mat);
+GS_API_DECL gs_gfxt_pipeline_t* gs_gfxt_material_get_pipeline(gs_gfxt_material_t* mat);
 
 //=== Mesh API ===//
 GS_API_DECL void gs_gfxt_mesh_draw(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh);
@@ -244,9 +232,13 @@ gs_gfxt_pipeline_t gs_gfxt_pipeline_create(const gs_gfxt_pipeline_desc_t* desc)
 		return pip;
 	}
 
-    pip.index_buffer_element_size = desc->pip_desc.raster.index_buffer_element_size;
 	pip.hndl = gs_graphics_pipeline_create(&desc->pip_desc);
 	pip.ublock = gs_gfxt_uniform_block_create(&desc->ublock_desc);
+    pip.desc = desc->pip_desc;
+    uint32_t ct = desc->pip_desc.layout.size / sizeof(gs_graphics_vertex_attribute_desc_t);
+    for (uint32_t i = 0; i < ct; ++i) {
+        gs_dyn_array_push(pip.desc.layout.attrs, desc->pip_desc.layout.attrs[i]);
+    }
 	return pip;
 }
 
@@ -458,6 +450,12 @@ void gs_gfxt_material_set_uniform(gs_gfxt_material_t* mat, const char* name, con
 	    	gs_byte_buffer_write(&mat->image_buffer_data, gs_handle(gs_graphics_texture_t), *(gs_handle(gs_graphics_texture_t)*)data);
         } break;
 	}
+}
+
+GS_API_DECL gs_gfxt_pipeline_t* gs_gfxt_material_get_pipeline(gs_gfxt_material_t* mat)
+{
+	gs_gfxt_pipeline_t* pip = GS_GFXT_RAW_DATA(&mat->desc.pip_func, gs_gfxt_pipeline_t);
+    return pip;
 }
 
 GS_API_DECL
@@ -774,20 +772,20 @@ bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_opti
 		                    }
 		                    /* Push into layout */
 		                    gs_gfxt_mesh_layout_t LAYOUT = gs_default_val();
-		                    LAYOUT.type = GS_GFXT_MESH_ATTRIBUTE_TYPE_POSITION;
+		                    LAYOUT.type = GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION;
 		                    gs_dyn_array_push(layouts, LAYOUT);
 	                    } break;
 
 	                    case cgltf_attribute_type_normal: {
-	                        __GFXT_GLTF_PUSH_ATTR(attr, float, 3, normals, gs_vec3, layouts, GS_GFXT_MESH_ATTRIBUTE_TYPE_NORMAL);
+	                        __GFXT_GLTF_PUSH_ATTR(attr, float, 3, normals, gs_vec3, layouts, GS_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL);
 	                    } break;
 
 	                    case cgltf_attribute_type_tangent: {
-	                        __GFXT_GLTF_PUSH_ATTR(attr, float, 3, tangents, gs_vec3, layouts, GS_GFXT_MESH_ATTRIBUTE_TYPE_TANGENT);
+	                        __GFXT_GLTF_PUSH_ATTR(attr, float, 3, tangents, gs_vec3, layouts, GS_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT);
 	                    } break;
 
 	                    case cgltf_attribute_type_texcoord: {
-	                        __GFXT_GLTF_PUSH_ATTR(attr, float, 2, uvs, gs_vec2, layouts, GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD);
+	                        __GFXT_GLTF_PUSH_ATTR(attr, float, 2, uvs, gs_vec2, layouts, GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD);
 	                    } break;
 
 	                    case cgltf_attribute_type_color: {
@@ -815,7 +813,7 @@ bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_opti
 		                    }
 		                    /* Push into layout */
 		                    gs_gfxt_mesh_layout_t LAYOUT = gs_default_val();
-		                    LAYOUT.type = GS_GFXT_MESH_ATTRIBUTE_TYPE_COLOR;
+		                    LAYOUT.type = GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR;
 		                    gs_dyn_array_push(layouts, LAYOUT);
 	                    } break;
 
@@ -824,7 +822,7 @@ bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_opti
 	                    {
 	                        // Push into layout
 	                        gs_gfxt_mesh_layout_t layout = gs_default_val();
-	                        layout.type = GS_GFXT_MESH_ATTRIBUTE_TYPE_JOINT;
+	                        layout.type = GS_ASSET_MESH_ATTRIBUTE_TYPE_JOINT;
 	                        gs_dyn_array_push(layouts, layout);
 	                    } break;
 
@@ -832,7 +830,7 @@ bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_opti
 	                    {
 	                        // Push into layout
 	                        gs_gfxt_mesh_layout_t layout = gs_default_val();
-	                        layout.type = GS_GFXT_MESH_ATTRIBUTE_TYPE_WEIGHT;
+	                        layout.type = GS_ASSET_MESH_ATTRIBUTE_TYPE_WEIGHT;
 	                        gs_dyn_array_push(layouts, layout);
 	                    } break;
 
@@ -899,7 +897,7 @@ bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_opti
 	                }
 	            }
 
-	            bool warnings[gs_enum_count(gs_gfxt_mesh_attribute_type)] = gs_default_val();
+	            bool warnings[gs_enum_count(gs_asset_mesh_attribute_type)] = gs_default_val();
 
 	            // Grab mesh layout pointer to use
 	            gs_gfxt_mesh_layout_t* layoutp = options ? options->layout : layouts;
@@ -937,24 +935,24 @@ bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_opti
 	                    {
 	                        switch (layoutp[l].type)
 	                        {
-	                            case GS_GFXT_MESH_ATTRIBUTE_TYPE_POSITION: {
-	                                __GLTF_WRITE_DATA(it, v_data, positions, gs_vec3, gs_v3(0.f, 0.f, 0.f), GS_GFXT_MESH_ATTRIBUTE_TYPE_POSITION); 
+	                            case GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION: {
+	                                __GLTF_WRITE_DATA(it, v_data, positions, gs_vec3, gs_v3(0.f, 0.f, 0.f), GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION); 
 	                            } break;
 
-	                            case GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD: {
-	                                __GLTF_WRITE_DATA(it, v_data, uvs, gs_vec2, gs_v2(0.f, 0.f), GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD); 
+	                            case GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD: {
+	                                __GLTF_WRITE_DATA(it, v_data, uvs, gs_vec2, gs_v2(0.f, 0.f), GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD); 
 	                            } break;
 
-	                            case GS_GFXT_MESH_ATTRIBUTE_TYPE_COLOR: {
-	                                __GLTF_WRITE_DATA(it, v_data, colors, gs_color_t, GS_COLOR_WHITE, GS_GFXT_MESH_ATTRIBUTE_TYPE_COLOR); 
+	                            case GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR: {
+	                                __GLTF_WRITE_DATA(it, v_data, colors, gs_color_t, GS_COLOR_WHITE, GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR); 
 	                            } break;
 
-	                            case GS_GFXT_MESH_ATTRIBUTE_TYPE_NORMAL: {
-	                                __GLTF_WRITE_DATA(it, v_data, normals, gs_vec3, gs_v3(0.f, 0.f, 1.f), GS_GFXT_MESH_ATTRIBUTE_TYPE_NORMAL); 
+	                            case GS_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL: {
+	                                __GLTF_WRITE_DATA(it, v_data, normals, gs_vec3, gs_v3(0.f, 0.f, 1.f), GS_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL); 
 	                            } break;
 
-	                            case GS_GFXT_MESH_ATTRIBUTE_TYPE_TANGENT: {
-	                                __GLTF_WRITE_DATA(it, v_data, tangents, gs_vec3, gs_v3(0.f, 1.f, 0.f), GS_GFXT_MESH_ATTRIBUTE_TYPE_TANGENT); 
+	                            case GS_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT: {
+	                                __GLTF_WRITE_DATA(it, v_data, tangents, gs_vec3, gs_v3(0.f, 1.f, 0.f), GS_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT); 
 	                            } break;
 
 	                            default:
@@ -1031,8 +1029,8 @@ gs_gfxt_mesh_t gs_gfxt_mesh_unit_quad_generate(gs_gfxt_mesh_import_options_t* op
 	prim.count = 6;
 
 	gs_gfxt_mesh_layout_t mlayout[2] = gs_default_val();
-	mlayout[0].type = GS_GFXT_MESH_ATTRIBUTE_TYPE_POSITION;
-	mlayout[1].type = GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD;
+	mlayout[0].type = GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION;
+	mlayout[1].type = GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD;
 	gs_gfxt_mesh_import_options_t def_options = gs_default_val();
 	def_options.layout = mlayout;
 	def_options.size = 2 * sizeof(gs_gfxt_mesh_layout_t);
@@ -1041,8 +1039,8 @@ gs_gfxt_mesh_t gs_gfxt_mesh_unit_quad_generate(gs_gfxt_mesh_import_options_t* op
 	/*
 	gs_gfxt_mesh_import_options_t def_options = {
 		.layout = (gs_gfxt_mesh_layout_t[]) {
-			{.type = GS_GFXT_MESH_ATTRIBUTE_TYPE_POSITION},
-			{.type = GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD}
+			{.type = GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION},
+			{.type = GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD}
 		},
 		.size = 2 * sizeof(gs_gfxt_mesh_layout_t),
 		.index_buffer_element_size = sizeof(uint32_t)
@@ -1058,11 +1056,11 @@ gs_gfxt_mesh_t gs_gfxt_mesh_unit_quad_generate(gs_gfxt_mesh_import_options_t* op
 	for (uint32_t v = 0; v < 4; ++v) {
 		for (uint32_t i = 0; i < ct; ++i) {
 			switch (moptions->layout[i].type) {
-				case GS_GFXT_MESH_ATTRIBUTE_TYPE_POSITION:  gs_byte_buffer_write(&vbuffer, gs_vec3, v_pos[v]);  break;
-				case GS_GFXT_MESH_ATTRIBUTE_TYPE_NORMAL: 	gs_byte_buffer_write(&vbuffer, gs_vec3, norm); 		break;
-				case GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD:  gs_byte_buffer_write(&vbuffer, gs_vec2, v_uvs[v]);  break;
-				case GS_GFXT_MESH_ATTRIBUTE_TYPE_COLOR: 	gs_byte_buffer_write(&vbuffer, gs_color_t, color);  break;
-				case GS_GFXT_MESH_ATTRIBUTE_TYPE_TANGENT:   gs_byte_buffer_write(&vbuffer, gs_vec3, tan);  		break;
+				case GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION:  gs_byte_buffer_write(&vbuffer, gs_vec3, v_pos[v]);  break;
+				case GS_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL: 	gs_byte_buffer_write(&vbuffer, gs_vec3, norm); 		break;
+				case GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD:  gs_byte_buffer_write(&vbuffer, gs_vec2, v_uvs[v]);  break;
+				case GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR: 	gs_byte_buffer_write(&vbuffer, gs_color_t, color);  break;
+				case GS_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT:   gs_byte_buffer_write(&vbuffer, gs_vec3, tan);  		break;
 				default: break;
 			}
 		}
@@ -1387,28 +1385,28 @@ void gs_parse_code(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd
 
 gs_gfxt_mesh_attribute_type gs_mesh_attribute_type_from_token(const gs_token_t* token)
 {
-    if (gs_token_compare_text(token, "POSITION"))       return GS_GFXT_MESH_ATTRIBUTE_TYPE_POSITION;
-    else if (gs_token_compare_text(token, "NORMAL"))    return GS_GFXT_MESH_ATTRIBUTE_TYPE_NORMAL;
-    else if (gs_token_compare_text(token, "COLOR"))     return GS_GFXT_MESH_ATTRIBUTE_TYPE_COLOR;
-    else if (gs_token_compare_text(token, "TEXCOORD0"))  return GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD;
-    else if (gs_token_compare_text(token, "TEXCOORD1"))  return GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD;
-    else if (gs_token_compare_text(token, "TEXCOORD2"))  return GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD;
-    else if (gs_token_compare_text(token, "TEXCOORD3"))  return GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD;
-    else if (gs_token_compare_text(token, "TEXCOORD4"))  return GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD;
-    else if (gs_token_compare_text(token, "TEXCOORD5"))  return GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD;
-    else if (gs_token_compare_text(token, "TEXCOORD6"))  return GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD;
-    else if (gs_token_compare_text(token, "TEXCOORD7"))  return GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD;
-    else if (gs_token_compare_text(token, "TEXCOORD8"))  return GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD;
-    else if (gs_token_compare_text(token, "TEXCOORD9"))  return GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD;
-    else if (gs_token_compare_text(token, "TEXCOORD10"))  return GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD;
-    else if (gs_token_compare_text(token, "TEXCOORD11"))  return GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD;
-    else if (gs_token_compare_text(token, "TEXCOORD12"))  return GS_GFXT_MESH_ATTRIBUTE_TYPE_TEXCOORD;
+    if (gs_token_compare_text(token, "POSITION"))       return GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION;
+    else if (gs_token_compare_text(token, "NORMAL"))    return GS_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL;
+    else if (gs_token_compare_text(token, "COLOR"))     return GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR;
+    else if (gs_token_compare_text(token, "TEXCOORD0"))  return GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD;
+    else if (gs_token_compare_text(token, "TEXCOORD1"))  return GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD;
+    else if (gs_token_compare_text(token, "TEXCOORD2"))  return GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD;
+    else if (gs_token_compare_text(token, "TEXCOORD3"))  return GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD;
+    else if (gs_token_compare_text(token, "TEXCOORD4"))  return GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD;
+    else if (gs_token_compare_text(token, "TEXCOORD5"))  return GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD;
+    else if (gs_token_compare_text(token, "TEXCOORD6"))  return GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD;
+    else if (gs_token_compare_text(token, "TEXCOORD7"))  return GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD;
+    else if (gs_token_compare_text(token, "TEXCOORD8"))  return GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD;
+    else if (gs_token_compare_text(token, "TEXCOORD9"))  return GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD;
+    else if (gs_token_compare_text(token, "TEXCOORD10"))  return GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD;
+    else if (gs_token_compare_text(token, "TEXCOORD11"))  return GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD;
+    else if (gs_token_compare_text(token, "TEXCOORD12"))  return GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD;
 
     // Default
     return 0x00;
-    // else if (gs_token_compare_text(token, "TANGENT"))   return GS_GFXT_MESH_ATTRIBUTE_TYPE_TANGENT;
-    // else if (gs_token_compare_text(token, "JOINT"))     return GS_GFXT_MESH_ATTRIBUTE_TYPE_JOINT;
-    // else if (gs_token_compare_text(token, "WEIGHT"))    return GS_GFXT_MESH_ATTRIBUTE_TYPE_WEIGHT;
+    // else if (gs_token_compare_text(token, "TANGENT"))   return GS_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT;
+    // else if (gs_token_compare_text(token, "JOINT"))     return GS_ASSET_MESH_ATTRIBUTE_TYPE_JOINT;
+    // else if (gs_token_compare_text(token, "WEIGHT"))    return GS_ASSET_MESH_ATTRIBUTE_TYPE_WEIGHT;
 } 
 
 void gs_parse_vertex_buffer_attributes(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd)
@@ -1448,7 +1446,7 @@ void gs_parse_vertex_mesh_attributes(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* d
                 #define PUSH_ATTR(MESH_ATTR, VERT_ATTR)\
                     do {\
                         gs_gfxt_mesh_layout_t layout = gs_default_val();\
-                        layout.type = GS_GFXT_MESH_ATTRIBUTE_TYPE_##MESH_ATTR;\
+                        layout.type = GS_ASSET_MESH_ATTRIBUTE_TYPE_##MESH_ATTR;\
                         gs_dyn_array_push(ppd->mesh_layout, layout);\
                         gs_graphics_vertex_attribute_desc_t attr = gs_default_val();\
                         memcpy(attr.name, token_name.text, token_name.len);\
@@ -2279,22 +2277,14 @@ GS_API_DECL gs_gfxt_pipeline_t gs_gfxt_pipeline_load_from_memory(const char* fil
         {
             gs_dyn_array_push(pip.mesh_layout, ppd.mesh_layout[i]);
         }
-    }
+    } 
 
-    // Create vertex attribute layout
-    if (pdesc.pip_desc.layout.attrs)
-    {
-        for (uint32_t i = 0; i < gs_dyn_array_size(pdesc.pip_desc.layout.attrs); ++i)
-        {
-            gs_dyn_array_push(pip.attributes, pdesc.pip_desc.layout.attrs[i]);
-        }
-    }
+    pip.desc = pdesc.pip_desc;
 
     // Free all malloc'd data 
     if (v_src) gs_free(v_src);
     if (f_src) gs_free(f_src); 
     if (c_src) gs_free(c_src);
-    gs_dyn_array_free(pdesc.pip_desc.layout.attrs);
     gs_dyn_array_free(pdesc.ublock_desc.layout);
     gs_dyn_array_free(ppd.mesh_layout);
     

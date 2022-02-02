@@ -101,9 +101,7 @@ typedef struct gs_immediate_draw_static_data_t
 	gs_handle(gs_graphics_uniform_t) sampler; 
 } gs_immediate_draw_static_data_t;
 
-struct gs_immediate_draw_t;
-
-typedef void (* gsi_flush_cb)(struct gs_immediate_draw_t* gsi, uint32_t draw_count);
+struct gs_immediate_draw_t; 
 
 typedef struct gs_immediate_draw_t
 {
@@ -115,7 +113,6 @@ typedef struct gs_immediate_draw_t
 	gs_immediate_cache_t cache;
 	gs_command_buffer_t commands;
     uint32_t window_handle; 
-    gsi_flush_cb flush_cb;
 } gs_immediate_draw_t;
 
 #ifndef GS_NO_SHORT_NAME
@@ -153,8 +150,8 @@ GS_API_DECL void gsi_depth_enabled(gs_immediate_draw_t* gsi, bool enabled);
 GS_API_DECL void gsi_stencil_enabled(gs_immediate_draw_t* gsi, bool enabled);
 GS_API_DECL void gsi_face_cull_enabled(gs_immediate_draw_t* gsi, bool enabled);
 GS_API_DECL void gsi_defaults(gs_immediate_draw_t* gsi);
-GS_API_DECL void gsi_vattr_list(gs_immediate_draw_t* gsi, gsi_vattr_type* list, size_t sz);
-GS_API_DECL void gsi_set_flush_cb(gs_immediate_draw_t* gsi, gsi_flush_cb cb);
+GS_API_DECL void gsi_vattr_list(gs_immediate_draw_t* gsi, gs_asset_mesh_layout_t* layout, size_t sz); 
+GS_API_DECL void gsi_vattr_list_mesh(gs_immediate_draw_t* gsi, gs_asset_mesh_layout_t* layout, size_t sz);
 
 // View/Scissor commands
 GS_API_DECL void gsi_set_view_scissor(gs_immediate_draw_t* gsi, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
@@ -166,7 +163,9 @@ GS_API_DECL void gsi_render_pass_submit_ex(gs_immediate_draw_t* gsi, gs_command_
 
 // Core Matrix Functions
 GS_API_DECL void gsi_push_matrix(gs_immediate_draw_t* gsi, gsi_matrix_type type);
+GS_API_DECL void gsi_push_matrix_ex(gs_immediate_draw_t* gsi, gsi_matrix_type type, bool flush);
 GS_API_DECL void gsi_pop_matrix(gs_immediate_draw_t* gsi);
+GS_API_DECL void gsi_pop_matrix_ex(gs_immediate_draw_t* gsi, bool flush);
 GS_API_DECL void gsi_matrix_mode(gs_immediate_draw_t* gsi, gsi_matrix_type type);
 GS_API_DECL void gsi_load_matrix(gs_immediate_draw_t* gsi, gs_mat4 m);
 GS_API_DECL void gsi_mul_matrix(gs_immediate_draw_t* gsi, gs_mat4 m);
@@ -174,7 +173,8 @@ GS_API_DECL void gsi_perspective(gs_immediate_draw_t* gsi, float fov, float aspe
 GS_API_DECL void gsi_ortho(gs_immediate_draw_t* gsi, float left, float right, float bottom, float top, float near, float far);
 GS_API_DECL void gsi_rotatef(gs_immediate_draw_t* gsi, float angle, float x, float y, float z);
 GS_API_DECL void gsi_rotatefv(gs_immediate_draw_t* gsi, float angle, gs_vec3 v);
-GS_API_DECL void gsi_transf(gs_immediate_draw_t* gsi, float x, float y, float z);
+GS_API_DECL void gsi_translatef(gs_immediate_draw_t* gsi, float x, float y, float z);
+GS_API_DECL void gsi_translatev(gs_immediate_draw_t* gsi, gs_vec3 v);
 GS_API_DECL void gsi_scalef(gs_immediate_draw_t* gsi, float x, float y, float z);
 
 // Camera Utils
@@ -292,7 +292,6 @@ void gsi_reset(gs_immediate_draw_t* gsi)
 	gs_dyn_array_clear(gsi->cache.pipelines);
 	gs_dyn_array_clear(gsi->cache.modes);
     gs_dyn_array_clear(gsi->vattributes);
-    gsi->flush_cb = NULL;
 
 	gs_dyn_array_push(gsi->cache.modelview, gs_mat4_identity());
 	gs_dyn_array_push(gsi->cache.projection, gs_mat4_identity());
@@ -549,6 +548,23 @@ void gsi_end(gs_immediate_draw_t* gsi)
 	// Not sure what to do here...
 }
 
+gs_mat4 gsi_get_modelview_matrix(gs_immediate_draw_t* gsi)
+{
+	return gsi->cache.modelview[gs_dyn_array_size(gsi->cache.modelview) - 1];
+} 
+
+gs_mat4 gsi_get_projection_matrix(gs_immediate_draw_t* gsi)
+{
+	return gsi->cache.projection[gs_dyn_array_size(gsi->cache.projection) - 1];
+}
+
+gs_mat4 gsi_get_mvp_matrix(gs_immediate_draw_t* gsi)
+{
+	gs_mat4* mv = &gsi->cache.modelview[gs_dyn_array_size(gsi->cache.modelview) - 1];
+	gs_mat4* proj = &gsi->cache.projection[gs_dyn_array_size(gsi->cache.projection) - 1];
+	return gs_mat4_mul(*proj, *mv);
+}
+
 void gsi_flush(gs_immediate_draw_t* gsi)
 {
 	// Don't flush if verts empty
@@ -571,40 +587,51 @@ void gsi_flush(gs_immediate_draw_t* gsi)
 
     // Calculate draw count
     size_t vsz = sizeof(gs_immediate_vert_t);
-    if (gs_dyn_array_size(gsi->vattributes)) {
-        vsz = gs_byte_buffer_size(&gsi->vertices);
+    if (gs_dyn_array_size(gsi->vattributes)) 
+	{
+		// Calculate vertex stride
+		size_t stride = 0;
+		for (uint32_t i = 0; i < gs_dyn_array_size( gsi->vattributes ); ++i)
+		{ 
+			gsi_vattr_type type = gsi->vattributes[i];
+			switch (type)
+			{	 
+				default: break;
+				case GSI_VATTR_POSITION: stride += sizeof(gs_vec3); break;
+				case GSI_VATTR_COLOR:	 stride += sizeof(gs_color_t); break;
+				case GSI_VATTR_UV:		 stride += sizeof(gs_vec2); break;
+			}
+		}
+		vsz = stride;
     }
 
     uint32_t ct = gs_byte_buffer_size(&gsi->vertices) / vsz;
 
-    if (gsi->flush_cb)
-    {
-        gsi->flush_cb(gsi, ct);
-    }
-    else
-    {
-        // Set up all binding data
-        gs_graphics_bind_vertex_buffer_desc_t vbuffer = gs_default_val();
-        vbuffer.buffer = gsi->vbo;
+    // Set up all binding data
+    gs_graphics_bind_vertex_buffer_desc_t vbuffer = gs_default_val();
+    vbuffer.buffer = gsi->vbo;
 
-        gs_graphics_bind_uniform_desc_t ubinds[2] = gs_default_val();
-        ubinds[0].uniform = GSI()->uniform; ubinds[0].data = &mvp;
-        ubinds[1].uniform = GSI()->sampler; ubinds[1].data = &gsi->cache.texture; ubinds[1].binding = 0;
+    gs_graphics_bind_uniform_desc_t ubinds[2] = gs_default_val();
+    ubinds[0].uniform = GSI()->uniform; ubinds[0].data = &mvp;
+    ubinds[1].uniform = GSI()->sampler; ubinds[1].data = &gsi->cache.texture; ubinds[1].binding = 0;
 
-        // Bindings for all buffers: vertex, uniform, sampler
-        gs_graphics_bind_desc_t binds = gs_default_val();
-        binds.vertex_buffers.desc = &vbuffer; 
+    // Bindings for all buffers: vertex, uniform, sampler
+    gs_graphics_bind_desc_t binds = gs_default_val();
+    binds.vertex_buffers.desc = &vbuffer; 
+
+    if (gs_dyn_array_empty(gsi->vattributes))
+    {
         binds.uniforms.desc = ubinds;
         binds.uniforms.size = sizeof(ubinds);
+    }
 
-        // Bind bindings
-        gs_graphics_apply_bindings(&gsi->commands, &binds);
+    // Bind bindings
+    gs_graphics_apply_bindings(&gsi->commands, &binds);
 
-        // Submit draw
-        gs_graphics_draw_desc_t draw = gs_default_val();
-        draw.start = 0; draw.count = ct;
-        gs_graphics_draw(&gsi->commands, &draw);
-    } 
+    // Submit draw
+    gs_graphics_draw_desc_t draw = gs_default_val();
+    draw.start = 0; draw.count = ct;
+    gs_graphics_draw(&gsi->commands, &draw);
 
 	// Clear data
 	gs_byte_buffer_clear(&gsi->vertices);
@@ -695,9 +722,10 @@ GS_API_DECL void gsi_texture(gs_immediate_draw_t* gsi, gs_handle(gs_graphics_tex
 }
 
 GS_API_DECL void gsi_vattr_list(gs_immediate_draw_t* gsi, gsi_vattr_type* list, size_t sz)
-{
-    gs_dyn_array_clear(gsi->vattributes);
+{ 
+	gsi_flush(gsi);
 
+    gs_dyn_array_clear(gsi->vattributes);
     uint32_t ct = sz / sizeof(gsi_vattr_type);
     for (uint32_t i = 0; i < ct; ++i)
     {
@@ -705,10 +733,30 @@ GS_API_DECL void gsi_vattr_list(gs_immediate_draw_t* gsi, gsi_vattr_type* list, 
     }
 }
 
-GS_API_DECL void gsi_set_flush_cb(gs_immediate_draw_t* gsi, gsi_flush_cb cb)
+GS_API_DECL void gsi_vattr_list_mesh(gs_immediate_draw_t* gsi, gs_asset_mesh_layout_t* layout, size_t sz)
 {
-    gsi->flush_cb = cb;
-}
+	gsi_flush(gsi);
+
+    gs_dyn_array_clear(gsi->vattributes);
+
+#define VATTR_PUSH(TYPE)\
+    do {\
+        gs_dyn_array_push(gsi->vattributes, TYPE);\
+    } while (0)
+
+    uint32_t ct = sz / sizeof(gs_asset_mesh_layout_t);
+    for (uint32_t i = 0; i < ct; ++i)
+    {
+        gs_asset_mesh_attribute_type type = layout[i].type;
+        switch (type)
+        {
+            default:
+            case GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION: VATTR_PUSH(GSI_VATTR_POSITION); break;
+            case GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD: VATTR_PUSH(GSI_VATTR_UV); break; 
+            case GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR:    VATTR_PUSH(GSI_VATTR_COLOR); break;
+        }
+    }
+} 
 
 GS_API_DECL void gsi_defaults(gs_immediate_draw_t* gsi)
 {
@@ -720,10 +768,7 @@ GS_API_DECL void gsi_defaults(gs_immediate_draw_t* gsi)
 	gsi->cache.pipeline.prim_type = 0x00;
 	gsi->cache.uv = gs_v2(0.f, 0.f);
 	gsi->cache.color = GS_COLOR_WHITE;
-    gs_dyn_array_clear(gsi->vattributes);
-
-    // Not sure if it should be done here or not...
-    gsi->flush_cb = NULL;
+    gs_dyn_array_clear(gsi->vattributes); 
 
 	gs_immediate_draw_set_pipeline(gsi);
 }
@@ -748,9 +793,34 @@ void gsi_c4ub(gs_immediate_draw_t* gsi, uint8_t r, uint8_t g, uint8_t b, uint8_t
 
 void gsi_v3fv(gs_immediate_draw_t* gsi, gs_vec3 p)
 {
-    if (gs_byte_buffer_size(&gsi->vattributes))
+    if (gs_dyn_array_size(gsi->vattributes))
     {
         // Iterate through attributes and push into stream
+        for (uint32_t i = 0; i < gs_dyn_array_size(gsi->vattributes); ++i) 
+        {
+            gsi_vattr_type type = gsi->vattributes[i];
+            switch (type)
+            {
+                default:
+                {
+                } break;
+
+                case GSI_VATTR_POSITION: 
+                {
+	                gs_byte_buffer_write(&gsi->vertices, gs_vec3, p);
+                } break;
+
+                case GSI_VATTR_COLOR: 
+                {
+	                gs_byte_buffer_write(&gsi->vertices, gs_color_t, gsi->cache.color);
+                } break;
+
+                case GSI_VATTR_UV: 
+                {
+	                gs_byte_buffer_write(&gsi->vertices, gs_vec2, gsi->cache.uv);
+                } break;
+            }
+        }
     }
     else
     {
@@ -780,10 +850,13 @@ void gsi_v2fv(gs_immediate_draw_t* gsi, gs_vec2 v)
 	gsi_v3f(gsi, v.x, v.y, 0.f);
 }
 
-void gsi_push_matrix(gs_immediate_draw_t* gsi, gsi_matrix_type type)
+void gsi_push_matrix_ex(gs_immediate_draw_t* gsi, gsi_matrix_type type, bool flush)
 {
 	// Flush
-	gsi_flush(gsi);
+    if (flush)
+    {
+	    gsi_flush(gsi);
+    }
 
 	// Push mode
 	gs_dyn_array_push(gsi->cache.modes, type);
@@ -803,10 +876,18 @@ void gsi_push_matrix(gs_immediate_draw_t* gsi, gsi_matrix_type type)
 	}
 }
 
-void gsi_pop_matrix(gs_immediate_draw_t* gsi)
+void gsi_push_matrix(gs_immediate_draw_t* gsi, gsi_matrix_type type)
+{
+    gsi_push_matrix_ex(gsi, type, true);
+} 
+
+void gsi_pop_matrix_ex(gs_immediate_draw_t* gsi, bool flush)
 {
 	// Flush
-	gsi_flush(gsi);
+    if (flush)
+    {
+	    gsi_flush(gsi);
+    }
 
 	// Pop matrix off of stack
 	switch (gs_dyn_array_back(gsi->cache.modes))
@@ -827,6 +908,11 @@ void gsi_pop_matrix(gs_immediate_draw_t* gsi)
 	if (gs_dyn_array_size(gsi->cache.modes) > 1) {
 		gs_dyn_array_pop(gsi->cache.modes);
 	}
+}
+
+void gsi_pop_matrix(gs_immediate_draw_t* gsi)
+{
+    gsi_pop_matrix_ex(gsi, true);
 }
 
 void gsi_load_matrix(gs_immediate_draw_t* gsi, gs_mat4 m)
@@ -887,16 +973,27 @@ void gsi_rotatefv(gs_immediate_draw_t* gsi, float angle, gs_vec3 v)
 	gsi_rotatef(gsi, angle, v.x, v.y, v.z);
 }
 
-void gsi_transf(gs_immediate_draw_t* gsi, float x, float y, float z)
+void gsi_translatef(gs_immediate_draw_t* gsi, float x, float y, float z)
 {
 	// Translate current matrix at mode
 	gsi_mul_matrix(gsi, gs_mat4_translate(x, y, z));
+}
+
+void gsi_translatev(gs_immediate_draw_t* gsi, gs_vec3 v)
+{
+	// Translate current matrix at mode
+	gsi_mul_matrix(gsi, gs_mat4_translate(v.x, v.y, v.z));
 }
 
 void gsi_scalef(gs_immediate_draw_t* gsi, float x, float y, float z)
 {
 	// Scale current matrix at mode
 	gsi_mul_matrix(gsi, gs_mat4_scale(x, y, z));
+}
+
+void gsi_scalev(gs_immediate_draw_t* gsi, gs_vec3 v)
+{
+    gsi_mul_matrix(gsi, gs_mat4_scalev(v));
 }
 
 void gsi_camera(gs_immediate_draw_t* gsi, gs_camera_t* cam)
