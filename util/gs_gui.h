@@ -203,7 +203,8 @@ enum {
     GS_GUI_OPT_NOBRINGTOFRONT = (1 << 22), 
     GS_GUI_OPT_LEFTCLICKONLY = (1 << 23),
     GS_GUI_OPT_NOSWITCHSTATE = (1 << 24),
-    GS_GUI_OPT_NOBORDER      = (1 << 25)
+    GS_GUI_OPT_NOBORDER      = (1 << 25),
+    GS_GUI_OPT_ISCONTENT     = (1 << 26)
 };
 
 enum {
@@ -426,6 +427,7 @@ typedef enum gs_gui_element_type
     GS_GUI_ELEMENT_INPUT,
     GS_GUI_ELEMENT_BUTTON,
     GS_GUI_ELEMENT_SCROLL,
+    GS_GUI_ELEMENT_IMAGE,
     GS_GUI_ELEMENT_COUNT
 } gs_gui_element_type; 
 
@@ -775,6 +777,9 @@ typedef struct gs_gui_context_t
     // Active Transitions
     gs_hash_table(gs_gui_id, gs_gui_animation_t) animations;
 
+    // Font stash
+    gs_hash_table(uint64_t, gs_asset_font_t*) font_stash; 
+
     // Callbacks
     struct {
         gs_gui_on_draw_button_callback button;
@@ -865,13 +870,28 @@ typedef struct
 
 } gs_gui_context_pruned_t; 
 
+typedef struct {
+    const char* key;
+    gs_asset_font_t* font;
+} gs_gui_font_desc_t;
+
+typedef struct {
+    gs_gui_font_desc_t* fonts;
+    size_t size;
+} gs_gui_font_stash_desc_t;
+
 gs_gui_rect_t gs_gui_rect(float x, float y, float w, float h);
 
+//=== Context ===//
 GS_API_DECL void gs_gui_init(gs_gui_context_t *ctx, uint32_t window_hndl);
+GS_API_DECL void gs_gui_init_font_stash(gs_gui_context_t *ctx, gs_gui_font_stash_desc_t* desc);
+GS_API_DECL gs_gui_context_t gs_gui_context_new(uint32_t window_hndl);
+GS_API_DECL void gs_gui_free(gs_gui_context_t* ctx); 
 GS_API_DECL void gs_gui_begin(gs_gui_context_t *ctx);
 GS_API_DECL void gs_gui_end(gs_gui_context_t *ctx); 
-GS_API_DECL void gs_gui_free(gs_gui_context_t* ctx);
 GS_API_DECL void gs_gui_render(gs_gui_context_t* ctx, gs_command_buffer_t* cb);
+
+//=== Main API ===//
 GS_API_DECL void gs_gui_set_focus(gs_gui_context_t *ctx, gs_gui_id id);
 GS_API_DECL void gs_gui_set_hover(gs_gui_context_t *ctx, gs_gui_id id);
 GS_API_DECL gs_gui_id gs_gui_get_id(gs_gui_context_t *ctx, const void *data, int32_t size);
@@ -881,6 +901,10 @@ GS_API_DECL void gs_gui_push_clip_rect(gs_gui_context_t *ctx, gs_gui_rect_t rect
 GS_API_DECL void gs_gui_pop_clip_rect(gs_gui_context_t *ctx);
 GS_API_DECL gs_gui_rect_t gs_gui_get_clip_rect(gs_gui_context_t *ctx);
 GS_API_DECL int32_t gs_gui_check_clip(gs_gui_context_t *ctx, gs_gui_rect_t r);
+GS_API_DECL int32_t gs_gui_mouse_over(gs_gui_context_t* ctx, gs_gui_rect_t rect);
+GS_API_DECL void gs_gui_update_control(gs_gui_context_t* ctx, gs_gui_id id, gs_gui_rect_t rect, int32_t opt);
+
+//=== Conatiner ===//
 GS_API_DECL gs_gui_container_t* gs_gui_get_current_container(gs_gui_context_t *ctx);
 GS_API_DECL gs_gui_container_t* gs_gui_get_container(gs_gui_context_t *ctx, const char *name); 
 GS_API_DECL gs_gui_container_t* gs_gui_get_top_most_container(gs_gui_context_t* ctx, gs_gui_split_t* split);
@@ -893,30 +917,41 @@ GS_API_DECL void gs_gui_tab_item_swap(gs_gui_context_t* ctx, gs_gui_container_t*
 GS_API_DECL gs_gui_container_t* gs_gui_get_root_container(gs_gui_context_t* ctx, gs_gui_container_t* cnt); 
 GS_API_DECL gs_gui_container_t* gs_gui_get_root_container_from_split(gs_gui_context_t* ctx, gs_gui_split_t* split);
 GS_API_DECL gs_gui_container_t* gs_gui_get_parent(gs_gui_context_t* ctx, gs_gui_container_t* cnt);
+
+//=== Animation ===//
 GS_API_DECL gs_gui_animation_t* gs_gui_get_animation(gs_gui_context_t* ctx, gs_gui_id id, int32_t elementid); 
 GS_API_DECL gs_gui_style_t gs_gui_animation_get_blend_style(gs_gui_context_t* ctx, gs_gui_animation_t* anim, int32_t elementid);
 
-// styles
-GS_API_DECL gs_gui_style_sheet_t gs_gui_style_sheet_new(gs_gui_context_t* ctx, gs_gui_style_sheet_desc_t* desc);
+//=== Style Sheet ===//
+GS_API_DECL gs_gui_style_sheet_t gs_gui_style_sheet_create(gs_gui_context_t* ctx, gs_gui_style_sheet_desc_t* desc);
+GS_API_DECL void gs_gui_style_sheet_destroy(gs_gui_context_t* ctx, gs_gui_style_sheet_t* ss);
 GS_API_DECL void gs_gui_set_element_style(gs_gui_context_t* ctx, gs_gui_element_type element, gs_gui_element_state state, gs_gui_style_element_t* style, size_t size);
 GS_API_DECL void gs_gui_style_sheet_set_element_styles(gs_gui_style_sheet_t* style_sheet, gs_gui_element_type element, gs_gui_element_state state, gs_gui_style_element_t* styles, size_t size);
 GS_API_DECL void gs_gui_set_style_sheet(gs_gui_context_t* ctx, gs_gui_style_sheet_t* style_sheet);
 
+//=== Resource Loading ===//
+GS_API_DECL gs_gui_style_sheet_t gs_gui_style_sheet_load_from_file(gs_gui_context_t* ctx, const char* file_path);
+
+//=== Pools ===//
 GS_API_DECL int32_t gs_gui_pool_init(gs_gui_context_t *ctx, gs_gui_pool_item_t *items, int32_t len, gs_gui_id id);
 GS_API_DECL int32_t gs_gui_pool_get(gs_gui_context_t *ctx, gs_gui_pool_item_t *items, int32_t len, gs_gui_id id);
 GS_API_DECL void gs_gui_pool_update(gs_gui_context_t *ctx, gs_gui_pool_item_t *items, int32_t idx);
 
+//=== Input ===//
 GS_API_DECL void gs_gui_input_mousemove(gs_gui_context_t *ctx, int32_t x, int32_t y);
 GS_API_DECL void gs_gui_input_mousedown(gs_gui_context_t *ctx, int32_t x, int32_t y, int32_t btn);
 GS_API_DECL void gs_gui_input_mouseup(gs_gui_context_t *ctx, int32_t x, int32_t y, int32_t btn);
 GS_API_DECL void gs_gui_input_scroll(gs_gui_context_t *ctx, int32_t x, int32_t y);
 GS_API_DECL void gs_gui_input_keydown(gs_gui_context_t *ctx, int32_t key);
 GS_API_DECL void gs_gui_input_keyup(gs_gui_context_t *ctx, int32_t key);
-GS_API_DECL void gs_gui_input_text(gs_gui_context_t *ctx, const char *text);
+GS_API_DECL void gs_gui_input_text(gs_gui_context_t *ctx, const char *text); 
 
+//=== Commands ===//
 GS_API_DECL gs_gui_command_t* gs_gui_push_command(gs_gui_context_t* ctx, int32_t type, int32_t size);
-GS_API_DECL int32_t gs_gui_next_command(gs_gui_context_t* ctx, gs_gui_command_t** cmd);
+GS_API_DECL int32_t gs_gui_next_command(gs_gui_context_t* ctx, gs_gui_command_t** cmd); 
 GS_API_DECL void gs_gui_set_clip(gs_gui_context_t* ctx, gs_gui_rect_t rect);
+
+//=== Drawing ===//
 GS_API_DECL void gs_gui_draw_rect(gs_gui_context_t* ctx, gs_gui_rect_t rect, gs_color_t color);
 GS_API_DECL void gs_gui_draw_circle(gs_gui_context_t* ctx, gs_vec2 position, float radius, gs_color_t color);
 GS_API_DECL void gs_gui_draw_triangle(gs_gui_context_t* ctx, gs_vec2 a, gs_vec2 b, gs_vec2 c, gs_color_t color);
@@ -925,6 +960,10 @@ GS_API_DECL void gs_gui_draw_text(gs_gui_context_t* ctx, gs_asset_font_t* font, 
 GS_API_DECL void gs_gui_draw_icon(gs_gui_context_t* ctx, int32_t id, gs_gui_rect_t rect, gs_color_t color);
 GS_API_DECL void gs_gui_draw_image(gs_gui_context_t* ctx, gs_handle(gs_graphics_texture_t) hndl, gs_gui_rect_t rect, gs_vec2 uv0, gs_vec2 uv1, gs_color_t color);
 GS_API_DECL void gs_gui_draw_nine_rect(gs_gui_context_t* ctx, gs_handle(gs_graphics_texture_t) hndl, gs_gui_rect_t rect, gs_vec2 uv0, gs_vec2 uv1, uint32_t left, uint32_t right, uint32_t top, uint32_t bottom, gs_color_t color);
+GS_API_DECL void gs_gui_draw_control_frame(gs_gui_context_t* ctx, gs_gui_id id, gs_gui_rect_t rect, int32_t elementid, int32_t opt);
+GS_API_DECL void gs_gui_draw_control_text(gs_gui_context_t* ctx, const char *str, gs_gui_rect_t rect, const gs_gui_style_t* style, int32_t opt);
+
+//=== Layout ===//
 GS_API_DECL void gs_gui_layout_row(gs_gui_context_t *ctx, int32_t items, const int32_t *widths, int32_t height);
 GS_API_DECL void gs_gui_layout_width(gs_gui_context_t *ctx, int32_t width);
 GS_API_DECL void gs_gui_layout_height(gs_gui_context_t *ctx, int32_t height);
@@ -934,12 +973,7 @@ GS_API_DECL void gs_gui_layout_set_next(gs_gui_context_t *ctx, gs_gui_rect_t r, 
 GS_API_DECL gs_gui_rect_t gs_gui_layout_next(gs_gui_context_t *ctx); 
 GS_API_DECL gs_gui_rect_t gs_gui_layout_anchor(const gs_gui_rect_t* parent, int32_t width, int32_t height, int32_t xoff, int32_t yoff, gs_gui_layout_anchor_type type);
 
-GS_API_DECL void gs_gui_draw_control_frame(gs_gui_context_t* ctx, gs_gui_id id, gs_gui_rect_t rect, int32_t elementid, int32_t opt);
-GS_API_DECL void gs_gui_draw_control_text(gs_gui_context_t* ctx, const char *str, gs_gui_rect_t rect, const gs_gui_style_t* style, int32_t opt);
-GS_API_DECL int32_t gs_gui_mouse_over(gs_gui_context_t* ctx, gs_gui_rect_t rect);
-GS_API_DECL void gs_gui_update_control(gs_gui_context_t* ctx, gs_gui_id id, gs_gui_rect_t rect, int32_t opt);
-
-// Widgets
+//=== Elements ===//
 #define gs_gui_button(_CTX, _LABEL)				    gs_gui_button_ex((_CTX), (_LABEL), 0, GS_GUI_OPT_ALIGNCENTER | GS_GUI_OPT_LEFTCLICKONLY)
 #define gs_gui_text(_CTX, _TXT)                     gs_gui_text_ex((_CTX), (_TXT), 1)
 #define gs_gui_textbox(_CTX, _BUF, _BUFSZ)			gs_gui_textbox_ex((_CTX), (_BUF), (_BUFSZ), 0)
@@ -954,6 +988,7 @@ GS_API_DECL void gs_gui_update_control(gs_gui_context_t* ctx, gs_gui_id id, gs_g
 #define gs_gui_undock(_CTX, _NAME)                  gs_gui_undock_ex((_CTX), (_NAME))
 #define gs_gui_image(_CTX, _HNDL)                   gs_gui_image_ex((_CTX), (_HNDL), gs_v2s(0.f), gs_v2s(1.f), 0)
 
+//=== Elements (Extended) ===//
 GS_API_DECL int32_t gs_gui_image_ex(gs_gui_context_t* ctx, gs_handle(gs_graphics_texture_t) hndl, gs_vec2 uv0, gs_vec2 uv1, int32_t opt);
 GS_API_DECL int32_t gs_gui_text_ex(gs_gui_context_t* ctx, const char* text, int32_t text_wrap);
 GS_API_DECL int32_t gs_gui_label(gs_gui_context_t* ctx, const char* text);
@@ -974,15 +1009,17 @@ GS_API_DECL void gs_gui_end_popup(gs_gui_context_t* ctx);
 GS_API_DECL void gs_gui_begin_panel_ex(gs_gui_context_t* ctx, const char* name, int32_t opt);
 GS_API_DECL void gs_gui_end_panel(gs_gui_context_t* ctx);
 
-// Demo windows
+//=== Demos ===//
 GS_API_DECL int32_t gs_gui_style_editor(gs_gui_context_t* ctx, gs_gui_style_sheet_t* style_sheet, gs_gui_rect_t rect, bool* open);
 GS_API_DECL int32_t gs_gui_demo_window(gs_gui_context_t* ctx, gs_gui_rect_t rect, bool* open);
 
-// Docking
+//=== Docking ===//
 GS_API_DECL void gs_gui_dock_ex(gs_gui_context_t* ctx, const char* dst, const char* src, int32_t split_type, float ratio);
 GS_API_DECL void gs_gui_undock_ex(gs_gui_context_t* ctx, const char* name);
 GS_API_DECL void gs_gui_dock_ex_cnt(gs_gui_context_t* ctx, gs_gui_container_t* dst, gs_gui_container_t* src, int32_t split_type, float ratio);
 GS_API_DECL void gs_gui_undock_ex_cnt(gs_gui_context_t* ctx, gs_gui_container_t* cnt);
+
+//=== Implementation ===//
 
 #ifdef GS_GUI_IMPL 
 
@@ -2143,7 +2180,7 @@ static void gs_gui_end_root_container(gs_gui_context_t *ctx)
         DST[ELEM][0x02] = SRC[ELEM][0x02];\
     } while (0)
 
-GS_API_DECL gs_gui_style_sheet_t gs_gui_style_sheet_new(gs_gui_context_t* ctx, gs_gui_style_sheet_desc_t* desc)
+GS_API_DECL gs_gui_style_sheet_t gs_gui_style_sheet_create(gs_gui_context_t* ctx, gs_gui_style_sheet_desc_t* desc)
 {
     // Generate new style sheet based on default element styles
     gs_gui_style_sheet_t style_sheet = gs_default_val(); 
@@ -2188,18 +2225,6 @@ GS_API_DECL gs_gui_style_sheet_t gs_gui_style_sheet_new(gs_gui_context_t* ctx, g
         GS_GUI_APPLY_STYLE_ELEMENT(desc->text, GS_GUI_ELEMENT_TEXT);
     }
 
-    /*
-typedef struct gs_gui_animation_property_list_t
-{
-    gs_dyn_array(gs_gui_animation_property_t) properties[3];
-} gs_gui_animation_property_list_t; 
-
-typedef struct gs_gui_style_sheet_t {
-    gs_gui_style_t styles[GS_GUI_ELEMENT_COUNT][3]; // default | hovered | focused
-    gs_hash_table(gs_gui_element_type, gs_gui_animation_property_list_t) animations;
-} gs_gui_style_sheet_t;
-*/
-
 #define COPY_ANIM_DATA(TYPE, ELEMENT)\
     do {\
         /* Apply animations */\
@@ -2233,6 +2258,29 @@ typedef struct gs_gui_style_sheet_t {
 
     return style_sheet;
 } 
+
+GS_API_DECL void gs_gui_style_sheet_destroy(gs_gui_context_t* ctx, gs_gui_style_sheet_t* ss)
+{
+    // Need to free all animations
+    if (!ss || !ss->animations) {
+        gs_log_warning("Trying to destroy invalid style sheet");
+        return;
+    }
+
+    for (
+        gs_hash_table_iter it = gs_hash_table_iter_new(ss->animations);
+        gs_hash_table_iter_valid(ss->animations, it);
+        gs_hash_table_iter_advance(ss->animations, it)
+    )
+    {
+        gs_gui_animation_property_list_t* list = gs_hash_table_iter_getp(ss->animations, it);
+        for (uint32_t i = 0; i < 3; ++i)
+        {
+            gs_dyn_array_free(list->properties[i]);
+        }
+    }
+    gs_hash_table_free(ss->animations);
+}
 
 GS_API_DECL void gs_gui_set_style_sheet(gs_gui_context_t* ctx, gs_gui_style_sheet_t* style_sheet)
 {
@@ -3177,6 +3225,22 @@ GS_API_DECL void gs_gui_init(gs_gui_context_t *ctx, uint32_t window_hndl)
     gs_gui_tab_bar_t tb = gs_default_val();
     gs_slot_array_insert(ctx->tab_bars, tb);
 } 
+
+GS_API_DECL void gs_gui_init_font_stash(gs_gui_context_t* ctx, gs_gui_font_stash_desc_t* desc)
+{
+    gs_hash_table_clear(ctx->font_stash);
+    uint32_t ct = sizeof(gs_gui_font_desc_t) / desc->size;
+    for (uint32_t i = 0; i < ct; ++i) {
+        gs_hash_table_insert(ctx->font_stash, gs_hash_str64(desc->fonts[i].key), desc->fonts[i].font);
+    }
+}
+
+GS_API_DECL gs_gui_context_t gs_gui_context_new(uint32_t window_hndl)
+{
+    gs_gui_context_t gui = gs_default_val();
+    gs_gui_init(&gui, window_hndl);
+    return gui;
+}
 
 GS_API_DECL void gs_gui_free(gs_gui_context_t* ctx)
 {
@@ -5054,21 +5118,30 @@ GS_API_DECL void gs_gui_draw_control_text(gs_gui_context_t *ctx, const char *str
         } break;
     } 
 
+    bool is_content = (opt & GS_GUI_OPT_ISCONTENT);
+    int32_t bg_color = is_content ? GS_GUI_COLOR_CONTENT_BACKGROUND : 
+                                    GS_GUI_COLOR_BACKGROUND;
+    int32_t sh_color = is_content ? GS_GUI_COLOR_CONTENT_SHADOW : 
+                                    GS_GUI_COLOR_SHADOW;
+    int32_t bd_color = is_content ? GS_GUI_COLOR_CONTENT_BORDER : 
+                                    GS_GUI_COLOR_BORDER;
+
     int32_t sx = style->shadow_x;
     int32_t sy = style->shadow_y;
-    gs_color_t* sc = &style->colors[GS_GUI_COLOR_SHADOW];
+    gs_color_t* sc = &style->colors[sh_color]; 
 
     // draw border
-    if (style->colors[GS_GUI_COLOR_BORDER].a) 
+    gs_color_t* bc = &style->colors[bd_color]; 
+    if (bc->a) 
     {
         gs_gui_pop_clip_rect(ctx);
         gs_gui_rect_t border_rect = gs_gui_expand_rect(rect, style->border_width);
 	    gs_gui_push_clip_rect(ctx, border_rect);
-        gs_gui_draw_box(ctx, border_rect, style->border_width, style->colors[GS_GUI_COLOR_BORDER]);
+        gs_gui_draw_box(ctx, border_rect, style->border_width, *bc);
     }
 
     // Draw background rect
-    gs_gui_draw_rect(ctx, rect, style->colors[GS_GUI_COLOR_BACKGROUND]); 
+    gs_gui_draw_rect(ctx, rect, style->colors[bg_color]); 
 	gs_gui_draw_text(ctx, font, str, -1, pos, style->colors[GS_GUI_COLOR_CONTENT], sx, sy, *sc);
 	gs_gui_pop_clip_rect(ctx);
 } 
@@ -5432,6 +5505,7 @@ GS_API_DECL int32_t gs_gui_button_ex(gs_gui_context_t *ctx, const char *label, i
             gs_gui_draw_box(ctx, gs_gui_expand_rect(r, style.border_width), style.border_width, style.colors[GS_GUI_COLOR_BORDER]);
         }
 
+        opt |= GS_GUI_OPT_ISCONTENT;
         gs_gui_draw_rect(ctx, r, style.colors[GS_GUI_COLOR_BACKGROUND]);
         if (label) {gs_gui_draw_control_text(ctx, label, r, &style, opt);}
         // if (icon) {gs_gui_draw_icon(ctx, icon, r, ctx->style->colors[GS_GUI_COLOR_TEXT]);} 
@@ -7103,9 +7177,12 @@ GS_API_DECL int32_t gs_gui_style_editor(gs_gui_context_t *ctx, gs_gui_style_shee
 
     static struct {const char* label; int32_t idx;} colors[] = {
         {"background",  GS_GUI_COLOR_BACKGROUND},
-        {"content",  GS_GUI_COLOR_CONTENT} ,
         {"border",  GS_GUI_COLOR_BORDER},
         {"shadow",  GS_GUI_COLOR_SHADOW},
+        {"content",  GS_GUI_COLOR_CONTENT} ,
+        {"content_shadow",  GS_GUI_COLOR_CONTENT_SHADOW},
+        {"content_background",  GS_GUI_COLOR_CONTENT_BACKGROUND},
+        {"content_border",  GS_GUI_COLOR_CONTENT_BORDER},
         {NULL}
     }; 
 
@@ -7138,24 +7215,6 @@ GS_API_DECL int32_t gs_gui_style_editor(gs_gui_context_t *ctx, gs_gui_style_shee
                         gs_gui_label(ctx, "size:");
                         gs_gui_slider(ctx, &s->size[0], 0.f, 500.f);
                         gs_gui_slider(ctx, &s->size[1], 0.f, 500.f); 
-
-                        // spacing
-                        w = (l->body.w - ls) * 0.7f;
-                        gs_gui_layout_row(ctx, 2, (int[]) {ls, w}, 0); 
-                        gs_gui_label(ctx, "spacing:");
-                        gs_gui_slider(ctx, &s->spacing, 0.f, 100.f);
-
-                        gs_gui_label(ctx, "indent:");
-                        int16_slider(ctx, &s->indent, 0.f, 100.f);
-
-                        gs_gui_label(ctx, "scrollbar_size:");
-                        int16_slider(ctx, &s->scrollbar_size, 0.f, 100.f);
-
-                        gs_gui_label(ctx, "title_height:");
-                        int16_slider(ctx, &s->title_height, 0.f, 100.f);
-
-                        gs_gui_label(ctx, "thumb_size:");
-                        int16_slider(ctx, &s->thumb_size, 0.f, 100.f); 
 
                         w = (l->body.w - ls) * 0.2f;
                         gs_gui_layout_row(ctx, 5, (int[]) {ls, w, w, w, w}, 0); 
@@ -7343,10 +7402,7 @@ GS_API_DECL int32_t gs_gui_demo_window(gs_gui_context_t* ctx, gs_gui_rect_t rect
                     gs_gui_label(ctx, "(?)");
                     if (ctx->hover == ctx->last_id) gs_println("HOVERED");
                 }
-                gs_gui_layout_end_column(ctx);
-
-                // #define gs_gui_slider(_CTX, _VALUE, _LO, _HI)		gs_gui_slider_ex((_CTX), (_VALUE), (_LO), (_HI), 0, GS_GUI_SLIDER_FMT, GS_GUI_OPT_ALIGNCENTER)
-                // #define gs_gui_number(_CTX, _VALUE, _STEP)			gs_gui_number_ex((_CTX), (_VALUE), (_STEP), GS_GUI_SLIDER_FMT, GS_GUI_OPT_ALIGNCENTER)
+                gs_gui_layout_end_column(ctx); 
             }
             gs_gui_end_panel(ctx); 
             gs_gui_end_treenode(ctx);
@@ -7355,6 +7411,649 @@ GS_API_DECL int32_t gs_gui_demo_window(gs_gui_context_t* ctx, gs_gui_rect_t rect
         gs_gui_end_window(ctx); 
     }
     return 0x01;
+}
+
+//==== Resource Loading ===// 
+bool _gs_gui_style_sheet_parse_attribute_transition(gs_gui_context_t* ctx, gs_lexer_t* lex, gs_gui_style_sheet_t* ss, int32_t elementid, int32_t state)
+{
+    // Name of enum attribute 
+    gs_token_t token = gs_lexer_current_token(lex);
+    gs_token_debug_print(&token);
+
+#define GET_TO_VALUE()\
+    do {\
+        bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_COLON);\
+        ret &= gs_lexer_require_token_type(lex, GS_TOKEN_LBRACE);\
+        if (!ret) {\
+            gs_log_warning("Unidentified token.");\
+            return false;\
+        }\
+        token = gs_lexer_current_token(lex);\
+    } while (0)
+
+/*
+typedef struct gs_gui_animation_property_t
+{
+    gs_gui_style_element_type type;
+    int16_t time;
+    int16_t delay;
+} gs_gui_animation_property_t;
+
+typedef struct gs_gui_animation_property_list_t
+{
+    gs_dyn_array(gs_gui_animation_property_t) properties[3];
+} gs_gui_animation_property_list_t; 
+
+typedef struct gs_gui_style_sheet_t {
+    gs_gui_style_t styles[GS_GUI_ELEMENT_COUNT][3]; // default | hovered | focused
+    gs_hash_table(gs_gui_element_type, gs_gui_animation_property_list_t) animations;
+} gs_gui_style_sheet_t;
+*/
+
+#define PARSE_TRANSITION(T)\
+    do {\
+        bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_COLON);\
+        ret &= gs_lexer_require_token_type(lex, GS_TOKEN_NUMBER);\
+        if (!ret) {\
+            gs_log_warning("Unidentified token.");\
+            return false;\
+        }\
+        gs_token_t time = gs_lexer_current_token(lex);\
+        ret &= gs_lexer_require_token_type(lex, GS_TOKEN_NUMBER);\
+        if (!ret) {\
+            gs_log_warning("Unidentified token.");\
+            return false;\
+        }\
+        gs_token_t delay = gs_lexer_current_token(lex);\
+        gs_snprintfc(TIME, 32, "%.*s", time.len, time.text);\
+        gs_snprintfc(DELAY, 32, "%.*s", delay.len, delay.text);\
+        uint32_t time_v = (uint32_t)atoi(TIME);\
+        uint32_t delay_v = (uint32_t)atoi(DELAY);\
+        gs_gui_animation_property_t prop = gs_default_val();\
+        prop.type = T;\
+        prop.time = (int16_t)time_v;\
+        prop.delay = (int16_t)delay_v;\
+        switch (state)\
+        {\
+            case GS_GUI_ELEMENT_STATE_DEFAULT:\
+            {\
+                for (uint32_t s = 0; s < 3; ++s)\
+                {\
+                    gs_dyn_array_push(list->properties[s], prop);\
+                }\
+            } break;\
+            default:\
+            {\
+                    gs_dyn_array_push(list->properties[state], prop);\
+            } break;\
+        }\
+    } while (0)
+
+    GET_TO_VALUE();
+
+    if (!gs_hash_table_exists(ss->animations, (gs_gui_element_type)elementid)) 
+    {
+        gs_gui_animation_property_list_t list = gs_default_val();
+        gs_hash_table_insert(ss->animations, (gs_gui_element_type)elementid, list);
+    }
+    gs_gui_animation_property_list_t* list = gs_hash_table_getp(ss->animations, (gs_gui_element_type)elementid);
+
+    int32_t bc = 1;
+    while (gs_lexer_can_lex(lex) && bc)
+    {
+        token = gs_lexer_next_token(lex);
+        switch (token.type) 
+        {
+            case GS_TOKEN_LBRACE: bc++; break;
+            case GS_TOKEN_RBRACE: bc--; break;
+            case GS_TOKEN_IDENTIFIER:
+            {
+                if (gs_token_compare_text(&token, "color_background"))      PARSE_TRANSITION(GS_GUI_STYLE_COLOR_BACKGROUND);
+                else if (gs_token_compare_text(&token, "color_border"))     PARSE_TRANSITION(GS_GUI_STYLE_COLOR_BORDER);
+                else if (gs_token_compare_text(&token, "color_shadow"))     PARSE_TRANSITION(GS_GUI_STYLE_COLOR_SHADOW);
+                else if (gs_token_compare_text(&token, "color_content"))    PARSE_TRANSITION(GS_GUI_STYLE_COLOR_CONTENT);
+                else if (gs_token_compare_text(&token, "width"))            PARSE_TRANSITION(GS_GUI_STYLE_WIDTH);
+                else if (gs_token_compare_text(&token, "height"))           PARSE_TRANSITION(GS_GUI_STYLE_HEIGHT);
+                else if (gs_token_compare_text(&token, "padding"))          PARSE_TRANSITION(GS_GUI_STYLE_PADDING);
+                else if (gs_token_compare_text(&token, "padding_left"))     PARSE_TRANSITION(GS_GUI_STYLE_PADDING_LEFT);
+                else if (gs_token_compare_text(&token, "padding_right"))    PARSE_TRANSITION(GS_GUI_STYLE_PADDING_RIGHT);
+                else if (gs_token_compare_text(&token, "padding_top"))      PARSE_TRANSITION(GS_GUI_STYLE_PADDING_TOP);
+                else if (gs_token_compare_text(&token, "padding_bottom"))   PARSE_TRANSITION(GS_GUI_STYLE_PADDING_BOTTOM);
+                else if (gs_token_compare_text(&token, "margin"))           PARSE_TRANSITION(GS_GUI_STYLE_PADDING);
+                else if (gs_token_compare_text(&token, "margin_left"))      PARSE_TRANSITION(GS_GUI_STYLE_MARGIN_LEFT);
+                else if (gs_token_compare_text(&token, "margin_right"))     PARSE_TRANSITION(GS_GUI_STYLE_MARGIN_RIGHT);
+                else if (gs_token_compare_text(&token, "margin_top"))       PARSE_TRANSITION(GS_GUI_STYLE_MARGIN_TOP);
+                else if (gs_token_compare_text(&token, "margin_bottom"))    PARSE_TRANSITION(GS_GUI_STYLE_MARGIN_BOTTOM);
+                else if (gs_token_compare_text(&token, "shadow_x"))         PARSE_TRANSITION(GS_GUI_STYLE_SHADOW_X);
+                else if (gs_token_compare_text(&token, "shadow_y"))         PARSE_TRANSITION(GS_GUI_STYLE_SHADOW_Y);
+                else if (gs_token_compare_text(&token, "color_content_background")) PARSE_TRANSITION(GS_GUI_STYLE_COLOR_CONTENT_BACKGROUND);
+                else if (gs_token_compare_text(&token, "color_content_border"))     PARSE_TRANSITION(GS_GUI_STYLE_COLOR_CONTENT_BORDER);
+                else if (gs_token_compare_text(&token, "color_content_shadow"))     PARSE_TRANSITION(GS_GUI_STYLE_COLOR_CONTENT_SHADOW);
+            } break;
+        }
+    }
+
+    return true;
+}
+
+bool _gs_gui_style_sheet_parse_attribute_font(gs_gui_context_t* ctx, gs_lexer_t* lex, gs_gui_style_sheet_t* ss, int32_t elementid, int32_t state)
+{
+    // Name of enum attribute 
+    gs_token_t token = gs_lexer_current_token(lex);
+    gs_token_debug_print(&token);
+
+#define GET_TO_VALUE()\
+    do {\
+        bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_COLON);\
+        ret &= gs_lexer_require_token_type(lex, GS_TOKEN_IDENTIFIER);\
+        if (!ret) {\
+            gs_log_warning("Unidentified token.");\
+            return false;\
+        }\
+        token = gs_lexer_current_token(lex);\
+    } while (0)
+
+
+#define SET_FONT(FONT)\
+    do {\
+        switch (state)\
+        {\
+            case GS_GUI_ELEMENT_STATE_DEFAULT:\
+            {\
+                for (uint32_t s = 0; s < 3; ++s)\
+                {\
+                    ss->styles[elementid][s].font = FONT;\
+                }\
+            } break;\
+            default:\
+            {\
+                ss->styles[elementid][state].font = FONT;\
+            } break;\
+        }\
+    } while (0)
+
+    if (gs_token_compare_text(&token, "font"))
+    {
+        // For some reason, the hash table wasn't working...great.
+        GET_TO_VALUE(); 
+        gs_snprintfc(FONT, 32, "%.*s", token.len, token.text);
+        uint64_t hash = gs_hash_str64(FONT);
+        bool found = false;
+        for (
+                gs_hash_table_iter it = gs_hash_table_iter_new(ctx->font_stash);
+                gs_hash_table_iter_valid(ctx->font_stash, it);
+                gs_hash_table_iter_advance(ctx->font_stash, it)
+        )
+        {
+            uint64_t key = gs_hash_table_getk(ctx->font_stash, it);
+            if (hash == key)
+            {
+                gs_asset_font_t* font = gs_hash_table_iter_get(ctx->font_stash, it);
+                SET_FONT(font); 
+                found = true;
+                break;
+            } 
+        }
+        if (!found)
+        {
+            gs_log_warning("Font not found in gui font stash: %s", FONT);
+        }
+    }
+    else
+    {
+        gs_log_warning("Unidentified token.");
+        return false;
+    }
+}
+
+bool _gs_gui_style_sheet_parse_attribute_enum(gs_gui_context_t* ctx, gs_lexer_t* lex, gs_gui_style_sheet_t* ss, int32_t elementid, int32_t state)
+{
+    // Name of enum attribute 
+    gs_token_t token = gs_lexer_current_token(lex);
+    gs_token_debug_print(&token);
+
+#define GET_TO_VALUE()\
+    do {\
+        bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_COLON);\
+        ret &= gs_lexer_require_token_type(lex, GS_TOKEN_IDENTIFIER);\
+        if (!ret) {\
+            gs_log_warning("Unidentified token.");\
+            return false;\
+        }\
+        token = gs_lexer_current_token(lex);\
+    } while (0)
+
+#define SET_ENUM(COMP, VAL)\
+    do {\
+        switch (state)\
+        {\
+            case GS_GUI_ELEMENT_STATE_DEFAULT:\
+            {\
+                for (uint32_t s = 0; s < 3; ++s)\
+                {\
+                    ss->styles[elementid][s].COMP = VAL;\
+                }\
+            } break;\
+            default:\
+            {\
+                ss->styles[elementid][state].COMP = VAL;\
+            } break;\
+        }\
+    } while (0)
+
+    if (gs_token_compare_text(&token, "justify_content"))
+    {
+        GET_TO_VALUE(); 
+        if (gs_token_compare_text(&token, "start")) SET_ENUM(justify_content, GS_GUI_JUSTIFY_START);
+        else if (gs_token_compare_text(&token, "end")) SET_ENUM(justify_content, GS_GUI_JUSTIFY_END);
+        else if (gs_token_compare_text(&token, "center")) SET_ENUM(justify_content, GS_GUI_JUSTIFY_CENTER);
+    }
+    else if (gs_token_compare_text(&token, "align_content"))
+    { 
+        GET_TO_VALUE(); 
+        if (gs_token_compare_text(&token, "start")) SET_ENUM(align_content, GS_GUI_ALIGN_START);
+        else if (gs_token_compare_text(&token, "end")) SET_ENUM(align_content, GS_GUI_ALIGN_END);
+        else if (gs_token_compare_text(&token, "center")) SET_ENUM(align_content, GS_GUI_ALIGN_CENTER);
+    }
+
+    return true;
+}
+
+bool _gs_gui_style_sheet_parse_attribute_val(gs_gui_context_t* ctx, gs_lexer_t* lex, gs_gui_style_sheet_t* ss, int32_t elementid, int32_t state)
+{
+    // Name of value attribute 
+    gs_token_t token = gs_lexer_current_token(lex);
+    gs_token_debug_print(&token);
+
+    #define SET_VAL4(COMP)\
+        do {\
+            bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_COLON);\
+            ret &= gs_lexer_require_token_type(lex, GS_TOKEN_NUMBER);\
+            if (!ret) {\
+                gs_log_warning("Unidentified token.");\
+                return false;\
+            }\
+            token = gs_lexer_current_token(lex);\
+            gs_snprintfc(TMP, 10, "%.*s", token.len, token.text);\
+            uint32_t val = (uint32_t)atoi(TMP);\
+            switch (state) {\
+                case GS_GUI_ELEMENT_STATE_DEFAULT:\
+                {\
+                    for (uint32_t p = 0; p < 4; ++p) {\
+                        ss->styles[elementid][GS_GUI_ELEMENT_STATE_DEFAULT].COMP[p] = val;\
+                        ss->styles[elementid][GS_GUI_ELEMENT_STATE_HOVER].COMP[p] = val;\
+                        ss->styles[elementid][GS_GUI_ELEMENT_STATE_FOCUS].COMP[p] = val;\
+                    }\
+                } break;\
+                default:\
+                {\
+                    for (uint32_t p = 0; p < 4; ++p) {\
+                        ss->styles[elementid][state].COMP[p] = val;\
+                    }\
+                } break;\
+            }\
+        } while (0)
+
+    #define SET_VAL2(COMP0, COMP1)\
+        do {\
+            bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_COLON);\
+            ret &= gs_lexer_require_token_type(lex, GS_TOKEN_NUMBER);\
+            if (!ret) {\
+                gs_log_warning("Unidentified token.");\
+                return false;\
+            }\
+            token = gs_lexer_current_token(lex);\
+            gs_snprintfc(TMP, 10, "%.*s", token.len, token.text);\
+            uint32_t val = (uint32_t)atoi(TMP);\
+            switch (state) {\
+                case GS_GUI_ELEMENT_STATE_DEFAULT:\
+                {\
+                    ss->styles[elementid][GS_GUI_ELEMENT_STATE_DEFAULT].COMP0 = val;\
+                    ss->styles[elementid][GS_GUI_ELEMENT_STATE_HOVER].COMP0 = val;\
+                    ss->styles[elementid][GS_GUI_ELEMENT_STATE_FOCUS].COMP0 = val;\
+                    ss->styles[elementid][GS_GUI_ELEMENT_STATE_DEFAULT].COMP1 = val;\
+                    ss->styles[elementid][GS_GUI_ELEMENT_STATE_HOVER].COMP1 = val;\
+                    ss->styles[elementid][GS_GUI_ELEMENT_STATE_FOCUS].COMP1 = val;\
+                } break;\
+                default:\
+                {\
+                    ss->styles[elementid][state].COMP0 = val;\
+                    ss->styles[elementid][state].COMP1 = val;\
+                } break;\
+            }\
+        } while (0)
+
+    #define SET_VAL(COMP)\
+        do {\
+            bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_COLON);\
+            ret &= gs_lexer_require_token_type(lex, GS_TOKEN_NUMBER);\
+            if (!ret) {\
+                gs_log_warning("Unidentified token.");\
+                return false;\
+            }\
+            token = gs_lexer_current_token(lex);\
+            gs_snprintfc(TMP, 10, "%.*s", token.len, token.text);\
+            uint32_t val = (uint32_t)atoi(TMP);\
+            switch (state) {\
+                case GS_GUI_ELEMENT_STATE_DEFAULT:\
+                {\
+                    ss->styles[elementid][GS_GUI_ELEMENT_STATE_DEFAULT].COMP = val;\
+                    ss->styles[elementid][GS_GUI_ELEMENT_STATE_HOVER].COMP = val;\
+                    ss->styles[elementid][GS_GUI_ELEMENT_STATE_FOCUS].COMP = val;\
+                } break;\
+                default:\
+                {\
+                    ss->styles[elementid][state].COMP = val;\
+                } break;\
+            }\
+        } while (0)
+
+    if (gs_token_compare_text(&token, "width"))               SET_VAL(size[0]);
+    else if (gs_token_compare_text(&token, "height"))         SET_VAL(size[1]);
+    else if (gs_token_compare_text(&token, "padding"))        SET_VAL4(padding); 
+    else if (gs_token_compare_text(&token, "padding_left"))   SET_VAL(padding[GS_GUI_PADDING_LEFT]);
+    else if (gs_token_compare_text(&token, "padding_right"))  SET_VAL(padding[GS_GUI_PADDING_RIGHT]);
+    else if (gs_token_compare_text(&token, "padding_top"))    SET_VAL(padding[GS_GUI_PADDING_TOP]);
+    else if (gs_token_compare_text(&token, "padding_bottom")) SET_VAL(padding[GS_GUI_PADDING_BOTTOM]);
+    else if (gs_token_compare_text(&token, "margin"))         SET_VAL4(margin);
+    else if (gs_token_compare_text(&token, "margin_left"))    SET_VAL(margin[GS_GUI_MARGIN_LEFT]);
+    else if (gs_token_compare_text(&token, "margin_right"))   SET_VAL(margin[GS_GUI_MARGIN_RIGHT]);
+    else if (gs_token_compare_text(&token, "margin_top"))     SET_VAL(margin[GS_GUI_MARGIN_TOP]);
+    else if (gs_token_compare_text(&token, "margin_bottom"))  SET_VAL(margin[GS_GUI_MARGIN_BOTTOM]);
+    else if (gs_token_compare_text(&token, "border"))         SET_VAL4(border_width);
+    else if (gs_token_compare_text(&token, "border_left"))    SET_VAL(border_width[0]);
+    else if (gs_token_compare_text(&token, "border_right"))   SET_VAL(border_width[1]);
+    else if (gs_token_compare_text(&token, "border_top"))     SET_VAL(border_width[2]);
+    else if (gs_token_compare_text(&token, "border_bottom"))  SET_VAL(border_width[3]);
+    else if (gs_token_compare_text(&token, "shadow"))         SET_VAL2(shadow_x, shadow_y);
+
+    return true;
+}
+
+bool _gs_gui_style_sheet_parse_attribute_color(gs_gui_context_t* ctx, gs_lexer_t* lex, gs_gui_style_sheet_t* ss, int32_t elementid, int32_t state)
+{ 
+    // Name of color attribute 
+    gs_token_t token = gs_lexer_current_token(lex);
+    gs_token_debug_print(&token);
+
+    int32_t color = GS_GUI_COLOR_BACKGROUND; 
+    if (gs_token_compare_text(&token, "color_background"))   color = GS_GUI_COLOR_BACKGROUND;
+    else if (gs_token_compare_text(&token, "color_border"))  color = GS_GUI_COLOR_BORDER; 
+    else if (gs_token_compare_text(&token, "color_shadow"))  color = GS_GUI_COLOR_SHADOW; 
+    else if (gs_token_compare_text(&token, "color_content")) color = GS_GUI_COLOR_CONTENT; 
+    else if (gs_token_compare_text(&token, "color_content_background")) color = GS_GUI_COLOR_CONTENT_BACKGROUND; 
+    else if (gs_token_compare_text(&token, "color_content_border")) color = GS_GUI_COLOR_CONTENT_BORDER; 
+    else if (gs_token_compare_text(&token, "color_content_shadow")) color = GS_GUI_COLOR_CONTENT_SHADOW; 
+
+    token = gs_lexer_next_token(lex);
+    if (token.type != GS_TOKEN_COLON)
+    {
+        gs_log_warning("Unidentified token. (Expected colon after attribute type).");
+        gs_token_debug_print(&token);
+        return false;
+    }
+
+    token = gs_lexer_next_token(lex); 
+    gs_println("Parsing color: %.*s", token.len, token.text);
+
+    if (gs_token_compare_text(&token, "rgba") ||
+        gs_token_compare_text(&token, "rgb")
+    )
+    {
+        int32_t i = 0;
+        while (gs_lexer_can_lex(lex) && token.type != GS_TOKEN_RPAREN)
+        {
+            token = gs_lexer_next_token(lex);
+            switch (token.type)
+            { 
+                case GS_TOKEN_NUMBER:
+                {
+                    if (i < 4) 
+                    {
+                        gs_snprintfc(TMP, 10, "%.*s", token.len, token.text);
+                        uint8_t val = (uint8_t)atoi(TMP);
+
+                        #define SET_COLOR(STATE)\
+                            do {\
+                                switch (i)\
+                                {\
+                                    case 0: ss->styles[elementid][STATE].colors[color].r = val; break;\
+                                    case 1: ss->styles[elementid][STATE].colors[color].g = val; break;\
+                                    case 2: ss->styles[elementid][STATE].colors[color].b = val; break;\
+                                    case 3: ss->styles[elementid][STATE].colors[color].a = val; break;\
+                                }\
+                            } while (0)
+
+                        switch (state)
+                        {
+                            case GS_GUI_ELEMENT_STATE_HOVER:
+                            case GS_GUI_ELEMENT_STATE_FOCUS:
+                            {
+                                SET_COLOR(state);
+                            } break;
+
+                            case GS_GUI_ELEMENT_STATE_DEFAULT:
+                            {
+                                for (uint32_t s = 0; s < 3; ++s) {
+                                    SET_COLOR(s);
+                                }
+                            } break;
+                        }
+                        i++;
+                        gs_token_debug_print(&token);
+                    }
+                } break;
+            }
+        }
+
+        // Set alpha, if not provided
+        if (i < 4) ss->styles[elementid][state].colors[color].a = 255;
+    }
+    else
+    {
+        gs_log_warning("Unidentified color type found. (Expect either 'rgba' or 'rgb').");
+        return false;
+    }
+
+    
+    return true;
+}
+
+bool _gs_gui_style_sheet_parse_attribute(gs_gui_context_t* ctx, gs_lexer_t* lex, gs_gui_style_sheet_t* ss, int32_t elementid, int32_t state)
+{
+    // Name of attribute
+    gs_token_t token = gs_lexer_current_token(lex); 
+
+    if (gs_token_compare_text(&token, "color_background")         || 
+        gs_token_compare_text(&token, "color_border")             || 
+        gs_token_compare_text(&token, "color_shadow")             ||
+        gs_token_compare_text(&token, "color_content")            ||  
+        gs_token_compare_text(&token, "color_content_background") ||
+        gs_token_compare_text(&token, "color_content_border")     ||
+        gs_token_compare_text(&token, "color_content_shadow")    
+    )
+    {
+        if (!_gs_gui_style_sheet_parse_attribute_color(ctx, lex, ss, elementid, state))
+        {
+            gs_log_warning("Failed to parse color attribute.");
+            return false;
+        }
+    }
+    else if (gs_token_compare_text(&token, "width") || 
+             gs_token_compare_text(&token, "height") || 
+             gs_token_compare_text(&token, "padding") ||
+             gs_token_compare_text(&token, "padding_left") ||
+             gs_token_compare_text(&token, "padding_right") ||
+             gs_token_compare_text(&token, "padding_top") ||    
+             gs_token_compare_text(&token, "padding_bottom") ||
+             gs_token_compare_text(&token, "margin") ||
+             gs_token_compare_text(&token, "margin_left") ||
+             gs_token_compare_text(&token, "margin_right") ||
+             gs_token_compare_text(&token, "margin_top") ||
+             gs_token_compare_text(&token, "margin_bottom") ||
+             gs_token_compare_text(&token, "border") ||
+             gs_token_compare_text(&token, "border_left") ||
+             gs_token_compare_text(&token, "border_right") ||
+             gs_token_compare_text(&token, "border_top") ||
+             gs_token_compare_text(&token, "border_bottom") ||
+             gs_token_compare_text(&token, "shadow")
+    )
+    {
+        if (!_gs_gui_style_sheet_parse_attribute_val(ctx, lex, ss, elementid, state))
+        {
+            gs_log_warning("Failed to parse value attribute.");
+            return false;
+        }
+    }
+    else if (gs_token_compare_text(&token, "justify_content") || 
+             gs_token_compare_text(&token, "align_content")
+    )
+    {
+        if (!_gs_gui_style_sheet_parse_attribute_enum(ctx, lex, ss, elementid, state))
+        {
+            gs_log_warning("Failed to parse enum attribute.");
+            return false;
+        }
+    }
+
+    else if (gs_token_compare_text(&token, "font"))
+    {
+        if (!_gs_gui_style_sheet_parse_attribute_font(ctx, lex, ss, elementid, state))
+        {
+            gs_log_warning("Failed to parse font attribute.");
+            return false;
+        }
+    }
+
+    else if (gs_token_compare_text(&token, "transition"))
+    {
+        if (!_gs_gui_style_sheet_parse_attribute_transition(ctx, lex, ss, elementid, state))
+        {
+            gs_log_warning("Failed to parse transition attribute.");
+            return false;
+        }
+    }
+    return true;
+}
+
+bool _gs_gui_style_sheet_parse_element(gs_gui_context_t* ctx, gs_lexer_t* lex, gs_gui_style_sheet_t* ss, int32_t elementid)
+{
+    int32_t state = 0x00;
+    int32_t bc = 0;
+    gs_token_t token = gs_lexer_next_token(lex);
+    if (token.type == GS_TOKEN_COLON) 
+    { 
+        token = gs_lexer_next_token(lex);
+        if (token.type != GS_TOKEN_IDENTIFIER) 
+        {
+            gs_log_warning("Unidentified Token. (Expected identifier after colon).");
+            gs_token_debug_print(&token);
+            return false;
+        }
+
+        if (gs_token_compare_text(&token, "focus"))      state = GS_GUI_ELEMENT_STATE_FOCUS;
+        else if (gs_token_compare_text(&token, "hover")) state = GS_GUI_ELEMENT_STATE_HOVER;
+        else
+        {
+            gs_log_warning("Unidentified element state provided: %.*s", token.len, token.text);
+            return false;
+        }
+
+        // Get rbrace
+        token = gs_lexer_next_token(lex);
+    } 
+
+    if (token.type != GS_TOKEN_LBRACE) 
+    {
+        gs_log_warning("Unidentified token. (Expected brace after element declaration).");
+        gs_token_debug_print(&token);
+        return false;
+    } 
+
+    bc = 1;
+    while (gs_lexer_can_lex(lex) && bc)
+    {
+        token = gs_lexer_next_token(lex);
+        switch (token.type)
+        {
+            case GS_TOKEN_LBRACE: bc++; break;
+            case GS_TOKEN_RBRACE: bc--; break;
+            case GS_TOKEN_IDENTIFIER:
+            { 
+                gs_println("Parsing attribute: %.*s", token.len, token.text);
+                if (!_gs_gui_style_sheet_parse_attribute(ctx, lex, ss, elementid, state))
+                {
+                    gs_log_warning("Unable to parse attribute");
+                    return false;
+                }
+            } break;
+        }
+    }
+
+    return true;
+}
+
+// Going to require a lot of parsing
+GS_API_DECL gs_gui_style_sheet_t gs_gui_style_sheet_load_from_file(gs_gui_context_t* ctx, const char* file_path)
+{ 
+    // Generate new style sheet based on default element styles
+    gs_gui_style_sheet_t ss = gs_default_val(); 
+
+    // Copy all default styles
+    GS_GUI_COPY_STYLES(ss.styles, gs_gui_default_style_sheet.styles, GS_GUI_ELEMENT_CONTAINER);
+    GS_GUI_COPY_STYLES(ss.styles, gs_gui_default_style_sheet.styles, GS_GUI_ELEMENT_LABEL);
+    GS_GUI_COPY_STYLES(ss.styles, gs_gui_default_style_sheet.styles, GS_GUI_ELEMENT_TEXT);
+    GS_GUI_COPY_STYLES(ss.styles, gs_gui_default_style_sheet.styles, GS_GUI_ELEMENT_PANEL);
+    GS_GUI_COPY_STYLES(ss.styles, gs_gui_default_style_sheet.styles, GS_GUI_ELEMENT_INPUT);
+    GS_GUI_COPY_STYLES(ss.styles, gs_gui_default_style_sheet.styles, GS_GUI_ELEMENT_BUTTON);
+    GS_GUI_COPY_STYLES(ss.styles, gs_gui_default_style_sheet.styles, GS_GUI_ELEMENT_SCROLL); 
+
+    char* fd = gs_platform_read_file_contents(file_path, "rb", NULL); 
+
+    if (!fd) {
+        gs_log_warning("Cannot load file: %s", file_path);
+        return ss;
+    }
+
+#define PARSE_ELEMENT(TYPE, TYPESTR)\
+    do {\
+        if (!_gs_gui_style_sheet_parse_element(ctx, &lex, &ss, TYPE))\
+        {\
+            gs_log_warning("Failed to parse element: %s", TYPESTR);\
+            break;\
+        }\
+    } while (0)
+
+    // Parse style sheet for styles
+    gs_lexer_t lex = gs_lexer_c_ctor(fd);
+    while (gs_lexer_c_can_lex(&lex))
+    {
+        gs_token_t token = lex.next_token(&lex);
+        switch (token.type)
+        {
+            case GS_TOKEN_IDENTIFIER:
+            {
+                if (gs_token_compare_text(&token, "button")) PARSE_ELEMENT(GS_GUI_ELEMENT_BUTTON, "button");
+                else if (gs_token_compare_text(&token, "text")) PARSE_ELEMENT(GS_GUI_ELEMENT_TEXT, "text");
+                else if (gs_token_compare_text(&token, "label")) PARSE_ELEMENT(GS_GUI_ELEMENT_LABEL, "label");
+                else if (gs_token_compare_text(&token, "image")) PARSE_ELEMENT(GS_GUI_ELEMENT_IMAGE, "image");
+                else if (gs_token_compare_text(&token, "scroll")) PARSE_ELEMENT(GS_GUI_ELEMENT_SCROLL, "scroll");
+                else if (gs_token_compare_text(&token, "panel")) PARSE_ELEMENT(GS_GUI_ELEMENT_PANEL, "panel");
+                else if (gs_token_compare_text(&token, "container")) PARSE_ELEMENT(GS_GUI_ELEMENT_CONTAINER, "container");
+                else
+                {
+                    gs_log_warning("Unidentified token. (Invalid element type found).");
+                    gs_token_debug_print(&token);
+                    break;
+                }
+
+            } break;
+        }
+    } 
+
+    if (fd) gs_free(fd);
+
+    return ss;
 }
 
 #endif // GS_GUI_IMPL 

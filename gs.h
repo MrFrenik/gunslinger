@@ -136,7 +136,7 @@
         further in the code for all provided options.
 
     It's also possible to define GS_NO_HIJACK_MAIN for your application. This will make it so gunslinger will not be
-    the main entry point to your application. You will instead be responsible for creating an engine instance and 
+    the main entry point to your application. You will instead be responsible for creating a gunslinger instance and 
     passing in your application description to it.
 
         #define GS_NO_HIJACK_MAIN
@@ -144,7 +144,7 @@
         int32_t main(int32_t argv, char** argc)
         {
             gs_app_desc_t app = {0}; // Fill this with whatever your app needs
-            gs_create(app);   // Create instance of engine for framework and run
+            gs_create(app);   // Create instance of framework and run
             while (gs_app()->is_running) {
                 gs_frame();
             }
@@ -156,7 +156,7 @@
         Internally, gunslinger does its best to handle the boiler plate drudge work of implementing (in correct order) 
         the various layers required for a basic hardware accelerated multi-media application program to work. This involves allocating 
         memory for internal data structures for these layers as well initializing them in a particular order so they can inter-operate
-        as expected. If you're interested in taking care of this yourself, look at the `gs_engine_frame()` function to get a feeling
+        as expected. If you're interested in taking care of this yourself, look at the `gs_frame()` function to get a feeling
         for how this is being handled.
 
     GS_MATH:
@@ -709,6 +709,20 @@ typedef bool32_t          bool32;
             __VA_ARGS__\
         }\
     } while (0) 
+
+//=== Logging ===//
+
+#define gs_log_success(MESSAGE, ...)\
+    gs_println("SUCCESS::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+
+#define gs_log_error(MESSAGE, ...)\
+    do {\
+        gs_println("ERROR::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);\
+    gs_assert(false);\
+    } while (0)
+
+#define gs_log_warning(MESSAGE, ...)\
+    gs_println("WARNING::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
 
 /*===================================
 // Memory Allocation Utils
@@ -1283,7 +1297,7 @@ void gs_snprintf
 
 #define gs_snprintfc(__NAME, __SZ, __FMT, ...)\
     char __NAME[__SZ] = gs_default_val();\
-    gs_snprintf(__NAME, __SZ, __FMT, ## __VA_ARGS__);
+    gs_snprintf(__NAME, __SZ, __FMT, ## __VA_ARGS__); 
 
 gs_force_inline
 uint32_t gs_util_safe_truncate_u64(uint64_t value)
@@ -4216,6 +4230,8 @@ typedef struct gs_lexer_t
 } gs_lexer_t;
 
 GS_API_DECL void gs_lexer_set_contents(gs_lexer_t* lex, const char* contents);
+GS_API_DECL gs_token_t gs_lexer_next_token(gs_lexer_t* lex);
+GS_API_DECL bool gs_lexer_can_lex(gs_lexer_t* lex);
 GS_API_DECL gs_token_t gs_lexer_current_token(const gs_lexer_t* lex);
 GS_API_DECL bool gs_lexer_require_token_text(gs_lexer_t* lex, const char* match);
 GS_API_DECL bool gs_lexer_require_token_type(gs_lexer_t* lex, gs_token_type type);
@@ -5814,10 +5830,10 @@ typedef struct gs_app_desc_t
 } gs_app_desc_t;
 
 /*
-    Game Engine Context: 
+    Game Context: 
 
-    * This is the main context for the gunslinger engine. Holds pointers to 
-        all interfaces registered with the engine, including the description 
+    * This is the main context for the gunslinger framework. Holds pointers to 
+        all interfaces registered with the framework, including the description 
         for your application.
 */
 typedef struct gs_context_t
@@ -7537,7 +7553,9 @@ GS_API_DECL void gs_lexer_c_eat_white_space(gs_lexer_t* lex)
 }
 
 GS_API_DECL gs_token_t gs_lexer_c_next_token(gs_lexer_t* lex)
-{
+{ 
+    lex->eat_white_space(lex);
+
 	gs_token_t t = gs_token_invalid_token();
 	t.text = lex->at;
 	t.len = 1;
@@ -7681,6 +7699,16 @@ GS_API_DECL gs_token_t gs_lexer_c_next_token(gs_lexer_t* lex)
 	lex->current_token = t;
 
 	return t;
+}
+
+GS_API_DECL gs_token_t gs_lexer_next_token(gs_lexer_t* lex)
+{
+    return lex->next_token(lex);
+}
+
+GS_API_DECL bool gs_lexer_can_lex(gs_lexer_t* lex)
+{
+    return lex->can_lex(lex);
 }
 
 GS_API_DECL gs_token_t gs_lexer_current_token(const gs_lexer_t* lex)
@@ -7891,7 +7919,7 @@ gs_app_desc_t* gs_app()
     return &gs_instance()->ctx.app;
 }
 
-// Define main frame function for engine to step
+// Define main frame function for framework to step
 GS_API_DECL void gs_frame()
 {
     // Remove these...
