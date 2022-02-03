@@ -296,39 +296,60 @@ while (gs_slot_map_iter_valid(sm, it))
 ```
 
 ## Byte Buffer
-`gs_byte_buffer_t` is a convenient data structure for being able to read/write structed byte information, which makes it perfect for binary serialization. Internally, it just consists of a dyanmic array of `uint8_t` data. 
+`gs_byte_buffer_t` is a convenient data structure for being able to read/write structed byte information, which makes it perfect for binary serialization. Internally, it just consists of a dynamic array of `uint8_t` data. 
 
 ## Byte Buffer API:
 
-* Create/Delete
+* New/Free
 ```c
 gs_byte_buffer_t bb = gs_byte_buffer_new();     // Create new byte buffer and initialize.
 gs_byte_buffer_free(&bb);                       // Free byte buffer memory by calling `gs_free()` internally.
 ```
 * Read/Write
 ```c
-gs_byte_buffer_write(&bb, T, val);          // Write data of type `T` into buffer.
+gs_byte_buffer_write(&bb, T, val);          // Macro for writing data of type `T` into buffer.
 
 T val;
-gs_byte_buffer_read(&bb, T, &val);          // Read data of type `T` into val. Pass in val by pointer.
+gs_byte_buffer_read(&bb, T, &val);          // Macro for reading data of type `T` into val. Pass in val by pointer.
 
 gs_byte_buffer_readc(&bb, T, NAME);         // Macro for reading data type `T` from buffer and constructing variable `NAME`. 
 ```
 * Read/Write Bulk
 ```c
-gs_byte_buffer_read_bulk(gs_byte_buffer_t* buffer, void** dst, size_t sz);
-gs_byte_buffer_read_bulkc(__BUFFER, __T, __NAME, __SZ);
-void gs_byte_buffer_write_bulk(gs_byte_buffer_t* buffer, void* src, size_t sz);
+gs_byte_buffer_read_bulk(gs_byte_buffer_t* buffer, void** dst, size_t sz);        // Reads 'sz' number of bytes from the buffer into 'dst'. 'dst' must be allocated.
+gs_byte_buffer_read_bulkc(BUFFER, T, NAME, SZ);                                   // Macro for bulk reading data type `T` from buffer and constructing variable `NAME`. 
+void gs_byte_buffer_write_bulk(gs_byte_buffer_t* buffer, void* src, size_t sz);   // Writes 'src' into buffer 'sz' amount of bytes.
 ```
 
 * Seek Commands
 ```c
+gs_byte_buffer_seek_to_beg(gs_byte_buffer_t* buffer);                   // Sets read/write position to beginning of buffer.
+gs_byte_buffer_seek_to_end(gs_byte_buffer_t* buffer);                   // Sets read/write position to end of buffer.
+gs_byte_buffer_advance_position(gs_byte_buffer_t* buffer, size_t sz);   // Advances byte buffer ahead in 'sz' number of bytes.
+```
+
+# Example
+```c
+gs_byte_buffer_t bb = gs_byte_buffer_new();   // Construct new byte buffer.
+gs_byte_buffer_write(&bb, uint32_t, 16);      // Write in a uint32_t value of 16.
+gs_byte_buffer_seek_to_beg(&bb);              // Set read position back to beginning of buffer to prepare for read.
+gs_byte_buffer_readc(&bb, uint32_t, v);       // Read the uint32_t value back into a variable 'v'.
 ```
 
 ## Command Buffer
+`gs_command_buffer_t` is used for buffering up data in "command packets" that can be used for various tasks, including rendering. For example, the graphics subsystem uses command buffers explicitly for the purpose of being able to buffer up as many commands as possible throughout the application that can then be passed along to the graphics subsystem to parse and push out to the graphics hardware. 
+
 ## Command Buffer API:
 
+* New/Free
+```c
+gs_command_buffer_t cb = gs_command_buffer_new();     // Create new command buffer and initialize.
+gs_command_buffer_free(gs_command_buffer_t* cb);      // Free byte buffer memory by calling `gs_free()` internally.
 
+* Read/Write
+gs_command_buffer_write(CB, CT, C, T, VAL);     // Macro for writing command 'C' of command type 'CT' into buffer. Then value 'VAL' of type 'T' is written as the packet data.
+gs_command_buffer_readc(CB, C, NAME);           // Macro for reading command type 'C' and constructing a variable of type `NAME`.
+```
 
 
 
