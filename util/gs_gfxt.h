@@ -1178,9 +1178,9 @@ typedef struct gs_pipeline_parse_data_t
         }\
 \
         uint32_t bc = 1;\
-        while (bc)\
+        while (gs_lexer_can_lex(lex) && bc)\
         {\
-            gs_token_t token = lex->next_token(lex);\
+            gs_token_t token = gs_lexer_next_token(lex);\
             switch (token.type)\
             {\
                 case GS_TOKEN_LBRACE: {bc++;} break;\
@@ -1265,35 +1265,51 @@ void gs_parse_uniforms(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t*
 {
     uint32_t image_binding = 0;
 
-    gs_parse_block(
-    PIPELINE::UNIFORMS,
+    if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_LBRACE))
     {
-        gs_gfxt_uniform_desc_t uniform = {0};
-        uniform.type = gs_uniform_type_from_token(&token); 
-        uniform.stage = stage;
+        gs_println("error::gs_pipeline_load_from_file::error parsing raster from .sf resource");
+        gs_assert(false);
+    }
 
-        switch (uniform.type)
+    uint32_t bc = 1;\
+    while (gs_lexer_can_lex(lex) && bc)
+    {
+        gs_token_t token = gs_lexer_next_token(lex);
+        switch (token.type)
         {
-            default: break;
+            case GS_TOKEN_LBRACE: {bc++;} break;
+            case GS_TOKEN_RBRACE: {bc--;} break;
 
-            case GS_GRAPHICS_UNIFORM_SAMPLER2D:
-            case GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F:
+            case GS_TOKEN_IDENTIFIER:
             {
-                uniform.binding = image_binding++;
+                gs_gfxt_uniform_desc_t uniform = {0};
+                uniform.type = gs_uniform_type_from_token(&token); 
+                uniform.stage = stage;
+
+                switch (uniform.type)
+                {
+                    default: break;
+
+                    case GS_GRAPHICS_UNIFORM_SAMPLER2D:
+                    case GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F:
+                    {
+                        uniform.binding = image_binding++;
+                    } break;
+                } 
+
+                if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER)) 
+                { 
+                    gs_assert(false);
+                } 
+                token = lex->current_token;
+
+                memcpy(uniform.name, token.text, token.len);
+
+                // Add uniform to ublock descriptor
+                gs_dyn_array_push(desc->ublock_desc.layout, uniform); 
             } break;
-        } 
-
-        if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER)) 
-        { 
-            gs_assert(false);
-        } 
-        token = lex->current_token;
-
-        memcpy(uniform.name, token.text, token.len);
-
-        // Add uniform to ublock descriptor
-        gs_dyn_array_push(desc->ublock_desc.layout, uniform); 
-    });
+        }
+    } 
 }
 
 void gs_parse_in(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd, gs_graphics_shader_stage_type type)
@@ -1306,73 +1322,88 @@ void gs_parse_in(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd, 
 
 void gs_parse_io(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd, gs_graphics_shader_stage_type type)
 {
-    gs_parse_block(
-    PIPELINE::IO,
+    if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_LBRACE))
     {
-        gs_shader_io_data_t io = {0}; 
-        memcpy(io.type, token.text, token.len);
+        gs_println("error::gs_pipeline_load_from_file::error parsing raster from .sf resource");\
+        gs_assert(false);
+    }
 
-        switch (type)
+    uint32_t bc = 1;
+    while (gs_lexer_can_lex(lex) && bc)
+    {
+        gs_token_t token = gs_lexer_next_token(lex);
+        switch (token.type)
         {
-            case GS_GRAPHICS_SHADER_STAGE_VERTEX:
+            case GS_TOKEN_LBRACE: {bc++;} break;
+            case GS_TOKEN_RBRACE: {bc--;} break;
+            case GS_TOKEN_IDENTIFIER:
             {
-                if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER)) 
-                { 
-                    gs_parse_error(false, "PIPELINE::IO::expected identifier name after type.");
+                gs_shader_io_data_t io = {0}; 
+                memcpy(io.type, token.text, token.len);
+
+                switch (type)
+                {
+                    case GS_GRAPHICS_SHADER_STAGE_VERTEX:
+                    {
+                        if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER)) 
+                        { 
+                            gs_parse_error(false, "PIPELINE::IO::expected identifier name after type.");
+                        } 
+                        token = lex->current_token;
+                        memcpy(io.name, token.text, token.len);
+                        gs_dyn_array_push(ppd->io_list[0], io);
+                    } break;
+
+                    case GS_GRAPHICS_SHADER_STAGE_FRAGMENT:
+                    {
+                        if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER)) 
+                        {
+                            gs_parse_error(false, "PIPELINE::IO::expected identifier name after type.");
+                        }
+                        token = lex->current_token;
+                        memcpy(io.name, token.text, token.len);
+                        gs_dyn_array_push(ppd->io_list[1], io);
+                    } break;
+
+                    case GS_GRAPHICS_SHADER_STAGE_COMPUTE:
+                    {
+                        if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_NUMBER)) 
+                        {
+                            gs_parse_error(false, "PIPELINE::IO::expected number after type.");
+                        }
+                        token = lex->current_token;
+                        memcpy(io.name, token.text, token.len);
+                        gs_dyn_array_push(ppd->io_list[2], io);
+                    } break;
                 } 
-                token = lex->current_token;
-                memcpy(io.name, token.text, token.len);
-                gs_dyn_array_push(ppd->io_list[0], io);
-            } break;
-
-            case GS_GRAPHICS_SHADER_STAGE_FRAGMENT:
-            {
-                if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER)) 
-                {
-                    gs_parse_error(false, "PIPELINE::IO::expected identifier name after type.");
-                }
-                token = lex->current_token;
-                memcpy(io.name, token.text, token.len);
-                gs_dyn_array_push(ppd->io_list[1], io);
-            } break;
-
-            case GS_GRAPHICS_SHADER_STAGE_COMPUTE:
-            {
-                if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_NUMBER)) 
-                {
-                    gs_parse_error(false, "PIPELINE::IO::expected number after type.");
-                }
-                token = lex->current_token;
-                memcpy(io.name, token.text, token.len);
-                gs_dyn_array_push(ppd->io_list[2], io);
-            } break;
-        } 
-    }); 
+            } break; 
+        }
+    }
 }
 
 void gs_parse_code(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd, gs_graphics_shader_stage_type stage)
 {
-	if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_LBRACE)) 
+	if (!gs_lexer_require_token_type(lex, GS_TOKEN_LBRACE)) 
     { 
         gs_assert(false);
     } 
 
     uint32_t bc = 1; 
-    gs_token_t cur = lex->next_token(lex);
+    gs_token_t cur = gs_lexer_peek(lex);
     gs_token_t token = lex->current_token;
-    while (bc)
+    while (gs_lexer_can_lex(lex) && bc)
     {
+        token = lex->next_token(lex);
         switch (token.type)
         { 
             case GS_TOKEN_LBRACE: {bc++;} break; 
             case GS_TOKEN_RBRACE: {bc--;} break; 
         }
-        token = lex->next_token(lex);
     }
 
     const size_t sz = (size_t)(token.text - cur.text - 1);
     char* code = gs_malloc(sz + 1);
-    memset(code, 0, sz);
+    memset(code, 0, sz + 1);
     memcpy(code, cur.text, sz - 1);
 
     switch (stage)
@@ -1425,9 +1456,9 @@ void gs_parse_vertex_mesh_attributes(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* d
     } 
 
     uint32_t bc = 1; 
-    while (bc)
+    while (gs_lexer_can_lex(lex) && bc)
     {
-        gs_token_t token = lex->next_token(lex);
+        gs_token_t token = gs_lexer_next_token(lex);
         switch (token.type)
         { 
             case GS_TOKEN_LBRACE: {bc++;} break; 
@@ -1487,36 +1518,52 @@ void gs_parse_vertex_attributes(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, 
 
 void gs_parse_shader_stage(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd, gs_graphics_shader_stage_type stage)
 {
-    gs_parse_block(
-    PIPELINE::SHADER_STAGE,
-    {
-        if (stage == GS_GRAPHICS_SHADER_STAGE_VERTEX && 
-             gs_token_compare_text(&token, "attributes"))
+        if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_LBRACE))
         {
-            gs_println("parsing attributes...");
-            gs_parse_vertex_attributes(lex, desc, ppd);
+            gs_println("error::gs_pipeline_load_from_file::error parsing raster from .sf resource");
+            gs_assert(false);
         }
 
-        else if (gs_token_compare_text(&token, "uniforms"))
+        uint32_t bc = 1;
+        while (gs_lexer_can_lex(lex) && bc)
         {
-            gs_parse_uniforms(lex, desc, ppd, stage);
-        }
+            gs_token_t token = gs_lexer_next_token(lex);
+            switch (token.type)
+            {
+                case GS_TOKEN_LBRACE: {bc++;} break;
+                case GS_TOKEN_RBRACE: {bc--;} break;
 
-        else if (gs_token_compare_text(&token, "out"))
-        {
-            gs_parse_io(lex, desc, ppd, stage);
-        }
+                case GS_TOKEN_IDENTIFIER:
+                {
+                    if (stage == GS_GRAPHICS_SHADER_STAGE_VERTEX && 
+                         gs_token_compare_text(&token, "attributes"))
+                    {
+                        gs_println("parsing attributes...");
+                        gs_parse_vertex_attributes(lex, desc, ppd);
+                    }
 
-        else if (gs_token_compare_text(&token, "in"))
-        {
-            gs_parse_io(lex, desc, ppd, stage);
-        }
+                    else if (gs_token_compare_text(&token, "uniforms"))
+                    {
+                        gs_parse_uniforms(lex, desc, ppd, stage);
+                    }
 
-        else if (gs_token_compare_text(&token, "code"))
-        {
-            gs_parse_code(lex, desc, ppd, stage);
+                    else if (gs_token_compare_text(&token, "out"))
+                    {
+                        gs_parse_io(lex, desc, ppd, stage);
+                    }
+
+                    else if (gs_token_compare_text(&token, "in"))
+                    {
+                        gs_parse_io(lex, desc, ppd, stage);
+                    }
+
+                    else if (gs_token_compare_text(&token, "code"))
+                    {
+                        gs_parse_code(lex, desc, ppd, stage);
+                    }
+                } break; 
+            }
         }
-    }); 
 }
 
 void gs_parse_compute_shader_stage(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd)
@@ -1551,7 +1598,7 @@ void gs_parse_shader(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* p
 
     // Braces
     uint32_t bc = 1; 
-    while (bc)
+    while (gs_lexer_can_lex(lex) && bc)
     {
         gs_token_t token = lex->next_token(lex);
         switch (token.type)

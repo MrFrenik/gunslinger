@@ -882,10 +882,12 @@ GS_API_DECL gs_handle(gs_graphics_storage_buffer_t) gs_graphics_storage_buffer_c
 
     glGenBuffers(1, &sbo.buffer); 
 
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo.buffer); 
-    glBufferData(GL_SHADER_STORAGE_BUFFER, desc->size, desc->data, gsgl_buffer_usage_to_gl_enum(desc->usage));
-	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); 
+    CHECK_GL_CORE(
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo.buffer); 
+        glBufferData(GL_SHADER_STORAGE_BUFFER, desc->size, desc->data, gsgl_buffer_usage_to_gl_enum(desc->usage));
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); 
+    );
 
     memcpy(sbo.name, desc->name, 64);
     sbo.access = desc->access;
@@ -1264,14 +1266,16 @@ GS_API_DECL void gs_graphics_storage_buffer_update(gs_handle(gs_graphics_storage
         return;
     }
 
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo->buffer);
-    switch (desc->update.type) 
-    {
-        case GS_GRAPHICS_BUFFER_UPDATE_SUBDATA: glBufferSubData(GL_SHADER_STORAGE_BUFFER, desc->update.offset, desc->size, desc->data); break;
-        default:                                glBufferData(GL_SHADER_STORAGE_BUFFER, desc->size, desc->data, gsgl_buffer_usage_to_gl_enum(desc->usage));
-    }
-	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    CHECK_GL_CORE(
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo->buffer); 
+        switch (desc->update.type) 
+        {
+            case GS_GRAPHICS_BUFFER_UPDATE_SUBDATA: glBufferSubData(GL_SHADER_STORAGE_BUFFER, desc->update.offset, desc->size, desc->data); break;
+            default:                                glBufferData(GL_SHADER_STORAGE_BUFFER, desc->size, desc->data, gsgl_buffer_usage_to_gl_enum(desc->usage));
+        }
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    );
 }
 
 /* Resource Update*/
@@ -1517,13 +1521,15 @@ void gs_graphics_apply_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t
         }
 
         // Storage buffers
-        for (uint32_t i = 0; i < sbc; ++i)
-        {
-            gs_graphics_bind_storage_buffer_desc_t* decl = &binds->storage_buffers.desc[i];
-            gs_byte_buffer_write(&cb->commands, gs_graphics_bind_type, GS_GRAPHICS_BIND_STORAGE_BUFFER);
-            gs_byte_buffer_write(&cb->commands, uint32_t, decl->buffer.id);
-            gs_byte_buffer_write(&cb->commands, uint32_t, decl->binding);
-        }
+        CHECK_GL_CORE(
+            for (uint32_t i = 0; i < sbc; ++i)
+            {
+                gs_graphics_bind_storage_buffer_desc_t* decl = &binds->storage_buffers.desc[i];
+                gs_byte_buffer_write(&cb->commands, gs_graphics_bind_type, GS_GRAPHICS_BIND_STORAGE_BUFFER);
+                gs_byte_buffer_write(&cb->commands, uint32_t, decl->buffer.id);
+                gs_byte_buffer_write(&cb->commands, uint32_t, decl->binding);
+            }
+        );
     };
 }
 
@@ -2056,12 +2062,13 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                             if ((sbo->block_idx == UINT32_MAX && sbo->block_idx != UINT32_MAX - 1)) 
                             {
                                 // Get uniform location based on name and bound shader
-                                sbo->block_idx = glGetProgramResourceIndex(shader, GL_SHADER_STORAGE_BLOCK, sbo->name ? sbo->name : "__EMPTY_BUFFER_NAME");
-
-                                int32_t params[1];
-                                GLenum props[1] = {GL_BUFFER_BINDING};
-                                glGetProgramResourceiv(shader, GL_SHADER_STORAGE_BLOCK, sbo->block_idx, 1, props, 1, NULL, params);
-                                location = (uint32_t)params[0];
+                                CHECK_GL_CORE(
+                                    sbo->block_idx = glGetProgramResourceIndex(shader, GL_SHADER_STORAGE_BLOCK, sbo->name ? sbo->name : "__EMPTY_BUFFER_NAME"); 
+                                    int32_t params[1];
+                                    GLenum props[1] = {GL_BUFFER_BINDING};
+                                    glGetProgramResourceiv(shader, GL_SHADER_STORAGE_BLOCK, sbo->block_idx, 1, props, 1, NULL, params);
+                                    location = (uint32_t)params[0];
+                                );
 
                                 if (sbo->block_idx >= UINT32_MAX) {
                                     gs_println("Warning: Bind Storage Buffer: Buffer not found: \"%s\"", sbo->name);
@@ -2072,11 +2079,15 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                             if (sbo->block_idx < UINT32_MAX - 1)
                             {
                                 // Not sure what this actually does atm... 
-                                glShaderStorageBlockBinding(shader, sbo->block_idx, location);
+                                CHECK_GL_CORE(
+                                    glShaderStorageBlockBinding(shader, sbo->block_idx, location);
+                                );
                             } 
 
                             // This is required
-                            glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, sbo->buffer); 
+                            CHECK_GL_CORE(
+                                glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, sbo->buffer); 
+                            );
 
                         } break;
 
