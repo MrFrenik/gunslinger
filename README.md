@@ -24,6 +24,7 @@ Gunslinger is a header-only c99 framework for multimedia applications.
 * [Official Documentation (Docsforge)](https://gunslinger.docsforge.com/)
 * [Online Sample Repo](https://mrfrenik.github.io/gunslinger)
 * [Getting Started](https://github.com/MrFrenik/gunslinger/blob/master/docs/getting_started.md)
+* [Graphics](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md)
 * [Containers](https://github.com/MrFrenik/gunslinger/blob/master/docs/containers.md)
 * [Examples](https://github.com/MrFrenik/gs_examples)
 
