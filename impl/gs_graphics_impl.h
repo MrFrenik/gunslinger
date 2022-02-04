@@ -184,7 +184,6 @@ void gsgl_pipeline_state()
     CHECK_GL_CORE(
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
     )
-    glDisable(GL_SCISSOR_TEST);
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_STENCIL_TEST);
     glDisable(GL_BLEND);
