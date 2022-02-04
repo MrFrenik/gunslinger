@@ -2040,13 +2040,12 @@ EM_BOOL gs_ems_key_cb(int32_t type, const EmscriptenKeyboardEvent* evt, void* us
     gs_evt.key.codepoint = evt->which;
     gs_evt.key.keycode = gs_platform_codepoint_to_key(evt->which);
 
-    // gs_println("codepoint: %zu", evt->which);
-
     switch (type)
     {
         case EMSCRIPTEN_EVENT_KEYPRESS:
         {
-            gs_evt.key.action = GS_PLATFORM_KEY_PRESSED;
+            gs_evt.type = GS_PLATFORM_EVENT_TEXT;
+            gs_evt.text.codepoint = evt->which;
         } break;
 
         case EMSCRIPTEN_EVENT_KEYDOWN: 
@@ -2087,25 +2086,30 @@ EM_BOOL gs_ems_mouse_cb(int32_t type, const EmscriptenMouseEvent* evt, void* use
     gs_evt.type = GS_PLATFORM_EVENT_MOUSE;
     gs_evt.mouse.codepoint = evt->button;
     gs_evt.mouse.button = button;
+    bool add = true;
 
     switch (type)
     {
         case EMSCRIPTEN_EVENT_CLICK:
         {
-            gs_evt.mouse.action = GS_PLATFORM_MOUSE_BUTTON_PRESSED;
+            // gs_evt.mouse.action = GS_PLATFORM_MOUSE_BUTTON_PRESSED;
+            // gs_println("EMS_PRESSED");
+            add = false;
         } break;
 
         // Emscripten doesn't register continuous presses, so have to manually store this state
         case EMSCRIPTEN_EVENT_MOUSEDOWN: 
         {
             gs_evt.mouse.action = GS_PLATFORM_MOUSE_BUTTON_DOWN;
-            ems->mouse_down[(int32_t)button] = true; 
+            // ems->mouse_down[(int32_t)button] = true; 
+            gs_println("EMS_DOWN");
         } break;
 
         case EMSCRIPTEN_EVENT_MOUSEUP: 
         {
             gs_evt.mouse.action = GS_PLATFORM_MOUSE_BUTTON_RELEASED;
-            ems->mouse_down[(int32_t)button] = false; 
+            // ems->mouse_down[(int32_t)button] = false; 
+            gs_println("EMS_UP");
         } break;
 
         case EMSCRIPTEN_EVENT_MOUSEMOVE:
@@ -2122,18 +2126,22 @@ EM_BOOL gs_ems_mouse_cb(int32_t type, const EmscriptenMouseEvent* evt, void* use
         {
             gs_evt.mouse.action = GS_PLATFORM_MOUSE_ENTER;
             // Release all buttons
+            /*
             ems->mouse_down[0] = false;
             ems->mouse_down[1] = false;
             ems->mouse_down[2] = false;
+            */
         } break;
 
         case EMSCRIPTEN_EVENT_MOUSELEAVE:
         {
             gs_evt.mouse.action = GS_PLATFORM_MOUSE_LEAVE;
             // Release all buttons
+            /*
             ems->mouse_down[0] = false;
             ems->mouse_down[1] = false;
             ems->mouse_down[2] = false;
+            */
         } break;
 
         default:
@@ -2141,7 +2149,7 @@ EM_BOOL gs_ems_mouse_cb(int32_t type, const EmscriptenMouseEvent* evt, void* use
         }break;
     }
 
-    gs_platform_add_event(&gs_evt);
+    if (add) gs_platform_add_event(&gs_evt);
 
     return true;
 }
@@ -2272,11 +2280,13 @@ gs_platform_process_input(gs_platform_input_t* input)
 {
     gs_ems_t* ems = GS_EMS_DATA();
 
-    // Set mouse buttons
+    // Set mouse buttons 
+    /*
     for (uint32_t i = 0; i < GS_MOUSE_BUTTON_CODE_COUNT; ++i) {
         if (ems->mouse_down[i]) gs_platform_press_mouse_button((gs_platform_mouse_button_code)i);
         else                    gs_platform_release_mouse_button((gs_platform_mouse_button_code)i);
     }
+    */
 
     // Check for pointerlock, because Chrome is retarded.
     EmscriptenPointerlockChangeEvent evt = gs_default_val();
