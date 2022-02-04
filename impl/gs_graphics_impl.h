@@ -1965,7 +1965,7 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                             gs_byte_buffer_readc(&cb->commands, size_t, range_size);
 
                             // Check buffer id. If invalid, then we can't operate, and instead just need to pass over the data.
-                            if (!id || !gs_slot_array_exists(ogl->uniforms, id)) {
+                            if (!id || !gs_slot_array_exists(ogl->uniform_buffers, id)) {
                                 gs_timed_action(60, {
                                     gs_println("Warning:Bind Uniform Buffer:Uniform %d does not exist.", id);
                                 });
