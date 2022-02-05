@@ -97,7 +97,7 @@ GS_API_DECL void gs_asset_importer_set_desc(gs_asset_importer_t* imp, gs_asset_i
 		gs_asset_importer_t ai = gs_default_val();\
 		ai.data_size = sizeof(T);\
 		ai.importer_id = (AM)->free_importer_id++;\
-		gs_asset_importer_set_desc(&ai, (DESC));\
+		gs_asset_importer_set_desc(&ai, (gs_asset_importer_desc_t*)DESC);\
 		size_t sz = 2 * sizeof(void*) + sizeof(T);\
 		gs_slot_array(T) sa = NULL;\
 		gs_slot_array_init((void**)&sa, sizeof(*sa));\

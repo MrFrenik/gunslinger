@@ -2277,7 +2277,7 @@ void** gs_slot_map_init(void** sm)
 // Could return something, I believe?
 #define gs_slot_map_insert(__SM, __SMK, __SMV)\
     do {\
-        gs_slot_map_init(&(__SM));\
+        gs_slot_map_init((void**)&(__SM));\
         uint32_t __H = gs_slot_array_insert((__SM)->sa, ((__SMV)));\
         gs_hash_table_insert((__SM)->ht, (__SMK), __H);\
     } while (0)

@@ -1261,14 +1261,14 @@ const char* gs_uniform_string_from_type(gs_graphics_uniform_type type)
     return 0x00;
 }
 
-void gs_parse_uniforms(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd, gs_graphics_shader_stage_type stage)
+bool gs_parse_uniforms(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd, gs_graphics_shader_stage_type stage)
 {
     uint32_t image_binding = 0;
 
     if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_LBRACE))
     {
-        gs_println("error::gs_pipeline_load_from_file::error parsing raster from .sf resource");
-        gs_assert(false);
+        gs_log_warning("Unable to parsing uniforms from .sf resource");
+	return false;
     }
 
     uint32_t bc = 1;\
@@ -1299,7 +1299,9 @@ void gs_parse_uniforms(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t*
 
                 if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER)) 
                 { 
-                    gs_assert(false);
+	   	    gs_log_warning("Unidentified token (Expected identifier)");
+		    gs_token_debug_print(&lex->current_token);
+		    return false;
                 } 
                 token = lex->current_token;
 
@@ -1310,22 +1312,15 @@ void gs_parse_uniforms(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t*
             } break;
         }
     } 
-}
+    return true;
+} 
 
-void gs_parse_in(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd, gs_graphics_shader_stage_type type)
-{
-    gs_parse_block(
-    PIPELINE::IN,
-    {
-    });
-}
-
-void gs_parse_io(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd, gs_graphics_shader_stage_type type)
+bool gs_parse_io(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd, gs_graphics_shader_stage_type type)
 {
     if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_LBRACE))
     {
-        gs_println("error::gs_pipeline_load_from_file::error parsing raster from .sf resource");\
-        gs_assert(false);
+        gs_log_warning("Expected opening left brace. Unable to parse io from .sf resource");\
+	return false;
     }
 
     uint32_t bc = 1;
@@ -1347,7 +1342,9 @@ void gs_parse_io(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd, 
                     {
                         if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER)) 
                         { 
-                            gs_parse_error(false, "PIPELINE::IO::expected identifier name after type.");
+                            gs_log_warning("IO expected identifier name after type, shader stage vertex.");
+			    gs_token_debug_print(&lex->current_token);
+			    return false;
                         } 
                         token = lex->current_token;
                         memcpy(io.name, token.text, token.len);
@@ -1358,7 +1355,9 @@ void gs_parse_io(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd, 
                     {
                         if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER)) 
                         {
-                            gs_parse_error(false, "PIPELINE::IO::expected identifier name after type.");
+                            gs_log_warning("IO expected identifier name after type, shader stage fragment.");
+			    gs_token_debug_print(&lex->current_token);
+			    return false;
                         }
                         token = lex->current_token;
                         memcpy(io.name, token.text, token.len);
@@ -1369,7 +1368,9 @@ void gs_parse_io(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd, 
                     {
                         if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_NUMBER)) 
                         {
-                            gs_parse_error(false, "PIPELINE::IO::expected number after type.");
+                            gs_log_warning("IO expected number after type, shader stage compute.");
+			    gs_token_debug_print(&lex->current_token);
+			    return false;
                         }
                         token = lex->current_token;
                         memcpy(io.name, token.text, token.len);
@@ -1379,13 +1380,15 @@ void gs_parse_io(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd, 
             } break; 
         }
     }
+    return true;
 }
 
-void gs_parse_code(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd, gs_graphics_shader_stage_type stage)
+bool gs_parse_code(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd, gs_graphics_shader_stage_type stage)
 {
 	if (!gs_lexer_require_token_type(lex, GS_TOKEN_LBRACE)) 
     { 
-        gs_assert(false);
+	    gs_log_warning("Expected opening left brace");
+	    return false; 
     } 
 
     uint32_t bc = 1; 
@@ -1440,15 +1443,7 @@ gs_gfxt_mesh_attribute_type gs_mesh_attribute_type_from_token(const gs_token_t* 
     // else if (gs_token_compare_text(token, "WEIGHT"))    return GS_ASSET_MESH_ATTRIBUTE_TYPE_WEIGHT;
 } 
 
-void gs_parse_vertex_buffer_attributes(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd)
-{
-    gs_parse_block(
-    PIPELINE::VERTEX_BUFFER_ATTRIBUTES,
-    {
-    });
-}
-
-void gs_parse_vertex_mesh_attributes(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd)
+bool gs_parse_vertex_mesh_attributes(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd)
 {
 	if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_LBRACE)) 
     { 
@@ -1459,6 +1454,7 @@ void gs_parse_vertex_mesh_attributes(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* d
     while (gs_lexer_can_lex(lex) && bc)
     {
         gs_token_t token = gs_lexer_next_token(lex);
+	// gs_token_debug_print(&token);
         switch (token.type)
         { 
             case GS_TOKEN_LBRACE: {bc++;} break; 
@@ -1473,6 +1469,7 @@ void gs_parse_vertex_mesh_attributes(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* d
                 } 
 
                 gs_token_t token_name = lex->current_token;
+		// gs_token_debug_print(&token_name);
 
                 #define PUSH_ATTR(MESH_ATTR, VERT_ATTR)\
                     do {\
@@ -1505,18 +1502,24 @@ void gs_parse_vertex_mesh_attributes(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* d
                 else if (gs_token_compare_text(&token, "FLOAT2"))     PUSH_ATTR(TEXCOORD, FLOAT2); 
                 else if (gs_token_compare_text(&token, "FLOAT3"))     PUSH_ATTR(POSITION, FLOAT3);  
                 else if (gs_token_compare_text(&token, "FLOAT4"))     PUSH_ATTR(TANGENT, FLOAT4);  
-                else {}
+                else 
+		{
+			gs_log_warning("Unidentified vertex attribute: %.*s: %.*s", 
+					token.len, token.text, token_name.len, token_name.text);
+			return false;
+		}
             }
         }
     }
+    return true;
 }
 
-void gs_parse_vertex_attributes(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd)
+bool gs_parse_vertex_attributes(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd)
 {
-    gs_parse_vertex_mesh_attributes(lex, desc, ppd);
+    return gs_parse_vertex_mesh_attributes(lex, desc, ppd);
 }
 
-void gs_parse_shader_stage(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd, gs_graphics_shader_stage_type stage)
+bool gs_parse_shader_stage(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd, gs_graphics_shader_stage_type stage)
 {
         if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_LBRACE))
         {
@@ -1539,61 +1542,95 @@ void gs_parse_shader_stage(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_pp
                          gs_token_compare_text(&token, "attributes"))
                     {
                         gs_println("parsing attributes...");
-                        gs_parse_vertex_attributes(lex, desc, ppd);
+                        if (!gs_parse_vertex_attributes(lex, desc, ppd))
+			{
+				gs_log_warning("Unable to parse vertex attributes.");
+				return false;
+			}
                     }
 
                     else if (gs_token_compare_text(&token, "uniforms"))
                     {
-                        gs_parse_uniforms(lex, desc, ppd, stage);
+                        if (!gs_parse_uniforms(lex, desc, ppd, stage))
+			{
+				gs_log_warning("Unable to parse 'uniforms' for stage: %zu.", (u32)stage);
+				return false;
+			}
                     }
 
                     else if (gs_token_compare_text(&token, "out"))
                     {
-                        gs_parse_io(lex, desc, ppd, stage);
+                        if (!gs_parse_io(lex, desc, ppd, stage))
+			{
+				gs_log_warning("Unable to parse 'out' for stage: %zu.", (u32)stage);
+				return false;
+			}
                     }
 
                     else if (gs_token_compare_text(&token, "in"))
                     {
-                        gs_parse_io(lex, desc, ppd, stage);
+                        if (!gs_parse_io(lex, desc, ppd, stage))
+			{
+				gs_log_warning("Unable to parse 'in' for stage: %zu.", (u32)stage);
+				return false;
+			}
                     }
 
                     else if (gs_token_compare_text(&token, "code"))
                     {
-                        gs_parse_code(lex, desc, ppd, stage);
+                        if (!gs_parse_code(lex, desc, ppd, stage))
+			{
+				gs_log_warning("Unable to parse 'code' for stage: %zu.", (u32)stage);
+				return false;
+			}
                     }
                 } break; 
             }
-        }
+	}
+	return true;
 }
 
-void gs_parse_compute_shader_stage(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd)
+bool gs_parse_compute_shader_stage(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd)
 {
     gs_parse_block(
     PIPELINE::COMPUTE_SHADER_STAGE,
     { 
         if (gs_token_compare_text(&token, "uniforms"))
         {
-            gs_parse_uniforms(lex, desc, ppd, GS_GRAPHICS_SHADER_STAGE_COMPUTE);
+            if (!gs_parse_uniforms(lex, desc, ppd, GS_GRAPHICS_SHADER_STAGE_COMPUTE))
+	    {
+	    	gs_log_warning("Unable to parse 'uniforms' for compute shader");
+		return false;
+	    }
         }
 
         else if (gs_token_compare_text(&token, "in"))
         {
-            gs_parse_in(lex, desc, ppd, GS_GRAPHICS_SHADER_STAGE_COMPUTE);
+            if (!gs_parse_io(lex, desc, ppd, GS_GRAPHICS_SHADER_STAGE_COMPUTE))
+	    {
+	    	gs_log_warning("Unable to parse 'in' for compute shader");
+		return false;
+	    }
         } 
 
         else if (gs_token_compare_text(&token, "code"))
         {
-            gs_parse_code(lex, desc, ppd, GS_GRAPHICS_SHADER_STAGE_COMPUTE);
+            if (!gs_parse_code(lex, desc, ppd, GS_GRAPHICS_SHADER_STAGE_COMPUTE))
+	    {
+	    	gs_log_warning("Unable to parse 'code' for compute shader");
+		return false;
+	    }
         }
     }); 
+    return true;
 }
 
-void gs_parse_shader(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd)
+bool gs_parse_shader(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd)
 { 
 	if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_LBRACE)) 
     { 
-        gs_println("error::gs_pipeline_load_from_file	::error parsing shader from .sf resource");
-        gs_assert(false);
+        gs_log_warning("Unable to parse shader from .sf resource. Expected opening left brace.");
+	return false;
     } 
 
     // Braces
@@ -1612,29 +1649,42 @@ void gs_parse_shader(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* p
                 if (gs_token_compare_text(&token, "vertex"))
                 {
                     gs_println("parsing vertex shader");
-                    gs_parse_shader_stage(lex, desc, ppd, GS_GRAPHICS_SHADER_STAGE_VERTEX);
+                    if (!gs_parse_shader_stage(lex, desc, ppd, GS_GRAPHICS_SHADER_STAGE_VERTEX))
+		    {
+			    gs_log_warning("Unable to parse shader stage: Vertex");
+			    return false;
+		    }
                 }
 
                 // Fragment shader
                 else if (gs_token_compare_text(&token, "fragment"))
                 {
                     gs_println("parsing fragment shader");
-                    gs_parse_shader_stage(lex, desc, ppd, GS_GRAPHICS_SHADER_STAGE_FRAGMENT);
+                    if (!gs_parse_shader_stage(lex, desc, ppd, GS_GRAPHICS_SHADER_STAGE_FRAGMENT))
+		    {
+			    gs_log_warning("Unable to parse shader stage: Fragment");
+			    return false;
+		    }
                 } 
 
                 // Compute shader
                 else if (gs_token_compare_text(&token, "compute"))
                 {
                     gs_println("parsing compute shader");
-                    gs_parse_shader_stage(lex, desc, ppd, GS_GRAPHICS_SHADER_STAGE_COMPUTE);
+                    if (!gs_parse_shader_stage(lex, desc, ppd, GS_GRAPHICS_SHADER_STAGE_COMPUTE))
+		    {
+			    gs_log_warning("Unable to parse shader stage: Compute");
+			    return false;
+		    }
                 } 
 
             } break;
         }
     }
+    return true;
 }
 
-void gs_parse_depth(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* ppd)
+bool gs_parse_depth(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* ppd)
 {
     gs_parse_block(
     PIPELINE::DEPTH,
@@ -1644,7 +1694,9 @@ void gs_parse_depth(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* p
         {
             if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER))
             {
-                gs_parse_error(false, "PIPELINE::DEPTH::func type not found after function decl.");
+	    	token = lex->current_token;
+                gs_log_warning("Depth func type not found after function decl: %.*s", token.len, token.text);
+		return false;
             }
 
             token = lex->current_token;
@@ -1659,13 +1711,16 @@ void gs_parse_depth(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* p
             else if (gs_token_compare_text(&token, "NEVER"))    pdesc->pip_desc.depth.func = GS_GRAPHICS_DEPTH_FUNC_NEVER; 
             else
             {
-                gs_parse_warning("PIPELINE::DEPTH::func type %.*s not valid.", token.len, token.text);
+	    	token = lex->current_token;
+                gs_log_warning("Func type %.*s not valid.", token.len, token.text);
+		return false;
             }
         }
     });
+    return true;
 }
 
-void gs_parse_blend(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* ppd)
+bool gs_parse_blend(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* ppd)
 {
     gs_parse_block(
     PIPELINE::BLEND,
@@ -1675,7 +1730,8 @@ void gs_parse_blend(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* p
         { 
             if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER))
             {
-                gs_parse_error(false, "PIPELINE::BLEND::func type not found after function decl.");
+                gs_log_warning("Blend func type not found after function decl.");
+		return false;
             }
 
             token = lex->current_token;
@@ -1687,7 +1743,8 @@ void gs_parse_blend(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* p
             else if (gs_token_compare_text(&token, "MAX"))              pdesc->pip_desc.blend.func = GS_GRAPHICS_BLEND_EQUATION_MAX;
             else
             {
-                gs_parse_warning("PIPELINE::BLEND::func type %.*s not valid.", token.len, token.text);
+                gs_log_warning("Blend func type %.*s not valid.", token.len, token.text);
+		return false;
             } 
         }
 
@@ -1696,7 +1753,8 @@ void gs_parse_blend(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* p
         {
             if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER))
             {
-                gs_parse_error(false, "PIPELINE::BLEND::src type not found after decl.");
+                gs_log_warning("Blend src type not found after decl.");
+		return false;
             }
 
             token = lex->current_token;
@@ -1717,7 +1775,8 @@ void gs_parse_blend(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* p
             else if (gs_token_compare_text(&token, "ONE_MINUS_CONSTANT_ALPHA")) pdesc->pip_desc.blend.src = GS_GRAPHICS_BLEND_MODE_ONE_MINUS_CONSTANT_ALPHA; 
             else
             {
-                gs_parse_warning("PIPELINE::BLEND::src type %.*s not valid.", token.len, token.text);
+                gs_log_warning("Blend src type %.*s not valid.", token.len, token.text);
+		return false;
             } 
         }
 
@@ -1726,7 +1785,8 @@ void gs_parse_blend(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* p
         {
             if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER))
             {
-                gs_parse_error(false, "PIPELINE::BLEND::dst type not found after decl.");
+                gs_log_warning("Blend dst type not found after decl.");
+		return false;
             }
 
             token = lex->current_token;
@@ -1747,14 +1807,16 @@ void gs_parse_blend(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* p
             else if (gs_token_compare_text(&token, "ONE_MINUS_CONSTANT_ALPHA")) pdesc->pip_desc.blend.dst = GS_GRAPHICS_BLEND_MODE_ONE_MINUS_CONSTANT_ALPHA; 
             else
             {
-                gs_parse_warning("PIPELINE::BLEND::dst type %.*s not valid.", token.len, token.text);
+                gs_log_warning("Blend dst type %.*s not valid.", token.len, token.text);
+		return false;
             } 
-        }
-
+        } 
     });
+
+    return true;
 }
 
-void gs_parse_stencil(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* ppd)
+bool gs_parse_stencil(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* ppd)
 { 
     gs_parse_block(
     PIPELINE::STENCIL,
@@ -1764,7 +1826,8 @@ void gs_parse_stencil(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t*
         {
             if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER))
             {
-                gs_parse_error(false, "PIPELINE::STENCIL::func type not found after decl.");
+                gs_log_warning("Stencil func type not found after decl.");
+		return false;
             }
 
             else
@@ -1781,7 +1844,8 @@ void gs_parse_stencil(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t*
                 else if (gs_token_compare_text(&token, "NEVER"))    pdesc->pip_desc.stencil.func = GS_GRAPHICS_STENCIL_FUNC_NEVER; 
                 else
                 {
-                    gs_parse_warning("PIPELINE::STENCIL::func type %.*s not valid.", token.len, token.text);
+                    gs_log_warning("Stencil func type %.*s not valid.", token.len, token.text);
+		    return false;
                 } 
             }
 
@@ -1792,7 +1856,8 @@ void gs_parse_stencil(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t*
         { 
             if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_NUMBER))
             {
-                gs_parse_error(false, "PIPELINE::STENCIL::reference value not found after decl."); 
+                gs_log_warning("Stencil reference value not found after decl."); 
+		return false;
             }
 
             else
@@ -1808,7 +1873,8 @@ void gs_parse_stencil(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t*
         { 
             if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_NUMBER))
             {
-                gs_parse_error(false, "PIPELINE::STENCIL::component mask value not found after decl."); 
+                gs_log_warning("Stencil component mask value not found after decl."); 
+		return false;
             }
 
             else
@@ -1824,7 +1890,8 @@ void gs_parse_stencil(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t*
         { 
             if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_NUMBER))
             {
-                gs_parse_error(false, "PIPELINE::STENCIL::write mask value not found after decl."); 
+                gs_log_warning("Stencil write mask value not found after decl."); 
+		return false;
             }
 
             else
@@ -1840,7 +1907,8 @@ void gs_parse_stencil(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t*
         { 
             if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER))
             {
-                gs_parse_error(false, "PIPELINE::STENCIL::sfail value not found after decl."); 
+                gs_log_warning("Stencil sfail value not found after decl."); 
+		return false;
             }
 
             else
@@ -1857,7 +1925,8 @@ void gs_parse_stencil(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t*
                 else if (gs_token_compare_text(&token, "INVERT"))       pdesc->pip_desc.stencil.sfail = GS_GRAPHICS_STENCIL_OP_INVERT;
                 else
                 {
-                    gs_parse_warning("PIPELINE::STENCIL::sfail type %.*s not valid.", token.len, token.text);
+                    gs_log_warning("Stencil sfail type %.*s not valid.", token.len, token.text);
+		    return false;
                 } 
             }
         }
@@ -1867,7 +1936,8 @@ void gs_parse_stencil(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t*
         { 
             if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER))
             {
-                gs_parse_error(false, "PIPELINE::STENCIL::dpfail value not found after decl."); 
+                gs_log_warning("Stencil dpfail value not found after decl."); 
+		return false;
             }
 
             else
@@ -1884,7 +1954,8 @@ void gs_parse_stencil(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t*
                 else if (gs_token_compare_text(&token, "INVERT"))       pdesc->pip_desc.stencil.dpfail = GS_GRAPHICS_STENCIL_OP_INVERT;
                 else
                 {
-                    gs_parse_warning("PIPELINE::STENCIL::dpfail type %.*s not valid.", token.len, token.text);
+                    gs_log_warning("Stencil dpfail type %.*s not valid.", token.len, token.text);
+		    return false;
                 } 
             }
         }
@@ -1894,7 +1965,8 @@ void gs_parse_stencil(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t*
         { 
             if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER))
             {
-                gs_parse_error(false, "PIPELINE::STENCIL::dppass value not found after decl."); 
+                gs_log_warning("Stencil dppass value not found after decl."); 
+		return false;
             }
 
             else
@@ -1911,14 +1983,16 @@ void gs_parse_stencil(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t*
                 else if (gs_token_compare_text(&token, "INVERT"))       pdesc->pip_desc.stencil.dppass = GS_GRAPHICS_STENCIL_OP_INVERT;
                 else
                 {
-                    gs_parse_warning("PIPELINE::STENCIL::dppass type %.*s not valid.", token.len, token.text);
+                    gs_log_warning("Stencil dppass type %.*s not valid.", token.len, token.text);
+		    return false;
                 } 
             }
         }
     });
+    return true;
 }
 
-void gs_parse_raster(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* ppd)
+bool gs_parse_raster(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* ppd)
 {
     gs_parse_block(
     PIPELINE::RASTER,
@@ -1928,7 +2002,7 @@ void gs_parse_raster(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* 
         { 
 	        if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER))
             {
-                gs_parse_error(false, "PIPELINE::RASTER::index buffer element size not found.", token.len, token.text);
+                gs_log_warning("Raster index buffer element size not found.", token.len, token.text);
             }
             
             token = lex->current_token;
@@ -1955,7 +2029,8 @@ void gs_parse_raster(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* 
         { 
 	        if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER))
             {
-                gs_parse_error(false, "PIPELINE::RASTER::face culling type not found.");
+                gs_log_warning("Raster face culling type not found.");
+		return false;
             }
             
             token = lex->current_token;
@@ -1965,7 +2040,8 @@ void gs_parse_raster(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* 
             else if (gs_token_compare_text(&token, "FRONT_AND_BACK")) pdesc->pip_desc.raster.face_culling = GS_GRAPHICS_FACE_CULLING_FRONT_AND_BACK;
             else
             {
-                gs_parse_warning("PIPELINE::RASTER::face culling type %.*s not valid.", token.len, token.text);
+                gs_log_warning("Raster face culling type %.*s not valid.", token.len, token.text);
+		return false;
             }
         } 
 
@@ -1974,7 +2050,8 @@ void gs_parse_raster(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* 
         { 
 	        if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER))
             {
-                gs_parse_error(false, "PIPELINE::RASTER::winding order type not found.");
+                gs_log_warning("Raster winding order type not found.");
+		return false;
             }
             
             token = lex->current_token;
@@ -1983,7 +2060,8 @@ void gs_parse_raster(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* 
             else if (gs_token_compare_text(&token, "CCW"))   pdesc->pip_desc.raster.face_culling = GS_GRAPHICS_WINDING_ORDER_CCW;
             else
             {
-                gs_parse_warning("PIPELINE::RASTER::winding order type %.*s not valid.", token.len, token.text);
+                gs_log_warning("Raster winding order type %.*s not valid.", token.len, token.text);
+		return false;
             }
         } 
 
@@ -1992,7 +2070,8 @@ void gs_parse_raster(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* 
         { 
 	        if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER))
             {
-                gs_parse_error(false, "PIPELINE::RASTER::primitive type not found.");
+                gs_log_warning("Raster primitive type not found.");
+		return false;
             }
             
             token = lex->current_token;
@@ -2002,13 +2081,15 @@ void gs_parse_raster(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* 
             else if (gs_token_compare_text(&token, "QUADS"))       pdesc->pip_desc.raster.primitive = GS_GRAPHICS_PRIMITIVE_QUADS;
             else
             {
-                gs_parse_warning("PIPELINE::RASTER::primitive type %.*s not valid.", token.len, token.text);
+                gs_log_warning("Raster primitive type %.*s not valid.", token.len, token.text);
+		return false;
             }
         } 
     });
+    return true;
 }
 
-void gs_parse_pipeline(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd)
+bool gs_parse_pipeline(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd)
 { 
     // Get next identifier
     while (lex->can_lex(lex))
@@ -2021,32 +2102,53 @@ void gs_parse_pipeline(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t*
                 if (gs_token_compare_text(&token, "shader"))
                 {
                     gs_println("parsing shader");
-                    gs_parse_shader(lex, desc, ppd);
+                    if (!gs_parse_shader(lex, desc, ppd))
+		    {
+			    gs_log_warning("Unable to parse shader descriptor"); 
+			    return false;
+		    }
                 }
 
                 else if (gs_token_compare_text(&token, "raster"))
                 {
-                    gs_parse_raster(lex, desc, ppd); 
+                    if (!gs_parse_raster(lex, desc, ppd))
+		    {
+			    gs_log_warning("Unable to parse raster descriptor");
+			    return false;
+		    }
                 }
 
                 else if (gs_token_compare_text(&token, "depth"))
                 {
-                    gs_parse_depth(lex, desc, ppd);
+                    if (!gs_parse_depth(lex, desc, ppd))
+		    {
+			    gs_log_warning("Unable to parse depth descriptor");
+			    return false;
+		    }
                 }
 
                 else if (gs_token_compare_text(&token, "stencil"))
                 {
-                    gs_parse_stencil(lex, desc, ppd);
+                    if (!gs_parse_stencil(lex, desc, ppd))
+		    {
+			    gs_log_warning("Unable to parse stencil descriptor");
+			    return false;
+		    } 
                 }
 
                 else if (gs_token_compare_text(&token, "blend"))
                 {
-                    gs_parse_blend(lex, desc, ppd);
+                    if (!gs_parse_blend(lex, desc, ppd))
+		    {
+			    gs_log_warning("Unable to parse blend descriptor");
+			    return false;
+		    }
                 }
 
             } break;
         }
     }
+    return true;
 }
 
 char* gs_pipeline_generate_shader_code(gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* ppd, gs_graphics_shader_stage_type stage)
@@ -2245,9 +2347,7 @@ GS_API_DECL gs_gfxt_pipeline_t gs_gfxt_pipeline_load_from_file(const char* path)
 GS_API_DECL gs_gfxt_pipeline_t gs_gfxt_pipeline_load_from_memory(const char* file_data, size_t sz)
 { 
     // Cast to pip
-    gs_gfxt_pipeline_t pip = gs_default_val();
-
-    gs_println("%s", file_data);
+    gs_gfxt_pipeline_t pip = gs_default_val(); 
 
     gs_ppd_t ppd = {0};
     gs_gfxt_pipeline_desc_t pdesc = {0};
@@ -2263,7 +2363,11 @@ GS_API_DECL gs_gfxt_pipeline_t gs_gfxt_pipeline_load_from_memory(const char* fil
             {
                 if (gs_token_compare_text(&token, "pipeline"))
                 {
-                    gs_parse_pipeline(&lex, &pdesc, &ppd); 
+                    if (!gs_parse_pipeline(&lex, &pdesc, &ppd))
+		    {
+			    gs_log_warning("Unable to parse pipeline");
+			    return pip;
+		    }
                 }
             } break;
         }
@@ -2271,16 +2375,15 @@ GS_API_DECL gs_gfxt_pipeline_t gs_gfxt_pipeline_load_from_memory(const char* fil
 
     // Generate vertex shader code
     char* v_src = gs_pipeline_generate_shader_code(&pdesc, &ppd, GS_GRAPHICS_SHADER_STAGE_VERTEX); 
-    gs_println("%s", v_src);
+    // gs_println("%s", v_src);
 
     // Generate fragment shader code
     char* f_src = gs_pipeline_generate_shader_code(&pdesc, &ppd, GS_GRAPHICS_SHADER_STAGE_FRAGMENT); 
-    
-    gs_println("%s", f_src);
+    // gs_println("%s", f_src);
     
     // Generate compute shader code (need to check for this first)
     char* c_src = gs_pipeline_generate_shader_code(&pdesc, &ppd, GS_GRAPHICS_SHADER_STAGE_COMPUTE);
-    gs_println("%s", c_src);
+    // gs_println("%s", c_src);
 
     // Construct compute shader
     if (c_src)

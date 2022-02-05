@@ -406,8 +406,8 @@ static char** parseUriList(char* text, int* count)
 
         (*count)++;
 
-        char* path = calloc(strlen(line) + 1, 1);
-        paths = realloc(paths, *count * sizeof(char*));
+        char* path = (char*)calloc(strlen(line) + 1, 1);
+        paths = (char**)realloc(paths, *count * sizeof(char*));
         paths[*count - 1] = path;
 
         while (*line)
@@ -495,7 +495,7 @@ static char* convertLatin1toUTF8(const char* source)
     for (sp = source;  *sp;  sp++)
         size += (*sp & 0x80) ? 2 : 1;
 
-    char* target = calloc(size, 1);
+    char* target = (char*)calloc(size, 1);
     char* tp = target;
 
     for (sp = source;  *sp;  sp++)
@@ -1049,7 +1049,7 @@ static const char* getSelectionString(Atom selection)
                 if (itemCount)
                 {
                     size += itemCount;
-                    string = realloc(string, size);
+                    string = (char*)realloc(string, size);
                     string[size - itemCount - 1] = '\0';
                     strcat(string, data);
                 }
@@ -1200,7 +1200,7 @@ static void processEvent(XEvent *event)
                 XGetEventData(_glfw.x11.display, &event->xcookie) &&
                 event->xcookie.evtype == XI_RawMotion)
             {
-                XIRawEvent* re = event->xcookie.data;
+                XIRawEvent* re = (XIRawEvent*)event->xcookie.data;
                 if (re->valuators.mask_len)
                 {
                     const double* values = re->raw_values;
@@ -1290,7 +1290,7 @@ static void processEvent(XEvent *event)
 
                     if (status == XBufferOverflow)
                     {
-                        chars = calloc(count + 1, 1);
+                        chars = (char*)calloc(count + 1, 1);
                         count = Xutf8LookupString(window->x11.ic,
                                                   &event->xkey,
                                                   chars, count,
@@ -2134,7 +2134,7 @@ void _glfwPlatformSetWindowIcon(_GLFWwindow* window,
         for (i = 0;  i < count;  i++)
             longCount += 2 + images[i].width * images[i].height;
 
-        long* icon = calloc(longCount, sizeof(long));
+        long* icon = (long*)calloc(longCount, sizeof(long));
         long* target = icon;
 
         for (i = 0;  i < count;  i++)
@@ -3052,14 +3052,14 @@ void _glfwPlatformGetRequiredInstanceExtensions(char** extensions)
             return;
     }
 
-    extensions[0] = "VK_KHR_surface";
+    extensions[0] = (char*)"VK_KHR_surface";
 
     // NOTE: VK_KHR_xcb_surface is preferred due to some early ICDs exposing but
     //       not correctly implementing VK_KHR_xlib_surface
     if (_glfw.vk.KHR_xcb_surface && _glfw.x11.x11xcb.handle)
-        extensions[1] = "VK_KHR_xcb_surface";
+        extensions[1] = (char*)"VK_KHR_xcb_surface";
     else
-        extensions[1] = "VK_KHR_xlib_surface";
+        extensions[1] = (char*)"VK_KHR_xlib_surface";
 }
 
 int _glfwPlatformGetPhysicalDevicePresentationSupport(VkInstance instance,

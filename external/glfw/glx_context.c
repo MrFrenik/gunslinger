@@ -73,7 +73,7 @@ static GLFWbool chooseGLXFBConfig(const _GLFWfbconfig* desired,
         return GLFW_FALSE;
     }
 
-    usableConfigs = calloc(nativeCount, sizeof(_GLFWfbconfig));
+    usableConfigs = (_GLFWfbconfig*)calloc(nativeCount, sizeof(_GLFWfbconfig));
     usableCount = 0;
 
     for (i = 0;  i < nativeCount;  i++)
@@ -188,7 +188,7 @@ static void swapBuffersGLX(_GLFWwindow* window)
 
 static void swapIntervalGLX(int interval)
 {
-    _GLFWwindow* window = _glfwPlatformGetTls(&_glfw.contextSlot);
+    _GLFWwindow* window = (_GLFWwindow*)_glfwPlatformGetTls(&_glfw.contextSlot);
 
     if (_glfw.glx.EXT_swap_control)
     {
@@ -225,7 +225,7 @@ static GLFWglproc getProcAddressGLX(const char* procname)
     else if (_glfw.glx.GetProcAddressARB)
         return _glfw.glx.GetProcAddressARB((const GLubyte*) procname);
     else
-        return _glfw_dlsym(_glfw.glx.handle, procname);
+        return (GLFWglproc)_glfw_dlsym(_glfw.glx.handle, procname);
 }
 
 static void destroyContextGLX(_GLFWwindow* window)
@@ -282,36 +282,36 @@ GLFWbool _glfwInitGLX(void)
         return GLFW_FALSE;
     }
 
-    _glfw.glx.GetFBConfigs =
-        _glfw_dlsym(_glfw.glx.handle, "glXGetFBConfigs");
+    _glfw.glx.GetFBConfigs = 
+	    (PFNGLXGETFBCONFIGSPROC)_glfw_dlsym(_glfw.glx.handle, "glXGetFBConfigs");
     _glfw.glx.GetFBConfigAttrib =
-        _glfw_dlsym(_glfw.glx.handle, "glXGetFBConfigAttrib");
+        (PFNGLXGETFBCONFIGATTRIBPROC)_glfw_dlsym(_glfw.glx.handle, "glXGetFBConfigAttrib");
     _glfw.glx.GetClientString =
-        _glfw_dlsym(_glfw.glx.handle, "glXGetClientString");
+        (PFNGLXGETCLIENTSTRINGPROC)_glfw_dlsym(_glfw.glx.handle, "glXGetClientString");
     _glfw.glx.QueryExtension =
-        _glfw_dlsym(_glfw.glx.handle, "glXQueryExtension");
+        (PFNGLXQUERYEXTENSIONPROC)_glfw_dlsym(_glfw.glx.handle, "glXQueryExtension");
     _glfw.glx.QueryVersion =
-        _glfw_dlsym(_glfw.glx.handle, "glXQueryVersion");
+        (PFNGLXQUERYVERSIONPROC)_glfw_dlsym(_glfw.glx.handle, "glXQueryVersion");
     _glfw.glx.DestroyContext =
-        _glfw_dlsym(_glfw.glx.handle, "glXDestroyContext");
+        (PFNGLXDESTROYCONTEXTPROC)_glfw_dlsym(_glfw.glx.handle, "glXDestroyContext");
     _glfw.glx.MakeCurrent =
-        _glfw_dlsym(_glfw.glx.handle, "glXMakeCurrent");
+        (PFNGLXMAKECURRENTPROC)_glfw_dlsym(_glfw.glx.handle, "glXMakeCurrent");
     _glfw.glx.SwapBuffers =
-        _glfw_dlsym(_glfw.glx.handle, "glXSwapBuffers");
+        (PFNGLXSWAPBUFFERSPROC)_glfw_dlsym(_glfw.glx.handle, "glXSwapBuffers");
     _glfw.glx.QueryExtensionsString =
-        _glfw_dlsym(_glfw.glx.handle, "glXQueryExtensionsString");
+        (PFNGLXQUERYEXTENSIONSSTRINGPROC)_glfw_dlsym(_glfw.glx.handle, "glXQueryExtensionsString");
     _glfw.glx.CreateNewContext =
-        _glfw_dlsym(_glfw.glx.handle, "glXCreateNewContext");
+        (PFNGLXCREATENEWCONTEXTPROC)_glfw_dlsym(_glfw.glx.handle, "glXCreateNewContext");
     _glfw.glx.CreateWindow =
-        _glfw_dlsym(_glfw.glx.handle, "glXCreateWindow");
+        (PFNGLXCREATEWINDOWPROC)_glfw_dlsym(_glfw.glx.handle, "glXCreateWindow");
     _glfw.glx.DestroyWindow =
-        _glfw_dlsym(_glfw.glx.handle, "glXDestroyWindow");
+        (PFNGLXDESTROYWINDOWPROC)_glfw_dlsym(_glfw.glx.handle, "glXDestroyWindow");
     _glfw.glx.GetProcAddress =
-        _glfw_dlsym(_glfw.glx.handle, "glXGetProcAddress");
+        (PFNGLXGETPROCADDRESSPROC)_glfw_dlsym(_glfw.glx.handle, "glXGetProcAddress");
     _glfw.glx.GetProcAddressARB =
-        _glfw_dlsym(_glfw.glx.handle, "glXGetProcAddressARB");
+        (PFNGLXGETPROCADDRESSPROC)_glfw_dlsym(_glfw.glx.handle, "glXGetProcAddressARB");
     _glfw.glx.GetVisualFromFBConfig =
-        _glfw_dlsym(_glfw.glx.handle, "glXGetVisualFromFBConfig");
+        (PFNGLXGETVISUALFROMFBCONFIGPROC)_glfw_dlsym(_glfw.glx.handle, "glXGetVisualFromFBConfig");
 
     if (!_glfw.glx.GetFBConfigs ||
         !_glfw.glx.GetFBConfigAttrib ||

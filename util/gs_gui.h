@@ -947,7 +947,7 @@ GS_API_DECL void gs_gui_set_clip(gs_gui_context_t* ctx, gs_gui_rect_t rect);
 GS_API_DECL void gs_gui_draw_rect(gs_gui_context_t* ctx, gs_gui_rect_t rect, gs_color_t color);
 GS_API_DECL void gs_gui_draw_circle(gs_gui_context_t* ctx, gs_vec2 position, float radius, gs_color_t color);
 GS_API_DECL void gs_gui_draw_triangle(gs_gui_context_t* ctx, gs_vec2 a, gs_vec2 b, gs_vec2 c, gs_color_t color);
-GS_API_DECL void gs_gui_draw_box(gs_gui_context_t* ctx, gs_gui_rect_t rect, int16_t width[4], gs_color_t color);
+GS_API_DECL void gs_gui_draw_box(gs_gui_context_t* ctx, gs_gui_rect_t rect, int16_t* width, gs_color_t color);
 GS_API_DECL void gs_gui_draw_text(gs_gui_context_t* ctx, gs_asset_font_t* font, const char *str, int32_t len, gs_vec2 pos, gs_color_t color, int32_t shadow_x, int32_t shadow_y, gs_color_t shadow_color);
 GS_API_DECL void gs_gui_draw_icon(gs_gui_context_t* ctx, int32_t id, gs_gui_rect_t rect, gs_color_t color);
 GS_API_DECL void gs_gui_draw_image(gs_gui_context_t* ctx, gs_handle(gs_graphics_texture_t) hndl, gs_gui_rect_t rect, gs_vec2 uv0, gs_vec2 uv1, gs_color_t color);
@@ -1020,8 +1020,8 @@ GS_API_DECL void gs_gui_undock_ex_cnt(gs_gui_context_t* ctx, gs_gui_container_t*
 #define gs_gui_expect(x)\
     do {																                    \
 		if (!(x)) {																			\
-			gs_println(stderr, "Fatal error: %s:%d: assertion '%s' failed\n",               \
-				__FILE__, __LINE__, #x);												    \
+			gs_log_error("Fatal error: assertion '%s' failed\n",               \
+				#x);												    \
 			abort();																		\
 		}																					\
 	} while (0)
@@ -1547,7 +1547,10 @@ GS_API_DECL gs_gui_rect_t gs_gui_rect(float x, float y, float w, float h)
 
 static gs_gui_rect_t gs_gui_expand_rect(gs_gui_rect_t rect, int16_t v[4]) 
 {
-	return gs_gui_rect(rect.x - v[0], rect.y - v[2], rect.w + v[0] + v[1], rect.h + v[2] + v[3]);
+	return gs_gui_rect(rect.x - v[0], 
+			   rect.y - v[2], 
+			   rect.w + v[0] + v[1], 
+			   rect.h + v[2] + v[3]);
 } 
 
 static gs_gui_rect_t gs_gui_intersect_rects(gs_gui_rect_t r1, gs_gui_rect_t r2) 
@@ -1818,7 +1821,7 @@ static void gs_gui_draw_frame(gs_gui_context_t* ctx, gs_gui_rect_t rect, gs_gui_
 	// draw border
 	if (style->colors[GS_GUI_COLOR_BORDER].a) 
     {
-		gs_gui_draw_box(ctx, gs_gui_expand_rect(rect, style->border_width), style->border_width, style->colors[GS_GUI_COLOR_BORDER]);
+		gs_gui_draw_box(ctx, gs_gui_expand_rect(rect, (int16_t*)style->border_width), (int16_t*)style->border_width, style->colors[GS_GUI_COLOR_BORDER]);
 	}
 }
 
@@ -2056,8 +2059,8 @@ static void gs_gui_pop_container(gs_gui_context_t *ctx)
             /* draw border*/                                                                \
             if (style.colors[GS_GUI_COLOR_BORDER].a)                                        \
             {                                                                               \
-                gs_gui_draw_box(ctx, gs_gui_expand_rect(base, style.border_width),          \
-                        style.border_width, style.colors[GS_GUI_COLOR_BORDER]);             \
+                gs_gui_draw_box(ctx, gs_gui_expand_rect(base, (int16_t*)style.border_width),          \
+                        (int16_t*)style.border_width, style.colors[GS_GUI_COLOR_BORDER]);             \
             }                                                                               \
             float pl = ((float)style.padding[GS_GUI_PADDING_LEFT]);                         \
             float pr = ((float)style.padding[GS_GUI_PADDING_RIGHT]);                        \
@@ -2073,8 +2076,8 @@ static void gs_gui_pop_container(gs_gui_context_t *ctx)
             /* draw border*/                                                                \
             if (style.colors[GS_GUI_COLOR_BORDER].a)                                        \
             {                                                                               \
-                gs_gui_draw_box(ctx, gs_gui_expand_rect(thumb, style.border_width),         \
-                        style.border_width, style.colors[GS_GUI_COLOR_BORDER]);             \
+                gs_gui_draw_box(ctx, gs_gui_expand_rect(thumb, (int16_t*)style.border_width),         \
+                        (int16_t*)style.border_width, style.colors[GS_GUI_COLOR_BORDER]);             \
             }                                                                               \
 																							\
 			/* set this as the scroll_target (will get scrolled on mousewheel) */           \
@@ -3275,7 +3278,9 @@ static void gs_gui_draw_splits(gs_gui_context_t* ctx, gs_gui_split_t* split)
     gs_color_t c = gs_color(0, 0, 0, 0);
     const float ratio = split->ratio;
     gs_gui_container_t* top = gs_gui_get_top_most_container(ctx, root_split); 
-    gs_gui_container_t* hover_cnt = ctx->hover ? gs_gui_get_container_ex(ctx, ctx->hover, 0x00) : ctx->next_hover_root ? gs_gui_get_container_ex(ctx, ctx->next_hover_root, 0x00) : NULL;
+    gs_gui_container_t* hover_cnt = ctx->hover_root ? ctx->hover_root :
+	    			    ctx->next_hover_root ? ctx->next_hover_root : 
+				    NULL;
     bool valid_hover = hover_cnt && hover_cnt->zindex > top->zindex;
     valid_hover = false;
 
@@ -3318,7 +3323,7 @@ static void gs_gui_draw_splits(gs_gui_context_t* ctx, gs_gui_split_t* split)
                 } break;
             }
 
-			gs_gui_rect_t expand = gs_gui_expand_rect(r, (int[]){1, 1, 1, 1});
+			gs_gui_rect_t expand = gs_gui_expand_rect(r, (int16_t[]){1, 1, 1, 1});
             bool hover = !valid_hover && !ctx->focus && !ctx->prev_dockable_root && gs_gui_rect_overlaps_vec2(expand, ctx->mouse_pos) && !ctx->lock_hover_id; 
             if (hover) ctx->next_hover_split = split;
             if (hover && ctx->mouse_down == GS_GUI_MOUSE_LEFT)
@@ -3376,7 +3381,7 @@ static void gs_gui_draw_splits(gs_gui_context_t* ctx, gs_gui_split_t* split)
                     } break;
                 } 
 
-				gs_gui_rect_t expand = gs_gui_expand_rect(r, (int[]){1, 1, 1, 1});
+				gs_gui_rect_t expand = gs_gui_expand_rect(r, (int16_t[]){1, 1, 1, 1});
                 bool hover = !valid_hover && !ctx->focus && !ctx->prev_dockable_root && gs_gui_rect_overlaps_vec2(expand, ctx->mouse_pos); 
                 if (hover) ctx->next_hover_split = split;
                 if (hover && ctx->mouse_down == GS_GUI_MOUSE_LEFT)
@@ -3618,7 +3623,9 @@ GS_API_DECL void gs_gui_begin(gs_gui_context_t* ctx)
                 // Do resize controls for dockspace
                 gs_gui_container_t* top = gs_gui_get_top_most_container(ctx, split);
                 const gs_gui_rect_t* sr = &split->rect;
-                gs_gui_container_t* hover_cnt = ctx->hover ? gs_gui_get_container_ex(ctx, ctx->hover, 0x00) : ctx->next_hover_root ? gs_gui_get_container_ex(ctx, ctx->next_hover_root, 0x00) : NULL;
+                gs_gui_container_t* hover_cnt = ctx->hover_root ? ctx->hover_root : 
+						ctx->next_hover_root ? ctx->next_hover_root : 
+						NULL;
                 bool valid_hover = hover_cnt && hover_cnt->zindex > top->zindex;
 
                 // W
@@ -4232,7 +4239,7 @@ GS_API_DECL void gs_gui_render(gs_gui_context_t* ctx, gs_command_buffer_t* cb)
         case GS_GUI_COMMAND_TEXT:
         {
             const gs_vec2* tp = &cmd->text.pos;
-            const char* ts = &cmd->text.str;
+            const char* ts = cmd->text.str;
             const gs_color_t* tc = &cmd->text.color; 
             const gs_asset_font_t* tf = cmd->text.font;
             gsi_text(&ctx->gsi, tp->x, tp->y, ts, tf, false, tc->r, tc->g, tc->b, tc->a);
@@ -4547,7 +4554,7 @@ GS_API_DECL int32_t gs_gui_next_command(gs_gui_context_t* ctx, gs_gui_command_t*
 		*cmd = (gs_gui_command_t*) ctx->command_list.items;
 	}
 
-	while ((char*) *cmd != ctx->command_list.items + ctx->command_list.idx) 
+	while ((uint8_t*) *cmd != (uint8_t*)(ctx->command_list.items + ctx->command_list.idx)) 
     {
 		if ((*cmd)->type != GS_GUI_COMMAND_JUMP) 
         { 
@@ -4628,12 +4635,12 @@ GS_API_DECL void gs_gui_draw_triangle(gs_gui_context_t* ctx, gs_vec2 a, gs_vec2 
     if (clipped) {gs_gui_set_clip(ctx, gs_gui_unclipped_rect);}
 }
 
-GS_API_DECL void gs_gui_draw_box(gs_gui_context_t* ctx, gs_gui_rect_t rect, int16_t w[4], gs_color_t color)
+GS_API_DECL void gs_gui_draw_box(gs_gui_context_t* ctx, gs_gui_rect_t rect, int16_t* w, gs_color_t color)
 {
     gs_immediate_draw_t* dl = &ctx->overlay_draw_list;
     // gsi_rectvd(dl, gs_v2(rect.x, rect.y), gs_v2(rect.w, rect.h), gs_v2s(0.f), gs_v2s(1.f), GS_COLOR_RED, GS_GRAPHICS_PRIMITIVE_LINES);
 
-    const float l = w[0], r = w[1], t = w[2], b = w[3];
+    const float l = (float)w[0], r = (float)w[1], t = (float)w[2], b = (float)w[3];
 	gs_gui_draw_rect(ctx, gs_gui_rect(rect.x + l, rect.y, rect.w - r - l, t), color);               // top
 	gs_gui_draw_rect(ctx, gs_gui_rect(rect.x + l, rect.y + rect.h - b, rect.w - r - l, b), color);  // bottom 
 	gs_gui_draw_rect(ctx, gs_gui_rect(rect.x, rect.y, l, rect.h), color);                           // left
@@ -5126,16 +5133,16 @@ GS_API_DECL void gs_gui_draw_control_text(gs_gui_context_t *ctx, const char *str
 
     int32_t sx = style->shadow_x;
     int32_t sy = style->shadow_y;
-    gs_color_t* sc = &style->colors[sh_color]; 
+    const gs_color_t* sc = &style->colors[sh_color]; 
 
     // draw border
-    gs_color_t* bc = &style->colors[bd_color]; 
+    const gs_color_t* bc = &style->colors[bd_color]; 
     if (bc->a) 
     {
         gs_gui_pop_clip_rect(ctx);
-        gs_gui_rect_t border_rect = gs_gui_expand_rect(rect, style->border_width);
+        gs_gui_rect_t border_rect = gs_gui_expand_rect(rect, (int16_t*)style->border_width);
 	    gs_gui_push_clip_rect(ctx, border_rect);
-        gs_gui_draw_box(ctx, border_rect, style->border_width, *bc);
+        gs_gui_draw_box(ctx, border_rect, (int16_t*)style->border_width, *bc);
     }
 
     // Draw background rect
@@ -5356,7 +5363,7 @@ GS_API_DECL int32_t gs_gui_text_ex(gs_gui_context_t *ctx, const char *text, int3
     // draw border
     if (style.colors[GS_GUI_COLOR_BORDER].a) 
     {
-        gs_gui_draw_box(ctx, gs_gui_expand_rect(tr, style.border_width), style.border_width, style.colors[GS_GUI_COLOR_BORDER]);
+        gs_gui_draw_box(ctx, gs_gui_expand_rect(tr, (int16_t*)style.border_width), (int16_t*)style.border_width, style.colors[GS_GUI_COLOR_BORDER]);
     }
 
 	gs_gui_update_control(ctx, id, tr, 0x00); 
@@ -5442,7 +5449,7 @@ GS_API_DECL int32_t gs_gui_image_ex(gs_gui_context_t* ctx, gs_handle(gs_graphics
     // draw border
     if (style.colors[GS_GUI_COLOR_BORDER].a) 
     {
-        gs_gui_draw_box(ctx, gs_gui_expand_rect(r, style.border_width), style.border_width, style.colors[GS_GUI_COLOR_BORDER]);
+        gs_gui_draw_box(ctx, gs_gui_expand_rect(r, (int16_t*)style.border_width), (int16_t*)style.border_width, style.colors[GS_GUI_COLOR_BORDER]);
     }
 
     gs_gui_draw_image(ctx, hndl, r, uv0, uv1, style.colors[GS_GUI_COLOR_CONTENT]);
@@ -5493,7 +5500,7 @@ GS_API_DECL int32_t gs_gui_button_ex(gs_gui_context_t* ctx, const char* label, i
     // draw border
     if (style.colors[GS_GUI_COLOR_BORDER].a) 
     {
-        gs_gui_draw_box(ctx, gs_gui_expand_rect(r, style.border_width), style.border_width, style.colors[GS_GUI_COLOR_BORDER]);
+        gs_gui_draw_box(ctx, gs_gui_expand_rect(r, (int16_t*)style.border_width), (int16_t*)style.border_width, style.colors[GS_GUI_COLOR_BORDER]);
     }
 
     opt |= GS_GUI_OPT_ISCONTENT;
@@ -5595,7 +5602,7 @@ GS_API_DECL int32_t gs_gui_textbox_raw(gs_gui_context_t *ctx, char *buf, int32_t
 	/* draw */
 
     // Textbox border
-    gs_gui_draw_box(ctx, gs_gui_expand_rect(r, style.border_width), style.border_width, style.colors[GS_GUI_COLOR_BORDER]);
+    gs_gui_draw_box(ctx, gs_gui_expand_rect(r, (int16_t*)style.border_width), (int16_t*)style.border_width, style.colors[GS_GUI_COLOR_BORDER]);
 
     // Textbox bg 
 	gs_gui_draw_control_frame(ctx, id, r, GS_GUI_ELEMENT_INPUT, opt);
@@ -6403,20 +6410,20 @@ GS_API_DECL int32_t gs_gui_begin_window_ex(gs_gui_context_t * ctx, const char* t
             }
 
             if (root_style->colors[GS_GUI_COLOR_BORDER].a) { 
-                gs_gui_draw_box(ctx, gs_gui_expand_rect(split->rect, root_style->border_width), root_style->border_width, root_style->colors[GS_GUI_COLOR_BORDER]); 
+                gs_gui_draw_box(ctx, gs_gui_expand_rect(split->rect, (int16_t*)root_style->border_width), (int16_t*)root_style->border_width, root_style->colors[GS_GUI_COLOR_BORDER]); 
             }
         }
         else
         {
             if (style->colors[GS_GUI_COLOR_BORDER].a) { 
-                gs_gui_draw_box(ctx, gs_gui_expand_rect(cnt->rect, style->border_width), style->border_width, style->colors[GS_GUI_COLOR_BORDER]); 
+                gs_gui_draw_box(ctx, gs_gui_expand_rect(cnt->rect, (int16_t*)style->border_width), (int16_t*)style->border_width, style->colors[GS_GUI_COLOR_BORDER]); 
             }
         }
 	} 
 
     if (split && ~opt & GS_GUI_OPT_NOCLIP && cnt->flags & GS_GUI_WINDOW_FLAGS_VISIBLE)
     {
-		gs_gui_push_clip_rect(ctx, gs_gui_expand_rect(cnt->rect, (int[]) {1, 1, 1, 1}));
+		gs_gui_push_clip_rect(ctx, gs_gui_expand_rect(cnt->rect, (int16_t[]) {1, 1, 1, 1}));
     } 
 
     if (split)
@@ -6454,7 +6461,7 @@ GS_API_DECL int32_t gs_gui_begin_window_ex(gs_gui_context_t * ctx, const char* t
                 if (lowest) 
                 {
                     gs_gui_draw_frame(ctx, tr, &ctx->style_sheet->styles[GS_GUI_ELEMENT_PANEL][0x00]);
-		            // gs_gui_draw_box(ctx, gs_gui_expand_rect(tr, cstyle->border_width), cstyle->border_width, cstyle->colors[GS_GUI_COLOR_BORDER]);
+		            // gs_gui_draw_box(ctx, gs_gui_expand_rect(tr, (int16_t*)cstyle->border_width), (int16_t*)cstyle->border_width, cstyle->colors[GS_GUI_COLOR_BORDER]);
                 }
             }
         }
@@ -6462,7 +6469,7 @@ GS_API_DECL int32_t gs_gui_begin_window_ex(gs_gui_context_t * ctx, const char* t
         else
         {
             gs_gui_draw_frame(ctx, tr, &ctx->style_sheet->styles[GS_GUI_ELEMENT_PANEL][0x00]); 
-		    // gs_gui_draw_box(ctx, gs_gui_expand_rect(tr, cstyle->border_width), cstyle->border_width, cstyle->colors[GS_GUI_COLOR_BORDER]);
+		    // gs_gui_draw_box(ctx, gs_gui_expand_rect(tr, (int16_t*)cstyle->border_width), cstyle->border_width, cstyle->colors[GS_GUI_COLOR_BORDER]);
         }
 
         // Draw tab control
@@ -6554,7 +6561,7 @@ GS_API_DECL int32_t gs_gui_begin_window_ex(gs_gui_context_t * ctx, const char* t
             gs_color_t act = ctx->style_sheet->styles[GS_GUI_ELEMENT_BUTTON][0x02].colors[GS_GUI_COLOR_BACKGROUND]; 
             gs_color_t inactive = gs_color(10, 10, 10, 50);
 
-			gs_gui_push_clip_rect(ctx, gs_gui_expand_rect(cnt->rect, (int[]){1, 1, 1, 1}));
+			gs_gui_push_clip_rect(ctx, gs_gui_expand_rect(cnt->rect, (int16_t[]){1, 1, 1, 1}));
 
             gs_gui_push_clip_rect(ctx, r);
 
@@ -6601,7 +6608,7 @@ GS_API_DECL int32_t gs_gui_begin_window_ex(gs_gui_context_t * ctx, const char* t
     // Draw border
 	if (~opt & GS_GUI_OPT_NOFRAME && cnt->flags & GS_GUI_WINDOW_FLAGS_VISIBLE) 
     {
-        const int32_t* w = ctx->style_sheet->styles[GS_GUI_ELEMENT_CONTAINER][0x00].border_width;
+        const int* w = (int*)ctx->style_sheet->styles[GS_GUI_ELEMENT_CONTAINER][0x00].border_width;
         const gs_color_t* bc = &ctx->style_sheet->styles[GS_GUI_ELEMENT_CONTAINER][0x00].colors[GS_GUI_COLOR_BORDER]; 
 		// gs_gui_draw_box(ctx, gs_gui_expand_rect(cnt->rect, w), w, *bc); 
 	}
@@ -7236,7 +7243,7 @@ GS_API_DECL int32_t gs_gui_style_editor(gs_gui_context_t *ctx, gs_gui_style_shee
                         // Colors
                         int sw = (int32_t)(l->body.w * 0.14);
                         gs_gui_layout_row(ctx, 6, (int[]) {80, sw, sw, sw, sw, -1}, 0);
-                        for (uint32_t c = 0; c < colors[c].label; ++c)
+                        for (uint32_t c = 0; colors[c].label; ++c)
                         {
                             gs_gui_label(ctx, colors[c].label);
                             uint8_slider(ctx, &s->colors[c].r, 0, 255);
@@ -7382,7 +7389,7 @@ GS_API_DECL int32_t gs_gui_demo_window(gs_gui_context_t* ctx, gs_gui_rect_t rect
                     gs_gui_layout_row(ctx, 1, (int[]){150}, 0);
                     gs_gui_text(ctx, "This is some text");
 
-                    static buf[64]; 
+                    static char buf[64] = {0}; 
                     gs_gui_textbox(ctx, buf, 64);                
                 }
                 gs_gui_layout_end_column(ctx);
@@ -7405,22 +7412,22 @@ GS_API_DECL int32_t gs_gui_demo_window(gs_gui_context_t* ctx, gs_gui_rect_t rect
 
 //==== Resource Loading ===// 
 
-bool _gs_gui_style_sheet_parse_attribute_transition(gs_gui_context_t* ctx, gs_lexer_t* lex, gs_gui_style_sheet_t* ss, int32_t elementid, int32_t state)
-{
-    // Name of enum attribute 
-    gs_token_t token = gs_lexer_current_token(lex);
-    // gs_token_debug_print(&token);
-
-#define GET_TO_VALUE()\
+#define _GS_GUI_SS_GET_TO_VALUES(T0, T1)\
     do {\
-        bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_COLON);\
-        ret &= gs_lexer_require_token_type(lex, GS_TOKEN_LBRACE);\
+        bool ret = gs_lexer_require_token_type(lex, T0);\
+        ret &= gs_lexer_require_token_type(lex, T1);\
         if (!ret) {\
             gs_log_warning("Unidentified token.");\
             return false;\
         }\
         token = gs_lexer_current_token(lex);\
     } while (0) 
+
+bool _gs_gui_style_sheet_parse_attribute_transition(gs_gui_context_t* ctx, gs_lexer_t* lex, gs_gui_style_sheet_t* ss, int32_t elementid, int32_t state)
+{
+    // Name of enum attribute 
+    gs_token_t token = gs_lexer_current_token(lex);
+    // gs_token_debug_print(&token); 
 
 #define PARSE_TRANSITION(T)\
     do {\
@@ -7461,7 +7468,7 @@ bool _gs_gui_style_sheet_parse_attribute_transition(gs_gui_context_t* ctx, gs_le
         }\
     } while (0)
 
-    GET_TO_VALUE();
+    _GS_GUI_SS_GET_TO_VALUES(GS_TOKEN_COLON, GS_TOKEN_LBRACE);
 
     if (!gs_hash_table_exists(ss->animations, (gs_gui_element_type)elementid)) 
     {
@@ -7517,19 +7524,7 @@ bool _gs_gui_style_sheet_parse_attribute_font(gs_gui_context_t* ctx, gs_lexer_t*
 {
     // Name of enum attribute 
     gs_token_t token = gs_lexer_current_token(lex);
-    // gs_token_debug_print(&token);
-
-#define GET_TO_VALUE()\
-    do {\
-        bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_COLON);\
-        ret &= gs_lexer_require_token_type(lex, GS_TOKEN_IDENTIFIER);\
-        if (!ret) {\
-            gs_log_warning("Unidentified token.");\
-            return false;\
-        }\
-        token = gs_lexer_current_token(lex);\
-    } while (0)
-
+    // gs_token_debug_print(&token); 
 
 #define SET_FONT(FONT)\
     do {\
@@ -7552,7 +7547,7 @@ bool _gs_gui_style_sheet_parse_attribute_font(gs_gui_context_t* ctx, gs_lexer_t*
     if (gs_token_compare_text(&token, "font"))
     {
         // For some reason, the hash table wasn't working...great.
-        GET_TO_VALUE(); 
+        _GS_GUI_SS_GET_TO_VALUES(GS_TOKEN_COLON, GS_TOKEN_IDENTIFIER); 
         gs_snprintfc(FONT, 32, "%.*s", token.len, token.text);
         uint64_t hash = gs_hash_str64(FONT);
         bool found = false;
@@ -7587,18 +7582,7 @@ bool _gs_gui_style_sheet_parse_attribute_enum(gs_gui_context_t* ctx, gs_lexer_t*
 {
     // Name of enum attribute 
     gs_token_t token = gs_lexer_current_token(lex);
-    // gs_token_debug_print(&token);
-
-#define GET_TO_VALUE()\
-    do {\
-        bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_COLON);\
-        ret &= gs_lexer_require_token_type(lex, GS_TOKEN_IDENTIFIER);\
-        if (!ret) {\
-            gs_log_warning("Unidentified token.");\
-            return false;\
-        }\
-        token = gs_lexer_current_token(lex);\
-    } while (0)
+    // gs_token_debug_print(&token); 
 
 #define SET_ENUM(COMP, VAL)\
     do {\
@@ -7620,14 +7604,14 @@ bool _gs_gui_style_sheet_parse_attribute_enum(gs_gui_context_t* ctx, gs_lexer_t*
 
     if (gs_token_compare_text(&token, "justify_content"))
     {
-        GET_TO_VALUE(); 
+        _GS_GUI_SS_GET_TO_VALUES(GS_TOKEN_COLON, GS_TOKEN_IDENTIFIER); 
         if (gs_token_compare_text(&token, "start")) SET_ENUM(justify_content, GS_GUI_JUSTIFY_START);
         else if (gs_token_compare_text(&token, "end")) SET_ENUM(justify_content, GS_GUI_JUSTIFY_END);
         else if (gs_token_compare_text(&token, "center")) SET_ENUM(justify_content, GS_GUI_JUSTIFY_CENTER);
     }
     else if (gs_token_compare_text(&token, "align_content"))
     { 
-        GET_TO_VALUE(); 
+        _GS_GUI_SS_GET_TO_VALUES(GS_TOKEN_COLON, GS_TOKEN_IDENTIFIER); 
         if (gs_token_compare_text(&token, "start")) SET_ENUM(align_content, GS_GUI_ALIGN_START);
         else if (gs_token_compare_text(&token, "end")) SET_ENUM(align_content, GS_GUI_ALIGN_END);
         else if (gs_token_compare_text(&token, "center")) SET_ENUM(align_content, GS_GUI_ALIGN_CENTER);
