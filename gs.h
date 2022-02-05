@@ -485,8 +485,6 @@
 // Defines
 ========================*/
 
-attempting a compilation failure
-
 #include <stdarg.h>     // valist
 #include <stddef.h>     // ptrdiff_t
 #include <stdlib.h>     // malloc, realloc, free
