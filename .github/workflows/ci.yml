@@ -26,4 +26,4 @@ jobs:
         run: |
           git clone --recursive https://github.com/MrFrenik/gs_project_template
           cd gs_project_template
-          ./proc/linux/gcc.sh
+          bash ./proc/linux/gcc.sh
