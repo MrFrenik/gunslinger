@@ -25,4 +25,5 @@ jobs:
       - name: build project template
         run: |
           git clone --recursive https://github.com/MrFrenik/gs_project_template
-          cd gs_project_template && bash ./proc/linux/gcc.sh
+          cd gs_project_template
+          ./proc/linux/gcc.sh
