@@ -79,7 +79,7 @@ jobs:
       - uses: actions/upload-artifact@v2
         with:
           name: Windows artifacts
-          path: gs_examples/
+          path: gs_examples/*[0-9][0=9]*
           retention-days: 7
 
   build-osx:
