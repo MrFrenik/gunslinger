@@ -29,6 +29,7 @@ jobs:
           git clone --recursive https://github.com/MrFrenik/gs_project_template
           cd gs_project_template
           cd third_party/include/gs
+          git checkout master
           git pull
           cd ../..
           echo "building project template..."
@@ -39,6 +40,7 @@ jobs:
           git clone --recursive https://github.com/MrFrenik/gs_examples
           cd gs_examples
           cd third_party/include/gs
+          git checkout master
           git pull
           cd ../..
           echo "building examples..."
@@ -59,7 +61,8 @@ jobs:
           echo "build linux..."
           git clone --recursive https://github.com/MrFrenik/gs_project_template
           cd gs_project_template
-          cd third_party\includ\gs
+          cd third_party\include\gs
+          git checkout master
           git pull
           cd ..\..
           echo "building project template..."
@@ -70,6 +73,7 @@ jobs:
           git clone --recursive https://github.com/MrFrenik/gs_examples
           cd gs_examples
           cd third_party\include\gs
+          git checkout
           git pull
           cd ..\..
           echo "building examples..."
@@ -91,6 +95,7 @@ jobs:
           git clone --recursive https://github.com/MrFrenik/gs_project_template
           cd gs_project_template
           cd third_party/include/gs
+          git checkout
           git pull
           cd ../..
           echo "building project template..."
@@ -101,6 +106,7 @@ jobs:
           git clone --recursive https://github.com/MrFrenik/gs_examples
           cd gs_examples
           cd third_party/include/gs
+          git checkout
           git pull
           cd ../..
           echo "building examples..."
