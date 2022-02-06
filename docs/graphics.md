@@ -22,12 +22,14 @@ The following functions are used for creating resources, such as vertex buffers,
 #### gs_graphics_texture_create
 
 Creates a texture resource.
-```
+
+```c
 gs_handle(gs_graphics_texture_t)
 gs_graphics_texture_create(
     const gs_graphics_texture_desc_t* desc
 );
 ```
+
 **Parameters:**
 
 `desc`
@@ -41,13 +43,16 @@ Returns a handle to a texture resource.
 <br />
 
 #### gs_graphics_uniform_create
+
 Creates a uniform resource.
-```
+
+```c
 gs_handle(gs_graphics_uniform_t)
 gs_graphics_uniform_create(
     const gs_graphics_uniform_desc_t* desc
 );
 ```
+
 **Parameters:**
 
 `desc`
@@ -63,12 +68,14 @@ Returns a handle to a uniform resource.
 #### gs_graphics_shader_create
 
 Creates a shader resource.
-```
+
+```c
 gs_handle(gs_graphics_shader_t)
 gs_graphics_shader_create(
     const gs_graphics_shader_desc_t* desc
 );
 ```
+
 **Parameters:**
 
 `desc`
@@ -84,12 +91,14 @@ Returns a handle to a shader resource.
 #### gs_graphics_vertex_buffer_create
 
 Creates a vertex buffer resource.
-```
+
+```c
 gs_handle(gs_graphics_vertex_buffer_t)
 gs_graphics_vertex_buffer_create(
     const gs_graphics_vertex_buffer_desc_t* desc
 );
 ```
+
 **Parameters:**
 
 `desc`
@@ -103,13 +112,16 @@ Returns a handle to a vertex buffer resource.
 <br /> 
 
 #### gs_graphics_index_buffer_create
+
 Creates an index buffer resource.
-```
+
+```c
 gs_handle(gs_graphics_index_buffer_t)
 gs_graphics_index_buffer_create(
     const gs_graphics_index_buffer_desc_t* desc
 );
 ```
+
 **Parameters:**
 
 `desc`
@@ -125,12 +137,14 @@ Returns a handle to an index buffer resource.
 #### gs_graphics_uniform_buffer_create
 
 Creates a uniform buffer resource.
-```
+
+```c
 gs_handle(gs_graphics_uniform_buffer_t)
 gs_graphics_uniform_buffer_create(
     const gs_graphics_uniform_buffer_desc_t* desc
 );
 ```
+
 **Parameters:**
 
 `desc`
@@ -146,7 +160,8 @@ Returns a handle to a uniform buffer resource.
 #### gs_graphics_framebuffer_create
 
 Creates a framebuffer resource.
-```
+
+```c
 gs_handle(gs_graphics_framebuffer_t)
 gs_graphics_framebuffer_create(
     const gs_graphics_framebuffer_desc_t* desc
@@ -169,7 +184,7 @@ Returns a handle to a framebuffer resource.
 
 Creates a render-pass resource.
 
-```
+```c
 gs_handle(gs_graphics_render_pass_t)
 gs_graphics_render_pass_create(
     const gs_graphics_render_pass_desc_t* desc
@@ -192,7 +207,7 @@ Returns a handle to a render-pass resource.
 
 Creates a pipeline resource.
 
-```
+```c
 gs_handle(gs_graphics_pipeline_t)
 gs_graphics_pipeline_create(
     const gs_graphics_pipeline_desc_t* desc
@@ -228,10 +243,11 @@ The following functions are used for freeing resources that were created with th
 <br />
 
 #### gs_graphics_texture_destroy
+
 Destroys a texture resource.
-```
-void
-gs_graphics_texture_destroy(
+
+```c
+void gs_graphics_texture_destroy(
     gs_handle(gs_graphics_texture_t) hndl
 );
 ```
@@ -248,10 +264,11 @@ None
 <br />
 
 #### gs_graphics_shader_destroy
+
 Destroys a shader resource.
-```
-void
-gs_graphics_shader_destroy(
+
+```c 
+void gs_graphics_shader_destroy(
     gs_handle(gs_graphics_shader_t) hndl
 );
 ```
@@ -268,13 +285,15 @@ None
 <br />
 
 #### gs_graphics_render_pass_destroy
+
 Destroys a render-pass resource.
-```
-void
-gs_graphics_render_pass_destroy(
+
+```c
+void gs_graphics_render_pass_destroy(
     gs_handle(gs_graphics_render_pass_t) hndl
 );
 ```
+
 **Parameters:**
 
 `hndl`
@@ -288,13 +307,15 @@ None
 <br />
 
 #### gs_graphics_pipeline_destroy
+
 Destroys a pipeline resource.
-```
-void
-gs_graphics_pipeline_destroy(
+
+```c
+void gs_graphics_pipeline_destroy(
     gs_handle(gs_graphics_pipeline_t) hndl
 );
 ```
+
 **Parameters:**
 
 `hndl`
@@ -307,19 +328,20 @@ None
 
 <br />
 
-
-
 ## Structures
 
 #### gs_graphics_shader_source_desc_t
+
 Describes the source data for a shader resource.
-```
+
+```c
 typedef struct gs_graphics_shader_source_desc_t
 {
     gs_graphics_shader_stage_type       type;
     const char*                         source;
 } gs_graphics_shader_source_desc_t;
 ```
+
 **Members**
 
 `type`
@@ -328,13 +350,15 @@ Indicates what stage the shader code is for (ie, vertex, fragment, etc.)
 
 `source`
 
-Source code for GLSL/HLSL shader, as an ASCII string.
+Source code for GLSL shader, as an ASCII string.
 
 <br />
 
 #### gs_graphics_shader_desc_t
+
 Describes a shader resource.
-```
+
+```c
 typedef struct gs_graphics_shader_desc_t
 {
     gs_graphics_shader_source_desc_t*       sources;
@@ -359,10 +383,11 @@ Optional name for the shader - used internally for logging/debugging.
 
 <br />
 
-
 #### gs_graphics_texture_desc_t
+
 Describes a texture resource.
-```
+
+```c
 typedef struct gs_graphics_texture_desc_t
 {
     uint32_t                                width;
@@ -376,7 +401,6 @@ typedef struct gs_graphics_texture_desc_t
     void*                                   data;
     b32                                     render_target;
 } gs_graphics_texture_desc_t;
-
 ```
 
 **Members**
@@ -428,52 +452,54 @@ Default to false (not a render target).
 <br />
 
 #### gs_graphics_uniform_layout_desc_t
+
 DESC
-```
+
+```c
 ```
 
 **Members**
-
-
 
 <br />
 
 #### gs_graphics_uniform_desc_t
+
 DESC
-```
+
+```c
 ```
 
 **Members**
-
-
 
 <br />
 
 #### gs_graphics_buffer_update_desc_t
+
 DESC
-```
+
+```c
 ```
 
 **Members**
-
-
 
 <br />
 
 #### gs_graphics_buffer_base_desc_t
+
 DESC
-```
+
+```c
 ```
 
 **Members**
 
-
-
 <br />
 
 #### gs_graphics_vertex_buffer_desc_t
+
 Describes a vertex buffer resource.
-```
+
+```c
 typedef struct gs_graphics_vertex_buffer_desc_t
 {
     void*                                   data;
@@ -506,8 +532,10 @@ See associated enum.
 <br />
 
 #### gs_graphics_index_buffer_desc_t
+
 Describes an index buffer resource.
-```
+
+```c
 typedef gs_graphics_vertex_buffer_desc_t gs_graphics_index_buffer_desc_t;
 ```
 
@@ -519,8 +547,10 @@ NOTE: `update` specifies use for `gs_graphics_index_buffer_update()`.
 <br />
 
 #### gs_graphics_uniform_buffer_desc_t
+
 Describes a uniform buffer resource.
-```
+
+```c
 typedef struct gs_graphics_uniform_buffer_desc_t
 {
     void*                                   data;
@@ -562,8 +592,10 @@ Specifies how the buffer is to be updated.
 <br />
 
 #### gs_graphics_framebuffer_desc_t
+
 Describes a framebuffer resource.
-```
+
+```c
 typedef struct gs_graphics_framebuffer_desc_t
 {
     void*       data;
@@ -579,8 +611,10 @@ Data to fill the framebuffer with; optional, can be NULL.
 <br />
 
 #### gs_graphics_clear_action_t
+
 Describes the action for clearing the current render target's buffers.
-```
+
+```c
 typedef struct gs_graphics_clear_action_t
 {
     gs_graphics_clear_flag      flag;   // Flag to be set (clear color, clear depth, clear stencil, clear all)
@@ -614,8 +648,10 @@ Value to clear the stencil buffer with.
 <br />
 
 #### gs_graphics_clear_desc_t
+
 Describes a set of clear actions to be performed.
-```
+
+```c
 typedef struct gs_graphics_clear_desc_t
 {
     gs_graphics_clear_action_t*     actions;
@@ -636,8 +672,10 @@ Size of clear action array in bytes.
 <br />
 
 #### gs_graphics_render_pass_desc_t
+
 Describes a render-pass resource.
-```
+
+```c
 typedef struct gs_graphics_render_pass_desc_t
 {
     gs_handle(gs_graphics_framebuffer_t)        fbo;
@@ -673,8 +711,10 @@ Stencil attachment to be bound.
 <br />
 
 #### gs_graphics_bind_vertex_buffer_desc_t
+
 Describes how a vertex buffer is to be bound to the pipeline.
-```
+
+```c
 typedef struct gs_graphics_bind_vertex_buffer_desc_t
 {
     gs_handle(gs_graphics_vertex_buffer_t)      buffer;
@@ -700,8 +740,10 @@ Specifies if the data is interleaved or non-interleaved.
 <br />
 
 #### gs_graphics_bind_index_buffer_desc_t
+
 Describes how an index buffer is to be bound to the pipeline.
-```
+
+```c
 typedef struct gs_graphics_bind_index_buffer_desc_t
 {
     gs_handle(gs_graphics_index_buffer_t)       buffer;
@@ -717,8 +759,10 @@ Handle to the index buffer to be bound.
 <br />
 
 #### gs_graphics_bind_image_buffer_desc_t
+
 Specifies how an image buffer is to be bound to the pipeline.
-```
+
+```c
 typedef struct gs_graphics_bind_image_buffer_desc_t
 {
     gs_handle(gs_graphics_texture_t)        tex;
@@ -744,8 +788,10 @@ Specifies read/write permissions.
 <br />
 
 #### gs_graphics_bind_uniform_buffer_desc_t
+
 Specifies how a uniform buffer is to be bound to the pipeline.
-```
+
+```c
 typedef struct gs_graphics_bind_uniform_buffer_desc_t
 {
     gs_handle(gs_graphics_uniform_buffer_t)     buffer;
@@ -779,8 +825,10 @@ Specify size for ranged binds.
 <br />
 
 #### gs_graphics_bind_uniform_desc_t
+
 Specifies how a uniform is to be bound to the pipeline.
-```
+
+```c
 typedef struct gs_graphics_bind_uniform_desc_t
 {
     gs_handle(gs_graphics_uniform_t)        uniform;
@@ -806,8 +854,10 @@ Slot to bind the uniform to. (NOTE: base binding for samplers)?
 <br />
 
 #### gs_graphics_bind_desc_t
+
 Specifies a set of bindings to apply to the pipeline.
-```
+
+```c
 typedef struct gs_graphics_bind_desc_t
 {
     struct {
@@ -850,8 +900,10 @@ Size of array in bytes (optional if one is specified).
 <br />
 
 #### gs_graphics_blend_state_desc_t
+
 Specifies a blend state.
-```
+
+```c
 typedef struct gs_graphics_blend_state_desc_t
 {
     gs_graphics_blend_equation_type     func;
@@ -877,8 +929,10 @@ Destination blend mode.
 <br />
 
 #### gs_graphics_depth_state_desc_t
+
 Specifies a depth state.
-```
+
+```c
 typedef struct gs_graphics_depth_state_desc_t
 {
     gs_graphics_depth_func_type     func;
@@ -894,8 +948,10 @@ Function to set for depth test.
 <br />
 
 #### gs_graphics_stencil_state_desc_t
+
 Specifies a stencil state.
-```
+
+```c
 typedef struct gs_graphics_stencil_state_desc_t
 {
     gs_graphics_stencil_func_type       func;
@@ -941,68 +997,68 @@ Action to take when both stencil test passes and either depth passes or is not e
 <br />
 
 #### gs_graphics_raster_state_desc_t
+
 DESC
-```
+
+```c
 ```
 
 **Members**
-
-
 
 <br />
 
 #### gs_graphics_compute_state_desc_t
+
 DESC
-```
+
+```c
 ```
 
 **Members**
-
-
 
 <br />
 
 #### gs_graphics_vertex_attribute_desc_t
+
 DESC
-```
+
+```c
 ```
 
 **Members**
-
-
 
 <br />
 
 #### gs_graphics_vertex_layout_desc_t
+
 DESC
-```
+
+```c
 ```
 
 **Members**
-
-
 
 <br />
 
 #### gs_graphics_pipeline_desc_t
+
 DESC
-```
+
+```c
 ```
 
 **Members**
-
-
 
 <br />
 
 #### gs_graphics_draw_desc_t
+
 DESC
-```
+
+```c
 ```
 
 **Members**
-
-
 
 <br />
 
