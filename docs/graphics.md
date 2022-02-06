@@ -8,19 +8,21 @@ The following functions are used for creating resources, such as vertex buffers,
 
 TODO: add hyperlinking
 
-* gs_graphics_texture_create
-* gs_graphics_uniform_create
-* gs_graphics_shader_create
-* gs_graphics_vertex_buffer_create
-* gs_graphics_index_buffer_create
-* gs_graphics_uniform_buffer_create
-* gs_graphics_framebuffer_create
-* gs_graphics_render_pass_create
-* gs_graphics_pipeline_create
+* [gs_graphics_texture_create](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_texture_create)
+* [gs_graphics_uniform_create](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_uniform_create) 
+* [gs_graphics_shader_create](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_shader_create) 
+* [gs_graphics_vertex_buffer_create](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_vertex_buffer_create) 
+* [gs_graphics_index_buffer_create](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_index_buffer_create)
+* [gs_graphics_uniform_buffer_create](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_index_buffer_create) 
+* [gs_graphics_storage_buffer_create](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_storage_buffer_create) 
+* [gs_graphics_framebuffer_create](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_framebuffer_create) 
+* [gs_graphics_render_pass_create](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_render_pass_create) 
+* [gs_graphics_pipeline_create](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_pipeline_create) 
 
 <br />
 
 #### gs_graphics_texture_create
+
 Creates a texture resource.
 ```
 gs_handle(gs_graphics_texture_t)
@@ -56,13 +58,12 @@ A pointer to a `gs_graphics_uniform_desc_t` structure that describes the uniform
 
 **Return Value:**
 
-Returns a handle to a uniform resource.
-
+Returns a handle to a uniform resource.  
 
 <br />
 
-
 #### gs_graphics_shader_create
+
 Creates a shader resource.
 ```
 gs_handle(gs_graphics_shader_t)
@@ -80,10 +81,10 @@ A pointer to a `gs_graphics_shader_desc_t` structure that describes the shader t
 
 Returns a handle to a shader resource.
 
-<br />
-
+<br /> 
 
 #### gs_graphics_vertex_buffer_create
+
 Creates a vertex buffer resource.
 ```
 gs_handle(gs_graphics_vertex_buffer_t)
@@ -99,11 +100,9 @@ A pointer to a `gs_graphics_vertex_buffer_desc_t` structure that describes the v
 
 **Return Value:**
 
-Returns a handle to a vertex buffer resource.
+Returns a handle to a vertex buffer resource.  
 
-
-<br />
-
+<br /> 
 
 #### gs_graphics_index_buffer_create
 Creates an index buffer resource.
@@ -123,10 +122,10 @@ A pointer to a `gs_graphics_index_buffer_desc_t` structure that describes the in
 
 Returns a handle to an index buffer resource.
 
-<br />
-
+<br /> 
 
 #### gs_graphics_uniform_buffer_create
+
 Creates a uniform buffer resource.
 ```
 gs_handle(gs_graphics_uniform_buffer_t)
@@ -144,10 +143,10 @@ A pointer to a `gs_graphics_uniform_buffer_desc_t` structure that describes the 
 
 Returns a handle to a uniform buffer resource.
 
-<br />
-
+<br /> 
 
 #### gs_graphics_framebuffer_create
+
 Creates a framebuffer resource.
 ```
 gs_handle(gs_graphics_framebuffer_t)
@@ -155,29 +154,30 @@ gs_graphics_framebuffer_create(
     const gs_graphics_framebuffer_desc_t* desc
 );
 ```
+
 **Parameters:**
 
 `desc`
 
-A pointer to a `gs_graphics_framebuffer_desc_t` structure that describes the framebuffer to be created.
-
+A pointer to a `gs_graphics_framebuffer_desc_t` structure that describes the framebuffer to be created.  
 
 **Return Value:**
 
-Returns a handle to a framebuffer resource.
+Returns a handle to a framebuffer resource.  
 
-
-<br />
-
+<br /> 
 
 #### gs_graphics_render_pass_create
+
 Creates a render-pass resource.
+
 ```
 gs_handle(gs_graphics_render_pass_t)
 gs_graphics_render_pass_create(
     const gs_graphics_render_pass_desc_t* desc
 );
 ```
+
 **Parameters:**
 
 `desc`
@@ -188,18 +188,19 @@ A pointer to a `gs_graphics_render_pass_desc_t` structure that describes the ren
 
 Returns a handle to a render-pass resource.
 
-
 <br />
 
-
 #### gs_graphics_pipeline_create
+
 Creates a pipeline resource.
+
 ```
 gs_handle(gs_graphics_pipeline_t)
 gs_graphics_pipeline_create(
     const gs_graphics_pipeline_desc_t* desc
 );
 ```
+
 **Parameters:**
 
 `desc`
@@ -216,10 +217,15 @@ Returns a handle to a pipeline resource.
 
 The following functions are used for freeing resources that were created with the above functions.
 
-* gs_graphics_texture_destroy(gs_handle(gs_graphics_texture_t) hndl)
-* gs_graphics_shader_destroy(gs_handle(gs_graphics_shader_t) hndl)
-* gs_graphics_render_pass_destroy(gs_handle(gs_graphics_render_pass_t) hndl)
-* gs_graphics_pipeline_destroy(gs_handle(gs_graphics_pipeline_t) hndl)
+* [gs_graphics_vertex_buffer_destroy(gs_handle(gs_graphics_vertex_buffer_t) hndl)](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_vertex_buffer_destroy)
+* [gs_graphics_index_buffer_destroy(gs_handle(gs_graphics_index_buffer_t) hndl)](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_index_buffer_destroy)
+* [gs_graphics_texture_destroy(gs_handle(gs_graphics_texture_t) hndl)](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_texture_destroy)
+* [gs_graphics_uniform_destroy(gs_handle(gs_graphics_uniform_t) hndl)](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_uniform_destroy)
+* [gs_graphics_uniform_buffer_destroy(gs_handle(gs_graphics_uniform_buffer_t) hndl)](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_uniform_buffer_destroy)
+* [gs_graphics_storage_buffer_destroy(gs_handle(gs_graphics_storage_buffer_t) hndl)](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_storage_buffer_destroy)
+* [gs_graphics_shader_destroy(gs_handle(gs_graphics_shader_t) hndl)](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_shader_destroy)
+* [gs_graphics_render_pass_destroy(gs_handle(gs_graphics_render_pass_t) hndl)](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_render_pass_destroy)
+* [gs_graphics_pipeline_destroy(gs_handle(gs_graphics_pipeline_t) hndl)](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_pipeline_destroy)
 
 <br />
 

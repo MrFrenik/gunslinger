@@ -2102,14 +2102,12 @@ EM_BOOL gs_ems_mouse_cb(int32_t type, const EmscriptenMouseEvent* evt, void* use
         {
             gs_evt.mouse.action = GS_PLATFORM_MOUSE_BUTTON_DOWN;
             // ems->mouse_down[(int32_t)button] = true; 
-            gs_println("EMS_DOWN");
         } break;
 
         case EMSCRIPTEN_EVENT_MOUSEUP: 
         {
             gs_evt.mouse.action = GS_PLATFORM_MOUSE_BUTTON_RELEASED;
             // ems->mouse_down[(int32_t)button] = false; 
-            gs_println("EMS_UP");
         } break;
 
         case EMSCRIPTEN_EVENT_MOUSEMOVE:
