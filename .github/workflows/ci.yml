@@ -78,7 +78,7 @@ jobs:
           bash ./build-all.sh
           
   build-osx:
-    runs-on: maxOS-latest
+    runs-on: macOS-latest
 
     strategy:
       fail-fast: false
