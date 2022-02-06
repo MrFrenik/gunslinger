@@ -8,6 +8,7 @@ on:
     branches: [ master ]
 
 jobs:
+
   build-linux:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -24,8 +25,12 @@ jobs:
 
       - name: build project template
         run: |
+          echo "building linux..."
           git clone --recursive https://github.com/MrFrenik/gs_project_template
           cd gs_project_template
+          cd third_party/include/gs
+          git pull
+          cd ../..
           echo "building project template..."
           bash ./proc/linux/gcc.sh
           
@@ -33,5 +38,76 @@ jobs:
         run: |
           git clone --recursive https://github.com/MrFrenik/gs_examples
           cd gs_examples
+          cd third_party/include/gs
+          git pull
+          cd ../..
           echo "building examples..."
           bash ./build-all.sh
+          
+  build_windows:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    
+    strategy: 
+      fail-fast: false
+      
+    steps: 
+      - uses: actions/checkout@master
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: build project template
+        run: |
+          echo "build linux..."
+          git clone --recursive https://github.com/MrFrenik/gs_project_template
+          cd gs_project_template
+          cd third_party\includ\gs
+          git pull
+          cd ..\..
+          echo "building project template..."
+          proc\win\cl.bat
+          
+      - name: build examples
+        run: |
+          git clone --recursive https://github.com/MrFrenik/gs_examples
+          cd gs_examples
+          cd third_party\include\gs
+          git pull
+          cd ..\..
+          echo "building examples..."
+          bash ./build-all.sh
+          
+  build-osx:
+    runs-on: maxOS-latest
+    timeout-minutes: 20
+    
+    strategy:
+      fail-fast: false
+
+    steps:
+      - uses: actions/checkout@master
+      
+      - name: build project template
+        run: |
+          echo "building osx..."
+          git clone --recursive https://github.com/MrFrenik/gs_project_template
+          cd gs_project_template
+          cd third_party/include/gs
+          git pull
+          cd ../..
+          echo "building project template..."
+          bash ./proc/osx/gcc.sh
+          
+      - name: build examples
+        run: |
+          git clone --recursive https://github.com/MrFrenik/gs_examples
+          cd gs_examples
+          cd third_party/include/gs
+          git pull
+          cd ../..
+          echo "building examples..."
+          bash ./build-all.sh       
+          
+
+
+
+
+
