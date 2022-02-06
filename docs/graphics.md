@@ -6,18 +6,16 @@ This document shows off the graphics API provided by gunslinger.
 
 The following functions are used for creating resources, such as vertex buffers, textures, uniforms, etc.
 
-TODO: add hyperlinking
-
-* [gs_graphics_texture_create](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_texture_create)
-* [gs_graphics_uniform_create](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_uniform_create) 
-* [gs_graphics_shader_create](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_shader_create) 
-* [gs_graphics_vertex_buffer_create](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_vertex_buffer_create) 
-* [gs_graphics_index_buffer_create](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_index_buffer_create)
-* [gs_graphics_uniform_buffer_create](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_index_buffer_create) 
-* [gs_graphics_storage_buffer_create](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_storage_buffer_create) 
-* [gs_graphics_framebuffer_create](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_framebuffer_create) 
-* [gs_graphics_render_pass_create](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_render_pass_create) 
-* [gs_graphics_pipeline_create](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_pipeline_create) 
+* [gs_graphics_texture_create](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md#gs_graphics_texture_create)
+* [gs_graphics_uniform_create](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md#gs_graphics_uniform_create) 
+* [gs_graphics_shader_create](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md#gs_graphics_shader_create) 
+* [gs_graphics_vertex_buffer_create](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md#gs_graphics_vertex_buffer_create) 
+* [gs_graphics_index_buffer_create](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md#gs_graphics_index_buffer_create)
+* [gs_graphics_uniform_buffer_create](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md#gs_graphics_index_buffer_create) 
+* [gs_graphics_storage_buffer_create](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md#gs_graphics_storage_buffer_create) 
+* [gs_graphics_framebuffer_create](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md#gs_graphics_framebuffer_create) 
+* [gs_graphics_render_pass_create](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md#gs_graphics_render_pass_create) 
+* [gs_graphics_pipeline_create](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md#gs_graphics_pipeline_create) 
 
 <br />
 
@@ -217,15 +215,15 @@ Returns a handle to a pipeline resource.
 
 The following functions are used for freeing resources that were created with the above functions.
 
-* [gs_graphics_vertex_buffer_destroy(gs_handle(gs_graphics_vertex_buffer_t) hndl)](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_vertex_buffer_destroy)
-* [gs_graphics_index_buffer_destroy(gs_handle(gs_graphics_index_buffer_t) hndl)](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_index_buffer_destroy)
-* [gs_graphics_texture_destroy(gs_handle(gs_graphics_texture_t) hndl)](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_texture_destroy)
-* [gs_graphics_uniform_destroy(gs_handle(gs_graphics_uniform_t) hndl)](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_uniform_destroy)
-* [gs_graphics_uniform_buffer_destroy(gs_handle(gs_graphics_uniform_buffer_t) hndl)](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_uniform_buffer_destroy)
-* [gs_graphics_storage_buffer_destroy(gs_handle(gs_graphics_storage_buffer_t) hndl)](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_storage_buffer_destroy)
-* [gs_graphics_shader_destroy(gs_handle(gs_graphics_shader_t) hndl)](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_shader_destroy)
-* [gs_graphics_render_pass_destroy(gs_handle(gs_graphics_render_pass_t) hndl)](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_render_pass_destroy)
-* [gs_graphics_pipeline_destroy(gs_handle(gs_graphics_pipeline_t) hndl)](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md####gs_graphics_pipeline_destroy)
+* [gs_graphics_vertex_buffer_destroy](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md#gs_graphics_vertex_buffer_destroy)
+* [gs_graphics_index_buffer_destroy](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md#gs_graphics_index_buffer_destroy)
+* [gs_graphics_texture_destroy](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md#gs_graphics_texture_destroy)
+* [gs_graphics_uniform_destroy](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md#gs_graphics_uniform_destroy)
+* [gs_graphics_uniform_buffer_destroy](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md#gs_graphics_uniform_buffer_destroy)
+* [gs_graphics_storage_buffer_destroy](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md#gs_graphics_storage_buffer_destroy)
+* [gs_graphics_shader_destroy](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md#gs_graphics_shader_destroy)
+* [gs_graphics_render_pass_destroy](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md#gs_graphics_render_pass_destroy)
+* [gs_graphics_pipeline_destroy](https://github.com/MrFrenik/gunslinger/blob/master/docs/graphics.md#gs_graphics_pipeline_destroy)
 
 <br />
 
