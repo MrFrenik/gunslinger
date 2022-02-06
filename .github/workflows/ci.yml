@@ -31,7 +31,7 @@ jobs:
           cd third_party/include/gs
           git checkout master
           git pull
-          cd ../..
+          cd ../../..
           echo "building project template..."
           bash ./proc/linux/gcc.sh
           
@@ -42,7 +42,7 @@ jobs:
           cd third_party/include/gs
           git checkout master
           git pull
-          cd ../..
+          cd ../../..
           echo "building examples..."
           bash ./build-all.sh
           
@@ -64,7 +64,7 @@ jobs:
           cd third_party\include\gs
           git checkout master
           git pull
-          cd ..\..
+          cd ..\..\..
           echo "building project template..."
           proc\win\cl.bat
           
@@ -75,7 +75,7 @@ jobs:
           cd third_party\include\gs
           git checkout
           git pull
-          cd ..\..
+          cd ..\..\..
           echo "building examples..."
           bash ./build-all.sh
           
@@ -97,7 +97,7 @@ jobs:
           cd third_party/include/gs
           git checkout
           git pull
-          cd ../..
+          cd ../../..
           echo "building project template..."
           bash ./proc/osx/gcc.sh
           
@@ -108,7 +108,7 @@ jobs:
           cd third_party/include/gs
           git checkout
           git pull
-          cd ../..
+          cd ../../..
           echo "building examples..."
           bash ./build-all.sh       
           
