@@ -9,6 +9,49 @@ on:
 
 jobs:
 
+  build-html5:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+
+    steps:
+      - uses: actions/checkout@master
+      - uses: mymindstorm/setup-emsdk@v9
+      - name: build project template
+        run: |
+          echo "building html5..."
+          git clone --recursive https://github.com/MrFrenik/gs_project_template
+          cd gs_project_template
+          cd third_party/include/gs
+          git checkout master
+          git pull
+          cd ../../..
+          echo "building project template..."
+          bash ./proc/html5/*.sh
+      - name: build examples
+        run: |
+          git clone --recursive https://github.com/MrFrenik/gs_examples
+          cd gs_examples
+          cd third_party/include/gs
+          git checkout master
+          git pull
+          cd ../../..
+          echo "building examples..."
+          for d in */ ; do
+            echo $d
+            cd $d
+            if [ -f "proc/html5/emcc.sh" ];then
+              bash proc/html5/*.sh
+            fi
+            cd ..
+          done
+      - uses: actions/upload-artifact@v2
+        with:
+          name: html5 artifacts
+          path: gs_examples/*[0-9][0-9]*
+          retention-days: 7
+  
   build-linux:
     runs-on: ubuntu-latest
     
@@ -44,7 +87,12 @@ jobs:
           cd ../../..
           echo "building examples..."
           bash ./build-all.sh
-          
+      - uses: actions/upload-artifact@v2
+        with:
+          name: Linux artifacts
+          path: gs_examples/*[0-9][0-9]*
+          retention-days: 7
+
   build_windows:
     runs-on: windows-latest
     
@@ -76,7 +124,12 @@ jobs:
           cd ..\..\..
           echo "building examples..."
           bash ./build-all.sh
-          
+      - uses: actions/upload-artifact@v2
+        with:
+          name: Windows artifacts
+          path: gs_examples/*[0-9][0-9]*
+          retention-days: 7
+
   build-osx:
     runs-on: macOS-latest
 
@@ -108,8 +161,11 @@ jobs:
           cd ../../..
           echo "building examples..."
           bash ./build-all.sh       
-          
-
+      - uses: actions/upload-artifact@v2
+        with:
+          name: MacOSX artifacts
+          path: gs_examples/*[0-9][0-9]*
+          retention-days: 7
 
 
 
