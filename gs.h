@@ -860,6 +860,7 @@ gs_color_t gs_color_ctor(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 #define GS_COLOR_GREEN  gs_color(0, 255, 0, 255)
 #define GS_COLOR_BLUE   gs_color(0, 0, 255, 255)
 #define GS_COLOR_ORANGE gs_color(255, 100, 0, 255)
+#define GS_COLOR_YELLOW gs_color(255, 255, 0, 255)
 #define GS_COLOR_PURPLE gs_color(128, 0, 128, 255)
 
 gs_force_inline 
@@ -5283,6 +5284,14 @@ typedef struct gs_graphics_texture_desc_t
     uint32_t num_mips;                              // Number of mips to generate (default 0 is disable mip generation)
     void* data;                                     // Texture data to upload (can be null)
     b32 render_target;                              // Default to false (not a render target)
+    gs_vec2 offset;                                 // Offset for updates
+    struct {
+        uint32_t x;         // X offset in pixels to start read
+        uint32_t y;         // Y offset in pixels to start read
+        uint32_t width;     // Width in pixels for texture
+        uint32_t height;    // Height in pixels for texture
+        size_t size;        // Size in bytes for data to be read
+    } read;
 } gs_graphics_texture_desc_t;
 
 /* Graphics Uniform Layout Desc */
@@ -5620,6 +5629,7 @@ GS_API_DECL void gs_graphics_texture_desc_query(gs_handle(gs_graphics_texture_t)
 GS_API_DECL void gs_graphics_vertex_buffer_update(gs_handle(gs_graphics_vertex_buffer_t) hndl, gs_graphics_vertex_buffer_desc_t* desc); 
 GS_API_DECL void gs_graphics_index_buffer_update(gs_handle(gs_graphics_index_buffer_t) hndl, gs_graphics_index_buffer_desc_t* desc);
 GS_API_DECL void gs_graphics_storage_buffer_update(gs_handle(gs_graphics_storage_buffer_t) hndl, gs_graphics_storage_buffer_desc_t* desc);
+GS_API_DECL void gs_graphics_texture_update(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);
 
 // Resource Destruction
 GS_API_DECL void gs_graphics_texture_destroy(gs_handle(gs_graphics_texture_t) hndl);
