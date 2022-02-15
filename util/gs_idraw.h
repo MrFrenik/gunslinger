@@ -178,9 +178,9 @@ GS_API_DECL void gsi_translatev(gs_immediate_draw_t* gsi, gs_vec3 v);
 GS_API_DECL void gsi_scalef(gs_immediate_draw_t* gsi, float x, float y, float z);
 
 // Camera Utils
-GS_API_DECL void gsi_camera(gs_immediate_draw_t* gsi, gs_camera_t* cam);
-GS_API_DECL void gsi_camera2D(gs_immediate_draw_t* gsi);
-GS_API_DECL void gsi_camera3D(gs_immediate_draw_t* gsi);
+GS_API_DECL void gsi_camera(gs_immediate_draw_t* gsi, gs_camera_t* cam, uint32_t width, uint32_t height);
+GS_API_DECL void gsi_camera2D(gs_immediate_draw_t* gsi, uint32_t width, uint32_t height);
+GS_API_DECL void gsi_camera3D(gs_immediate_draw_t* gsi, uint32_t width, uint32_t height);
 
 // Primitive Drawing Util
 GS_API_DECL void gsi_triangle(gs_immediate_draw_t* gsi, float x0, float y0, float x1, float y1, float x2, float y2, uint8_t r, uint8_t g, uint8_t b, uint8_t a, gs_graphics_primitive_type type);
@@ -996,31 +996,29 @@ void gsi_scalev(gs_immediate_draw_t* gsi, gs_vec3 v)
     gsi_mul_matrix(gsi, gs_mat4_scalev(v));
 }
 
-void gsi_camera(gs_immediate_draw_t* gsi, gs_camera_t* cam)
+void gsi_camera(gs_immediate_draw_t* gsi, gs_camera_t* cam, uint32_t width, uint32_t height)
 {
 	// Just grab main window for now. Will need to grab top of viewport stack in future
-	gs_vec2 ws = gs_platform_window_sizev(gsi->window_handle);	
-	gsi_load_matrix(gsi, gs_camera_get_view_projection(cam, (s32)ws.x, (s32)ws.y));
+	gsi_load_matrix(gsi, gs_camera_get_view_projection(cam, width, height));
 }
 
-void gsi_camera2D(gs_immediate_draw_t* gsi)
+void gsi_camera2D(gs_immediate_draw_t* gsi, uint32_t width, uint32_t height)
 {
 	// Flush previous
 	gsi_flush(gsi);
-	gs_vec2 ws = gs_platform_window_sizev(gsi->window_handle);
-	f32 l = 0.f, r = ws.x, tp = 0.f, b = ws.y;
+	f32 l = 0.f, r = (float)width, tp = 0.f, b = (float)height;
 	gs_mat4 ortho = gs_mat4_ortho(
 		l, r, b, tp, -1.f, 1.f
 	);
 	gsi_load_matrix(gsi, ortho);
 }
 
-void gsi_camera3D(gs_immediate_draw_t* gsi)
+void gsi_camera3D(gs_immediate_draw_t* gsi, uint32_t width, uint32_t height)
 {
 	// Flush previous
 	gsi_flush(gsi);
 	gs_camera_t c = gs_camera_perspective();
-	gsi_camera(gsi, &c);
+	gsi_camera(gsi, &c, width, height);
 }
 
 // Shape Drawing Utils

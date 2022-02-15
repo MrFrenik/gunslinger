@@ -54,16 +54,69 @@
 /*==== Collision Shapes ====*/
 
 // 3D shapes
-typedef struct gs_line_t     {gs_vec3 a, b;                                                  } gs_line_t;
-typedef struct gs_aabb_t     {gs_vec3 min, max;                                              } gs_aabb_t;
-typedef struct gs_sphere_t   {gs_vec3 c; float r;                                            } gs_sphere_t;
-typedef struct gs_plane_t    {union{gs_vec3 p; struct{float a, b, c;};}; float d;            } gs_plane_t;
-typedef struct gs_capsule_t  {gs_vec3 base; float r, height;                                 } gs_capsule_t;
-typedef struct gs_ray_t      {gs_vec3 p, d;                                                  } gs_ray_t;
-typedef struct gs_poly_t     {gs_vec3* verts; int32_t cnt;                                   } gs_poly_t;
-typedef union  gs_frustum_t  {struct {gs_vec4 l, r, t, b, n, f;}; gs_vec4 pl[6]; float v[24];} gs_frustum_t;
-typedef struct gs_cylinder_t {float r; gs_vec3 base; float height;                           } gs_cylinder_t; 
-typedef struct gs_cone_t     {float r; gs_vec3 base; float height;                           } gs_cone_t;
+typedef struct gs_line_t     
+{
+    gs_vec3 a, b;
+} gs_line_t;
+
+typedef struct gs_aabb_t     
+{
+    gs_vec3 min, max;
+} gs_aabb_t;
+
+typedef struct gs_sphere_t   
+{
+    gs_vec3 c; float r;
+} gs_sphere_t;
+
+typedef struct gs_plane_t    
+{
+    union{
+        gs_vec3 p; 
+        struct{float a, b, c;};
+    }; 
+    float d;            
+} gs_plane_t;
+
+typedef struct gs_capsule_t  
+{
+    gs_vec3 base; 
+    float r, height;                                 
+} gs_capsule_t;
+
+typedef struct gs_ray_t      
+{
+    gs_vec3 p, d;    
+    float len;
+} gs_ray_t;
+
+typedef struct gs_poly_t     
+{
+    gs_vec3* verts; int32_t cnt;                                   
+} gs_poly_t;
+
+typedef union gs_frustum_t  
+{
+    struct {
+        gs_vec4 l, r, t, b, n, f;
+    }; 
+    gs_vec4 pl[6]; 
+    float v[24];
+} gs_frustum_t;
+
+typedef struct gs_cylinder_t 
+{
+    float r; 
+    gs_vec3 base; 
+    float height;                           
+} gs_cylinder_t; 
+
+typedef struct gs_cone_t     
+{
+    float r; 
+    gs_vec3 base; 
+    float height;                           
+} gs_cone_t;
 
 // 2D shapes
 // typedef struct gs_rect_t     {gs_vec2 min; gs_vec2 max;                                      } gs_rect_t;
@@ -160,6 +213,7 @@ GS_API_DECL int32_t gs_sphere_vs_poly(const gs_sphere_t* a, const gs_vqs* xform_
 GS_API_DECL int32_t gs_sphere_vs_cylinder(const gs_sphere_t* a, const gs_vqs* xform_a, const gs_cylinder_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
 GS_API_DECL int32_t gs_sphere_vs_cone(const gs_sphere_t* a, const gs_vqs* xform_a, const gs_cone_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
 GS_API_DECL int32_t gs_sphere_vs_capsule(const gs_sphere_t* a, const gs_vqs* xform_a, const gs_capsule_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_sphere_vs_ray(const gs_sphere_t* a, const gs_vqs* xform_a, const gs_ray_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
 
 /* Box */
 GS_API_DECL int32_t gs_aabb_vs_aabb(const gs_aabb_t* a, const gs_vqs* xform_a, const gs_aabb_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
@@ -168,6 +222,7 @@ GS_API_DECL int32_t gs_aabb_vs_poly(const gs_aabb_t* a, const gs_vqs* xform_a, c
 GS_API_DECL int32_t gs_aabb_vs_cylinder(const gs_aabb_t* a, const gs_vqs* xform_a, const gs_cylinder_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
 GS_API_DECL int32_t gs_aabb_vs_cone(const gs_aabb_t* a, const gs_vqs* xform_a, const gs_cone_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
 GS_API_DECL int32_t gs_aabb_vs_capsule(const gs_aabb_t* a, const gs_vqs* xform_a, const gs_capsule_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_aabb_vs_ray(const gs_aabb_t* a, const gs_vqs* xform_a, const gs_ray_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
 
 /* Capsule */
 GS_API_DECL int32_t gs_capsule_vs_aabb(const gs_capsule_t* capsule, const gs_vqs* xform_a, const gs_aabb_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
@@ -194,6 +249,7 @@ GS_API_DECL int32_t gs_cylinder_vs_aabb(const gs_cylinder_t* a, const gs_vqs* xf
 GS_API_DECL int32_t gs_cylinder_vs_poly(const gs_cylinder_t* a, const gs_vqs* xform_a, const gs_poly_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
 GS_API_DECL int32_t gs_cylinder_vs_cone(const gs_cylinder_t* a, const gs_vqs* xform_a, const gs_cone_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
 GS_API_DECL int32_t gs_cylinder_vs_capsule(const gs_cylinder_t* a, const gs_vqs* xform_a, const gs_capsule_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_cylinder_vs_ray(const gs_cylinder_t* a, const gs_vqs* xform_a, const gs_ray_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
 
 /* Cone */
 GS_API_DECL int32_t gs_cone_vs_cone(const gs_cone_t* a, const gs_vqs* xform_a, const gs_cone_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
@@ -202,6 +258,7 @@ GS_API_DECL int32_t gs_cone_vs_aabb(const gs_cone_t* a, const gs_vqs* xform_a, c
 GS_API_DECL int32_t gs_cone_vs_poly(const gs_cone_t* a, const gs_vqs* xform_a, const gs_poly_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
 GS_API_DECL int32_t gs_cone_vs_cylinder(const gs_cone_t* a, const gs_vqs* xform_a, const gs_cylinder_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
 GS_API_DECL int32_t gs_cone_vs_capsule(const gs_cone_t* a, const gs_vqs* xform_a, const gs_capsule_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_cone_vs_ray(const gs_cone_t* a, const gs_vqs* xform_a, const gs_ray_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
 
 // 2D Shapes (eventually)
 
@@ -218,6 +275,7 @@ GS_API_DECL void gs_support_aabb(const void* a, const gs_vqs* xform, const gs_ve
 GS_API_DECL void gs_support_cylinder(const void* c, const gs_vqs* xform, const gs_vec3* dir, gs_vec3* out);
 GS_API_DECL void gs_support_cone(const void* c, const gs_vqs* xform, const gs_vec3* dir, gs_vec3* out);
 GS_API_DECL void gs_support_capsule(const void* c, const gs_vqs* xform, const gs_vec3* dir, gs_vec3* out);
+GS_API_DECL void gs_support_ray(const void* r, const gs_vqs* xform, const gs_vec3* dir, gs_vec3* out);
 
 /*==== GJK ====*/
 
@@ -455,6 +513,30 @@ GS_API_DECL void gs_support_sphere(const void* _o, const gs_vqs* xform, const gs
     const gs_sphere_t* s = (gs_sphere_t*)_o;
     float scl = gs_max(xform->scale.x, gs_max(xform->scale.z, xform->scale.y));
     *out = gs_vec3_add(gs_vec3_scale(gs_vec3_norm(*dir), scl * s->r), gs_vec3_add(xform->position, s->c));
+}
+
+// Ray
+GS_API_DECL void gs_support_ray(const void* _r, const gs_vqs* xform, const gs_vec3* dir, gs_vec3* out)
+{
+    const gs_ray_t* r = (gs_ray_t*)_r;
+
+    // Bring direction vector into rotation space
+    gs_quat qinv = gs_quat_inverse(xform->rotation);
+    gs_vec3 d = gs_quat_rotate(qinv, *dir);
+
+    gs_vec3 rs = r->p;
+    gs_vec3 re = gs_vec3_add(r->p, gs_vec3_scale(r->d, r->len));
+
+    if (gs_vec3_dot(rs, d) > gs_vec3_dot(re, d)) {
+        *out = rs;
+    } else {
+        *out = re;
+    }
+
+    // Transform support point by rotation and translation of object
+    *out = gs_quat_rotate(xform->rotation, *out);
+    *out = gs_vec3_mul(xform->scale, *out);
+    *out = gs_vec3_add(xform->position, *out);
 }
 
 // AABB
@@ -701,8 +783,8 @@ _GS_COLLIDE_FUNC_IMPL(sphere, cylinder, gs_support_sphere, gs_support_cylinder);
 _GS_COLLIDE_FUNC_IMPL(sphere, cone, gs_support_sphere, gs_support_cone);          // Sphere vs. Cone
 _GS_COLLIDE_FUNC_IMPL(sphere, aabb, gs_support_sphere, gs_support_aabb);          // Sphere vs. AABB
 _GS_COLLIDE_FUNC_IMPL(sphere, capsule, gs_support_sphere, gs_support_capsule);    // Sphere vs. Capsule
-_GS_COLLIDE_FUNC_IMPL(sphere, poly, gs_support_sphere, gs_support_poly);          // Sphere vs. Poly
-
+_GS_COLLIDE_FUNC_IMPL(sphere, poly, gs_support_sphere, gs_support_poly);          // Sphere vs. Poly 
+_GS_COLLIDE_FUNC_IMPL(sphere, ray, gs_support_sphere, gs_support_ray);            // Sphere vs. Ray
 /* AABB */
 
 _GS_COLLIDE_FUNC_IMPL(aabb, aabb, gs_support_aabb, gs_support_aabb);          // AABB vs. AABB
@@ -711,6 +793,7 @@ _GS_COLLIDE_FUNC_IMPL(aabb, cone, gs_support_aabb, gs_support_cone);          //
 _GS_COLLIDE_FUNC_IMPL(aabb, sphere, gs_support_aabb, gs_support_sphere);      // AABB vs. Sphere
 _GS_COLLIDE_FUNC_IMPL(aabb, capsule, gs_support_aabb, gs_support_capsule);    // AABB vs. Capsule
 _GS_COLLIDE_FUNC_IMPL(aabb, poly, gs_support_aabb, gs_support_poly);          // AABB vs. Poly
+_GS_COLLIDE_FUNC_IMPL(aabb, ray, gs_support_aabb, gs_support_ray);          // AABB vs. Ray
 
 /* Capsule */
 
@@ -738,6 +821,7 @@ _GS_COLLIDE_FUNC_IMPL(cylinder, cone, gs_support_cylinder, gs_support_cone);    
 _GS_COLLIDE_FUNC_IMPL(cylinder, sphere, gs_support_cylinder, gs_support_sphere);      // Cylinder vs. Sphere
 _GS_COLLIDE_FUNC_IMPL(cylinder, aabb, gs_support_cylinder, gs_support_aabb);          // Cylinder vs. AABB
 _GS_COLLIDE_FUNC_IMPL(cylinder, capsule, gs_support_cylinder, gs_support_capsule);    // Cylinder vs. Capsule
+_GS_COLLIDE_FUNC_IMPL(cylinder, ray, gs_support_cylinder, gs_support_ray);            // Cylinder vs. Ray
 
 /* Cone */
 
@@ -747,6 +831,7 @@ _GS_COLLIDE_FUNC_IMPL(cone, cylinder, gs_support_cone, gs_support_cylinder);  //
 _GS_COLLIDE_FUNC_IMPL(cone, sphere, gs_support_cone, gs_support_sphere);      // Cone vs. Sphere
 _GS_COLLIDE_FUNC_IMPL(cone, aabb, gs_support_cone, gs_support_aabb);          // Cone vs. AABB
 _GS_COLLIDE_FUNC_IMPL(cone, capsule, gs_support_cone, gs_support_capsule);    // Cone vs. Capsule
+_GS_COLLIDE_FUNC_IMPL(cone, ray, gs_support_cone, gs_support_ray);            // Cone vs. Ray
 
 /*==== GKJ ====*/
 

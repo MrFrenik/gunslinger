@@ -106,6 +106,7 @@ enum {
 	GS_GUI_COMMAND_TEXT,
 	GS_GUI_COMMAND_ICON,
 	GS_GUI_COMMAND_IMAGE,
+	GS_GUI_COMMAND_CUSTOM,
 	GS_GUI_COMMAND_MAX
 };
 
@@ -113,6 +114,17 @@ enum {
     GS_GUI_SHAPE_RECT = 1,
     GS_GUI_SHAPE_CIRCLE, 
     GS_GUI_SHAPE_TRIANGLE
+};
+
+enum {
+    GS_GUI_TRANSFORM_WORLD = 0x00,
+    GS_GUI_TRANSFORM_LOCAL
+};
+
+enum {
+    GS_GUI_GIZMO_TRANSLATE = 0x00,
+    GS_GUI_GIZMO_ROTATE, 
+    GS_GUI_GIZMO_SCALE
 };
 
 enum {
@@ -232,13 +244,60 @@ typedef struct {gs_vec2 points[3];} gs_gui_triangle_t;
 
 typedef struct {gs_gui_id id; int32_t last_update;} gs_gui_pool_item_t; 
 
-typedef struct {int32_t type, size;} gs_gui_basecommand_t;
-typedef struct {gs_gui_basecommand_t base; void *dst;} gs_gui_jumpcommand_t;
-typedef struct {gs_gui_basecommand_t base; gs_gui_rect_t rect;} gs_gui_clipcommand_t;
-typedef struct {gs_gui_basecommand_t base; gs_asset_font_t* font; gs_vec2 pos; gs_color_t color; char str[1];} gs_gui_textcommand_t;
-typedef struct {gs_gui_basecommand_t base; gs_gui_rect_t rect; int32_t id; gs_color_t color;} gs_gui_iconcommand_t;
-typedef struct {gs_gui_basecommand_t base; gs_gui_rect_t rect; gs_handle(gs_graphics_texture_t) hndl; gs_vec4 uvs; gs_color_t color;} gs_gui_imagecommand_t;
-typedef struct {
+typedef struct 
+{
+    int32_t type, size;
+} gs_gui_basecommand_t;
+
+typedef struct 
+{
+    gs_gui_basecommand_t base; 
+    void *dst;
+} gs_gui_jumpcommand_t;
+
+typedef struct 
+{
+    gs_gui_basecommand_t base; 
+    gs_gui_rect_t rect;
+} gs_gui_clipcommand_t;
+
+typedef struct 
+{
+    gs_gui_basecommand_t base; 
+    gs_asset_font_t* font; 
+    gs_vec2 pos; 
+    gs_color_t color; 
+    char str[1];
+} gs_gui_textcommand_t;
+
+typedef struct 
+{
+    gs_gui_basecommand_t base; 
+    gs_gui_rect_t rect; 
+    gs_handle(gs_graphics_texture_t) hndl; 
+    gs_vec4 uvs; 
+    gs_color_t color;
+} gs_gui_imagecommand_t;
+
+struct gs_gui_customcommand_t;
+
+// Draw Callback
+typedef void (* gs_gui_draw_callback_t)(gs_gui_context_t* ctx, struct gs_gui_customcommand_t* cmd);
+
+typedef struct gs_gui_customcommand_t
+{
+    gs_gui_basecommand_t base; 
+    gs_gui_rect_t clip; 
+    gs_gui_id hash;
+    gs_gui_id hover;
+    gs_gui_id focus;
+    gs_gui_draw_callback_t cb;
+    void* data;
+    size_t sz;
+} gs_gui_customcommand_t;
+
+typedef struct 
+{
     gs_gui_basecommand_t base; 
     uint32_t type;
     union
@@ -258,8 +317,8 @@ typedef union
 	gs_gui_clipcommand_t clip;
 	gs_gui_shapecommand_t shape;
 	gs_gui_textcommand_t text;
-	gs_gui_iconcommand_t icon;
 	gs_gui_imagecommand_t image;
+    gs_gui_customcommand_t custom;
 } gs_gui_command_t; 
 
 struct gs_gui_context_t;
@@ -404,7 +463,7 @@ typedef struct gs_gui_container_t
     uint32_t frame;
     uint32_t visible;
     int32_t flags;
-	char name[256];
+	char name[256]; 
 } gs_gui_container_t;
 
 typedef enum {
@@ -949,11 +1008,11 @@ GS_API_DECL void gs_gui_draw_circle(gs_gui_context_t* ctx, gs_vec2 position, flo
 GS_API_DECL void gs_gui_draw_triangle(gs_gui_context_t* ctx, gs_vec2 a, gs_vec2 b, gs_vec2 c, gs_color_t color);
 GS_API_DECL void gs_gui_draw_box(gs_gui_context_t* ctx, gs_gui_rect_t rect, int16_t* width, gs_color_t color);
 GS_API_DECL void gs_gui_draw_text(gs_gui_context_t* ctx, gs_asset_font_t* font, const char *str, int32_t len, gs_vec2 pos, gs_color_t color, int32_t shadow_x, int32_t shadow_y, gs_color_t shadow_color);
-GS_API_DECL void gs_gui_draw_icon(gs_gui_context_t* ctx, int32_t id, gs_gui_rect_t rect, gs_color_t color);
 GS_API_DECL void gs_gui_draw_image(gs_gui_context_t* ctx, gs_handle(gs_graphics_texture_t) hndl, gs_gui_rect_t rect, gs_vec2 uv0, gs_vec2 uv1, gs_color_t color);
 GS_API_DECL void gs_gui_draw_nine_rect(gs_gui_context_t* ctx, gs_handle(gs_graphics_texture_t) hndl, gs_gui_rect_t rect, gs_vec2 uv0, gs_vec2 uv1, uint32_t left, uint32_t right, uint32_t top, uint32_t bottom, gs_color_t color);
 GS_API_DECL void gs_gui_draw_control_frame(gs_gui_context_t* ctx, gs_gui_id id, gs_gui_rect_t rect, int32_t elementid, int32_t opt);
 GS_API_DECL void gs_gui_draw_control_text(gs_gui_context_t* ctx, const char *str, gs_gui_rect_t rect, const gs_gui_style_t* style, int32_t opt);
+GS_API_DECL void gs_gui_draw_custom(gs_gui_context_t* ctx, gs_gui_rect_t rect, gs_gui_draw_callback_t cb, void* data, size_t sz);
 
 //=== Layout ===//
 GS_API_DECL void gs_gui_layout_row(gs_gui_context_t *ctx, int32_t items, const int32_t *widths, int32_t height);
@@ -1011,9 +1070,18 @@ GS_API_DECL void gs_gui_undock_ex(gs_gui_context_t* ctx, const char* name);
 GS_API_DECL void gs_gui_dock_ex_cnt(gs_gui_context_t* ctx, gs_gui_container_t* dst, gs_gui_container_t* src, int32_t split_type, float ratio);
 GS_API_DECL void gs_gui_undock_ex_cnt(gs_gui_context_t* ctx, gs_gui_container_t* cnt);
 
+//=== Gizmo ===//
+// GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_mat4* view, gs_mat4* projection, int32_t op, int32_t mode, gs_vqs* xform);
+GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_vqs* xform, int32_t op, int32_t mode);
+
 //=== Implementation ===//
 
 #ifdef GS_GUI_IMPL 
+
+#ifndef GS_PHYSICS_IMPL
+    #define GS_PHYSICS_IMPL
+    #include "gs_physics.h"
+#endif
 
 #define gs_gui_unused(x) ((void) (x))
 
@@ -3572,7 +3640,8 @@ GS_API_DECL void gs_gui_begin(gs_gui_context_t* ctx)
 	ctx->frame++; 
 
     // Set up overlay draw list
-    gsi_camera2D(&ctx->overlay_draw_list);
+    gs_vec2 fbs = gs_platform_framebuffer_sizev(ctx->window_hndl);
+    gsi_camera2D(&ctx->overlay_draw_list, (uint32_t)fbs.x, (uint32_t)fbs.y);
     gsi_defaults(&ctx->overlay_draw_list);
 
     for (
@@ -4228,7 +4297,8 @@ GS_API_DECL void gs_gui_render(gs_gui_context_t* ctx, gs_command_buffer_t* cb)
 {
     const gs_vec2 fb = gs_platform_framebuffer_sizev(ctx->window_hndl);
 
-    gsi_camera2D(&ctx->gsi);
+    gsi_defaults(&ctx->gsi);
+    gsi_camera2D(&ctx->gsi, (uint32_t)fb.x, (uint32_t)fb.y);
     gsi_blend_enabled(&ctx->gsi, true);
 
     gs_gui_command_t* cmd = NULL; 
@@ -4236,6 +4306,19 @@ GS_API_DECL void gs_gui_render(gs_gui_context_t* ctx, gs_command_buffer_t* cb)
     {
       switch (cmd->type) 
       {
+        case GS_GUI_COMMAND_CUSTOM:
+        {
+            if (cmd->custom.cb) {
+                cmd->custom.cb(ctx, &cmd->custom);
+            }
+
+            gsi_defaults(&ctx->gsi);
+            gsi_camera2D(&ctx->gsi, (uint32_t)fb.x, (uint32_t)fb.y);
+            gsi_blend_enabled(&ctx->gsi, true);
+            gs_graphics_set_viewport(&ctx->gsi.commands, 0, 0, (uint32_t)fb.x, (uint32_t)fb.y);
+
+        } break;
+
         case GS_GUI_COMMAND_TEXT:
         {
             const gs_vec2* tp = &cmd->text.pos;
@@ -4275,11 +4358,7 @@ GS_API_DECL void gs_gui_render(gs_gui_context_t* ctx, gs_command_buffer_t* cb)
                 } break;
             }
             
-        } break;
-
-        case GS_GUI_COMMAND_ICON:
-        {
-        } break;
+        } break; 
 
         case GS_GUI_COMMAND_IMAGE:
         {
@@ -4305,9 +4384,7 @@ GS_API_DECL void gs_gui_render(gs_gui_context_t* ctx, gs_command_buffer_t* cb)
             clip_rect.x = gs_max(clip_rect.x, 0.f);
             clip_rect.y = gs_max(clip_rect.y, 0.f);
             clip_rect.w = gs_max(clip_rect.w, 0.f);
-            clip_rect.h = gs_max(clip_rect.h, 0.f); 
-
-            // gs_println("clip: <%.2f, %>2f, %.2f, %.2f>", clip_rect.x, fb.y - clip_rect.h - clip_rect.y, clip_rect.w, clip_rect.h);
+            clip_rect.h = gs_max(clip_rect.h, 0.f);
 
             gsi_set_view_scissor(&ctx->gsi, 
                 (int32_t)(clip_rect.x), 
@@ -4346,6 +4423,14 @@ GS_API_DECL gs_gui_id gs_gui_get_id(gs_gui_context_t* ctx, const void* data, int
 	gs_gui_hash(&res, data, size);
 	ctx->last_id = res; 
 
+	return res;
+}
+
+GS_API_DECL gs_gui_id gs_gui_get_id_hash(gs_gui_context_t* ctx, const void* data, int32_t size, gs_gui_id hash)
+{
+	gs_gui_id res = hash;
+	gs_gui_hash(&res, data, size);
+	ctx->last_id = res; 
 	return res;
 }
 
@@ -4705,25 +4790,6 @@ GS_API_DECL void gs_gui_draw_text(gs_gui_context_t* ctx, gs_asset_font_t* font, 
     } 
 } 
 
-GS_API_DECL void gs_gui_draw_icon(gs_gui_context_t* ctx, int32_t id, gs_gui_rect_t rect, gs_color_t color) 
-{
-	gs_gui_command_t* cmd;
-
-	/* do clip command if the rect isn't fully contained within the cliprect */
-	int32_t clipped = gs_gui_check_clip(ctx, rect);
-	if (clipped == GS_GUI_CLIP_ALL ) {return;}
-	if (clipped == GS_GUI_CLIP_PART) {gs_gui_set_clip(ctx, gs_gui_get_clip_rect(ctx));}
-
-	/* do icon command */
-	cmd = gs_gui_push_command(ctx, GS_GUI_COMMAND_ICON, sizeof(gs_gui_iconcommand_t));
-	cmd->icon.id = id;
-	cmd->icon.rect = rect;
-	cmd->icon.color = color;
-
-	/* reset clipping if it was set */
-	if (clipped) { gs_gui_set_clip(ctx, gs_gui_unclipped_rect); }
-} 
-
 GS_API_DECL void gs_gui_draw_image(gs_gui_context_t *ctx, gs_handle(gs_graphics_texture_t) hndl, gs_gui_rect_t rect, gs_vec2 uv0, gs_vec2 uv1, gs_color_t color)
 {
 	gs_gui_command_t* cmd;
@@ -4733,7 +4799,7 @@ GS_API_DECL void gs_gui_draw_image(gs_gui_context_t *ctx, gs_handle(gs_graphics_
 	if (clipped == GS_GUI_CLIP_ALL ) {return;}
 	if (clipped == GS_GUI_CLIP_PART) {gs_gui_set_clip(ctx, gs_gui_get_clip_rect(ctx));}
 
-	/* do icon command */
+	/* do image command */
 	cmd = gs_gui_push_command(ctx, GS_GUI_COMMAND_IMAGE, sizeof(gs_gui_imagecommand_t));
 	cmd->image.hndl = hndl;
 	cmd->image.rect = rect;
@@ -4743,6 +4809,39 @@ GS_API_DECL void gs_gui_draw_image(gs_gui_context_t *ctx, gs_handle(gs_graphics_
 	/* reset clipping if it was set */
 	if (clipped) {gs_gui_set_clip(ctx, gs_gui_unclipped_rect);}
 } 
+
+GS_API_DECL void gs_gui_draw_custom(gs_gui_context_t* ctx, gs_gui_rect_t rect, gs_gui_draw_callback_t cb, void* data, size_t sz)
+{
+	gs_gui_command_t* cmd;
+
+	rect = gs_gui_intersect_rects(rect, gs_gui_get_clip_rect(ctx));
+
+	/* do clip command if the rect isn't fully contained within the cliprect */
+	int32_t clipped = gs_gui_check_clip(ctx, rect);
+	if (clipped == GS_GUI_CLIP_ALL ) {return;}
+	if (clipped == GS_GUI_CLIP_PART) {gs_gui_set_clip(ctx, gs_gui_get_clip_rect(ctx));}
+
+	int32_t idx = ctx->id_stack.idx;
+	gs_gui_id res = (idx > 0) ? ctx->id_stack.items[idx - 1] : GS_GUI_HASH_INITIAL;
+
+	/* do custom command */
+	cmd = gs_gui_push_command(ctx, GS_GUI_COMMAND_CUSTOM, sizeof(gs_gui_customcommand_t));
+	cmd->custom.clip = rect;
+	cmd->custom.cb = cb;
+    cmd->custom.hover = ctx->hover;
+    cmd->custom.focus = ctx->focus; 
+    cmd->custom.hash = res;
+    cmd->custom.data = ctx->command_list.items + ctx->command_list.idx;
+    cmd->custom.sz = sz;
+    cmd->base.size += sz;
+    
+    // Copy data and move list forward
+    memcpy(ctx->command_list.items + ctx->command_list.idx, data, sz);
+    ctx->command_list.idx += sz;
+
+	/* reset clipping if it was set */
+	if (clipped) {gs_gui_set_clip(ctx, gs_gui_unclipped_rect);}
+}
 
 GS_API_DECL void gs_gui_draw_nine_rect(gs_gui_context_t* ctx, gs_handle(gs_graphics_texture_t) hndl, gs_gui_rect_t rect, gs_vec2 uv0, gs_vec2 uv1, uint32_t left, uint32_t right, uint32_t top, uint32_t bottom, gs_color_t color)
 {
@@ -7146,6 +7245,424 @@ static int16_t int16_slider(gs_gui_context_t *ctx, int16_t* value, int32_t low, 
     gs_gui_pop_id(ctx);
     return res;
 } 
+
+//=== Gizmo ===// 
+
+enum {
+    GS_GUI_AXIS_RIGHT = 0x01, 
+    GS_GUI_AXIS_UP, 
+    GS_GUI_AXIS_FORWARD
+};
+
+typedef struct {
+    struct {
+        gs_vqs model;
+        gs_cylinder_t shape;
+    } axis;
+    struct {
+        gs_vqs model;
+        union {
+            gs_cone_t cone;
+            gs_aabb_t aabb;
+        } shape;
+    } cap;
+} gs_gui_axis_t;
+
+typedef struct { 
+    gs_gui_axis_t right;
+    gs_gui_axis_t up;
+    gs_gui_axis_t forward;
+} gs_gizmo_translate_t;
+
+typedef struct {
+    gs_gui_axis_t right;
+    gs_gui_axis_t up;
+    gs_gui_axis_t forward;
+} gs_gizmo_scale_t;
+
+typedef struct {
+    gs_vqs right;
+} gs_gizmo_rotate_t;
+
+static gs_gizmo_scale_t gs_gizmo_scale(const gs_vqs* parent)
+{
+    gs_gizmo_scale_t gizmo = gs_default_val();
+	const gs_vec3 ax_scl = gs_v3(0.03f, 1.f, 0.03f);
+	const gs_vec3 cap_scl = gs_vec3_scale(gs_v3s(0.05f), 2.f * gs_vec3_len(parent->scale));
+	gs_vqs local = gs_vqs_default();
+	gs_vqs abs = gs_vqs_default(); 
+
+#define GS_GUI_GIZMO_AXIS_DEFINE_SCALE(MEMBER, OFFSET, DEG, AXIS)\
+    do {\
+		/* Axis */\
+		{\
+			local = gs_vqs_ctor(\
+				OFFSET,\
+				gs_quat_angle_axis(gs_deg2rad(DEG), AXIS),\
+				ax_scl\
+			);\
+			gizmo.MEMBER.axis.model = gs_vqs_absolute_transform(&local, parent);\
+			gs_cylinder_t axis = gs_default_val();\
+			axis.r = 1.f;\
+			axis.base = gs_v3(0.f, 0.0f, 0.f);\
+			axis.height = 1.f;\
+			gizmo.MEMBER.axis.shape = axis;\
+		}\
+\
+		/* Cap */\
+		{\
+			local = gs_vqs_ctor(\
+				gs_v3(0.f, 0.5f, 0.f),\
+				gs_quat_default(),\
+				gs_v3s(1.f)\
+			);\
+\
+			gizmo.MEMBER.cap.model = gs_vqs_absolute_transform(&local, &gizmo.MEMBER.axis.model);\
+			gizmo.MEMBER.cap.model.scale = cap_scl;\
+			gs_aabb_t aabb = gs_default_val();\
+			aabb.min = gs_v3s(-0.5f);\
+			aabb.max = gs_v3s(0.5f);\
+			gizmo.MEMBER.cap.shape.aabb = aabb;\
+		}\
+	} while (0) 
+
+    const float off = 0.6f;
+    GS_GUI_GIZMO_AXIS_DEFINE_SCALE(right, gs_v3(-off, 0.f, 0.f), 90.f, GS_ZAXIS);
+    GS_GUI_GIZMO_AXIS_DEFINE_SCALE(up, gs_v3(0.f, off, 0.f), 0.f, GS_YAXIS);
+    GS_GUI_GIZMO_AXIS_DEFINE_SCALE(forward, gs_v3(0.f, 0.f, off), 90.f, GS_XAXIS);
+
+	return gizmo;
+}
+
+static gs_gizmo_translate_t gs_gizmo_translate(const gs_vqs* parent)
+{
+    gs_gizmo_translate_t trans = gs_default_val();
+	const gs_vec3 ax_scl = gs_v3(0.03f, 1.f, 0.03f);
+	const gs_vec3 cap_scl = gs_vec3_scale(gs_v3(0.02f, 0.05f, 0.02f), 2.f * gs_vec3_len(parent->scale));
+	gs_vqs local = gs_vqs_default();
+	gs_vqs abs = gs_vqs_default(); 
+
+#define GS_GUI_GIZMO_AXIS_DEFINE(MEMBER, OFFSET, DEG, AXIS)\
+    do {\
+		/* Axis */\
+		{\
+			local = gs_vqs_ctor(\
+				OFFSET,\
+				gs_quat_angle_axis(gs_deg2rad(DEG), AXIS),\
+				ax_scl\
+			);\
+			trans.MEMBER.axis.model = gs_vqs_absolute_transform(&local, parent);\
+			gs_cylinder_t axis = gs_default_val();\
+			axis.r = 1.f;\
+			axis.base = gs_v3(0.f, 0.0f, 0.f);\
+			axis.height = 1.f;\
+			trans.MEMBER.axis.shape = axis;\
+		}\
+\
+		/* Cap */\
+		{\
+			local = gs_vqs_ctor(\
+				gs_v3(0.f, 0.5f, 0.f),\
+				gs_quat_default(),\
+				gs_v3s(1.f)\
+			);\
+\
+			trans.MEMBER.cap.model = gs_vqs_absolute_transform(&local, &trans.MEMBER.axis.model);\
+			trans.MEMBER.cap.model.scale = cap_scl;\
+			gs_cone_t cap = gs_default_val();\
+			cap.r = 1.f;\
+			cap.base = gs_v3(0.f, 0.0f, 0.f);\
+			cap.height = 1.0f;\
+			trans.MEMBER.cap.shape.cone = cap;\
+		}\
+	} while (0)
+
+    const float off = 0.6f;
+    GS_GUI_GIZMO_AXIS_DEFINE(right, gs_v3(-off, 0.f, 0.f), 90.f, GS_ZAXIS);
+    GS_GUI_GIZMO_AXIS_DEFINE(up, gs_v3(0.f, off, 0.f), 0.f, GS_YAXIS);
+    GS_GUI_GIZMO_AXIS_DEFINE(forward, gs_v3(0.f, 0.f, off), 90.f, GS_XAXIS);
+
+	return trans;
+}
+
+typedef struct {
+    int32_t op;
+    int32_t mode;
+    gs_vqs xform;
+    gs_contact_info_t info;
+    union {
+        gs_gizmo_translate_t translate;
+        gs_gizmo_scale_t scale;
+        gs_gizmo_rotate_t rotate;
+    } gizmo;
+    int16_t hover;
+	gs_camera_t camera;
+} gs_gizmo_desc_t;
+
+static void gs_gui_gizmo_render(gs_gui_context_t* ctx, gs_gui_customcommand_t* cmd)
+{ 
+	const gs_vec2 fbs = gs_platform_framebuffer_sizev(ctx->window_hndl);
+	const float t = gs_platform_elapsed_time();
+    gs_immediate_draw_t* gsi = &ctx->gsi;
+    gs_gui_rect_t clip = cmd->clip;
+    gs_gizmo_desc_t* desc = (gs_gizmo_desc_t*)cmd->data;
+	gs_camera_t cam = desc->camera;
+    const uint16_t segments = 4;
+
+	gsi_defaults(gsi);
+	gsi_depth_enabled(gsi, false);
+    gsi_camera(gsi, &cam, (uint32_t)clip.w, (uint32_t)clip.h);
+    gs_graphics_set_viewport(&gsi->commands, clip.x, fbs.y - clip.h - clip.y, clip.w, clip.h); 
+	int32_t primitive = GS_GRAPHICS_PRIMITIVE_TRIANGLES; 
+
+#define GS_GUI_GIZMO_AXIS_TRANSLATE(ID, AXIS, COLOR)\
+    do {\
+        gs_gui_id id = gs_gui_get_id_hash(ctx, ID, strlen(ID), cmd->hash);\
+        bool hover = cmd->hover == id;\
+        bool focus = cmd->focus == id;\
+        gs_color_t color = hover || focus ? GS_COLOR_YELLOW : COLOR;\
+        /* Axis */\
+        {\
+            gsi_push_matrix(gsi, GSI_MATRIX_MODELVIEW);\
+            gsi_mul_matrix(gsi, gs_vqs_to_mat4(&desc->gizmo.translate.AXIS.axis.model));\
+            {\
+                gs_cylinder_t* axis = &desc->gizmo.translate.AXIS.axis.shape;\
+                gsi_cylinder(gsi, axis->base.x, axis->base.y, axis->base.z, axis->r,\
+                    axis->r, axis->height, segments, color.r, color.g, color.b, 100, primitive);\
+\
+                const float h = axis->height;\
+                gs_vec3 s = gs_v3(axis->base.x, axis->base.y - h * 0.5f, axis->base.z);\
+                gs_vec3 e = gs_vec3_add(s, gs_v3(0.f, h, 0.f));\
+                gsi_line3Dv(gsi, s, e, color);\
+            }\
+            gsi_pop_matrix(gsi);\
+        }\
+\
+        /* Cap */\
+        {\
+            gsi_push_matrix(gsi, GSI_MATRIX_MODELVIEW);\
+            gsi_mul_matrix(gsi, gs_vqs_to_mat4(&desc->gizmo.translate.AXIS.cap.model));\
+            {\
+                gs_cone_t* cap = &desc->gizmo.translate.AXIS.cap.shape.cone;\
+                gsi_cone(gsi, cap->base.x, cap->base.y, cap->base.z, cap->r, cap->height, segments, color.r, color.g, color.b, color.a, primitive);\
+            }\
+            gsi_pop_matrix(gsi);\
+        }\
+    } while (0)
+
+#define GS_GUI_GIZMO_AXIS_SCALE(ID, AXIS, COLOR)\
+    do {\
+        gs_gui_id id = gs_gui_get_id_hash(ctx, ID, strlen(ID), cmd->hash);\
+        bool hover = cmd->hover == id;\
+        bool focus = cmd->focus == id;\
+        gs_color_t color = hover || focus ? GS_COLOR_YELLOW : COLOR;\
+        /* Axis */\
+        {\
+            gsi_push_matrix(gsi, GSI_MATRIX_MODELVIEW);\
+            gsi_mul_matrix(gsi, gs_vqs_to_mat4(&desc->gizmo.scale.AXIS.axis.model));\
+            {\
+                gs_cylinder_t* axis = &desc->gizmo.scale.AXIS.axis.shape;\
+                gsi_cylinder(gsi, axis->base.x, axis->base.y, axis->base.z, axis->r,\
+                    axis->r, axis->height, segments, color.r, color.g, color.b, 100, primitive);\
+\
+                const float h = axis->height;\
+                gs_vec3 s = gs_v3(axis->base.x, axis->base.y - h * 0.5f, axis->base.z);\
+                gs_vec3 e = gs_vec3_add(s, gs_v3(0.f, h, 0.f));\
+                gsi_line3Dv(gsi, s, e, color);\
+            }\
+            gsi_pop_matrix(gsi);\
+        }\
+\
+        /* Cap */\
+        {\
+            gsi_push_matrix(gsi, GSI_MATRIX_MODELVIEW);\
+            gsi_mul_matrix(gsi, gs_vqs_to_mat4(&desc->gizmo.scale.AXIS.cap.model));\
+            {\
+                gs_aabb_t* cap = &desc->gizmo.scale.AXIS.cap.shape.aabb;\
+                gs_vec3 hd = gs_vec3_scale(gs_vec3_sub(cap->max, cap->min), 0.5f);\
+                gs_vec3 c = gs_vec3_add(cap->min, hd);\
+                gsi_box(gsi, c.x, c.y, c.z, hd.x, hd.y, hd.z, color.r, color.g, color.b, color.a, primitive);\
+            }\
+            gsi_pop_matrix(gsi);\
+        }\
+    } while (0)
+
+    switch (desc->op)
+    {
+        case GS_GUI_GIZMO_TRANSLATE:
+        { 
+            GS_GUI_GIZMO_AXIS_TRANSLATE("#gizmo_trans_right", right, GS_COLOR_RED);
+            GS_GUI_GIZMO_AXIS_TRANSLATE("#gizmo_trans_up", up, GS_COLOR_GREEN);
+            GS_GUI_GIZMO_AXIS_TRANSLATE("#gizmo_trans_forward", forward, GS_COLOR_BLUE); 
+        } break;
+
+        case GS_GUI_GIZMO_SCALE:
+        {
+            GS_GUI_GIZMO_AXIS_SCALE("#gizmo_scale_right", right, GS_COLOR_RED);
+            GS_GUI_GIZMO_AXIS_SCALE("#gizmo_scale_up", up, GS_COLOR_GREEN);
+            GS_GUI_GIZMO_AXIS_SCALE("#gizmo_scale_forward", forward, GS_COLOR_BLUE); 
+        } break;
+    } 
+}
+
+GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_vqs* model, int32_t op, int32_t mode)
+{
+	const gs_vec2 fbs = gs_platform_framebuffer_sizev(ctx->window_hndl);
+	const float t = gs_platform_elapsed_time(); 
+    int32_t opt = 0x00; 
+    const bool in_hover_root = gs_gui_in_hover_root(ctx); 
+
+    // This doesn't actually work for the clip...
+	gs_gui_rect_t clip = gs_gui_layout_next(ctx);
+	clip = gs_gui_intersect_rects(clip, gs_gui_get_clip_rect(ctx));
+
+    // Transform mouse into viewport space
+    gs_vec2 mc = gs_platform_mouse_positionv();
+    mc = gs_vec2_sub(mc, gs_v2(clip.x, clip.y));
+
+    // Project ray to world
+    const float ray_len = 1000.f;
+    gs_vec3 ms = gs_v3(mc.x, mc.y, 0.f); 
+    gs_vec3 me = gs_v3(mc.x, mc.y, -ray_len);
+    gs_vec3 ro = gs_camera_screen_to_world(camera, ms, 0, 0, (int32_t)clip.w, (int32_t)clip.h);
+    gs_vec3 rd = gs_camera_screen_to_world(camera, me, 0, 0, (int32_t)clip.w, (int32_t)clip.h); 
+    rd = gs_vec3_norm(gs_vec3_sub(ro, rd));
+
+    gs_ray_t ray = gs_default_val();
+    ray.p = ro;
+    ray.d = rd;
+    ray.len = ray_len;
+
+    // Check for nan
+    if (gs_vec3_nan(ray.p)) ray.p = gs_v3s(0.f);
+    if (gs_vec3_nan(ray.d)) ray.d = gs_v3s(0.f);
+
+    gs_gizmo_desc_t desc = gs_default_val();
+    desc.op = op;
+    desc.mode = mode;
+	desc.camera = *camera;
+    desc.info.depth = FLT_MAX;
+
+    desc.xform = gs_vqs_default();
+    desc.xform.translation = model->translation;
+    desc.xform.rotation = model->rotation;       // This depends on the mode (local/world)
+    desc.xform.scale = gs_v3s(0.5f);             // This should be scaled depending on camera proximity 
+
+    #define UPDATE_GIZMO_CONTROL(ID, RAY, SHAPE, MODEL, FUNC, INFO, RESET)\
+        do {\
+            int32_t mouseover = 0;\
+            gs_gui_id id = (ID);\
+            gs_contact_info_t info = gs_default_val();\
+            if (in_hover_root) FUNC(&(SHAPE), &(MODEL), &(RAY), NULL, &info);\
+            float dist = gs_vec3_dist(info.point, (RAY).p);\
+            info.depth = dist;\
+            mouseover = info.hit && info.depth <= INFO.depth && in_hover_root && !ctx->hover_split && !ctx->lock_hover_id;\
+            if (ctx->focus == id) {ctx->updated_focus = 1;}\
+            if (~opt & GS_GUI_OPT_NOINTERACT) {\
+                /* Check for hold focus here */\
+                if (mouseover && !ctx->mouse_down) {\
+                    gs_gui_set_hover(ctx, id);\
+                    INFO = info;\
+                }\
+\
+                if (ctx->focus == id)\
+                {\
+                    gs_gui_set_focus(ctx, id);\
+                    if (ctx->mouse_pressed && !mouseover) {gs_gui_set_focus(ctx, 0);}\
+                    if (!ctx->mouse_down && ~opt & GS_GUI_OPT_HOLDFOCUS) {gs_gui_set_focus(ctx, 0);}\
+                }\
+\
+                if (ctx->prev_hover == id && !mouseover) {ctx->prev_hover = ctx->hover;}\
+\
+                if (ctx->hover == id)\
+                {\
+                    if (ctx->mouse_pressed)\
+                    {\
+                        if ((opt & GS_GUI_OPT_LEFTCLICKONLY && ctx->mouse_pressed == GS_GUI_MOUSE_LEFT) || (~opt & GS_GUI_OPT_LEFTCLICKONLY))\
+                        {\
+                            gs_gui_set_focus(ctx, id);\
+                        }\
+                    }\
+                    else if (!mouseover && RESET)\
+                    {\
+                        gs_gui_set_hover(ctx, 0);\
+                    }\
+                }\
+            }\
+        } while (0) 
+
+	switch (op)
+	{ 
+		case GS_GUI_GIZMO_TRANSLATE:
+		{ 
+            // Construct translate gizmo for this frame based on given parent transform
+			desc.gizmo.translate = gs_gizmo_translate(&desc.xform); 
+
+            gs_gui_id id_r = gs_gui_get_id(ctx, "#gizmo_trans_right", strlen("#gizmo_trans_right"));
+            gs_gui_id id_u = gs_gui_get_id(ctx, "#gizmo_trans_up", strlen("#gizmo_trans_up"));
+            gs_gui_id id_f = gs_gui_get_id(ctx, "#gizmo_trans_forward", strlen("#gizmo_trans_forward")); 
+
+            // Right
+            UPDATE_GIZMO_CONTROL(id_r, ray, desc.gizmo.translate.right.axis.shape, 
+                    desc.gizmo.translate.right.axis.model, gs_cylinder_vs_ray, desc.info, true);
+            UPDATE_GIZMO_CONTROL(id_r, ray, desc.gizmo.translate.right.cap.shape.cone,
+                    desc.gizmo.translate.right.cap.model, gs_cone_vs_ray, desc.info, false);
+
+            // Up
+            UPDATE_GIZMO_CONTROL(id_u, ray, desc.gizmo.translate.up.axis.shape, 
+                    desc.gizmo.translate.up.axis.model, gs_cylinder_vs_ray, desc.info, true);
+            UPDATE_GIZMO_CONTROL(id_u, ray, desc.gizmo.translate.up.cap.shape.cone, 
+                desc.gizmo.translate.up.cap.model, gs_cone_vs_ray, desc.info, false);
+
+            // Forward 
+            UPDATE_GIZMO_CONTROL(id_f, ray, desc.gizmo.translate.forward.axis.shape, 
+                    desc.gizmo.translate.forward.axis.model, gs_cylinder_vs_ray, desc.info, true);
+            UPDATE_GIZMO_CONTROL(id_f, ray, desc.gizmo.translate.forward.cap.shape.cone, 
+                    desc.gizmo.translate.forward.cap.model, gs_cone_vs_ray, desc.info, false); 
+
+		} break;
+
+		case GS_GUI_GIZMO_ROTATE:
+		{
+            // Rotation is going to be tricky...
+		} break;
+
+		case GS_GUI_GIZMO_SCALE:
+		{
+            // Construct translate gizmo for this frame based on given parent transform
+			desc.gizmo.scale = gs_gizmo_scale(&desc.xform); 
+
+            gs_gui_id id_r = gs_gui_get_id(ctx, "#gizmo_scale_right", strlen("#gizmo_scale_right"));
+            gs_gui_id id_u = gs_gui_get_id(ctx, "#gizmo_scale_up", strlen("#gizmo_scale_up"));
+            gs_gui_id id_f = gs_gui_get_id(ctx, "#gizmo_scale_forward", strlen("#gizmo_scale_forward")); 
+
+            // Right
+            UPDATE_GIZMO_CONTROL(id_r, ray, desc.gizmo.scale.right.axis.shape, 
+                    desc.gizmo.scale.right.axis.model, gs_cylinder_vs_ray, desc.info, true);
+            UPDATE_GIZMO_CONTROL(id_r, ray, desc.gizmo.scale.right.cap.shape.aabb, 
+                    desc.gizmo.scale.right.cap.model, gs_aabb_vs_ray, desc.info, false);
+
+            // Up
+            UPDATE_GIZMO_CONTROL(id_u, ray, desc.gizmo.scale.up.axis.shape, 
+                    desc.gizmo.scale.up.axis.model, gs_cylinder_vs_ray, desc.info, true);
+            UPDATE_GIZMO_CONTROL(id_u, ray, desc.gizmo.scale.up.cap.shape.aabb, 
+                    desc.gizmo.scale.up.cap.model, gs_aabb_vs_ray, desc.info, false);
+
+            // Forward 
+            UPDATE_GIZMO_CONTROL(id_f, ray, desc.gizmo.scale.forward.axis.shape, 
+                    desc.gizmo.scale.forward.axis.model, gs_cylinder_vs_ray, desc.info, true);
+            UPDATE_GIZMO_CONTROL(id_f, ray, desc.gizmo.scale.forward.cap.shape.aabb, 
+                    desc.gizmo.scale.forward.cap.model, gs_aabb_vs_ray, desc.info, false); 
+
+		} break;
+	} 
+
+    // Have to render the gizmo using view/projection (so a custom render command) 
+    gs_gui_draw_custom(ctx, clip, gs_gui_gizmo_render, &desc, sizeof(desc));
+}
+
+
+//=== Demos ===//
 
 GS_API_DECL int32_t gs_gui_style_editor(gs_gui_context_t *ctx, gs_gui_style_sheet_t* style_sheet, gs_gui_rect_t rect, bool* open) 
 {

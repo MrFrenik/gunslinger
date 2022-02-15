@@ -698,7 +698,9 @@ bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_opti
             mesh->vertex_sizes = (size_t*)gs_malloc(sizeof(size_t) * mesh->prim_count);
             mesh->index_sizes = (size_t*)gs_malloc(sizeof(size_t) * mesh->prim_count);
             mesh->vertices = (void**)gs_malloc(sizeof(size_t) * mesh->prim_count);
-            mesh->indices = (void**)gs_malloc(sizeof(size_t) * mesh->prim_count);
+            mesh->indices = (void**)gs_malloc(sizeof(size_t) * mesh->prim_count); 
+            bool warnings[gs_enum_count(gs_asset_mesh_attribute_type)] = gs_default_val();
+            bool printed = false;
 
             // For each primitive in mesh 
             for (uint32_t p = 0; p < cmesh->primitives_count; ++p)
@@ -897,8 +899,6 @@ bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_opti
                     }
                 }
 
-                bool warnings[gs_enum_count(gs_asset_mesh_attribute_type)] = gs_default_val();
-
                 // Grab mesh layout pointer to use
                 gs_gfxt_mesh_layout_t* layoutp = options ? options->layout : layouts;
                 uint32_t layout_ct = options ? options->size / sizeof(gs_gfxt_mesh_layout_t) : gs_dyn_array_size(layouts);
@@ -922,7 +922,7 @@ bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_opti
                                 /* Write default value and give warning.*/\
                                 gs_byte_buffer_write(&(VDATA), ARR_TYPE, ARR_DEF_VAL);\
                                 if (!warnings[LAYOUT_TYPE]) {\
-                                    gs_println("Warning:Mesh:LoadFromFile:%s:Index out of range.", #LAYOUT_TYPE);\
+                                    /*gs_println("Warning:Mesh:LoadFromFile:%s:Index out of range.", #LAYOUT_TYPE);*/\
                                     warnings[LAYOUT_TYPE] = true;\
                                 }\
                             }\
@@ -972,6 +972,30 @@ bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_opti
                 // Copy data
                 memcpy(mesh->vertices[p], v_data.data, v_data.size);
                 memcpy(mesh->indices[p], i_data.data, i_data.size);
+            } 
+
+            if (!printed)
+            {
+                printed = true;
+                if (warnings[GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION]){
+                    gs_log_warning("Mesh attribute: POSITION not found. Resorting to default."); 
+                }
+
+                if (warnings[GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD]) {
+                    gs_log_warning("Mesh attribute: TEXCOORD not found. Resorting to default."); 
+                }
+
+                if (warnings[GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR]) {
+                    gs_log_warning("Mesh attribute: COLOR not found. Resorting to default."); 
+                }
+
+                if (warnings[GS_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL]) {
+                    gs_log_warning("Mesh attribute: NORMAL not found. Resorting to default."); 
+                }
+
+                if (warnings[GS_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT]) {
+                    gs_log_warning("Mesh attribute: WEIGHTS not found. Resorting to default."); 
+                } 
             }
         }
 
@@ -2337,7 +2361,8 @@ GS_API_DECL gs_gfxt_pipeline_t gs_gfxt_pipeline_load_from_file(const char* path)
     // Load file, generate lexer off of file data, parse contents for pipeline information 
     size_t len = 0;
     char* file_data = gs_platform_read_file_contents(path, "r", &len);
-    gs_assert(file_data);
+    gs_assert(file_data); 
+    gs_log_success("Parsing pipeline: %s", path); 
     gs_gfxt_pipeline_t pip = gs_gfxt_pipeline_load_from_memory(file_data, len);
     gs_free(file_data);
     return pip;

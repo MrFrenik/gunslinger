@@ -2885,6 +2885,13 @@ gs_vec3_project_onto(gs_vec3 v0, gs_vec3 v1)
     return gs_vec3_scale(v1, dot / len);
 }
 
+gs_inline bool
+gs_vec3_nan(gs_vec3 v)
+{
+    if (v.x != v.x || v.y != v.y || v.z != v.z) return true;
+    return false; 
+}
+
 gs_inline 
 f32 gs_vec3_dist(gs_vec3 a, gs_vec3 b)
 {
@@ -2988,7 +2995,7 @@ gs_vec4_div(gs_vec4 v0, gs_vec4 v1)
 gs_inline gs_vec4
 gs_vec4_scale(gs_vec4 v, f32 s) 
 {
-    return gs_vec4_ctor(v.x / s, v.y / s, v.z / s, v.w / s);
+    return gs_vec4_ctor(v.x * s, v.y * s, v.z * s, v.w * s);
 }
 
 gs_inline f32
@@ -3192,7 +3199,11 @@ typedef struct gs_mat4
 {
 	union {
 		gs_vec4 rows[4];
-		f32 elements[16]; 
+        float m[4][4];
+		float elements[16]; 
+        struct {
+            gs_vec4 right, up, dir, position;
+        } v;
 	};
 } gs_mat4;
 
@@ -3266,6 +3277,16 @@ void gs_mat4_set_elements(gs_mat4* m, float* elements, uint32_t count)
         m->elements[i] = elements[i];
     }
 }
+
+gs_inline
+gs_mat4 gs_mat4_ortho_norm(const gs_mat4* m)
+{
+    gs_mat4 r = *m;
+    r.v.right = gs_vec4_norm(r.v.right);
+    r.v.up = gs_vec4_norm(r.v.up);
+    r.v.dir = gs_vec4_norm(r.v.dir);
+    return r;
+} 
 
 gs_inline
 gs_mat4 gs_mat4_transpose(gs_mat4 m)
@@ -3572,6 +3593,63 @@ gs_mat4_look_at(gs_vec3 position, gs_vec3 target, gs_vec3 up)
 
     return m_res;
 }
+
+// Modified from github.com/CedricGuillemet/ImGuizmo/blob/master/ImGuizmo.cpp
+
+gs_inline
+void gs_mat4_decompose(const gs_mat4* m, float* translation, float* rotation, float* scale)
+{
+    gs_mat4 mat = *m;
+
+    scale[0] = gs_vec4_len(mat.v.right);
+    scale[1] = gs_vec4_len(mat.v.up);
+    scale[2] = gs_vec4_len(mat.v.dir); 
+
+    mat = gs_mat4_ortho_norm(&mat);
+
+    rotation[0] = gs_rad2deg(atan2f(mat.m[1][2], mat.m[2][2]));
+    rotation[1] = gs_rad2deg(atan2f(-mat.m[0][2], sqrtf(mat.m[1][2] * mat.m[1][2] + 
+                mat.m[2][2] * mat.m[2][2])));
+    rotation[2] = gs_rad2deg(atan2f(mat.m[0][1], mat.m[0][0]));
+
+    translation[0] = mat.v.position.x;
+    translation[1] = mat.v.position.y;
+    translation[2] = mat.v.position.z;
+}
+
+// Modified from github.com/CedricGuillemet/ImGuizmo/blob/master/ImGuizmo.cpp
+
+gs_inline
+gs_mat4 gs_mat4_recompose(const float* translation, const float* rotation, const float* scale)
+{
+    gs_mat4 mat = gs_mat4_identity();
+
+    gs_vec3 direction_unary[3] = {
+        GS_XAXIS, 
+        GS_YAXIS, 
+        GS_ZAXIS
+    };
+
+    gs_mat4 rot[3] = {gs_mat4_identity(), gs_mat4_identity(), gs_mat4_identity()};
+    for (uint32_t i = 0; i < 3; ++i) {
+        rot[i] = gs_mat4_rotatev(gs_deg2rad(rotation[i]), direction_unary[i]);
+    }
+
+    mat = gs_mat4_mul_list(3, rot[2], rot[1], rot[0]);
+
+    float valid_scale[3] = gs_default_val();
+    for (uint32_t i = 0; i < 3; ++i) {
+        valid_scale[i] = fabsf(scale[i]) < GS_EPSILON ? 0.001f : scale[i];
+    }
+
+    mat.v.right = gs_vec4_scale(mat.v.right, valid_scale[0]);
+    mat.v.up = gs_vec4_scale(mat.v.up, valid_scale[1]);
+    mat.v.dir = gs_vec4_scale(mat.v.dir, valid_scale[2]);
+    mat.v.position = gs_v4(translation[0], translation[1], translation[2], 1.f);
+
+    return mat; 
+}
+
 
 gs_inline
 gs_vec4 gs_mat4_mul_vec4(gs_mat4 m, gs_vec4 v)
@@ -3982,6 +4060,17 @@ gs_inline gs_mat4 gs_vqs_to_mat4(const gs_vqs* transform)
     return mat;
 }
 
+gs_inline gs_vqs gs_vqs_from_mat4(const gs_mat4* m)
+{
+    gs_vec3 translation = gs_v3s(0.f), rotation = gs_v3s(0.f), scale = gs_v3s(1.f);
+    gs_mat4_decompose(m, (float*)&translation, (float*)&rotation, (float*)&scale);
+    return gs_vqs_ctor(
+        translation, 
+        gs_quat_from_euler(rotation.x, rotation.y, rotation.z),
+        scale
+    );
+}
+
 /*================================================================================
 // Random
 ================================================================================*/
@@ -4055,7 +4144,7 @@ GS_API_DECL gs_vec3 gs_camera_up(gs_camera_t* cam);
 GS_API_DECL gs_vec3 gs_camera_down(gs_camera_t* cam);
 GS_API_DECL gs_vec3 gs_camera_right(gs_camera_t* cam);
 GS_API_DECL gs_vec3 gs_camera_left(gs_camera_t* cam);
-GS_API_DECL gs_vec3 gs_camera_screen_to_world(gs_camera_t* cam, gs_vec3 coords, int32_t view_width, int32_t view_height);
+GS_API_DECL gs_vec3 gs_camera_screen_to_world(gs_camera_t* cam, gs_vec3 coords, int32_t view_x, int32_t view_y, int32_t view_width, int32_t view_height);
 GS_API_DECL void gs_camera_offset_orientation(gs_camera_t* cam, float yaw, float picth);
 
 /*================================================================================
@@ -6669,15 +6758,14 @@ gs_vec3 gs_camera_left(gs_camera_t* cam)
     return (gs_quat_rotate(cam->transform.rotation, gs_v3(-1.0f, 0.0f, 0.0f)));
 }
 
-gs_vec3 gs_camera_screen_to_world(gs_camera_t* cam, gs_vec3 coords, s32 view_width, s32 view_height)
+gs_vec3 gs_camera_screen_to_world(gs_camera_t* cam, gs_vec3 coords, s32 view_x, s32 view_y, s32 view_width, s32 view_height)
 {
     gs_vec3 wc = gs_default_val();
 
     // Get inverse of view projection from camera
     gs_mat4 inverse_vp = gs_mat4_inverse(gs_camera_get_view_projection(cam, view_width, view_height));  
-
-    f32 w_x = (f32)coords.x;
-    f32 w_y = (f32)coords.y;
+    f32 w_x = (f32)coords.x - (f32)view_x;
+    f32 w_y = (f32)coords.y - (f32)view_y;
     f32 w_z = (f32)coords.z;
 
     // Transform from ndc
@@ -6695,7 +6783,7 @@ gs_vec3 gs_camera_screen_to_world(gs_camera_t* cam, gs_vec3 coords, s32 view_wid
         return wc;
     }
 
-    out.w = 1.f / out.w;
+    out.w = fabsf(out.w) > GS_EPSILON ? 1.f / out.w : 0.0001f;
     wc = gs_v3(
         out.x * out.w,
         out.y * out.w,
