@@ -288,6 +288,7 @@ typedef struct gs_gui_customcommand_t
 {
     gs_gui_basecommand_t base; 
     gs_gui_rect_t clip; 
+    gs_gui_rect_t viewport;
     gs_gui_id hash;
     gs_gui_id hover;
     gs_gui_id focus;
@@ -4301,13 +4302,21 @@ GS_API_DECL void gs_gui_render(gs_gui_context_t* ctx, gs_command_buffer_t* cb)
     gsi_camera2D(&ctx->gsi, (uint32_t)fb.x, (uint32_t)fb.y);
     gsi_blend_enabled(&ctx->gsi, true);
 
+    gs_gui_rect_t clip = gs_gui_unclipped_rect;
+
     gs_gui_command_t* cmd = NULL; 
     while (gs_gui_next_command(ctx, &cmd)) 
     {
       switch (cmd->type) 
       {
         case GS_GUI_COMMAND_CUSTOM:
-        {
+        { 
+            gsi_set_view_scissor(&ctx->gsi, 
+                (int32_t)(cmd->custom.clip.x), 
+                (int32_t)(fb.y - cmd->custom.clip.h - cmd->custom.clip.y), 
+                (int32_t)(cmd->custom.clip.w), 
+                (int32_t)(cmd->custom.clip.h));
+
             if (cmd->custom.cb) {
                 cmd->custom.cb(ctx, &cmd->custom);
             }
@@ -4316,6 +4325,12 @@ GS_API_DECL void gs_gui_render(gs_gui_context_t* ctx, gs_command_buffer_t* cb)
             gsi_camera2D(&ctx->gsi, (uint32_t)fb.x, (uint32_t)fb.y);
             gsi_blend_enabled(&ctx->gsi, true);
             gs_graphics_set_viewport(&ctx->gsi.commands, 0, 0, (uint32_t)fb.x, (uint32_t)fb.y);
+
+            gsi_set_view_scissor(&ctx->gsi, 
+                (int32_t)(clip.x), 
+                (int32_t)(fb.y - clip.h - clip.y), 
+                (int32_t)(clip.w), 
+                (int32_t)(clip.h));
 
         } break;
 
@@ -4385,6 +4400,8 @@ GS_API_DECL void gs_gui_render(gs_gui_context_t* ctx, gs_command_buffer_t* cb)
             clip_rect.y = gs_max(clip_rect.y, 0.f);
             clip_rect.w = gs_max(clip_rect.w, 0.f);
             clip_rect.h = gs_max(clip_rect.h, 0.f);
+
+            clip = clip_rect;
 
             gsi_set_view_scissor(&ctx->gsi, 
                 (int32_t)(clip_rect.x), 
@@ -4814,6 +4831,8 @@ GS_API_DECL void gs_gui_draw_custom(gs_gui_context_t* ctx, gs_gui_rect_t rect, g
 {
 	gs_gui_command_t* cmd;
 
+    gs_gui_rect_t viewport = rect;
+
 	rect = gs_gui_intersect_rects(rect, gs_gui_get_clip_rect(ctx));
 
 	/* do clip command if the rect isn't fully contained within the cliprect */
@@ -4827,6 +4846,7 @@ GS_API_DECL void gs_gui_draw_custom(gs_gui_context_t* ctx, gs_gui_rect_t rect, g
 	/* do custom command */
 	cmd = gs_gui_push_command(ctx, GS_GUI_COMMAND_CUSTOM, sizeof(gs_gui_customcommand_t));
 	cmd->custom.clip = rect;
+    cmd->custom.viewport = viewport;
 	cmd->custom.cb = cb;
     cmd->custom.hover = ctx->hover;
     cmd->custom.focus = ctx->focus; 
@@ -7248,6 +7268,12 @@ static int16_t int16_slider(gs_gui_context_t *ctx, int16_t* value, int32_t low, 
 
 //=== Gizmo ===// 
 
+typedef struct
+{
+    b32 hit;
+    gs_vec3 point;
+} gs_gui_gizmo_line_intersection_result_t;
+
 enum {
     GS_GUI_AXIS_RIGHT = 0x01, 
     GS_GUI_AXIS_UP, 
@@ -7257,7 +7283,10 @@ enum {
 typedef struct {
     struct {
         gs_vqs model;
-        gs_cylinder_t shape;
+        union {
+            gs_cylinder_t cylinder;
+            gs_plane_t plane;
+        } shape;
     } axis;
     struct {
         gs_vqs model;
@@ -7281,7 +7310,9 @@ typedef struct {
 } gs_gizmo_scale_t;
 
 typedef struct {
-    gs_vqs right;
+    gs_gui_axis_t right;
+    gs_gui_axis_t up;
+    gs_gui_axis_t forward;
 } gs_gizmo_rotate_t;
 
 static gs_gizmo_scale_t gs_gizmo_scale(const gs_vqs* parent)
@@ -7306,7 +7337,7 @@ static gs_gizmo_scale_t gs_gizmo_scale(const gs_vqs* parent)
 			axis.r = 1.f;\
 			axis.base = gs_v3(0.f, 0.0f, 0.f);\
 			axis.height = 1.f;\
-			gizmo.MEMBER.axis.shape = axis;\
+			gizmo.MEMBER.axis.shape.cylinder = axis;\
 		}\
 \
 		/* Cap */\
@@ -7356,7 +7387,7 @@ static gs_gizmo_translate_t gs_gizmo_translate(const gs_vqs* parent)
 			axis.r = 1.f;\
 			axis.base = gs_v3(0.f, 0.0f, 0.f);\
 			axis.height = 1.f;\
-			trans.MEMBER.axis.shape = axis;\
+			trans.MEMBER.axis.shape.cylinder = axis;\
 		}\
 \
 		/* Cap */\
@@ -7385,6 +7416,35 @@ static gs_gizmo_translate_t gs_gizmo_translate(const gs_vqs* parent)
 	return trans;
 }
 
+static gs_gizmo_rotate_t gs_gizmo_rotate(const gs_vqs* parent)
+{
+    gs_gizmo_rotate_t gizmo = gs_default_val();
+	const gs_vec3 ax_scl = gs_v3(1.f, 1.f, 1.f);
+	gs_vqs local = gs_vqs_default();
+	gs_vqs abs = gs_vqs_default(); 
+
+#define GS_GUI_GIZMO_AXIS_DEFINE(MEMBER, OFFSET, DEG, AXIS)\
+    do {\
+		/* Axis */\
+		{\
+			local = gs_vqs_ctor(\
+				OFFSET,\
+				gs_quat_angle_axis(gs_deg2rad(DEG), AXIS),\
+				ax_scl\
+			);\
+			gizmo.MEMBER.axis.model = gs_vqs_absolute_transform(&local, parent);\
+			gs_plane_t axis = gs_plane_from_pt_normal(gs_v3s(0.f), GS_ZAXIS);\
+			gizmo.MEMBER.axis.shape.plane = axis;\
+		}\
+	} while (0)
+
+    GS_GUI_GIZMO_AXIS_DEFINE(right, gs_v3(0.f, 0.f, 0.f), 90.f, GS_YAXIS);
+    GS_GUI_GIZMO_AXIS_DEFINE(up, gs_v3(0.f, 0.f, 0.f), -90.f, GS_XAXIS);
+    GS_GUI_GIZMO_AXIS_DEFINE(forward, gs_v3(0.f, 0.f, 0.f), 0.f, GS_ZAXIS);
+
+	return gizmo;
+}
+
 typedef struct {
     int32_t op;
     int32_t mode;
@@ -7397,6 +7457,8 @@ typedef struct {
     } gizmo;
     int16_t hover;
 	gs_camera_t camera;
+    gs_gui_rect_t viewport;
+    gs_gui_gizmo_line_intersection_result_t li;
 } gs_gizmo_desc_t;
 
 static void gs_gui_gizmo_render(gs_gui_context_t* ctx, gs_gui_customcommand_t* cmd)
@@ -7404,15 +7466,17 @@ static void gs_gui_gizmo_render(gs_gui_context_t* ctx, gs_gui_customcommand_t* c
 	const gs_vec2 fbs = gs_platform_framebuffer_sizev(ctx->window_hndl);
 	const float t = gs_platform_elapsed_time();
     gs_immediate_draw_t* gsi = &ctx->gsi;
-    gs_gui_rect_t clip = cmd->clip;
     gs_gizmo_desc_t* desc = (gs_gizmo_desc_t*)cmd->data;
+    gs_gui_rect_t clip = cmd->clip;
+    gs_gui_rect_t viewport = desc->viewport;
 	gs_camera_t cam = desc->camera;
     const uint16_t segments = 4;
+    const gs_gui_gizmo_line_intersection_result_t* li = &desc->li;
 
 	gsi_defaults(gsi);
 	gsi_depth_enabled(gsi, false);
-    gsi_camera(gsi, &cam, (uint32_t)clip.w, (uint32_t)clip.h);
-    gs_graphics_set_viewport(&gsi->commands, clip.x, fbs.y - clip.h - clip.y, clip.w, clip.h); 
+    gsi_camera(gsi, &cam, (uint32_t)viewport.w, (uint32_t)viewport.h);
+    gs_graphics_set_viewport(&gsi->commands, viewport.x, fbs.y - viewport.h - viewport.y, viewport.w, viewport.h); 
 	int32_t primitive = GS_GRAPHICS_PRIMITIVE_TRIANGLES; 
 
 #define GS_GUI_GIZMO_AXIS_TRANSLATE(ID, AXIS, COLOR)\
@@ -7426,14 +7490,9 @@ static void gs_gui_gizmo_render(gs_gui_context_t* ctx, gs_gui_customcommand_t* c
             gsi_push_matrix(gsi, GSI_MATRIX_MODELVIEW);\
             gsi_mul_matrix(gsi, gs_vqs_to_mat4(&desc->gizmo.translate.AXIS.axis.model));\
             {\
-                gs_cylinder_t* axis = &desc->gizmo.translate.AXIS.axis.shape;\
+                gs_cylinder_t* axis = &desc->gizmo.translate.AXIS.axis.shape.cylinder;\
                 gsi_cylinder(gsi, axis->base.x, axis->base.y, axis->base.z, axis->r,\
                     axis->r, axis->height, segments, color.r, color.g, color.b, 100, primitive);\
-\
-                const float h = axis->height;\
-                gs_vec3 s = gs_v3(axis->base.x, axis->base.y - h * 0.5f, axis->base.z);\
-                gs_vec3 e = gs_vec3_add(s, gs_v3(0.f, h, 0.f));\
-                gsi_line3Dv(gsi, s, e, color);\
             }\
             gsi_pop_matrix(gsi);\
         }\
@@ -7444,7 +7503,7 @@ static void gs_gui_gizmo_render(gs_gui_context_t* ctx, gs_gui_customcommand_t* c
             gsi_mul_matrix(gsi, gs_vqs_to_mat4(&desc->gizmo.translate.AXIS.cap.model));\
             {\
                 gs_cone_t* cap = &desc->gizmo.translate.AXIS.cap.shape.cone;\
-                gsi_cone(gsi, cap->base.x, cap->base.y, cap->base.z, cap->r, cap->height, segments, color.r, color.g, color.b, color.a, primitive);\
+                gsi_cone(gsi, cap->base.x, cap->base.y, cap->base.z, cap->r, cap->height, segments, color.r, color.g, color.b, 100, primitive);\
             }\
             gsi_pop_matrix(gsi);\
         }\
@@ -7461,14 +7520,9 @@ static void gs_gui_gizmo_render(gs_gui_context_t* ctx, gs_gui_customcommand_t* c
             gsi_push_matrix(gsi, GSI_MATRIX_MODELVIEW);\
             gsi_mul_matrix(gsi, gs_vqs_to_mat4(&desc->gizmo.scale.AXIS.axis.model));\
             {\
-                gs_cylinder_t* axis = &desc->gizmo.scale.AXIS.axis.shape;\
+                gs_cylinder_t* axis = &desc->gizmo.scale.AXIS.axis.shape.cylinder;\
                 gsi_cylinder(gsi, axis->base.x, axis->base.y, axis->base.z, axis->r,\
                     axis->r, axis->height, segments, color.r, color.g, color.b, 100, primitive);\
-\
-                const float h = axis->height;\
-                gs_vec3 s = gs_v3(axis->base.x, axis->base.y - h * 0.5f, axis->base.z);\
-                gs_vec3 e = gs_vec3_add(s, gs_v3(0.f, h, 0.f));\
-                gsi_line3Dv(gsi, s, e, color);\
             }\
             gsi_pop_matrix(gsi);\
         }\
@@ -7481,7 +7535,33 @@ static void gs_gui_gizmo_render(gs_gui_context_t* ctx, gs_gui_customcommand_t* c
                 gs_aabb_t* cap = &desc->gizmo.scale.AXIS.cap.shape.aabb;\
                 gs_vec3 hd = gs_vec3_scale(gs_vec3_sub(cap->max, cap->min), 0.5f);\
                 gs_vec3 c = gs_vec3_add(cap->min, hd);\
-                gsi_box(gsi, c.x, c.y, c.z, hd.x, hd.y, hd.z, color.r, color.g, color.b, color.a, primitive);\
+                gsi_box(gsi, c.x, c.y, c.z, hd.x, hd.y, hd.z, color.r, color.g, color.b, 100, primitive);\
+            }\
+            gsi_pop_matrix(gsi);\
+        }\
+    } while (0)
+
+#define GS_GUI_GIZMO_AXIS_ROTATE(ID, AXIS, COLOR)\
+    do {\
+        gs_gui_id id = gs_gui_get_id_hash(ctx, ID, strlen(ID), cmd->hash);\
+        bool hover = cmd->hover == id;\
+        bool focus = cmd->focus == id;\
+        gs_color_t color = hover || focus ? GS_COLOR_YELLOW : COLOR;\
+        /* Axis */\
+        {\
+            gsi_push_matrix(gsi, GSI_MATRIX_MODELVIEW);\
+            gsi_mul_matrix(gsi, gs_vqs_to_mat4(&desc->gizmo.rotate.AXIS.axis.model));\
+            {\
+                gs_plane_t* axis = &desc->gizmo.rotate.AXIS.axis.shape.plane;\
+                float step = 360.f / 32.f;\
+                for (float i = 0.f; i < 360.f; i += step){\
+                    float a0 = gs_deg2rad(i);\
+                    float a1 = gs_deg2rad((i + step));\
+                    const float r = 1.0f;\
+                    gs_vec2 ls = gs_v2(sin(a0) * r, cos(a0) * r);\
+                    gs_vec2 le = gs_v2(sin(a1) * r, cos(a1) * r);\
+                    gsi_linev(gsi, ls, le, color);\
+                }\
             }\
             gsi_pop_matrix(gsi);\
         }\
@@ -7502,8 +7582,78 @@ static void gs_gui_gizmo_render(gs_gui_context_t* ctx, gs_gui_customcommand_t* c
             GS_GUI_GIZMO_AXIS_SCALE("#gizmo_scale_up", up, GS_COLOR_GREEN);
             GS_GUI_GIZMO_AXIS_SCALE("#gizmo_scale_forward", forward, GS_COLOR_BLUE); 
         } break;
+
+        case GS_GUI_GIZMO_ROTATE:
+        {
+            GS_GUI_GIZMO_AXIS_ROTATE("#gizmo_rotate_right", right, GS_COLOR_RED);
+            GS_GUI_GIZMO_AXIS_ROTATE("#gizmo_rotate_up", up, GS_COLOR_GREEN);
+            GS_GUI_GIZMO_AXIS_ROTATE("#gizmo_rotate_forward", forward, GS_COLOR_BLUE);
+        } break;
     } 
-}
+
+    if (li->hit)
+    {
+        gsi_sphere(gsi, li->point.x, li->point.y, li->point.z, 0.005f, 255, 0, 0, 255, GS_GRAPHICS_PRIMITIVE_LINES); 
+        gsi_line3Dv(gsi, li->point, desc->xform.translation, gs_color(255, 0, 0, 255));
+    }
+} 
+
+static gs_gui_gizmo_line_intersection_result_t 
+gs_gui_gizmo_get_line_intersection(const gs_vqs* model, gs_vec3 axis_a, gs_vec3 axis_b, gs_vec3 axis_c, 
+        const gs_camera_t* camera, const gs_ray_t* ray, gs_vec3 plane_normal_axis, bool compare_supporting_axes, bool override_axis)
+{
+    gs_gui_gizmo_line_intersection_result_t res = gs_default_val();
+
+    // Find absolute dot between cam forward and right axis
+    gs_vec3 cf = gs_vec3_norm(gs_camera_forward(camera));
+    gs_vec3 ta = gs_vec3_norm(gs_quat_rotate(model->rotation, axis_a));
+    float cfdta = fabsf(gs_vec3_dot(cf, ta));
+
+    // This doesn't really make sense. I want to project along the x/y or x/z planes.
+
+    gs_plane_t intersection_plane = gs_default_val();
+    gs_vec3 op = model->translation;
+
+    if (compare_supporting_axes)
+    {
+        // Now determine appropriate axis to move along
+        gs_vec3 tb = gs_vec3_norm(gs_quat_rotate(model->rotation, axis_b));
+        gs_vec3 tc = gs_vec3_norm(gs_quat_rotate(model->rotation, axis_c));
+
+        float cfdtb = fabsf(gs_vec3_dot(cf, tb));
+        float cfdtc = fabsf(gs_vec3_dot(cf, tc));
+
+        intersection_plane = cfdtb < cfdtc ? gs_plane_from_pt_normal(op, tc) : 
+            gs_plane_from_pt_normal(op, tb);
+    }
+    else
+    {
+        if (override_axis)
+        { 
+            intersection_plane = gs_plane_from_pt_normal(op, plane_normal_axis);
+        }
+        else
+        {
+            intersection_plane = gs_plane_from_pt_normal(op, ta);
+        }
+    } 
+
+    // Get line intersection from ray and chosen intersection plane
+    gs_plane_t* ip = &intersection_plane;
+    float denom = gs_vec3_dot(gs_v3(ip->a, ip->b, ip->c), ray->d);
+    if (fabsf(denom) >= GS_EPSILON)
+    {
+        float t =  -(ip->a * ray->p.x + ip->b * ray->p.y + ip->c * ray->p.z + ip->d) / denom;
+        res.hit = t >= 0.f ? true : false;
+        res.point = gs_vec3_add(ray->p, gs_vec3_scale(ray->d, t));
+    } 
+
+    return res;
+} 
+
+static gs_vec3 s_intersection_start = gs_default_val();
+static gs_vqs s_delta = gs_default_val();
+static bool just_set_focus = false;
 
 GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_vqs* model, int32_t op, int32_t mode)
 {
@@ -7512,9 +7662,10 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
     int32_t opt = 0x00; 
     const bool in_hover_root = gs_gui_in_hover_root(ctx); 
 
+    gs_immediate_draw_t* dl = &ctx->overlay_draw_list;
+
     // This doesn't actually work for the clip...
 	gs_gui_rect_t clip = gs_gui_layout_next(ctx);
-	clip = gs_gui_intersect_rects(clip, gs_gui_get_clip_rect(ctx));
 
     // Transform mouse into viewport space
     gs_vec2 mc = gs_platform_mouse_positionv();
@@ -7542,31 +7693,38 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
     desc.mode = mode;
 	desc.camera = *camera;
     desc.info.depth = FLT_MAX;
+    desc.viewport = clip;
 
     desc.xform = gs_vqs_default();
     desc.xform.translation = model->translation;
     desc.xform.rotation = model->rotation;       // This depends on the mode (local/world)
     desc.xform.scale = gs_v3s(0.5f);             // This should be scaled depending on camera proximity 
 
-    #define UPDATE_GIZMO_CONTROL(ID, RAY, SHAPE, MODEL, FUNC, INFO, RESET)\
+    #define UPDATE_GIZMO_CONTROL(ID, RAY, SHAPE, MODEL, FUNC, CAP_SHAPE, CAP_MODEL, CAP_FUNC, INFO)\
         do {\
             int32_t mouseover = 0;\
             gs_gui_id id = (ID);\
-            gs_contact_info_t info = gs_default_val();\
-            if (in_hover_root) FUNC(&(SHAPE), &(MODEL), &(RAY), NULL, &info);\
-            float dist = gs_vec3_dist(info.point, (RAY).p);\
-            info.depth = dist;\
-            mouseover = info.hit && info.depth <= INFO.depth && in_hover_root && !ctx->hover_split && !ctx->lock_hover_id;\
+            gs_contact_info_t info0 = gs_default_val();\
+            gs_contact_info_t info1 = gs_default_val();\
+            if (in_hover_root) {\
+                FUNC(&(SHAPE), &(MODEL), &(RAY), NULL, &info0);\
+                info0.depth = gs_vec3_dist(info0.point, (RAY).p);\
+                CAP_FUNC(&(CAP_SHAPE), &(CAP_MODEL), &(RAY), NULL, &info1);\
+                info1.depth = gs_vec3_dist(info1.point, (RAY).p);\
+            }\
+            gs_contact_info_t* info = info0.depth < info1.depth ? &info0 : &info1;\
+            mouseover = info->hit && info->depth <= INFO.depth && in_hover_root && !ctx->hover_split && !ctx->lock_hover_id;\
             if (ctx->focus == id) {ctx->updated_focus = 1;}\
             if (~opt & GS_GUI_OPT_NOINTERACT) {\
                 /* Check for hold focus here */\
                 if (mouseover && !ctx->mouse_down) {\
                     gs_gui_set_hover(ctx, id);\
-                    INFO = info;\
+                    INFO = *info;\
                 }\
 \
                 if (ctx->focus == id)\
                 {\
+                    just_set_focus = false;\
                     gs_gui_set_focus(ctx, id);\
                     if (ctx->mouse_pressed && !mouseover) {gs_gui_set_focus(ctx, 0);}\
                     if (!ctx->mouse_down && ~opt & GS_GUI_OPT_HOLDFOCUS) {gs_gui_set_focus(ctx, 0);}\
@@ -7581,15 +7739,17 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
                         if ((opt & GS_GUI_OPT_LEFTCLICKONLY && ctx->mouse_pressed == GS_GUI_MOUSE_LEFT) || (~opt & GS_GUI_OPT_LEFTCLICKONLY))\
                         {\
                             gs_gui_set_focus(ctx, id);\
+                            just_set_focus = true;\
                         }\
                     }\
-                    else if (!mouseover && RESET)\
+                    else if (!mouseover)\
                     {\
                         gs_gui_set_hover(ctx, 0);\
                     }\
                 }\
             }\
         } while (0) 
+
 
 	switch (op)
 	{ 
@@ -7602,29 +7762,101 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
             gs_gui_id id_u = gs_gui_get_id(ctx, "#gizmo_trans_up", strlen("#gizmo_trans_up"));
             gs_gui_id id_f = gs_gui_get_id(ctx, "#gizmo_trans_forward", strlen("#gizmo_trans_forward")); 
 
-            // Right
-            UPDATE_GIZMO_CONTROL(id_r, ray, desc.gizmo.translate.right.axis.shape, 
-                    desc.gizmo.translate.right.axis.model, gs_cylinder_vs_ray, desc.info, true);
-            UPDATE_GIZMO_CONTROL(id_r, ray, desc.gizmo.translate.right.cap.shape.cone,
-                    desc.gizmo.translate.right.cap.model, gs_cone_vs_ray, desc.info, false);
+            // Right 
+            UPDATE_GIZMO_CONTROL(id_r, ray, 
+                    desc.gizmo.translate.right.axis.shape.cylinder, desc.gizmo.translate.right.axis.model, gs_cylinder_vs_ray, 
+                    desc.gizmo.translate.right.cap.shape.cone, desc.gizmo.translate.right.cap.model, gs_cone_vs_ray, 
+                    desc.info);
 
             // Up
-            UPDATE_GIZMO_CONTROL(id_u, ray, desc.gizmo.translate.up.axis.shape, 
-                    desc.gizmo.translate.up.axis.model, gs_cylinder_vs_ray, desc.info, true);
-            UPDATE_GIZMO_CONTROL(id_u, ray, desc.gizmo.translate.up.cap.shape.cone, 
-                desc.gizmo.translate.up.cap.model, gs_cone_vs_ray, desc.info, false);
+            UPDATE_GIZMO_CONTROL(id_u, ray, 
+                    desc.gizmo.translate.up.axis.shape.cylinder, desc.gizmo.translate.up.axis.model, gs_cylinder_vs_ray, 
+                    desc.gizmo.translate.up.cap.shape.cone, desc.gizmo.translate.up.cap.model, gs_cone_vs_ray, 
+                    desc.info);
 
             // Forward 
-            UPDATE_GIZMO_CONTROL(id_f, ray, desc.gizmo.translate.forward.axis.shape, 
-                    desc.gizmo.translate.forward.axis.model, gs_cylinder_vs_ray, desc.info, true);
-            UPDATE_GIZMO_CONTROL(id_f, ray, desc.gizmo.translate.forward.cap.shape.cone, 
-                    desc.gizmo.translate.forward.cap.model, gs_cone_vs_ray, desc.info, false); 
+            UPDATE_GIZMO_CONTROL(id_f, ray, 
+                    desc.gizmo.translate.forward.axis.shape.cylinder, desc.gizmo.translate.forward.axis.model, gs_cylinder_vs_ray, 
+                    desc.gizmo.translate.forward.cap.shape.cone, desc.gizmo.translate.forward.cap.model, gs_cone_vs_ray, 
+                    desc.info); 
+            
+            // Control 
+            if (ctx->focus == id_r)
+            { 
+                desc.li = gs_gui_gizmo_get_line_intersection(&desc.xform, GS_XAXIS, GS_YAXIS, GS_ZAXIS, 
+                    camera, &ray, gs_v3s(0.f), true, false);
 
-		} break;
+                if (just_set_focus) {
+                    s_intersection_start = desc.li.point;
+                    memset(&s_delta, 0, sizeof(s_delta));
+                }
 
-		case GS_GUI_GIZMO_ROTATE:
-		{
-            // Rotation is going to be tricky...
+                if (desc.li.hit)
+                {
+                    gs_vec3 axis = gs_vec3_norm(gs_quat_rotate(desc.xform.rotation, GS_XAXIS)); 
+                    gs_vec3 u = gs_vec3_sub(desc.li.point, s_intersection_start); 
+                    float udotn = gs_vec3_dot(u, axis); 
+                    s_delta.translation = gs_vec3_scale(axis, udotn); 
+                    s_intersection_start = gs_vec3_add(s_intersection_start, s_delta.translation); 
+                    if (gs_vec3_eq(axis, GS_XAXIS)) {
+                        s_delta.translation.y = 0.f;
+                        s_delta.translation.z = 0.f;
+                    } 
+                    // Set final translation
+                    model->translation = gs_vec3_add(desc.xform.translation, s_delta.translation);
+                } 
+            }
+            else if (ctx->focus == id_u)
+            {
+                desc.li = gs_gui_gizmo_get_line_intersection(&desc.xform, GS_YAXIS, GS_XAXIS, GS_ZAXIS, 
+                    camera, &ray, gs_v3s(0.f), true, false);
+
+                if (just_set_focus) {
+                    s_intersection_start = desc.li.point;
+                    memset(&s_delta, 0, sizeof(s_delta));
+                }
+
+                if (desc.li.hit)
+                {
+                    gs_vec3 axis = gs_vec3_norm(gs_quat_rotate(desc.xform.rotation, GS_YAXIS)); 
+                    gs_vec3 u = gs_vec3_sub(desc.li.point, s_intersection_start); 
+                    float udotn = gs_vec3_dot(u, axis); 
+                    s_delta.translation = gs_vec3_scale(axis, udotn); 
+                    s_intersection_start = gs_vec3_add(s_intersection_start, s_delta.translation); 
+                    if (gs_vec3_eq(axis, GS_YAXIS)) {
+                        s_delta.translation.x = 0.f;
+                        s_delta.translation.z = 0.f;
+                    } 
+                    // Set final translation
+                    model->translation = gs_vec3_add(desc.xform.translation, s_delta.translation);
+                } 
+            }
+            else if (ctx->focus == id_f)
+            {
+                desc.li = gs_gui_gizmo_get_line_intersection(&desc.xform, GS_ZAXIS, GS_XAXIS, GS_YAXIS, 
+                    camera, &ray, gs_v3s(0.f), true, false);
+
+                if (just_set_focus) {
+                    s_intersection_start = desc.li.point;
+                    memset(&s_delta, 0, sizeof(s_delta));
+                }
+
+                if (desc.li.hit)
+                {
+                    gs_vec3 axis = gs_vec3_norm(gs_quat_rotate(desc.xform.rotation, GS_ZAXIS)); 
+                    gs_vec3 u = gs_vec3_sub(desc.li.point, s_intersection_start); 
+                    float udotn = gs_vec3_dot(u, axis); 
+                    s_delta.translation = gs_vec3_scale(axis, udotn); 
+                    s_intersection_start = gs_vec3_add(s_intersection_start, s_delta.translation); 
+                    if (gs_vec3_eq(axis, GS_ZAXIS)) {
+                        s_delta.translation.x = 0.f;
+                        s_delta.translation.y = 0.f;
+                    } 
+                    // Set final translation
+                    model->translation = gs_vec3_add(desc.xform.translation, s_delta.translation);
+                } 
+            } 
+
 		} break;
 
 		case GS_GUI_GIZMO_SCALE:
@@ -7637,22 +7869,305 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
             gs_gui_id id_f = gs_gui_get_id(ctx, "#gizmo_scale_forward", strlen("#gizmo_scale_forward")); 
 
             // Right
-            UPDATE_GIZMO_CONTROL(id_r, ray, desc.gizmo.scale.right.axis.shape, 
-                    desc.gizmo.scale.right.axis.model, gs_cylinder_vs_ray, desc.info, true);
-            UPDATE_GIZMO_CONTROL(id_r, ray, desc.gizmo.scale.right.cap.shape.aabb, 
-                    desc.gizmo.scale.right.cap.model, gs_aabb_vs_ray, desc.info, false);
+            UPDATE_GIZMO_CONTROL(id_r, ray, 
+                    desc.gizmo.scale.right.axis.shape.cylinder, desc.gizmo.scale.right.axis.model, gs_cylinder_vs_ray, 
+                    desc.gizmo.scale.right.cap.shape.aabb, desc.gizmo.scale.right.cap.model, gs_aabb_vs_ray, 
+                    desc.info);
 
             // Up
-            UPDATE_GIZMO_CONTROL(id_u, ray, desc.gizmo.scale.up.axis.shape, 
-                    desc.gizmo.scale.up.axis.model, gs_cylinder_vs_ray, desc.info, true);
-            UPDATE_GIZMO_CONTROL(id_u, ray, desc.gizmo.scale.up.cap.shape.aabb, 
-                    desc.gizmo.scale.up.cap.model, gs_aabb_vs_ray, desc.info, false);
+            UPDATE_GIZMO_CONTROL(id_u, ray, 
+                    desc.gizmo.scale.up.axis.shape.cylinder, desc.gizmo.scale.up.axis.model, gs_cylinder_vs_ray, 
+                    desc.gizmo.scale.up.cap.shape.aabb, desc.gizmo.scale.up.cap.model, gs_aabb_vs_ray, 
+                    desc.info);
 
             // Forward 
-            UPDATE_GIZMO_CONTROL(id_f, ray, desc.gizmo.scale.forward.axis.shape, 
-                    desc.gizmo.scale.forward.axis.model, gs_cylinder_vs_ray, desc.info, true);
-            UPDATE_GIZMO_CONTROL(id_f, ray, desc.gizmo.scale.forward.cap.shape.aabb, 
-                    desc.gizmo.scale.forward.cap.model, gs_aabb_vs_ray, desc.info, false); 
+            UPDATE_GIZMO_CONTROL(id_f, ray, 
+                    desc.gizmo.scale.forward.axis.shape.cylinder, desc.gizmo.scale.forward.axis.model, gs_cylinder_vs_ray, 
+                    desc.gizmo.scale.forward.cap.shape.aabb, desc.gizmo.scale.forward.cap.model, gs_aabb_vs_ray, 
+                    desc.info);
+
+            // Control 
+            if (ctx->focus == id_r)
+            { 
+                desc.li = gs_gui_gizmo_get_line_intersection(&desc.xform, GS_XAXIS, GS_YAXIS, GS_ZAXIS, 
+                    camera, &ray, gs_v3s(0.f), true, false);
+
+                if (desc.li.hit)
+                {
+                    if (just_set_focus) {
+                        s_intersection_start = desc.li.point;
+                        memset(&s_delta, 0, sizeof(s_delta));
+                    } 
+
+                    gs_vec3 axis = gs_vec3_norm(gs_quat_rotate(desc.xform.rotation, GS_XAXIS));
+                    gs_vec3 u = gs_vec3_sub(desc.li.point, s_intersection_start); 
+                    float udotn = gs_vec3_dot(u, axis); 
+                    float neg = gs_vec3_dot(axis, GS_XAXIS) < 0.f ? 1.f : -1.f;
+                    s_delta.translation = gs_vec3_scale(axis, udotn);
+                    s_intersection_start = gs_vec3_add(s_intersection_start, s_delta.translation);
+                    s_delta.translation = gs_vec3_scale(s_delta.translation, neg); 
+                    s_delta.translation.z = 0.f;
+                    s_delta.translation.y = 0.f;
+                    model->scale = gs_vec3_add(model->scale, s_delta.translation);
+                } 
+            }
+            else if (ctx->focus == id_u)
+            {
+                desc.li = gs_gui_gizmo_get_line_intersection(&desc.xform, GS_YAXIS, GS_XAXIS, GS_ZAXIS, 
+                    camera, &ray, gs_v3s(0.f), true, false);
+
+                if (desc.li.hit)
+                {
+                    if (just_set_focus) {
+                        s_intersection_start = desc.li.point;
+                        memset(&s_delta, 0, sizeof(s_delta));
+                    } 
+
+                    gs_vec3 axis = gs_vec3_norm(gs_quat_rotate(desc.xform.rotation, GS_YAXIS));
+                    gs_vec3 u = gs_vec3_sub(desc.li.point, s_intersection_start); 
+                    float udotn = gs_vec3_dot(u, axis); 
+                    s_delta.translation = gs_vec3_scale(axis, udotn);
+                    float neg = gs_vec3_dot(axis, GS_YAXIS) < 0.f ? -1.f : 1.f;
+                    s_intersection_start = gs_vec3_add(s_intersection_start, s_delta.translation);
+                    s_delta.translation = gs_vec3_scale(s_delta.translation, neg); 
+                    s_delta.translation.z = 0.f;
+                    s_delta.translation.x = 0.f;
+                    model->scale = gs_vec3_add(model->scale, s_delta.translation);
+                } 
+            }
+            else if (ctx->focus == id_f)
+            {
+                desc.li = gs_gui_gizmo_get_line_intersection(&desc.xform, GS_ZAXIS, GS_XAXIS, GS_YAXIS, 
+                    camera, &ray, gs_v3s(0.f), true, false);
+
+                if (desc.li.hit)
+                {
+                    if (just_set_focus) {
+                        s_intersection_start = desc.li.point;
+                        memset(&s_delta, 0, sizeof(s_delta));
+                    } 
+
+                    gs_vec3 axis = gs_vec3_norm(gs_quat_rotate(desc.xform.rotation, GS_ZAXIS));
+                    gs_vec3 u = gs_vec3_sub(desc.li.point, s_intersection_start); 
+                    float udotn = gs_vec3_dot(u, axis); 
+                    float neg = gs_vec3_dot(axis, GS_ZAXIS) < 0.f ? -1.f : 1.f;
+                    s_delta.translation = gs_vec3_scale(axis, udotn);
+                    s_intersection_start = gs_vec3_add(s_intersection_start, s_delta.translation);
+                    s_delta.translation = gs_vec3_scale(s_delta.translation, neg); 
+                    s_delta.translation.y = 0.f;
+                    s_delta.translation.x = 0.f;
+                    model->scale = gs_vec3_add(model->scale, s_delta.translation);
+                }
+            } 
+
+		} break; 
+
+    #define UPDATE_GIZMO_CONTROL_ROTATE(ID, RAY, SHAPE, MODEL, AXIS, INFO)\
+        do {\
+            int32_t mouseover = 0;\
+            gs_gui_id id = (ID);\
+            gs_contact_info_t info = gs_default_val();\
+            if (in_hover_root) {\
+                gs_vec3 axis = gs_quat_rotate(desc.xform.rotation, AXIS);\
+                gs_plane_t ip = gs_plane_from_pt_normal(desc.xform.translation, axis);\
+                float denom = gs_vec3_dot(gs_v3(ip.a, ip.b, ip.c), ray.d);\
+                denom =  fabsf(denom) >= GS_EPSILON ? denom : 0.00001f;\
+                info.depth = -(ip.a * ray.p.x + ip.b * ray.p.y + ip.c * ray.p.z + ip.d) / denom;\
+                info.normal = axis;\
+                gs_gui_gizmo_line_intersection_result_t res = gs_default_val();\
+                res.point = gs_vec3_add(ray.p, gs_vec3_scale(ray.d, info.depth));\
+                float dist = gs_vec3_dist(res.point, model->translation);\
+                if (dist < 0.5f && dist > 0.4f) {\
+                    info.hit = true;\
+                }\
+            }\
+            mouseover = info.hit && info.depth <= INFO.depth && in_hover_root && !ctx->hover_split && !ctx->lock_hover_id;\
+            if (ctx->focus == id) {ctx->updated_focus = 1;}\
+            if (~opt & GS_GUI_OPT_NOINTERACT) {\
+                /* Check for hold focus here */\
+                if (mouseover && !ctx->mouse_down) {\
+                    gs_gui_set_hover(ctx, id);\
+                    INFO = info;\
+                }\
+\
+                if (ctx->focus == id)\
+                {\
+                    just_set_focus = false;\
+                    gs_gui_set_focus(ctx, id);\
+                    if (ctx->mouse_pressed && !mouseover) {gs_gui_set_focus(ctx, 0);}\
+                    if (!ctx->mouse_down && ~opt & GS_GUI_OPT_HOLDFOCUS) {gs_gui_set_focus(ctx, 0);}\
+                }\
+\
+                if (ctx->prev_hover == id && !mouseover) {ctx->prev_hover = ctx->hover;}\
+\
+                if (ctx->hover == id)\
+                {\
+                    if (ctx->mouse_pressed)\
+                    {\
+                        if ((opt & GS_GUI_OPT_LEFTCLICKONLY && ctx->mouse_pressed == GS_GUI_MOUSE_LEFT) || (~opt & GS_GUI_OPT_LEFTCLICKONLY))\
+                        {\
+                            gs_gui_set_focus(ctx, id);\
+                            just_set_focus = true;\
+                        }\
+                    }\
+                    else if (!mouseover)\
+                    {\
+                        gs_gui_set_hover(ctx, 0);\
+                    }\
+                }\
+            }\
+        } while (0) 
+
+		case GS_GUI_GIZMO_ROTATE:
+		{
+            // Construct translate gizmo for this frame based on given parent transform
+			desc.gizmo.rotate = gs_gizmo_rotate(&desc.xform); 
+
+            gs_gui_id id_r = gs_gui_get_id(ctx, "#gizmo_rotate_right", strlen("#gizmo_rotate_right"));
+            gs_gui_id id_u = gs_gui_get_id(ctx, "#gizmo_rotate_up", strlen("#gizmo_rotate_up"));
+            gs_gui_id id_f = gs_gui_get_id(ctx, "#gizmo_rotate_forward", strlen("#gizmo_rotate_forward")); 
+
+            // Right
+            UPDATE_GIZMO_CONTROL_ROTATE(id_r, ray, desc.gizmo.rotate.right.axis.shape.plane, 
+                    desc.gizmo.rotate.right.axis.model, GS_XAXIS, desc.info); 
+
+            // Up
+            UPDATE_GIZMO_CONTROL_ROTATE(id_u, ray, desc.gizmo.rotate.up.axis.shape.plane, 
+                    desc.gizmo.rotate.up.axis.model, GS_YAXIS, desc.info); 
+
+            // Forward
+            UPDATE_GIZMO_CONTROL_ROTATE(id_f, ray, desc.gizmo.rotate.forward.axis.shape.plane, 
+                    desc.gizmo.rotate.forward.axis.model, GS_ZAXIS, desc.info); 
+
+            if (ctx->focus == id_r)
+            {
+                desc.li = gs_gui_gizmo_get_line_intersection(&desc.xform, GS_XAXIS, GS_YAXIS, GS_ZAXIS, 
+                    camera, &ray, gs_v3s(0.f), false, false);
+
+                if (desc.li.hit)
+                {
+                    if (just_set_focus) {
+                        s_intersection_start = desc.li.point;
+                        memset(&s_delta, 0, sizeof(s_delta));
+                    } 
+
+                    float dist_from_cam = gs_vec3_dist(desc.xform.translation, camera->transform.translation); 
+                    const float denom = dist_from_cam != 0.f ? dist_from_cam : 2.f;
+                    const gs_vec3 end_vector = gs_vec3_sub(desc.li.point, desc.xform.translation);
+                    const gs_vec3 start_norm = gs_vec3_norm(gs_vec3_sub(s_intersection_start, desc.xform.translation));
+                    const gs_vec3 end_norm = gs_vec3_norm(end_vector);
+                    const gs_vec3 rot_local = gs_quat_rotate(desc.xform.rotation, GS_XAXIS); 
+
+                    float len = gs_vec3_len(end_vector) / denom;
+                    float angle = gs_vec3_angle_between_signed(start_norm, end_norm); 
+
+                    if (len > 1.f) {
+                        angle *= len;
+                    } 
+
+                    gs_vec3 cross = gs_vec3_cross(start_norm, end_norm);
+                    if (gs_vec3_dot(rot_local, cross) < 0.f) {
+                        angle *= -1.f;
+                    }
+
+                    s_intersection_start = desc.li.point;
+                    float delta = angle; 
+                    s_delta.scale.x += delta;
+                    s_delta.rotation = gs_quat_angle_axis(delta, GS_XAXIS);
+
+                    // Local rotation
+                    model->rotation = gs_quat_mul(model->rotation, s_delta.rotation);
+
+                    // World rotation
+                    // model->rotation = gs_quat_mul(s_delta.rotation, model->rotation);
+                }
+            } 
+            else if (ctx->focus == id_u)
+            {
+                desc.li = gs_gui_gizmo_get_line_intersection(&desc.xform, GS_YAXIS, GS_XAXIS, GS_ZAXIS, 
+                    camera, &ray, gs_v3s(0.f), false, false);
+
+                if (desc.li.hit)
+                {
+                    if (just_set_focus) {
+                        s_intersection_start = desc.li.point;
+                        memset(&s_delta, 0, sizeof(s_delta));
+                    } 
+
+                    float dist_from_cam = gs_vec3_dist(desc.xform.translation, camera->transform.translation); 
+                    const float denom = dist_from_cam != 0.f ? dist_from_cam : 2.f;
+                    const gs_vec3 end_vector = gs_vec3_sub(desc.li.point, desc.xform.translation);
+                    const gs_vec3 start_norm = gs_vec3_norm(gs_vec3_sub(s_intersection_start, desc.xform.translation));
+                    const gs_vec3 end_norm = gs_vec3_norm(end_vector);
+                    const gs_vec3 rot_local = gs_quat_rotate(desc.xform.rotation, GS_YAXIS); 
+
+                    float len = gs_vec3_len(end_vector) / denom;
+                    float angle = gs_vec3_angle_between_signed(start_norm, end_norm); 
+
+                    if (len > 1.f) {
+                        angle *= len;
+                    } 
+
+                    gs_vec3 cross = gs_vec3_cross(start_norm, end_norm);
+                    if (gs_vec3_dot(rot_local, cross) < 0.f) {
+                        angle *= -1.f;
+                    }
+
+                    s_intersection_start = desc.li.point;
+                    float delta = angle; 
+                    s_delta.scale.x += delta;
+                    s_delta.rotation = gs_quat_angle_axis(delta, GS_YAXIS);
+
+                    // Local rotation
+                    model->rotation = gs_quat_mul(model->rotation, s_delta.rotation);
+
+                    // World rotation
+                    // model->rotation = gs_quat_mul(s_delta.rotation, model->rotation);
+                }
+            } 
+            else if (ctx->focus == id_f)
+            {
+                desc.li = gs_gui_gizmo_get_line_intersection(&desc.xform, GS_ZAXIS, GS_XAXIS, GS_YAXIS, 
+                    camera, &ray, gs_v3s(0.f), false, false);
+
+                if (desc.li.hit)
+                {
+                    if (just_set_focus) {
+                        s_intersection_start = desc.li.point;
+                        memset(&s_delta, 0, sizeof(s_delta));
+                    } 
+
+                    float dist_from_cam = gs_vec3_dist(desc.xform.translation, camera->transform.translation); 
+                    const float denom = dist_from_cam != 0.f ? dist_from_cam : 2.f;
+                    const gs_vec3 end_vector = gs_vec3_sub(desc.li.point, desc.xform.translation);
+                    const gs_vec3 start_norm = gs_vec3_norm(gs_vec3_sub(s_intersection_start, desc.xform.translation));
+                    const gs_vec3 end_norm = gs_vec3_norm(end_vector);
+                    const gs_vec3 rot_local = gs_quat_rotate(desc.xform.rotation, GS_ZAXIS); 
+
+                    float len = gs_vec3_len(end_vector) / denom;
+                    float angle = gs_vec3_angle_between_signed(start_norm, end_norm); 
+
+                    if (len > 1.f) {
+                        angle *= len;
+                    } 
+
+                    gs_vec3 cross = gs_vec3_cross(start_norm, end_norm);
+                    if (gs_vec3_dot(rot_local, cross) < 0.f) {
+                        angle *= -1.f;
+                    }
+
+                    s_intersection_start = desc.li.point;
+                    float delta = angle; 
+                    s_delta.scale.x += delta;
+                    s_delta.rotation = gs_quat_angle_axis(delta, GS_ZAXIS);
+
+                    // Local rotation
+                    model->rotation = gs_quat_mul(model->rotation, s_delta.rotation);
+
+                    // World rotation
+                    // model->rotation = gs_quat_mul(s_delta.rotation, model->rotation);
+                }
+            } 
 
 		} break;
 	} 
