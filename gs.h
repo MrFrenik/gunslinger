@@ -1810,6 +1810,14 @@ void __gs_hash_table_init_impl(void** ht, size_t sz)
         (__HT)->klpvl = (size_t)(klpvl);\
     } while (0)
 
+#define gs_hash_table_reserve(_HT, _KT, _VT, _CT)\
+    do {\
+        if ((_HT) == NULL) {\
+            gs_hash_table_init((_HT), _KT, _VT);\
+        }\
+        gs_dyn_array_reserve(_HT->data, _CT);\
+    } while (0)
+
     // ((__HT) != NULL ? (__HT)->size : 0) // gs_dyn_array_size((__HT)->data) : 0)
 #define gs_hash_table_size(__HT)\
     ((__HT) != NULL ? gs_dyn_array_size((__HT)->data) : 0)
