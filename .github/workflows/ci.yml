@@ -62,6 +62,7 @@ jobs:
       - uses: actions/checkout@master
       - name: install all dependencies
         run: |
+          sudo apt-get update
           sudo apt-get install -y gcc-10
           sudo apt install git gcc mesa-common-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev
 
