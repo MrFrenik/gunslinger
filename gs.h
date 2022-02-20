@@ -6861,7 +6861,7 @@ void gs_camera_offset_orientation(gs_camera_t* cam, f32 yaw, f32 pitch)
 =============================*/
 
 #ifndef GS_NO_STB_RECT_PACK
-    #define STB_RECT_PACK_IMPLEMENTATION
+    // #define STB_RECT_PACK_IMPLEMENTATION
 #endif
 
 #ifndef GS_NO_STB_TRUETYPE
@@ -6875,7 +6875,7 @@ void gs_camera_offset_orientation(gs_camera_t* cam, f32 yaw, f32 pitch)
 
 #ifndef GS_NO_STB_IMAGE
     #define STB_IMAGE_IMPLEMENTATION
-    #define STB_IMAGE_WRITE_IMPLEMENTATION
+    // #define STB_IMAGE_WRITE_IMPLEMENTATION
 #endif
 
 #ifndef GS_NO_CGLTF
@@ -6883,8 +6883,9 @@ void gs_camera_offset_orientation(gs_camera_t* cam, f32 yaw, f32 pitch)
 #endif
 
 // STB
-#include "external/stb/stb.h"
-#include "external/stb/stb_image_write.h"
+#ifdef GS_STB_INCLUDE
+    #include "external/stb/stb.h"
+#endif
 #include "external/stb/stb_truetype.h"
 #include "external/stb/stb_image.h"
 
