@@ -4143,16 +4143,16 @@ typedef struct gs_camera_t
 
 GS_API_DECL gs_camera_t gs_camera_default();
 GS_API_DECL gs_camera_t gs_camera_perspective();
-GS_API_DECL gs_mat4 gs_camera_get_view(gs_camera_t* cam);
-GS_API_DECL gs_mat4 gs_camera_get_proj(gs_camera_t* cam, int32_t view_width, int32_t view_height);
-GS_API_DECL gs_mat4 gs_camera_get_view_projection(gs_camera_t* cam, int32_t view_width, int32_t view_height);
-GS_API_DECL gs_vec3 gs_camera_forward(gs_camera_t* cam);
-GS_API_DECL gs_vec3 gs_camera_backward(gs_camera_t* cam);
-GS_API_DECL gs_vec3 gs_camera_up(gs_camera_t* cam);
-GS_API_DECL gs_vec3 gs_camera_down(gs_camera_t* cam);
-GS_API_DECL gs_vec3 gs_camera_right(gs_camera_t* cam);
-GS_API_DECL gs_vec3 gs_camera_left(gs_camera_t* cam);
-GS_API_DECL gs_vec3 gs_camera_screen_to_world(gs_camera_t* cam, gs_vec3 coords, int32_t view_x, int32_t view_y, int32_t view_width, int32_t view_height);
+GS_API_DECL gs_mat4 gs_camera_get_view(const gs_camera_t* cam);
+GS_API_DECL gs_mat4 gs_camera_get_proj(const gs_camera_t* cam, int32_t view_width, int32_t view_height);
+GS_API_DECL gs_mat4 gs_camera_get_view_projection(const gs_camera_t* cam, int32_t view_width, int32_t view_height);
+GS_API_DECL gs_vec3 gs_camera_forward(const gs_camera_t* cam);
+GS_API_DECL gs_vec3 gs_camera_backward(const gs_camera_t* cam);
+GS_API_DECL gs_vec3 gs_camera_up(const gs_camera_t* cam);
+GS_API_DECL gs_vec3 gs_camera_down(const gs_camera_t* cam);
+GS_API_DECL gs_vec3 gs_camera_right(const gs_camera_t* cam);
+GS_API_DECL gs_vec3 gs_camera_left(const gs_camera_t* cam);
+GS_API_DECL gs_vec3 gs_camera_screen_to_world(const gs_camera_t* cam, gs_vec3 coords, int32_t view_x, int32_t view_y, int32_t view_width, int32_t view_height);
 GS_API_DECL void gs_camera_offset_orientation(gs_camera_t* cam, float yaw, float picth);
 
 /*================================================================================
@@ -6736,37 +6736,37 @@ gs_camera_t gs_camera_perspective()
     return cam;
 }
 
-gs_vec3 gs_camera_forward(gs_camera_t* cam)
+gs_vec3 gs_camera_forward(const gs_camera_t* cam)
 {
     return (gs_quat_rotate(cam->transform.rotation, gs_v3(0.0f, 0.0f, -1.0f)));
 } 
 
-gs_vec3 gs_camera_backward(gs_camera_t* cam)
+gs_vec3 gs_camera_backward(const gs_camera_t* cam)
 {
     return (gs_quat_rotate(cam->transform.rotation, gs_v3(0.0f, 0.0f, 1.0f)));
 } 
 
-gs_vec3 gs_camera_up(gs_camera_t* cam)
+gs_vec3 gs_camera_up(const gs_camera_t* cam)
 {
     return (gs_quat_rotate(cam->transform.rotation, gs_v3(0.0f, 1.0f, 0.0f)));
 }
 
-gs_vec3 gs_camera_down(gs_camera_t* cam)
+gs_vec3 gs_camera_down(const gs_camera_t* cam)
 {
     return (gs_quat_rotate(cam->transform.rotation, gs_v3(0.0f, -1.0f, 0.0f)));
 }
 
-gs_vec3 gs_camera_right(gs_camera_t* cam)
+gs_vec3 gs_camera_right(const gs_camera_t* cam)
 {
     return (gs_quat_rotate(cam->transform.rotation, gs_v3(1.0f, 0.0f, 0.0f)));
 }
 
-gs_vec3 gs_camera_left(gs_camera_t* cam)
+gs_vec3 gs_camera_left(const gs_camera_t* cam)
 {
     return (gs_quat_rotate(cam->transform.rotation, gs_v3(-1.0f, 0.0f, 0.0f)));
 }
 
-gs_vec3 gs_camera_screen_to_world(gs_camera_t* cam, gs_vec3 coords, s32 view_x, s32 view_y, s32 view_width, s32 view_height)
+gs_vec3 gs_camera_screen_to_world(const gs_camera_t* cam, gs_vec3 coords, s32 view_x, s32 view_y, s32 view_width, s32 view_height)
 {
     gs_vec3 wc = gs_default_val();
 
@@ -6801,14 +6801,14 @@ gs_vec3 gs_camera_screen_to_world(gs_camera_t* cam, gs_vec3 coords, s32 view_x, 
     return wc;
 }
 
-gs_mat4 gs_camera_get_view_projection(gs_camera_t* cam, s32 view_width, s32 view_height)
+gs_mat4 gs_camera_get_view_projection(const gs_camera_t* cam, s32 view_width, s32 view_height)
 {
     gs_mat4 view = gs_camera_get_view(cam);
     gs_mat4 proj = gs_camera_get_proj(cam, view_width, view_height);
     return gs_mat4_mul(proj, view); 
 }
 
-gs_mat4 gs_camera_get_view(gs_camera_t* cam)
+gs_mat4 gs_camera_get_view(const gs_camera_t* cam)
 {
     gs_vec3 up = gs_camera_up(cam);
     gs_vec3 forward = gs_camera_forward(cam);
@@ -6816,7 +6816,7 @@ gs_mat4 gs_camera_get_view(gs_camera_t* cam)
     return gs_mat4_look_at(cam->transform.position, target, up);
 }
 
-gs_mat4 gs_camera_get_proj(gs_camera_t* cam, s32 view_width, s32 view_height)
+gs_mat4 gs_camera_get_proj(const gs_camera_t* cam, s32 view_width, s32 view_height)
 {
     gs_mat4 proj_mat = gs_mat4_identity();
 

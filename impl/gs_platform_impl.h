@@ -1387,7 +1387,7 @@ void  gs_platform_sleep(float ms)
 
             usleep(ms * 1000.f); // unistd.h
     #else
-            usleep(ms * 1000.f); // unistd.h
+            sleep(ms * 1000.f); // unistd.h
     #endif
 }
 

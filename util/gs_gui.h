@@ -7373,7 +7373,7 @@ static gs_gizmo_translate_t gs_gizmo_translate(const gs_vqs* parent)
 	gs_vqs local = gs_vqs_default();
 	gs_vqs abs = gs_vqs_default(); 
 
-#define GS_GUI_GIZMO_AXIS_DEFINE(MEMBER, OFFSET, DEG, AXIS)\
+#define GS_GUI_GIZMO_AXIS_DEFINE_TRANSLATE(MEMBER, OFFSET, DEG, AXIS)\
     do {\
 		/* Axis */\
 		{\
@@ -7409,9 +7409,9 @@ static gs_gizmo_translate_t gs_gizmo_translate(const gs_vqs* parent)
 	} while (0)
 
     const float off = 0.6f;
-    GS_GUI_GIZMO_AXIS_DEFINE(right, gs_v3(-off, 0.f, 0.f), 90.f, GS_ZAXIS);
-    GS_GUI_GIZMO_AXIS_DEFINE(up, gs_v3(0.f, off, 0.f), 0.f, GS_YAXIS);
-    GS_GUI_GIZMO_AXIS_DEFINE(forward, gs_v3(0.f, 0.f, off), 90.f, GS_XAXIS);
+    GS_GUI_GIZMO_AXIS_DEFINE_TRANSLATE(right, gs_v3(-off, 0.f, 0.f), 90.f, GS_ZAXIS);
+    GS_GUI_GIZMO_AXIS_DEFINE_TRANSLATE(up, gs_v3(0.f, off, 0.f), 0.f, GS_YAXIS);
+    GS_GUI_GIZMO_AXIS_DEFINE_TRANSLATE(forward, gs_v3(0.f, 0.f, off), 90.f, GS_XAXIS);
 
 	return trans;
 }
@@ -7423,7 +7423,7 @@ static gs_gizmo_rotate_t gs_gizmo_rotate(const gs_vqs* parent)
 	gs_vqs local = gs_vqs_default();
 	gs_vqs abs = gs_vqs_default(); 
 
-#define GS_GUI_GIZMO_AXIS_DEFINE(MEMBER, OFFSET, DEG, AXIS)\
+#define GS_GUI_GIZMO_AXIS_DEFINE_ROTATE(MEMBER, OFFSET, DEG, AXIS)\
     do {\
 		/* Axis */\
 		{\
@@ -7438,9 +7438,9 @@ static gs_gizmo_rotate_t gs_gizmo_rotate(const gs_vqs* parent)
 		}\
 	} while (0)
 
-    GS_GUI_GIZMO_AXIS_DEFINE(right, gs_v3(0.f, 0.f, 0.f), 90.f, GS_YAXIS);
-    GS_GUI_GIZMO_AXIS_DEFINE(up, gs_v3(0.f, 0.f, 0.f), -90.f, GS_XAXIS);
-    GS_GUI_GIZMO_AXIS_DEFINE(forward, gs_v3(0.f, 0.f, 0.f), 0.f, GS_ZAXIS);
+    GS_GUI_GIZMO_AXIS_DEFINE_ROTATE(right, gs_v3(0.f, 0.f, 0.f), 90.f, GS_YAXIS);
+    GS_GUI_GIZMO_AXIS_DEFINE_ROTATE(up, gs_v3(0.f, 0.f, 0.f), -90.f, GS_XAXIS);
+    GS_GUI_GIZMO_AXIS_DEFINE_ROTATE(forward, gs_v3(0.f, 0.f, 0.f), 0.f, GS_ZAXIS);
 
 	return gizmo;
 }
