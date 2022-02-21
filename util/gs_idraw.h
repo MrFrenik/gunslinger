@@ -204,7 +204,9 @@ GS_API_DECL void gsi_rect3Dv(gs_immediate_draw_t* gsi, gs_vec3 min, gs_vec3 max,
 GS_API_DECL void gsi_circle(gs_immediate_draw_t* gsi, float cx, float cy, float radius, int32_t segments, uint8_t r, uint8_t g, uint8_t b, uint8_t a, gs_graphics_primitive_type type);
 GS_API_DECL void gsi_circlevx(gs_immediate_draw_t* gsi, gs_vec3 c, float radius, int32_t segments, gs_color_t color, gs_graphics_primitive_type type);
 GS_API_DECL void gsi_circle_sector(gs_immediate_draw_t* gsi, float cx, float cy, float radius, int32_t start_angle, int32_t end_angle, int32_t segments, uint8_t r, uint8_t g, uint8_t b, uint8_t a, gs_graphics_primitive_type type);
-GS_API_DECL void gsi_circle_sectorvx(gs_immediate_draw_t* gsi, gs_vec3 c, float radius, int32_t start_angle, int32_t end_angle, int32_t segments, gs_color_t color, gs_graphics_primitive_type type);
+GS_API_DECL void gsi_circle_sectorvx(gs_immediate_draw_t* gsi, gs_vec3 c, float radius, int32_t start_angle, int32_t end_angle, int32_t segments, gs_color_t color, gs_graphics_primitive_type type); 
+GS_API_DECL void gsi_arc(gs_immediate_draw_t* gsi, float cx, float cy, float radius_inner, float radius_outer, float start_angle, float end_angle, int32_t segments, uint8_t r, uint8_t g, uint8_t b, uint8_t a, 
+        gs_graphics_primitive_type type);
 GS_API_DECL void gsi_box(gs_immediate_draw_t* gsi, float x0, float y0, float z0, float hx, float hy, float hz, uint8_t r, uint8_t g, uint8_t b, uint8_t a, gs_graphics_primitive_type type);
 GS_API_DECL void gsi_sphere(gs_immediate_draw_t* gsi, float cx, float cy, float cz, float radius, uint8_t r, uint8_t g, uint8_t b, uint8_t a, gs_graphics_primitive_type type);
 GS_API_DECL void gsi_bezier(gs_immediate_draw_t* gsi, float x0, float y0, float x1, float y1, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
@@ -1343,6 +1345,62 @@ void gsi_circle(gs_immediate_draw_t* gsi, float cx, float cy, float radius, int3
 void gsi_circlevx(gs_immediate_draw_t* gsi, gs_vec3 c, float radius, int32_t segments, gs_color_t color, gs_graphics_primitive_type type)
 {
 	gsi_circle_sectorvx(gsi, c, radius, 0, 360, segments, color, type);
+}
+
+GS_API_DECL void gsi_arc(gs_immediate_draw_t* gsi, float cx, float cy, float radius_inner, float radius_outer, float start_angle, float end_angle, int32_t segments, uint8_t r, uint8_t g, uint8_t b, uint8_t a, gs_graphics_primitive_type type)
+{
+    if (start_angle == end_angle) return;
+
+    if (start_angle > end_angle) {
+        float tmp = end_angle;
+        end_angle = start_angle;
+        start_angle = tmp;
+    }
+
+    if (radius_outer < radius_inner) {
+        float tmp = radius_outer;
+        radius_outer = radius_inner;
+        radius_inner = tmp;
+    }
+
+    int32_t min_segments = (int32_t)((end_angle - start_angle) / 90.f);
+    
+    if (segments < min_segments)
+    {
+        float th = acosf(2*powf(1 - gsi_smooth_circle_error_rate/radius_outer, 2) - 1);
+        segments = (int32_t)((end_angle - start_angle) * ceilf(2 * GS_PI/th)/360);
+        if (segments <= 0) segments = min_segments;
+    }
+
+    // Not a ring
+    if (radius_inner <= 0.0f)
+    {
+        gsi_circle_sector(gsi, cx, cy, radius_outer, start_angle, end_angle, segments, r, g, b, a, type);
+        return;
+    }
+
+    float step = (end_angle - start_angle)/(float)segments;
+    float angle = start_angle;
+
+    for (int i = 0; i < segments; i++)
+    { 
+        float ar = gs_deg2rad(angle);
+        float ars = gs_deg2rad((angle + step));
+
+		gsi_trianglev(gsi, 
+            gs_v2(cx + sinf(ar) * radius_inner, cy + cosf(ar) * radius_inner),
+            gs_v2(cx + sinf(ars) * radius_inner, cy + cosf(ars) * radius_inner),
+            gs_v2(cx + sinf(ar) * radius_outer, cy + cosf(ar) * radius_outer),
+                gs_color(r, g, b, a), type);
+
+		gsi_trianglev(gsi, 
+            gs_v2(cx + sinf(ars) * radius_inner, cy + cosf(ars) * radius_inner),
+            gs_v2(cx + sinf(ars) * radius_outer, cy + cosf(ars) *radius_outer),
+            gs_v2(cx + sinf(ar) * radius_outer, cy + cosf(ar) * radius_outer),
+                gs_color(r, g, b, a), type);
+
+        angle += step;
+    }
 }
 
 void gsi_box(gs_immediate_draw_t* gsi, float x, float y, float z, float hx, float hy, float hz, 

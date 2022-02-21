@@ -7472,6 +7472,7 @@ static void gs_gui_gizmo_render(gs_gui_context_t* ctx, gs_gui_customcommand_t* c
 	gs_camera_t cam = desc->camera;
     const uint16_t segments = 4;
     const gs_gui_gizmo_line_intersection_result_t* li = &desc->li;
+    const gs_contact_info_t* info = &desc->info;
 
 	gsi_defaults(gsi);
 	gsi_depth_enabled(gsi, false);
@@ -7543,27 +7544,25 @@ static void gs_gui_gizmo_render(gs_gui_context_t* ctx, gs_gui_customcommand_t* c
 
 #define GS_GUI_GIZMO_AXIS_ROTATE(ID, AXIS, COLOR)\
     do {\
+        gs_color_t def_color = (COLOR);\
         gs_gui_id id = gs_gui_get_id_hash(ctx, ID, strlen(ID), cmd->hash);\
         bool hover = cmd->hover == id;\
         bool focus = cmd->focus == id;\
-        gs_color_t color = hover || focus ? GS_COLOR_YELLOW : COLOR;\
+        gs_color_t color = hover || focus ? GS_COLOR_YELLOW : def_color;\
         /* Axis */\
         {\
             gsi_push_matrix(gsi, GSI_MATRIX_MODELVIEW);\
             gsi_mul_matrix(gsi, gs_vqs_to_mat4(&desc->gizmo.rotate.AXIS.axis.model));\
             {\
                 gs_plane_t* axis = &desc->gizmo.rotate.AXIS.axis.shape.plane;\
-                float step = 360.f / 32.f;\
-                for (float i = 0.f; i < 360.f; i += step){\
-                    float a0 = gs_deg2rad(i);\
-                    float a1 = gs_deg2rad((i + step));\
-                    const float r = 1.0f;\
-                    gs_vec2 ls = gs_v2(sin(a0) * r, cos(a0) * r);\
-                    gs_vec2 le = gs_v2(sin(a1) * r, cos(a1) * r);\
-                    gsi_linev(gsi, ls, le, color);\
-                }\
+                gsi_arc(gsi, 0.f, 0.f, 0.92, 1.f, 0.f, 360.f, 48, color.r, color.g, color.b, color.a, GS_GRAPHICS_PRIMITIVE_TRIANGLES);\
             }\
             gsi_pop_matrix(gsi);\
+            if (focus) {\
+                gs_vec3 ls = desc->xform.translation;\
+                gs_vec3 le = gs_vec3_add(ls, gs_vec3_scale(info->normal, 0.5f));\
+                gsi_line3Dv(gsi, ls, le, GS_COLOR_BLUE);\
+            }\
         }\
     } while (0)
 
@@ -7585,9 +7584,13 @@ static void gs_gui_gizmo_render(gs_gui_context_t* ctx, gs_gui_customcommand_t* c
 
         case GS_GUI_GIZMO_ROTATE:
         {
-            GS_GUI_GIZMO_AXIS_ROTATE("#gizmo_rotate_right", right, GS_COLOR_RED);
-            GS_GUI_GIZMO_AXIS_ROTATE("#gizmo_rotate_up", up, GS_COLOR_GREEN);
-            GS_GUI_GIZMO_AXIS_ROTATE("#gizmo_rotate_forward", forward, GS_COLOR_BLUE);
+            gs_gui_id id_r = gs_gui_get_id_hash(ctx, "#gizmo_rotate_right", strlen("#gizmo_rotate_right"), cmd->hash);
+            gs_gui_id id_u = gs_gui_get_id_hash(ctx, "#gizmo_rotate_up", strlen("#gizmo_rotate_up"), cmd->hash);
+            gs_gui_id id_f = gs_gui_get_id_hash(ctx, "#gizmo_rotate_forward", strlen("#gizmo_rotate_forward"), cmd->hash);
+
+            GS_GUI_GIZMO_AXIS_ROTATE("#gizmo_rotate_right", right, (cmd->focus == id_u || cmd->focus == id_f) ? gs_color_alpha(GS_COLOR_RED, 25) : gs_color_alpha(GS_COLOR_RED, 100));
+            GS_GUI_GIZMO_AXIS_ROTATE("#gizmo_rotate_up", up, (cmd->focus == id_r || cmd->focus == id_f) ? gs_color_alpha(GS_COLOR_GREEN, 25) : gs_color_alpha(GS_COLOR_GREEN, 100));
+            GS_GUI_GIZMO_AXIS_ROTATE("#gizmo_rotate_forward", forward, (cmd->focus == id_r || cmd->focus == id_u) ? gs_color_alpha(GS_COLOR_BLUE, 25) : gs_color_alpha(GS_COLOR_BLUE, 100));
         } break;
     } 
 
@@ -7967,22 +7970,22 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
             int32_t mouseover = 0;\
             gs_gui_id id = (ID);\
             gs_contact_info_t info = gs_default_val();\
+            gs_vec3 axis = gs_quat_rotate(desc.xform.rotation, AXIS);\
+            info.normal = axis;\
             if (in_hover_root) {\
-                gs_vec3 axis = gs_quat_rotate(desc.xform.rotation, AXIS);\
                 gs_plane_t ip = gs_plane_from_pt_normal(desc.xform.translation, axis);\
                 float denom = gs_vec3_dot(gs_v3(ip.a, ip.b, ip.c), ray.d);\
                 denom =  fabsf(denom) >= GS_EPSILON ? denom : 0.00001f;\
                 info.depth = -(ip.a * ray.p.x + ip.b * ray.p.y + ip.c * ray.p.z + ip.d) / denom;\
-                info.normal = axis;\
                 gs_gui_gizmo_line_intersection_result_t res = gs_default_val();\
                 res.point = gs_vec3_add(ray.p, gs_vec3_scale(ray.d, info.depth));\
                 float dist = gs_vec3_dist(res.point, model->translation);\
-                if (dist < 0.5f && dist > 0.4f) {\
+                if (dist < 0.5f && dist > 0.45f) {\
                     info.hit = true;\
                 }\
             }\
             mouseover = info.hit && info.depth <= INFO.depth && in_hover_root && !ctx->hover_split && !ctx->lock_hover_id;\
-            if (ctx->focus == id) {ctx->updated_focus = 1;}\
+            if (ctx->focus == id) {ctx->updated_focus = 1; INFO = info;}\
             if (~opt & GS_GUI_OPT_NOINTERACT) {\
                 /* Check for hold focus here */\
                 if (mouseover && !ctx->mouse_down) {\
@@ -8037,7 +8040,7 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
 
             // Forward
             UPDATE_GIZMO_CONTROL_ROTATE(id_f, ray, desc.gizmo.rotate.forward.axis.shape.plane, 
-                    desc.gizmo.rotate.forward.axis.model, GS_ZAXIS, desc.info); 
+                    desc.gizmo.rotate.forward.axis.model, GS_ZAXIS, desc.info);
 
             if (ctx->focus == id_r)
             {
