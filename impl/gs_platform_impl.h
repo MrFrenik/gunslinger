@@ -1387,7 +1387,19 @@ void  gs_platform_sleep(float ms)
 
             usleep(ms * 1000.f); // unistd.h
     #else
-            sleep(ms * 1000.f); // unistd.h
+	    if (ms < 0.f) {
+		return;
+	    }
+
+	    struct timespec ts = gs_default_val();
+	    int32_t res = 0;
+	    ts.tv_sec = ms / 1000.f;
+	    ts.tv_nsec = ((uint64_t)ms % 1000) * 1000000;
+	    do {
+		res = nanosleep(&ts, &ts);
+	    } while (res && errno == EINTR);
+
+            // usleep(ms * 1000.f); // unistd.h
     #endif
 }
 
