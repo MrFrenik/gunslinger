@@ -7700,7 +7700,7 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
 
     desc.xform = gs_vqs_default();
     desc.xform.translation = model->translation;
-    desc.xform.rotation = model->rotation;       // This depends on the mode (local/world)
+    desc.xform.rotation = (mode == GS_GUI_TRANSFORM_LOCAL || op == GS_GUI_GIZMO_SCALE) ? model->rotation : gs_quat_default();       // This depends on the mode (local/world)
     desc.xform.scale = gs_v3s(0.5f);             // This should be scaled depending on camera proximity 
 
     #define UPDATE_GIZMO_CONTROL(ID, RAY, SHAPE, MODEL, FUNC, CAP_SHAPE, CAP_MODEL, CAP_FUNC, INFO)\
@@ -8044,8 +8044,10 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
 
             if (ctx->focus == id_r)
             {
-                desc.li = gs_gui_gizmo_get_line_intersection(&desc.xform, GS_XAXIS, GS_YAXIS, GS_ZAXIS, 
-                    camera, &ray, gs_v3s(0.f), false, false);
+                desc.li = op == GS_GUI_TRANSFORM_LOCAL ? 
+                    gs_gui_gizmo_get_line_intersection(&desc.xform, GS_XAXIS, GS_YAXIS, GS_ZAXIS, camera, &ray, gs_v3s(0.f), false, false) : 
+                    gs_gui_gizmo_get_line_intersection(&desc.xform, GS_XAXIS, GS_YAXIS, GS_ZAXIS, camera, &ray, gs_v3s(0.f), false, true); 
+
 
                 if (desc.li.hit)
                 {
@@ -8078,17 +8080,18 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
                     s_delta.scale.x += delta;
                     s_delta.rotation = gs_quat_angle_axis(delta, GS_XAXIS);
 
-                    // Local rotation
-                    model->rotation = gs_quat_mul(model->rotation, s_delta.rotation);
-
-                    // World rotation
-                    // model->rotation = gs_quat_mul(s_delta.rotation, model->rotation);
+                    switch (mode)
+                    {
+                        case GS_GUI_TRANSFORM_WORLD: model->rotation = gs_quat_mul(s_delta.rotation, model->rotation); break;
+                        case GS_GUI_TRANSFORM_LOCAL: model->rotation = gs_quat_mul(model->rotation, s_delta.rotation); break;
+                    }
                 }
             } 
             else if (ctx->focus == id_u)
             {
-                desc.li = gs_gui_gizmo_get_line_intersection(&desc.xform, GS_YAXIS, GS_XAXIS, GS_ZAXIS, 
-                    camera, &ray, gs_v3s(0.f), false, false);
+                desc.li = op == GS_GUI_TRANSFORM_LOCAL ? 
+                    gs_gui_gizmo_get_line_intersection(&desc.xform, GS_YAXIS, GS_XAXIS, GS_ZAXIS, camera, &ray, gs_v3s(0.f), false, false) : 
+                    gs_gui_gizmo_get_line_intersection(&desc.xform, GS_YAXIS, GS_XAXIS, GS_ZAXIS, camera, &ray, gs_v3s(0.f), false, true); 
 
                 if (desc.li.hit)
                 {
@@ -8121,17 +8124,18 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
                     s_delta.scale.x += delta;
                     s_delta.rotation = gs_quat_angle_axis(delta, GS_YAXIS);
 
-                    // Local rotation
-                    model->rotation = gs_quat_mul(model->rotation, s_delta.rotation);
-
-                    // World rotation
-                    // model->rotation = gs_quat_mul(s_delta.rotation, model->rotation);
+                    switch (mode)
+                    {
+                        case GS_GUI_TRANSFORM_WORLD: model->rotation = gs_quat_mul(s_delta.rotation, model->rotation); break;
+                        case GS_GUI_TRANSFORM_LOCAL: model->rotation = gs_quat_mul(model->rotation, s_delta.rotation); break;
+                    }
                 }
             } 
             else if (ctx->focus == id_f)
             {
-                desc.li = gs_gui_gizmo_get_line_intersection(&desc.xform, GS_ZAXIS, GS_XAXIS, GS_YAXIS, 
-                    camera, &ray, gs_v3s(0.f), false, false);
+                desc.li = op == GS_GUI_TRANSFORM_LOCAL ? 
+                    gs_gui_gizmo_get_line_intersection(&desc.xform, GS_ZAXIS, GS_XAXIS, GS_YAXIS, camera, &ray, gs_v3s(0.f), false, false) : 
+                    gs_gui_gizmo_get_line_intersection(&desc.xform, GS_ZAXIS, GS_XAXIS, GS_YAXIS, camera, &ray, gs_v3s(0.f), false, true); 
 
                 if (desc.li.hit)
                 {
@@ -8164,11 +8168,11 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
                     s_delta.scale.x += delta;
                     s_delta.rotation = gs_quat_angle_axis(delta, GS_ZAXIS);
 
-                    // Local rotation
-                    model->rotation = gs_quat_mul(model->rotation, s_delta.rotation);
-
-                    // World rotation
-                    // model->rotation = gs_quat_mul(s_delta.rotation, model->rotation);
+                    switch (mode)
+                    {
+                        case GS_GUI_TRANSFORM_WORLD: model->rotation = gs_quat_mul(s_delta.rotation, model->rotation); break;
+                        case GS_GUI_TRANSFORM_LOCAL: model->rotation = gs_quat_mul(model->rotation, s_delta.rotation); break;
+                    }
                 }
             } 
 
