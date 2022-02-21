@@ -7658,7 +7658,7 @@ static gs_vec3 s_intersection_start = gs_default_val();
 static gs_vqs s_delta = gs_default_val();
 static bool just_set_focus = false;
 
-GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_vqs* model, int32_t op, int32_t mode)
+GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_vqs* model, float snap, int32_t op, int32_t mode)
 {
 	const gs_vec2 fbs = gs_platform_framebuffer_sizev(ctx->window_hndl);
 	const float t = gs_platform_elapsed_time(); 
@@ -7792,6 +7792,12 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
                 if (just_set_focus) {
                     s_intersection_start = desc.li.point;
                     memset(&s_delta, 0, sizeof(s_delta));
+                    s_delta.rotation = gs_quat(
+                        model->translation.x, 
+                        model->translation.y,
+                        model->translation.z, 
+                        0.f
+                    );
                 }
 
                 if (desc.li.hit)
@@ -7805,8 +7811,21 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
                         s_delta.translation.y = 0.f;
                         s_delta.translation.z = 0.f;
                     } 
-                    // Set final translation
-                    model->translation = gs_vec3_add(desc.xform.translation, s_delta.translation);
+                    if (snap > 0.f)
+                    {
+                        s_delta.scale = gs_vec3_add(s_delta.scale, s_delta.translation);     // Store total delta since interaction began 
+                        float snap_len = round(gs_vec3_len(s_delta.scale) / snap) * snap;
+                        gs_vec3 norm = gs_vec3_norm(s_delta.scale);
+                        gs_vec3 delta = gs_vec3_scale(gs_vec3_norm(s_delta.scale), snap_len);
+                        gs_vec3 op = gs_v3(s_delta.rotation.x, s_delta.rotation.y, s_delta.rotation.z);
+                        model->translation = gs_vec3_add(op, delta);
+                    }
+                    else
+                    {
+                        // Set final translation
+                        model->translation = gs_vec3_add(desc.xform.translation, s_delta.translation);
+                    }
+
                 } 
             }
             else if (ctx->focus == id_u)
@@ -7817,6 +7836,12 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
                 if (just_set_focus) {
                     s_intersection_start = desc.li.point;
                     memset(&s_delta, 0, sizeof(s_delta));
+                    s_delta.rotation = gs_quat(
+                        model->translation.x, 
+                        model->translation.y,
+                        model->translation.z, 
+                        0.f
+                    );
                 }
 
                 if (desc.li.hit)
@@ -7830,8 +7855,20 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
                         s_delta.translation.x = 0.f;
                         s_delta.translation.z = 0.f;
                     } 
-                    // Set final translation
-                    model->translation = gs_vec3_add(desc.xform.translation, s_delta.translation);
+                    if (snap > 0.f)
+                    {
+                        s_delta.scale = gs_vec3_add(s_delta.scale, s_delta.translation);     // Store total delta since interaction began 
+                        float snap_len = round(gs_vec3_len(s_delta.scale) / snap) * snap;
+                        gs_vec3 norm = gs_vec3_norm(s_delta.scale);
+                        gs_vec3 delta = gs_vec3_scale(gs_vec3_norm(s_delta.scale), snap_len);
+                        gs_vec3 op = gs_v3(s_delta.rotation.x, s_delta.rotation.y, s_delta.rotation.z);
+                        model->translation = gs_vec3_add(op, delta);
+                    }
+                    else
+                    {
+                        // Set final translation
+                        model->translation = gs_vec3_add(desc.xform.translation, s_delta.translation);
+                    }
                 } 
             }
             else if (ctx->focus == id_f)
@@ -7842,6 +7879,12 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
                 if (just_set_focus) {
                     s_intersection_start = desc.li.point;
                     memset(&s_delta, 0, sizeof(s_delta));
+                    s_delta.rotation = gs_quat(
+                        model->translation.x, 
+                        model->translation.y,
+                        model->translation.z, 
+                        0.f
+                    );
                 }
 
                 if (desc.li.hit)
@@ -7855,8 +7898,20 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
                         s_delta.translation.x = 0.f;
                         s_delta.translation.y = 0.f;
                     } 
-                    // Set final translation
-                    model->translation = gs_vec3_add(desc.xform.translation, s_delta.translation);
+                    if (snap > 0.f)
+                    {
+                        s_delta.scale = gs_vec3_add(s_delta.scale, s_delta.translation);     // Store total delta since interaction began 
+                        float snap_len = round(gs_vec3_len(s_delta.scale) / snap) * snap;
+                        gs_vec3 norm = gs_vec3_norm(s_delta.scale);
+                        gs_vec3 delta = gs_vec3_scale(gs_vec3_norm(s_delta.scale), snap_len);
+                        gs_vec3 op = gs_v3(s_delta.rotation.x, s_delta.rotation.y, s_delta.rotation.z);
+                        model->translation = gs_vec3_add(op, delta);
+                    }
+                    else
+                    {
+                        // Set final translation
+                        model->translation = gs_vec3_add(desc.xform.translation, s_delta.translation);
+                    }
                 } 
             } 
 
@@ -7900,6 +7955,12 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
                     if (just_set_focus) {
                         s_intersection_start = desc.li.point;
                         memset(&s_delta, 0, sizeof(s_delta));
+                        s_delta.rotation = gs_quat(
+                            model->scale.x, 
+                            model->scale.y, 
+                            model->scale.z, 
+                            0.f
+                        );
                     } 
 
                     gs_vec3 axis = gs_vec3_norm(gs_quat_rotate(desc.xform.rotation, GS_XAXIS));
@@ -7910,8 +7971,20 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
                     s_intersection_start = gs_vec3_add(s_intersection_start, s_delta.translation);
                     s_delta.translation = gs_vec3_scale(s_delta.translation, neg); 
                     s_delta.translation.z = 0.f;
-                    s_delta.translation.y = 0.f;
-                    model->scale = gs_vec3_add(model->scale, s_delta.translation);
+                    s_delta.translation.y = 0.f; 
+                    if (snap > 0.f)
+                    {
+                        s_delta.scale = gs_vec3_add(s_delta.scale, s_delta.translation);     // Store total delta since interaction began 
+                        float snap_len = round(gs_vec3_len(s_delta.scale) / snap) * snap;
+                        gs_vec3 norm = gs_vec3_norm(s_delta.scale);
+                        gs_vec3 delta = gs_vec3_scale(gs_vec3_norm(s_delta.scale), snap_len);
+                        gs_vec3 os = gs_v3(s_delta.rotation.x, s_delta.rotation.y, s_delta.rotation.z);
+                        model->scale = gs_vec3_add(os, delta);
+                    }
+                    else
+                    {
+                        model->scale = gs_vec3_add(model->scale, s_delta.translation);
+                    }
                 } 
             }
             else if (ctx->focus == id_u)
@@ -7924,6 +7997,12 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
                     if (just_set_focus) {
                         s_intersection_start = desc.li.point;
                         memset(&s_delta, 0, sizeof(s_delta));
+                        s_delta.rotation = gs_quat(
+                            model->scale.x, 
+                            model->scale.y, 
+                            model->scale.z, 
+                            0.f
+                        );
                     } 
 
                     gs_vec3 axis = gs_vec3_norm(gs_quat_rotate(desc.xform.rotation, GS_YAXIS));
@@ -7935,7 +8014,19 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
                     s_delta.translation = gs_vec3_scale(s_delta.translation, neg); 
                     s_delta.translation.z = 0.f;
                     s_delta.translation.x = 0.f;
-                    model->scale = gs_vec3_add(model->scale, s_delta.translation);
+                    if (snap > 0.f)
+                    {
+                        s_delta.scale = gs_vec3_add(s_delta.scale, s_delta.translation);     // Store total delta since interaction began 
+                        float snap_len = round(gs_vec3_len(s_delta.scale) / snap) * snap;
+                        gs_vec3 norm = gs_vec3_norm(s_delta.scale);
+                        gs_vec3 delta = gs_vec3_scale(gs_vec3_norm(s_delta.scale), snap_len);
+                        gs_vec3 os = gs_v3(s_delta.rotation.x, s_delta.rotation.y, s_delta.rotation.z);
+                        model->scale = gs_vec3_add(os, delta);
+                    }
+                    else
+                    {
+                        model->scale = gs_vec3_add(model->scale, s_delta.translation);
+                    }
                 } 
             }
             else if (ctx->focus == id_f)
@@ -7948,6 +8039,12 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
                     if (just_set_focus) {
                         s_intersection_start = desc.li.point;
                         memset(&s_delta, 0, sizeof(s_delta));
+                        s_delta.rotation = gs_quat(
+                            model->scale.x, 
+                            model->scale.y, 
+                            model->scale.z, 
+                            0.f
+                        );
                     } 
 
                     gs_vec3 axis = gs_vec3_norm(gs_quat_rotate(desc.xform.rotation, GS_ZAXIS));
@@ -7959,7 +8056,19 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
                     s_delta.translation = gs_vec3_scale(s_delta.translation, neg); 
                     s_delta.translation.y = 0.f;
                     s_delta.translation.x = 0.f;
-                    model->scale = gs_vec3_add(model->scale, s_delta.translation);
+                    if (snap > 0.f)
+                    {
+                        s_delta.scale = gs_vec3_add(s_delta.scale, s_delta.translation);     // Store total delta since interaction began 
+                        float snap_len = round(gs_vec3_len(s_delta.scale) / snap) * snap;
+                        gs_vec3 norm = gs_vec3_norm(s_delta.scale);
+                        gs_vec3 delta = gs_vec3_scale(gs_vec3_norm(s_delta.scale), snap_len);
+                        gs_vec3 os = gs_v3(s_delta.rotation.x, s_delta.rotation.y, s_delta.rotation.z);
+                        model->scale = gs_vec3_add(os, delta);
+                    }
+                    else
+                    {
+                        model->scale = gs_vec3_add(model->scale, s_delta.translation);
+                    }
                 }
             } 
 
@@ -8054,6 +8163,12 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
                     if (just_set_focus) {
                         s_intersection_start = desc.li.point;
                         memset(&s_delta, 0, sizeof(s_delta));
+                        s_delta.translation = gs_v3(
+                            model->rotation.x, 
+                            model->rotation.y, 
+                            model->rotation.z
+                        );
+                        s_delta.scale.y = model->rotation.w;
                     } 
 
                     float dist_from_cam = gs_vec3_dist(desc.xform.translation, camera->transform.translation); 
@@ -8076,15 +8191,28 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
                     }
 
                     s_intersection_start = desc.li.point;
-                    float delta = angle; 
+                    float delta = gs_rad2deg(angle); 
                     s_delta.scale.x += delta;
-                    s_delta.rotation = gs_quat_angle_axis(delta, GS_XAXIS);
+                    s_delta.rotation = gs_quat_angle_axis(gs_deg2rad(delta), GS_XAXIS);
 
-                    switch (mode)
+                    if (snap > 0.f)
                     {
-                        case GS_GUI_TRANSFORM_WORLD: model->rotation = gs_quat_mul(s_delta.rotation, model->rotation); break;
-                        case GS_GUI_TRANSFORM_LOCAL: model->rotation = gs_quat_mul(model->rotation, s_delta.rotation); break;
+                        float snap_delta = round(s_delta.scale.x / snap) * snap;
+                        s_delta.rotation = gs_quat_angle_axis(gs_deg2rad(snap_delta), GS_XAXIS);
+                        gs_quat orot = gs_quat(s_delta.translation.x, s_delta.translation.y, s_delta.translation.z, s_delta.scale.y);
+                        switch (mode) {
+                            case GS_GUI_TRANSFORM_WORLD: model->rotation = gs_quat_mul(s_delta.rotation, orot); break;
+                            case GS_GUI_TRANSFORM_LOCAL: model->rotation = gs_quat_mul(orot, s_delta.rotation); break;
+                        }
                     }
+                    else
+                    {
+                        switch (mode) {
+                            case GS_GUI_TRANSFORM_WORLD: model->rotation = gs_quat_mul(s_delta.rotation, model->rotation); break;
+                            case GS_GUI_TRANSFORM_LOCAL: model->rotation = gs_quat_mul(model->rotation, s_delta.rotation); break;
+                        }
+                    }
+
                 }
             } 
             else if (ctx->focus == id_u)
@@ -8097,7 +8225,13 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
                 {
                     if (just_set_focus) {
                         s_intersection_start = desc.li.point;
-                        memset(&s_delta, 0, sizeof(s_delta));
+                        memset(&s_delta, 0, sizeof(s_delta)); 
+                        s_delta.translation = gs_v3(
+                            model->rotation.x, 
+                            model->rotation.y, 
+                            model->rotation.z
+                        );
+                        s_delta.scale.y = model->rotation.w;
                     } 
 
                     float dist_from_cam = gs_vec3_dist(desc.xform.translation, camera->transform.translation); 
@@ -8120,14 +8254,26 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
                     }
 
                     s_intersection_start = desc.li.point;
-                    float delta = angle; 
+                    float delta = gs_rad2deg(angle); 
                     s_delta.scale.x += delta;
-                    s_delta.rotation = gs_quat_angle_axis(delta, GS_YAXIS);
+                    s_delta.rotation = gs_quat_angle_axis(gs_deg2rad(delta), GS_YAXIS);
 
-                    switch (mode)
+                    if (snap > 0.f)
                     {
-                        case GS_GUI_TRANSFORM_WORLD: model->rotation = gs_quat_mul(s_delta.rotation, model->rotation); break;
-                        case GS_GUI_TRANSFORM_LOCAL: model->rotation = gs_quat_mul(model->rotation, s_delta.rotation); break;
+                        float snap_delta = round(s_delta.scale.x / snap) * snap;
+                        s_delta.rotation = gs_quat_angle_axis(gs_deg2rad(snap_delta), GS_YAXIS);
+                        gs_quat orot = gs_quat(s_delta.translation.x, s_delta.translation.y, s_delta.translation.z, s_delta.scale.y);
+                        switch (mode) {
+                            case GS_GUI_TRANSFORM_WORLD: model->rotation = gs_quat_mul(s_delta.rotation, orot); break;
+                            case GS_GUI_TRANSFORM_LOCAL: model->rotation = gs_quat_mul(orot, s_delta.rotation); break;
+                        }
+                    }
+                    else
+                    {
+                        switch (mode) {
+                            case GS_GUI_TRANSFORM_WORLD: model->rotation = gs_quat_mul(s_delta.rotation, model->rotation); break;
+                            case GS_GUI_TRANSFORM_LOCAL: model->rotation = gs_quat_mul(model->rotation, s_delta.rotation); break;
+                        }
                     }
                 }
             } 
@@ -8142,6 +8288,12 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
                     if (just_set_focus) {
                         s_intersection_start = desc.li.point;
                         memset(&s_delta, 0, sizeof(s_delta));
+                        s_delta.translation = gs_v3(
+                            model->rotation.x, 
+                            model->rotation.y, 
+                            model->rotation.z
+                        );
+                        s_delta.scale.y = model->rotation.w;
                     } 
 
                     float dist_from_cam = gs_vec3_dist(desc.xform.translation, camera->transform.translation); 
@@ -8164,14 +8316,26 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
                     }
 
                     s_intersection_start = desc.li.point;
-                    float delta = angle; 
+                    float delta = gs_rad2deg(angle); 
                     s_delta.scale.x += delta;
-                    s_delta.rotation = gs_quat_angle_axis(delta, GS_ZAXIS);
+                    s_delta.rotation = gs_quat_angle_axis(gs_deg2rad(delta), GS_ZAXIS);
 
-                    switch (mode)
+                    if (snap > 0.f)
                     {
-                        case GS_GUI_TRANSFORM_WORLD: model->rotation = gs_quat_mul(s_delta.rotation, model->rotation); break;
-                        case GS_GUI_TRANSFORM_LOCAL: model->rotation = gs_quat_mul(model->rotation, s_delta.rotation); break;
+                        float snap_delta = round(s_delta.scale.x / snap) * snap;
+                        s_delta.rotation = gs_quat_angle_axis(gs_deg2rad(snap_delta), GS_ZAXIS);
+                        gs_quat orot = gs_quat(s_delta.translation.x, s_delta.translation.y, s_delta.translation.z, s_delta.scale.y);
+                        switch (mode) {
+                            case GS_GUI_TRANSFORM_WORLD: model->rotation = gs_quat_mul(s_delta.rotation, orot); break;
+                            case GS_GUI_TRANSFORM_LOCAL: model->rotation = gs_quat_mul(orot, s_delta.rotation); break;
+                        }
+                    }
+                    else
+                    {
+                        switch (mode) {
+                            case GS_GUI_TRANSFORM_WORLD: model->rotation = gs_quat_mul(s_delta.rotation, model->rotation); break;
+                            case GS_GUI_TRANSFORM_LOCAL: model->rotation = gs_quat_mul(model->rotation, s_delta.rotation); break;
+                        }
                     }
                 }
             } 
