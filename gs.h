@@ -3693,6 +3693,13 @@ typedef struct
 {
     union 
     {
+        struct {
+            union {
+                gs_vec3 xyz;
+                gs_vec3 axis;
+            } axis;
+            float a;
+        } aa;
         gs_vec4 v;
         f32 xyzw[4];
         struct 
@@ -3818,6 +3825,18 @@ gs_inline
 gs_quat gs_quat_inverse(gs_quat q)
 {
     return (gs_quat_scale(gs_quat_conjugate(q), 1.0f / gs_quat_dot(q, q)));
+} 
+
+gs_inline gs_quat gs_quat_angle_axis(f32 rad, gs_vec3 axis)
+{
+    // Normalize axis
+    gs_vec3 a = gs_vec3_norm(axis);
+
+    // Get scalar
+    f32 half_angle = 0.5f * rad;
+    f32 s = (float)sin(half_angle);
+
+    return gs_quat_ctor(a.x * s, a.y * s, a.z * s, (float)cos(half_angle));
 }
 
 gs_inline gs_vec3 gs_quat_rotate(gs_quat q, gs_vec3 v)
@@ -3831,16 +3850,51 @@ gs_inline gs_vec3 gs_quat_rotate(gs_quat q, gs_vec3 v)
     return (gs_vec3_add(v, gs_vec3_add(uv, uuv)));
 }
 
-gs_inline gs_quat gs_quat_angle_axis(f32 rad, gs_vec3 axis)
+gs_inline gs_quat 
+gs_quat_from_to_rotation(gs_vec3 src, gs_vec3 dst)
 {
-    // Normalize axis
-    gs_vec3 a = gs_vec3_norm(axis);
+    src = gs_vec3_norm(src);
+    dst = gs_vec3_norm(dst);
+    const float d = gs_vec3_dot(src, dst);
 
-    // Get scalar
-    f32 half_angle = 0.5f * rad;
-    f32 s = (float)sin(half_angle);
+    if (d  >= 1.f)
+    {
+        return gs_quat_default();
+    }
+    else if (d <= -1.f)
+    {
+        // Orthonormalize, find axis of rotation
+        gs_vec3 axis = gs_vec3_cross(src, GS_XAXIS);
+        if (gs_vec3_len2(axis) < 1e-6)
+        {
+            axis = gs_vec3_cross(src, GS_YAXIS);
+        }
+        return gs_quat_angle_axis(GS_PI, gs_vec3_norm(axis));
+    } 
+    else
+    {
+        const float s = sqrtf(gs_vec3_len2(src) * gs_vec3_len2(dst)) + 
+            gs_vec3_dot(src, dst);
 
-    return gs_quat_ctor(a.x * s, a.y * s, a.z * s, (float)cos(half_angle));
+        gs_vec3 axis = gs_vec3_cross(src, dst);
+
+        return gs_quat_norm(gs_quat_ctor(axis.x, axis.y, axis.z, s));
+    }
+}
+
+gs_inline 
+gs_quat gs_quat_look_rotation(gs_vec3 forward, gs_vec3 up)
+{ 
+    const gs_quat q0 = gs_quat_from_to_rotation(GS_ZAXIS, forward);
+    if (gs_vec3_len2(gs_vec3_cross(forward, up)) < 1e-6)
+    {
+        return q0;
+    } 
+
+    const gs_vec3 new_up = gs_quat_rotate(q0, up);
+    const gs_quat q1 = gs_quat_from_to_rotation(new_up, up);
+
+    return gs_quat_mul(q1, q0);
 }
 
 gs_inline
@@ -4844,6 +4898,7 @@ GS_API_DECL void      gs_platform_mouse_delta(float* x, float* y);
 GS_API_DECL gs_vec2   gs_platform_mouse_positionv();
 GS_API_DECL void      gs_platform_mouse_position(int32_t* x, int32_t* y);
 GS_API_DECL void      gs_platform_mouse_wheel(float* x, float* y);
+GS_API_DECL gs_vec2   gs_platform_mouse_wheelv();
 GS_API_DECL bool      gs_platform_mouse_moved();
 GS_API_DECL bool      gs_platform_mouse_locked();
 GS_API_DECL gs_vec2   gs_platform_touch_deltav(uint32_t idx);
@@ -4864,6 +4919,7 @@ GS_API_DECL char*      gs_platform_read_file_contents_default_impl(const char* f
 GS_API_DECL gs_result  gs_platform_write_file_contents_default_impl(const char* file_path, const char* mode, void* data, size_t data_size);
 GS_API_DECL bool       gs_platform_file_exists_default_impl(const char* file_path);
 GS_API_DECL bool       gs_platform_dir_exists_default_impl(const char* dir_path);
+GS_API_DECL bool       gs_platform_mkdir_default_impl(const char* dir_path, int32_t opt);
 GS_API_DECL int32_t    gs_platform_file_size_in_bytes_default_impl(const char* file_path);
 GS_API_DECL void       gs_platform_file_extension_default_impl(char* buffer, size_t buffer_sz, const char* file_path);
 
@@ -4879,6 +4935,9 @@ GS_API_DECL void       gs_platform_file_extension_default_impl(char* buffer, siz
 #endif
 #ifndef gs_platform_dir_exists
 #define gs_platform_dir_exists gs_platform_dir_exists_default_impl
+#endif
+#ifndef gs_platform_mkdir
+#define gs_platform_mkdir gs_platform_mkdir_default_impl
 #endif
 #ifndef gs_platform_file_exists
 #define gs_platform_file_exists gs_platform_file_exists_default_impl

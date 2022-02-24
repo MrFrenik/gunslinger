@@ -504,6 +504,13 @@ void gs_platform_mouse_wheel(f32* x, f32* y)
     *y = input->mouse.wheel.y;  
 }
 
+GS_API_DECL gs_vec2 gs_platform_mouse_wheelv()
+{
+    gs_vec2 wheel = gs_default_val();
+    gs_platform_mouse_wheel(&wheel.x, &wheel.y);
+    return wheel;
+}
+
 bool gs_platform_mouse_locked()
 {
     return (__gs_input())->mouse.locked;
@@ -645,6 +652,11 @@ GS_API_DECL bool gs_platform_dir_exists_default_impl(const char* dir_path)
 		return true;
 	}
 	return false;
+}
+
+GS_API_DECL bool gs_platform_mkdir_default_impl(const char* dir_path, int32_t opt)
+{
+    mkdir(dir_path, opt);
 }
 
 bool gs_platform_file_exists_default_impl(const char* file_path)

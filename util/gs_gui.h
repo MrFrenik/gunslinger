@@ -422,6 +422,7 @@ typedef struct gs_gui_split_t
     uint32_t parent;
     uint32_t id;
     uint32_t zindex;
+    int32_t frame;
 } gs_gui_split_t;
 
 typedef enum gs_gui_window_flags { 
@@ -1072,8 +1073,7 @@ GS_API_DECL void gs_gui_dock_ex_cnt(gs_gui_context_t* ctx, gs_gui_container_t* d
 GS_API_DECL void gs_gui_undock_ex_cnt(gs_gui_context_t* ctx, gs_gui_container_t* cnt);
 
 //=== Gizmo ===//
-// GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_mat4* view, gs_mat4* projection, int32_t op, int32_t mode, gs_vqs* xform);
-GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_vqs* xform, int32_t op, int32_t mode);
+GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_vqs* xform, int32_t op, int32_t mode, int32_t opt);
 
 //=== Implementation ===//
 
@@ -3352,6 +3352,10 @@ static void gs_gui_draw_splits(gs_gui_context_t* ctx, gs_gui_split_t* split)
 				    NULL;
     bool valid_hover = hover_cnt && hover_cnt->zindex > top->zindex;
     valid_hover = false;
+    bool valid = true;
+
+    split->frame = ctx->frame;
+    root_split->frame = ctx->frame; 
 
     bool can_draw = true;
     for (uint32_t i = 0; i < 2; ++i)
@@ -3400,26 +3404,27 @@ static void gs_gui_draw_splits(gs_gui_context_t* ctx, gs_gui_split_t* split)
                 if (!ctx->focus_split) ctx->focus_split = split;
             } 
             bool active = ctx->focus_split == split;
-            if (active)
+            if (active && valid)
             {
                 ctx->next_hover_root = top;
                 gs_gui_request_t req = gs_default_val();
                 req.type = GS_GUI_SPLIT_RATIO;
                 req.split = split;
                 gs_dyn_array_push(ctx->requests, req);
-            }
+            } 
+
             if (
                 (hover && (ctx->focus_split == split)) || 
                 (hover && !ctx->focus_split) || 
-                active && can_draw
+                active
             )
             {
                 gs_color_t bc = ctx->focus_split == split ? 
                     ctx->style_sheet->styles[GS_GUI_ELEMENT_BUTTON][GS_GUI_ELEMENT_STATE_FOCUS].colors[GS_GUI_COLOR_BACKGROUND] : 
-                    ctx->style_sheet->styles[GS_GUI_ELEMENT_BUTTON][GS_GUI_ELEMENT_STATE_HOVER].colors[GS_GUI_COLOR_BACKGROUND]; 
+                    ctx->style_sheet->styles[GS_GUI_ELEMENT_BUTTON][GS_GUI_ELEMENT_STATE_HOVER].colors[GS_GUI_COLOR_BACKGROUND];
                 gs_gui_draw_rect(ctx, r, bc);
                 can_draw = false;
-            }
+            } 
         } 
         else if (
                 split->children[i].type == GS_GUI_SPLIT_NODE_SPLIT     
@@ -3465,7 +3470,8 @@ static void gs_gui_draw_splits(gs_gui_context_t* ctx, gs_gui_split_t* split)
                     req.type = GS_GUI_SPLIT_RATIO;
                     req.split = split;
                     gs_dyn_array_push(ctx->requests, req);
-                }
+                } 
+
                 if (
                     (hover && (ctx->focus_split == split)) || 
                     (hover && !ctx->focus_split) || 
@@ -3477,7 +3483,7 @@ static void gs_gui_draw_splits(gs_gui_context_t* ctx, gs_gui_split_t* split)
                         ctx->style_sheet->styles[GS_GUI_ELEMENT_BUTTON][GS_GUI_ELEMENT_STATE_HOVER].colors[GS_GUI_COLOR_BACKGROUND];
                     gs_gui_draw_rect(ctx, r, bc);
                     can_draw = false;
-                }
+                } 
             }
 
             gs_gui_split_t* child = gs_slot_array_getp(ctx->splits, split->children[i].split);
@@ -3645,6 +3651,7 @@ GS_API_DECL void gs_gui_begin(gs_gui_context_t* ctx)
     gsi_camera2D(&ctx->overlay_draw_list, (uint32_t)fbs.x, (uint32_t)fbs.y);
     gsi_defaults(&ctx->overlay_draw_list);
 
+    /*
     for (
         gs_slot_array_iter it = gs_slot_array_iter_new(ctx->splits);
         gs_slot_array_iter_valid(ctx->splits, it);
@@ -3685,7 +3692,7 @@ GS_API_DECL void gs_gui_begin(gs_gui_context_t* ctx)
 
                 gs_gui_rect_t fr = split->rect;
                 fr.x += GS_GUI_SPLIT_SIZE; fr.y += GS_GUI_SPLIT_SIZE; fr.w -= 2.f * GS_GUI_SPLIT_SIZE; fr.h -= 2.f * GS_GUI_SPLIT_SIZE;
-		        gs_gui_draw_frame(ctx, fr, &ctx->style_sheet->styles[GS_GUI_ELEMENT_CONTAINER][0x00]);
+		        // gs_gui_draw_frame(ctx, fr, &ctx->style_sheet->styles[GS_GUI_ELEMENT_CONTAINER][0x00]);
 
                 // Draw splits
                 gs_gui_draw_splits(ctx, split);
@@ -3782,6 +3789,7 @@ GS_API_DECL void gs_gui_begin(gs_gui_context_t* ctx)
             gs_gui_end_window(ctx);
         } 
     }
+    */
 
     if (ctx->mouse_down != GS_GUI_MOUSE_LEFT)
     {
@@ -6127,8 +6135,7 @@ GS_API_DECL int32_t gs_gui_begin_window_ex(gs_gui_context_t * ctx, const char* t
     gs_gui_split_t* root_split = gs_gui_get_root_split(ctx, cnt); 
 
     // Get root container
-    gs_gui_container_t* root_cnt = gs_gui_get_root_container(ctx, cnt); 
-
+    gs_gui_container_t* root_cnt = gs_gui_get_root_container(ctx, cnt);
 
     // Cache rect
 	if ((cnt->rect.w == 0.f || opt & GS_GUI_OPT_FORCESETRECT || opt & GS_GUI_OPT_FULLSCREEN || cnt->flags & GS_GUI_WINDOW_FLAGS_FIRST_INIT) && new_frame) 
@@ -6497,10 +6504,21 @@ GS_API_DECL int32_t gs_gui_begin_window_ex(gs_gui_context_t * ctx, const char* t
         body.h -= tr.h; 
     } 
 
+    int32_t zindex = INT32_MAX - 1;
+    if (root_split) {
+        gs_gui_get_split_lowest_zindex(ctx, root_split, &zindex);
+        if (zindex == cnt->zindex) {
+            gs_gui_style_t* style = &ctx->style_sheet->styles[GS_GUI_ELEMENT_CONTAINER][state];
+            gs_gui_draw_rect(ctx, root_split->rect, style->colors[GS_GUI_COLOR_BACKGROUND]); 
+            gs_gui_draw_splits(ctx, root_split);
+        } 
+    }
+
 	// draw body frame
 	if (~opt & GS_GUI_OPT_NOFRAME && cnt->flags & GS_GUI_WINDOW_FLAGS_VISIBLE && ~opt & GS_GUI_OPT_NOBORDER) 
     { 
         gs_gui_style_t* style = &ctx->style_sheet->styles[GS_GUI_ELEMENT_CONTAINER][state];
+
         gs_gui_draw_rect(ctx, body, style->colors[GS_GUI_COLOR_BACKGROUND]); 
 
         // draw border (get root cnt and check state of that)
@@ -7658,11 +7676,13 @@ static gs_vec3 s_intersection_start = gs_default_val();
 static gs_vqs s_delta = gs_default_val();
 static bool just_set_focus = false;
 
-GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_vqs* model, float snap, int32_t op, int32_t mode)
+GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_vqs* model, float snap, int32_t op, int32_t mode, int32_t opt)
 {
+    if (model->rotation.w == 0.f) model->rotation = gs_quat_default();
+    if (gs_vec3_len(model->scale) == 0.f) model->scale = gs_v3s(1.f);
+
 	const gs_vec2 fbs = gs_platform_framebuffer_sizev(ctx->window_hndl);
 	const float t = gs_platform_elapsed_time(); 
-    int32_t opt = 0x00; 
     const bool in_hover_root = gs_gui_in_hover_root(ctx); 
 
     gs_immediate_draw_t* dl = &ctx->overlay_draw_list;
@@ -7701,7 +7721,20 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
     desc.xform = gs_vqs_default();
     desc.xform.translation = model->translation;
     desc.xform.rotation = (mode == GS_GUI_TRANSFORM_LOCAL || op == GS_GUI_GIZMO_SCALE) ? model->rotation : gs_quat_default();       // This depends on the mode (local/world)
-    desc.xform.scale = gs_v3s(0.5f);             // This should be scaled depending on camera proximity 
+
+    switch (camera->proj_type)
+    {
+        case GS_PROJECTION_TYPE_ORTHOGRAPHIC:
+        {
+            desc.xform.scale = gs_v3s(camera->ortho_scale * 0.2f);
+        } break;
+
+        case GS_PROJECTION_TYPE_PERSPECTIVE:
+        {
+            float dist_from_cam = gs_vec3_dist(desc.xform.translation, camera->transform.translation);
+            desc.xform.scale = gs_v3s(dist_from_cam * 0.3f);
+        } break;
+    }
 
     #define UPDATE_GIZMO_CONTROL(ID, RAY, SHAPE, MODEL, FUNC, CAP_SHAPE, CAP_MODEL, CAP_FUNC, INFO)\
         do {\
@@ -8089,7 +8122,8 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
                 gs_gui_gizmo_line_intersection_result_t res = gs_default_val();\
                 res.point = gs_vec3_add(ray.p, gs_vec3_scale(ray.d, info.depth));\
                 float dist = gs_vec3_dist(res.point, model->translation);\
-                if (dist < 0.5f && dist > 0.45f) {\
+                float scl = gs_vec3_len(desc.xform.scale);\
+                if (dist <= 0.6f * scl && dist >= 0.45f * scl) {\
                     info.hit = true;\
                 }\
             }\
