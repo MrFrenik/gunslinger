@@ -654,9 +654,9 @@ GS_API_DECL bool gs_platform_dir_exists_default_impl(const char* dir_path)
 	return false;
 }
 
-GS_API_DECL bool gs_platform_mkdir_default_impl(const char* dir_path, int32_t opt)
+GS_API_DECL int32_t gs_platform_mkdir_default_impl(const char* dir_path, int32_t opt)
 {
-    mkdir(dir_path, opt);
+    return mkdir(dir_path, opt);
 }
 
 bool gs_platform_file_exists_default_impl(const char* file_path)

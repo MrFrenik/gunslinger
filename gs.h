@@ -3869,7 +3869,7 @@ gs_quat_from_to_rotation(gs_vec3 src, gs_vec3 dst)
         {
             axis = gs_vec3_cross(src, GS_YAXIS);
         }
-        return gs_quat_angle_axis(GS_PI, gs_vec3_norm(axis));
+        return gs_quat_angle_axis((float)GS_PI, gs_vec3_norm(axis));
     } 
     else
     {
@@ -4919,7 +4919,7 @@ GS_API_DECL char*      gs_platform_read_file_contents_default_impl(const char* f
 GS_API_DECL gs_result  gs_platform_write_file_contents_default_impl(const char* file_path, const char* mode, void* data, size_t data_size);
 GS_API_DECL bool       gs_platform_file_exists_default_impl(const char* file_path);
 GS_API_DECL bool       gs_platform_dir_exists_default_impl(const char* dir_path);
-GS_API_DECL bool       gs_platform_mkdir_default_impl(const char* dir_path, int32_t opt);
+GS_API_DECL int32_t    gs_platform_mkdir_default_impl(const char* dir_path, int32_t opt);
 GS_API_DECL int32_t    gs_platform_file_size_in_bytes_default_impl(const char* file_path);
 GS_API_DECL void       gs_platform_file_extension_default_impl(char* buffer, size_t buffer_sz, const char* file_path);
 
