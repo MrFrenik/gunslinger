@@ -4207,6 +4207,7 @@ GS_API_DECL gs_vec3 gs_camera_down(const gs_camera_t* cam);
 GS_API_DECL gs_vec3 gs_camera_right(const gs_camera_t* cam);
 GS_API_DECL gs_vec3 gs_camera_left(const gs_camera_t* cam);
 GS_API_DECL gs_vec3 gs_camera_screen_to_world(const gs_camera_t* cam, gs_vec3 coords, int32_t view_x, int32_t view_y, int32_t view_width, int32_t view_height);
+GS_API_DECL gs_vec3 gs_camera_world_to_screen(const gs_camera_t* cam, gs_vec3 coords, int32_t view_width, int32_t view_height);
 GS_API_DECL void gs_camera_offset_orientation(gs_camera_t* cam, float yaw, float picth);
 
 /*================================================================================
@@ -6823,6 +6824,27 @@ gs_vec3 gs_camera_right(const gs_camera_t* cam)
 gs_vec3 gs_camera_left(const gs_camera_t* cam)
 {
     return (gs_quat_rotate(cam->transform.rotation, gs_v3(-1.0f, 0.0f, 0.0f)));
+}
+
+GS_API_DECL gs_vec3 gs_camera_world_to_screen(const gs_camera_t* cam, gs_vec3 coords, int32_t view_width, int32_t view_height)
+{
+    // Transform world coords to screen coords to place billboarded UI elements in world
+    gs_mat4 vp = gs_camera_get_view_projection(cam, view_width, view_height);
+    gs_vec4 p4 = gs_v4(coords.x, coords.y, coords.z, 1.f);
+    p4 = gs_mat4_mul_vec4(vp, p4);
+    p4.x /= p4.w;
+    p4.y /= p4.w;
+    p4.z /= p4.w;
+
+    // Bring into ndc
+    p4.x = p4.x * 0.5f + 0.5f;
+    p4.y = p4.y * 0.5f + 0.5f;
+
+    // Bring into screen space
+    p4.x = p4.x * (float)view_width;
+    p4.y = gs_map_range(1.f, 0.f, 0.f, 1.f, p4.y) * (float)view_height;
+
+    return gs_v3(p4.x, p4.y, p4.z);
 }
 
 gs_vec3 gs_camera_screen_to_world(const gs_camera_t* cam, gs_vec3 coords, s32 view_x, s32 view_y, s32 view_width, s32 view_height)
