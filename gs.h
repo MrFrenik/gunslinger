@@ -5723,6 +5723,7 @@ typedef struct gs_graphics_info_t
 {
     uint32_t major_version;
     uint32_t minor_version;
+    uint32_t max_texture_units;
     struct {
         bool32 available;
         uint32_t max_work_group_count[3];

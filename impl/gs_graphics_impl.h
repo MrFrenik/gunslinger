@@ -643,6 +643,9 @@ void gs_graphics_init(gs_graphics_t* graphics)
     glGetIntegerv(GL_MAJOR_VERSION, (GLint*)&info->major_version);
     glGetIntegerv(GL_MINOR_VERSION, (GLint*)&info->minor_version);
 
+    // Max texture units
+    glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, (GLint*)&info->max_texture_units);
+
     // Compute shader info
     CHECK_GL_CORE(
         info->compute.available = info->major_version >= 4 && info->minor_version >= 3;
