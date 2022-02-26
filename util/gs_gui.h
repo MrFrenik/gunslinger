@@ -1073,7 +1073,7 @@ GS_API_DECL void gs_gui_dock_ex_cnt(gs_gui_context_t* ctx, gs_gui_container_t* d
 GS_API_DECL void gs_gui_undock_ex_cnt(gs_gui_context_t* ctx, gs_gui_container_t* cnt);
 
 //=== Gizmo ===//
-GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_vqs* xform, int32_t op, int32_t mode, int32_t opt);
+GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_vqs* model, float snap, int32_t op, int32_t mode, int32_t opt);
 
 //=== Implementation ===//
 
