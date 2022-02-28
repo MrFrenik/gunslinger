@@ -781,6 +781,7 @@ typedef struct gs_gui_context_t
 	int32_t last_zindex;
 	int32_t updated_focus;
 	int32_t frame;
+    gs_vec2 framebuffer_size;
     gs_gui_container_t* active_root;
 	gs_gui_container_t* hover_root;
 	gs_gui_container_t* next_hover_root;
@@ -940,7 +941,7 @@ GS_API_DECL void gs_gui_init(gs_gui_context_t *ctx, uint32_t window_hndl);
 GS_API_DECL void gs_gui_init_font_stash(gs_gui_context_t *ctx, gs_gui_font_stash_desc_t* desc);
 GS_API_DECL gs_gui_context_t gs_gui_context_new(uint32_t window_hndl);
 GS_API_DECL void gs_gui_free(gs_gui_context_t* ctx); 
-GS_API_DECL void gs_gui_begin(gs_gui_context_t *ctx);
+GS_API_DECL void gs_gui_begin(gs_gui_context_t *ctx, gs_vec2 framebuffer_size);
 GS_API_DECL void gs_gui_end(gs_gui_context_t *ctx); 
 GS_API_DECL void gs_gui_render(gs_gui_context_t* ctx, gs_command_buffer_t* cb);
 
@@ -2623,7 +2624,7 @@ static gs_vec2 gs_gui_text_dimensions(gs_asset_font_t* font, const char* text, i
 GS_API_DECL void gs_gui_dock_ex(gs_gui_context_t* ctx, const char* dst, const char* src, int32_t split_type, float ratio)
 {
     uint32_t f = ctx->frame;
-    if (!f) gs_gui_begin(ctx);
+    if (!f) gs_gui_begin(ctx, gs_platform_framebuffer_sizev(ctx->window_hndl));
     gs_gui_container_t* dst_cnt = gs_gui_get_container(ctx, dst);
     gs_gui_container_t* src_cnt = gs_gui_get_container(ctx, src); 
     gs_gui_dock_ex_cnt(ctx, dst_cnt, src_cnt, split_type, ratio); 
@@ -3537,10 +3538,15 @@ static void gs_gui_get_split_lowest_zindex(gs_gui_context_t* ctx, gs_gui_split_t
     }
 }
 
-GS_API_DECL void gs_gui_begin(gs_gui_context_t* ctx) 
+GS_API_DECL void gs_gui_begin(gs_gui_context_t* ctx, gs_vec2 framebuffer_size)
 { 
     // Capture event information
-    gs_vec2 mouse_pos = gs_platform_mouse_positionv(); 
+    gs_vec2 platform_m_pos = gs_platform_mouse_positionv();
+	gs_vec2 window_size = gs_platform_framebuffer_sizev(ctx->window_hndl);
+	float percent_x = platform_m_pos.x / window_size.x;
+	float percent_y = platform_m_pos.y / window_size.y;
+	gs_vec2 mouse_pos = gs_v2(framebuffer_size.x * percent_x, framebuffer_size.y * percent_y);
+
     gs_platform_event_t evt = gs_default_val(); 
     while (gs_platform_poll_events(&evt, false))
     {
@@ -3552,7 +3558,7 @@ GS_API_DECL void gs_gui_begin(gs_gui_context_t* ctx)
                 {
                     case GS_PLATFORM_MOUSE_MOVE:
                     {
-                        ctx->mouse_pos = evt.mouse.move;
+                        // ctx->mouse_pos = evt.mouse.move;
                     } break;
 
                     case GS_PLATFORM_MOUSE_WHEEL:
@@ -3629,6 +3635,8 @@ GS_API_DECL void gs_gui_begin(gs_gui_context_t* ctx)
         }
     }
 
+    ctx->mouse_pos = mouse_pos;
+    ctx->framebuffer_size = framebuffer_size;
 	ctx->command_list.idx = 0;
 	ctx->root_list.idx = 0;
 	ctx->scroll_target = NULL;
@@ -3647,7 +3655,7 @@ GS_API_DECL void gs_gui_begin(gs_gui_context_t* ctx)
 	ctx->frame++; 
 
     // Set up overlay draw list
-    gs_vec2 fbs = gs_platform_framebuffer_sizev(ctx->window_hndl);
+    gs_vec2 fbs = framebuffer_size;
     gsi_camera2D(&ctx->overlay_draw_list, (uint32_t)fbs.x, (uint32_t)fbs.y);
     gsi_defaults(&ctx->overlay_draw_list);
 
@@ -4304,7 +4312,7 @@ GS_API_DECL void gs_gui_end(gs_gui_context_t *ctx)
 
 GS_API_DECL void gs_gui_render(gs_gui_context_t* ctx, gs_command_buffer_t* cb)
 {
-    const gs_vec2 fb = gs_platform_framebuffer_sizev(ctx->window_hndl);
+    const gs_vec2 fb = ctx->framebuffer_size;
 
     gsi_defaults(&ctx->gsi);
     gsi_camera2D(&ctx->gsi, (uint32_t)fb.x, (uint32_t)fb.y);
@@ -6142,7 +6150,7 @@ GS_API_DECL int32_t gs_gui_begin_window_ex(gs_gui_context_t * ctx, const char* t
     {
         if (opt & GS_GUI_OPT_FULLSCREEN)
         {
-            gs_vec2 fb = gs_platform_framebuffer_sizev(ctx->window_hndl);
+            gs_vec2 fb = ctx->framebuffer_size;
             cnt->rect = gs_gui_rect(0, 0, (uint32_t)fb.x, (uint32_t)fb.y);
 
             // Set root split rect size
@@ -7481,7 +7489,7 @@ typedef struct {
 
 static void gs_gui_gizmo_render(gs_gui_context_t* ctx, gs_gui_customcommand_t* cmd)
 { 
-	const gs_vec2 fbs = gs_platform_framebuffer_sizev(ctx->window_hndl);
+	const gs_vec2 fbs = ctx->framebuffer_size;
 	const float t = gs_platform_elapsed_time();
     gs_immediate_draw_t* gsi = &ctx->gsi;
     gs_gizmo_desc_t* desc = (gs_gizmo_desc_t*)cmd->data;
@@ -7681,7 +7689,7 @@ GS_API_DECL int32_t gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_
     if (model->rotation.w == 0.f) model->rotation = gs_quat_default();
     if (gs_vec3_len(model->scale) == 0.f) model->scale = gs_v3s(1.f);
 
-	const gs_vec2 fbs = gs_platform_framebuffer_sizev(ctx->window_hndl);
+	const gs_vec2 fbs = ctx->framebuffer_size;
 	const float t = gs_platform_elapsed_time(); 
     const bool in_hover_root = gs_gui_in_hover_root(ctx); 
 
