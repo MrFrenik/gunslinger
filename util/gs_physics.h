@@ -231,6 +231,7 @@ GS_API_DECL int32_t gs_capsule_vs_poly(const gs_capsule_t* capsule, const gs_vqs
 GS_API_DECL int32_t gs_capsule_vs_cylinder(const gs_capsule_t* capsule, const gs_vqs* xform_a, const gs_cylinder_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
 GS_API_DECL int32_t gs_capsule_vs_cone(const gs_capsule_t* capsule, const gs_vqs* xform_a, const gs_cone_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
 GS_API_DECL int32_t gs_capsule_vs_capsule(const gs_capsule_t* capsule, const gs_vqs* xform_a, const gs_capsule_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_capsule_vs_ray(const gs_capsule_t* capsule, const gs_vqs* xform_a, const gs_ray_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
 
 /* Poly */
 GS_API_DECL int32_t gs_poly_vs_poly(const gs_poly_t* a, const gs_vqs* xform_a, const gs_poly_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
@@ -239,6 +240,7 @@ GS_API_DECL int32_t gs_poly_vs_aabb(const gs_poly_t* a, const gs_vqs* xform_a, c
 GS_API_DECL int32_t gs_poly_vs_cylinder(const gs_poly_t* a, const gs_vqs* xform_a, const gs_cylinder_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
 GS_API_DECL int32_t gs_poly_vs_cone(const gs_poly_t* a, const gs_vqs* xform_a, const gs_cone_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
 GS_API_DECL int32_t gs_poly_vs_capsule(const gs_poly_t* a, const gs_vqs* xform_a, const gs_capsule_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
+GS_API_DECL int32_t gs_poly_vs_ray(const gs_poly_t* a, const gs_vqs* xform_a, const gs_ray_t* b, const gs_vqs* xform_b, gs_contact_info_t* res);
 
 /* Frustum */
 
@@ -793,7 +795,7 @@ _GS_COLLIDE_FUNC_IMPL(aabb, cone, gs_support_aabb, gs_support_cone);          //
 _GS_COLLIDE_FUNC_IMPL(aabb, sphere, gs_support_aabb, gs_support_sphere);      // AABB vs. Sphere
 _GS_COLLIDE_FUNC_IMPL(aabb, capsule, gs_support_aabb, gs_support_capsule);    // AABB vs. Capsule
 _GS_COLLIDE_FUNC_IMPL(aabb, poly, gs_support_aabb, gs_support_poly);          // AABB vs. Poly
-_GS_COLLIDE_FUNC_IMPL(aabb, ray, gs_support_aabb, gs_support_ray);          // AABB vs. Ray
+_GS_COLLIDE_FUNC_IMPL(aabb, ray, gs_support_aabb, gs_support_ray);            // AABB vs. Ray
 
 /* Capsule */
 
@@ -803,6 +805,7 @@ _GS_COLLIDE_FUNC_IMPL(capsule, cone, gs_support_capsule, gs_support_cone);      
 _GS_COLLIDE_FUNC_IMPL(capsule, sphere, gs_support_capsule, gs_support_sphere);      // Capsule vs. Sphere
 _GS_COLLIDE_FUNC_IMPL(capsule, aabb, gs_support_capsule, gs_support_aabb);          // Capsule vs. AABB
 _GS_COLLIDE_FUNC_IMPL(capsule, poly, gs_support_capsule, gs_support_poly);          // Capsule vs. Poly
+_GS_COLLIDE_FUNC_IMPL(capsule, ray, gs_support_capsule, gs_support_ray);            // Capsule vs. Ray
 
 /* Poly */
 
@@ -812,6 +815,7 @@ _GS_COLLIDE_FUNC_IMPL(poly, cone, gs_support_poly, gs_support_cone);          //
 _GS_COLLIDE_FUNC_IMPL(poly, sphere, gs_support_poly, gs_support_sphere);      // Poly vs. Sphere
 _GS_COLLIDE_FUNC_IMPL(poly, aabb, gs_support_poly, gs_support_aabb);          // Poly vs. AABB
 _GS_COLLIDE_FUNC_IMPL(poly, capsule, gs_support_poly, gs_support_capsule);    // Poly vs. Capsule
+_GS_COLLIDE_FUNC_IMPL(poly, ray, gs_support_poly, gs_support_ray);            // Poly vs. Ray
 
 /* Cylinder */
 

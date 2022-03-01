@@ -1375,7 +1375,8 @@ GS_API_DECL void gsi_arc(gs_immediate_draw_t* gsi, float cx, float cy, float rad
     // Not a ring
     if (radius_inner <= 0.0f)
     {
-        gsi_circle_sector(gsi, cx, cy, radius_outer, start_angle, end_angle, segments, r, g, b, a, type);
+        // BALLS
+        gsi_circle_sector(gsi, cx, cy, radius_outer, (s32)start_angle, (s32)end_angle, segments, r, g, b, a, type);
         return;
     }
 
