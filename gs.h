@@ -4607,6 +4607,52 @@ typedef struct gs_platform_mouse_t
     b32 locked;
 } gs_platform_mouse_t;
 
+enum 
+{
+    GS_PLATFORM_GAMEPAD_BUTTON_A = 0x00,
+    GS_PLATFORM_GAMEPAD_BUTTON_B,
+    GS_PLATFORM_GAMEPAD_BUTTON_X,
+    GS_PLATFORM_GAMEPAD_BUTTON_Y, 
+    GS_PLATFORM_GAMEPAD_BUTTON_LBUMPER, 
+    GS_PLATFORM_GAMEPAD_BUTTON_RBUMPER, 
+    GS_PLATFORM_GAMEPAD_BUTTON_BACK, 
+    GS_PLATFORM_GAMEPAD_BUTTON_START, 
+    GS_PLATFORM_GAMEPAD_BUTTON_GUIDE, 
+    GS_PLATFORM_GAMEPAD_BUTTON_LTHUMB, 
+    GS_PLATFORM_GAMEPAD_BUTTON_RTHUMB, 
+    GS_PLATFORM_GAMEPAD_BUTTON_DPUP, 
+    GS_PLATFORM_GAMEPAD_BUTTON_DPRIGHT, 
+    GS_PLATFORM_GAMEPAD_BUTTON_DPDOWN, 
+    GS_PLATFORM_GAMEPAD_BUTTON_DPLEFT,
+    GS_PLATFORM_GAMEPAD_BUTTON_COUNT
+};
+
+#define GS_PLATFORM_GAMEPAD_BUTTON_LAST     GS_PLATFORM_GAMEPAD_BUTTON_DPLEFT
+#define GS_PLATFORM_GAMEPAD_BUTTON_CROSS    GS_PLATFORM_GAMEPAD_BUTTON_A 
+#define GS_PLATFORM_GAMEPAD_BUTTON_CIRCLE   GS_PLATFORM_GAMEPAD_BUTTON_B
+#define GS_PLATFORM_GAMEPAD_BUTTON_SQUARE   GS_PLATFORM_GAMEPAD_BUTTON_X
+#define GS_PLATFORM_GAMEPAD_BUTTON_TRIANGLE GS_PLATFORM_GAMEPAD_BUTTON_Y 
+
+enum
+{
+    GS_PLATFORM_JOYSTICK_AXIS_LEFT_X = 0x00,
+    GS_PLATFORM_JOYSTICK_AXIS_LEFT_Y,
+    GS_PLATFORM_JOYSTICK_AXIS_RIGHT_X,
+    GS_PLATFORM_JOYSTICK_AXIS_RIGHT_Y,
+    GS_PLATFORM_JOYSTICK_AXIS_LEFT_TRIGGER,
+    GS_PLATFORM_JOYSTICK_AXIS_RIGHT_TRIGGER,
+    GS_PLATFORM_JOYSTICK_AXIS_COUNT
+};
+
+#define GS_PLATFORM_GAMEPAD_MAX     16
+
+typedef struct gs_platform_gamepad_t
+{ 
+    int16_t buttons[GS_PLATFORM_GAMEPAD_BUTTON_COUNT]; 
+    float axes[GS_PLATFORM_JOYSTICK_AXIS_COUNT];
+    int16_t present;
+} gs_platform_gamepad_t; 
+
 #define GS_PLATFORM_MAX_TOUCH   5
 
 typedef struct gs_platform_touchpoint_t
@@ -4631,6 +4677,7 @@ typedef struct gs_platform_input_t
     b32 prev_key_map[GS_KEYCODE_COUNT];
     gs_platform_mouse_t mouse;
     gs_platform_touch_t touch;
+    gs_platform_gamepad_t gamepads[GS_PLATFORM_GAMEPAD_MAX];
 } gs_platform_input_t;
 
 // Enumeration of all platform types
@@ -4863,7 +4910,7 @@ GS_API_DECL gs_platform_t*  gs_platform_create();
 GS_API_DECL void            gs_platform_destroy(gs_platform_t* platform);
 
  // Platform Init / Update / Shutdown
-GS_API_DECL void  gs_platform_update(gs_platform_t* platform);    // Update platform layer
+GS_API_DECL void gs_platform_update(gs_platform_t* platform);    // Update platform layer 
 
 // Platform Util
 GS_API_DECL float  gs_platform_delta_time();
@@ -4873,7 +4920,7 @@ GS_API_DECL gs_uuid_t gs_platform_uuid_generate();
 GS_API_DECL void      gs_platform_uuid_to_string(char* temp_buffer, const gs_uuid_t* uuid); // Expects a temp buffer with at least 32 bytes
 GS_API_DECL uint32_t  gs_platform_uuid_hash(const gs_uuid_t* uuid);
 
-// Platform Input
+// Platform Input 
 GS_API_DECL void      gs_platform_update_input(gs_platform_input_t* input);
 GS_API_DECL void      gs_platform_press_key(gs_platform_keycode code);
 GS_API_DECL void      gs_platform_release_key(gs_platform_keycode code);
@@ -4954,6 +5001,8 @@ GS_API_DECL void       gs_platform_file_extension_default_impl(char* buffer, siz
 
 GS_API_DECL void            gs_platform_init(gs_platform_t* platform);      // Initialize platform layer
 GS_API_DECL void            gs_platform_shutdown(gs_platform_t* platform);  // Shutdown platform layer
+
+GS_API_DECL void gs_platform_update_internal(gs_platform_t* platform);
 
 // Platform Util
 GS_API_DECL double gs_platform_elapsed_time();  // Returns time in ms since initialization of platform

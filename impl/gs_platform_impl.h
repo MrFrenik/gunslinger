@@ -336,6 +336,8 @@ void gs_platform_update(gs_platform_t* platform)
 
     // Poll all events
     gs_platform_poll_all_events();
+
+    gs_platform_update_internal(platform);
 }
 
 bool gs_platform_poll_events(gs_platform_event_t* evt, bool32_t consume)
@@ -819,6 +821,45 @@ void gs_platform_init(gs_platform_t* pf)
     pf->cursors[(u32)GS_PLATFORM_CURSOR_SIZE_ALL]   = glfwCreateStandardCursor(GLFW_CROSSHAIR_CURSOR);
     pf->cursors[(u32)GS_PLATFORM_CURSOR_HAND]       = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
     pf->cursors[(u32)GS_PLATFORM_CURSOR_NO]         = glfwCreateStandardCursor(GLFW_ARROW_CURSOR);
+
+    // Poll joysticks here
+    for (uint32_t i = 0; i < GS_PLATFORM_GAMEPAD_MAX; ++i) { 
+        pf->input.gamepads[i].present = glfwJoystickPresent(GLFW_JOYSTICK_1 + i);
+        if (pf->input.gamepads[i].present)
+        {
+            gs_log_success("Controller %d connected.", i);
+        }
+    }
+}
+
+GS_API_DECL void gs_platform_update_internal(gs_platform_t* platform)
+{ 
+    gs_platform_input_t* input = &platform->input;
+
+    // Update all gamepad state
+    for (uint32_t i = 0; i < GS_PLATFORM_GAMEPAD_MAX; ++i) {
+
+        gs_platform_gamepad_t* gp = &input->gamepads[i];
+        gp->present = glfwJoystickPresent(GLFW_JOYSTICK_1 + i);
+
+        if (gp->present)
+        {
+            int32_t count = 0;
+            const float* axes = glfwGetJoystickAxes(GLFW_JOYSTICK_1 + i, &count);
+            count = gs_min(count, GS_PLATFORM_JOYSTICK_AXIS_COUNT);
+
+            for (uint32_t a = 0; a < count; ++a) {
+                gp->axes[a] = axes[a];
+            }
+
+            const uint8_t* buttons = (uint8_t*)glfwGetJoystickButtons(GLFW_JOYSTICK_1 + i, &count);
+            count = gs_min(count, GS_PLATFORM_GAMEPAD_BUTTON_COUNT);
+
+            for (uint32_t b = 0; b < count; ++b) {
+                gp->buttons[b] = buttons[b];
+            } 
+        }
+    }
 }
 
 void gs_platform_shutdown(gs_platform_t* pf)
