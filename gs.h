@@ -4349,6 +4349,7 @@ typedef enum gs_token_type
 	GS_TOKEN_SINGLE_QUOTE,
 	GS_TOKEN_DOUBLE_QUOTE,
 	GS_TOKEN_STRING, 
+	GS_TOKEN_PERIOD, 
 	GS_TOKEN_NUMBER
 } gs_token_type;
 
@@ -4639,8 +4640,8 @@ enum
     GS_PLATFORM_JOYSTICK_AXIS_LEFT_Y,
     GS_PLATFORM_JOYSTICK_AXIS_RIGHT_X,
     GS_PLATFORM_JOYSTICK_AXIS_RIGHT_Y,
-    GS_PLATFORM_JOYSTICK_AXIS_LEFT_TRIGGER,
-    GS_PLATFORM_JOYSTICK_AXIS_RIGHT_TRIGGER,
+    GS_PLATFORM_JOYSTICK_AXIS_LTRIGGER,
+    GS_PLATFORM_JOYSTICK_AXIS_RTRIGGER,
     GS_PLATFORM_JOYSTICK_AXIS_COUNT
 };
 
@@ -7828,6 +7829,7 @@ GS_API_DECL gs_token_t gs_lexer_c_next_token(gs_lexer_t* lex)
 			case '\n': {t.type = GS_TOKEN_NEWLINE; lex->at++;} break;
 			case '\r': {t.type = GS_TOKEN_NEWLINE; lex->at++;} break;
 			case '\t': {t.type = GS_TOKEN_TAB; lex->at++;} break;
+			case '.': {t.type = GS_TOKEN_PERIOD; lex->at++;} break;
 			
 			case '/':
 			{

@@ -137,6 +137,7 @@ typedef struct gs_gfxt_mesh_primitive_t {
 
 typedef struct gs_gfxt_mesh_t {
     gs_dyn_array(gs_gfxt_mesh_primitive_t) primitives;
+    gs_gfxt_mesh_desc_t desc;
 } gs_gfxt_mesh_t;
 
 //=== Pipeline ===//
@@ -593,6 +594,7 @@ gs_gfxt_mesh_t gs_gfxt_mesh_load_from_file(const char* path, gs_gfxt_mesh_import
     });
     */
     mesh = gs_gfxt_mesh_create(&mdesc);
+    mesh.desc = mdesc;
 
     return mesh;
 }
