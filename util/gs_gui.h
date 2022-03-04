@@ -542,7 +542,7 @@ enum {
  
 typedef struct {
     gs_gui_style_element_type type;
-    union {
+    union { 
         int32_t value;
         gs_color_t color;
         gs_asset_font_t* font;
@@ -938,6 +938,7 @@ gs_gui_rect_t gs_gui_rect(float x, float y, float w, float h);
 
 //=== Context ===//
 
+GS_API_DECL gs_gui_context_t gs_gui_new(uint32_t window_hndl);
 GS_API_DECL void gs_gui_init(gs_gui_context_t *ctx, uint32_t window_hndl);
 GS_API_DECL void gs_gui_init_font_stash(gs_gui_context_t *ctx, gs_gui_font_stash_desc_t* desc);
 GS_API_DECL gs_gui_context_t gs_gui_context_new(uint32_t window_hndl);
@@ -945,6 +946,9 @@ GS_API_DECL void gs_gui_free(gs_gui_context_t* ctx);
 GS_API_DECL void gs_gui_begin(gs_gui_context_t *ctx, gs_vec2 framebuffer_size);
 GS_API_DECL void gs_gui_end(gs_gui_context_t *ctx); 
 GS_API_DECL void gs_gui_render(gs_gui_context_t* ctx, gs_command_buffer_t* cb);
+
+//=== Util ===//
+GS_API_DECL void gs_gui_renderpass_submit(gs_gui_context_t* ctx, gs_command_buffer_t* cb, gs_color_t clear);
 
 //=== Main API ===//
 
@@ -3384,6 +3388,13 @@ static void gs_gui_init_default_styles(gs_gui_context_t* ctx)
 	ctx->style = &ctx->style_sheet->styles[GS_GUI_ELEMENT_CONTAINER][0x00]; 
 }
 
+GS_API_DECL gs_gui_context_t gs_gui_new(uint32_t window_hndl)
+{
+    gs_gui_context_t ctx = gs_default_val();
+    gs_gui_init(&ctx, window_hndl);
+    return ctx;
+}
+
 GS_API_DECL void gs_gui_init(gs_gui_context_t *ctx, uint32_t window_hndl)
 { 
 	memset(ctx, 0, sizeof(*ctx));
@@ -4538,6 +4549,25 @@ GS_API_DECL void gs_gui_render(gs_gui_context_t* ctx, gs_command_buffer_t* cb)
 
     // Draw overlay list
     gsi_draw(&ctx->overlay_draw_list, cb);
+}
+
+GS_API_DECL void gs_gui_renderpass_submit(gs_gui_context_t* ctx, gs_command_buffer_t* cb, gs_color_t c)
+{
+    gs_vec2 fbs = ctx->framebuffer_size;
+	gs_graphics_clear_action_t action = gs_default_val();
+	action.color[0] = (float)c.r / 255.f; 
+	action.color[1] = (float)c.g / 255.f; 
+	action.color[2] = (float)c.b / 255.f; 
+	action.color[3] = (float)c.a / 255.f;
+	gs_graphics_clear_desc_t clear = gs_default_val();
+	clear.actions = &action;
+    gs_graphics_begin_render_pass(cb, (gs_handle(gs_graphics_render_pass_t)){0});
+    {
+        gs_graphics_clear(cb, &clear);
+        gs_graphics_set_viewport(cb, 0, 0, (int)fbs.x,(int)fbs.y);
+        gs_gui_render(ctx, cb);
+    }
+    gs_graphics_end_render_pass(cb);
 }
 
 GS_API_DECL void gs_gui_set_hover(gs_gui_context_t *ctx, gs_gui_id id)
@@ -9233,34 +9263,34 @@ bool _gs_gui_style_sheet_parse_attribute_val(gs_gui_context_t* ctx, gs_lexer_t* 
             se.type = SE;\
             token = gs_lexer_current_token(lex);\
             gs_snprintfc(TMP, 10, "%.*s", token.len, token.text);\
-            uint32_t val = (uint32_t)atoi(TMP);\
+            T val = (T)atoi(TMP);\
             switch (state) {\
                 case GS_GUI_ELEMENT_STATE_DEFAULT:\
                 {\
                     if (idsl)\
                     {\
-                        se.value = (T)val;\
+                        se.value = (int32_t)val;\
                         gs_dyn_array_push(idsl->styles[GS_GUI_ELEMENT_STATE_DEFAULT], se);\
                         gs_dyn_array_push(idsl->styles[GS_GUI_ELEMENT_STATE_HOVER], se);\
                         gs_dyn_array_push(idsl->styles[GS_GUI_ELEMENT_STATE_FOCUS], se);\
                     }\
                     else\
                     {\
-                        ss->styles[elementid][GS_GUI_ELEMENT_STATE_DEFAULT].COMP = (T)val;\
-                        ss->styles[elementid][GS_GUI_ELEMENT_STATE_HOVER].COMP = (T)val;\
-                        ss->styles[elementid][GS_GUI_ELEMENT_STATE_FOCUS].COMP = (T)val;\
+                        ss->styles[elementid][GS_GUI_ELEMENT_STATE_DEFAULT].COMP = val;\
+                        ss->styles[elementid][GS_GUI_ELEMENT_STATE_HOVER].COMP = val;\
+                        ss->styles[elementid][GS_GUI_ELEMENT_STATE_FOCUS].COMP = val;\
                     }\
                 } break;\
                 default:\
                 {\
                     if (idsl)\
                     {\
-                        se.value = (T)val;\
+                        se.value = (int32_t)val;\
                         gs_dyn_array_push(idsl->styles[state], se);\
                     }\
                     else\
                     {\
-                        ss->styles[elementid][state].COMP = (T)val;\
+                        ss->styles[elementid][state].COMP = val;\
                     }\
                 } break;\
             }\

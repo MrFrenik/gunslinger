@@ -467,6 +467,12 @@ bool gs_platform_mouse_released(gs_platform_mouse_button_code code)
     return (gs_platform_was_mouse_down(code) && !gs_platform_mouse_down(code));
 }
 
+bool gs_platform_mouse_moved()
+{
+    gs_platform_input_t* input = __gs_input();
+    return (input->mouse.delta.x != 0.f || input->mouse.delta.y != 0.f);
+}
+
 void gs_platform_mouse_delta(float* x, float* y)
 {
     gs_platform_input_t* input = __gs_input();
