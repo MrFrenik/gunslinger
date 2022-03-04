@@ -4320,7 +4320,7 @@ typedef enum gs_token_type
 	GS_TOKEN_RPAREN,
 	GS_TOKEN_LTHAN, 
 	GS_TOKEN_GTHAN, 
-	GS_TOKEN_SEMI_COLON,
+	GS_TOKEN_SEMICOLON,
 	GS_TOKEN_COLON,
 	GS_TOKEN_COMMA, 
 	GS_TOKEN_EQUAL,
@@ -4340,6 +4340,7 @@ typedef enum gs_token_type
 	GS_TOKEN_QMARK, 
 	GS_TOKEN_SPACE, 
     GS_TOKEN_PERCENT,
+    GS_TOKEN_DOLLAR,
 	GS_TOKEN_NEWLINE, 
 	GS_TOKEN_TAB, 
 	GS_TOKEN_UNDERSCORE,
@@ -7685,7 +7686,7 @@ GS_API_DECL const char* gs_token_type_to_str(gs_token_type type)
 		case GS_TOKEN_RPAREN: return gs_to_str(GS_TOKEN_RPAREN); break;
 		case GS_TOKEN_LTHAN: return gs_to_str(GS_TOKEN_LTHAN); break; 
 		case GS_TOKEN_GTHAN: return gs_to_str(GS_TOKEN_GTHAN); break; 
-		case GS_TOKEN_SEMI_COLON: return gs_to_str(GS_TOKEN_SEMI_COLON); break;
+		case GS_TOKEN_SEMICOLON: return gs_to_str(GS_TOKEN_SEMICOLON); break;
 		case GS_TOKEN_COLON: return gs_to_str(GS_TOKEN_COLON); break;
 		case GS_TOKEN_COMMA: return gs_to_str(GS_TOKEN_COMMA); break; 
 		case GS_TOKEN_EQUAL: return gs_to_str(GS_TOKEN_EQUAL); break;
@@ -7703,6 +7704,7 @@ GS_API_DECL const char* gs_token_type_to_str(gs_token_type type)
 		case GS_TOKEN_BSLASH: return gs_to_str(GS_TOKEN_BLASH); break; 
 		case GS_TOKEN_FSLASH: return gs_to_str(GS_TOKEN_FLASH); break; 
 		case GS_TOKEN_QMARK: return gs_to_str(GS_TOKEN_QMARK); break;
+		case GS_TOKEN_DOLLAR: return gs_to_str(GS_TOKEN_DOLLAR); break;
 		case GS_TOKEN_SPACE: return gs_to_str(GS_TOKEN_SPACE); break; 
 		case GS_TOKEN_NEWLINE: return gs_to_str(GS_TOKEN_NEWLINE); break;
 		case GS_TOKEN_TAB: return gs_to_str(GS_TOKEN_TAB); break;
@@ -7749,6 +7751,12 @@ GS_API_DECL void gs_lexer_set_contents(gs_lexer_t* lex, const char* contents)
 GS_API_DECL bool gs_lexer_c_can_lex(gs_lexer_t* lex)
 {
 	return (lex->at && !gs_char_is_null_term(*(lex->at)));
+}
+
+GS_API_DECL void gs_lexer_set_token(gs_lexer_t* lex, gs_token_t token)
+{
+    lex->at = token.text;
+    lex->current_token = token;
 }
 
 GS_API_DECL void gs_lexer_c_eat_white_space(gs_lexer_t* lex)
@@ -7808,7 +7816,7 @@ GS_API_DECL gs_token_t gs_lexer_c_next_token(gs_lexer_t* lex)
 			case ')': {t.type = GS_TOKEN_RPAREN; lex->at++;} break;
 			case '<': {t.type = GS_TOKEN_LTHAN; lex->at++;} break;
 			case '>': {t.type = GS_TOKEN_GTHAN; lex->at++;} break;
-			case ';': {t.type = GS_TOKEN_SEMI_COLON; lex->at++;} break;
+			case ';': {t.type = GS_TOKEN_SEMICOLON; lex->at++;} break;
 			case ':': {t.type = GS_TOKEN_COLON; lex->at++;} break;
 			case ',': {t.type = GS_TOKEN_COMMA; lex->at++;} break;
 			case '=': {t.type = GS_TOKEN_EQUAL; lex->at++;} break;
@@ -7825,6 +7833,8 @@ GS_API_DECL gs_token_t gs_lexer_c_next_token(gs_lexer_t* lex)
 			case '*': {t.type = GS_TOKEN_ASTERISK; lex->at++;} break;
 			case '\\': {t.type = GS_TOKEN_BSLASH; lex->at++;} break;
 			case '?': {t.type = GS_TOKEN_QMARK; lex->at++;} break;
+			case '%': {t.type = GS_TOKEN_PERCENT; lex->at++;} break;
+			case '$': {t.type = GS_TOKEN_DOLLAR; lex->at++;} break;
 			case ' ': {t.type = GS_TOKEN_SPACE; lex->at++;} break;
 			case '\n': {t.type = GS_TOKEN_NEWLINE; lex->at++;} break;
 			case '\r': {t.type = GS_TOKEN_NEWLINE; lex->at++;} break;
@@ -8020,7 +8030,7 @@ GS_API_DECL bool gs_lexer_require_token_type(gs_lexer_t* lex, gs_token_type type
 	}
 
 	// Error
-	gs_println("error::gs_lexer_require_token_type::%s, expected: %s", gs_token_type_to_str(next_t.type), gs_token_type_to_str(type));
+	// gs_println("error::gs_lexer_require_token_type::%s, expected: %s", gs_token_type_to_str(next_t.type), gs_token_type_to_str(type));
 
 	// Reset
 	lex->at = at;

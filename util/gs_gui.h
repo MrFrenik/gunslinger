@@ -997,6 +997,7 @@ GS_API_DECL void gs_gui_set_style_sheet(gs_gui_context_t* ctx, gs_gui_style_shee
 //=== Resource Loading ===//
 
 GS_API_DECL gs_gui_style_sheet_t gs_gui_style_sheet_load_from_file(gs_gui_context_t* ctx, const char* file_path);
+GS_API_DECL gs_gui_style_sheet_t gs_gui_style_sheet_load_from_memory(gs_gui_context_t* ctx, const char* memory, size_t sz);
 
 //=== Pools ===//
 
@@ -6851,8 +6852,6 @@ GS_API_DECL int32_t gs_gui_window_begin_ex(gs_gui_context_t * ctx, const char* t
     if (split)
     {
         const float sh = split_size * 0.5f; 
-        // body.y += sh;
-        // body.h -= split_size;
     }
 
     if (~opt & GS_GUI_OPT_NOTITLE)
@@ -6862,9 +6861,6 @@ GS_API_DECL int32_t gs_gui_window_begin_ex(gs_gui_context_t * ctx, const char* t
         if (split)
         {
             const float sh = split_size * 0.5f; 
-            // tr.x += sh;
-            // tr.w -= split_size;
-            // tr.y += sh;
         }
         body.y += tr.h;
         body.h -= tr.h; 
@@ -6945,7 +6941,6 @@ GS_API_DECL int32_t gs_gui_window_begin_ex(gs_gui_context_t * ctx, const char* t
         if (split)
         {
             const float sh = split_size * 0.5f; 
-            // tr.y += sh;
         }
 
         // Don't draw this unless you're the bottom window or first frame in a tab group (if in dockspace)
@@ -7069,8 +7064,7 @@ GS_API_DECL int32_t gs_gui_window_begin_ex(gs_gui_context_t * ctx, const char* t
             gs_gui_push_clip_rect(ctx, r);
 
             gs_gui_draw_rect(ctx, r, id == ctx->focus ? act : hovered ? hov : tab_focus ? def : inactive); 
-            // gs_gui_draw_control_text(ctx, title, tr, tab_focus ? GS_GUI_COLOR_TITLETEXT : GS_GUI_COLOR_TEXT_INACTIVE, 0x00, opt); 
-            gs_gui_draw_control_text(ctx, title, tr, &ctx->style_sheet->styles[GS_GUI_ELEMENT_LABEL][0x00], opt); 
+            gs_gui_draw_control_text(ctx, title, tr, &ctx->style_sheet->styles[GS_GUI_ELEMENT_CONTAINER][state], opt); 
 
             gs_gui_pop_clip_rect(ctx); 
 			gs_gui_pop_clip_rect(ctx);
@@ -9027,6 +9021,29 @@ GS_API_DECL int32_t gs_gui_demo_window(gs_gui_context_t* ctx, gs_gui_rect_t rect
 
 //==== Resource Loading ===// 
 
+typedef enum 
+{
+    GS_GUI_SS_DEF_NUMBER = 0x00, 
+    GS_GUI_SS_DEF_ENUM, 
+    GS_GUI_SS_DEF_COLOR,
+    GS_GUI_SS_DEF_STR
+} gs_gui_ss_var_def_type;
+
+typedef struct
+{
+    gs_gui_ss_var_def_type type;
+    union {
+        int32_t number;
+        gs_color_t color;
+        char str[64]; 
+    } val;
+} gs_gui_ss_var_def_t;
+
+typedef struct
+{
+	gs_hash_table(uint64_t, gs_gui_ss_var_def_t) variables;
+} gs_gui_ss_variables_t;
+
 #define _GS_GUI_SS_GET_TO_VALUES(T0, T1)\
     do {\
         bool ret = gs_lexer_require_token_type(lex, T0);\
@@ -9038,7 +9055,8 @@ GS_API_DECL int32_t gs_gui_demo_window(gs_gui_context_t* ctx, gs_gui_rect_t rect
         token = gs_lexer_current_token(lex);\
     } while (0) 
 
-bool _gs_gui_style_sheet_parse_attribute_transition(gs_gui_context_t* ctx, gs_lexer_t* lex, gs_gui_style_sheet_t* ss, const uint64_t id_tag, int32_t elementid, int32_t state)
+bool _gs_gui_style_sheet_parse_attribute_transition(gs_gui_context_t* ctx, gs_lexer_t* lex, 
+	gs_gui_style_sheet_t* ss, const uint64_t id_tag, int32_t elementid, int32_t state, gs_gui_ss_variables_t* variables)
 {
     // Name of enum attribute 
     gs_token_t token = gs_lexer_current_token(lex);
@@ -9145,7 +9163,8 @@ bool _gs_gui_style_sheet_parse_attribute_transition(gs_gui_context_t* ctx, gs_le
     return true;
 }
 
-bool _gs_gui_style_sheet_parse_attribute_font(gs_gui_context_t* ctx, gs_lexer_t* lex, gs_gui_style_sheet_t* ss, uint64_t id_tag, int32_t elementid, int32_t state)
+bool _gs_gui_style_sheet_parse_attribute_font(gs_gui_context_t* ctx, gs_lexer_t* lex, gs_gui_style_sheet_t* ss, 
+	uint64_t id_tag, int32_t elementid, int32_t state, gs_gui_ss_variables_t* variables)
 {
     // Name of enum attribute 
     gs_token_t token = gs_lexer_current_token(lex);
@@ -9187,10 +9206,53 @@ bool _gs_gui_style_sheet_parse_attribute_font(gs_gui_context_t* ctx, gs_lexer_t*
 
     if (gs_token_compare_text(&token, "font"))
     {
-        _GS_GUI_SS_GET_TO_VALUES(GS_TOKEN_COLON, GS_TOKEN_STRING); 
+        bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_COLON);
+        ret &= (gs_lexer_require_token_type(lex, GS_TOKEN_STRING) || 
+            gs_lexer_require_token_type(lex, GS_TOKEN_DOLLAR));
+        if (!ret)
+        {
+            gs_log_warning("Missing either string value or variable.");
+            return false;
+        }
         gs_gui_style_element_t se = gs_default_val();
         se.type = GS_GUI_STYLE_FONT;
-        gs_snprintfc(FONT, 32, "%.*s", token.len - 2, token.text + 1);
+        token = gs_lexer_current_token(lex); 
+        char FONT[64] = gs_default_val();
+        switch (token.type)
+        {
+            case GS_TOKEN_STRING:
+            {
+                gs_snprintf(FONT, sizeof(FONT), "%.*s", token.len - 2, token.text + 1);
+            } break;
+
+            case GS_TOKEN_DOLLAR:
+            {
+                bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_LPAREN);
+                ret &= gs_lexer_require_token_type(lex, GS_TOKEN_IDENTIFIER);
+                if (!ret) {
+                    gs_log_warning("Unidentified token.");
+                    return false;
+                }\
+                token = gs_lexer_current_token(lex);
+                gs_snprintfc(TMP, 256, "%.*s", token.len, token.text);
+                uint64_t hash = gs_hash_str64(TMP);
+                gs_gui_ss_var_def_t* var = gs_hash_table_exists(variables->variables, hash) ?
+                    gs_hash_table_getp(variables->variables, hash) : NULL;
+                if (!var) {
+                    gs_log_warning("Variable not found: %s", TMP);
+                    return false;
+                }
+                memcpy(FONT, var->val.str, sizeof(FONT));
+                ret = gs_lexer_require_token_type(lex, GS_TOKEN_RPAREN);
+                ret &= gs_lexer_require_token_type(lex, GS_TOKEN_SEMICOLON);
+                if (!ret) {
+                    gs_log_warning("Missing semicolon.");
+                    return false;
+                }
+                token = gs_lexer_current_token(lex);
+            } break; 
+        }
+
         uint64_t hash = gs_hash_str64(FONT);
         bool found = false;
         for (
@@ -9222,7 +9284,8 @@ bool _gs_gui_style_sheet_parse_attribute_font(gs_gui_context_t* ctx, gs_lexer_t*
     return true; 
 }
 
-bool _gs_gui_style_sheet_parse_attribute_enum(gs_gui_context_t* ctx, gs_lexer_t* lex, gs_gui_style_sheet_t* ss, uint64_t id_tag, int32_t elementid, int32_t state)
+bool _gs_gui_style_sheet_parse_attribute_enum(gs_gui_context_t* ctx, gs_lexer_t* lex, gs_gui_style_sheet_t* ss, 
+	uint64_t id_tag, int32_t elementid, int32_t state, gs_gui_ss_variables_t* variables)
 {
     // Name of enum attribute 
     gs_token_t token = gs_lexer_current_token(lex);
@@ -9272,25 +9335,108 @@ bool _gs_gui_style_sheet_parse_attribute_enum(gs_gui_context_t* ctx, gs_lexer_t*
     {
         gs_gui_style_element_t se = gs_default_val();
         se.type = GS_GUI_STYLE_JUSTIFY_CONTENT;
-        _GS_GUI_SS_GET_TO_VALUES(GS_TOKEN_COLON, GS_TOKEN_IDENTIFIER); 
-        if (gs_token_compare_text(&token, "start")) SET_ENUM(justify_content, GS_GUI_JUSTIFY_START);
-        else if (gs_token_compare_text(&token, "end")) SET_ENUM(justify_content, GS_GUI_JUSTIFY_END);
-        else if (gs_token_compare_text(&token, "center")) SET_ENUM(justify_content, GS_GUI_JUSTIFY_CENTER);
+        bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_COLON);
+        ret &= (gs_lexer_require_token_type(lex, GS_TOKEN_IDENTIFIER) || 
+            gs_lexer_require_token_type(lex, GS_TOKEN_DOLLAR));
+        if (!ret)
+        {
+            gs_log_warning("Missing either identifier value or variable.");
+            return false;
+        }
+        token = gs_lexer_current_token(lex); 
+        switch (token.type)
+        {
+            case GS_TOKEN_IDENTIFIER: 
+            {
+                if (gs_token_compare_text(&token, "start")) SET_ENUM(justify_content, GS_GUI_JUSTIFY_START);
+                else if (gs_token_compare_text(&token, "end")) SET_ENUM(justify_content, GS_GUI_JUSTIFY_END);
+                else if (gs_token_compare_text(&token, "center")) SET_ENUM(justify_content, GS_GUI_JUSTIFY_CENTER);
+            } break;
+
+            case GS_TOKEN_DOLLAR:
+            {
+                bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_LPAREN);
+                ret &= gs_lexer_require_token_type(lex, GS_TOKEN_IDENTIFIER);
+                if (!ret) {
+                    gs_log_warning("Unidentified token.");
+                    return false;
+                }\
+                token = gs_lexer_current_token(lex);
+                gs_snprintfc(TMP, 256, "%.*s", token.len, token.text);
+                uint64_t hash = gs_hash_str64(TMP);
+                gs_gui_ss_var_def_t* var = gs_hash_table_exists(variables->variables, hash) ?
+                    gs_hash_table_getp(variables->variables, hash) : NULL;
+                if (!var) {
+                    gs_log_warning("Variable not found: %s", TMP);
+                    return false;
+                }
+                SET_ENUM(justify_content, var->val.number);
+                ret = gs_lexer_require_token_type(lex, GS_TOKEN_RPAREN);
+                ret &= gs_lexer_require_token_type(lex, GS_TOKEN_SEMICOLON);
+                if (!ret) {
+                    gs_log_warning("Missing semicolon.");
+                    return false;
+                }
+                token = gs_lexer_current_token(lex);
+            } break;
+        }
     }
     else if (gs_token_compare_text(&token, "align_content"))
     { 
         gs_gui_style_element_t se = gs_default_val();
         se.type = GS_GUI_STYLE_ALIGN_CONTENT;
-        _GS_GUI_SS_GET_TO_VALUES(GS_TOKEN_COLON, GS_TOKEN_IDENTIFIER); 
-        if (gs_token_compare_text(&token, "start")) SET_ENUM(align_content, GS_GUI_ALIGN_START);
-        else if (gs_token_compare_text(&token, "end")) SET_ENUM(align_content, GS_GUI_ALIGN_END);
-        else if (gs_token_compare_text(&token, "center")) SET_ENUM(align_content, GS_GUI_ALIGN_CENTER);
+        bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_COLON);
+        ret &= (gs_lexer_require_token_type(lex, GS_TOKEN_IDENTIFIER) || 
+            gs_lexer_require_token_type(lex, GS_TOKEN_DOLLAR));
+        if (!ret)
+        {
+            gs_log_warning("Missing either identifier value or variable.");
+            return false;
+        }
+        token = gs_lexer_current_token(lex); 
+        switch (token.type)
+        {
+            case GS_TOKEN_IDENTIFIER: 
+            {
+                if (gs_token_compare_text(&token, "start")) SET_ENUM(align_content, GS_GUI_ALIGN_START);
+                else if (gs_token_compare_text(&token, "end")) SET_ENUM(align_content, GS_GUI_ALIGN_END);
+                else if (gs_token_compare_text(&token, "center")) SET_ENUM(align_content, GS_GUI_ALIGN_CENTER);
+            } break;
+
+            case GS_TOKEN_DOLLAR:
+            {
+                bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_LPAREN);
+                ret &= gs_lexer_require_token_type(lex, GS_TOKEN_IDENTIFIER);
+                if (!ret) {
+                    gs_log_warning("Unidentified token.");
+                    return false;
+                }\
+                token = gs_lexer_current_token(lex);
+                gs_snprintfc(TMP, 256, "%.*s", token.len, token.text);
+                uint64_t hash = gs_hash_str64(TMP);
+                gs_gui_ss_var_def_t* var = gs_hash_table_exists(variables->variables, hash) ?
+                    gs_hash_table_getp(variables->variables, hash) : NULL;
+                if (!var) {
+                    gs_log_warning("Variable not found: %s", TMP);
+                    return false;
+                }
+                SET_ENUM(align_content, var->val.number);
+                ret = gs_lexer_require_token_type(lex, GS_TOKEN_RPAREN);
+                ret &= gs_lexer_require_token_type(lex, GS_TOKEN_SEMICOLON);
+                if (!ret) {
+                    gs_log_warning("Missing semicolon.");
+                    return false;
+                }
+                token = gs_lexer_current_token(lex);
+            } break;
+        }
     }
 
     return true;
 }
 
-bool _gs_gui_style_sheet_parse_attribute_val(gs_gui_context_t* ctx, gs_lexer_t* lex, gs_gui_style_sheet_t* ss, uint64_t id_tag, int32_t elementid, int32_t state)
+bool _gs_gui_style_sheet_parse_attribute_val(gs_gui_context_t* ctx, gs_lexer_t* lex, gs_gui_style_sheet_t* ss, 
+	uint64_t id_tag, int32_t elementid, int32_t state, gs_gui_ss_variables_t* variables)
 {
     // Name of value attribute 
     gs_token_t token = gs_lexer_current_token(lex);
@@ -9313,39 +9459,98 @@ bool _gs_gui_style_sheet_parse_attribute_val(gs_gui_context_t* ctx, gs_lexer_t* 
             gs_gui_style_element_t se = gs_default_val();\
             se.type = SE;\
             bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_COLON);\
-            ret &= gs_lexer_require_token_type(lex, GS_TOKEN_NUMBER);\
+            ret &= (gs_lexer_require_token_type(lex, GS_TOKEN_DOLLAR) || gs_lexer_require_token_type(lex, GS_TOKEN_NUMBER));\
             if (!ret) {\
                 gs_log_warning("Unidentified token.");\
                 return false;\
             }\
             token = gs_lexer_current_token(lex);\
-            gs_snprintfc(TMP, 10, "%.*s", token.len, token.text);\
-            uint32_t val = (uint32_t)atoi(TMP);\
-            se.value = (T)val;\
-            switch (state) {\
-                case GS_GUI_ELEMENT_STATE_DEFAULT:\
+            switch (token.type)\
+            {\
+                case GS_TOKEN_NUMBER:\
                 {\
-                    if (idsl) {\
-                        gs_dyn_array_push(idsl->styles[GS_GUI_ELEMENT_STATE_DEFAULT], se);\
-                        gs_dyn_array_push(idsl->styles[GS_GUI_ELEMENT_STATE_HOVER], se);\
-                        gs_dyn_array_push(idsl->styles[GS_GUI_ELEMENT_STATE_FOCUS], se);\
-                    }\
-                    else {\
-                        for (uint32_t p = 0; p < 4; ++p) {\
-                            ss->styles[elementid][GS_GUI_ELEMENT_STATE_DEFAULT].COMP[p] = (T)val;\
-                            ss->styles[elementid][GS_GUI_ELEMENT_STATE_HOVER].COMP[p] = (T)val;\
-                            ss->styles[elementid][GS_GUI_ELEMENT_STATE_FOCUS].COMP[p] = (T)val;\
-                        }\
+                    gs_snprintfc(TMP, 10, "%.*s", token.len, token.text);\
+                    uint32_t val = (uint32_t)atoi(TMP);\
+                    se.value = (T)val;\
+                    switch (state) {\
+                        case GS_GUI_ELEMENT_STATE_DEFAULT:\
+                        {\
+                            if (idsl) {\
+                                gs_dyn_array_push(idsl->styles[GS_GUI_ELEMENT_STATE_DEFAULT], se);\
+                                gs_dyn_array_push(idsl->styles[GS_GUI_ELEMENT_STATE_HOVER], se);\
+                                gs_dyn_array_push(idsl->styles[GS_GUI_ELEMENT_STATE_FOCUS], se);\
+                            }\
+                            else {\
+                                for (uint32_t p = 0; p < 4; ++p) {\
+                                    ss->styles[elementid][GS_GUI_ELEMENT_STATE_DEFAULT].COMP[p] = (T)val;\
+                                    ss->styles[elementid][GS_GUI_ELEMENT_STATE_HOVER].COMP[p] = (T)val;\
+                                    ss->styles[elementid][GS_GUI_ELEMENT_STATE_FOCUS].COMP[p] = (T)val;\
+                                }\
+                            }\
+                        } break;\
+                        default:\
+                        {\
+                            if (idsl) gs_dyn_array_push(idsl->styles[state], se);\
+                            else {\
+                                for (uint32_t p = 0; p < 4; ++p) {\
+                                    ss->styles[elementid][state].COMP[p] = (T)val;\
+                                }\
+                            }\
+                        } break;\
                     }\
                 } break;\
-                default:\
+                case GS_TOKEN_DOLLAR:\
                 {\
-                    if (idsl) gs_dyn_array_push(idsl->styles[state], se);\
-                    else {\
-                        for (uint32_t p = 0; p < 4; ++p) {\
-                            ss->styles[elementid][state].COMP[p] = (T)val;\
-                        }\
+                    bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_LPAREN);\
+                    ret &= gs_lexer_require_token_type(lex, GS_TOKEN_IDENTIFIER);\
+                    if (!ret) {\
+                        gs_log_warning("Unidentified token.");\
+                        return false;\
                     }\
+                    token = gs_lexer_current_token(lex);\
+                    gs_snprintfc(TMP, 256, "%.*s", token.len, token.text);\
+                    uint64_t hash = gs_hash_str64(TMP);\
+                    gs_gui_ss_var_def_t* var = gs_hash_table_exists(variables->variables, hash) ?\
+                        gs_hash_table_getp(variables->variables, hash) : NULL;\
+                    if (!var) {\
+                        gs_log_warning("Variable not found: %s", TMP);\
+                        return false;\
+                    }\
+                    T val = var->val.number;\
+                    se.value = val;\
+                    switch (state) {\
+                        case GS_GUI_ELEMENT_STATE_DEFAULT:\
+                        {\
+                            if (idsl) {\
+                                gs_dyn_array_push(idsl->styles[GS_GUI_ELEMENT_STATE_DEFAULT], se);\
+                                gs_dyn_array_push(idsl->styles[GS_GUI_ELEMENT_STATE_HOVER], se);\
+                                gs_dyn_array_push(idsl->styles[GS_GUI_ELEMENT_STATE_FOCUS], se);\
+                            }\
+                            else {\
+                                for (uint32_t p = 0; p < 4; ++p) {\
+                                    ss->styles[elementid][GS_GUI_ELEMENT_STATE_DEFAULT].COMP[p] = val;\
+                                    ss->styles[elementid][GS_GUI_ELEMENT_STATE_HOVER].COMP[p] = val;\
+                                    ss->styles[elementid][GS_GUI_ELEMENT_STATE_FOCUS].COMP[p] = val;\
+                                }\
+                            }\
+                        } break;\
+                        default:\
+                        {\
+                            if (idsl) gs_dyn_array_push(idsl->styles[state], se);\
+                            else {\
+                                for (uint32_t p = 0; p < 4; ++p) {\
+                                    ss->styles[elementid][state].COMP[p] = val;\
+                                }\
+                            }\
+                        } break;\
+                    }\
+                    ret = gs_lexer_require_token_type(lex, GS_TOKEN_RPAREN);\
+                    ret &= gs_lexer_require_token_type(lex, GS_TOKEN_SEMICOLON);\
+                    if (!ret) {\
+                        gs_log_warning("Missing semicolon.");\
+                        return false;\
+                    }\
+                    token = gs_lexer_current_token(lex);\
                 } break;\
             }\
         } while (0)
@@ -9357,21 +9562,55 @@ bool _gs_gui_style_sheet_parse_attribute_val(gs_gui_context_t* ctx, gs_lexer_t* 
             se0.type = SE0;\
             se1.type = SE1;\
             bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_COLON);\
-            ret &= gs_lexer_require_token_type(lex, GS_TOKEN_NUMBER);\
+            ret &= (gs_lexer_require_token_type(lex, GS_TOKEN_DOLLAR) || gs_lexer_require_token_type(lex, GS_TOKEN_NUMBER));\
             if (!ret) {\
                 gs_log_warning("Unidentified token.");\
                 return false;\
             }\
             token = gs_lexer_current_token(lex);\
-            gs_snprintfc(TMP, 10, "%.*s", token.len, token.text);\
-            uint32_t val = (uint32_t)atoi(TMP);\
-            switch (state) {\
+            T val = 0;\
+            switch (token.type)\
+            {\
+                case GS_TOKEN_NUMBER:\
+                {\
+                    gs_snprintfc(TMP, 10, "%.*s", token.len, token.text);\
+                    val = (T)atoi(TMP);\
+                } break;\
+                case GS_TOKEN_DOLLAR:\
+                {\
+                    bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_LPAREN);\
+                    ret &= gs_lexer_require_token_type(lex, GS_TOKEN_IDENTIFIER);\
+                    if (!ret) {\
+                        gs_log_warning("Unidentified token.");\
+                        return false;\
+                    }\
+                    token = gs_lexer_current_token(lex);\
+                    gs_snprintfc(TMP, 256, "%.*s", token.len, token.text);\
+                    uint64_t hash = gs_hash_str64(TMP);\
+                    gs_gui_ss_var_def_t* var = gs_hash_table_exists(variables->variables, hash) ?\
+                        gs_hash_table_getp(variables->variables, hash) : NULL;\
+                    if (!var) {\
+                        gs_log_warning("Variable not found: %s", TMP);\
+                        return false;\
+                    }\
+                    val = (T)var->val.number;\
+                    ret = gs_lexer_require_token_type(lex, GS_TOKEN_RPAREN);\
+                    ret &= gs_lexer_require_token_type(lex, GS_TOKEN_SEMICOLON);\
+                    if (!ret) {\
+                        gs_log_warning("Missing semicolon.");\
+                        return false;\
+                    }\
+                    token = gs_lexer_current_token(lex);\
+                } break;\
+            }\
+            switch (state)\
+            {\
                 case GS_GUI_ELEMENT_STATE_DEFAULT:\
                 {\
                     if (idsl)\
                     {\
-                        se0.value = (T)val;\
-                        se1.value = (T)val;\
+                        se0.value = val;\
+                        se1.value = val;\
                         gs_dyn_array_push(idsl->styles[GS_GUI_ELEMENT_STATE_DEFAULT], se0);\
                         gs_dyn_array_push(idsl->styles[GS_GUI_ELEMENT_STATE_HOVER], se0);\
                         gs_dyn_array_push(idsl->styles[GS_GUI_ELEMENT_STATE_FOCUS], se0);\
@@ -9381,27 +9620,27 @@ bool _gs_gui_style_sheet_parse_attribute_val(gs_gui_context_t* ctx, gs_lexer_t* 
                     }\
                     else\
                     {\
-                        ss->styles[elementid][GS_GUI_ELEMENT_STATE_DEFAULT].COMP0 = (T)val;\
-                        ss->styles[elementid][GS_GUI_ELEMENT_STATE_HOVER].COMP0 = (T)val;\
-                        ss->styles[elementid][GS_GUI_ELEMENT_STATE_FOCUS].COMP0 = (T)val;\
-                        ss->styles[elementid][GS_GUI_ELEMENT_STATE_DEFAULT].COMP1 = (T)val;\
-                        ss->styles[elementid][GS_GUI_ELEMENT_STATE_HOVER].COMP1 = (T)val;\
-                        ss->styles[elementid][GS_GUI_ELEMENT_STATE_FOCUS].COMP1 = (T)val;\
+                        ss->styles[elementid][GS_GUI_ELEMENT_STATE_DEFAULT].COMP0 = val;\
+                        ss->styles[elementid][GS_GUI_ELEMENT_STATE_HOVER].COMP0 = val;\
+                        ss->styles[elementid][GS_GUI_ELEMENT_STATE_FOCUS].COMP0 = val;\
+                        ss->styles[elementid][GS_GUI_ELEMENT_STATE_DEFAULT].COMP1 = val;\
+                        ss->styles[elementid][GS_GUI_ELEMENT_STATE_HOVER].COMP1 = val;\
+                        ss->styles[elementid][GS_GUI_ELEMENT_STATE_FOCUS].COMP1 = val;\
                     }\
                 } break;\
                 default:\
                 {\
                     if (idsl)\
                     {\
-                        se0.value = (T)val;\
-                        se1.value = (T)val;\
+                        se0.value = val;\
+                        se1.value = val;\
                         gs_dyn_array_push(idsl->styles[state], se0);\
                         gs_dyn_array_push(idsl->styles[state], se1);\
                     }\
                     else\
                     {\
-                        ss->styles[elementid][state].COMP0 = (T)val;\
-                        ss->styles[elementid][state].COMP1 = (T)val;\
+                        ss->styles[elementid][state].COMP0 = val;\
+                        ss->styles[elementid][state].COMP1 = val;\
                     }\
                 } break;\
             }\
@@ -9410,7 +9649,7 @@ bool _gs_gui_style_sheet_parse_attribute_val(gs_gui_context_t* ctx, gs_lexer_t* 
     #define SET_VAL(COMP, T, SE)\
         do {\
             bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_COLON);\
-            ret &= gs_lexer_require_token_type(lex, GS_TOKEN_NUMBER);\
+            ret &= (gs_lexer_require_token_type(lex, GS_TOKEN_DOLLAR) || gs_lexer_require_token_type(lex, GS_TOKEN_NUMBER));\
             if (!ret) {\
                 gs_log_warning("Unidentified token.");\
                 return false;\
@@ -9418,9 +9657,44 @@ bool _gs_gui_style_sheet_parse_attribute_val(gs_gui_context_t* ctx, gs_lexer_t* 
             gs_gui_style_element_t se = gs_default_val();\
             se.type = SE;\
             token = gs_lexer_current_token(lex);\
-            gs_snprintfc(TMP, 10, "%.*s", token.len, token.text);\
-            T val = (T)atoi(TMP);\
-            switch (state) {\
+            T val = 0;\
+            switch (token.type)\
+            {\
+                case GS_TOKEN_NUMBER:\
+                {\
+                    gs_snprintfc(TMP, 10, "%.*s", token.len, token.text);\
+                    val = (T)atoi(TMP);\
+                } break;\
+\
+                case GS_TOKEN_DOLLAR:\
+                {\
+                    bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_LPAREN);\
+                    ret &= gs_lexer_require_token_type(lex, GS_TOKEN_IDENTIFIER);\
+                    if (!ret) {\
+                        gs_log_warning("Unidentified token.");\
+                        return false;\
+                    }\
+                    token = gs_lexer_current_token(lex);\
+                    gs_snprintfc(TMP, 256, "%.*s", token.len, token.text);\
+                    uint64_t hash = gs_hash_str64(TMP);\
+                    gs_gui_ss_var_def_t* var = gs_hash_table_exists(variables->variables, hash) ?\
+                        gs_hash_table_getp(variables->variables, hash) : NULL;\
+                    if (!var) {\
+                        gs_log_warning("Variable not found: %s", TMP);\
+                        return false;\
+                    }\
+                    val = (T)var->val.number;\
+                    ret = gs_lexer_require_token_type(lex, GS_TOKEN_RPAREN);\
+                    ret &= gs_lexer_require_token_type(lex, GS_TOKEN_SEMICOLON);\
+                    if (!ret) {\
+                        gs_log_warning("Missing semicolon.");\
+                        return false;\
+                    }\
+                    token = gs_lexer_current_token(lex);\
+                } break;\
+            }\
+            switch (state)\
+            {\
                 case GS_GUI_ELEMENT_STATE_DEFAULT:\
                 {\
                     if (idsl)\
@@ -9449,7 +9723,7 @@ bool _gs_gui_style_sheet_parse_attribute_val(gs_gui_context_t* ctx, gs_lexer_t* 
                         ss->styles[elementid][state].COMP = val;\
                     }\
                 } break;\
-            }\
+                }\
         } while (0)
 
     if (gs_token_compare_text(&token, "width"))               SET_VAL(size[0], float, GS_GUI_STYLE_WIDTH);
@@ -9474,7 +9748,8 @@ bool _gs_gui_style_sheet_parse_attribute_val(gs_gui_context_t* ctx, gs_lexer_t* 
     return true;
 }
 
-bool _gs_gui_style_sheet_parse_attribute_color(gs_gui_context_t* ctx, gs_lexer_t* lex, gs_gui_style_sheet_t* ss, uint64_t id_tag, int32_t elementid, int32_t state)
+bool _gs_gui_style_sheet_parse_attribute_color(gs_gui_context_t* ctx, gs_lexer_t* lex, gs_gui_style_sheet_t* ss, 
+	uint64_t id_tag, int32_t elementid, int32_t state, gs_gui_ss_variables_t* variables)
 { 
     // Name of color attribute 
     gs_token_t token = gs_lexer_current_token(lex);
@@ -9603,6 +9878,51 @@ bool _gs_gui_style_sheet_parse_attribute_color(gs_gui_context_t* ctx, gs_lexer_t
 			}
         }
     }
+    else if (gs_token_compare_text(&token, "$"))
+    {
+        token = gs_lexer_next_token(lex);
+        if (token.type != GS_TOKEN_LPAREN)
+        {
+            gs_log_warning("Unidentified symbol found: %.*s. Expecting lparen for variable.", token.len, token.text);
+            return false;
+        }
+
+        token = gs_lexer_next_token(lex);
+        if (token.type != GS_TOKEN_IDENTIFIER)
+        {
+            gs_log_warning("Unidentified symbol found: %.*s. Expecting identifier for variable name.", token.len, token.text);
+            return false;
+        }
+
+        gs_snprintfc(TMP, 256, "%.*s", token.len, token.text);
+        uint64_t hash = gs_hash_str64(TMP);
+        gs_gui_ss_var_def_t* var = gs_hash_table_exists(variables->variables, hash) ? gs_hash_table_getp(variables->variables, hash) : NULL; 
+        if (var) { 
+
+            se.color = var->val.color;
+
+            switch (state) 
+            {
+                default: 
+                {
+                    if (idsl) gs_dyn_array_push(idsl->styles[state], se);
+                    else ss->styles[elementid][state].colors[color] = var->val.color;
+                } break;
+
+                case GS_GUI_ELEMENT_STATE_DEFAULT:
+                {
+					for (uint32_t s = 0; s < 3; ++s) {
+						if (idsl) gs_dyn_array_push(idsl->styles[s], se);
+                        else ss->styles[elementid][s].colors[color] = var->val.color;
+					}
+                } break;
+            }
+        }
+        else
+        {
+            gs_log_warning("Variable not found: %.*s.", token.len, token.text);
+        }
+    }
     else
     {
         gs_log_warning("Unidentified color type found: %.*s. (Expect either 'rgba' or 'rgb').", token.len, token.text);
@@ -9613,7 +9933,8 @@ bool _gs_gui_style_sheet_parse_attribute_color(gs_gui_context_t* ctx, gs_lexer_t
     return true;
 }
 
-bool _gs_gui_style_sheet_parse_attribute(gs_gui_context_t* ctx, gs_lexer_t* lex, gs_gui_style_sheet_t* ss, uint64_t id_tag, int32_t elementid, int32_t state)
+bool _gs_gui_style_sheet_parse_attribute(gs_gui_context_t* ctx, gs_lexer_t* lex, gs_gui_style_sheet_t* ss, 
+	uint64_t id_tag, int32_t elementid, int32_t state, gs_gui_ss_variables_t* variables)
 {
     // Name of attribute
     gs_token_t token = gs_lexer_current_token(lex); 
@@ -9627,7 +9948,7 @@ bool _gs_gui_style_sheet_parse_attribute(gs_gui_context_t* ctx, gs_lexer_t* lex,
         gs_token_compare_text(&token, "color_content_shadow")    
     )
     {
-        if (!_gs_gui_style_sheet_parse_attribute_color(ctx, lex, ss, id_tag, elementid, state))
+        if (!_gs_gui_style_sheet_parse_attribute_color(ctx, lex, ss, id_tag, elementid, state, variables))
         {
             gs_log_warning("Failed to parse color attribute.");
             return false;
@@ -9653,7 +9974,7 @@ bool _gs_gui_style_sheet_parse_attribute(gs_gui_context_t* ctx, gs_lexer_t* lex,
              gs_token_compare_text(&token, "shadow")
     )
     {
-        if (!_gs_gui_style_sheet_parse_attribute_val(ctx, lex, ss, id_tag, elementid, state))
+        if (!_gs_gui_style_sheet_parse_attribute_val(ctx, lex, ss, id_tag, elementid, state, variables))
         {
             gs_log_warning("Failed to parse value attribute.");
             return false;
@@ -9663,7 +9984,7 @@ bool _gs_gui_style_sheet_parse_attribute(gs_gui_context_t* ctx, gs_lexer_t* lex,
              gs_token_compare_text(&token, "align_content")
     )
     {
-        if (!_gs_gui_style_sheet_parse_attribute_enum(ctx, lex, ss, id_tag, elementid, state))
+        if (!_gs_gui_style_sheet_parse_attribute_enum(ctx, lex, ss, id_tag, elementid, state, variables))
         {
             gs_log_warning("Failed to parse enum attribute.");
             return false;
@@ -9672,7 +9993,7 @@ bool _gs_gui_style_sheet_parse_attribute(gs_gui_context_t* ctx, gs_lexer_t* lex,
 
     else if (gs_token_compare_text(&token, "font"))
     {
-        if (!_gs_gui_style_sheet_parse_attribute_font(ctx, lex, ss, id_tag, elementid, state))
+        if (!_gs_gui_style_sheet_parse_attribute_font(ctx, lex, ss, id_tag, elementid, state, variables))
         {
             gs_log_warning("Failed to parse font attribute.");
             return false;
@@ -9681,7 +10002,7 @@ bool _gs_gui_style_sheet_parse_attribute(gs_gui_context_t* ctx, gs_lexer_t* lex,
 
     else if (gs_token_compare_text(&token, "transition"))
     {
-        if (!_gs_gui_style_sheet_parse_attribute_transition(ctx, lex, ss, id_tag, elementid, state))
+        if (!_gs_gui_style_sheet_parse_attribute_transition(ctx, lex, ss, id_tag, elementid, state, variables))
         {
             gs_log_warning("Failed to parse transition attribute.");
             return false;
@@ -9695,7 +10016,8 @@ bool _gs_gui_style_sheet_parse_attribute(gs_gui_context_t* ctx, gs_lexer_t* lex,
     return true;
 }
 
-bool _gs_gui_style_sheet_parse_element(gs_gui_context_t* ctx, gs_lexer_t* lex, gs_gui_style_sheet_t* ss, int32_t elementid)
+bool _gs_gui_style_sheet_parse_element(gs_gui_context_t* ctx, gs_lexer_t* lex, gs_gui_style_sheet_t* ss, 
+	int32_t elementid, gs_gui_ss_variables_t* variables)
 {
     int32_t state = 0x00;
     int32_t bc = 0;
@@ -9740,7 +10062,7 @@ bool _gs_gui_style_sheet_parse_element(gs_gui_context_t* ctx, gs_lexer_t* lex, g
             case GS_TOKEN_IDENTIFIER:
             { 
                 // gs_println("Parsing attribute: %.*s", token.len, token.text);
-                if (!_gs_gui_style_sheet_parse_attribute(ctx, lex, ss, 0, elementid, state))
+                if (!_gs_gui_style_sheet_parse_attribute(ctx, lex, ss, 0, elementid, state, variables))
                 {
                     gs_log_warning("Unable to parse attribute");
                     return false;
@@ -9752,7 +10074,8 @@ bool _gs_gui_style_sheet_parse_element(gs_gui_context_t* ctx, gs_lexer_t* lex, g
     return true;
 }
 
-bool _gs_gui_style_sheet_parse_cid_tag(gs_gui_context_t* ctx, gs_lexer_t* lex, gs_gui_style_sheet_t* ss, const uint64_t cid_tag)
+bool _gs_gui_style_sheet_parse_cid_tag(gs_gui_context_t* ctx, gs_lexer_t* lex, gs_gui_style_sheet_t* ss, 
+	const uint64_t cid_tag, gs_gui_ss_variables_t* variables)
 {
     int32_t state = 0x00;
     int32_t bc = 0;
@@ -9797,7 +10120,7 @@ bool _gs_gui_style_sheet_parse_cid_tag(gs_gui_context_t* ctx, gs_lexer_t* lex, g
             case GS_TOKEN_IDENTIFIER:
             { 
                 // gs_println("Parsing attribute: %.*s", token.len, token.text);
-                if (!_gs_gui_style_sheet_parse_attribute(ctx, lex, ss, cid_tag, GS_GUI_ELEMENT_COUNT, state))
+                if (!_gs_gui_style_sheet_parse_attribute(ctx, lex, ss, cid_tag, GS_GUI_ELEMENT_COUNT, state, variables))
                 {
                     gs_log_warning("Unable to parse attribute");
                     return false;
@@ -9807,13 +10130,169 @@ bool _gs_gui_style_sheet_parse_cid_tag(gs_gui_context_t* ctx, gs_lexer_t* lex, g
     }
 
     return true;
+}
+
+GS_API_DECL gs_gui_style_sheet_t gs_gui_style_sheet_load_from_file(gs_gui_context_t* ctx, const char* file_path)
+{
+    // Generate new style sheet based on default element styles
+    gs_gui_style_sheet_t ss = gs_default_val(); 
+    bool success = true;
+
+    size_t sz = 0;
+    char* fd = gs_platform_read_file_contents(file_path, "rb", &sz); 
+
+    if (!fd) {
+        gs_log_warning("Cannot load file: %s", file_path);
+        return ss;
+    }
+
+    ss = gs_gui_style_sheet_load_from_memory(ctx, fd, sz, &success);
+
+    if (success) {
+        gs_log_success("Successfully loaded style sheet %s.", file_path);
+    }
+    else {
+        gs_log_warning("Failed to loaded style sheet %s.", file_path);
+    }
+
+    gs_free(fd);
+    return ss;
+}
+
+static bool _gs_gui_style_sheet_parse_variable(gs_gui_context_t* ctx, gs_lexer_t* lex, gs_gui_style_sheet_t* ss, 
+        char* name_buf, size_t sz, gs_gui_ss_var_def_t* out)
+{
+    // Get next token, needs to be identifier 
+    gs_token_t token = gs_lexer_next_token(lex);
+    if (token.type != GS_TOKEN_IDENTIFIER)
+    {
+        gs_log_warning("Unidentified token. (Expected variable name after percent sign).");
+        gs_token_debug_print(&token);
+        return false;
+    }
+
+    // Copy name of variable
+    memcpy(name_buf, token.text, gs_min(token.len, sz));
+
+    // Expect colon
+    token = gs_lexer_next_token(lex);
+    if (token.type != GS_TOKEN_COLON)
+    {
+        gs_log_warning("Syntax error. (Expected colon name after variable name).");
+        gs_token_debug_print(&token);
+        return false;
+    }
+
+    // Now to get variable
+    token = gs_lexer_next_token(lex);
+    while (gs_lexer_can_lex(lex) && token.type != GS_TOKEN_SEMICOLON)
+    {
+        switch (token.type)
+        {
+            case GS_TOKEN_IDENTIFIER:
+            {
+                if (gs_token_compare_text(&token, "rgb"))
+                {
+                    token = gs_lexer_next_token(lex);
+                    if (token.type != GS_TOKEN_LPAREN)
+                    {
+                        gs_log_warning("rgb: missing paren (", token.len, token.text);
+                        gs_token_debug_print(&token);
+                        return false;
+                    }
+
+                    out->type = GS_GUI_SS_DEF_COLOR;
+
+                    for (uint32_t i = 0; i < 3; ++i)
+                    {
+                        token = gs_lexer_next_token(lex);
+                        if (token.type != GS_TOKEN_NUMBER)
+                        {
+                            gs_log_warning("rgb expects numbers", token.len, token.text);
+                            gs_token_debug_print(&token);
+                            return false;
+                        }
+                        gs_snprintfc(VAL, 32, "%.*s", token.len, token.text);\
+                        uint8_t v = (uint8_t)atoi(VAL);\
+                        out->val.color.rgba[i] = v;
+                    }
+                    out->val.color.rgba[3] = 255;
+                }
+                else if (gs_token_compare_text(&token, "rgba"))
+                {
+                    token = gs_lexer_next_token(lex);
+                    if (token.type != GS_TOKEN_LPAREN)
+                    {
+                        gs_log_warning("rgb: missing paren (", token.len, token.text);
+                        gs_token_debug_print(&token);
+                        return false;
+                    }
+                    out->type = GS_GUI_SS_DEF_COLOR;
+                    for (uint32_t i = 0; i < 4; ++i)
+                    {
+                        token = gs_lexer_next_token(lex);
+                        if (token.type != GS_TOKEN_NUMBER)
+                        {
+                            gs_log_warning("rgb expects numbers", token.len, token.text);
+                            gs_token_debug_print(&token);
+                            return false;
+                        }
+                        gs_snprintfc(VAL, 32, "%.*s", token.len, token.text);\
+                        uint8_t v = (uint8_t)atoi(VAL);\
+                        out->val.color.rgba[i] = v;
+                    }
+                }
+                else if (gs_token_compare_text(&token, "center"))
+                {
+                    out->type = GS_GUI_SS_DEF_ENUM;
+                    out->val.number = (int32_t)GS_GUI_JUSTIFY_CENTER;
+                }
+                else if (gs_token_compare_text(&token, "start"))
+                {
+                    out->type = GS_GUI_SS_DEF_ENUM;
+                    out->val.number = (int32_t)GS_GUI_JUSTIFY_START;
+                }
+                else if (gs_token_compare_text(&token, "end"))
+                {
+                    out->type = GS_GUI_SS_DEF_ENUM;
+                    out->val.number = (int32_t)GS_GUI_JUSTIFY_END;
+                }
+                else
+                {
+                    gs_log_warning("Variable value unknown: %.*s", token.len, token.text);
+                    gs_token_debug_print(&token);
+                    return false;
+                }
+            } break; 
+
+            case GS_TOKEN_NUMBER:
+            {
+                gs_snprintfc(VAL, 32, "%.*s", token.len, token.text);\
+                int32_t v = (int32_t)atoi(VAL);\
+                out->type = GS_GUI_SS_DEF_NUMBER; 
+                out->val.number = v;
+            } break;
+
+            case GS_TOKEN_STRING:
+            {
+                gs_snprintfc(VAL, 64, "%.*s", token.len - 2, token.text + 1);\
+                out->type = GS_GUI_SS_DEF_STR; 
+                memcpy(out->val.str, VAL, 64);
+            }
+        }
+
+        token = gs_lexer_next_token(lex);
+    }
 }
 
 // Going to require a lot of parsing
-GS_API_DECL gs_gui_style_sheet_t gs_gui_style_sheet_load_from_file(gs_gui_context_t* ctx, const char* file_path)
+GS_API_DECL gs_gui_style_sheet_t gs_gui_style_sheet_load_from_memory(gs_gui_context_t* ctx, const char* fd, size_t sz, bool* sp)
 { 
     // Generate new style sheet based on default element styles
     gs_gui_style_sheet_t ss = gs_default_val(); 
+    bool success = true;
+
+	gs_gui_ss_variables_t variables = gs_default_val();
 
     // Copy all default styles
     GS_GUI_COPY_STYLES(ss.styles, gs_gui_default_style_sheet.styles, GS_GUI_ELEMENT_CONTAINER);
@@ -9825,17 +10304,9 @@ GS_API_DECL gs_gui_style_sheet_t gs_gui_style_sheet_load_from_file(gs_gui_contex
     GS_GUI_COPY_STYLES(ss.styles, gs_gui_default_style_sheet.styles, GS_GUI_ELEMENT_SCROLL); 
     GS_GUI_COPY_STYLES(ss.styles, gs_gui_default_style_sheet.styles, GS_GUI_ELEMENT_IMAGE); 
 
-    char* fd = gs_platform_read_file_contents(file_path, "rb", NULL); 
-    bool success = true;
-
-    if (!fd) {
-        gs_log_warning("Cannot load file: %s", file_path);
-        return ss;
-    }
-
 #define PARSE_ELEMENT(TYPE, TYPESTR)\
     do {\
-        if (!_gs_gui_style_sheet_parse_element(ctx, &lex, &ss, TYPE))\
+        if (!_gs_gui_style_sheet_parse_element(ctx, &lex, &ss, TYPE, &variables))\
         {\
             gs_log_warning("Failed to parse element: %s", TYPESTR);\
             success = false;\
@@ -9845,7 +10316,7 @@ GS_API_DECL gs_gui_style_sheet_t gs_gui_style_sheet_load_from_file(gs_gui_contex
 
     // Parse style sheet for styles
     gs_lexer_t lex = gs_lexer_c_ctor(fd);
-    while (gs_lexer_c_can_lex(&lex))
+    while (success && gs_lexer_c_can_lex(&lex))
     {
         gs_token_t token = lex.next_token(&lex);
         switch (token.type)
@@ -9876,7 +10347,7 @@ GS_API_DECL gs_gui_style_sheet_t gs_gui_style_sheet_load_from_file(gs_gui_contex
                 CLS_TAG[0] = '.';
                 memcpy(CLS_TAG + 1, cls_tag.text, cls_tag.len);
                 uint64_t cls_hash = gs_hash_str64(CLS_TAG);
-                if (!_gs_gui_style_sheet_parse_cid_tag(ctx, &lex, &ss, cls_hash))
+                if (!_gs_gui_style_sheet_parse_cid_tag(ctx, &lex, &ss, cls_hash, &variables))
                 {
                     gs_log_warning("Failed to parse id tag: %s", CLS_TAG);
                     success = false;
@@ -9892,24 +10363,80 @@ GS_API_DECL gs_gui_style_sheet_t gs_gui_style_sheet_load_from_file(gs_gui_contex
                 ID_TAG[0] = '#';
                 memcpy(ID_TAG + 1, id_tag.text, id_tag.len);
                 uint64_t id_hash = gs_hash_str64(ID_TAG);
-                if (!_gs_gui_style_sheet_parse_cid_tag(ctx, &lex, &ss, id_hash))
+                if (!_gs_gui_style_sheet_parse_cid_tag(ctx, &lex, &ss, id_hash, &variables))
                 {
                     gs_log_warning("Failed to parse id tag: %s", ID_TAG);
                     success = false;
                     break;
                 } 
             } break;
+
+            case GS_TOKEN_ASTERISK:
+            {
+                // Save token
+                gs_token_t token = gs_lexer_next_token(&lex); gs_lexer_set_token(&lex, token); 
+                PARSE_ELEMENT(GS_GUI_ELEMENT_CONTAINER, "* (container)"); gs_lexer_set_token(&lex, token);
+                PARSE_ELEMENT(GS_GUI_ELEMENT_TEXT, "* (text)"); gs_lexer_set_token(&lex, token);
+                PARSE_ELEMENT(GS_GUI_ELEMENT_LABEL, "* (label)"); gs_lexer_set_token(&lex, token);
+                PARSE_ELEMENT(GS_GUI_ELEMENT_IMAGE, "* (image)"); gs_lexer_set_token(&lex, token);
+                PARSE_ELEMENT(GS_GUI_ELEMENT_BUTTON, "* (button)"); gs_lexer_set_token(&lex, token);
+                PARSE_ELEMENT(GS_GUI_ELEMENT_PANEL, "* (panel)"); gs_lexer_set_token(&lex, token);
+                PARSE_ELEMENT(GS_GUI_ELEMENT_SCROLL, "* (scroll)"); 
+            } break;
+
+            case GS_TOKEN_PERCENT:
+            { 
+                gs_gui_ss_var_def_t variable = gs_default_val(); 
+                char variable_name[256] = gs_default_val();
+                if (!_gs_gui_style_sheet_parse_variable(ctx, &lex, &ss, variable_name, sizeof(variable_name), &variable))
+                {
+                    gs_log_warning("Failed to parse variable: %s", variable_name);
+                    success = false;
+                    break;
+                }
+                else
+                {
+                    gs_hash_table_insert(variables.variables, gs_hash_str64(variable_name), variable);
+                }
+
+                /*
+                typedef enum 
+                {
+                    GS_GUI_SS_DEF_VALUE = 0x00, 
+                    GS_GUI_SS_DEF_COLOR,
+                    GS_GUI_SS_DEF_STR
+                } gs_gui_ss_var_def_type;
+
+                typedef struct
+                {
+                    gs_gui_ss_var_def_type type;
+                    union {
+                        int32_t value;
+                        gs_color_t color;
+                        char str[64];
+                    } val;
+                } gs_gui_ss_var_def_t;
+                */
+
+            } break; 
         }
     } 
 
-    if (success) {
-        gs_log_success("Successfully loaded style sheet %s.", file_path);
+    if (!sp)
+    {
+        if (success) {
+            gs_log_success("Successfully loaded style sheet from memory.");
+        }
+        else {
+            gs_log_warning("Failed to loaded style sheet from memory.");
+        }
     }
-    else {
-        gs_log_warning("Failed to loaded style sheet %s.", file_path);
+    else
+    {
+        *sp = success;
     }
 
-    if (fd) gs_free(fd);
+    if (variables.variables) gs_hash_table_free(variables.variables);
 
     return ss;
 }
