@@ -531,7 +531,9 @@ typedef enum {
     GS_GUI_STYLE_COLOR_CONTENT_SHADOW,
 
     // Font
-    GS_GUI_STYLE_FONT
+    GS_GUI_STYLE_FONT,
+
+	GS_GUI_STYLE_COUNT
 
 } gs_gui_style_element_type;
 
@@ -634,14 +636,9 @@ typedef struct gs_gui_style_sheet_t {
     gs_gui_style_t styles[GS_GUI_ELEMENT_COUNT][3]; // default | hovered | focused
     gs_hash_table(gs_gui_element_type, gs_gui_animation_property_list_t) animations;
     
-    gs_hash_table(uint64_t, gs_gui_style_list_t) id_styles;
-    gs_hash_table(uint64_t, gs_gui_animation_property_list_t) id_animations;
+    gs_hash_table(uint64_t, gs_gui_style_list_t) cid_styles;
+    gs_hash_table(uint64_t, gs_gui_animation_property_list_t) cid_animations;
 } gs_gui_style_sheet_t;
-
-// Get element style -> pass in element as id
-// Get id style -> id
-// Get class styles -> pass in all classes for this element
-// Get final style -> concat styles based on grouping
 
 typedef struct gs_gui_style_sheet_element_desc_t {
 
@@ -931,7 +928,7 @@ typedef struct {
 typedef struct
 {
     const char* id;                                // Id selector
-    const char classes[GS_GUI_CLS_SELECTOR_MAX];   // Class selectors
+    const char* classes[GS_GUI_CLS_SELECTOR_MAX];  // Class selectors
 } gs_gui_selector_desc_t;
 
 gs_gui_rect_t gs_gui_rect(float x, float y, float w, float h);
@@ -948,7 +945,9 @@ GS_API_DECL void gs_gui_end(gs_gui_context_t *ctx);
 GS_API_DECL void gs_gui_render(gs_gui_context_t* ctx, gs_command_buffer_t* cb);
 
 //=== Util ===//
-GS_API_DECL void gs_gui_renderpass_submit(gs_gui_context_t* ctx, gs_command_buffer_t* cb, gs_color_t clear);
+GS_API_DECL void gs_gui_renderpass_submit(gs_gui_context_t* ctx, gs_command_buffer_t* cb, gs_color_t clear); 
+GS_API_DECL void gs_gui_parse_id_tag(gs_gui_context_t* ctx, const char* str, char* buffer, size_t sz);
+GS_API_DECL void gs_gui_parse_label_tag(gs_gui_context_t* ctx, const char* str, char* buffer, size_t sz);
 
 //=== Main API ===//
 
@@ -1205,7 +1204,7 @@ static gs_gui_style_sheet_t gs_gui_default_style_sheet = gs_default_val();
 static gs_gui_style_t gs_gui_get_current_element_style(gs_gui_context_t* ctx, const gs_gui_selector_desc_t* desc, 
         int32_t elementid, int32_t state)
 {
-
+  
 #define GS_GUI_APPLY_STYLE(SE)\
     do {\
         switch ((SE)->type)\
@@ -1284,23 +1283,52 @@ static gs_gui_style_t gs_gui_get_current_element_style(gs_gui_context_t* ctx, co
 
     // Look for id tag style
     gs_gui_style_list_t* id_styles = NULL;
-    gs_gui_style_list_t* cls_styles = NULL; 
+    gs_gui_style_list_t* cls_styles[GS_GUI_CLS_SELECTOR_MAX] = gs_default_val(); 
 
     if (desc)
     {
-        const uint64_t id_hash = gs_hash_str64(desc->id);
-        id_styles = gs_hash_table_exists(ctx->style_sheet->id_styles, id_hash) ? 
-            gs_hash_table_getp(ctx->style_sheet->id_styles, id_hash) : NULL;
+        char TMP[256] = gs_default_val();
+
+        // ID selector
+        gs_snprintf(TMP, sizeof(TMP), "#%s", desc->id);
+        const uint64_t id_hash = gs_hash_str64(TMP);
+        id_styles = gs_hash_table_exists(ctx->style_sheet->cid_styles, id_hash) ? 
+            gs_hash_table_getp(ctx->style_sheet->cid_styles, id_hash) : NULL;
+
+        // Class selectors
+        for (uint32_t i = 0; i < GS_GUI_CLS_SELECTOR_MAX; ++i)
+        {
+            if (desc->classes[i]) {
+                gs_snprintf(TMP, sizeof(TMP), ".%s", desc->classes[i]);
+                const uint64_t cls_hash = gs_hash_str64(TMP);
+                cls_styles[i] = gs_hash_table_exists(ctx->style_sheet->cid_styles, cls_hash) ? 
+                    gs_hash_table_getp(ctx->style_sheet->cid_styles, cls_hash) : NULL;
+            }
+            else break;
+        }
     }
 
-    // Parse id_styles to override
+    // Override with class styles
+    if (*cls_styles)
+    {
+        for (uint32_t i = 0; i < GS_GUI_CLS_SELECTOR_MAX; ++i)
+        {
+			if (!cls_styles[i]) break;
+            for (uint32_t s = 0; s < gs_dyn_array_size(cls_styles[i]->styles[state]); ++s) {
+                gs_gui_style_element_t* se = &cls_styles[i]->styles[state][s];
+                GS_GUI_APPLY_STYLE(se);
+            }
+        }
+    }
+
+    // Override with id styles
     if (id_styles)
     { 
         for (uint32_t i = 0; i < gs_dyn_array_size(id_styles->styles[state]); ++i) {
             gs_gui_style_element_t* se = &id_styles->styles[state][i];
             GS_GUI_APPLY_STYLE(se);
         }
-    }
+    } 
 
     if (gs_hash_table_exists(ctx->inline_styles, elementid))
     {
@@ -1349,11 +1377,39 @@ GS_API_DECL gs_gui_style_t gs_gui_animation_get_blend_style(gs_gui_context_t* ct
         list = gs_hash_table_getp(ctx->style_sheet->animations, elementid);
     } 
 
-	const gs_gui_animation_property_list_t* id_list = NULL;
-	const uint64_t id_hash = desc && desc->id ? gs_hash_str64(desc->id) : 0x00;
-	if (desc && desc->id && gs_hash_table_exists(ctx->style_sheet->id_animations, id_hash)) { 
-		id_list = gs_hash_table_getp(ctx->style_sheet->id_animations, id_hash);
-	}
+	const gs_gui_animation_property_list_t* id_list = NULL; 
+    const gs_gui_animation_property_list_t* cls_list[GS_GUI_CLS_SELECTOR_MAX] = gs_default_val();
+	bool has_class_animations = false;
+
+    if (desc)
+    {
+        char TMP[256] = gs_default_val();
+
+        // ID animations
+        if (desc->id)
+        {
+            gs_snprintf(TMP, sizeof(TMP), "#%s", desc->id);
+            const uint64_t id_hash = gs_hash_str64(TMP);
+            if (gs_hash_table_exists(ctx->style_sheet->cid_animations, id_hash)) { 
+                id_list = gs_hash_table_getp(ctx->style_sheet->cid_animations, id_hash);
+            }
+        }
+
+        // Class animations 
+        if (*desc->classes)
+        {
+            for (uint32_t i = 0; i < GS_GUI_CLS_SELECTOR_MAX; ++i)
+            {
+                if (!desc->classes[i]) break; 
+                gs_snprintf(TMP, sizeof(TMP), ".%s", desc->classes[i]);
+                const uint64_t cls_hash = gs_hash_str64(TMP);
+                if (cls_hash && gs_hash_table_exists(ctx->style_sheet->cid_animations, cls_hash)) { 
+                    cls_list[i] = gs_hash_table_getp(ctx->style_sheet->cid_animations, cls_hash);
+					has_class_animations = true;
+                }
+            }
+        }
+    }
 
 #define GS_GUI_BLEND_COLOR(TYPE)\
         do {\
@@ -1457,6 +1513,18 @@ GS_API_DECL gs_gui_style_t gs_gui_animation_get_blend_style(gs_gui_context_t* ct
         GS_GUI_BLEND_PROPERTIES(list->properties[anim->end_state]);
     } 
 
+    // Class list
+    if (has_class_animations)
+    {
+        for (uint32_t c = 0; c < GS_GUI_CLS_SELECTOR_MAX; ++c)
+        {
+            if (!cls_list[c]) continue;
+            if (!gs_dyn_array_empty(cls_list[c]->properties[anim->end_state])) {
+                GS_GUI_BLEND_PROPERTIES(cls_list[c]->properties[anim->end_state]);
+            }
+        }
+    }
+
 	// Id list
 	if (id_list && !gs_dyn_array_empty(id_list->properties[anim->end_state])) { 
         GS_GUI_BLEND_PROPERTIES(id_list->properties[anim->end_state]);
@@ -1480,92 +1548,103 @@ static void _gs_gui_animation_get_time(gs_gui_context_t* ctx, gs_gui_id id, int3
 							  iss->animation_counts[scz - 1];
 		ssz = gs_dyn_array_size(iss->animations[state]);
 	}
+    gs_gui_animation_property_list_t* cls_list[GS_GUI_CLS_SELECTOR_MAX] = gs_default_val();
 	const gs_gui_animation_property_list_t* id_list = NULL;
 	const gs_gui_animation_property_list_t* list = NULL;
-	if (desc && gs_hash_table_exists(ctx->style_sheet->id_animations, gs_hash_str64(desc->id))) {
-		id_list = gs_hash_table_getp(ctx->style_sheet->id_animations, gs_hash_str64(desc->id));
-	}
+	bool has_class_animations = false;
+
+    if (desc)
+    {
+        char TMP[256] = gs_default_val();
+        
+        // Id animations
+        gs_snprintf(TMP, sizeof(TMP), "#%s", desc->id);
+        const uint64_t id_hash = gs_hash_str64(TMP);
+        if (gs_hash_table_exists(ctx->style_sheet->cid_animations, id_hash)) {
+            id_list = gs_hash_table_getp(ctx->style_sheet->cid_animations, id_hash);
+        }
+
+        // Class animations
+        for (uint32_t i = 0; i < GS_GUI_CLS_SELECTOR_MAX; ++i)
+        {
+            if (!desc->classes[i]) break;
+            gs_snprintf(TMP, sizeof(TMP), ".%s", desc->classes[i]);
+            const uint64_t cls_hash = gs_hash_str64(TMP);
+            if (gs_hash_table_exists(ctx->style_sheet->cid_animations, cls_hash)) {
+                cls_list[i] = gs_hash_table_getp(ctx->style_sheet->cid_animations, cls_hash);
+				has_class_animations = true;
+            }
+        }
+    }
+
+    // Element type animations
 	if (gs_hash_table_exists(ctx->style_sheet->animations, elementid)) {
 		list = gs_hash_table_getp(ctx->style_sheet->animations, elementid);
+	} 
+
+	// Fill properties in order of specificity
+	gs_gui_animation_property_t properties[GS_GUI_STYLE_COUNT] = gs_default_val();
+	for (uint32_t i = 0; i < GS_GUI_STYLE_COUNT; ++i) { 
+		properties[i].type = i;
 	}
-	if ((id_list && !gs_dyn_array_empty(id_list->properties[state])) || 
-		(list && !gs_dyn_array_empty(list->properties[state])))
-	{
-		if (list && !gs_dyn_array_empty(list->properties[state]))
-		{
-			gs_dyn_array(gs_gui_animation_property_t) props = list->properties[state];
-			for (uint32_t p = 0; p < gs_dyn_array_size(props); ++p)
-			{
-				gs_gui_animation_property_t* prop = &props[p];
-				if (id_list)
-				{
-					for (uint32_t a = 0; a < gs_dyn_array_size(id_list->properties[state]); ++a)
-					{
-						gs_gui_animation_property_t* ap = &iss->animations[state][a];
-						if (ap->type == props[p].type)
-						{
-							prop = ap;
-							break;
-						}
-					}
-				}
-				if (act && iss)
-				{
-					for (uint32_t a = 0; a < act; ++a)
-					{
-						uint32_t idx = ssz - act + a;
-						gs_gui_animation_property_t* ap = &iss->animations[state][idx];
-						if (ap->type == props[p].type)
-						{
-							prop = ap;
-							break;
-						}
-					}
-				}
-				if (prop->time > anim->max) anim->max = prop->time;
-				if (prop->delay > anim->delay) anim->delay = prop->delay;
-			}
-			anim->max += anim->delay;
-			anim->max = gs_max(anim->max, 5);
-		}
-		else
-		{
-			gs_dyn_array(gs_gui_animation_property_t) props = id_list->properties[state];
-			for (uint32_t p = 0; p < gs_dyn_array_size(props); ++p)
-			{
-				gs_gui_animation_property_t* prop = &props[p];
-				if (act && iss)
-				{
-					for (uint32_t a = 0; a < act; ++a)
-					{
-						uint32_t idx = ssz - act + a;
-						gs_gui_animation_property_t* ap = &iss->animations[state][idx];
-						if (ap->type == props[p].type)
-						{
-							prop = ap;
-							break;
-						}
-					}
-				}
-				if (prop->time > anim->max) anim->max = prop->time;
-				if (prop->delay > anim->delay) anim->delay = prop->delay;
-			}
-			anim->max += anim->delay;
-			anim->max = gs_max(anim->max, 5);
-		}
+
+#define GUI_SET_PROPERTY_TIMES(PROP_LIST)\
+	do {\
+		for (uint32_t p = 0; p < gs_dyn_array_size((PROP_LIST)); ++p)\
+		{\
+			gs_gui_animation_property_t* prop = &(PROP_LIST)[p];\
+			properties[prop->type].time = prop->time;\
+			properties[prop->type].delay = prop->delay;\
+		}\
+	} while (0)
+
+	// Element type list
+	if (list)
+	{ 
+		gs_dyn_array(gs_gui_animation_property_t) props = list->properties[state];
+		GUI_SET_PROPERTY_TIMES(props);
 	}
-	else if (act && iss)
+
+	// Class list
+	if (has_class_animations)
 	{
-		anim->max = 1;
-		for (uint32_t it = 0; it < act; ++it)
+		for (uint32_t c = 0; c < GS_GUI_CLS_SELECTOR_MAX; ++c)
 		{
-			uint32_t idx = ssz - act + it;
+			if (!cls_list[c]) continue;
+			gs_dyn_array(gs_gui_animation_property_t) props = cls_list[c]->properties[state];
+			GUI_SET_PROPERTY_TIMES(props);
+		}
+	} 
+
+	// Id list
+	if (id_list)
+	{
+		gs_dyn_array(gs_gui_animation_property_t) props = id_list->properties[state];
+		GUI_SET_PROPERTY_TIMES(props);
+	}
+
+	// Inline style list 
+	if (act && iss)
+	{ 
+		for ( uint32_t a = 0; a < act; ++a )
+		{
+			uint32_t idx = ssz - act + a;
 			gs_gui_animation_property_t* ap = &iss->animations[state][idx];
-			if (ap->time > anim->max) anim->max = ap->time;
-			if (ap->delay > anim->delay) anim->delay = ap->delay;
+			properties[ap->type].time = ap->time;
+			properties[ap->type].delay = ap->delay;
 		}
-		anim->max += anim->delay;
 	}
+
+	// Set max times
+	for (uint32_t i = 0; i < GS_GUI_STYLE_COUNT; ++i)
+	{
+		if (properties[i].time > anim->max) anim->max = properties[i].time;
+		if (properties[i].delay > anim->delay) anim->delay = properties[i].delay;
+	} 
+
+	// Finalize time
+	anim->max += anim->delay;
+	anim->max = gs_max(anim->max, 5); 
 }
 
 GS_API_DECL gs_gui_animation_t* gs_gui_get_animation(gs_gui_context_t* ctx, gs_gui_id id, const gs_gui_selector_desc_t* desc, int32_t elementid)
@@ -5567,15 +5646,15 @@ GS_API_DECL void gs_gui_update_control(gs_gui_context_t *ctx, gs_gui_id id, gs_g
 } 
 
 GS_API_DECL int32_t gs_gui_text_ex(gs_gui_context_t* ctx, const char* text, int32_t wrap, const gs_gui_selector_desc_t* desc, int32_t opt)
-{
-	const char *start, *end, *p = text;
-	int32_t width = -1;
-
+{ 
 	int32_t res = 0, elementid = GS_GUI_ELEMENT_TEXT;
 	gs_gui_id id = gs_gui_get_id(ctx, text, strlen(text)); 
     gs_immediate_draw_t* dl = &ctx->overlay_draw_list; 
     gs_gui_style_t style = gs_default_val();
-    gs_gui_animation_t* anim = gs_gui_get_animation(ctx, id, desc, elementid);
+    gs_gui_animation_t* anim = gs_gui_get_animation(ctx, id, desc, elementid); 
+
+	const char *start, *end, *p = text;
+	int32_t width = -1; 
 
     // Update anim (keep states locally within animation, only way to do this) 
     if (anim)
@@ -5684,6 +5763,13 @@ GS_API_DECL int32_t gs_gui_label_ex(gs_gui_context_t* ctx, const char* label, co
     int32_t elementid = GS_GUI_ELEMENT_LABEL;
     gs_gui_id id = gs_gui_get_id(ctx, label, gs_strlen(label)); 
 
+    char id_tag[256] = gs_default_val(); 
+    char label_tag[256] = gs_default_val(); 
+    gs_gui_parse_id_tag(ctx, label, id_tag, sizeof(id_tag));
+    gs_gui_parse_label_tag(ctx, label, label_tag, sizeof(label_tag));
+
+	if (id_tag) gs_gui_push_id(ctx, id_tag, strlen(id_tag));
+
     gs_gui_style_t style = gs_default_val();
     gs_gui_animation_t* anim = gs_gui_get_animation(ctx, id, desc, elementid); 
 
@@ -5704,8 +5790,9 @@ GS_API_DECL int32_t gs_gui_label_ex(gs_gui_context_t* ctx, const char* label, co
     gs_gui_style_t* save = gs_gui_push_style(ctx, &style); 
 	gs_gui_rect_t r = gs_gui_layout_next(ctx);
 	gs_gui_update_control(ctx, id, r, 0x00); 
-	gs_gui_draw_control_text(ctx, label, r, &style, 0x00); 
+	gs_gui_draw_control_text(ctx, label_tag, r, &style, 0x00); 
     gs_gui_pop_style(ctx, save);
+	if (id_tag) gs_gui_pop_id(ctx);
 
 	/* handle click */
     if (
@@ -5792,6 +5879,60 @@ GS_API_DECL void gs_gui_combo_end(gs_gui_context_t* ctx)
     gs_gui_popup_end(ctx);
 }
 
+GS_API_DECL void gs_gui_parse_label_tag(gs_gui_context_t* ctx, const char* str, char* buffer, size_t sz)
+{
+    gs_lexer_t lex = gs_lexer_c_ctor(str);
+    while (gs_lexer_can_lex(&lex))
+    {
+        gs_token_t token = gs_lexer_next_token(&lex);
+        switch (token.type)
+        {
+            case GS_TOKEN_HASH:
+            {
+                if (gs_lexer_peek(&lex).type == GS_TOKEN_HASH)
+                {
+                    gs_token_t end = gs_lexer_current_token(&lex);
+
+                    // Determine len
+                    size_t len = gs_min(end.text - str, sz);
+
+                    memcpy(buffer, str, len);
+                    return;
+                }
+            } break;
+        }
+    } 
+
+    // Reached end, so just memcpy
+    memcpy(buffer, str, sz);
+}
+
+GS_API_DECL void gs_gui_parse_id_tag(gs_gui_context_t* ctx, const char* str, char* buffer, size_t sz)
+{
+    gs_lexer_t lex = gs_lexer_c_ctor(str);
+    while (gs_lexer_can_lex(&lex))
+    {
+        gs_token_t token = gs_lexer_next_token(&lex);
+        switch (token.type)
+        {
+            case GS_TOKEN_HASH:
+            {
+                if (gs_lexer_peek(&lex).type == GS_TOKEN_HASH)
+                {
+                    gs_token_t end = gs_lexer_next_token(&lex);
+                    end = gs_lexer_next_token(&lex);
+
+                    // Determine len
+                    size_t len = gs_min((str + strlen(str)) - end.text, sz);
+
+                    memcpy(buffer, end.text, len);
+                    return;
+                }
+            } break;
+        }
+    } 
+}
+
 GS_API_DECL int32_t gs_gui_button_ex(gs_gui_context_t* ctx, const char* label, const gs_gui_selector_desc_t* desc, int32_t opt)
 { 
     // Note(john): clip out early here for performance
@@ -5800,8 +5941,18 @@ GS_API_DECL int32_t gs_gui_button_ex(gs_gui_context_t* ctx, const char* label, c
 	gs_gui_id id = gs_gui_get_id(ctx, label, strlen(label)); 
     gs_immediate_draw_t* dl = &ctx->overlay_draw_list;
 
+    char id_tag[256] = gs_default_val(); 
+    char label_tag[256] = gs_default_val(); 
+    gs_gui_parse_id_tag(ctx, label, id_tag, sizeof(id_tag));
+    gs_gui_parse_label_tag(ctx, label, label_tag, sizeof(label_tag));
+
     gs_gui_style_t style = gs_default_val();
     gs_gui_animation_t* anim = gs_gui_get_animation(ctx, id, desc, GS_GUI_ELEMENT_BUTTON);
+
+	// Push id if tag available
+	if (id_tag) {
+		gs_gui_push_id(ctx, id_tag, strlen(id_tag));
+	}
 
     // Update anim (keep states locally within animation, only way to do this) 
     if (anim)
@@ -5837,9 +5988,11 @@ GS_API_DECL int32_t gs_gui_button_ex(gs_gui_context_t* ctx, const char* label, c
 
     opt |= GS_GUI_OPT_ISCONTENT;
     gs_gui_draw_rect(ctx, r, style.colors[GS_GUI_COLOR_BACKGROUND]);
-    if (label) {gs_gui_draw_control_text(ctx, label, r, &style, opt);}
+    if (label) {gs_gui_draw_control_text(ctx, label_tag, r, &style, opt);}
 
     gs_gui_pop_style(ctx, save);
+
+	if (id_tag) gs_gui_pop_id(ctx);
 
 	return res;
 }
@@ -6068,7 +6221,7 @@ GS_API_DECL int32_t gs_gui_slider_ex(gs_gui_context_t* ctx, gs_gui_real* value, 
     gs_gui_animation_t* anim = gs_gui_get_animation(ctx, id, desc, elementid);
     int32_t state = ctx->focus == id ? GS_GUI_ELEMENT_STATE_FOCUS : 
                     ctx->hover == id ? GS_GUI_ELEMENT_STATE_HOVER : 
-                                       GS_GUI_ELEMENT_STATE_DEFAULT;
+                                       GS_GUI_ELEMENT_STATE_DEFAULT; 
 
     // Update anim (keep states locally within animation, only way to do this) 
     if (anim)
@@ -6192,6 +6345,13 @@ static int32_t _gs_gui_header(gs_gui_context_t *ctx, const char *label, int32_t 
 	int32_t width = -1;
 	gs_gui_layout_row(ctx, 1, &width, 0);
 
+    char id_tag[256] = gs_default_val(); 
+    char label_tag[256] = gs_default_val(); 
+    gs_gui_parse_id_tag(ctx, label, id_tag, sizeof(id_tag));
+    gs_gui_parse_label_tag(ctx, label, label_tag, sizeof(label_tag));
+
+    if (id_tag) gs_gui_push_id(ctx, id_tag, strlen(id_tag));
+
 	active = (idx >= 0);
 	expanded = (opt & GS_GUI_OPT_EXPANDED) ? !active : active;
 	r = gs_gui_layout_next(ctx);
@@ -6230,12 +6390,6 @@ static int32_t _gs_gui_header(gs_gui_context_t *ctx, const char *label, int32_t 
 		gs_gui_draw_control_frame(ctx, id, r, GS_GUI_ELEMENT_BUTTON, 0);
 	}
 
-    // Draw icon for tree node (make this a callback)
-    /*
-	gs_gui_draw_icon(
-		ctx, expanded ? GS_GUI_ICON_EXPANDED : GS_GUI_ICON_COLLAPSED,
-		gs_gui_rect(r.x, r.y, r.h, r.h), ctx->style->colors[GS_GUI_COLOR_TEXT]);
-    */
     const float sz = 6.f;
     if (expanded)
     {
@@ -6255,7 +6409,9 @@ static int32_t _gs_gui_header(gs_gui_context_t *ctx, const char *label, int32_t 
     // Draw text for treenode
 	r.x += r.h - ctx->style->padding[GS_GUI_PADDING_TOP];
 	r.w -= r.h - ctx->style->padding[GS_GUI_PADDING_BOTTOM]; 
-	gs_gui_draw_control_text(ctx, label, r, &ctx->style_sheet->styles[GS_GUI_ELEMENT_TEXT][0x00], 0);
+	gs_gui_draw_control_text(ctx, label_tag, r, &ctx->style_sheet->styles[GS_GUI_ELEMENT_TEXT][0x00], 0);
+
+    if (id_tag) gs_gui_pop_id(ctx);
 
 	return expanded ? GS_GUI_RES_ACTIVE : 0;
 } 
@@ -8890,10 +9046,10 @@ bool _gs_gui_style_sheet_parse_attribute_transition(gs_gui_context_t* ctx, gs_le
 
     if (id_tag) 
     { 
-        if (!gs_hash_table_exists(ss->id_animations, id_tag))
+        if (!gs_hash_table_exists(ss->cid_animations, id_tag))
         {
             gs_gui_animation_property_list_t sl = gs_default_val();
-            gs_hash_table_insert(ss->id_animations, id_tag, sl);
+            gs_hash_table_insert(ss->cid_animations, id_tag, sl);
         }
     }
 
@@ -8943,7 +9099,7 @@ bool _gs_gui_style_sheet_parse_attribute_transition(gs_gui_context_t* ctx, gs_le
         gs_gui_animation_property_list_t list = gs_default_val();
         gs_hash_table_insert(ss->animations, (gs_gui_element_type)elementid, list);
     }
-    gs_gui_animation_property_list_t* list = id_tag ? gs_hash_table_getp(ss->id_animations, id_tag) : 
+    gs_gui_animation_property_list_t* list = id_tag ? gs_hash_table_getp(ss->cid_animations, id_tag) : 
                  gs_hash_table_getp(ss->animations, (gs_gui_element_type)elementid);
 
     int32_t bc = 1;
@@ -8999,12 +9155,12 @@ bool _gs_gui_style_sheet_parse_attribute_font(gs_gui_context_t* ctx, gs_lexer_t*
     if (id_tag) 
     { 
         const uint64_t idhash = id_tag;
-        if (!gs_hash_table_exists(ss->id_styles, idhash))
+        if (!gs_hash_table_exists(ss->cid_styles, idhash))
         {
             gs_gui_style_list_t sl = gs_default_val();
-            gs_hash_table_insert(ss->id_styles, idhash, sl);
+            gs_hash_table_insert(ss->cid_styles, idhash, sl);
         }
-        idsl = gs_hash_table_getp(ss->id_styles, idhash);
+        idsl = gs_hash_table_getp(ss->cid_styles, idhash);
     }
 
 #define SET_FONT(FONT)\
@@ -9076,12 +9232,12 @@ bool _gs_gui_style_sheet_parse_attribute_enum(gs_gui_context_t* ctx, gs_lexer_t*
     if (id_tag) 
     { 
         const uint64_t idhash = id_tag;
-        if (!gs_hash_table_exists(ss->id_styles, idhash))
+        if (!gs_hash_table_exists(ss->cid_styles, idhash))
         {
             gs_gui_style_list_t sl = gs_default_val();
-            gs_hash_table_insert(ss->id_styles, idhash, sl);
+            gs_hash_table_insert(ss->cid_styles, idhash, sl);
         }
-        idsl = gs_hash_table_getp(ss->id_styles, idhash);
+        idsl = gs_hash_table_getp(ss->cid_styles, idhash);
     }
 
 #define SET_ENUM(COMP, VAL)\
@@ -9112,7 +9268,6 @@ bool _gs_gui_style_sheet_parse_attribute_enum(gs_gui_context_t* ctx, gs_lexer_t*
         }\
     } while (0)
 
-    // BALLS
     if (gs_token_compare_text(&token, "justify_content"))
     {
         gs_gui_style_element_t se = gs_default_val();
@@ -9145,12 +9300,12 @@ bool _gs_gui_style_sheet_parse_attribute_val(gs_gui_context_t* ctx, gs_lexer_t* 
     if (id_tag) 
     { 
         const uint64_t idhash = id_tag;
-        if (!gs_hash_table_exists(ss->id_styles, idhash))
+        if (!gs_hash_table_exists(ss->cid_styles, idhash))
         {
             gs_gui_style_list_t sl = gs_default_val();
-            gs_hash_table_insert(ss->id_styles, idhash, sl);
+            gs_hash_table_insert(ss->cid_styles, idhash, sl);
         }
-        idsl = gs_hash_table_getp(ss->id_styles, idhash);
+        idsl = gs_hash_table_getp(ss->cid_styles, idhash);
     }
 
     #define SET_VAL4(COMP, T, SE)\
@@ -9166,6 +9321,7 @@ bool _gs_gui_style_sheet_parse_attribute_val(gs_gui_context_t* ctx, gs_lexer_t* 
             token = gs_lexer_current_token(lex);\
             gs_snprintfc(TMP, 10, "%.*s", token.len, token.text);\
             uint32_t val = (uint32_t)atoi(TMP);\
+            se.value = (T)val;\
             switch (state) {\
                 case GS_GUI_ELEMENT_STATE_DEFAULT:\
                 {\
@@ -9328,12 +9484,12 @@ bool _gs_gui_style_sheet_parse_attribute_color(gs_gui_context_t* ctx, gs_lexer_t
     if (id_tag) 
     { 
         const uint64_t idhash = id_tag;
-        if (!gs_hash_table_exists(ss->id_styles, idhash))
+        if (!gs_hash_table_exists(ss->cid_styles, idhash))
         {
             gs_gui_style_list_t sl = gs_default_val();
-            gs_hash_table_insert(ss->id_styles, idhash, sl);
+            gs_hash_table_insert(ss->cid_styles, idhash, sl);
         }
-        idsl = gs_hash_table_getp(ss->id_styles, idhash);
+        idsl = gs_hash_table_getp(ss->cid_styles, idhash);
     }
 
     gs_gui_style_element_type type = 0x00;
@@ -9596,7 +9752,7 @@ bool _gs_gui_style_sheet_parse_element(gs_gui_context_t* ctx, gs_lexer_t* lex, g
     return true;
 }
 
-bool _gs_gui_style_sheet_parse_id_tag(gs_gui_context_t* ctx, gs_lexer_t* lex, gs_gui_style_sheet_t* ss, const uint64_t id_tag)
+bool _gs_gui_style_sheet_parse_cid_tag(gs_gui_context_t* ctx, gs_lexer_t* lex, gs_gui_style_sheet_t* ss, const uint64_t cid_tag)
 {
     int32_t state = 0x00;
     int32_t bc = 0;
@@ -9641,7 +9797,7 @@ bool _gs_gui_style_sheet_parse_id_tag(gs_gui_context_t* ctx, gs_lexer_t* lex, gs
             case GS_TOKEN_IDENTIFIER:
             { 
                 // gs_println("Parsing attribute: %.*s", token.len, token.text);
-                if (!_gs_gui_style_sheet_parse_attribute(ctx, lex, ss, id_tag, GS_GUI_ELEMENT_COUNT, state))
+                if (!_gs_gui_style_sheet_parse_attribute(ctx, lex, ss, cid_tag, GS_GUI_ELEMENT_COUNT, state))
                 {
                     gs_log_warning("Unable to parse attribute");
                     return false;
@@ -9712,14 +9868,31 @@ GS_API_DECL gs_gui_style_sheet_t gs_gui_style_sheet_load_from_file(gs_gui_contex
 
             } break;
 
+            case GS_TOKEN_PERIOD:
+            {
+                // Do single class for now
+                gs_token_t cls_tag = gs_lexer_next_token(&lex);
+                char CLS_TAG[256] = gs_default_val();
+                CLS_TAG[0] = '.';
+                memcpy(CLS_TAG + 1, cls_tag.text, cls_tag.len);
+                uint64_t cls_hash = gs_hash_str64(CLS_TAG);
+                if (!_gs_gui_style_sheet_parse_cid_tag(ctx, &lex, &ss, cls_hash))
+                {
+                    gs_log_warning("Failed to parse id tag: %s", CLS_TAG);
+                    success = false;
+                    break;
+                }
+
+            } break;
+
             case GS_TOKEN_HASH:
             {
                 gs_token_t id_tag = gs_lexer_next_token(&lex);
                 char ID_TAG[256] = gs_default_val();
-				ID_TAG[0] = '#';
+                ID_TAG[0] = '#';
                 memcpy(ID_TAG + 1, id_tag.text, id_tag.len);
                 uint64_t id_hash = gs_hash_str64(ID_TAG);
-                if (!_gs_gui_style_sheet_parse_id_tag(ctx, &lex, &ss, id_hash))
+                if (!_gs_gui_style_sheet_parse_cid_tag(ctx, &lex, &ss, id_hash))
                 {
                     gs_log_warning("Failed to parse id tag: %s", ID_TAG);
                     success = false;
