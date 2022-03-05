@@ -7064,7 +7064,7 @@ GS_API_DECL int32_t gs_gui_window_begin_ex(gs_gui_context_t * ctx, const char* t
             gs_gui_push_clip_rect(ctx, r);
 
             gs_gui_draw_rect(ctx, r, id == ctx->focus ? act : hovered ? hov : tab_focus ? def : inactive); 
-            gs_gui_draw_control_text(ctx, title, tr, &ctx->style_sheet->styles[GS_GUI_ELEMENT_CONTAINER][state], opt); 
+            gs_gui_draw_control_text(ctx, title, r, &ctx->style_sheet->styles[GS_GUI_ELEMENT_CONTAINER][state], opt); 
 
             gs_gui_pop_clip_rect(ctx); 
 			gs_gui_pop_clip_rect(ctx);
