@@ -997,7 +997,7 @@ GS_API_DECL void gs_gui_set_style_sheet(gs_gui_context_t* ctx, gs_gui_style_shee
 //=== Resource Loading ===//
 
 GS_API_DECL gs_gui_style_sheet_t gs_gui_style_sheet_load_from_file(gs_gui_context_t* ctx, const char* file_path);
-GS_API_DECL gs_gui_style_sheet_t gs_gui_style_sheet_load_from_memory(gs_gui_context_t* ctx, const char* memory, size_t sz);
+GS_API_DECL gs_gui_style_sheet_t gs_gui_style_sheet_load_from_memory(gs_gui_context_t* ctx, const char* memory, size_t sz, bool* success);
 
 //=== Pools ===//
 
@@ -9073,23 +9073,79 @@ bool _gs_gui_style_sheet_parse_attribute_transition(gs_gui_context_t* ctx, gs_le
 
 #define PARSE_TRANSITION(T)\
     do {\
+        uint32_t time_v = 0;\
+        uint32_t delay_v = 0;\
         bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_COLON);\
-        ret &= gs_lexer_require_token_type(lex, GS_TOKEN_NUMBER);\
+        ret &= (gs_lexer_require_token_type(lex, GS_TOKEN_DOLLAR) || gs_lexer_require_token_type(lex, GS_TOKEN_NUMBER));\
         if (!ret) {\
-            gs_log_warning("Unidentified token.");\
+            gs_log_warning("Transition: Unidentified token.");\
             return false;\
         }\
         gs_token_t time = gs_lexer_current_token(lex);\
-        ret &= gs_lexer_require_token_type(lex, GS_TOKEN_NUMBER);\
+        switch (time.type)\
+        { \
+            case GS_TOKEN_NUMBER:\
+            {\
+                gs_snprintfc(TIME, 32, "%.*s", time.len, time.text);\
+                time_v = (uint32_t)atoi(TIME);\
+            } break;\
+\
+            case GS_TOKEN_DOLLAR:\
+            {\
+                ret &= (gs_lexer_require_token_type(lex, GS_TOKEN_IDENTIFIER));\
+                if (!ret) {\
+                    gs_log_warning("Transition: Variable missing identifier token.");\
+                    return false;\
+                }\
+                token = gs_lexer_current_token(lex);\
+                gs_snprintfc(VAR, 64, "%.*s", token.len, token.text);\
+                uint64_t hash = gs_hash_str64(VAR);\
+                if (gs_hash_table_exists(variables->variables, hash))\
+                {\
+                    time_v = (uint32_t)(gs_hash_table_getp(variables->variables, hash))->val.number;\
+                }\
+                else\
+                {\
+                    gs_log_warning("Transition: Variable not found: %s.", VAR);\
+                    return false;\
+                }\
+            } break;\
+        }\
+        ret &= (gs_lexer_require_token_type(lex, GS_TOKEN_DOLLAR) || gs_lexer_require_token_type(lex, GS_TOKEN_NUMBER));\
         if (!ret) {\
-            gs_log_warning("Unidentified token.");\
+            gs_log_warning("Transition: Unidentified token.");\
             return false;\
         }\
         gs_token_t delay = gs_lexer_current_token(lex);\
-        gs_snprintfc(TIME, 32, "%.*s", time.len, time.text);\
-        gs_snprintfc(DELAY, 32, "%.*s", delay.len, delay.text);\
-        uint32_t time_v = (uint32_t)atoi(TIME);\
-        uint32_t delay_v = (uint32_t)atoi(DELAY);\
+        switch (delay.type)\
+        {\
+            case GS_TOKEN_NUMBER:\
+            {\
+                gs_snprintfc(DELAY, 32, "%.*s", delay.len, delay.text);\
+                uint32_t delay_v = (uint32_t)atoi(DELAY);\
+            } break;\
+\
+            case GS_TOKEN_DOLLAR:\
+            {\
+                ret &= (gs_lexer_require_token_type(lex, GS_TOKEN_IDENTIFIER));\
+                if (!ret) {\
+                    gs_log_warning("Transition: Variable missing identifier token.");\
+                    return false;\
+                }\
+                token = gs_lexer_current_token(lex);\
+                gs_snprintfc(VAR, 64, "%.*s", token.len, token.text);\
+                uint64_t hash = gs_hash_str64(VAR);\
+                if (gs_hash_table_exists(variables->variables, hash))\
+                {\
+                    delay_v = (uint32_t)(gs_hash_table_getp(variables->variables, hash))->val.number;\
+                }\
+                else\
+                {\
+                    gs_log_warning("Transition: Variable not found: %s.", VAR);\
+                    return false;\
+                }\
+            } break;\
+        }\
         gs_gui_animation_property_t prop = gs_default_val();\
         prop.type = T;\
         prop.time = (int16_t)time_v;\
@@ -9107,6 +9163,11 @@ bool _gs_gui_style_sheet_parse_attribute_transition(gs_gui_context_t* ctx, gs_le
             {\
                 gs_dyn_array_push(list->properties[state], prop);\
             } break;\
+        }\
+        ret &= (gs_lexer_require_token_type(lex, GS_TOKEN_SEMICOLON));\
+        if (!ret) {\
+            gs_log_warning("Transition: Missing semicolon.");\
+            return false;\
         }\
     } while (0)
 
@@ -9227,8 +9288,7 @@ bool _gs_gui_style_sheet_parse_attribute_font(gs_gui_context_t* ctx, gs_lexer_t*
 
             case GS_TOKEN_DOLLAR:
             {
-                bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_LPAREN);
-                ret &= gs_lexer_require_token_type(lex, GS_TOKEN_IDENTIFIER);
+                bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_IDENTIFIER);
                 if (!ret) {
                     gs_log_warning("Unidentified token.");
                     return false;
@@ -9243,8 +9303,7 @@ bool _gs_gui_style_sheet_parse_attribute_font(gs_gui_context_t* ctx, gs_lexer_t*
                     return false;
                 }
                 memcpy(FONT, var->val.str, sizeof(FONT));
-                ret = gs_lexer_require_token_type(lex, GS_TOKEN_RPAREN);
-                ret &= gs_lexer_require_token_type(lex, GS_TOKEN_SEMICOLON);
+                ret = gs_lexer_require_token_type(lex, GS_TOKEN_SEMICOLON);
                 if (!ret) {
                     gs_log_warning("Missing semicolon.");
                     return false;
@@ -9355,8 +9414,7 @@ bool _gs_gui_style_sheet_parse_attribute_enum(gs_gui_context_t* ctx, gs_lexer_t*
 
             case GS_TOKEN_DOLLAR:
             {
-                bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_LPAREN);
-                ret &= gs_lexer_require_token_type(lex, GS_TOKEN_IDENTIFIER);
+                bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_IDENTIFIER);
                 if (!ret) {
                     gs_log_warning("Unidentified token.");
                     return false;
@@ -9371,8 +9429,7 @@ bool _gs_gui_style_sheet_parse_attribute_enum(gs_gui_context_t* ctx, gs_lexer_t*
                     return false;
                 }
                 SET_ENUM(justify_content, var->val.number);
-                ret = gs_lexer_require_token_type(lex, GS_TOKEN_RPAREN);
-                ret &= gs_lexer_require_token_type(lex, GS_TOKEN_SEMICOLON);
+                ret = gs_lexer_require_token_type(lex, GS_TOKEN_SEMICOLON);
                 if (!ret) {
                     gs_log_warning("Missing semicolon.");
                     return false;
@@ -9405,8 +9462,7 @@ bool _gs_gui_style_sheet_parse_attribute_enum(gs_gui_context_t* ctx, gs_lexer_t*
 
             case GS_TOKEN_DOLLAR:
             {
-                bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_LPAREN);
-                ret &= gs_lexer_require_token_type(lex, GS_TOKEN_IDENTIFIER);
+                bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_IDENTIFIER);
                 if (!ret) {
                     gs_log_warning("Unidentified token.");
                     return false;
@@ -9421,8 +9477,7 @@ bool _gs_gui_style_sheet_parse_attribute_enum(gs_gui_context_t* ctx, gs_lexer_t*
                     return false;
                 }
                 SET_ENUM(align_content, var->val.number);
-                ret = gs_lexer_require_token_type(lex, GS_TOKEN_RPAREN);
-                ret &= gs_lexer_require_token_type(lex, GS_TOKEN_SEMICOLON);
+                ret = gs_lexer_require_token_type(lex, GS_TOKEN_SEMICOLON);
                 if (!ret) {
                     gs_log_warning("Missing semicolon.");
                     return false;
@@ -9501,8 +9556,7 @@ bool _gs_gui_style_sheet_parse_attribute_val(gs_gui_context_t* ctx, gs_lexer_t* 
                 } break;\
                 case GS_TOKEN_DOLLAR:\
                 {\
-                    bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_LPAREN);\
-                    ret &= gs_lexer_require_token_type(lex, GS_TOKEN_IDENTIFIER);\
+                    bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_IDENTIFIER);\
                     if (!ret) {\
                         gs_log_warning("Unidentified token.");\
                         return false;\
@@ -9544,8 +9598,7 @@ bool _gs_gui_style_sheet_parse_attribute_val(gs_gui_context_t* ctx, gs_lexer_t* 
                             }\
                         } break;\
                     }\
-                    ret = gs_lexer_require_token_type(lex, GS_TOKEN_RPAREN);\
-                    ret &= gs_lexer_require_token_type(lex, GS_TOKEN_SEMICOLON);\
+                    ret = gs_lexer_require_token_type(lex, GS_TOKEN_SEMICOLON);\
                     if (!ret) {\
                         gs_log_warning("Missing semicolon.");\
                         return false;\
@@ -9578,8 +9631,7 @@ bool _gs_gui_style_sheet_parse_attribute_val(gs_gui_context_t* ctx, gs_lexer_t* 
                 } break;\
                 case GS_TOKEN_DOLLAR:\
                 {\
-                    bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_LPAREN);\
-                    ret &= gs_lexer_require_token_type(lex, GS_TOKEN_IDENTIFIER);\
+                    bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_IDENTIFIER);\
                     if (!ret) {\
                         gs_log_warning("Unidentified token.");\
                         return false;\
@@ -9594,8 +9646,7 @@ bool _gs_gui_style_sheet_parse_attribute_val(gs_gui_context_t* ctx, gs_lexer_t* 
                         return false;\
                     }\
                     val = (T)var->val.number;\
-                    ret = gs_lexer_require_token_type(lex, GS_TOKEN_RPAREN);\
-                    ret &= gs_lexer_require_token_type(lex, GS_TOKEN_SEMICOLON);\
+                    ret = gs_lexer_require_token_type(lex, GS_TOKEN_SEMICOLON);\
                     if (!ret) {\
                         gs_log_warning("Missing semicolon.");\
                         return false;\
@@ -9668,8 +9719,7 @@ bool _gs_gui_style_sheet_parse_attribute_val(gs_gui_context_t* ctx, gs_lexer_t* 
 \
                 case GS_TOKEN_DOLLAR:\
                 {\
-                    bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_LPAREN);\
-                    ret &= gs_lexer_require_token_type(lex, GS_TOKEN_IDENTIFIER);\
+                    bool ret = gs_lexer_require_token_type(lex, GS_TOKEN_IDENTIFIER);\
                     if (!ret) {\
                         gs_log_warning("Unidentified token.");\
                         return false;\
@@ -9684,8 +9734,7 @@ bool _gs_gui_style_sheet_parse_attribute_val(gs_gui_context_t* ctx, gs_lexer_t* 
                         return false;\
                     }\
                     val = (T)var->val.number;\
-                    ret = gs_lexer_require_token_type(lex, GS_TOKEN_RPAREN);\
-                    ret &= gs_lexer_require_token_type(lex, GS_TOKEN_SEMICOLON);\
+                    ret = gs_lexer_require_token_type(lex, GS_TOKEN_SEMICOLON);\
                     if (!ret) {\
                         gs_log_warning("Missing semicolon.");\
                         return false;\
@@ -9879,14 +9928,7 @@ bool _gs_gui_style_sheet_parse_attribute_color(gs_gui_context_t* ctx, gs_lexer_t
         }
     }
     else if (gs_token_compare_text(&token, "$"))
-    {
-        token = gs_lexer_next_token(lex);
-        if (token.type != GS_TOKEN_LPAREN)
-        {
-            gs_log_warning("Unidentified symbol found: %.*s. Expecting lparen for variable.", token.len, token.text);
-            return false;
-        }
-
+    { 
         token = gs_lexer_next_token(lex);
         if (token.type != GS_TOKEN_IDENTIFIER)
         {
@@ -9921,6 +9963,12 @@ bool _gs_gui_style_sheet_parse_attribute_color(gs_gui_context_t* ctx, gs_lexer_t
         else
         {
             gs_log_warning("Variable not found: %.*s.", token.len, token.text);
+        }
+        token = gs_lexer_next_token(lex);
+        if (token.type != GS_TOKEN_SEMICOLON) 
+        {
+            gs_log_warning("Syntax error. Expecting semicolon, found: %.*s.", token.len, token.text);
+            return false; 
         }
     }
     else
@@ -10283,6 +10331,8 @@ static bool _gs_gui_style_sheet_parse_variable(gs_gui_context_t* ctx, gs_lexer_t
 
         token = gs_lexer_next_token(lex);
     }
+
+    return true;
 }
 
 // Going to require a lot of parsing
@@ -10384,7 +10434,7 @@ GS_API_DECL gs_gui_style_sheet_t gs_gui_style_sheet_load_from_memory(gs_gui_cont
                 PARSE_ELEMENT(GS_GUI_ELEMENT_SCROLL, "* (scroll)"); 
             } break;
 
-            case GS_TOKEN_PERCENT:
+            case GS_TOKEN_DOLLAR:
             { 
                 gs_gui_ss_var_def_t variable = gs_default_val(); 
                 char variable_name[256] = gs_default_val();
