@@ -3757,7 +3757,7 @@ GS_API_DECL void gs_gui_begin(gs_gui_context_t* ctx, gs_vec2 framebuffer_size)
 
                     case GS_PLATFORM_MOUSE_WHEEL:
                     {
-                        gs_gui_input_scroll(ctx, 0, (int32_t)(-evt.mouse.wheel.y * 30.f));
+                        gs_gui_input_scroll(ctx, (int32_t)(-evt.mouse.wheel.x * 30.f), (int32_t)(-evt.mouse.wheel.y * 30.f));
                     } break;
 
                     case GS_PLATFORM_MOUSE_BUTTON_DOWN:
