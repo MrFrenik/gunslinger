@@ -1780,6 +1780,7 @@ typedef enum gs_hash_table_entry_state
         __HMV tmp_val;\
         size_t stride;\
         size_t klpvl;\
+        size_t tmp_idx;\
     }*
 
 // Need a way to create a temporary key so I can take the address of it
@@ -1796,7 +1797,7 @@ void __gs_hash_table_init_impl(void** ht, size_t sz)
 #define gs_hash_table_init(__HT, __K, __V)\
     do {\
         size_t entry_sz = sizeof(__K) + sizeof(__V) + sizeof(gs_hash_table_entry_state);\
-        size_t ht_sz = sizeof(__K) + sizeof(__V) + sizeof(void*) + 2 * sizeof(size_t);\
+        size_t ht_sz = sizeof(__K) + sizeof(__V) + sizeof(void*) + 3 * sizeof(size_t);\
         __gs_hash_table_init_impl((void**)&(__HT), ht_sz);\
         memset((__HT), 0, ht_sz);\
         gs_dyn_array_reserve(__HT->data, 2);\
@@ -1947,16 +1948,22 @@ uint32_t gs_hash_table_get_key_index_func(void** data, void* key, size_t key_len
 #define gs_hash_table_get(__HT, __HTK)\
     ((__HT)->tmp_key = (__HTK),\
         (gs_hash_table_geti((__HT),\
-            gs_hash_table_get_key_index_func((void**)&(__HT)->data, (void*)&((__HT)->tmp_key), sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), (__HT)->stride, (__HT)->klpvl))))
+            gs_hash_table_get_key_index_func((void**)&(__HT)->data, (void*)&((__HT)->tmp_key),\
+                sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), (__HT)->stride, (__HT)->klpvl)))) 
 
 #define gs_hash_table_getp(__HT, __HTK)\
-    ((__HT)->tmp_key = (__HTK),\
-        (&gs_hash_table_geti((__HT),\
-            gs_hash_table_get_key_index_func((void**)&(__HT)->data, (void*)&((__HT)->tmp_key), sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), (__HT)->stride, (__HT)->klpvl))))
+    (\
+        (__HT)->tmp_key = (__HTK),\
+        ((__HT)->tmp_idx = (uint32_t)gs_hash_table_get_key_index_func((void**)&(__HT->data), (void*)&(__HT->tmp_key), sizeof(__HT->tmp_key),\
+            sizeof(__HT->tmp_val), __HT->stride, __HT->klpvl)),\
+        ((__HT)->tmp_idx != GS_HASH_TABLE_INVALID_INDEX ? &gs_hash_table_geti((__HT), (__HT)->tmp_idx) : NULL)\
+    )
 
 #define gs_hash_table_key_exists(__HT, __HTK)\
     ((__HT)->tmp_key = (__HTK),\
-        (gs_hash_table_get_key_index_func((void**)&(__HT->data), (void*)&(__HT->tmp_key), sizeof(__HT->tmp_key), sizeof(__HT->tmp_val), __HT->stride, __HT->klpvl) != GS_HASH_TABLE_INVALID_INDEX))
+        (gs_hash_table_get_key_index_func((void**)&(__HT->data), (void*)&(__HT->tmp_key), sizeof(__HT->tmp_key),\
+            sizeof(__HT->tmp_val), __HT->stride, __HT->klpvl) != GS_HASH_TABLE_INVALID_INDEX))
+
 
 #define gs_hash_table_exists(__HT, __HTK)\
 		(__HT && gs_hash_table_key_exists((__HT), (__HTK)))
@@ -4416,13 +4423,13 @@ GS_API_DECL gs_token_t gs_lexer_c_next_token(gs_lexer_t* lex);
 
 typedef struct gs_platform_time_t
 {
-    f64 max_fps;
-    f64 current;
-    f64 previous;
-    f64 update;
-    f64 render;
-    f64 delta;
-    f64 frame;
+    float max_fps;
+    float elapsed;
+    float previous;
+    float update;
+    float render;
+    float delta;
+    float frame;
 } gs_platform_time_t;
 
 /*============================================================
@@ -4915,7 +4922,9 @@ GS_API_DECL void            gs_platform_destroy(gs_platform_t* platform);
 GS_API_DECL void gs_platform_update(gs_platform_t* platform);    // Update platform layer 
 
 // Platform Util
+GS_API_DECL const gs_platform_time_t* gs_platform_time();
 GS_API_DECL float  gs_platform_delta_time();
+GS_API_DECL float  gs_platform_frame_time();
 
 // Platform UUID
 GS_API_DECL gs_uuid_t gs_platform_uuid_generate();
@@ -7828,7 +7837,6 @@ GS_API_DECL gs_token_t gs_lexer_c_next_token(gs_lexer_t* lex)
 			case '}': {t.type = GS_TOKEN_RBRACE; lex->at++;} break;
 			case '[': {t.type = GS_TOKEN_LBRACKET; lex->at++;} break;
 			case ']': {t.type = GS_TOKEN_RBRACKET; lex->at++;} break;
-			case '-': {t.type = GS_TOKEN_MINUS; lex->at++;} break;
 			case '+': {t.type = GS_TOKEN_PLUS; lex->at++;} break;
 			case '*': {t.type = GS_TOKEN_ASTERISK; lex->at++;} break;
 			case '\\': {t.type = GS_TOKEN_BSLASH; lex->at++;} break;
@@ -7839,7 +7847,39 @@ GS_API_DECL gs_token_t gs_lexer_c_next_token(gs_lexer_t* lex)
 			case '\n': {t.type = GS_TOKEN_NEWLINE; lex->at++;} break;
 			case '\r': {t.type = GS_TOKEN_NEWLINE; lex->at++;} break;
 			case '\t': {t.type = GS_TOKEN_TAB; lex->at++;} break;
-			case '.': {t.type = GS_TOKEN_PERIOD; lex->at++;} break;
+			case '.': {t.type = GS_TOKEN_PERIOD; lex->at++;} break; 
+
+            case '-':
+            {
+                if (lex->at[1] && !gs_char_is_numeric(lex->at[1]))
+                {
+                    t.type = GS_TOKEN_MINUS; 
+                    lex->at++;
+                }
+                else
+                {
+                    lex->at++;
+                    uint32_t num_decimals = 0;
+                    while (
+                        lex->at[0] &&
+                        (gs_char_is_numeric(lex->at[0]) || 
+                        (lex->at[0] == '.' && num_decimals == 0) || 
+                        lex->at[0] == 'f')
+                    )
+                    {
+                        // Grab decimal
+                        num_decimals = lex->at[0] == '.' ? num_decimals++ : num_decimals;
+                        gs_println("%c", *lex->at);
+
+                        //Increment
+                        lex->at++;
+                    }
+
+                    t.len = lex->at - t.text;
+                    t.type = GS_TOKEN_NUMBER;
+                }
+
+            } break;
 			
 			case '/':
 			{
@@ -7916,7 +7956,7 @@ GS_API_DECL gs_token_t gs_lexer_c_next_token(gs_lexer_t* lex)
 					t.len = lex->at - t.text;
 					t.type = GS_TOKEN_IDENTIFIER;
 				}
-				else if (gs_char_is_numeric(c) || c == '-')
+				else if (gs_char_is_numeric(c) && c != '-')
 				{
 					uint32_t num_decimals = 0;
 					while (
@@ -8180,9 +8220,9 @@ GS_API_DECL void gs_frame()
     gs_platform_t* platform = gs_subsystem(platform);
 
     // Cache times at start of frame
-    platform->time.current  = gs_platform_elapsed_time();
-    platform->time.update   = platform->time.current - platform->time.previous;
-    platform->time.previous = platform->time.current;
+    platform->time.elapsed  = (float)gs_platform_elapsed_time();
+    platform->time.update   = platform->time.elapsed - platform->time.previous;
+    platform->time.previous = platform->time.elapsed;
 
     // Update platform and process input
     gs_platform_update(platform);
@@ -8214,9 +8254,9 @@ GS_API_DECL void gs_frame()
     }
 
     // Frame locking (not sure if this should be done here, but it is what it is)
-    platform->time.current  = gs_platform_elapsed_time();
-    platform->time.render   = platform->time.current - platform->time.previous;
-    platform->time.previous = platform->time.current;
+    platform->time.elapsed  = (float)gs_platform_elapsed_time();
+    platform->time.render   = platform->time.elapsed - platform->time.previous;
+    platform->time.previous = platform->time.elapsed;
     platform->time.frame    = platform->time.update + platform->time.render;            // Total frame time
     platform->time.delta    = platform->time.frame / 1000.f;
 
@@ -8226,9 +8266,9 @@ GS_API_DECL void gs_frame()
     {
         gs_platform_sleep((float)(target - platform->time.frame));
         
-        platform->time.current = gs_platform_elapsed_time();
-        double wait_time = platform->time.current - platform->time.previous;
-        platform->time.previous = platform->time.current;
+        platform->time.elapsed = (float)gs_platform_elapsed_time();
+        double wait_time = platform->time.elapsed - platform->time.previous;
+        platform->time.previous = platform->time.elapsed;
         platform->time.frame += wait_time;
         platform->time.delta = platform->time.frame / 1000.f;
     }

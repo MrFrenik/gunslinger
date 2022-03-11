@@ -74,14 +74,24 @@ uint32_t gs_platform_main_window()
 
 /*== Platform Time ==*/
 
-float gs_platform_delta_time()
+GS_API_DECL const gs_platform_time_t* gs_platform_time()
 {
-    return (float)gs_subsystem(platform)->time.delta;
+    return &gs_subsystem(platform)->time;
+}
+
+GS_API_DECL float gs_platform_delta_time()
+{
+    return gs_platform_time()->delta;
+}
+
+GS_API_DECL float gs_platform_frame_time()
+{
+    return gs_platform_time()->frame;
 }
 
 /*== Platform UUID ==*/
 
-struct gs_uuid_t gs_platform_uuid_generate()
+GS_API_DECL struct gs_uuid_t gs_platform_uuid_generate()
 {
     gs_uuid_t uuid;
 
