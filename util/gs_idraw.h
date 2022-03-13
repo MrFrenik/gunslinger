@@ -172,7 +172,7 @@ GS_API_DECL void gsi_mul_matrix(gs_immediate_draw_t* gsi, gs_mat4 m);
 GS_API_DECL void gsi_perspective(gs_immediate_draw_t* gsi, float fov, float aspect, float near, float far);
 GS_API_DECL void gsi_ortho(gs_immediate_draw_t* gsi, float left, float right, float bottom, float top, float near, float far);
 GS_API_DECL void gsi_rotatef(gs_immediate_draw_t* gsi, float angle, float x, float y, float z);
-GS_API_DECL void gsi_rotatefv(gs_immediate_draw_t* gsi, float angle, gs_vec3 v);
+GS_API_DECL void gsi_rotatev(gs_immediate_draw_t* gsi, float angle, gs_vec3 v);
 GS_API_DECL void gsi_translatef(gs_immediate_draw_t* gsi, float x, float y, float z);
 GS_API_DECL void gsi_translatev(gs_immediate_draw_t* gsi, gs_vec3 v);
 GS_API_DECL void gsi_scalef(gs_immediate_draw_t* gsi, float x, float y, float z);
@@ -970,7 +970,7 @@ void gsi_rotatef(gs_immediate_draw_t* gsi, float angle, float x, float y, float 
 	gsi_mul_matrix(gsi, gs_mat4_rotatev(angle, gs_v3(x, y, z)));
 }
 
-void gsi_rotatefv(gs_immediate_draw_t* gsi, float angle, gs_vec3 v)
+void gsi_rotatev(gs_immediate_draw_t* gsi, float angle, gs_vec3 v)
 {
 	gsi_rotatef(gsi, angle, v.x, v.y, v.z);
 }
