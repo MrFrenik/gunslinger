@@ -1805,11 +1805,11 @@ void gsi_renderpass_submit(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, gs
 	clear.actions = &action;
 	gs_renderpass pass = gs_default_val();
 	gs_vec2 fb = gs_platform_framebuffer_sizev(gsi->window_handle);
-	gs_graphics_begin_render_pass(cb, pass);
+	gs_graphics_renderpass_begin(cb, pass);
 	gs_graphics_set_viewport(cb, 0, 0, (int32_t)fb.x, (int32_t)fb.y);
 	gs_graphics_clear(cb, &clear);
 	gsi_draw(gsi, cb);
-	gs_graphics_end_render_pass(cb);
+	gs_graphics_renderpass_end(cb);
 }
 
 GS_API_DECL void gsi_renderpass_submit_ex(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, gs_graphics_clear_action_t* action)
@@ -1818,11 +1818,11 @@ GS_API_DECL void gsi_renderpass_submit_ex(gs_immediate_draw_t* gsi, gs_command_b
     clear.actions = action;
 	gs_renderpass pass = gs_default_val();
 	gs_vec2 fb = gs_platform_framebuffer_sizev(gsi->window_handle);
-	gs_graphics_begin_render_pass(cb, pass);
+	gs_graphics_renderpass_begin(cb, pass);
 	gs_graphics_set_viewport(cb, 0, 0, (int32_t)fb.x, (int32_t)fb.y);
 	gs_graphics_clear(cb, &clear);
 	gsi_draw(gsi, cb);
-	gs_graphics_end_render_pass(cb);
+	gs_graphics_renderpass_end(cb);
 }
 
 //-----------------------------------------------------------------------------
@@ -2525,7 +2525,7 @@ GS_API_DECL const char* GSGetDefaultCompressedFontDataTTFBase85()
 	// Begins render pass
 	gs_immediate_begin_pass(gi);
 	{
-		gs_immediate_push_render_pass(cb, rp, actions, actionsz);
+		gs_immediate_push_renderpass(cb, rp, actions, actionsz);
 		{	
 			// Pipeline has a specific layout, in the vertex data, you can push certain vertex information, depending on layout?
 			gs_immediate_push_pipeline(cb, pip);
@@ -2550,7 +2550,7 @@ GS_API_DECL const char* GSGetDefaultCompressedFontDataTTFBase85()
 			}
 			gs_immediate_pop_pipeline(cb);
 		}
-		gs_immediate_pop_render_pass(cb);
+		gs_immediate_pop_renderpass(cb);
 	}
 	gs_immediate_end_pass(cb);
 

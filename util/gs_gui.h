@@ -4671,13 +4671,13 @@ GS_API_DECL void gs_gui_renderpass_submit(gs_gui_context_t* ctx, gs_command_buff
 	action.color[3] = (float)c.a / 255.f;
 	gs_graphics_clear_desc_t clear = gs_default_val();
 	clear.actions = &action;
-    gs_graphics_begin_render_pass(cb, (gs_handle(gs_graphics_render_pass_t)){0});
+    gs_graphics_renderpass_begin(cb, (gs_handle(gs_graphics_renderpass_t)){0});
     {
         gs_graphics_clear(cb, &clear);
         gs_graphics_set_viewport(cb, 0, 0, (int)fbs.x,(int)fbs.y);
         gs_gui_render(ctx, cb);
     }
-    gs_graphics_end_render_pass(cb);
+    gs_graphics_renderpass_end(cb);
 }
 
 GS_API_DECL void gs_gui_renderpass_submit_ex(gs_gui_context_t* ctx, gs_command_buffer_t* cb, gs_graphics_clear_action_t* action)
@@ -4686,11 +4686,11 @@ GS_API_DECL void gs_gui_renderpass_submit_ex(gs_gui_context_t* ctx, gs_command_b
     gs_graphics_clear_desc_t clear = gs_default_val();
     clear.actions = action;
 	gs_renderpass pass = gs_default_val();
-	gs_graphics_begin_render_pass(cb, pass);
+	gs_graphics_renderpass_begin(cb, pass);
 	gs_graphics_set_viewport(cb, 0, 0, (int32_t)fbs.x, (int32_t)fbs.y);
 	gs_graphics_clear(cb, &clear);
 	gs_gui_render(ctx, cb);
-	gs_graphics_end_render_pass(cb);
+	gs_graphics_renderpass_end(cb);
 }
 
 GS_API_DECL void gs_gui_set_hover(gs_gui_context_t *ctx, gs_gui_id id)

@@ -5469,7 +5469,7 @@ gs_handle_decl(gs_graphics_uniform_buffer_t);
 gs_handle_decl(gs_graphics_storage_buffer_t);
 gs_handle_decl(gs_graphics_framebuffer_t);
 gs_handle_decl(gs_graphics_uniform_t);
-gs_handle_decl(gs_graphics_render_pass_t);
+gs_handle_decl(gs_graphics_renderpass_t);
 gs_handle_decl(gs_graphics_pipeline_t);
 
 /* Graphics Shader Source Desc */
@@ -5597,14 +5597,14 @@ typedef struct gs_graphics_clear_desc_t
 } gs_graphics_clear_desc_t;
 
 /* Graphics Render Pass Desc */
-typedef struct gs_graphics_render_pass_desc_t
+typedef struct gs_graphics_renderpass_desc_t
 {
     gs_handle(gs_graphics_framebuffer_t) fbo; // Default is set to invalid for backbuffer
     gs_handle(gs_graphics_texture_t)* color;  // Array of color attachments to be bound (useful for MRT, if supported) 
     size_t color_size;                        // Size of color attachment array
     gs_handle(gs_graphics_texture_t) depth;   // Depth attachment to be bound
     gs_handle(gs_graphics_texture_t) stencil; // Depth attachment to be bound
-} gs_graphics_render_pass_desc_t;
+} gs_graphics_renderpass_desc_t;
 
 /* 
     // If you want to write to a color attachment, you have to have a frame buffer attached that isn't the backbuffer
@@ -5769,15 +5769,15 @@ typedef struct gs_graphics_draw_desc_t
     } range;
 } gs_graphics_draw_desc_t;
 
-gs_inline gs_handle(gs_graphics_render_pass_t)
-__gs_render_pass_default_impl() 
+gs_inline gs_handle(gs_graphics_renderpass_t)
+__gs_renderpass_default_impl() 
 {
-    gs_handle(gs_graphics_render_pass_t) hndl = gs_default_val();
+    gs_handle(gs_graphics_renderpass_t) hndl = gs_default_val();
     return hndl;
 }
 
 // Convenience define for default render pass to back buffer
-#define GS_GRAPHICS_RENDER_PASS_DEFAULT (__gs_render_pass_default_impl())
+#define GS_GRAPHICS_RENDER_PASS_DEFAULT (__gs_renderpass_default_impl())
 
 typedef struct gs_graphics_info_t
 {
@@ -5824,7 +5824,7 @@ GS_API_DECL gs_handle(gs_graphics_index_buffer_t)   gs_graphics_index_buffer_cre
 GS_API_DECL gs_handle(gs_graphics_uniform_buffer_t) gs_graphics_uniform_buffer_create(const gs_graphics_uniform_buffer_desc_t* desc);
 GS_API_DECL gs_handle(gs_graphics_storage_buffer_t) gs_graphics_storage_buffer_create(const gs_graphics_storage_buffer_desc_t* desc);
 GS_API_DECL gs_handle(gs_graphics_framebuffer_t)    gs_graphics_framebuffer_create(const gs_graphics_framebuffer_desc_t* desc);
-GS_API_DECL gs_handle(gs_graphics_render_pass_t)    gs_graphics_render_pass_create(const gs_graphics_render_pass_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_renderpass_t)    gs_graphics_renderpass_create(const gs_graphics_renderpass_desc_t* desc);
 GS_API_DECL gs_handle(gs_graphics_pipeline_t)       gs_graphics_pipeline_create(const gs_graphics_pipeline_desc_t* desc);
 
 // Resource Destruction
@@ -5836,7 +5836,7 @@ GS_API_DECL void gs_graphics_index_buffer_destroy(gs_handle(gs_graphics_index_bu
 GS_API_DECL void gs_graphics_uniform_buffer_destroy(gs_handle(gs_graphics_uniform_buffer_t) hndl);
 GS_API_DECL void gs_graphics_storage_buffer_destroy(gs_handle(gs_graphics_storage_buffer_t) hndl);
 GS_API_DECL void gs_graphics_framebuffer_destroy(gs_handle(gs_graphics_framebuffer_t) hndl);
-GS_API_DECL void gs_graphics_render_pass_destroy(gs_handle(gs_graphics_render_pass_t) hndl);
+GS_API_DECL void gs_graphics_renderpass_destroy(gs_handle(gs_graphics_renderpass_t) hndl);
 GS_API_DECL void gs_graphics_pipeline_destroy(gs_handle(gs_graphics_pipeline_t) hndl); 
 
 // Resource Queries
@@ -5852,7 +5852,7 @@ GS_API_DECL void gs_graphics_texture_update(gs_handle(gs_graphics_texture_t) hnd
 // Resource Destruction
 GS_API_DECL void gs_graphics_texture_destroy(gs_handle(gs_graphics_texture_t) hndl);
 GS_API_DECL void gs_graphics_shader_destroy(gs_handle(gs_graphics_shader_t) hndl);
-GS_API_DECL void gs_graphics_render_pass_destroy(gs_handle(gs_graphics_render_pass_t) hndl);
+GS_API_DECL void gs_graphics_renderpass_destroy(gs_handle(gs_graphics_renderpass_t) hndl);
 GS_API_DECL void gs_graphics_pipeline_destroy(gs_handle(gs_graphics_pipeline_t) hndl);
 
 // Resource In-Flight Update
@@ -5863,8 +5863,8 @@ GS_API_DECL void gs_graphics_uniform_buffer_request_update(gs_command_buffer_t* 
 GS_API_DECL void gs_graphics_storage_buffer_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_storage_buffer_t) hndl, gs_graphics_storage_buffer_desc_t* desc);
 
 // Pipeline / Pass / Bind / Draw
-GS_API_DECL void gs_graphics_begin_render_pass(gs_command_buffer_t* cb, gs_handle(gs_graphics_render_pass_t) hndl);
-GS_API_DECL void gs_graphics_end_render_pass(gs_command_buffer_t* cb);
+GS_API_DECL void gs_graphics_begin_renderpass(gs_command_buffer_t* cb, gs_handle(gs_graphics_renderpass_t) hndl);
+GS_API_DECL void gs_graphics_end_renderpass(gs_command_buffer_t* cb);
 GS_API_DECL void gs_graphics_set_viewport(gs_command_buffer_t* cb, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
 GS_API_DECL void gs_graphics_set_view_scissor(gs_command_buffer_t* cb, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
 GS_API_DECL void gs_graphics_clear(gs_command_buffer_t* cb, gs_graphics_clear_desc_t* desc);
@@ -5874,14 +5874,13 @@ GS_API_DECL void gs_graphics_draw(gs_command_buffer_t* cb, gs_graphics_draw_desc
 GS_API_DECL void gs_graphics_dispatch_compute(gs_command_buffer_t* cb, uint32_t num_x_groups, uint32_t num_y_groups, uint32_t num_z_groups);
 
 // Submission (Main Thread)
-GS_API_DECL void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb); 
-#define gs_graphics_command_buffer_submit gs_graphics_submit_command_buffer
+GS_API_DECL void gs_graphics_command_buffer_submit(gs_command_buffer_t* cb);
 
 #ifndef GS_NO_SHORT_NAME
     
 typedef gs_handle(gs_graphics_shader_t)         gs_shader;
 typedef gs_handle(gs_graphics_texture_t)        gs_texture;
-typedef gs_handle(gs_graphics_render_pass_t)    gs_renderpass;
+typedef gs_handle(gs_graphics_renderpass_t)     gs_renderpass;
 typedef gs_handle(gs_graphics_framebuffer_t)    gs_framebuffer;
 typedef gs_handle(gs_graphics_pipeline_t)       gs_pipeline;
 typedef gs_handle(gs_graphics_vertex_buffer_t)  gs_vbo;

@@ -209,7 +209,7 @@ GS_API_DECL void gs_ai_bt_leaf(struct gs_ai_bt_t* ctx, gs_ai_bt_leaf_func func);
 #define gsai_bt(_CTX, ...)\
     do {\
         gs_ai_bt_begin((_CTX));\
-            ##__VA_ARGS__\
+            __VA_ARGS__\
         gs_ai_bt_end((_CTX));\
     } while (0)
 
@@ -217,7 +217,7 @@ GS_API_DECL void gs_ai_bt_leaf(struct gs_ai_bt_t* ctx, gs_ai_bt_leaf_func func);
     do {\
         if (gs_ai_bt_repeater_begin((_CTX), NULL))\
         {\
-            ## __VA_ARGS__\
+            __VA_ARGS__\
             gs_ai_bt_repeater_end((_CTX));\
         }\
     } while (0)
@@ -226,7 +226,7 @@ GS_API_DECL void gs_ai_bt_leaf(struct gs_ai_bt_t* ctx, gs_ai_bt_leaf_func func);
     do {\
         if (gs_ai_bt_inverter_begin((_CTX)))\
         {\
-            ## __VA_ARGS__\
+            __VA_ARGS__\
             gs_ai_bt_inverter_end((_CTX));\
         }\
     } while (0)
@@ -235,7 +235,7 @@ GS_API_DECL void gs_ai_bt_leaf(struct gs_ai_bt_t* ctx, gs_ai_bt_leaf_func func);
     do {\
         if (gs_ai_bt_condition_begin((_CTX), (_COND)))\
         {\
-            ## __VA_ARGS__\
+            __VA_ARGS__\
             gs_ai_bt_condition_end((_CTX));\
         }\
     } while (0)
@@ -244,7 +244,7 @@ GS_API_DECL void gs_ai_bt_leaf(struct gs_ai_bt_t* ctx, gs_ai_bt_leaf_func func);
     do {\
         if (gs_ai_bt_selector_begin((_CTX)))\
         {\
-            ## __VA_ARGS__\
+            __VA_ARGS__\
             gs_ai_bt_selector_end((_CTX));\
         }\
     } while (0)
@@ -253,7 +253,7 @@ GS_API_DECL void gs_ai_bt_leaf(struct gs_ai_bt_t* ctx, gs_ai_bt_leaf_func func);
     do {\
         if (gs_ai_bt_sequence_begin((_CTX)))\
         {\
-            ## __VA_ARGS__\
+            __VA_ARGS__\
             gs_ai_bt_sequence_end((_CTX));\
         }\
     } while (0)

@@ -87,12 +87,12 @@ typedef struct gsgl_pipeline_t {
 } gsgl_pipeline_t;
 
 /* Render Pass */
-typedef struct gsgl_render_pass_t {
+typedef struct gsgl_renderpass_t {
     gs_handle(gs_graphics_framebuffer_t) fbo;                        
     gs_dyn_array(gs_handle(gs_graphics_texture_t)) color;
     gs_handle(gs_graphics_texture_t) depth; 
     gs_handle(gs_graphics_texture_t) stencil;
-} gsgl_render_pass_t;
+} gsgl_renderpass_t;
 
 /* Shader */
 typedef uint32_t gsgl_shader_t;
@@ -134,7 +134,7 @@ typedef struct gsgl_data_t
     gs_slot_array(gsgl_buffer_t)         frame_buffers;
     gs_slot_array(gsgl_uniform_list_t)   uniforms;
     gs_slot_array(gsgl_pipeline_t)       pipelines;
-    gs_slot_array(gsgl_render_pass_t)    render_passes;
+    gs_slot_array(gsgl_renderpass_t)    renderpasses;
 
     // All the required uniform data for strict aliasing.
     struct {
@@ -574,7 +574,7 @@ void gs_graphics_destroy(gs_graphics_t* graphics)
     if (ogl->shaders)           OGL_FREE_DATA(ogl->shaders, gs_graphics_shader_t, gs_graphics_shader_destroy); 
     if (ogl->vertex_buffers)    OGL_FREE_DATA(ogl->vertex_buffers, gs_graphics_vertex_buffer_t, gs_graphics_vertex_buffer_destroy);
     if (ogl->index_buffers)     OGL_FREE_DATA(ogl->index_buffers, gs_graphics_index_buffer_t, gs_graphics_index_buffer_destroy); 
-    if (ogl->render_passes)     OGL_FREE_DATA(ogl->render_passes, gs_graphics_render_pass_t, gs_graphics_render_pass_destroy); 
+    if (ogl->renderpasses)     OGL_FREE_DATA(ogl->renderpasses, gs_graphics_renderpass_t, gs_graphics_renderpass_destroy); 
     if (ogl->frame_buffers)     OGL_FREE_DATA(ogl->frame_buffers, gs_graphics_framebuffer_t, gs_graphics_framebuffer_destroy); 
     if (ogl->textures)          OGL_FREE_DATA(ogl->textures, gs_graphics_texture_t, gs_graphics_texture_destroy); 
     if (ogl->uniforms)          OGL_FREE_DATA(ogl->uniforms, gs_graphics_uniform_t, gs_graphics_uniform_destroy); 
@@ -588,7 +588,7 @@ void gs_graphics_destroy(gs_graphics_t* graphics)
     gs_slot_array_free(ogl->uniforms);
     gs_slot_array_free(ogl->textures);
     gs_slot_array_free(ogl->pipelines);
-    gs_slot_array_free(ogl->render_passes);
+    gs_slot_array_free(ogl->renderpasses);
     gs_slot_array_free(ogl->uniform_buffers);
     gs_slot_array_free(ogl->storage_buffers);
 
@@ -618,13 +618,13 @@ void gs_graphics_init(gs_graphics_t* graphics)
     gsgl_uniform_list_t ul = gs_default_val();
     gsgl_uniform_buffer_t ub = gs_default_val();
     gsgl_pipeline_t pip = gs_default_val();
-    gsgl_render_pass_t rp = gs_default_val();
+    gsgl_renderpass_t rp = gs_default_val();
     gsgl_texture_t tex = gs_default_val();
     gsgl_storage_buffer_t sb = gs_default_val();
 
     gs_slot_array_insert(ogl->uniforms, ul);
     gs_slot_array_insert(ogl->pipelines, pip);
-    gs_slot_array_insert(ogl->render_passes, rp);
+    gs_slot_array_insert(ogl->renderpasses, rp);
     gs_slot_array_insert(ogl->uniform_buffers, ub);
     gs_slot_array_insert(ogl->textures, tex);
     gs_slot_array_insert(ogl->storage_buffers, sb);
@@ -1093,11 +1093,11 @@ GS_API_DECL gs_handle(gs_graphics_shader_t) gs_graphics_shader_create(const gs_g
     return (gs_handle_create(gs_graphics_shader_t, gs_slot_array_insert(ogl->shaders, shader)));
 }
 
-GS_API_DECL gs_handle(gs_graphics_render_pass_t) gs_graphics_render_pass_create(const gs_graphics_render_pass_desc_t* desc)
+GS_API_DECL gs_handle(gs_graphics_renderpass_t) gs_graphics_renderpass_create(const gs_graphics_renderpass_desc_t* desc)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data;
 
-    gsgl_render_pass_t pass = gs_default_val();
+    gsgl_renderpass_t pass = gs_default_val();
 
     // Set fbo
     pass.fbo = desc->fbo;
@@ -1112,7 +1112,7 @@ GS_API_DECL gs_handle(gs_graphics_render_pass_t) gs_graphics_render_pass_create(
     pass.depth = desc->depth;
 
     // Create handle and return
-    return (gs_handle_create(gs_graphics_render_pass_t, gs_slot_array_insert(ogl->render_passes, pass)));
+    return (gs_handle_create(gs_graphics_renderpass_t, gs_slot_array_insert(ogl->renderpasses, pass)));
 }
 
 GS_API_DECL gs_handle(gs_graphics_pipeline_t) gs_graphics_pipeline_create(const gs_graphics_pipeline_desc_t* desc)
@@ -1199,10 +1199,10 @@ GS_API_DECL void gs_graphics_framebuffer_destroy(gs_handle(gs_graphics_framebuff
     gs_slot_array_erase(ogl->frame_buffers, hndl.id);
 }
 
-GS_API_DECL void gs_graphics_render_pass_destroy(gs_handle(gs_graphics_render_pass_t) hndl)
+GS_API_DECL void gs_graphics_renderpass_destroy(gs_handle(gs_graphics_renderpass_t) hndl)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data;
-    gs_slot_array_erase(ogl->render_passes, hndl.id);
+    gs_slot_array_erase(ogl->renderpasses, hndl.id);
 }
 
 GS_API_DECL void gs_graphics_pipeline_destroy(gs_handle(gs_graphics_pipeline_t) hndl)
@@ -1363,14 +1363,14 @@ do {\
 } while (0)
 
 /* Command Buffer Ops: Pipeline / Pass / Bind / Draw */
-void gs_graphics_begin_render_pass(gs_command_buffer_t* cb, gs_handle(gs_graphics_render_pass_t) hndl)
+void gs_graphics_renderpass_begin(gs_command_buffer_t* cb, gs_handle(gs_graphics_renderpass_t) hndl)
 {
     __ogl_push_command(cb, GS_OPENGL_OP_BEGIN_RENDER_PASS, {
         gs_byte_buffer_write(&cb->commands, uint32_t, hndl.id);
     });
 }
 
-void gs_graphics_end_render_pass(gs_command_buffer_t* cb)
+void gs_graphics_renderpass_end(gs_command_buffer_t* cb)
 {
     __ogl_push_command(cb, GS_OPENGL_OP_END_RENDER_PASS, {
         // Nothing...
@@ -1634,7 +1634,7 @@ void gs_graphics_dispatch_compute(gs_command_buffer_t* cb, uint32_t num_x_groups
 }
 
 /* Submission (Main Thread) */
-void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
+void gs_graphics_command_buffer_submit(gs_command_buffer_t* cb)
 {
     /*
         // Structure of command: 
@@ -1661,9 +1661,9 @@ void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb)
                 gs_byte_buffer_readc(&cb->commands, uint32_t, rpid);
 
                 // If render pass exists, then we'll bind frame buffer and attachments 
-                if (rpid && gs_slot_array_exists(ogl->render_passes, rpid)) 
+                if (rpid && gs_slot_array_exists(ogl->renderpasses, rpid)) 
                 {
-                    gsgl_render_pass_t* rp = gs_slot_array_getp(ogl->render_passes, rpid);
+                    gsgl_renderpass_t* rp = gs_slot_array_getp(ogl->renderpasses, rpid);
 
                     // Bind frame buffer since it actually exists
                     if (rp->fbo.id && gs_slot_array_exists(ogl->frame_buffers, rp->fbo.id)) 
