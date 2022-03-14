@@ -205,6 +205,7 @@ GS_API_DECL void gs_ai_bt_sequence_end(struct gs_ai_bt_t* ctx);
 GS_API_DECL int32_t gs_ai_bt_parallel_begin(struct gs_ai_bt_t* ctx);
 GS_API_DECL void gs_ai_bt_parallel_end(struct gs_ai_bt_t* ctx);
 GS_API_DECL void gs_ai_bt_leaf(struct gs_ai_bt_t* ctx, gs_ai_bt_leaf_func func);
+GS_API_DECL void gs_ai_bt_wait(struct gs_ai_bt_t* ctx, float* time, float dt, float max);
 
 #define gsai_bt(_CTX, ...)\
     do {\
@@ -258,7 +259,8 @@ GS_API_DECL void gs_ai_bt_leaf(struct gs_ai_bt_t* ctx, gs_ai_bt_leaf_func func);
         }\
     } while (0)
 
-#define gsai_leaf(_CTX, _FUNC)  gs_ai_bt_leaf((_CTX), (_FUNC))
+#define gsai_leaf(_CTX, _FUNC)            gs_ai_bt_leaf((_CTX), (_FUNC)) 
+#define gsai_wait(_CTX, _TIME, _DT, _MAX) gs_ai_bt_wait((_CTX), (_TIME), (_DT), (_MAX))
 
 /** @} */ // end of gs_ai_util
 
@@ -747,6 +749,36 @@ GS_API_DECL void gs_ai_bt_leaf(struct gs_ai_bt_t* ctx, gs_ai_bt_leaf_func func)
 	if (parent && parent->processed_child != -1 && gs_ai_bt_node_child_get(ctx, parent, parent->processed_child)->idx != node->idx) return;
 
 	func(ctx, node); 
+}
+
+GS_API_DECL void gs_ai_bt_wait(struct gs_ai_bt_t* ctx, float* time, float dt, float max)
+{
+	// Next node
+	gs_ai_bt_node_t* node = gs_ai_bt_node_next(ctx);
+	gs_ai_bt_node_t* parent = gs_ai_bt_parent_node_get(ctx);
+	node->name = "wait";
+
+	// If not processing this node, return 0x00 to fail if check
+	if (parent && parent->processed_child != -1 && gs_ai_bt_node_child_get(ctx, parent, parent->processed_child)->idx != node->idx) return; 
+
+    if (!time) 
+    {
+        node->state = GS_AI_BT_STATE_SUCCESS;
+    }
+    else if (max == 0.f)
+    {
+        node->state = GS_AI_BT_STATE_SUCCESS;
+    }
+    else
+    { 
+        node->state = GS_AI_BT_STATE_RUNNING;
+
+        *time += dt;
+        if (*time >= max)
+        {
+            node->state = GS_AI_BT_STATE_SUCCESS;
+        }
+    } 
 }
 
 //==================//

@@ -2593,7 +2593,7 @@ gs_interp_linear(float a, float b, float t)
 }
 
 gs_inline float
-gs_interp_smooth_step(float a, float b, float t)
+gs_interp_smoothstep(float a, float b, float t)
 {
     return gs_interp_linear(a, b, t * t * (3.0f - 2.0f * t));
 }

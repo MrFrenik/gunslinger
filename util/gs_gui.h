@@ -1428,10 +1428,10 @@ GS_API_DECL gs_gui_style_t gs_gui_animation_get_blend_style(gs_gui_context_t* ct
         do {\
             gs_color_t* c0 = &s0.colors[TYPE];\
             gs_color_t* c1 = &s1.colors[TYPE];\
-            float r = 255.f * gs_interp_smooth_step((float)c0->r / 255.f, (float)c1->r / 255.f, t);\
-            float g = 255.f * gs_interp_smooth_step((float)c0->g / 255.f, (float)c1->g / 255.f, t);\
-            float b = 255.f * gs_interp_smooth_step((float)c0->b / 255.f, (float)c1->b / 255.f, t);\
-            float a = 255.f * gs_interp_smooth_step((float)c0->a / 255.f, (float)c1->a / 255.f, t);\
+            float r = 255.f * gs_interp_smoothstep((float)c0->r / 255.f, (float)c1->r / 255.f, t);\
+            float g = 255.f * gs_interp_smoothstep((float)c0->g / 255.f, (float)c1->g / 255.f, t);\
+            float b = 255.f * gs_interp_smoothstep((float)c0->b / 255.f, (float)c1->b / 255.f, t);\
+            float a = 255.f * gs_interp_smoothstep((float)c0->a / 255.f, (float)c1->a / 255.f, t);\
             ret.colors[TYPE] = gs_color((u8)r, (u8)g, (u8)b, (u8)a);\
         } while (0)
 
@@ -1439,7 +1439,7 @@ GS_API_DECL gs_gui_style_t gs_gui_animation_get_blend_style(gs_gui_context_t* ct
         do {\
             float v0 = (float)s0.FIELD;\
             float v1 = (float)s1.FIELD;\
-            ret.FIELD = (TYPE)gs_interp_smooth_step(v0, v1, t);\
+            ret.FIELD = (TYPE)gs_interp_smoothstep(v0, v1, t);\
         } while (0) 
 
 #define GS_GUI_BLEND_PROPERTIES(LIST)\
