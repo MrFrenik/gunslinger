@@ -952,6 +952,7 @@ GS_API_DECL void gs_gui_render(gs_gui_context_t* ctx, gs_command_buffer_t* cb);
 
 //=== Util ===//
 GS_API_DECL void gs_gui_renderpass_submit(gs_gui_context_t* ctx, gs_command_buffer_t* cb, gs_color_t clear); 
+GS_API_DECL void gs_gui_renderpass_submit_ex(gs_gui_context_t* ctx, gs_command_buffer_t* cb, gs_graphics_clear_action_t* action);
 GS_API_DECL void gs_gui_parse_id_tag(gs_gui_context_t* ctx, const char* str, char* buffer, size_t sz);
 GS_API_DECL void gs_gui_parse_label_tag(gs_gui_context_t* ctx, const char* str, char* buffer, size_t sz);
 
@@ -4677,6 +4678,19 @@ GS_API_DECL void gs_gui_renderpass_submit(gs_gui_context_t* ctx, gs_command_buff
         gs_gui_render(ctx, cb);
     }
     gs_graphics_end_render_pass(cb);
+}
+
+GS_API_DECL void gs_gui_renderpass_submit_ex(gs_gui_context_t* ctx, gs_command_buffer_t* cb, gs_graphics_clear_action_t* action)
+{
+    gs_vec2 fbs = ctx->framebuffer_size;
+    gs_graphics_clear_desc_t clear = gs_default_val();
+    clear.actions = action;
+	gs_renderpass pass = gs_default_val();
+	gs_graphics_begin_render_pass(cb, pass);
+	gs_graphics_set_viewport(cb, 0, 0, (int32_t)fbs.x, (int32_t)fbs.y);
+	gs_graphics_clear(cb, &clear);
+	gs_gui_render(ctx, cb);
+	gs_graphics_end_render_pass(cb);
 }
 
 GS_API_DECL void gs_gui_set_hover(gs_gui_context_t *ctx, gs_gui_id id)

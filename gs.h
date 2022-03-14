@@ -5874,7 +5874,8 @@ GS_API_DECL void gs_graphics_draw(gs_command_buffer_t* cb, gs_graphics_draw_desc
 GS_API_DECL void gs_graphics_dispatch_compute(gs_command_buffer_t* cb, uint32_t num_x_groups, uint32_t num_y_groups, uint32_t num_z_groups);
 
 // Submission (Main Thread)
-GS_API_DECL void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb);
+GS_API_DECL void gs_graphics_submit_command_buffer(gs_command_buffer_t* cb); 
+#define gs_graphics_command_buffer_submit gs_graphics_submit_command_buffer
 
 #ifndef GS_NO_SHORT_NAME
     
