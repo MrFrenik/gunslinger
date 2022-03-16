@@ -465,7 +465,7 @@ void gs_gfxt_material_bind(gs_command_buffer_t* cb, gs_gfxt_material_t* mat)
     // Binds the pipeline
     gs_gfxt_pipeline_t* pip = GS_GFXT_RAW_DATA(&mat->desc.pip_func, gs_gfxt_pipeline_t);
     gs_assert(pip);
-    gs_graphics_bind_pipeline(cb, pip->hndl);
+    gs_graphics_pipeline_bind(cb, pip->hndl);
 }
 
 GS_API_DECL 
@@ -1152,7 +1152,7 @@ gs_handle(gs_graphics_texture_t) gs_gfxt_texture_generate_default()
     desc.mag_filter = GS_GRAPHICS_TEXTURE_FILTER_NEAREST;
     desc.wrap_s = GS_GRAPHICS_TEXTURE_WRAP_REPEAT;
     desc.wrap_t = GS_GRAPHICS_TEXTURE_WRAP_REPEAT;
-    desc.data = pixels;
+    *desc.data = pixels;
 
     // Create dynamic texture
     return gs_graphics_texture_create(&desc);

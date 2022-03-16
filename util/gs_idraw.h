@@ -336,7 +336,7 @@ void gs_immediate_draw_static_data_init()
 	tdesc.format = GS_GRAPHICS_TEXTURE_FORMAT_RGBA8;
 	tdesc.min_filter = GS_GRAPHICS_TEXTURE_FILTER_NEAREST;
 	tdesc.mag_filter = GS_GRAPHICS_TEXTURE_FILTER_NEAREST;	
-	tdesc.data = pixels;
+	*tdesc.data = pixels;
 
 	GSI()->tex_default = gs_graphics_texture_create(&tdesc);
 
@@ -433,7 +433,7 @@ void gs_immediate_draw_static_data_init()
    	gs_graphics_texture_desc_t desc = gs_default_val();
    	desc.width = w;
    	desc.height = h;
-   	desc.data = flipmap;
+   	*desc.data = flipmap;
    	desc.format = GS_GRAPHICS_TEXTURE_FORMAT_RGBA8;
    	desc.min_filter = GS_GRAPHICS_TEXTURE_FILTER_NEAREST;
    	desc.mag_filter = GS_GRAPHICS_TEXTURE_FILTER_NEAREST;
@@ -441,7 +441,7 @@ void gs_immediate_draw_static_data_init()
    	// Generate atlas texture for bitmap with bitmap data
    	f->texture.hndl = gs_graphics_texture_create(&desc);
    	f->texture.desc = desc;
-   	f->texture.desc.data = NULL;
+   	*f->texture.desc.data = NULL;
 
     gs_free(compressed_ttf_data);
    	gs_free(buf_decompressed_data);
@@ -518,7 +518,7 @@ void gs_immediate_draw_set_pipeline(gs_immediate_draw_t* gsi)
 
 	// Bind pipeline
 	gs_assert(gs_hash_table_key_exists(GSI()->pipeline_table, gsi->cache.pipeline));
-	gs_graphics_bind_pipeline(&gsi->commands, gs_hash_table_get(GSI()->pipeline_table, gsi->cache.pipeline));
+	gs_graphics_pipeline_bind(&gsi->commands, gs_hash_table_get(GSI()->pipeline_table, gsi->cache.pipeline));
 }
 
 /* Core Vertex Functions */

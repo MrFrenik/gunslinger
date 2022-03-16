@@ -40,7 +40,8 @@ typedef enum gsgl_uniform_type
     GSGL_UNIFORMTYPE_VEC3,
     GSGL_UNIFORMTYPE_VEC4,
     GSGL_UNIFORMTYPE_MAT4,
-    GSGL_UNIFORMTYPE_SAMPLER2D
+    GSGL_UNIFORMTYPE_SAMPLER2D,
+    GSGL_UNIFORMTYPE_SAMPLERCUBE
 } gsgl_uniform_type;
 
 /* Uniform (stores samplers as well as primitive uniforms) */
@@ -181,12 +182,16 @@ void gsgl_pipeline_state()
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glBindTexture(GL_TEXTURE_2D, 0);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
     CHECK_GL_CORE(
         glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, 0);
     )
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_STENCIL_TEST);
     glDisable(GL_BLEND);
+    CHECK_GL_CORE(
+        glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+    );
 
     CHECK_GL_CORE(
         gs_graphics_info_t* info = gs_graphics_info();
@@ -450,6 +455,7 @@ gsgl_uniform_type gsgl_uniform_type_to_gl_uniform_type(gs_graphics_uniform_type 
         case GS_GRAPHICS_UNIFORM_VEC4: type = GSGL_UNIFORMTYPE_VEC4; break;
         case GS_GRAPHICS_UNIFORM_MAT4: type = GSGL_UNIFORMTYPE_MAT4; break;
         case GS_GRAPHICS_UNIFORM_SAMPLER2D: type = GSGL_UNIFORMTYPE_SAMPLER2D; break;
+        case GS_GRAPHICS_UNIFORM_SAMPLERCUBE: type = GSGL_UNIFORMTYPE_SAMPLERCUBE; break;
     }
     return type;
 } 
@@ -529,6 +535,7 @@ size_t gsgl_uniform_data_size_in_bytes(gs_graphics_uniform_type type)
         case GS_GRAPHICS_UNIFORM_VEC4:  sz = 4 * sizeof(float); break;
         case GS_GRAPHICS_UNIFORM_MAT4:  sz = 16 * sizeof(float); break;
         case GS_GRAPHICS_UNIFORM_SAMPLER2D:  sz = sizeof(gs_handle(gs_graphics_texture_t)); break;  // handle size
+        case GS_GRAPHICS_UNIFORM_SAMPLERCUBE:  sz = sizeof(gs_handle(gs_graphics_texture_t)); break;  // handle size
         default: {
             sz = 0;
         } break;
@@ -677,85 +684,87 @@ gsgl_texture_t gl_texture_update_internal(const gs_graphics_texture_desc_t* desc
     if (hndl) tex = gs_slot_array_get(ogl->textures, hndl);
     uint32_t width = desc->width;
     uint32_t height = desc->height;
-    void* data = desc->data; 
+    void* data = NULL;
 
     if (!hndl)
     {
         glGenTextures(1, &tex.id);
-    }
-
-    glBindTexture(GL_TEXTURE_2D, tex.id);
-
-    if (tex.desc.width * tex.desc.height < width * height) 
-    {
-        // Construct texture based on appropriate format
-        switch(desc->format) 
-        {
-            case GS_GRAPHICS_TEXTURE_FORMAT_A8:                 
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, width, height, 0, GL_ALPHA, GL_UNSIGNED_BYTE, data); break;
-            case GS_GRAPHICS_TEXTURE_FORMAT_R8:                 
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, data); break;
-            case GS_GRAPHICS_TEXTURE_FORMAT_RGB8:               
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data); break;
-            case GS_GRAPHICS_TEXTURE_FORMAT_RGBA8:              
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data); break;
-            case GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F:            
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, data); break;
-            case GS_GRAPHICS_TEXTURE_FORMAT_RGBA32F:            
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, data); break;
-            case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH8:             
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
-            case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH16:            
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT16, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;              
-            case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH24:            
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
-            case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH32F:           
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
-            case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH24_STENCIL8:   
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH24_STENCIL8, width, height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, data);
-            case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH32F_STENCIL8:  
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH32F_STENCIL8, width, height, 0, GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV, data); break;
-
-            // NOTE(john): Because Apple is a shit company, I have to section this off and provide support for 4.1 only features.
-            // case GS_GRAPHICS_TEXTURE_FORMAT_STENCIL8:            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT8, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
-            default: break;
-        }
-    }
-    else
-    {
-        // Subimage
-        switch (desc->format)
-        {
-            case GS_GRAPHICS_TEXTURE_FORMAT_A8:                 
-                glTexSubImage2D(GL_TEXTURE_2D, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_ALPHA, GL_UNSIGNED_BYTE, data); break;
-            case GS_GRAPHICS_TEXTURE_FORMAT_R8:                 
-                glTexSubImage2D(GL_TEXTURE_2D, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RED, GL_UNSIGNED_BYTE, data); break;
-            case GS_GRAPHICS_TEXTURE_FORMAT_RGB8:               
-                glTexSubImage2D(GL_TEXTURE_2D, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RGB, GL_UNSIGNED_BYTE, data); break;
-            case GS_GRAPHICS_TEXTURE_FORMAT_RGBA8:              
-                glTexSubImage2D(GL_TEXTURE_2D, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, data); break;
-            case GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F:            
-                glTexSubImage2D(GL_TEXTURE_2D, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RGBA, GL_FLOAT, data); break;
-            case GS_GRAPHICS_TEXTURE_FORMAT_RGBA32F:            
-                glTexSubImage2D(GL_TEXTURE_2D, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RGBA, GL_FLOAT, data); break;
-            case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH8:             
-                glTexSubImage2D(GL_TEXTURE_2D, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
-            case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH16:            
-                glTexSubImage2D(GL_TEXTURE_2D, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;              
-            case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH24:            
-                glTexSubImage2D(GL_TEXTURE_2D, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
-            case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH32F:           
-                glTexSubImage2D(GL_TEXTURE_2D, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
-            case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH24_STENCIL8:   
-                glTexSubImage2D(GL_TEXTURE_2D, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, data);
-            case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH32F_STENCIL8:  
-                glTexSubImage2D(GL_TEXTURE_2D, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV, data); break;
-
-            // NOTE(john): Because Apple is a shit company, I have to section this off and provide support for 4.1 only features.
-            // case GS_GRAPHICS_TEXTURE_FORMAT_STENCIL8:            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT8, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
-            default: break;
-        }
     } 
+
+    GLenum target = 0x00; 
+    switch (desc->type)
+    {
+        default:
+        case GS_GRAPHICS_TEXTURE_2D:        {target = GL_TEXTURE_2D;} break;
+        case GS_GRAPHICS_TEXTURE_CUBEMAP:   {target = GL_TEXTURE_CUBE_MAP;} break;
+    }
+
+    glBindTexture(target, tex.id);
+
+	uint32_t cnt = GS_GRAPHICS_TEXTURE_DATA_MAX;
+	switch (desc->type)
+	{
+		case GS_GRAPHICS_TEXTURE_2D: cnt = 1; break;
+	}
+
+    for (uint32_t i = 0; i < cnt; ++i)
+    {
+        GLenum itarget = 0x00;
+        data = desc->data[i];
+        switch (desc->type)
+        {
+            default:
+            case GS_GRAPHICS_TEXTURE_2D:        {itarget = GL_TEXTURE_2D;} break;
+            case GS_GRAPHICS_TEXTURE_CUBEMAP:   {itarget = GL_TEXTURE_CUBE_MAP_POSITIVE_X + i;} break;
+        }
+
+        if (tex.desc.width * tex.desc.height < width * height)
+        {
+            // Construct texture based on appropriate format
+            switch(desc->format) 
+            {
+                case GS_GRAPHICS_TEXTURE_FORMAT_A8: glTexImage2D(itarget, 0, GL_ALPHA, width, height, 0, GL_ALPHA, GL_UNSIGNED_BYTE, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_R8: glTexImage2D(itarget, 0, GL_RED, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_RGB8: glTexImage2D(itarget, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_RGBA8: glTexImage2D(itarget, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F: glTexImage2D(itarget, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_RGBA32F: glTexImage2D(itarget, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH8: glTexImage2D(itarget, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH16: glTexImage2D(itarget, 0, GL_DEPTH_COMPONENT16, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;              
+                case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH24: glTexImage2D(itarget, 0, GL_DEPTH_COMPONENT24, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH32F: glTexImage2D(itarget, 0, GL_DEPTH_COMPONENT32F, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH24_STENCIL8: glTexImage2D(itarget, 0, GL_DEPTH24_STENCIL8, width, height, 0, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, data);
+                case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH32F_STENCIL8: glTexImage2D(itarget, 0, GL_DEPTH32F_STENCIL8, width, height, 0, GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV, data); break;
+
+                // NOTE(john): Because Apple is a shit company, I have to section this off and provide support for 4.1 only features.
+                // case GS_GRAPHICS_TEXTURE_FORMAT_STENCIL8:            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT8, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
+                default: break;
+            }
+        }
+        else
+        {
+            // Subimage
+            switch (desc->format)
+            {
+                case GS_GRAPHICS_TEXTURE_FORMAT_A8: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_ALPHA, GL_UNSIGNED_BYTE, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_R8: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RED, GL_UNSIGNED_BYTE, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_RGB8: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RGB, GL_UNSIGNED_BYTE, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_RGBA8: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RGBA, GL_FLOAT, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_RGBA32F: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RGBA, GL_FLOAT, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH8: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH16: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH24: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH32F: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH24_STENCIL8: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, data);
+                case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH32F_STENCIL8: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV, data); break;
+
+                // NOTE(john): Because Apple is a shit company, I have to section this off and provide support for 4.1 only features.
+                // case GS_GRAPHICS_TEXTURE_FORMAT_STENCIL8:            glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT8, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
+                default: break;
+            }
+        } 
+    }
 
     int32_t mag_filter = desc->mag_filter == GS_GRAPHICS_TEXTURE_FILTER_NEAREST ? GL_NEAREST : GL_LINEAR;
     int32_t min_filter = desc->min_filter == GS_GRAPHICS_TEXTURE_FILTER_NEAREST ? GL_NEAREST : GL_LINEAR;
@@ -771,24 +780,26 @@ gsgl_texture_t gl_texture_update_internal(const gs_graphics_texture_desc_t* desc
         }
     }
 
-    uint32_t texture_wrap_s = gsgl_texture_wrap_to_gl_texture_wrap(desc->wrap_s); 
-    uint32_t texture_wrap_t = gsgl_texture_wrap_to_gl_texture_wrap(desc->wrap_t);
+    const uint32_t texture_wrap_s = gsgl_texture_wrap_to_gl_texture_wrap(desc->wrap_s); 
+    const uint32_t texture_wrap_t = gsgl_texture_wrap_to_gl_texture_wrap(desc->wrap_t);
+    const uint32_t texture_wrap_r = gsgl_texture_wrap_to_gl_texture_wrap(desc->wrap_r);
 
     if (desc->num_mips) {
-        glGenerateMipmap(GL_TEXTURE_2D);
+        glGenerateMipmap(target);
     }
 
     // float aniso = 0.0f;
     // glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &aniso);
     // glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, aniso); 
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, texture_wrap_s);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, texture_wrap_t);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, mag_filter);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter);
+    glTexParameteri(target, GL_TEXTURE_WRAP_S, texture_wrap_s);
+    glTexParameteri(target, GL_TEXTURE_WRAP_T, texture_wrap_t);
+    glTexParameteri(target, GL_TEXTURE_WRAP_R, texture_wrap_r);
+    glTexParameteri(target, GL_TEXTURE_MAG_FILTER, mag_filter);
+    glTexParameteri(target, GL_TEXTURE_MIN_FILTER, min_filter);
 
     // Unbind buffers
-    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindTexture(target, 0);
     glBindRenderbuffer(GL_RENDERBUFFER, 0);
 
     // Set description
@@ -1604,7 +1615,7 @@ void gs_graphics_apply_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t
     };
 }
 
-void gs_graphics_bind_pipeline(gs_command_buffer_t* cb, gs_handle(gs_graphics_pipeline_t) hndl)
+void gs_graphics_pipeline_bind(gs_command_buffer_t* cb, gs_handle(gs_graphics_pipeline_t) hndl)
 {
     // NOTE(john): Not sure if this is safe in the future, since the data for pipelines is on the main thread and MIGHT be tampered with on a separate thread.
     __ogl_push_command(cb, GS_OPENGL_OP_BIND_PIPELINE, {
@@ -1988,6 +1999,7 @@ void gs_graphics_command_buffer_submit(gs_command_buffer_t* cb)
                                         glUniformMatrix4fv(u->location, ct, false, (float*)ogl->uniform_data.mat4); 
                                     } break;
 
+                                    case GSGL_UNIFORMTYPE_SAMPLERCUBE:
                                     case GSGL_UNIFORMTYPE_SAMPLER2D:
                                     {
                                         gs_assert(u->size == sizeof(gs_handle(gs_graphics_texture_t)));
@@ -2004,7 +2016,14 @@ void gs_graphics_command_buffer_submit(gs_command_buffer_t* cb)
                                             glActiveTexture(GL_TEXTURE0 + binding);
 
                                             // Bind texture
-                                            glBindTexture(GL_TEXTURE_2D, tex->id);
+                                            GLenum target = 0x00;
+                                            switch (tex->desc.type)
+                                            {
+                                                default: 
+                                                case GS_GRAPHICS_TEXTURE_2D:      {target = GL_TEXTURE_2D;} break;
+                                                case GS_GRAPHICS_TEXTURE_CUBEMAP: {target = GL_TEXTURE_CUBE_MAP;} break;
+                                            }
+                                            glBindTexture(target, tex->id);
 
                                             binds[i] = (int32_t)binding++;
                                         } 
@@ -2448,7 +2467,7 @@ void gs_graphics_command_buffer_submit(gs_command_buffer_t* cb)
                 uint32_t int_format = gsgl_texture_format_to_gl_texture_internal_format(desc.format);
                 uint32_t format = gsgl_texture_format_to_gl_texture_format(desc.format);
                 uint32_t dt = gsgl_texture_format_to_gl_data_type(desc.format);
-                desc.data = (cb->commands.data + cb->commands.position);
+                *desc.data = (cb->commands.data + cb->commands.position);
                 *tex = gl_texture_update_internal(&desc, tex_slot_id);
 
                 // Bind texture

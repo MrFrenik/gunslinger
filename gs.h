@@ -5303,6 +5303,7 @@ gs_enum_decl(gs_graphics_uniform_type,
     GS_GRAPHICS_UNIFORM_VEC4,
     GS_GRAPHICS_UNIFORM_MAT4,
     GS_GRAPHICS_UNIFORM_SAMPLER2D,
+    GS_GRAPHICS_UNIFORM_SAMPLERCUBE,
     GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F,
     GS_GRAPHICS_UNIFORM_BLOCK
 );
@@ -5368,9 +5369,25 @@ gs_enum_decl(gs_graphics_access_type,
     GS_GRAPHICS_ACCESS_READ_ONLY,
     GS_GRAPHICS_ACCESS_WRITE_ONLY,
     GS_GRAPHICS_ACCESS_READ_WRITE
-);
+); 
 
-/* Texture Format */
+//=== Texture ===// 
+typedef enum
+{
+    GS_GRAPHICS_TEXTURE_2D = 0x00, 
+    GS_GRAPHICS_TEXTURE_CUBEMAP
+} gs_graphics_texture_type;
+
+typedef enum 
+{
+    GS_GRAPHICS_TEXTURE_CUBEMAP_POSITIVE_X = 0x00,
+    GS_GRAPHICS_TEXTURE_CUBEMAP_NEGATIVE_X,
+    GS_GRAPHICS_TEXTURE_CUBEMAP_POSITIVE_Y,
+    GS_GRAPHICS_TEXTURE_CUBEMAP_NEGATIVE_Y,
+    GS_GRAPHICS_TEXTURE_CUBEMAP_POSITIVE_Z,
+    GS_GRAPHICS_TEXTURE_CUBEMAP_NEGATIVE_Z
+} gs_graphics_cubemap_face_type;
+
 gs_enum_decl(gs_graphics_texture_format_type,
     GS_GRAPHICS_TEXTURE_FORMAT_RGBA8,
     GS_GRAPHICS_TEXTURE_FORMAT_RGB8,
@@ -5387,7 +5404,6 @@ gs_enum_decl(gs_graphics_texture_format_type,
     GS_GRAPHICS_TEXTURE_FORMAT_STENCIL8
 );
 
-/* Texture Wrapping */
 gs_enum_decl(gs_graphics_texture_wrapping_type,
     GS_GRAPHICS_TEXTURE_WRAP_REPEAT,
     GS_GRAPHICS_TEXTURE_WRAP_MIRRORED_REPEAT,
@@ -5395,13 +5411,12 @@ gs_enum_decl(gs_graphics_texture_wrapping_type,
     GS_GRAPHICS_TEXTURE_WRAP_CLAMP_TO_BORDER
 );
 
-/* Texture Filtering Type */
 gs_enum_decl(gs_graphics_texture_filtering_type,
     GS_GRAPHICS_TEXTURE_FILTER_NEAREST,
     GS_GRAPHICS_TEXTURE_FILTER_LINEAR
 );
 
-/* Render Pass Action Flag */
+//=== Clear ===// 
 gs_enum_decl(gs_graphics_clear_flag,
     GS_GRAPHICS_CLEAR_COLOR = 0x01,
     GS_GRAPHICS_CLEAR_DEPTH = 0x02,
@@ -5414,7 +5429,7 @@ gs_enum_decl(gs_graphics_clear_flag,
     GS_GRAPHICS_CLEAR_DEPTH |\
     GS_GRAPHICS_CLEAR_STENCIL
 
-/* Bind Type */
+//=== Bind Type ===//
 gs_enum_decl(gs_graphics_bind_type,
     GS_GRAPHICS_BIND_VERTEX_BUFFER,
     GS_GRAPHICS_BIND_INDEX_BUFFER,
@@ -5487,26 +5502,30 @@ typedef struct gs_graphics_shader_desc_t
     char name[64];               // Optional (for logging and debugging mainly)
 } gs_graphics_shader_desc_t;
 
+#define GS_GRAPHICS_TEXTURE_DATA_MAX  6
+
 /* Graphics Texture Desc */
 typedef struct gs_graphics_texture_desc_t
 {
-    uint32_t width;                                 // Width of texture in pixels
-    uint32_t height;                                // Height of texture in pixels
+    gs_graphics_texture_type type;
+    uint32_t width;                                 // Width of texture in texels
+    uint32_t height;                                // Height of texture in texels
+    uint32_t depth;                                 // Depth of texture
+    void* data[GS_GRAPHICS_TEXTURE_DATA_MAX];       // Texture data to upload (can be null)
     gs_graphics_texture_format_type format;         // Format of texture data (rgba32, rgba8, rgba32f, r8, depth32f, etc...)
     gs_graphics_texture_wrapping_type wrap_s;       // Wrapping type for s axis of texture
     gs_graphics_texture_wrapping_type wrap_t;       // Wrapping type for t axis of texture
+    gs_graphics_texture_wrapping_type wrap_r;       // Wrapping type for r axis of texture
     gs_graphics_texture_filtering_type min_filter;  // Minification filter for texture
     gs_graphics_texture_filtering_type mag_filter;  // Magnification filter for texture
     gs_graphics_texture_filtering_type mip_filter;  // Mip filter for texture
-    uint32_t num_mips;                              // Number of mips to generate (default 0 is disable mip generation)
-    void* data;                                     // Texture data to upload (can be null)
-    b32 render_target;                              // Default to false (not a render target)
     gs_vec2 offset;                                 // Offset for updates
+    uint32_t num_mips;                              // Number of mips to generate (default 0 is disable mip generation)
     struct {
-        uint32_t x;         // X offset in pixels to start read
-        uint32_t y;         // Y offset in pixels to start read
-        uint32_t width;     // Width in pixels for texture
-        uint32_t height;    // Height in pixels for texture
+        uint32_t x;         // X offset in texels to start read
+        uint32_t y;         // Y offset in texels to start read
+        uint32_t width;     // Width in texels for texture
+        uint32_t height;    // Height in texels for texture
         size_t size;        // Size in bytes for data to be read
     } read;
 } gs_graphics_texture_desc_t;
@@ -5868,7 +5887,7 @@ GS_API_DECL void gs_graphics_end_renderpass(gs_command_buffer_t* cb);
 GS_API_DECL void gs_graphics_set_viewport(gs_command_buffer_t* cb, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
 GS_API_DECL void gs_graphics_set_view_scissor(gs_command_buffer_t* cb, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
 GS_API_DECL void gs_graphics_clear(gs_command_buffer_t* cb, gs_graphics_clear_desc_t* desc);
-GS_API_DECL void gs_graphics_bind_pipeline(gs_command_buffer_t* cb, gs_handle(gs_graphics_pipeline_t) hndl);
+GS_API_DECL void gs_graphics_pipeline_bind(gs_command_buffer_t* cb, gs_handle(gs_graphics_pipeline_t) hndl);
 GS_API_DECL void gs_graphics_apply_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t* binds);
 GS_API_DECL void gs_graphics_draw(gs_command_buffer_t* cb, gs_graphics_draw_desc_t* desc);
 GS_API_DECL void gs_graphics_dispatch_compute(gs_command_buffer_t* cb, uint32_t num_x_groups, uint32_t num_y_groups, uint32_t num_z_groups);
@@ -7088,7 +7107,7 @@ bool gs_asset_texture_load_from_file(const char* path, void* out, gs_graphics_te
 
     int32_t comp = 0;
     stbi_set_flip_vertically_on_load(flip_on_load);
-    t->desc.data = (uint8_t*)stbi_load_from_file(f, (int32_t*)&t->desc.width, (int32_t*)&t->desc.height, (int32_t*)&comp, STBI_rgb_alpha);
+    *t->desc.data = (uint8_t*)stbi_load_from_file(f, (int32_t*)&t->desc.width, (int32_t*)&t->desc.height, (int32_t*)&comp, STBI_rgb_alpha);
 
     if (!t->desc.data) {
         fclose(f);
@@ -7098,8 +7117,8 @@ bool gs_asset_texture_load_from_file(const char* path, void* out, gs_graphics_te
     t->hndl = gs_graphics_texture_create(&t->desc);
 
     if (!keep_data) {
-        gs_free(t->desc.data);
-        t->desc.data = NULL;
+        gs_free(*t->desc.data);
+        *t->desc.data = NULL;
     }
 
     fclose(f);
@@ -7147,7 +7166,7 @@ bool gs_asset_texture_load_from_memory(const void* memory, size_t sz, void* out,
 
     if (!keep_data) {
         gs_free(t->desc.data);
-        t->desc.data = NULL;
+        *t->desc.data = NULL;
     }
 
     return true;
@@ -7209,7 +7228,7 @@ bool gs_asset_font_load_from_memory(const void* memory, size_t sz, void* out, ui
     gs_graphics_texture_desc_t desc = gs_default_val();
     desc.width = w;
     desc.height = h;
-    desc.data = flipmap;
+    *desc.data = flipmap;
     desc.format = GS_GRAPHICS_TEXTURE_FORMAT_RGBA8;
     desc.min_filter = GS_GRAPHICS_TEXTURE_FILTER_NEAREST;
     desc.mag_filter = GS_GRAPHICS_TEXTURE_FILTER_NEAREST;
@@ -7217,7 +7236,7 @@ bool gs_asset_font_load_from_memory(const void* memory, size_t sz, void* out, ui
     // Generate atlas texture for bitmap with bitmap data
     f->texture.hndl = gs_graphics_texture_create(&desc);
     f->texture.desc = desc;
-    f->texture.desc.data = NULL;
+    *f->texture.desc.data = NULL;
 
     bool success = false;
     if (v == 0) {
