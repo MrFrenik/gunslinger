@@ -2907,13 +2907,19 @@ gs_vec3_nan(gs_vec3 v)
     return false; 
 }
 
-gs_inline 
-f32 gs_vec3_dist(gs_vec3 a, gs_vec3 b)
-{
+gs_inline
+f32 gs_vec3_dist2(gs_vec3 a, gs_vec3 b)
+{ 
     f32 dx = (a.x - b.x);
     f32 dy = (a.y - b.y);
     f32 dz = (a.z - b.z);
-    return (float)(sqrt(dx * dx + dy * dy + dz * dz));
+    return (dx * dx + dy * dy + dz * dz);
+} 
+
+gs_inline 
+f32 gs_vec3_dist(gs_vec3 a, gs_vec3 b)
+{
+    return sqrt(gs_vec3_dist2(a, b));
 }
 
 gs_inline gs_vec3 
@@ -4597,6 +4603,13 @@ typedef enum gs_platform_keycode
     GS_KEYCODE_COUNT 
 } gs_platform_keycode;
 
+#define GS_KEYCODE_LCTRL    GS_KEYCODE_LEFT_CONTROL
+#define GS_KEYCODE_RCTRL    GS_KEYCODE_RIGHT_CONTROL
+#define GS_KEYCODE_LSHIFT   GS_KEYCODE_LEFT_SHIFT
+#define GS_KEYCODE_RSHIFT   GS_KEYCODE_RIGHT_SHIFT
+#define GS_KEYCODE_LALT     GS_KEYCODE_LEFT_ALT
+#define GS_KEYCCODE_RALT    GS_KEYCODE_RIGHT_ALT
+
 typedef enum gs_platform_mouse_button_code
 {
     GS_MOUSE_LBUTTON,
@@ -4932,6 +4945,7 @@ GS_API_DECL void      gs_platform_uuid_to_string(char* temp_buffer, const gs_uui
 GS_API_DECL uint32_t  gs_platform_uuid_hash(const gs_uuid_t* uuid);
 
 // Platform Input 
+GS_API_DECL gs_platform_input_t* gs_platform_input();
 GS_API_DECL void      gs_platform_update_input(gs_platform_input_t* input);
 GS_API_DECL void      gs_platform_press_key(gs_platform_keycode code);
 GS_API_DECL void      gs_platform_release_key(gs_platform_keycode code);
@@ -7070,7 +7084,7 @@ bool32_t gs_util_load_texture_data_from_memory(const void* memory, size_t sz, in
 {
     // Load texture data
     stbi_set_flip_vertically_on_load(flip_vertically_on_load);
-    *data =  stbi_load_from_memory((const stbi_uc*)memory, (int32_t)sz, (int32_t*)width, (int32_t*)height, (int32_t*)num_comps, STBI_rgb_alpha);
+    *data =  stbi_load_from_memory((const stbi_uc*)memory, (int32_t)sz, (int32_t*)width, (int32_t*)height, (int32_t*)num_comps, 0x00);
     if (!*data) {
         gs_free(*data);
         return false;

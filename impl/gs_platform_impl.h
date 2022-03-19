@@ -169,6 +169,12 @@ uint32_t gs_platform_uuid_hash(const gs_uuid_t* uuid)
     (&gs_subsystem(platform)->input)
 
 /*=== Platform Input ===*/
+
+GS_API_DECL gs_platform_input_t* gs_platform_input()
+{
+    return &gs_subsystem(platform)->input;
+}
+
 void gs_platform_update_input(gs_platform_input_t* input)
 {
     // Update all input and mouse keys from previous frame

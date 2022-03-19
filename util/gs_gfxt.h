@@ -419,7 +419,12 @@ void gs_gfxt_material_set_uniform(gs_gfxt_material_t* mat, const char* name, con
 
     // Get key for name lookup
     uint64_t key = gs_hash_str64(name);
-    if (!gs_hash_table_key_exists(pip->ublock.lookup, key)) return;
+    if (!gs_hash_table_key_exists(pip->ublock.lookup, key)) {
+        gs_timed_action(60, {
+            gs_log_warning("Unable to find uniform: %s", name);
+        });
+        return;
+    }
 
     // Based on name, need to get uniform
     uint32_t uidx = gs_hash_table_get(pip->ublock.lookup, key);
@@ -444,9 +449,13 @@ void gs_gfxt_material_set_uniform(gs_gfxt_material_t* mat, const char* name, con
         case GS_GRAPHICS_UNIFORM_VEC3:  gs_byte_buffer_write(&mat->uniform_data, gs_vec3, *(gs_vec3*)data); break;
         case GS_GRAPHICS_UNIFORM_VEC4:  gs_byte_buffer_write(&mat->uniform_data, gs_vec4, *(gs_vec4*)data); break;
         case GS_GRAPHICS_UNIFORM_MAT4:  gs_byte_buffer_write(&mat->uniform_data, gs_mat4, *(gs_mat4*)data); break;
-        case GS_GRAPHICS_UNIFORM_SAMPLER2D: {
+
+		case GS_GRAPHICS_UNIFORM_SAMPLERCUBE:
+        case GS_GRAPHICS_UNIFORM_SAMPLER2D: 
+		{
             gs_byte_buffer_write(&mat->uniform_data, gs_handle(gs_graphics_texture_t), *(gs_handle(gs_graphics_texture_t)*)data);
         } break;
+
         case GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F: {
             gs_byte_buffer_write(&mat->image_buffer_data, gs_handle(gs_graphics_texture_t), *(gs_handle(gs_graphics_texture_t)*)data);
         } break;
@@ -1266,6 +1275,7 @@ gs_graphics_uniform_type gs_uniform_type_from_token(const gs_token_t* t)
     else if (gs_token_compare_text(t, "vec4"))           return GS_GRAPHICS_UNIFORM_VEC4; 
     else if (gs_token_compare_text(t, "mat4"))           return GS_GRAPHICS_UNIFORM_MAT4; 
     else if (gs_token_compare_text(t, "sampler2D"))      return GS_GRAPHICS_UNIFORM_SAMPLER2D; 
+    else if (gs_token_compare_text(t, "samplerCube"))    return GS_GRAPHICS_UNIFORM_SAMPLERCUBE; 
     else if (gs_token_compare_text(t, "img2D_rgba32f"))  return GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F; 
     return 0x00;
 }
@@ -1274,13 +1284,14 @@ const char* gs_uniform_string_from_type(gs_graphics_uniform_type type)
 {
     switch (type)
     {
-        case GS_GRAPHICS_UNIFORM_FLOAT:           return "float"; break; 
+        case GS_GRAPHICS_UNIFORM_FLOAT:           return "float"; break;
         case GS_GRAPHICS_UNIFORM_INT:             return "int"; break;
         case GS_GRAPHICS_UNIFORM_VEC2:            return "vec2"; break;
         case GS_GRAPHICS_UNIFORM_VEC3:            return "vec3"; break; 
         case GS_GRAPHICS_UNIFORM_VEC4:            return "vec4"; break; 
         case GS_GRAPHICS_UNIFORM_MAT4:            return "mat4"; break;
         case GS_GRAPHICS_UNIFORM_SAMPLER2D:       return "sampler2D"; break; 
+        case GS_GRAPHICS_UNIFORM_SAMPLERCUBE:     return "samplerCube"; break; 
         case GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F: return "image2D"; break; 
         default: return "UNKNOWN"; break;
     }

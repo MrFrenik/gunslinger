@@ -6597,6 +6597,11 @@ GS_API_DECL int32_t gs_gui_window_begin_ex(gs_gui_context_t * ctx, const char* t
 	gs_gui_id id = gs_gui_get_id(ctx, title, strlen(title)); 
 	gs_gui_container_t* cnt = gs_gui_get_container_ex(ctx, id, opt); 
 
+    char id_tag[256] = gs_default_val(); 
+    char label_tag[256] = gs_default_val(); 
+    gs_gui_parse_id_tag(ctx, title, id_tag, sizeof(id_tag));
+    gs_gui_parse_label_tag(ctx, title, label_tag, sizeof(label_tag));
+
     if (cnt && open) 
     {
         cnt->open = *open;
@@ -6607,7 +6612,7 @@ GS_API_DECL int32_t gs_gui_window_begin_ex(gs_gui_context_t * ctx, const char* t
         return 0;
     } 
 
-	memcpy(cnt->name, title, 256);
+	memcpy(cnt->name, label_tag, 256);
 
     const int32_t title_max_size = 100;
 
@@ -7192,7 +7197,7 @@ GS_API_DECL int32_t gs_gui_window_begin_ex(gs_gui_context_t * ctx, const char* t
             gs_gui_push_clip_rect(ctx, r);
 
             gs_gui_draw_rect(ctx, r, id == ctx->focus ? act : hovered ? hov : tab_focus ? def : inactive); 
-            gs_gui_draw_control_text(ctx, title, r, &ctx->style_sheet->styles[GS_GUI_ELEMENT_CONTAINER][state], opt); 
+            gs_gui_draw_control_text(ctx, label_tag, r, &ctx->style_sheet->styles[GS_GUI_ELEMENT_CONTAINER][state], opt); 
 
             gs_gui_pop_clip_rect(ctx); 
 			gs_gui_pop_clip_rect(ctx);
@@ -7721,8 +7726,9 @@ GS_API_DECL void gs_gui_panel_begin_ex(gs_gui_context_t* ctx, const char* name, 
     char id_tag[256] = gs_default_val(); 
     gs_gui_parse_id_tag(ctx, name, id_tag, sizeof(id_tag));
 
-	if (id_tag) gs_gui_push_id(ctx, id_tag, strlen(id_tag));
-    else gs_gui_push_id(ctx, name, strlen(name));
+	// if (id_tag) gs_gui_push_id(ctx, id_tag, strlen(id_tag));
+    // else gs_gui_push_id(ctx, name, strlen(name));
+    gs_gui_push_id(ctx, name, strlen(name));
 	cnt = gs_gui_get_container_ex(ctx, ctx->last_id, opt);
 	cnt->rect = gs_gui_layout_next(ctx);
 
