@@ -5896,8 +5896,8 @@ GS_API_DECL void gs_graphics_uniform_buffer_request_update(gs_command_buffer_t* 
 GS_API_DECL void gs_graphics_storage_buffer_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_storage_buffer_t) hndl, gs_graphics_storage_buffer_desc_t* desc);
 
 // Pipeline / Pass / Bind / Draw
-GS_API_DECL void gs_graphics_begin_renderpass(gs_command_buffer_t* cb, gs_handle(gs_graphics_renderpass_t) hndl);
-GS_API_DECL void gs_graphics_end_renderpass(gs_command_buffer_t* cb);
+GS_API_DECL void gs_graphics_renderpass_begin(gs_command_buffer_t* cb, gs_handle(gs_graphics_renderpass_t) hndl);
+GS_API_DECL void gs_graphics_renderpass_end(gs_command_buffer_t* cb);
 GS_API_DECL void gs_graphics_set_viewport(gs_command_buffer_t* cb, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
 GS_API_DECL void gs_graphics_set_view_scissor(gs_command_buffer_t* cb, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
 GS_API_DECL void gs_graphics_clear(gs_command_buffer_t* cb, gs_graphics_clear_desc_t* desc);
