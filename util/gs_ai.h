@@ -207,6 +207,8 @@ GS_API_DECL void gs_ai_bt_parallel_end(struct gs_ai_bt_t* ctx);
 GS_API_DECL void gs_ai_bt_leaf(struct gs_ai_bt_t* ctx, gs_ai_bt_leaf_func func);
 GS_API_DECL void gs_ai_bt_wait(struct gs_ai_bt_t* ctx, float* time, float dt, float max);
 
+GS_API_DECL void gs_ai_bt_free(struct gs_ai_bt_t* ctx);
+
 #define gsai_bt(_CTX, ...)\
     do {\
         gs_ai_bt_begin((_CTX));\
@@ -271,6 +273,12 @@ GS_API_DECL void gs_ai_bt_wait(struct gs_ai_bt_t* ctx, float* time, float dt, fl
 
 //=====================//
 //=== Behavior Tree ===//
+
+GS_API_DECL void gs_ai_bt_free(struct gs_ai_bt_t* ctx)
+{
+    if (ctx->parent_stack) gs_dyn_array_free(ctx->parent_stack);
+    if (ctx->stack) gs_dyn_array_free(ctx->stack);
+}
 
 GS_API_DECL void gs_ai_bt_begin(struct gs_ai_bt_t* ctx)
 {
