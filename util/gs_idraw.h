@@ -101,8 +101,6 @@ typedef struct gs_immediate_draw_static_data_t
 	gs_handle(gs_graphics_uniform_t) sampler; 
 } gs_immediate_draw_static_data_t;
 
-struct gs_immediate_draw_t; 
-
 typedef struct gs_immediate_draw_t
 {
 	gs_handle(gs_graphics_vertex_buffer_t) vbo;
@@ -122,7 +120,7 @@ typedef struct gs_immediate_draw_t
 #endif
 
 // Create / Init / Shutdown / Free
-GS_API_DECL gs_immediate_draw_t gs_immediate_draw_new(uint32_t window_handle);
+GS_API_DECL gs_immediate_draw_t gs_immediate_draw_new();
 GS_API_DECL void                gs_immediate_draw_free(gs_immediate_draw_t* gsi);
 
 // Get pipeline from state
@@ -137,6 +135,7 @@ GS_API_DECL void gsi_end(gs_immediate_draw_t* gsi);
 GS_API_DECL void gsi_tc2f(gs_immediate_draw_t* gsi, float u, float v);
 GS_API_DECL void gsi_tc2fv(gs_immediate_draw_t* gsi, gs_vec2 uv);
 GS_API_DECL void gsi_c4ub(gs_immediate_draw_t* gsi, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+GS_API_DECL void gsi_c4ubv(gs_immediate_draw_t* gsi, gs_color_t c);
 GS_API_DECL void gsi_v2f(gs_immediate_draw_t* gsi, float x, float y);
 GS_API_DECL void gsi_v2fv(gs_immediate_draw_t* gsi, gs_vec2 v);
 GS_API_DECL void gsi_v3f(gs_immediate_draw_t* gsi, float x, float y, float z);
@@ -158,8 +157,8 @@ GS_API_DECL void gsi_set_view_scissor(gs_immediate_draw_t* gsi, uint32_t x, uint
 
 // Final Submit / Merge
 GS_API_DECL void gsi_draw(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb);
-GS_API_DECL void gsi_renderpass_submit(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, gs_color_t clear_color);
-GS_API_DECL void gsi_renderpass_submit_ex(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, gs_graphics_clear_action_t* action);
+GS_API_DECL void gsi_renderpass_submit(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, uint32_t vw, uint32_t vh, gs_color_t clear_color);
+GS_API_DECL void gsi_renderpass_submit_ex(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, uint32_t vw, uint32_t  vh, gs_graphics_clear_action_t* action);
 
 // Core Matrix Functions
 GS_API_DECL void gsi_push_matrix(gs_immediate_draw_t* gsi, gsi_matrix_type type);
@@ -216,7 +215,16 @@ GS_API_DECL void gsi_cone(gs_immediate_draw_t* gsi, float x, float y, float z, f
 // Draw planes/poly groups
 
 // Text Drawing Util
-GS_API_DECL void gsi_text(gs_immediate_draw_t* gsi, float x, float y, const char* text, const gs_asset_font_t* fp, bool32_t flip_vertical, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+GS_API_DECL void gsi_text(gs_immediate_draw_t* gsi, float x, float y, const char* text, const gs_asset_font_t* fp, bool32_t flip_vertical, uint8_t r, uint8_t g, uint8_t b, uint8_t a); 
+
+// Paths
+/*
+GS_API_DECL void gsi_path_begin(gs_immediate_draw_t* gsi);
+GS_API_DECL void gsi_path_end(gs_immediate_draw_t* gsi);
+GS_API_DECL void gsi_path_moveto(gs_immediate_draw_t* gsi, float x, float y, float z);
+GS_API_DECL void gsi_path_lineto(gs_immediate_draw_t* gsi, float x, float y, float z);
+GS_API_DECL void gsi_path_arcto(gs_immediate_draw_t* gsi, float x, float y, float z);
+*/
 
 // Private Internal Utilities (Not user facing)
 GS_API_DECL const char* GSGetDefaultCompressedFontDataTTFBase85();
@@ -450,7 +458,7 @@ void gs_immediate_draw_static_data_init()
 }
 
 // Create / Init / Shutdown / Free
-gs_immediate_draw_t gs_immediate_draw_new(uint32_t window_handle)
+gs_immediate_draw_t gs_immediate_draw_new()
 {
     if (!GSI())
     {  
@@ -465,10 +473,7 @@ gs_immediate_draw_t gs_immediate_draw_new(uint32_t window_handle)
 	gsi.cache.color = GS_COLOR_WHITE;
 
 	// Init command buffer
-	gsi.commands = gs_command_buffer_new();	// Not totally sure on the syntax for new vs. create
-
-    // Set window handle
-    gsi.window_handle = window_handle; 
+	gsi.commands = gs_command_buffer_new();	// Not totally sure on the syntax for new vs. create 
 
 	// Create vertex buffer 
 	gs_graphics_vertex_buffer_desc_t vdesc = gs_default_val();
@@ -791,6 +796,11 @@ void gsi_c4ub(gs_immediate_draw_t* gsi, uint8_t r, uint8_t g, uint8_t b, uint8_t
 {
 	// Set cache color
 	gsi->cache.color = gs_color(r, g, b, a);
+}
+
+GS_API_DECL void gsi_c4ubv(gs_immediate_draw_t* gsi, gs_color_t c)
+{
+    gsi_c4ub(gsi, c.r, c.g, c.b, c.a);
 }
 
 void gsi_v3fv(gs_immediate_draw_t* gsi, gs_vec3 p)
@@ -1794,7 +1804,7 @@ void gsi_draw(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb)
 	gsi_reset(gsi);
 }
 
-void gsi_renderpass_submit(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, gs_color_t c)
+void gsi_renderpass_submit(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, uint32_t view_width, uint32_t view_height, gs_color_t c)
 {
 	gs_graphics_clear_action_t action = gs_default_val();
 	action.color[0] = (float)c.r / 255.f; 
@@ -1804,22 +1814,20 @@ void gsi_renderpass_submit(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, gs
 	gs_graphics_clear_desc_t clear = gs_default_val();
 	clear.actions = &action;
 	gs_renderpass pass = gs_default_val();
-	gs_vec2 fb = gs_platform_framebuffer_sizev(gsi->window_handle);
 	gs_graphics_renderpass_begin(cb, pass);
-	gs_graphics_set_viewport(cb, 0, 0, (int32_t)fb.x, (int32_t)fb.y);
+	gs_graphics_set_viewport(cb, 0, 0, view_width, view_height);
 	gs_graphics_clear(cb, &clear);
 	gsi_draw(gsi, cb);
 	gs_graphics_renderpass_end(cb);
 }
 
-GS_API_DECL void gsi_renderpass_submit_ex(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, gs_graphics_clear_action_t* action)
+GS_API_DECL void gsi_renderpass_submit_ex(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, uint32_t view_width, uint32_t view_height, gs_graphics_clear_action_t* action)
 {
     gs_graphics_clear_desc_t clear = gs_default_val();
     clear.actions = action;
 	gs_renderpass pass = gs_default_val();
-	gs_vec2 fb = gs_platform_framebuffer_sizev(gsi->window_handle);
 	gs_graphics_renderpass_begin(cb, pass);
-	gs_graphics_set_viewport(cb, 0, 0, (int32_t)fb.x, (int32_t)fb.y);
+	gs_graphics_set_viewport(cb, 0, 0, view_width, view_height);
 	gs_graphics_clear(cb, &clear);
 	gsi_draw(gsi, cb);
 	gs_graphics_renderpass_end(cb);

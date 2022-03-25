@@ -2705,6 +2705,12 @@ gs_vec2_div(gs_vec2 v0, gs_vec2 v1)
     return gs_vec2_ctor(v0.x / v1.x, v0.y / v1.y);
 }
 
+gs_inline bool
+gs_vec2_equals(gs_vec2 v0, gs_vec2 v1)
+{
+    return (v0.x == v1.x && v0.y == v1.y);
+}
+
 gs_inline gs_vec2 
 gs_vec2_scale(gs_vec2 v, f32 s)
 {
