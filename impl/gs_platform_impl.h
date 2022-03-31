@@ -1750,6 +1750,27 @@ uint32_t gs_platform_framebuffer_height(uint32_t handle)
     return h;
 }
 
+GS_API_DECL gs_vec2 gs_platform_monitor_sizev(uint32_t id)
+{
+    gs_vec2 ms = gs_v2s(0.f);
+    int32_t width, height, xpos, ypos;
+    int32_t count;
+    GLFWmonitor* monitor = NULL;
+    gs_platform_t* platform = gs_subsystem(platform);
+
+    GLFWmonitor** monitors = glfwGetMonitors(&count);
+    if (count && id < count) { 
+        monitor = monitors[id];
+    } 
+    else {
+        monitor = glfwGetPrimaryMonitor();
+    } 
+    glfwGetMonitorWorkarea(monitor, &xpos, &ypos, &width, &height);
+    ms.x = (float)width;
+    ms.y = (float)height;
+    return ms;
+}
+
 void gs_platform_set_cursor(uint32_t handle, gs_platform_cursor cursor)
 {
     gs_platform_t* platform = gs_subsystem(platform);

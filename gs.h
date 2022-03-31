@@ -4614,7 +4614,7 @@ typedef enum gs_platform_keycode
 #define GS_KEYCODE_LSHIFT   GS_KEYCODE_LEFT_SHIFT
 #define GS_KEYCODE_RSHIFT   GS_KEYCODE_RIGHT_SHIFT
 #define GS_KEYCODE_LALT     GS_KEYCODE_LEFT_ALT
-#define GS_KEYCCODE_RALT    GS_KEYCODE_RIGHT_ALT
+#define GS_KEYCODE_RALT     GS_KEYCODE_RIGHT_ALT
 
 typedef enum gs_platform_mouse_button_code
 {
@@ -5069,6 +5069,7 @@ GS_API_DECL gs_vec2  gs_platform_framebuffer_sizev(uint32_t handle);
 GS_API_DECL void     gs_platform_framebuffer_size(uint32_t handle, uint32_t* w, uint32_t* h);
 GS_API_DECL uint32_t gs_platform_framebuffer_width(uint32_t handle);
 GS_API_DECL uint32_t gs_platform_framebuffer_height(uint32_t handle);
+GS_API_DECL gs_vec2  gs_platform_monitor_sizev(uint32_t id);
 
 // Platform callbacks
 GS_API_DECL void     gs_platform_set_framebuffer_resize_callback(uint32_t handle, gs_framebuffer_resize_callback_t cb);
