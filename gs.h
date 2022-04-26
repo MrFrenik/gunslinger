@@ -1964,6 +1964,7 @@ uint32_t gs_hash_table_get_key_index_func(void** data, void* key, size_t key_len
         (gs_hash_table_get_key_index_func((void**)&(__HT->data), (void*)&(__HT->tmp_key), sizeof(__HT->tmp_key),\
             sizeof(__HT->tmp_val), __HT->stride, __HT->klpvl) != GS_HASH_TABLE_INVALID_INDEX))
 
+// uint32_t gs_hash_table_get_key_index_func(void** data, void* key, size_t key_len, size_t val_len, size_t stride, size_t klpvl)
 
 #define gs_hash_table_exists(__HT, __HTK)\
 		(__HT && gs_hash_table_key_exists((__HT), (__HTK)))
@@ -5817,7 +5818,7 @@ __gs_renderpass_default_impl()
 }
 
 // Convenience define for default render pass to back buffer
-#define GS_GRAPHICS_RENDER_PASS_DEFAULT (__gs_renderpass_default_impl())
+#define GS_GRAPHICS_RENDER_PASS_DEFAULT __gs_renderpass_default_impl()
 
 typedef struct gs_graphics_info_t
 {

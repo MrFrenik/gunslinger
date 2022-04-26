@@ -23,11 +23,12 @@
 
 #ifdef GS_PLATFORM_IMPL_DEFAULT
 
-#if !( defined GS_PLATFORM_WIN )
+#if !(defined GS_PLATFORM_WIN)
     #include <sys/stat.h>
     #include <dirent.h>
 #else
 	#include "../external/dirent/dirent.h"
+    #include <direct.h>
 #endif
 
 /*== Platform Window ==*/
@@ -682,8 +683,10 @@ GS_API_DECL int32_t gs_platform_mkdir_default_impl(const char* dir_path, int32_t
 { 
     #ifdef __MINGW32__
         return mkdir(dir_path);
-    #else
+    #elif defined __linux__
         return mkdir(dir_path, opt);
+    #else
+        return _mkdir(dir_path);
     #endif
 }
 

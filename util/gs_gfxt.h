@@ -1263,7 +1263,7 @@ gs_graphics_vertex_attribute_type gs_get_vertex_attribute_from_token(const gs_to
     else if (gs_token_compare_text(t, "byte3"))  return GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE3;
     else if (gs_token_compare_text(t, "byte2"))  return GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE2;
     else if (gs_token_compare_text(t, "byte"))   return GS_GRAPHICS_VERTEX_ATTRIBUTE_BYTE;
-    return 0x00;
+    return (gs_graphics_vertex_attribute_type)0x00;
 }
 
 gs_graphics_uniform_type gs_uniform_type_from_token(const gs_token_t* t)
@@ -1277,7 +1277,7 @@ gs_graphics_uniform_type gs_uniform_type_from_token(const gs_token_t* t)
     else if (gs_token_compare_text(t, "sampler2D"))      return GS_GRAPHICS_UNIFORM_SAMPLER2D; 
     else if (gs_token_compare_text(t, "samplerCube"))    return GS_GRAPHICS_UNIFORM_SAMPLERCUBE; 
     else if (gs_token_compare_text(t, "img2D_rgba32f"))  return GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F; 
-    return 0x00;
+    return (gs_graphics_uniform_type)0x00;
 }
 
 const char* gs_uniform_string_from_type(gs_graphics_uniform_type type)
@@ -1295,7 +1295,7 @@ const char* gs_uniform_string_from_type(gs_graphics_uniform_type type)
         case GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F: return "image2D"; break; 
         default: return "UNKNOWN"; break;
     }
-    return 0x00;
+    return (char*)0x00;
 }
 
 bool gs_parse_uniforms(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd, gs_graphics_shader_stage_type stage)
@@ -1442,7 +1442,7 @@ bool gs_parse_code(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd
     }
 
     const size_t sz = (size_t)(token.text - cur.text - 1);
-    char* code = gs_malloc(sz + 1);
+    char* code = (char*)gs_malloc(sz + 1);
     memset(code, 0, sz + 1);
     memcpy(code, cur.text, sz - 1);
 
@@ -1476,7 +1476,7 @@ gs_gfxt_mesh_attribute_type gs_mesh_attribute_type_from_token(const gs_token_t* 
     else if (gs_token_compare_text(token, "TEXCOORD12"))  return GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD;
 
     // Default
-    return 0x00;
+    return (gs_gfxt_mesh_attribute_type)0x00;
 } 
 
 bool gs_parse_vertex_mesh_attributes(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd)
@@ -2092,8 +2092,8 @@ bool gs_parse_raster(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* 
             
             token = lex->current_token;
 
-            if (gs_token_compare_text(&token, "CW"))         pdesc->pip_desc.raster.face_culling = GS_GRAPHICS_WINDING_ORDER_CW;
-            else if (gs_token_compare_text(&token, "CCW"))   pdesc->pip_desc.raster.face_culling = GS_GRAPHICS_WINDING_ORDER_CCW;
+            if (gs_token_compare_text(&token, "CW"))         pdesc->pip_desc.raster.winding_order = GS_GRAPHICS_WINDING_ORDER_CW;
+            else if (gs_token_compare_text(&token, "CCW"))   pdesc->pip_desc.raster.winding_order = GS_GRAPHICS_WINDING_ORDER_CCW;
             else
             {
                 gs_log_warning("Raster winding order type %.*s not valid.", token.len, token.text);
@@ -2227,7 +2227,7 @@ char* gs_pipeline_generate_shader_code(gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t*
     {
         const size_t header_sz = (size_t)gs_string_length(shader_header);
         size_t total_sz = gs_string_length(ppd->code[sidx]) + header_sz + 2048;
-        src = gs_malloc(total_sz); 
+        src = (char*)gs_malloc(total_sz); 
         memset(src, 0, total_sz);
         strncat(src, shader_header, header_sz);
         
@@ -2386,8 +2386,8 @@ GS_API_DECL gs_gfxt_pipeline_t gs_gfxt_pipeline_load_from_memory(const char* fil
     // Cast to pip
     gs_gfxt_pipeline_t pip = gs_default_val(); 
 
-    gs_ppd_t ppd = {0};
-    gs_gfxt_pipeline_desc_t pdesc = {0};
+    gs_ppd_t ppd = gs_default_val();
+    gs_gfxt_pipeline_desc_t pdesc = gs_default_val();
     pdesc.pip_desc.raster.index_buffer_element_size = sizeof(uint32_t); 
 
     gs_lexer_t lex = gs_lexer_c_ctor(file_data);
@@ -2425,26 +2425,28 @@ GS_API_DECL gs_gfxt_pipeline_t gs_gfxt_pipeline_load_from_memory(const char* fil
     // Construct compute shader
     if (c_src)
     {
-        pdesc.pip_desc.compute.shader = gs_graphics_shader_create(&(gs_graphics_shader_desc_t){
-            .sources = (gs_graphics_shader_source_desc_t[]){ 
-                {.type = GS_GRAPHICS_SHADER_STAGE_COMPUTE, .source = c_src}
-            },
-            .size = 1 * sizeof(gs_graphics_shader_source_desc_t),
-            // .name = path
-        }); 
-    }
+        gs_graphics_shader_desc_t sdesc = gs_default_val();
+        gs_graphics_shader_source_desc_t source_desc[1] = gs_default_val();
+        source_desc[0].type = GS_GRAPHICS_SHADER_STAGE_COMPUTE;
+        source_desc[0].source = c_src;
+        sdesc.sources = source_desc;
+        sdesc.size = 1 * sizeof(gs_graphics_shader_source_desc_t);
 
+        pdesc.pip_desc.compute.shader = gs_graphics_shader_create(&sdesc);    
+    } 
     // Construct raster shader
     else
     {
-        pdesc.pip_desc.raster.shader = gs_graphics_shader_create(&(gs_graphics_shader_desc_t){
-            .sources = (gs_graphics_shader_source_desc_t[]){ 
-                {.type = GS_GRAPHICS_SHADER_STAGE_VERTEX, .source = v_src},
-                {.type = GS_GRAPHICS_SHADER_STAGE_FRAGMENT, .source = f_src}
-            },
-            .size = 2 * sizeof(gs_graphics_shader_source_desc_t),
-            // .name = path
-        }); 
+        gs_graphics_shader_desc_t sdesc = gs_default_val();
+        gs_graphics_shader_source_desc_t source_desc[2] = gs_default_val();
+        source_desc[0].type = GS_GRAPHICS_SHADER_STAGE_VERTEX;
+        source_desc[0].source = v_src;
+        source_desc[1].type = GS_GRAPHICS_SHADER_STAGE_FRAGMENT;
+        source_desc[1].source = f_src;
+        sdesc.sources = source_desc;
+        sdesc.size = 2 * sizeof(gs_graphics_shader_source_desc_t);
+
+        pdesc.pip_desc.raster.shader = gs_graphics_shader_create(&sdesc);
     }
     
 
