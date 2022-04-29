@@ -773,6 +773,7 @@ void gs_platform_file_extension_default_impl(char* buffer, size_t buffer_sz, con
 
 #elif (defined GS_PLATFORM_WINDOWS)
 
+    #define WIN32_LEAN_AND_MEAN
     #include <windows.h>
 
 #endif
