@@ -2388,6 +2388,10 @@ gs_platform_sleep(float ms)
     emscripten_sleep((uint32_t)ms);   
 }
 
+GS_API_DECL void gs_platform_update_internal(gs_platform_t* platform)
+{
+}
+
 // Platform Input
 GS_API_DECL void 
 gs_platform_process_input(gs_platform_input_t* input)
