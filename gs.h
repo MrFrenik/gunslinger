@@ -4153,6 +4153,36 @@ gs_inline gs_vqs gs_vqs_from_mat4(const gs_mat4* m)
     );
 }
 
+gs_inline gs_vec3 gs_vqs_forward(const gs_vqs* transform)
+{
+    return (gs_quat_rotate(transform->rotation, gs_v3(0.0f, 0.0f, -1.0f)));
+} 
+
+gs_inline gs_vec3 gs_vqs_backward(const gs_vqs* transform)
+{
+    return (gs_quat_rotate(transform->rotation, gs_v3(0.0f, 0.0f, 1.0f)));
+} 
+
+gs_inline gs_vec3 gs_vqs_left(const gs_vqs* transform)
+{
+    return (gs_quat_rotate(transform->rotation, gs_v3(-1.0f, 0.0f, 0.0f)));
+} 
+
+gs_inline gs_vec3 gs_vqs_right(const gs_vqs* transform)
+{
+    return (gs_quat_rotate(transform->rotation, gs_v3(1.0f, 0.0f, 0.0f)));
+} 
+
+gs_inline gs_vec3 gs_vqs_up(const gs_vqs* transform)
+{
+    return (gs_quat_rotate(transform->rotation, gs_v3(0.0f, 1.0f, 0.0f)));
+} 
+
+gs_inline gs_vec3 gs_vqs_down(const gs_vqs* transform)
+{
+    return (gs_quat_rotate(transform->rotation, gs_v3(0.0f, -1.0f, 0.0f)));
+} 
+
 /*================================================================================
 // Random
 ================================================================================*/

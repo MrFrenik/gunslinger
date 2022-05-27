@@ -44,7 +44,7 @@
  */
 
 // Asset handle
-typedef struct gs_asset_t
+typedef struct gs_asset_s
 {
 	uint64_t type_id;
 	uint32_t asset_id;

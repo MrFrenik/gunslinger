@@ -90,6 +90,7 @@ typedef enum gs_meta_property_type
     GS_META_PROPERTY_TYPE_UUID,
     GS_META_PROPERTY_TYPE_SIZE_T,       // Used for pointers or size_t variables
     GS_META_PROPERTY_TYPE_STR,          // Used for const char*, char*
+    GS_META_PROPERTY_TYPE_COLOR,
 	GS_META_PROPERTY_TYPE_OBJ,
     GS_META_PROPERTY_TYPE_COUNT
 } gs_meta_property_type; 
@@ -121,6 +122,7 @@ GS_API_PRIVATE gs_meta_property_type_info_t _gs_meta_property_type_decl_impl(con
 #define GS_META_PROPERTY_TYPE_INFO_UUID     _gs_meta_property_type_decl(gs_uuid_t, GS_META_PROPERTY_TYPE_UUID)
 #define GS_META_PROPERTY_TYPE_INFO_SIZE_T   _gs_meta_property_type_decl(size_t, GS_META_PROPERTY_TYPE_SIZE_T)
 #define GS_META_PROPERTY_TYPE_INFO_STR      _gs_meta_property_type_decl(char*, GS_META_PROPERTY_TYPE_STR)
+#define GS_META_PROPERTY_TYPE_INFO_COLOR    _gs_meta_property_type_decl(gs_color_t, GS_META_PROPERTY_TYPE_COLOR)
 #define GS_META_PROPERTY_TYPE_INFO_OBJ      _gs_meta_property_type_decl(object, GS_META_PROPERTY_TYPE_OBJ)
 
 typedef struct gs_meta_property_t
