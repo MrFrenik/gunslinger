@@ -100,7 +100,7 @@ bool32_t gs_audio_load_wav_data_from_file
 
     if (!*samples) {
         *samples = NULL; 
-        gs_println("WARNING: Could not load .ogg file: %s", file_path);
+        gs_println("WARNING: Could not load .wav file: %s", file_path);
         return false; 
     }
 
@@ -128,7 +128,7 @@ bool32_t gs_audio_load_mp3_data_from_file
 
     if (!*samples) {
         *samples = NULL; 
-        gs_println("WARNING: Could not load .ogg file: %s", file_path);
+        gs_println("WARNING: Could not load .mp3 file: %s", file_path);
         return false; 
     }
 
