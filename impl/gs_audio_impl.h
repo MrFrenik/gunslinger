@@ -641,7 +641,7 @@ gs_result gs_audio_shutdown(gs_audio_t* audio)
 
     ma_context_uninit(&ma->context);
     ma_device_uninit(&ma->device);
-    ma_mutex_init(&ma->lock);
+    ma_mutex_uninit(&ma->lock);
     
     return GS_RESULT_SUCCESS;
 }
