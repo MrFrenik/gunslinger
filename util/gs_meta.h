@@ -130,6 +130,7 @@ typedef struct gs_meta_property_t
     const char* name;           
     uint32_t offset;            
 	const char* type_name;
+    size_t size;
     gs_meta_property_type_info_t type;
 } gs_meta_property_t;
 
@@ -138,10 +139,11 @@ typedef struct gs_meta_enum_value_t
 	const char* name;
 } gs_meta_enum_value_t;
 
-GS_API_PRIVATE gs_meta_property_t _gs_meta_property_impl(const char* field_type_name, const char* field, uint32_t offset, gs_meta_property_type_info_t type);
+GS_API_PRIVATE gs_meta_property_t _gs_meta_property_impl(const char* field_type_name, const char* field, size_t sz, uint32_t offset, gs_meta_property_type_info_t type);
 
-#define gs_meta_property(CLS, FIELD_TYPE_NAME, FIELD, TYPE)\
-    _gs_meta_property_impl(gs_to_str(FIELD_TYPE_NAME), gs_to_str(FIELD), gs_offset(CLS, FIELD), TYPE)
+#define gs_meta_property(CLS, FIELD_TYPE, FIELD, TYPE)\
+    _gs_meta_property_impl(gs_to_str(FIELD_TYPE), gs_to_str(FIELD),\
+        sizeof(FIELD_TYPE), gs_offset(CLS, FIELD), TYPE)
 
 typedef struct gs_meta_vtable_t
 {
@@ -150,13 +152,14 @@ typedef struct gs_meta_vtable_t
 
 typedef struct gs_meta_class_t
 {
-    gs_meta_property_t* properties;   // Property list
-    uint32_t property_count;          // Number of properties in list
-    const char* name;                 // Display name of class
-    uint64_t id;                      // Class ID
-    uint64_t base;                    // Parent class ID
-    gs_meta_vtable_t vtable;          // VTable for class
-    size_t size;                      // Size of class in bytes (for heap allocations)
+    gs_meta_property_t* properties;                             // Property list
+    uint32_t property_count;                                    // Number of properties in list
+    gs_hash_table(uint64_t, gs_meta_property_t*) property_map;  // Mapping of hash property name to pointer
+    const char* name;                                           // Display name of class
+    uint64_t id;                                                // Class ID
+    uint64_t base;                                              // Parent class ID
+    gs_meta_vtable_t vtable;                                    // VTable for class
+    size_t size;                                                // Size of class in bytes (for heap allocations)
 } gs_meta_class_t;
 
 typedef struct gs_meta_enum_t
@@ -216,6 +219,9 @@ GS_API_DECL uint64_t gs_meta_enum_register(gs_meta_registry_t* meta, const gs_me
 #define gs_meta_getvp(OBJ, T, PROP)\
     (((T*)((uint8_t*)(OBJ) + (PROP)->offset))) 
 
+#define gs_meta_setv(OBJ, T, PROP, VAL)\
+    (*((T*)((uint8_t*)(OBJ) + (PROP)->offset)) = VAL)
+
 #define gs_meta_func_get(CLS, NAME)\
     (_gs_meta_func_get_internal(CLS, gs_to_str(NAME))); 
 
@@ -254,12 +260,13 @@ GS_API_DECL void gs_meta_registry_free(gs_meta_registry_t* meta)
     gs_hash_table_free(meta->classes);
 }
 
-GS_API_PRIVATE gs_meta_property_t _gs_meta_property_impl(const char* field_type_name, const char* field, uint32_t offset, gs_meta_property_type_info_t type)
+GS_API_PRIVATE gs_meta_property_t _gs_meta_property_impl(const char* field_type_name, const char* field, size_t size, uint32_t offset, gs_meta_property_type_info_t type)
 {
     gs_meta_property_t mp = gs_default_val();
     mp.name = field;
 	mp.type_name = field_type_name;
     mp.offset = offset;
+	mp.size = size;
     mp.type = type;
     return mp;
 }
@@ -270,9 +277,14 @@ GS_API_PRIVATE uint64_t gs_meta_class_register(gs_meta_registry_t* meta, const g
     gs_meta_class_t cls = gs_default_val();
     cls.properties = (gs_meta_property_t*)gs_malloc(decl->size);
 	cls.property_count = ct;
+    memcpy(cls.properties, decl->properties, decl->size);
+    for (uint32_t i = 0; i < cls.property_count; ++i)
+    {
+        gs_meta_property_t* prop = &cls.properties[i];
+        gs_hash_table_insert(cls.property_map, gs_hash_str64(prop->name), prop);
+    }
     cls.name = decl->name;
     cls.base = decl->base ? gs_hash_str64(decl->base) : gs_hash_str64("NULL");
-    memcpy(cls.properties, decl->properties, decl->size);
     uint64_t id = gs_hash_str64(decl->name);
     cls.id = id;
     cls.vtable = decl->vtable ? *decl->vtable : cls.vtable;

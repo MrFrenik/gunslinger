@@ -1816,7 +1816,7 @@ void __gs_hash_table_init_impl(void** ht, size_t sz)
         if ((_HT) == NULL) {\
             gs_hash_table_init((_HT), _KT, _VT);\
         }\
-        gs_dyn_array_reserve(_HT->data, _CT);\
+        gs_dyn_array_reserve((_HT)->data, _CT);\
     } while (0)
 
     // ((__HT) != NULL ? (__HT)->size : 0) // gs_dyn_array_size((__HT)->data) : 0)
@@ -2671,7 +2671,9 @@ typedef struct
             f32 x, y;
         };
     };
-} gs_vec2;
+} gs_vec2_t;
+
+typedef gs_vec2_t gs_vec2;
 
 gs_inline gs_vec2 
 gs_vec2_ctor(f32 _x, f32 _y) 
@@ -2787,8 +2789,11 @@ typedef struct
         {
             f32 x, y, z;
         };
-    };
-} gs_vec3;
+    }; 
+
+} gs_vec3_t;
+
+typedef gs_vec3_t gs_vec3;
 
 gs_inline gs_vec3 
 gs_vec3_ctor(f32 _x, f32 _y, f32 _z)
@@ -2983,7 +2988,9 @@ typedef struct
             f32 x, y, z, w;
         };
     };
-} gs_vec4;
+} gs_vec4_t;
+
+typedef gs_vec4_t gs_vec4;
 
 gs_inline gs_vec4 
 gs_vec4_ctor(f32 _x, f32 _y, f32 _z, f32 _w)
@@ -3233,7 +3240,9 @@ typedef struct gs_mat4
             gs_vec4 right, up, dir, position;
         } v;
 	};
-} gs_mat4;
+} gs_mat4_t;
+
+typedef gs_mat4_t gs_mat4;
 
 gs_inline gs_mat4 
 gs_mat4_diag(f32 val)
@@ -3727,7 +3736,9 @@ typedef struct
             f32 x, y, z, w;
         };
     };
-} gs_quat;
+} gs_quat_t;
+
+typedef gs_quat_t gs_quat;
 
 gs_inline
 gs_quat gs_quat_default()
@@ -3868,6 +3879,42 @@ gs_inline gs_vec3 gs_quat_rotate(gs_quat q, gs_vec3 v)
     uv = gs_vec3_scale(uv, 2.f * q.w);
     uuv = gs_vec3_scale(uuv, 2.f);
     return (gs_vec3_add(v, gs_vec3_add(uv, uuv)));
+}
+
+gs_inline gs_vec3
+gs_quat_forward(gs_quat q)
+{
+    return gs_quat_rotate(q, gs_v3(0.f, 0.f, -1.f));
+}
+
+gs_inline gs_vec3
+gs_quat_backward(gs_quat q)
+{
+    return gs_quat_rotate(q, gs_v3(0.f, 0.f, 1.f));
+}
+
+gs_inline gs_vec3
+gs_quat_left(gs_quat q)
+{
+    return gs_quat_rotate(q, gs_v3(-1.f, 0.f, 0.f));
+}
+
+gs_inline gs_vec3
+gs_quat_right(gs_quat q)
+{
+    return gs_quat_rotate(q, gs_v3(1.f, 0.f, 0.f));
+}
+
+gs_inline gs_vec3
+gs_quat_up(gs_quat q)
+{
+    return gs_quat_rotate(q, gs_v3(0.f, 1.f, 0.f));
+}
+
+gs_inline gs_vec3
+gs_quat_down(gs_quat q)
+{
+    return gs_quat_rotate(q, gs_v3(0.f, -1.f, 0.f));
 }
 
 gs_inline gs_quat 
@@ -4060,9 +4107,12 @@ typedef struct
     };
     gs_quat rotation;
     gs_vec3 scale;      
-} gs_vqs;
+} gs_vqs_t;
 
-gs_inline gs_vqs gs_vqs_ctor(gs_vec3 tns, gs_quat rot, gs_vec3 scl)
+typedef gs_vqs_t gs_vqs;
+
+gs_inline gs_vqs 
+gs_vqs_ctor(gs_vec3 tns, gs_quat rot, gs_vec3 scl)
 {
     gs_vqs t;   
     t.position = tns;
@@ -4071,8 +4121,8 @@ gs_inline gs_vqs gs_vqs_ctor(gs_vec3 tns, gs_quat rot, gs_vec3 scl)
     return t;
 }
 
-gs_inline 
-gs_vqs gs_vqs_default()
+gs_inline gs_vqs 
+gs_vqs_default()
 {
     gs_vqs t = gs_vqs_ctor
     (
@@ -4487,7 +4537,6 @@ typedef struct gs_platform_time_t
 
 typedef struct gs_uuid_t
 {
-    const char* id;
     uint8_t bytes[16];
 } gs_uuid_t;
 
