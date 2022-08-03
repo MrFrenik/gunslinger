@@ -31,6 +31,14 @@
 // Globals
 =============================*/
 
+static CRITICAL_SECTION		shaders_cs,
+							vertex_buffers_cs,
+							index_buffers_cs,
+							uniform_buffers_cs,
+							uniforms_cs,
+							textures_cs,
+							pipelines_cs;
+
 /*=============================
 // Enums
 =============================*/
@@ -490,6 +498,15 @@ gs_graphics_init(gs_graphics_t *graphics)
     raster_state_desc.CullMode = D3D11_CULL_NONE;
     hr = ID3D11Device_CreateRasterizerState(dx11->device, &raster_state_desc, &dx11->raster_state);
     /* ID3D11DeviceContext_RSSetState(dx11->context, dx11->raster_state); */
+
+	// Critical section setup
+	InitializeCriticalSection(&shaders_cs);
+	InitializeCriticalSection(&vertex_buffers_cs);
+	InitializeCriticalSection(&index_buffers_cs);
+	InitializeCriticalSection(&uniform_buffers_cs);
+	InitializeCriticalSection(&uniforms_cs);
+	InitializeCriticalSection(&textures_cs);
+	InitializeCriticalSection(&pipelines_cs);
 }
 
 void
@@ -537,9 +554,9 @@ gs_graphics_vertex_buffer_create(const gs_graphics_vertex_buffer_desc_t *desc)
     else
         hr = ID3D11Device_CreateBuffer(dx11->device, &buffer_desc, NULL, &buffer);
 
-    hndl = gs_handle_create(gs_graphics_vertex_buffer_t, gs_slot_array_insert(dx11->vertex_buffers, buffer));
-    /* printf("1: %p\r\n", buffer); */
-    /* printf("2: %p\n", (gs_slot_array_getp(dx11->vertex_buffers, 1))); */
+	EnterCriticalSection(&vertex_buffers_cs);
+		hndl = gs_handle_create(gs_graphics_vertex_buffer_t, gs_slot_array_insert(dx11->vertex_buffers, buffer));
+	LeaveCriticalSection(&vertex_buffers_cs);
 
     return hndl;
 }
@@ -574,7 +591,9 @@ gs_graphics_index_buffer_create(const gs_graphics_index_buffer_desc_t* desc)
     else
         hr = ID3D11Device_CreateBuffer(dx11->device, &buffer_desc, NULL, &buffer);
 
-    hndl = gs_handle_create(gs_graphics_index_buffer_t, gs_slot_array_insert(dx11->index_buffers, buffer));
+	EnterCriticalSection(&index_buffers_cs);
+    	hndl = gs_handle_create(gs_graphics_index_buffer_t, gs_slot_array_insert(dx11->index_buffers, buffer));
+	LeaveCriticalSection(&index_buffers_cs);
 
     return hndl;
 }
@@ -640,7 +659,9 @@ gs_graphics_shader_create(const gs_graphics_shader_desc_t *desc)
         }
     }
 
-    hndl = gs_handle_create(gs_graphics_shader_t, gs_slot_array_insert(dx11->shaders, shader));
+	EnterCriticalSection(&shaders_cs);
+    	hndl = gs_handle_create(gs_graphics_shader_t, gs_slot_array_insert(dx11->shaders, shader));
+	LeaveCriticalSection(&shaders_cs);
 
     return hndl;
 }
@@ -666,7 +687,9 @@ gs_graphics_pipeline_create(const gs_graphics_pipeline_desc_t* desc)
         gs_dyn_array_push(pipe.layout, desc->layout.attrs[i]);
     }
 
-    hndl = gs_handle_create(gs_graphics_pipeline_t, gs_slot_array_insert(dx11->pipelines, pipe));
+	EnterCriticalSection(&pipelines_cs);
+    	hndl = gs_handle_create(gs_graphics_pipeline_t, gs_slot_array_insert(dx11->pipelines, pipe));
+	LeaveCriticalSection(&pipelines_cs);
 
     return hndl;
 }
@@ -707,7 +730,9 @@ gs_graphics_uniform_buffer_create(const gs_graphics_uniform_buffer_desc_t *desc)
     else
         hr = ID3D11Device_CreateBuffer(dx11->device, &buffer_desc, NULL,  &ub.cbo);
 
-    hndl = gs_handle_create(gs_graphics_uniform_buffer_t, gs_slot_array_insert(dx11->uniform_buffers, ub));
+	EnterCriticalSection(&uniform_buffers_cs);
+    	hndl = gs_handle_create(gs_graphics_uniform_buffer_t, gs_slot_array_insert(dx11->uniform_buffers, ub));
+	LeaveCriticalSection(&uniform_buffers_cs);
 
     return hndl;
 }
@@ -723,7 +748,11 @@ gs_graphics_texture_create(const gs_graphics_texture_desc_t* desc)
     dx11 = (gsdx11_data_t *)gs_engine_subsystem(graphics)->user_data;
     tex = dx11_texture_create_internal(desc);
 
-    return gs_handle_create(gs_graphics_texture_t, gs_slot_array_insert(dx11->textures, tex));
+	EnterCriticalSection(&textures_cs);
+		hndl = gs_handle_create(gs_graphics_texture_t, gs_slot_array_insert(dx11->textures, tex));
+	LeaveCriticalSection(&textures_cs);
+
+    return hndl;
 }
 
 gsdx11_texture_t
@@ -800,7 +829,9 @@ gs_graphics_uniform_create(const gs_graphics_uniform_desc_t* desc)
     uniform.size = sizeof(gsdx11_texture_t);
     uniform.stage = desc->stage;
 
-    hndl = gs_handle_create(gs_graphics_uniform_t, gs_slot_array_insert(dx11->uniforms, uniform));
+	EnterCriticalSection(&uniforms_cs);
+    	hndl = gs_handle_create(gs_graphics_uniform_t, gs_slot_array_insert(dx11->uniforms, uniform));
+	LeaveCriticalSection(&uniforms_cs);
 
     return hndl;
 }
