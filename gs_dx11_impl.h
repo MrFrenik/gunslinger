@@ -846,17 +846,40 @@ gs_graphics_uniform_buffer_request_update(gs_command_buffer_t *cb,
                                           gs_handle(gs_graphics_uniform_buffer_t) hndl,
                                           gs_graphics_uniform_buffer_desc_t *desc)
 {
-    gsdx11_data_t       *dx11;
+	HRESULT								hr;
+    gsdx11_data_t       				*dx11;
+	gsdx11_command_buffer_t				*cmdbuffer;
+	gsdx11_uniform_buffer_t				ub;
+	uint32_t							id = hndl.id;
+	gs_graphics_buffer_usage_type		usage = desc->usage;
+	size_t								sz = desc->size,
+										offset = desc->update.offset;
+	gs_graphics_buffer_update_type		update_type = desc->update.type;
+	void								*data = desc->data;
+	D3D11_MAPPED_SUBRESOURCE			resource = {0};
 
 
-    dx11 = (gsdx11_data_t *)gs_engine_subsystem(graphics)->user_data;
+    dx11 = (gsdx11_data_t*)gs_engine_subsystem(graphics)->user_data;
+	cmdbuffer = TlsGetValue(dx11->tls_index);
 
-    // Return if we receive an invalid handle
-    if (!hndl.id)
-        return;
+	ub = gs_slot_array_get(dx11->uniform_buffers, hndl.id);
 
-    __gs_graphics_update_buffer_internal(cb, hndl.id, GS_GRAPHICS_BUFFER_UNIFORM,
-            desc->usage, desc->size, desc->update.offset, desc->update.type, desc->data);
+	switch (update_type)
+	{
+		case GS_GRAPHICS_BUFFER_UPDATE_SUBDATA:
+		{
+			// Map resource to CPU side and sub data
+			// TODO(matthew): BAD! Better to use UpdateSubresource() instead,
+			// but there are constraints on the data that can be filled (ie, 
+			// US() does not take an offset parameter, and GS does not specify whether
+			// the data ptr has to fully overlap the underlying type structure.
+			hr = ID3D11DeviceContext_Map(cmdbuffer->def_context, ub.cbo, 0,
+					D3D11_MAP_WRITE_DISCARD, 0, &resource);
+			memcpy((char *)resource.pData + offset, data, sz);
+			ID3D11DeviceContext_Unmap(dx11->context, ub.cbo, 0);
+		} break;
+	}
+
 }
 
 
@@ -1117,6 +1140,25 @@ gs_graphics_apply_bindings(gs_command_buffer_t *cb,
 		}
 	}
 
+	// uniform buffers
+	for (int i = 0; i < ubcnt; i++)
+	{
+		gsdx11_uniform_buffer_t						*ub;
+		gs_graphics_bind_uniform_buffer_desc_t		*decl;
+
+		decl = &binds->uniform_buffers.desc[i];
+		ub = gs_slot_array_getp(dx11->uniform_buffers, decl->buffer.id);
+
+		if (ub->stage == GS_GRAPHICS_SHADER_STAGE_VERTEX)
+		{
+			ID3D11DeviceContext_VSSetConstantBuffers(cmdbuffer->def_context, decl->binding, 1, &ub->cbo);
+		}
+		else if (ub->stage == GS_GRAPHICS_SHADER_STAGE_FRAGMENT)
+		{
+			ID3D11DeviceContext_PSSetConstantBuffers(cmdbuffer->def_context, decl->binding, 1, &ub->cbo);
+		}
+	}
+
 	// create input layout
 	if (!dx11->cache.layout)
 	{
@@ -1275,63 +1317,6 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
 
     /*             // Advance past data */
     /*             gs_byte_buffer_advance_position(&cb->commands, sz); */
-    /*         } break; */
-
-    /*         case GS_DX11_OP_APPLY_BINDINGS: */
-    /*         { */
-    /*             gsdx11_pipeline_t       *pipe = gs_slot_array_getp(dx11->pipelines, dx11->cache.pipeline.id); */
-				/* // We need to order layouts by their buffer slot when creating our input layout. The bound */
-				/* // pipeline object tells us how many layout descs need to be set, but they dont tell us */
-				/* // which desc belongs to which buffer. The buffer_idx member, however, does. Furthermore, if */
-				/* // we have a case like the instancing example, we'll need to bind 2 buffers (vertex and instance), */
-				/* // but the first 2 attribs will describe the vertex buffer, and the 3rd attrib will describe the */
-				/* // instance buffer. With the previous approach, this means we'd be filling out 6 layout_descs, */
-				/* // when we only need to fill out 3. */
-				/* // So, instead of iterating over all the descs in a for loop like we were doing before, we will */
-				/* // simple traverse through the whole pipe->layout[] array once, using our layout_idx as an index, */
-				/* // which we increment at the end of each loop. Then, when we finish filling out the layout_desc */
-				/* // props and are ready to move to the next one, we see if the next attrib uses a new buffer slot. */
-				/* // If so, then we set the buffer and move on to filling the layout_desc(s) for the buffer in the */
-				/* // next slot. Otherwise, we continue filling out layout_desc(s) for the buffer in the current slot. */
-				/* // Of course, we also need to make sure that we don't go out of bounds, so we make sure that the */
-				/* // layout_idx does not exceed the layout_cnt. */
-				/* int 					layout_idx = 0, */
-										/* layout_cnt = gs_dyn_array_size(pipe->layout); */
-
-    /*             gs_byte_buffer_readc(&cb->commands, uint32_t, cnt); */
-
-    /*             for (uint32_t j = 0; j < cnt; j++) */
-    /*             { */
-    /*                 gs_byte_buffer_readc(&cb->commands, gs_graphics_bind_type, type); */
-
-    /*                 switch (type) */
-    /*                 { */
-    /*                     case GS_GRAPHICS_BIND_UNIFORM_BUFFER: */
-    /*                     { */
-    /*                         gsdx11_uniform_buffer_t     *ub; */
-
-    /*                         gs_byte_buffer_readc(&cb->commands, uint32_t, id); */
-    /*                         gs_byte_buffer_readc(&cb->commands, size_t, binding); */
-    /*                         gs_byte_buffer_readc(&cb->commands, size_t, range_offset); */
-    /*                         gs_byte_buffer_readc(&cb->commands, size_t, range_size); */
-
-    /*                         if (!id || !gs_slot_array_exists(dx11->uniform_buffers, id)) { */
-    /*                             gs_timed_action(60, { */
-    /*                                 gs_println("Warning:Bind Uniform Buffer:Uniform %d does not exist.", id); */
-    /*                             }); */
-    /*                             continue; */
-    /*                         } */
-
-    /*                         ub = gs_slot_array_getp(dx11->uniform_buffers, id); */
-
-    /*                         if (ub->stage == GS_GRAPHICS_SHADER_STAGE_VERTEX) */
-    /*                             ID3D11DeviceContext_VSSetConstantBuffers(dx11->context, binding, 1, &ub->cbo); */
-    /*                         else if (ub->stage == GS_GRAPHICS_SHADER_STAGE_FRAGMENT) */
-    /*                             ID3D11DeviceContext_PSSetConstantBuffers(dx11->context, binding, 1, &ub->cbo); */
-    /*                         // TODO(matthew): add compute binding */
-    /*                     } break; */
-    /*                 } */
-    /*             } */
     /*         } break; */
     /*     } */
     /* } */
