@@ -10,6 +10,7 @@
     later we should try to use the actual gs_command_buffer_t object itself by
     using a cast for instance? It's a hacky alternative but at least it actually
     makes use of the command buffer object, whereas TLS completely ignores it.
+   TODO(matthew): TEST THE THREAD-SAFETY CHANGES
 */
 
 #ifndef GS_DX11_IMPL_H
@@ -237,32 +238,9 @@ size_t           gsdx11_uniform_data_size_in_bytes(gs_graphics_uniform_type type
 // Graphics Initialization
 =============================*/
 
-/* // Initialize DX11 specific data (device, context, swapchain  etc.) */
-/* void gs_graphics_init(gs_graphics_t *graphics); */
-
-/* // Shutdown */
-/* void gs_graphics_shutdown(gs_graphics_t* graphics); */
-
 /*=============================
 // Resource Creation
 =============================*/
-
-/* // Create a vertex buffer */
-/* gs_handle(gs_graphics_vertex_buffer_t) gs_graphics_vertex_buffer_create(const gs_graphics_vertex_buffer_desc_t *desc); */
-
-/* // Create an index buffer */
-/* gs_handle(gs_graphics_index_buffer_t) gs_graphics_index_buffer_create(const gs_graphics_index_buffer_desc_t* desc) */
-
-/* // Create a shader */
-/* gs_handle(gs_graphics_shader_t) gs_graphics_shader_create(const gs_graphics_shader_desc_t *desc); */
-
-/* // Create a pipeline object */
-/* gs_handle(gs_graphics_pipeline_t) gs_graphics_pipeline_create(const gs_graphics_pipeline_desc_t* desc) */
-
-gsdx11_texture_t dx11_texture_create_internal(const gs_graphics_texture_desc_t* desc);
-
-/* gs_handle(gs_graphics_uniform_t) gs_graphics_uniform_create(const gs_graphics_uniform_desc_t* desc) */
-
 
 /*=============================================================================
 // ===== DX11 Implementation =============================================== //
@@ -383,6 +361,7 @@ gs_graphics_create()
     gfx->user_data = gs_malloc_init(gsdx11_data_t);
     dx11 = (gsdx11_data_t *)gfx->user_data;
 
+	// NOTE(matthew): should this go in gs_graphics_init()?
     dx11->tls_index = TlsAlloc();
     if (dx11->tls_index == TLS_OUT_OF_INDEXES)
     {
@@ -487,17 +466,14 @@ gs_graphics_init(gs_graphics_t *graphics)
     hr = ID3D11Device_CreateRenderTargetView(dx11->device, backbuffer, NULL, &dx11->rtv);
     hr = ID3D11Device_CreateTexture2D(dx11->device, &ds_desc, 0, &ds_buffer);
     hr = ID3D11Device_CreateDepthStencilView(dx11->device, ds_buffer, NULL, &dx11->dsv);
-    /* ID3D11DeviceContext_OMSetRenderTargets(dx11->context, 1, &dx11->rtv, dx11->dsv); */
 
     dx11->viewport.Width = window_width;
     dx11->viewport.Height = window_height;
     dx11->viewport.MaxDepth = 1.0f;
-    /* ID3D11DeviceContext_RSSetViewports(dx11->context, 1, &dx11->viewport); */
 
     raster_state_desc.FillMode = D3D11_FILL_SOLID;
     raster_state_desc.CullMode = D3D11_CULL_NONE;
     hr = ID3D11Device_CreateRasterizerState(dx11->device, &raster_state_desc, &dx11->raster_state);
-    /* ID3D11DeviceContext_RSSetState(dx11->context, dx11->raster_state); */
 
 	// Critical section setup
 	InitializeCriticalSection(&shaders_cs);
@@ -512,6 +488,7 @@ gs_graphics_init(gs_graphics_t *graphics)
 void
 gs_graphics_shutdown(gs_graphics_t *graphics)
 {
+	// TODO(matthew): actually fill this thing out!
 }
 
 
@@ -917,11 +894,6 @@ gs_graphics_uniform_buffer_request_update(gs_command_buffer_t *cb,
 /*=============================
 // Command Buffers Ops
 =============================*/
-/*
-    // Structure of command:
-        - Op code
-        - Data packet
-*/
 
 // TODO(matthew): The solution to ensuring thread safety when doing multithreaded
 // rendering is quite simple. Each gs_command_buffer_t will have to (internally)
@@ -980,7 +952,6 @@ gs_graphics_end_render_pass(gs_command_buffer_t *cb)
         gs_assert(false);
     }
 
-    //
     hr = ID3D11DeviceContext_FinishCommandList(cmdbuffer->def_context, false, &cmdbuffer->cmd_list);
 }
 
@@ -1227,14 +1198,6 @@ void
 gs_graphics_draw(gs_command_buffer_t *cb,
                  gs_graphics_draw_desc_t *desc)
 {
-    /* __dx11_push_command(cb, GS_DX11_OP_DRAW, { */
-    /*     gs_byte_buffer_write(&cb->commands, uint32_t, desc->start); */
-    /*     gs_byte_buffer_write(&cb->commands, uint32_t, desc->count); */
-    /*     gs_byte_buffer_write(&cb->commands, uint32_t, desc->instances); */
-    /*     gs_byte_buffer_write(&cb->commands, uint32_t, desc->base_vertex); */
-    /*     gs_byte_buffer_write(&cb->commands, uint32_t, desc->range.start); */
-    /*     gs_byte_buffer_write(&cb->commands, uint32_t, desc->range.end); */
-    /* }); */
     gsdx11_data_t               *dx11;
     gsdx11_command_buffer_t     *cmdbuffer;
 
