@@ -1,7 +1,4 @@
 /*
-
-
-
    This file will contain the actual implementation details for the graphics
    layer, in Direct3D 11. For now we'll follow the GL implementation and try
    to follow a similar approach here as best we can. Big strokes first,
@@ -1069,6 +1066,7 @@ gs_graphics_apply_bindings(gs_command_buffer_t *cb,
 		ID3D11DeviceContext_IASetVertexBuffers(cmdbuffer->def_context, vbo_slot, 1, &vbo, &stride, &vbo_offset);
 	}
 
+	// index buffers
 	for (int i = 0; i < icnt; i++)
 	{
 		gsdx11_buffer_t								ibo;
@@ -1079,6 +1077,44 @@ gs_graphics_apply_bindings(gs_command_buffer_t *cb,
 		dx11->cache.ibo = ibo;
 
 		ID3D11DeviceContext_IASetIndexBuffer(cmdbuffer->def_context, ibo, DXGI_FORMAT_R32_UINT, 0);
+	}
+
+	// uniforms
+	for (int i = 0; i < ucnt; i++)
+	{
+		gs_graphics_bind_uniform_desc_t		*decl;
+		gsdx11_uniform_t					*u;
+		uint32_t							binding;
+		size_t								sz;
+
+		decl = &binds->uniforms.desc[i];
+		sz = 1;
+		binding = decl->binding;
+
+		// Check buffer id. If invalid, then we can't operate, and instead just need to pass over the data.
+		if (!decl->uniform.id || !gs_slot_array_exists(dx11->uniforms, decl->uniform.id)) {
+			gs_timed_action(60, {
+				gs_println("Warning:Bind Uniform:Uniform %d does not exist.", decl->uniform.id);
+			});
+			continue;
+		}
+
+		u = gs_slot_array_getp(dx11->uniforms, decl->uniform.id);
+
+		switch (u->type)
+		{
+			case GSDX11_UNIFORMTYPE_TEXTURE2D:
+			{
+				gsdx11_texture_t								*tex;
+				gs_handle(gs_graphics_texture_t)		hndl;
+
+				hndl = *(gs_handle(gs_graphics_texture_t) *)decl->data;
+				tex = gs_slot_array_getp(dx11->textures, hndl.id);
+
+				ID3D11DeviceContext_PSSetShaderResources(cmdbuffer->def_context, binding, 1, &tex->srv);
+				ID3D11DeviceContext_PSSetSamplers(cmdbuffer->def_context, binding, 1, &tex->sampler);
+			} break;
+		}
 	}
 
 	// create input layout
@@ -1294,44 +1330,6 @@ gs_graphics_submit_command_buffer(gs_command_buffer_t *cb)
     /*                             ID3D11DeviceContext_PSSetConstantBuffers(dx11->context, binding, 1, &ub->cbo); */
     /*                         // TODO(matthew): add compute binding */
     /*                     } break; */
-
-    /*                     case GS_GRAPHICS_BIND_UNIFORM: */
-						/* { */
-							/* gsdx11_uniform_t		*u; */
-
-    /*                         // Get size from uniform list */
-    /*                         gs_byte_buffer_readc(&cb->commands, uint32_t, id); */
-    /*                         // Read data size for uniform list */
-    /*                         gs_byte_buffer_readc(&cb->commands, size_t, sz); */
-    /*                         // Read binding from uniform list (could make this a binding list? not sure how to handle this) */
-    /*                         gs_byte_buffer_readc(&cb->commands, uint32_t, binding); */
-
-    /*                         // Check buffer id. If invalid, then we can't operate, and instead just need to pass over the data. */
-    /*                         if (!id || !gs_slot_array_exists(dx11->uniforms, id)) { */
-    /*                             gs_timed_action(60, { */
-    /*                                 gs_println("Warning:Bind Uniform:Uniform %d does not exist.", id); */
-    /*                             }); */
-    /*                             gs_byte_buffer_advance_position(&cb->commands, sz); */
-    /*                             continue; */
-    /*                         } */
-
-							/* u = gs_slot_array_getp(dx11->uniforms, id); */
-
-							/* switch (u->type) */
-							/* { */
-								/* case GSDX11_UNIFORMTYPE_TEXTURE2D: */
-								/* { */
-									/* gsdx11_texture_t		*tex; */
-
-									/* gs_byte_buffer_read_bulkc(&cb->commands, gs_handle(gs_graphics_texture_t), v, u->size); */
-
-									/* tex = gs_slot_array_getp(dx11->textures, v.id); */
-
-									/* ID3D11DeviceContext_PSSetShaderResources(dx11->context, binding, 1, &tex->srv); */
-									/* ID3D11DeviceContext_PSSetSamplers(dx11->context, binding, 1, &tex->sampler); */
-								/* } break; */
-							/* } */
-						/* } break; */
     /*                 } */
     /*             } */
     /*         } break; */
