@@ -143,6 +143,12 @@ typedef struct _TAG_gsdx11_uniform
 /*  gs_dyn_array(gsdx11_uniform_t) uniforms; */
 /* } gsdx11_uniform_list_t; */
 
+typedef struct _TAG_gsdx11_command_buffer
+{
+	ID3D11DeviceContext		*def_context;
+	ID3D11CommandList		*cmd_list;
+} gsdx11_command_buffer_t;
+
 // Internal DX11 data
 typedef struct _TAG_gsdx11_data
 {
@@ -153,10 +159,11 @@ typedef struct _TAG_gsdx11_data
 	gs_slot_array(gsdx11_uniform_t)		uniforms;
 	gs_slot_array(gsdx11_texture_t)		textures;
     gs_slot_array(gsdx11_pipeline_t)    pipelines;
+	DWORD								tls_index;
 
     // Global data that I'll just put here since it's appropriate
     ID3D11Device                        *device;
-    ID3D11DeviceContext                 *context;
+    ID3D11DeviceContext                 *context; // immediate context
     IDXGISwapChain                      *swapchain;
     ID3D11RenderTargetView              *rtv;
     ID3D11DepthStencilView              *dsv;
@@ -356,9 +363,17 @@ gs_graphics_t *
 gs_graphics_create()
 {
     gs_graphics_t       *gfx = gs_malloc_init(gs_graphics_t);
-
+    gsdx11_data_t       *dx11;
 
     gfx->user_data = gs_malloc_init(gsdx11_data_t);
+    dx11 = (gsdx11_data_t *)gfx->user_data;
+
+	dx11->tls_index = TlsAlloc();
+	if (dx11->tls_index == TLS_OUT_OF_INDEXES)
+	{
+		gs_assert(false);
+	}
+	printf("allocated tls: %d\r\n", dx11->tls_index);
 
     return gfx;
 }
@@ -379,6 +394,9 @@ gs_graphics_destroy(gs_graphics_t *graphics)
     gs_slot_array_free(dx11->vertex_buffers);
     gs_slot_array_free(dx11->index_buffers);
     gs_slot_array_free(dx11->pipelines);
+
+	TlsFree(dx11->tls_index);
+	printf("freed tls\r\n");
 
     gs_free(graphics);
 }
@@ -845,20 +863,16 @@ gs_graphics_uniform_buffer_request_update(gs_command_buffer_t *cb,
         - Data packet
 */
 
-// TODO(matthew): This system works fine for now, however it's probably not
-// thread safe if we start using multiple command buffers. We can fix this by
-// using DX11 command lists. This would involve creating deferred contexts in
-// the internal DX11 data for use on multiple threads, as well as having a
-// unique command list for each thread that calls into gunslinger's command
-// buffer API (need to think of how this could be done).
-// We could call ID3D11DeviceContext::FinishCommandList in begin_render_pass()
-// to clear the context state, and then again in end_render_pass() to record
-// all the commands we wish to batch together into a single command buffer.
-// Then, in submit_buffer(), we simply execute the given command list (again,
-// need a way to store these for different threads so that they can be accessed
-// later on, namely NOW).
-// Ignore this for now, as it is a long term thing.
-
+// TODO(matthew): The solution to ensuring thread safety when doing multithreaded
+// rendering is quite simple. Each gs_command_buffer_t will have to (internally)
+// contain a deferred context and a command list. Each time we call a gs_graphics_XXX()
+// function that takes a command buffer, we need to simply make the API calls using the
+// deferred context inside that command buffer. Then, when we call to submit the command
+// buffer, we just execute the command list from the global immediate context. 
+// This means that the op-code system we've been using is no longer necessary. All we need
+// to do is replace all the __dx11_push_command(...) calls inside each of these functions
+// with the appropriate API calls through the command buffer's deferred context.
+// We'll use TLS to create a per-thread command buffer.
 #define __dx11_push_command(__cb, __op_code, ...)                                               \
 do                                                                                              \
 {                                                                                               \
@@ -876,6 +890,26 @@ gs_graphics_begin_render_pass(gs_command_buffer_t *cb,
     {
         gs_byte_buffer_write(&cb->commands, uint32_t, hndl.id);
     });
+    gsdx11_data_t       		*dx11;
+	gsdx11_command_buffer_t		*cmdbuffer;
+
+
+    dx11 = (gsdx11_data_t*)gs_engine_subsystem(graphics)->user_data;
+
+	// get cmdbuffer
+	cmdbuffer = TlsGetValue(dx11->tls_index);
+
+	// if it hasn't been created yet
+	if (!cmdbuffer)
+	{
+		cmdbuffer = (gsdx11_command_buffer_t *)LocalAlloc(LPTR, sizeof(*cmdbuffer));
+		if (!TlsSetValue(dx11->tls_index, cmdbuffer))
+		{
+			gs_assert(false);
+		}
+	}
+	
+	//
 }
 
 void
@@ -885,6 +919,19 @@ gs_graphics_end_render_pass(gs_command_buffer_t *cb)
     {
         // Nothing...
     });
+    gsdx11_data_t       		*dx11;
+	gsdx11_command_buffer_t		*cmdbuffer;
+
+
+    dx11 = (gsdx11_data_t*)gs_engine_subsystem(graphics)->user_data;
+
+	cmdbuffer = TlsGetValue(dx11->tls_index);
+	if (!cmdbuffer)
+	{
+		gs_assert(false);
+	}
+
+	//
 }
 
 void
