@@ -1034,34 +1034,34 @@ gs_graphics_apply_bindings(gs_command_buffer_t *cb,
 												vbo_offset;
 		gsdx11_buffer_t							vbo;
 		int										prev_slot = 0;
-		D3D11_INPUT_ELEMENT_DESC				layout_desc = gs_default_val();
 		gs_graphics_bind_vertex_buffer_desc_t	*decl = &binds->vertex_buffers.desc[i];
 
 		vbo_offset = decl->offset;
 
 		do
 		{
-			uint32_t		offset = pipe->layout[i].offset;
+			uint32_t						offset = pipe->layout[layout_idx].offset;
+			D3D11_INPUT_ELEMENT_DESC		layout_desc = gs_default_val();
 
-			stride += pipe->layout[i].stride;
+			stride += pipe->layout[layout_idx].stride;
 			vbo = gs_slot_array_get(dx11->vertex_buffers, decl->buffer.id);
-			vbo_slot = pipe->layout[i].buffer_idx;
+			vbo_slot = pipe->layout[layout_idx].buffer_idx;
 
-			layout_desc.SemanticName = pipe->layout[i].name;
-			layout_desc.Format = gsdx11_vertex_attrib_to_dxgi_format(pipe->layout[i].format);
+			layout_desc.SemanticName = pipe->layout[layout_idx].name;
+			layout_desc.Format = gsdx11_vertex_attrib_to_dxgi_format(pipe->layout[layout_idx].format);
 			layout_desc.InputSlot = vbo_slot;
 			layout_desc.AlignedByteOffset = offset;
-			if (pipe->layout[i].divisor)
+			if (pipe->layout[layout_idx].divisor)
 			{
 				layout_desc.InputSlotClass = D3D11_INPUT_PER_INSTANCE_DATA;
-				layout_desc.InstanceDataStepRate = pipe->layout[i].divisor;
+				layout_desc.InstanceDataStepRate = pipe->layout[layout_idx].divisor;
 			}
 
 			gs_dyn_array_push(dx11->cache.layout_descs, layout_desc);
 
 			prev_slot = vbo_slot;
-			i++;
-		} while ((pipe->layout[i].buffer_idx == prev_slot) && (i < layout_cnt));
+			layout_idx++;
+		} while ((pipe->layout[layout_idx].buffer_idx == prev_slot) && (layout_idx < layout_cnt));
 
 		ID3D11DeviceContext_IASetVertexBuffers(cmdbuffer->def_context, vbo_slot, 1, &vbo, &stride, &vbo_offset);
 	}
