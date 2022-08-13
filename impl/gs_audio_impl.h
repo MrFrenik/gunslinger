@@ -220,16 +220,22 @@ gs_handle(gs_audio_instance_t) gs_audio_instance_create(gs_audio_instance_decl_t
 }
 
 /* Audio play instance data */
-void gs_audio_play_source(gs_handle(gs_audio_source_t) src, float volume)
+void gs_audio_play_source_with_pitch(gs_handle(gs_audio_source_t) src, float volume, float pitch)
 {
     // Construct instance data from source and play
     gs_audio_t* audio = gs_subsystem(audio);
     gs_audio_instance_decl_t decl = gs_default_val();
     decl.src = src;
     decl.volume = gs_clamp(volume, audio->min_audio_volume, audio->max_audio_volume);
+    decl.pitch = gs_max(pitch, 0);
     decl.persistent = false;
     gs_handle(gs_audio_instance_t) inst = gs_audio_instance_create(&decl);
     gs_audio_play(inst);
+}
+
+void gs_audio_play_source(gs_handle(gs_audio_source_t) src, float volume)
+{
+    gs_audio_play_source_with_pitch(src, volume, 1.0f);
 }
 
 // Helper macros
@@ -492,7 +498,7 @@ void ma_audio_commit(ma_device* device, void* output, const void* input, ma_uint
                 s16 start_right_sample;
 
                 // Not sure about this line of code...
-                f64 target_sample_position = start_sample_position + (f64)channels * (f64)1.f;
+                f64 target_sample_position = start_sample_position + (f64)channels * (f64)inst->pitch;
 
                 if (target_sample_position >= src->sample_count)
                 {
