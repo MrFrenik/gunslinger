@@ -5194,6 +5194,7 @@ typedef struct gs_audio_instance_decl_t
 {
     gs_handle(gs_audio_source_t) src;
     float volume;
+    float pitch;
     bool32_t loop;
     bool32_t persistent;
     bool32_t playing;
@@ -5258,6 +5259,7 @@ GS_API_DECL void gs_audio_mutex_lock(gs_audio_t* audio);
 GS_API_DECL void gs_audio_mutex_unlock(gs_audio_t* audio);
 
 /* Audio play instance */
+GS_API_DECL void     gs_audio_play_source_with_pitch(gs_handle(gs_audio_source_t) src, float volume, float pitch);
 GS_API_DECL void     gs_audio_play_source(gs_handle(gs_audio_source_t) src, float volume);
 GS_API_DECL void     gs_audio_play(gs_handle(gs_audio_instance_t) inst);
 GS_API_DECL void     gs_audio_pause(gs_handle(gs_audio_instance_t) inst);
