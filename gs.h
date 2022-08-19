@@ -4482,6 +4482,7 @@ typedef struct gs_lexer_t
 	bool (* can_lex)(struct gs_lexer_t* lex);
 	void (* eat_white_space)(struct gs_lexer_t* lex);
 	gs_token_t (* next_token)(struct gs_lexer_t*);
+    bool32 skip_white_space;
 } gs_lexer_t;
 
 GS_API_DECL void gs_lexer_set_contents(gs_lexer_t* lex, const char* contents);
@@ -7930,7 +7931,10 @@ GS_API_DECL void gs_lexer_c_eat_white_space(gs_lexer_t* lex)
 
 GS_API_DECL gs_token_t gs_lexer_c_next_token(gs_lexer_t* lex)
 { 
-    lex->eat_white_space(lex);
+    if (lex->skip_white_space)
+    {
+        lex->eat_white_space(lex);
+    }
 
 	gs_token_t t = gs_token_invalid_token();
 	t.text = lex->at;
@@ -8237,6 +8241,7 @@ GS_API_DECL gs_lexer_t gs_lexer_c_ctor(const char* contents)
 	lex.can_lex = gs_lexer_c_can_lex;
 	lex.eat_white_space = gs_lexer_c_eat_white_space;
 	lex.next_token = gs_lexer_c_next_token;
+    lex.skip_white_space = true;
 	return lex;
 }
 
