@@ -683,7 +683,7 @@ GS_API_DECL int32_t gs_platform_mkdir_default_impl(const char* dir_path, int32_t
 { 
     #ifdef __MINGW32__
         return mkdir(dir_path);
-    #elif defined __linux__
+    #elif (defined __linux__ || defined __APPLE__)
         return mkdir(dir_path, opt);
     #else
         return _mkdir(dir_path);
