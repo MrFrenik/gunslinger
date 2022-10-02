@@ -2355,7 +2355,7 @@ void gs_graphics_command_buffer_submit(gs_command_buffer_t* cb)
                 for (uint32_t i = 0; i < gs_dyn_array_size(pip->layout); ++i)
                 {
                     // Vertex buffer to bind
-                    uint32_t vbo_idx = pip->layout[i].buffer_idx;
+                    uint32_t vbo_idx = i; //pip->layout[i].buffer_idx;
                     gsgl_vertex_buffer_decl_t vdecl = vbo_idx < gs_dyn_array_size(ogl->cache.vdecls) ? ogl->cache.vdecls[vbo_idx] : ogl->cache.vdecls[0];
                     gsgl_buffer_t vbo = vdecl.vbo;
 

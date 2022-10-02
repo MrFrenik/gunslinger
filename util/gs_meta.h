@@ -199,10 +199,11 @@ GS_API_DECL void gs_meta_registry_free(gs_meta_registry_t* meta);
 GS_API_DECL const char* gs_meta_typestr(gs_meta_property_type type);
 GS_API_DECL bool32 gs_meta_has_base_class(const gs_meta_registry_t* meta, const gs_meta_class_t* cls);
 GS_API_DECL uint64_t gs_meta_class_register(gs_meta_registry_t* meta, const gs_meta_class_decl_t* decl);
+GS_API_DECL void gs_meta_class_unregister(gs_meta_registry_t* meta, uint64_t id);
 GS_API_DECL uint64_t gs_meta_enum_register(gs_meta_registry_t* meta, const gs_meta_enum_decl_t* decl); 
 
 #define gs_meta_class_get(META, T)\
-    (gs_hash_table_getp((META)->classes, gs_hash_str64(gs_to_str(T)))) 
+    (gs_hash_table_getp((META)->classes, gs_hash_str64(gs_to_str(T))))
 
 #define gs_meta_class_get_w_name(META, NAME)\
 	(gs_hash_table_getp((META)->classes, gs_hash_str64(NAME)))
@@ -260,7 +261,9 @@ GS_API_DECL void gs_meta_registry_free(gs_meta_registry_t* meta)
     gs_hash_table_free(meta->classes);
 }
 
-GS_API_PRIVATE gs_meta_property_t _gs_meta_property_impl(const char* field_type_name, const char* field, size_t size, uint32_t offset, gs_meta_property_type_info_t type)
+GS_API_PRIVATE gs_meta_property_t 
+_gs_meta_property_impl(const char* field_type_name, const char* field, size_t size, 
+        uint32_t offset, gs_meta_property_type_info_t type)
 {
     gs_meta_property_t mp = gs_default_val();
     mp.name = field;
@@ -271,7 +274,8 @@ GS_API_PRIVATE gs_meta_property_t _gs_meta_property_impl(const char* field_type_
     return mp;
 }
 
-GS_API_PRIVATE uint64_t gs_meta_class_register(gs_meta_registry_t* meta, const gs_meta_class_decl_t* decl)
+GS_API_PRIVATE uint64_t 
+gs_meta_class_register(gs_meta_registry_t* meta, const gs_meta_class_decl_t* decl)
 {
     uint32_t ct = decl->size / sizeof(gs_meta_property_t);
     gs_meta_class_t cls = gs_default_val();
@@ -293,7 +297,17 @@ GS_API_PRIVATE uint64_t gs_meta_class_register(gs_meta_registry_t* meta, const g
     return id;
 }
 
-GS_API_DECL uint64_t gs_meta_enum_register(gs_meta_registry_t* meta, const gs_meta_enum_decl_t* decl)
+GS_API_DECL void 
+gs_meta_class_unregister(gs_meta_registry_t* meta, uint64_t id)
+{ 
+    gs_meta_class_t* cls = gs_hash_table_getp(meta->classes, id);
+    if (cls->properties) gs_free(cls->properties);
+    if (cls->property_map) gs_hash_table_free(cls->property_map);
+    gs_hash_table_erase(meta->classes, id);
+}
+
+GS_API_DECL uint64_t 
+gs_meta_enum_register(gs_meta_registry_t* meta, const gs_meta_enum_decl_t* decl)
 {
     uint32_t ct = decl->size / sizeof(gs_meta_enum_value_t);
     gs_meta_enum_t enm = gs_default_val();

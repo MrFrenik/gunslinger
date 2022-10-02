@@ -26,6 +26,7 @@
 #if !(defined GS_PLATFORM_WIN)
     #include <sys/stat.h>
     #include <dirent.h>
+    #include <dlfcn.h>  // dlopen, RTLD_LAZY, dlsym
 #else
 	#include "../external/dirent/dirent.h"
     #include <direct.h>
@@ -700,7 +701,6 @@ bool gs_platform_file_exists_default_impl(const char* file_path)
         path = tmp_path;
     #endif
 
-    gs_println("Checking: %s", path);
     FILE* fp = fopen(path, "r");
     if (fp) {
         fclose(fp);
@@ -749,6 +749,147 @@ int32_t gs_platform_file_size_in_bytes_default_impl(const char* file_path)
 void gs_platform_file_extension_default_impl(char* buffer, size_t buffer_sz, const char* file_path)
 {
     gs_util_get_file_extension(buffer, buffer_sz, file_path);
+}
+
+GS_API_DECL int32_t    
+gs_platform_file_delete_default_impl(const char* file_path)
+{
+    #if (defined GS_PLATFORM_WIN)
+
+        // Non-zero if successful
+        return DeleteFile(file_path); 
+
+    #elif (defined GS_PLATFORM_LINUX || defined GS_PLATFORM_APPLE || defined GS_PLATFORM_ANDROID)
+
+        // Returns 0 if successful
+        return !remove(file_path);
+
+    #endif
+
+    return 0;
+}
+
+GS_API_DECL int32_t    
+gs_platform_file_copy_default_impl(const char* src_path, const char* dst_path)
+{
+    #if (defined GS_PLATFORM_WIN)
+
+        return CopyFile(src_path, dst_path, false);
+
+    #elif (defined GS_PLATFORM_LINUX || defined GS_PLATFORM_APPLE || defined GS_PLATFORM_ANDROID)
+
+        FILE* file_w = NULL;
+        FILE* file_r = NULL;
+        char buffer[2048] = gs_default_val();
+
+        if ((file_w = fopen(src_path, "wb")) == NULL) {
+            return 0;
+        }
+        if ((file_r = fopen(dst_path, "rb")) == NULL) {
+            return 0;
+        }
+
+        // Read file in 2kb chunks to write to location
+        int32_t len = 0;
+        while ((len = fread(buffer, sizeof(buffer), 1, file_r)) > 0) {
+            fwrite(buffer, len, 1, file_w);
+        }
+
+        // Close both files
+        fclose(file_f);
+        fclose(file_w);
+
+    #endif
+
+    return 0;
+}
+
+GS_API_DECL int32_t    
+gs_platform_file_compare_time(uint64_t time_a, uint64_t time_b)
+{ 
+    return time_a < time_b ? -1 : time_a == time_b ? 0 : 1; 
+}
+
+GS_API_DECL gs_platform_file_stats_t 
+gs_platform_file_stats(const char* file_path)
+{
+    gs_platform_file_stats_t stats = gs_default_val();
+
+    #if (defined GS_PLATFORM_WIN) 
+        
+        WIN32_FILE_ATTRIBUTE_DATA data = gs_default_val();
+        FILETIME ftime = gs_default_val();
+        FILETIME ctime = gs_default_val();
+        FILETIME atime = gs_default_val();
+        if (GetFileAttributesExA(file_path, GetFileExInfoStandard, &data))
+        {
+            ftime = data.ftLastWriteTime;
+            ctime = data.ftCreationTime;
+            atime = data.ftLastAccessTime;
+        }
+
+        stats.modified_time = *((uint64_t*)&ftime);
+        stats.access_time = *((uint64_t*)&atime);
+        stats.creation_time = *((uint64_t*)&ctime);
+
+    #elif (defined GS_PLATFORM_LINUX || defined GS_PLATFORM_APPLE || defined GS_PLATFORM_ANDROID)
+        struct stat attr = gs_default_val();
+        stat(file_path, &attr); 
+        stats.modified_time = *((uint64_t*)&attr.st_mtime);
+
+    #endif
+
+    return stats;
+}
+
+GS_API_DECL void*      
+gs_platform_library_load_default_impl(const char* lib_path)
+{
+    #if (defined GS_PLATFORM_WIN) 
+
+        return LoadLibraryA(lib_path);
+
+    #elif (defined GS_PLATFORM_LINUX || defined GS_PLATFORM_APPLE || defined GS_PLATFORM_ANDROID)
+
+        return dlopen(lib_path, RTLD_LAZY);
+
+    #endif
+
+    return NULL;
+}
+
+GS_API_DECL void       
+gs_platform_library_unload_default_impl(void* lib)
+{
+    if (!lib) return;
+
+    #if (defined GS_PLATFORM_WIN) 
+        
+        FreeLibrary(lib);
+
+    #elif (defined GS_PLATFORM_LINUX || defined GS_PLATFORM_APPLE || defined GS_PLATFORM_ANDROID)
+
+        dlclose(lib);
+
+    #endif
+}
+
+GS_API_DECL void*      
+gs_platform_library_proc_address(void* lib, const char* func)
+{
+    if (!lib) return NULL;
+
+    #if (defined GS_PLATFORM_WIN) 
+
+        return GetProcAddress(lib, func);
+
+    #elif (defined GS_PLATFORM_LINUX || defined GS_PLATFORM_APPLE || defined GS_PLATFORM_ANDROID)
+
+        return dlsym(lib, func);
+
+    #endif
+
+    return NULL;
 }
 
 #undef GS_PLATFORM_IMPL_DEFAULT

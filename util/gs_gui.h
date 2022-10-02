@@ -1045,6 +1045,7 @@ GS_API_DECL void gs_gui_draw_custom(gs_gui_context_t* ctx, gs_gui_rect_t rect, g
 
 //=== Layout ===//
 
+GS_API_DECL gs_gui_layout_t* gs_gui_get_layout(gs_gui_context_t* ctx);
 GS_API_DECL void gs_gui_layout_row(gs_gui_context_t *ctx, int32_t items, const int32_t *widths, int32_t height);
 GS_API_DECL void gs_gui_layout_row_ex(gs_gui_context_t *ctx, int32_t items, const int32_t *widths, int32_t height, int32_t justification);
 GS_API_DECL void gs_gui_layout_width(gs_gui_context_t *ctx, int32_t width);
@@ -2259,7 +2260,8 @@ static void gs_gui_pop_layout(gs_gui_context_t* ctx)
 	gs_gui_stack_pop(ctx->layout_stack);
 }
 
-static gs_gui_layout_t* gs_gui_get_layout(gs_gui_context_t *ctx) 
+GS_API_DECL gs_gui_layout_t* 
+gs_gui_get_layout(gs_gui_context_t *ctx) 
 {
 	return &ctx->layout_stack.items[ctx->layout_stack.idx - 1];
 }

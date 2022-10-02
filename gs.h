@@ -528,18 +528,24 @@
 
 /*===================
 // GS_API_DECL
-===================*/
-#ifdef __cplusplus
-   #define GS_API_DECL   extern "C"
+===================*/ 
+
+#ifdef GS_API_DLL_EXPORT
+    #ifdef __cplusplus
+        #define GS_API_EXTERN extern "C" __declspec(dllexport)
+    #else
+        #define GS_API_EXTERN extern __declspec(dllexport)
+    #endif
 #else
-   #define GS_API_DECL   extern
+    #ifdef __cplusplus
+        #define GS_API_EXTERN extern "C"
+    #else
+        #define GS_API_EXTERN extern
+    #endif
 #endif
 
-#ifdef __cplusplus
-   #define GS_API_PRIVATE   extern "C"
-#else
-   #define GS_API_PRIVATE   extern
-#endif
+#define GS_API_DECL     GS_API_EXTERN
+#define GS_API_PRIVATE  GS_API_EXTERN 
 
 /*===================
 // PLATFORM DEFINES
@@ -564,6 +570,7 @@
     #define OEMRESOURCE
 
     #define GS_PLATFORM_WIN
+    #define GS_PLATFORM_WINDOWS
     #include <windows.h>
 
     #define WIN32_LEAN_AND_MEAN
@@ -1152,8 +1159,31 @@ void gs_util_string_remove_character
     }
 }
 
+gs_force_inline
+void gs_util_string_replace(
+    char* buffer, 
+    size_t buffer_sz,
+    const char* replace, 
+    char fallback
+)
+{
+    // Replace all characters with characters of keyword, then the rest replace with spaces
+    size_t len = gs_string_length(replace);
+    for (uint32_t c = 0; c < buffer_sz; ++c) 
+    {
+        if (c < len)
+        {
+            buffer[c] = replace[c];
+        }
+        else
+        {
+            buffer[c] = fallback;
+        }
+    }
+}
+
 gs_force_inline 
-void gs_util_string_replace
+void gs_util_string_replace_delim
 (
     const char* source_str, 
     char* buffer, 
@@ -4456,7 +4486,7 @@ typedef enum gs_token_type
 
 typedef struct gs_token_t 
 {
-	const char* text;
+	char* text;
 	gs_token_type type;
 	uint32_t len;
 } gs_token_t;
@@ -5074,6 +5104,13 @@ GS_API_DECL void      gs_platform_add_event(gs_platform_event_t* evt);
 GS_API_DECL uint32_t gs_platform_create_window(const char* title, uint32_t width, uint32_t height, uint32_t monitor_index);
 GS_API_DECL uint32_t gs_platform_main_window();
 
+typedef struct gs_platform_file_stats_s
+{
+    uint64_t modified_time;
+    uint64_t creation_time;
+    uint64_t access_time;
+} gs_platform_file_stats_t;
+
 // Platform File IO (this all needs to be made available for impl rewrites)
 GS_API_DECL char*      gs_platform_read_file_contents_default_impl(const char* file_path, const char* mode, size_t* sz);
 GS_API_DECL gs_result  gs_platform_write_file_contents_default_impl(const char* file_path, const char* mode, void* data, size_t data_size);
@@ -5082,6 +5119,13 @@ GS_API_DECL bool       gs_platform_dir_exists_default_impl(const char* dir_path)
 GS_API_DECL int32_t    gs_platform_mkdir_default_impl(const char* dir_path, int32_t opt);
 GS_API_DECL int32_t    gs_platform_file_size_in_bytes_default_impl(const char* file_path);
 GS_API_DECL void       gs_platform_file_extension_default_impl(char* buffer, size_t buffer_sz, const char* file_path);
+GS_API_DECL int32_t    gs_platform_file_delete_default_impl(const char* file_path);
+GS_API_DECL int32_t    gs_platform_file_copy_default_impl(const char* src_path, const char* dst_path);
+GS_API_DECL int32_t    gs_platform_file_compare_time(uint64_t time_a, uint64_t time_b);
+GS_API_DECL gs_platform_file_stats_t gs_platform_file_stats(const char* file_path);
+GS_API_DECL void*      gs_platform_library_load_default_impl(const char* lib_path);
+GS_API_DECL void       gs_platform_library_unload_default_impl(void* lib);
+GS_API_DECL void*      gs_platform_library_proc_address_default_impl(void* lib, const char* func);
 
 // Default file implementations
 #ifndef gs_platform_read_file_contents
@@ -5107,6 +5151,21 @@ GS_API_DECL void       gs_platform_file_extension_default_impl(char* buffer, siz
 #endif
 #ifndef gs_platform_file_extension
 #define gs_platform_file_extension gs_platform_file_extension_default_impl
+#endif
+#ifndef gs_platform_file_delete
+#define gs_platform_file_delete gs_platform_file_delete_default_impl
+#endif 
+#ifndef gs_platform_file_copy
+#define gs_platform_file_copy gs_platform_file_copy_default_impl
+#endif
+#ifndef gs_platform_library_load
+#define gs_platform_library_load gs_platform_library_load_default_impl
+#endif
+#ifndef gs_platform_library_unload
+#define gs_platform_library_unload gs_platform_library_unload_default_impl
+#endif
+#ifndef gs_platform_library_proc_addresss
+#define gs_platform_library_proc_address gs_platform_library_proc_address_default_impl
 #endif
 
 /* == Platform Dependent API == */
@@ -7625,7 +7684,7 @@ bool gs_util_load_gltf_data_from_file(const char* path, gs_asset_mesh_decl_t* de
                 vct = gs_max(vct, gs_dyn_array_size(normals));
                 vct = gs_max(vct, gs_dyn_array_size(tangents));
 
-                #define __GLTF_WRITE_DATA(IT, VDATA, ARR, ARR_TYPE, ARR_DEF_VAL, LAYOUT_TYPE)\
+                #define __GS_GLTF_WRITE_DATA(IT, VDATA, ARR, ARR_TYPE, ARR_DEF_VAL, LAYOUT_TYPE)\
                     do {\
                         /* Grab data at index, if available */\
                         if (IT < gs_dyn_array_size(ARR)) {\
@@ -7649,23 +7708,23 @@ bool gs_util_load_gltf_data_from_file(const char* path, gs_asset_mesh_decl_t* de
                         switch (layoutp[l].type)
                         {
                             case GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION: {
-                                __GLTF_WRITE_DATA(it, v_data, positions, gs_vec3, gs_v3(0.f, 0.f, 0.f), GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION); 
+                                __GS_GLTF_WRITE_DATA(it, v_data, positions, gs_vec3, gs_v3(0.f, 0.f, 0.f), GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION); 
                             } break;
 
                             case GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD: {
-                                __GLTF_WRITE_DATA(it, v_data, uvs, gs_vec2, gs_v2(0.f, 0.f), GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD); 
+                                __GS_GLTF_WRITE_DATA(it, v_data, uvs, gs_vec2, gs_v2(0.f, 0.f), GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD); 
                             } break;
 
                             case GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR: {
-                                __GLTF_WRITE_DATA(it, v_data, colors, gs_color_t, GS_COLOR_WHITE, GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR); 
+                                __GS_GLTF_WRITE_DATA(it, v_data, colors, gs_color_t, GS_COLOR_WHITE, GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR); 
                             } break;
 
                             case GS_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL: {
-                                __GLTF_WRITE_DATA(it, v_data, normals, gs_vec3, gs_v3(0.f, 0.f, 1.f), GS_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL); 
+                                __GS_GLTF_WRITE_DATA(it, v_data, normals, gs_vec3, gs_v3(0.f, 0.f, 1.f), GS_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL); 
                             } break;
 
                             case GS_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT: {
-                                __GLTF_WRITE_DATA(it, v_data, tangents, gs_vec3, gs_v3(0.f, 1.f, 0.f), GS_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT); 
+                                __GS_GLTF_WRITE_DATA(it, v_data, tangents, gs_vec3, gs_v3(0.f, 1.f, 0.f), GS_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT); 
                             } break;
 
                             default:

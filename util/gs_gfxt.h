@@ -56,6 +56,47 @@
     #define GS_GFXT_HNDL void*                          // Default handle will just be a pointer to the data itself 
 #endif
 
+// Config
+#ifndef GS_GFXT_TEX_COORD_MAX
+    #define GS_GFXT_TEX_COORD_MAX 4
+#endif
+
+#ifndef GS_GFXT_COLOR_MAX
+    #define GS_GFXT_COLOR_MAX 4
+#endif
+
+#ifndef GS_GFXT_JOINT_MAX
+    #define GS_GFXT_JOINT_MAX 4
+#endif
+
+#ifndef GS_GFXT_WEIGHT_MAX
+    #define GS_GFXT_WEIGHT_MAX 4
+#endif
+
+#ifndef GS_GFXT_UNIFORM_VIEW_MATRIX
+    #define GS_GFXT_UNIFORM_VIEW_MATRIX "U_VIEW_MTX"
+#endif
+
+#ifndef GS_GFXT_UNIFORM_PROJECTION_MATRIX
+    #define GS_GFXT_UNIFORM_PROJECTION_MATRIX "U_PROJECTION_MTX"
+#endif
+
+#ifndef GS_GFXT_UNIFORM_MODEL_MATRIX
+    #define GS_GFXT_UNIFORM_MODEL_MATRIX "U_MODEL_MTX"
+#endif
+
+#ifndef GS_GFXT_UNIFORM_VIEW_WORLD_POSITION
+    #define GS_GFXT_UNIFORM_VIEW_WORLD_POSITION "U_VIEW_WORLD_POSITION"
+#endif
+
+#ifndef GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX
+    #define GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX "U_MVP_MTX"
+#endif
+
+#ifndef GS_GFXT_UNIFORM_TIME
+    #define GS_GFXT_UNIFORM_TIME "U_TIME"
+#endif
+
 typedef void* (*gs_gfxt_raw_data_func)(GS_GFXT_HNDL hndl, void* user_data);
 
 #define GS_GFXT_RAW_DATA(FUNC_DESC, T)\
@@ -107,46 +148,94 @@ typedef gs_handle(gs_graphics_texture_t) gs_gfxt_texture_t;
 typedef gs_asset_mesh_attribute_type gs_gfxt_mesh_attribute_type;
 typedef gs_asset_mesh_layout_t gs_gfxt_mesh_layout_t;
 
+/*
+    typedef struct
+    {
+        union
+        {
+            void* interleave; 
+            struct
+            {
+                void* positions;
+                void* normals;
+                void* tangents;
+                void* tex_coords[TEX_COORD_MAX];
+                void* joints[JOINT_MAX];
+                void* weights[WEIGHT_MAX];
+            } non_interleave;
+        } vertex;
+        size_t vertex_size;
+        void* indices;
+    } gs_gfxt_mesh_primitive_data_t;
+*/
+
+typedef struct
+{
+    void* data;
+    size_t size;
+} gs_gfxt_mesh_vertex_attribute_t;
+
+typedef struct 
+{
+    gs_gfxt_mesh_vertex_attribute_t positions;         // All position data
+    gs_gfxt_mesh_vertex_attribute_t normals;
+    gs_gfxt_mesh_vertex_attribute_t tangents;
+    gs_gfxt_mesh_vertex_attribute_t tex_coords[GS_GFXT_TEX_COORD_MAX];
+    gs_gfxt_mesh_vertex_attribute_t colors[GS_GFXT_COLOR_MAX];
+    gs_gfxt_mesh_vertex_attribute_t joints[GS_GFXT_JOINT_MAX];
+    gs_gfxt_mesh_vertex_attribute_t weights[GS_GFXT_WEIGHT_MAX];
+    gs_gfxt_mesh_vertex_attribute_t indices;                           
+    uint16_t count;                                                     // Total count of indices
+} gs_gfxt_mesh_vertex_data_t;
+
 // Structured/packed raw mesh data
 typedef struct gs_gfxt_mesh_raw_data_t {
-    uint16_t prim_count;
-    size_t* vertex_sizes;
-    size_t* index_sizes;
-    void** vertices;
-    void** indices;
+    gs_dyn_array(gs_gfxt_mesh_vertex_data_t) primitives;   // All primitive data
 } gs_gfxt_mesh_raw_data_t;
 
 typedef struct gs_gfxt_mesh_import_options_t {
     gs_gfxt_mesh_layout_t* layout;        // Mesh attribute layout array
-    size_t size;                    // Size of mesh attribute layout array in bytes
-    size_t index_buffer_element_size;      // Size of index data size in bytes
+    size_t size;                          // Size of mesh attribute layout array in bytes
+    size_t index_buffer_element_size;     // Size of index data size in bytes
 } gs_gfxt_mesh_import_options_t;
 
 GS_API_DECL void gs_gfxt_mesh_import_options_free(gs_gfxt_mesh_import_options_t* opt);
 
-typedef struct gs_gfxt_mesh_desc_t {
+typedef struct gs_gfxt_mesh_desc_s {
     gs_gfxt_mesh_raw_data_t* meshes;   // Mesh data array
     size_t size;                       // Size of mesh data array in bytes
 } gs_gfxt_mesh_desc_t;
 
-typedef struct gs_gfxt_mesh_primitive_t {
+typedef struct gs_gfxt_vertex_stream_s
+{
+    gs_handle(gs_graphics_vertex_buffer_t) positions;
+    gs_handle(gs_graphics_vertex_buffer_t) normals;
+    gs_handle(gs_graphics_vertex_buffer_t) tangents;
+    gs_handle(gs_graphics_vertex_buffer_t) colors[GS_GFXT_COLOR_MAX];
+    gs_handle(gs_graphics_vertex_buffer_t) tex_coords[GS_GFXT_TEX_COORD_MAX];
+    gs_handle(gs_graphics_vertex_buffer_t) joints[GS_GFXT_JOINT_MAX];
+    gs_handle(gs_graphics_vertex_buffer_t) weights[GS_GFXT_WEIGHT_MAX];
+} gs_gfxt_vertex_stream_t;
+
+typedef struct gs_gfxt_mesh_primitive_s {
     gs_handle(gs_graphics_vertex_buffer_t) vbo;
-    gs_handle(gs_graphics_index_buffer_t) ibo;
-    uint32_t count; 
+    gs_handle(gs_graphics_index_buffer_t) ibo;      // Index buffer
+    gs_gfxt_vertex_stream_t stream;                 // All vertex data streams
+    uint32_t count;                                 // Total number of vertices
 } gs_gfxt_mesh_primitive_t;
 
-typedef struct gs_gfxt_mesh_t {
+typedef struct gs_gfxt_mesh_s {
     gs_dyn_array(gs_gfxt_mesh_primitive_t) primitives;
     gs_gfxt_mesh_desc_t desc;
 } gs_gfxt_mesh_t;
 
 //=== Pipeline ===//
-typedef struct gs_gfxt_pipeline_desc_t {
+typedef struct gs_gfxt_pipeline_desc_s {
     gs_graphics_pipeline_desc_t  pip_desc;           // Description for constructing pipeline object
     gs_gfxt_uniform_block_desc_t ublock_desc;        // Description for constructing uniform block object
 } gs_gfxt_pipeline_desc_t;
 
-typedef struct gs_gfxt_pipeline_t {
+typedef struct gs_gfxt_pipeline_s {
     gs_handle(gs_graphics_pipeline_t) hndl;                         // Graphics handle resource for actual pipeline
     gs_gfxt_uniform_block_t ublock;                                 // Uniform block for holding all uniform data
     gs_dyn_array(gs_gfxt_mesh_layout_t) mesh_layout;  
@@ -154,29 +243,29 @@ typedef struct gs_gfxt_pipeline_t {
 } gs_gfxt_pipeline_t;
 
 //=== Material ===//
-typedef struct gs_gfxt_material_desc_t {
+typedef struct gs_gfxt_material_desc_s {
     gs_gfxt_raw_data_func_desc_t pip_func;      // Description for retrieving raw pipeline pointer data from handle.
 } gs_gfxt_material_desc_t;
 
-typedef struct gs_gfxt_material_t {
+typedef struct gs_gfxt_material_s {
     gs_gfxt_material_desc_t desc;               // Material description object
     gs_byte_buffer_t uniform_data;              // Byte buffer of actual uniform data to send to GPU
     gs_byte_buffer_t image_buffer_data;         // Image buffer data
 } gs_gfxt_material_t; 
 
 //=== Renderable ===// 
-typedef struct gs_gfxt_renderable_desc_t {
+typedef struct gs_gfxt_renderable_desc_s {
     gs_gfxt_raw_data_func_desc_t mesh;      // Description for retrieving raw mesh pointer data from handle.
     gs_gfxt_raw_data_func_desc_t material;  // Description for retrieving raw material pointer data from handle.
 } gs_gfxt_renderable_desc_t;
 
-typedef struct gs_gfxt_renderable_t {
+typedef struct gs_gfxt_renderable_s {
     gs_gfxt_renderable_desc_t desc;     // Renderable description object
     gs_mat4 model_matrix;               // Model matrix for renderable
 } gs_gfxt_renderable_t;
 
 //=== Graphics scene ===//
-typedef struct gs_gfxt_scene_t {
+typedef struct gs_gfxt_scene_s {
     gs_slot_array(gs_gfxt_renderable_t) renderables;
 } gs_gfxt_scene_t;
 
@@ -202,11 +291,15 @@ GS_API_DECL gs_gfxt_material_t gs_gfxt_material_deep_copy(gs_gfxt_material_t* sr
 //=== Material API ===//
 GS_API_DECL void gs_gfxt_material_set_uniform(gs_gfxt_material_t* mat, const char* name, const void* data);
 GS_API_DECL void gs_gfxt_material_bind(gs_command_buffer_t* cb, gs_gfxt_material_t* mat);
+GS_API_DECL void gs_gfxt_material_bind_pipeline(gs_command_buffer_t* cb, gs_gfxt_material_t* mat);
 GS_API_DECL void gs_gfxt_material_bind_uniforms(gs_command_buffer_t* cb, gs_gfxt_material_t* mat);
 GS_API_DECL gs_gfxt_pipeline_t* gs_gfxt_material_get_pipeline(gs_gfxt_material_t* mat);
 
 //=== Mesh API ===//
 GS_API_DECL void gs_gfxt_mesh_draw(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh);
+GS_API_DECL void gs_gfxt_mesh_draw_pipeline(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh, gs_gfxt_pipeline_t* pip);
+GS_API_DECL void gs_gfxt_mesh_draw_material(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh, gs_gfxt_material_t* mat);
+GS_API_DECL void gs_gfxt_mesh_draw_layout(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh, gs_gfxt_mesh_layout_t* layout, size_t layout_size);
 GS_API_DECL gs_gfxt_mesh_t gs_gfxt_mesh_load_from_file(const char* file, gs_gfxt_mesh_import_options_t* options);
 GS_API_DECL bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_options_t* options, gs_gfxt_mesh_raw_data_t** out, uint32_t* mesh_count);
 
@@ -353,24 +446,94 @@ gs_gfxt_mesh_t gs_gfxt_mesh_create(const gs_gfxt_mesh_desc_t* desc)
     {
         gs_gfxt_mesh_raw_data_t* m = &desc->meshes[i];
 
-        for (uint32_t p = 0; p < (uint32_t)m->prim_count; ++p)
+        for (uint32_t p = 0; p < gs_dyn_array_size(m->primitives); ++p)
         {
+            // Get raw vertex data
+            gs_gfxt_mesh_vertex_data_t* vdata = &m->primitives[p];
+
             // Construct primitive
             gs_gfxt_mesh_primitive_t prim = gs_default_val();
-            prim.count = m->index_sizes[p] / sizeof(uint16_t);
+            prim.count = vdata->count;
 
-            // Vertex buffer decl
-            gs_graphics_vertex_buffer_desc_t vdesc = gs_default_val();
-            vdesc.data = m->vertices[p];
-            vdesc.size = m->vertex_sizes[p];
+            // Positions
+            if (vdata->positions.data) 
+            {
+                gs_graphics_vertex_buffer_desc_t vdesc = gs_default_val();
+                vdesc.data = vdata->positions.data;
+                vdesc.size = vdata->positions.size;
+                prim.stream.positions = gs_graphics_vertex_buffer_create(&vdesc);
+            }
 
-            // Construct vertex buffer for primitive
-            prim.vbo = gs_graphics_vertex_buffer_create(&vdesc);
+            // Normals
+            if (vdata->normals.data) 
+            {
+                gs_graphics_vertex_buffer_desc_t vdesc = gs_default_val();
+                vdesc.data = vdata->normals.data;
+                vdesc.size = vdata->normals.size;
+                prim.stream.normals = gs_graphics_vertex_buffer_create(&vdesc);
+            }
+
+            // Tangents
+            if (vdata->tangents.data) 
+            {
+                gs_graphics_vertex_buffer_desc_t vdesc = gs_default_val();
+                vdesc.data = vdata->tangents.data;
+                vdesc.size = vdata->tangents.size;
+                prim.stream.tangents = gs_graphics_vertex_buffer_create(&vdesc);
+            }
+
+            // Texcoords
+            for (uint32_t j = 0; j < GS_GFXT_TEX_COORD_MAX; ++j)
+            {
+                if (vdata->tex_coords[j].data) 
+                {
+                    gs_graphics_vertex_buffer_desc_t vdesc = gs_default_val();
+                    vdesc.data = vdata->tex_coords[j].data;
+                    vdesc.size = vdata->tex_coords[j].size;
+                    prim.stream.tex_coords[j] = gs_graphics_vertex_buffer_create(&vdesc);
+                }
+            }
+
+            // Colors
+            for (uint32_t j = 0; j < GS_GFXT_COLOR_MAX; ++j)
+            {
+                if (vdata->colors[j].data) 
+                {
+                    gs_graphics_vertex_buffer_desc_t vdesc = gs_default_val();
+                    vdesc.data = vdata->colors[j].data;
+                    vdesc.size = vdata->colors[j].size;
+                    prim.stream.colors[j] = gs_graphics_vertex_buffer_create(&vdesc);
+                }
+            }
+
+            // Joints
+            for (uint32_t j = 0; j < GS_GFXT_JOINT_MAX; ++j)
+            {
+                if (vdata->joints[j].data) 
+                {
+                    gs_graphics_vertex_buffer_desc_t vdesc = gs_default_val();
+                    vdesc.data = vdata->joints[j].data;
+                    vdesc.size = vdata->joints[j].size;
+                    prim.stream.joints[j] = gs_graphics_vertex_buffer_create(&vdesc);
+                }
+            }
+
+            // Weights
+            for (uint32_t j = 0; j < GS_GFXT_WEIGHT_MAX; ++j)
+            {
+                if (vdata->weights[j].data) 
+                {
+                    gs_graphics_vertex_buffer_desc_t vdesc = gs_default_val();
+                    vdesc.data = vdata->weights[j].data;
+                    vdesc.size = vdata->weights[j].size;
+                    prim.stream.weights[j] = gs_graphics_vertex_buffer_create(&vdesc);
+                }
+            }
 
             // Index buffer decl
             gs_graphics_index_buffer_desc_t idesc = gs_default_val();
-            idesc.data = m->indices[p];
-            idesc.size = m->index_sizes[p];
+            idesc.data = vdata->indices.data;
+            idesc.size = vdata->indices.size;
 
             // Construct index buffer for primitive
             prim.ibo = gs_graphics_index_buffer_create(&idesc);
@@ -419,7 +582,7 @@ void gs_gfxt_material_set_uniform(gs_gfxt_material_t* mat, const char* name, con
 
     // Get key for name lookup
     uint64_t key = gs_hash_str64(name);
-    if (!gs_hash_table_key_exists(pip->ublock.lookup, key)) {
+    if (!gs_hash_table_exists(pip->ublock.lookup, key)) {
         gs_timed_action(60, {
             gs_log_warning("Unable to find uniform: %s", name);
         });
@@ -471,6 +634,13 @@ GS_API_DECL gs_gfxt_pipeline_t* gs_gfxt_material_get_pipeline(gs_gfxt_material_t
 GS_API_DECL
 void gs_gfxt_material_bind(gs_command_buffer_t* cb, gs_gfxt_material_t* mat)
 {
+    gs_gfxt_material_bind_pipeline(cb, mat);
+    gs_gfxt_material_bind_uniforms(cb, mat);
+}
+
+GS_API_DECL
+void gs_gfxt_material_bind_pipeline(gs_command_buffer_t* cb, gs_gfxt_material_t* mat)
+{
     // Binds the pipeline
     gs_gfxt_pipeline_t* pip = GS_GFXT_RAW_DATA(&mat->desc.pip_func, gs_gfxt_pipeline_t);
     gs_assert(pip);
@@ -521,8 +691,8 @@ void gs_gfxt_material_bind_uniforms(gs_command_buffer_t* cb, gs_gfxt_material_t*
 }
 
 // Mesh API
-GS_API_DECL 
-void gs_gfxt_mesh_draw(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mp)
+GS_API_DECL void 
+gs_gfxt_mesh_draw(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mp)
 {
     // For each primitive in mesh
     for (uint32_t i = 0; i < gs_dyn_array_size(mp->primitives); ++i)
@@ -543,6 +713,75 @@ void gs_gfxt_mesh_draw(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mp)
         gs_graphics_apply_bindings(cb, &binds);
         gs_graphics_draw(cb, &ddesc);
     }
+}
+
+GS_API_DECL void 
+gs_gfxt_mesh_draw_layout(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh, gs_gfxt_mesh_layout_t* layout, size_t layout_size)
+{
+    if (!layout || !mesh || !cb)
+    {
+        return;
+    }
+
+    uint32_t ct = layout_size / sizeof(gs_gfxt_mesh_layout_t);
+
+    // For each primitive in mesh
+    for (uint32_t i = 0; i < gs_dyn_array_size(mesh->primitives); ++i)
+    {
+        gs_gfxt_mesh_primitive_t* prim = &mesh->primitives[i];
+
+        gs_graphics_bind_vertex_buffer_desc_t vbos[8] = {0};
+        for (uint32_t l = 0; l < ct; ++l)
+        {
+            vbos[l].data_type = GS_GRAPHICS_VERTEX_DATA_NONINTERLEAVED;
+            switch (layout[l].type)
+            {
+                case GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION: vbos[l].buffer = prim->stream.positions; break;
+                case GS_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL:   vbos[l].buffer = prim->stream.normals; break;
+                case GS_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT:  vbos[l].buffer = prim->stream.tangents; break;
+                case GS_ASSET_MESH_ATTRIBUTE_TYPE_JOINT:    vbos[l].buffer = prim->stream.joints[0]; break;
+                case GS_ASSET_MESH_ATTRIBUTE_TYPE_WEIGHT:   vbos[l].buffer = prim->stream.weights[0]; break;
+                case GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD: vbos[l].buffer = prim->stream.tex_coords[0]; break;
+                case GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR:    vbos[l].buffer = prim->stream.colors[0]; break;
+            }
+        }
+
+        // Bindings for all buffers: vertex, index, uniform, sampler
+        gs_graphics_bind_desc_t binds = {
+            // .vertex_buffers = {.desc = vbos, .size = sizeof(vbos)},
+            .vertex_buffers = {.desc = vbos, .size = ct * sizeof(gs_graphics_bind_vertex_buffer_desc_t)},
+            .index_buffers = {.desc = &(gs_graphics_bind_index_buffer_desc_t){.buffer = prim->ibo}}
+        };
+        gs_graphics_draw_desc_t ddesc = {
+            .start = 0, 
+            .count = prim->count
+        };
+        gs_graphics_apply_bindings(cb, &binds);
+        gs_graphics_draw(cb, &ddesc);
+    }
+}
+
+GS_API_DECL void 
+gs_gfxt_mesh_draw_material(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh, gs_gfxt_material_t* mat)
+{ 
+    if (!mat || !mesh || !cb)
+    {
+        return;
+    }
+
+    gs_gfxt_pipeline_t* pip = gs_gfxt_material_get_pipeline(mat);
+    gs_gfxt_mesh_draw_layout(cb, mesh, pip->mesh_layout, gs_dyn_array_size(pip->mesh_layout) * sizeof(gs_gfxt_mesh_layout_t));
+}
+
+GS_API_DECL void 
+gs_gfxt_mesh_draw_pipeline(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh, gs_gfxt_pipeline_t* pip)
+{
+    if (!pip || !mesh || !cb)
+    {
+        return;
+    }
+
+    gs_gfxt_mesh_draw_layout(cb, mesh, pip->mesh_layout, gs_dyn_array_size(pip->mesh_layout) * sizeof(gs_gfxt_mesh_layout_t));
 }
 
 // Util API
@@ -660,9 +899,11 @@ bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_opti
     gs_dyn_array(gs_vec3) positions = NULL;
     gs_dyn_array(gs_vec3) normals = NULL;
     gs_dyn_array(gs_vec3) tangents = NULL;
-    gs_dyn_array(gs_color_t) colors = NULL;
-    gs_dyn_array(gs_vec2) uvs = NULL;
-    gs_dyn_array(gs_gfxt_mesh_layout_t) layouts = NULL;
+    gs_dyn_array(gs_color_t) colors[GS_GFXT_COLOR_MAX] = gs_default_val();
+    gs_dyn_array(gs_vec2) uvs[GS_GFXT_TEX_COORD_MAX] = gs_default_val();
+    gs_dyn_array(float) weights[GS_GFXT_WEIGHT_MAX] = gs_default_val();
+    gs_dyn_array(float) joints[GS_GFXT_JOINT_MAX] = gs_default_val();
+    gs_dyn_array(gs_gfxt_mesh_layout_t) layouts = gs_default_val();
     gs_byte_buffer_t v_data = gs_byte_buffer_new();
     gs_byte_buffer_t i_data = gs_byte_buffer_new();
     gs_mat4 world_mat = gs_mat4_identity();
@@ -700,16 +941,19 @@ bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_opti
         //  world_mat = gs_mat4_mul(world_mat, tmp);
         // }
 
+        
         // Do node mesh data
         cgltf_mesh* cmesh = node->mesh;
         {
             // Initialize mesh data
             gs_gfxt_mesh_raw_data_t* mesh = &((*out)[i]);
+            /*
             mesh->prim_count = cmesh->primitives_count;
             mesh->vertex_sizes = (size_t*)gs_malloc(sizeof(size_t) * mesh->prim_count);
             mesh->index_sizes = (size_t*)gs_malloc(sizeof(size_t) * mesh->prim_count);
             mesh->vertices = (void**)gs_malloc(sizeof(size_t) * mesh->prim_count);
             mesh->indices = (void**)gs_malloc(sizeof(size_t) * mesh->prim_count); 
+            */
             bool warnings[gs_enum_count(gs_asset_mesh_attribute_type)] = gs_default_val();
             bool printed = false;
 
@@ -718,12 +962,17 @@ bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_opti
             {
                 cgltf_primitive* prim = &cmesh->primitives[p];
 
+                // Mesh primitive to fill out
+                gs_gfxt_mesh_vertex_data_t primitive = gs_default_val();
+
                 // Clear temp data from previous use
                 gs_dyn_array_clear(positions);
                 gs_dyn_array_clear(normals);
                 gs_dyn_array_clear(tangents);
-                gs_dyn_array_clear(uvs);
-                gs_dyn_array_clear(colors);
+                for (uint32_t ci = 0; ci < GS_GFXT_COLOR_MAX; ++ci) gs_dyn_array_clear(colors[ci]);
+                for (uint32_t tci = 0; tci < GS_GFXT_TEX_COORD_MAX; ++tci) gs_dyn_array_clear(uvs[tci]);
+                for (uint32_t wi = 0; wi < GS_GFXT_WEIGHT_MAX; ++wi) gs_dyn_array_clear(weights[wi]);
+                for (uint32_t ji = 0; ji < GS_GFXT_JOINT_MAX; ++ji) gs_dyn_array_clear(joints[ji]);
                 gs_dyn_array_clear(layouts);
                 gs_byte_buffer_clear(&v_data);
                 gs_byte_buffer_clear(&i_data);
@@ -759,6 +1008,9 @@ bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_opti
                 {
                     // Accessor for attribute data
                     cgltf_accessor* attr = prim->attributes[a].data;
+
+                    // Index for data
+                    int32_t aidx = prim->attributes[a].index;
 
                     // Switch on type for reading data
                     switch (prim->attributes[a].type)
@@ -798,7 +1050,7 @@ bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_opti
                         } break;
 
                         case cgltf_attribute_type_texcoord: {
-                            __GFXT_GLTF_PUSH_ATTR(attr, float, 2, uvs, gs_vec2, layouts, GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD);
+                            __GFXT_GLTF_PUSH_ATTR(attr, float, 2, uvs[aidx], gs_vec2, layouts, GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD);
                         } break;
 
                         case cgltf_attribute_type_color: {
@@ -822,7 +1074,7 @@ bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_opti
                                 ELEM.g = (uint8_t)(V[1] * 255.f);
                                 ELEM.b = (uint8_t)(V[2] * 255.f);
                                 ELEM.a = 255; 
-                                gs_dyn_array_push(colors, ELEM);
+                                gs_dyn_array_push(colors[aidx], ELEM);
                             }
                             /* Push into layout */
                             gs_gfxt_mesh_layout_t LAYOUT = gs_default_val();
@@ -911,6 +1163,7 @@ bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_opti
                 }
 
                 // Grab mesh layout pointer to use
+                /*
                 gs_gfxt_mesh_layout_t* layoutp = options ? options->layout : layouts;
                 uint32_t layout_ct = options ? options->size / sizeof(gs_gfxt_mesh_layout_t) : gs_dyn_array_size(layouts);
 
@@ -925,15 +1178,12 @@ bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_opti
 
                     #define __GLTF_WRITE_DATA(IT, VDATA, ARR, ARR_TYPE, ARR_DEF_VAL, LAYOUT_TYPE)\
                         do {\
-                            /* Grab data at index, if available */\
                             if (IT < gs_dyn_array_size(ARR)) {\
                                 gs_byte_buffer_write(&(VDATA), ARR_TYPE, ARR[IT]);\
                             }\
                             else {\
-                                /* Write default value and give warning.*/\
                                 gs_byte_buffer_write(&(VDATA), ARR_TYPE, ARR_DEF_VAL);\
                                 if (!warnings[LAYOUT_TYPE]) {\
-                                    /*gs_println("Warning:Mesh:LoadFromFile:%s:Index out of range.", #LAYOUT_TYPE);*/\
                                     warnings[LAYOUT_TYPE] = true;\
                                 }\
                             }\
@@ -983,6 +1233,132 @@ bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_opti
                 // Copy data
                 memcpy(mesh->vertices[p], v_data.data, v_data.size);
                 memcpy(mesh->indices[p], i_data.data, i_data.size);
+                */
+
+                /*
+                    typedef struct
+                    {
+                        void* data;
+                        size_t size;
+                    } gs_gfxt_mesh_vertex_attribute_t;
+
+                    typedef struct 
+                    {
+                        gs_gfxt_mesh_vertex_attribute_t positions;         // All position data
+                        gs_gfxt_mesh_vertex_attribute_t normals;
+                        gs_gfxt_mesh_vertex_attribute_t tangents;
+                        gs_gfxt_mesh_vertex_attribute_t tex_coords[GS_GFXT_TEX_COORD_MAX];
+                        gs_gfxt_mesh_vertex_attribute_t joints[GS_GFXT_JOINT_MAX];
+                        gs_gfxt_mesh_vertex_attribute_t weights[GS_GFXT_WEIGHT_MAX];
+                        gs_gfxt_mesh_vertex_attribute_t indices;
+                    } gs_gfxt_mesh_vertex_data_t;
+
+                    // Structured/packed raw mesh data
+                    typedef struct gs_gfxt_mesh_raw_data_t {
+                        uint16_t prim_count;
+                        size_t* vertex_sizes;
+                        size_t* index_sizes;
+                        void** vertices;
+                        void** indices;
+
+                        gs_dyn_array(gs_gfxt_mesh_vertex_data_t) primitives;   // All primitive data
+                    } gs_gfxt_mesh_raw_data_t;
+                */
+
+                // Count
+                primitive.count = prim->indices->count;
+
+                // Indices
+                primitive.indices.size = i_data.size;
+                primitive.indices.data = gs_malloc(i_data.size);
+                memcpy(primitive.indices.data, i_data.data, i_data.size);
+
+                // Positions
+                if (!gs_dyn_array_empty(positions))
+                {
+                    primitive.positions.size = gs_dyn_array_size(positions) * sizeof(gs_vec3);
+                    primitive.positions.data = gs_malloc(primitive.positions.size);
+                    memcpy(primitive.positions.data, positions, primitive.positions.size);
+                }
+
+                // Normals
+                if (!gs_dyn_array_empty(normals))
+                {
+                    primitive.normals.size = gs_dyn_array_size(normals) * sizeof(gs_vec3);
+                    primitive.normals.data = gs_malloc(primitive.normals.size);
+                    memcpy(primitive.normals.data, normals, primitive.normals.size);
+                }
+
+                // Tangents
+                if (!gs_dyn_array_empty(tangents))
+                {
+                    primitive.tangents.size = gs_dyn_array_size(tangents) * sizeof(gs_vec3);
+                    primitive.tangents.data = gs_malloc(primitive.tangents.size);
+                    memcpy(primitive.tangents.data, tangents, primitive.tangents.size);
+                }
+
+                // Texcoords
+                for (uint32_t tci = 0; tci < GS_GFXT_TEX_COORD_MAX; ++tci)
+                {
+                    if (!gs_dyn_array_empty(uvs[tci]))
+                    {
+                        primitive.tex_coords[tci].size = gs_dyn_array_size(uvs[tci]) * sizeof(gs_vec2);
+                        primitive.tex_coords[tci].data = gs_malloc(primitive.tex_coords[tci].size);
+                        memcpy(primitive.tex_coords[tci].data, uvs[tci], primitive.tex_coords[tci].size);
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                // Colors
+                for (uint32_t ci = 0; ci < GS_GFXT_COLOR_MAX; ++ci)
+                {
+                    if (!gs_dyn_array_empty(colors[ci]))
+                    {
+                        primitive.colors[ci].size = gs_dyn_array_size(colors[ci]) * sizeof(gs_color_t);
+                        primitive.colors[ci].data = gs_malloc(primitive.colors[ci].size);
+                        memcpy(primitive.colors[ci].data, colors[ci], primitive.colors[ci].size);
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                // Joints
+                for (uint32_t ji = 0; ji < GS_GFXT_JOINT_MAX; ++ji)
+                {
+                    if (!gs_dyn_array_empty(joints[ji]))
+                    {
+                        primitive.joints[ji].size = gs_dyn_array_size(joints[ji]) * sizeof(float);
+                        primitive.joints[ji].data = gs_malloc(primitive.joints[ji].size);
+                        memcpy(primitive.joints[ji].data, joints[ji], primitive.joints[ji].size);
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                // Weights
+                for (uint32_t wi = 0; wi < GS_GFXT_WEIGHT_MAX; ++wi)
+                {
+                    if (!gs_dyn_array_empty(weights[wi]))
+                    {
+                        primitive.weights[wi].size = gs_dyn_array_size(weights[wi]) * sizeof(float);
+                        primitive.weights[wi].data = gs_malloc(primitive.weights[wi].size);
+                        memcpy(primitive.weights[wi].data, weights[wi], primitive.weights[wi].size);
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+
+                // Add primitive to mesh
+                gs_dyn_array_push(mesh->primitives, primitive);
             } 
 
             if (!printed)
@@ -1014,13 +1390,17 @@ bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_opti
         i++;
     }
 
+    gs_println("Finished loading mesh.");
+
     // Free all data at the end
     cgltf_free(data);
     gs_dyn_array_free(positions);
     gs_dyn_array_free(normals);
     gs_dyn_array_free(tangents);
-    gs_dyn_array_free(colors);
-    gs_dyn_array_free(uvs);
+    for (uint32_t ci = 0; ci < GS_GFXT_COLOR_MAX; ++ci) gs_dyn_array_free(colors[ci]);
+    for (uint32_t tci = 0; tci < GS_GFXT_TEX_COORD_MAX; ++tci) gs_dyn_array_free(uvs[tci]);
+    for (uint32_t wi = 0; wi < GS_GFXT_WEIGHT_MAX; ++wi) gs_dyn_array_free(weights[wi]);
+    for (uint32_t ji = 0; ji < GS_GFXT_JOINT_MAX; ++ji) gs_dyn_array_free(joints[ji]);
     gs_dyn_array_free(layouts);
     gs_byte_buffer_free(&v_data);
     gs_byte_buffer_free(&i_data);
@@ -1298,6 +1678,28 @@ const char* gs_uniform_string_from_type(gs_graphics_uniform_type type)
     return (char*)0x00;
 }
 
+// Make this an extern function that can be bubbled up to the app
+bool gs_parse_uniform_special_keyword(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd, gs_graphics_shader_stage_type stage, gs_gfxt_uniform_desc_t* uniform)
+{
+    gs_token_t token = lex->current_token;
+
+    // Determine if uniform is one of special key defines
+    if (gs_token_compare_text(&token, "GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX"))
+    {
+        uniform->type = GS_GRAPHICS_UNIFORM_MAT4; 
+        memcpy(uniform->name, GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX, sizeof(GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX));
+        return true;
+    }
+    else if (gs_token_compare_text(&token, "GS_GFXT_UNIFORM_TIME"))
+    {
+        uniform->type = GS_GRAPHICS_UNIFORM_FLOAT; 
+        memcpy(uniform->name, GS_GFXT_UNIFORM_TIME, sizeof(GS_GFXT_UNIFORM_TIME));
+        return true;
+    }
+
+    return false;
+}
+
 bool gs_parse_uniforms(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd, gs_graphics_shader_stage_type stage)
 {
     uint32_t image_binding = 0;
@@ -1320,32 +1722,39 @@ bool gs_parse_uniforms(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t*
             case GS_TOKEN_IDENTIFIER:
             {
                 gs_gfxt_uniform_desc_t uniform = {0};
-                uniform.type = gs_uniform_type_from_token(&token); 
                 uniform.stage = stage;
 
-                switch (uniform.type)
+                bool special = gs_parse_uniform_special_keyword(lex, desc, ppd, stage, &uniform);
+
+                // Determine if uniform is one of special key defines
+                if (!special)
                 {
-                    default: break;
-
-                    case GS_GRAPHICS_UNIFORM_SAMPLER2D:
-                    case GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F:
+                    uniform.type = gs_uniform_type_from_token(&token);
+                    switch (uniform.type)
                     {
-                        uniform.binding = image_binding++;
-                    } break;
-                } 
+                        default: break;
 
-                if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER)) 
-                { 
-                    gs_log_warning("Unidentified token (Expected identifier)");
-                    gs_token_debug_print(&lex->current_token);
-                    return false;
-                } 
-                token = lex->current_token;
+                        case GS_GRAPHICS_UNIFORM_SAMPLER2D:
+                        case GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F:
+                        {
+                            uniform.binding = image_binding++;
+                        } break;
+                    } 
 
-                memcpy(uniform.name, token.text, token.len);
+                    if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER)) 
+                    { 
+                        gs_log_warning("Unidentified token (Expected identifier)");
+                        gs_token_debug_print(&lex->current_token);
+                        return false;
+                    } 
+                    token = lex->current_token;
+
+                    memcpy(uniform.name, token.text, token.len);
+                }
 
                 // Add uniform to ublock descriptor
                 gs_dyn_array_push(desc->ublock_desc.layout, uniform); 
+
             } break;
         }
     } 
@@ -1445,6 +1854,29 @@ bool gs_parse_code(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd
     char* code = (char*)gs_malloc(sz + 1);
     memset(code, 0, sz + 1);
     memcpy(code, cur.text, sz - 1);
+
+    // Need to parse through code and replace keywords with appropriate mappings
+    gs_lexer_t clex = gs_lexer_c_ctor(code);
+    while (clex.can_lex(&clex))
+    {
+        gs_token_t tkn = clex.next_token(&clex);
+        switch (tkn.type)
+        {
+            case GS_TOKEN_IDENTIFIER:
+            {
+                if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX"))
+                {
+                    gs_util_string_replace(tkn.text, tkn.len, GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX, (char)32);
+                }
+                else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_TIME"))
+                {
+                    gs_util_string_replace(tkn.text, tkn.len, GS_GFXT_UNIFORM_TIME, (char)32);
+                }
+            };
+        }
+    }
+
+    gs_println("code: %s", code);
 
     switch (stage)
     {
@@ -2373,7 +2805,7 @@ GS_API_DECL gs_gfxt_pipeline_t gs_gfxt_pipeline_load_from_file(const char* path)
 {
     // Load file, generate lexer off of file data, parse contents for pipeline information 
     size_t len = 0;
-    char* file_data = gs_platform_read_file_contents(path, "r", &len);
+    char* file_data = gs_platform_read_file_contents(path, "rb", &len);
     gs_assert(file_data); 
     gs_log_success("Parsing pipeline: %s", path); 
     gs_gfxt_pipeline_t pip = gs_gfxt_pipeline_load_from_memory(file_data, len);
