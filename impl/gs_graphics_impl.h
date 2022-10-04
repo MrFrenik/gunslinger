@@ -1040,7 +1040,8 @@ GS_API_DECL gs_handle(gs_graphics_shader_t) gs_graphics_shader_create(const gs_g
             free(log);
             log = NULL;
 
-            gs_assert(false);
+            // gs_assert(false);
+            return;
         }
 
         // Attach shader to program
@@ -1151,48 +1152,60 @@ GS_API_DECL gs_handle(gs_graphics_pipeline_t) gs_graphics_pipeline_create(const 
 }
 
 // Resource Destruction
-GS_API_DECL void gs_graphics_texture_destroy(gs_handle(gs_graphics_texture_t) hndl)
+GS_API_DECL void 
+gs_graphics_texture_destroy(gs_handle(gs_graphics_texture_t) hndl)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data;
+    if (!gs_slot_array_handle_valid(ogl->textures, hndl.id)) return;
     gsgl_texture_t* tex = gs_slot_array_getp(ogl->textures, hndl.id);
     glDeleteTextures(1, &tex->id);
     gs_slot_array_erase(ogl->textures, hndl.id);
 }
 
-GS_API_DECL void gs_graphics_uniform_destroy(gs_handle(gs_graphics_uniform_t) hndl)
+GS_API_DECL void 
+gs_graphics_uniform_destroy(gs_handle(gs_graphics_uniform_t) hndl)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data; 
+    if (!gs_slot_array_handle_valid(ogl->uniforms, hndl.id)) return;
     gsgl_uniform_list_t* ul = gs_slot_array_getp(ogl->uniforms, hndl.id);
     gs_dyn_array_free(ul->uniforms);
     gs_slot_array_erase(ogl->uniforms, hndl.id);
 }
 
-GS_API_DECL void gs_graphics_shader_destroy(gs_handle(gs_graphics_shader_t) hndl)
+GS_API_DECL void 
+gs_graphics_shader_destroy(gs_handle(gs_graphics_shader_t) hndl)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data;
+    if (!gs_slot_array_handle_valid(ogl->shaders, hndl.id)) return;
     glDeleteProgram(gs_slot_array_get(ogl->shaders, hndl.id));
     gs_slot_array_erase(ogl->shaders, hndl.id);
 }
 
-GS_API_DECL void gs_graphics_vertex_buffer_destroy(gs_handle(gs_graphics_vertex_buffer_t) hndl)
+GS_API_DECL void 
+gs_graphics_vertex_buffer_destroy(gs_handle(gs_graphics_vertex_buffer_t) hndl)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data;
+    if (!gs_slot_array_handle_valid(ogl->vertex_buffers, hndl.id)) return;
     gsgl_buffer_t buffer = gs_slot_array_get(ogl->vertex_buffers, hndl.id); 
     glDeleteBuffers(1, &buffer);
     gs_slot_array_erase(ogl->vertex_buffers, hndl.id);
 }
 
-GS_API_DECL void gs_graphics_index_buffer_destroy(gs_handle(gs_graphics_index_buffer_t) hndl)
+GS_API_DECL void 
+gs_graphics_index_buffer_destroy(gs_handle(gs_graphics_index_buffer_t) hndl)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data;
+    if (!gs_slot_array_handle_valid(ogl->index_buffers, hndl.id)) return;
     gsgl_buffer_t buffer = gs_slot_array_get(ogl->index_buffers, hndl.id); 
     glDeleteBuffers(1, &buffer);
     gs_slot_array_erase(ogl->index_buffers, hndl.id);
 }
 
-GS_API_DECL void gs_graphics_uniform_buffer_destroy(gs_handle(gs_graphics_uniform_buffer_t) hndl)
+GS_API_DECL void 
+gs_graphics_uniform_buffer_destroy(gs_handle(gs_graphics_uniform_buffer_t) hndl)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data;
+    if (!gs_slot_array_handle_valid(ogl->uniform_buffers, hndl.id)) return;
     gsgl_uniform_buffer_t* u = gs_slot_array_getp(ogl->uniform_buffers, hndl.id);
 
     // Delete buffer (if needed)
@@ -1202,23 +1215,29 @@ GS_API_DECL void gs_graphics_uniform_buffer_destroy(gs_handle(gs_graphics_unifor
     gs_slot_array_erase(ogl->uniform_buffers, hndl.id);
 }
 
-GS_API_DECL void gs_graphics_framebuffer_destroy(gs_handle(gs_graphics_framebuffer_t) hndl)
+GS_API_DECL void 
+gs_graphics_framebuffer_destroy(gs_handle(gs_graphics_framebuffer_t) hndl)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data;
+    if (!gs_slot_array_handle_valid(ogl->frame_buffers, hndl.id)) return;
     gsgl_buffer_t buffer = gs_slot_array_get(ogl->frame_buffers, hndl.id);
     glDeleteFramebuffers(1, &buffer);
     gs_slot_array_erase(ogl->frame_buffers, hndl.id);
 }
 
-GS_API_DECL void gs_graphics_renderpass_destroy(gs_handle(gs_graphics_renderpass_t) hndl)
+GS_API_DECL void 
+gs_graphics_renderpass_destroy(gs_handle(gs_graphics_renderpass_t) hndl)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data;
+    if (!gs_slot_array_handle_valid(ogl->renderpasses, hndl.id)) return;
     gs_slot_array_erase(ogl->renderpasses, hndl.id);
 }
 
-GS_API_DECL void gs_graphics_pipeline_destroy(gs_handle(gs_graphics_pipeline_t) hndl)
+GS_API_DECL void 
+gs_graphics_pipeline_destroy(gs_handle(gs_graphics_pipeline_t) hndl)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data;
+    if (!gs_slot_array_handle_valid(ogl->pipelines, hndl.id)) return;
     gsgl_pipeline_t* pip = gs_slot_array_getp(ogl->pipelines, hndl.id);
 
     // Free layout
@@ -1229,7 +1248,8 @@ GS_API_DECL void gs_graphics_pipeline_destroy(gs_handle(gs_graphics_pipeline_t) 
 }
 
 // Resource Query
-GS_API_DECL void gs_graphics_pipeline_desc_query(gs_handle(gs_graphics_pipeline_t) hndl, gs_graphics_pipeline_desc_t* out)
+GS_API_DECL void 
+gs_graphics_pipeline_desc_query(gs_handle(gs_graphics_pipeline_t) hndl, gs_graphics_pipeline_desc_t* out)
 {
     if (!out) return;
 
@@ -1801,11 +1821,12 @@ void gs_graphics_command_buffer_submit(gs_command_buffer_t* cb)
 
                             if (!id || !gs_slot_array_exists(ogl->vertex_buffers, id)) 
                             {
-                                gs_timed_action(60, 
-                                {
+                                /*
+                                gs_timed_action(1000, {
                                     gs_println("Warning:Opengl:BindBindings:VertexBuffer %d does not exist.", id);
                                     continue;
                                 });
+                                */
                             }
 
                             // Grab vbo to bind
@@ -1828,10 +1849,11 @@ void gs_graphics_command_buffer_submit(gs_command_buffer_t* cb)
 
                             if (!gs_slot_array_exists(ogl->index_buffers, id)) 
                             {
-                                gs_timed_action(60, 
-                                {
+                                /*
+                                gs_timed_action(1000, {
                                     gs_println("Warning:Opengl:BindBindings:IndexBuffer %d does not exist.", id);
                                 });
+                                */
                             } 
                             else 
                             {
@@ -1853,18 +1875,22 @@ void gs_graphics_command_buffer_submit(gs_command_buffer_t* cb)
 
                             // Check buffer id. If invalid, then we can't operate, and instead just need to pass over the data.
                             if (!id || !gs_slot_array_exists(ogl->uniforms, id)) {
-                                gs_timed_action(60, {
+                                /*
+                                gs_timed_action(1000, {
                                     gs_println("Warning:Bind Uniform:Uniform %d does not exist.", id);
                                 });
+                                */
                                 gs_byte_buffer_advance_position(&cb->commands, sz);
                                 continue;
                             }
 
                             // Grab currently bound pipeline (TODO(john): assert if this isn't valid)
                             if (!ogl->cache.pipeline.id || !gs_slot_array_exists(ogl->pipelines, ogl->cache.pipeline.id)){
-                                gs_timed_action(60, {
+                                /*
+                                gs_timed_action(1000, {
                                     gs_println("Warning:Bind Uniform Buffer:Pipeline %d does not exist.", ogl->cache.pipeline.id);
                                 });
+                                */
                                 gs_byte_buffer_advance_position(&cb->commands, sz);
                                 continue;
                             }
@@ -1886,9 +1912,11 @@ void gs_graphics_command_buffer_submit(gs_command_buffer_t* cb)
                                 if ((u->location == UINT32_MAX && u->location != UINT32_MAX - 1) || u->sid != pip->raster.shader.id) 
                                 {
                                     if (!sid || !gs_slot_array_exists(ogl->shaders, sid)) {
-                                        gs_timed_action(60, {
+                                        /*
+                                        gs_timed_action(1000, {
                                             gs_println("Warning:Bind Uniform:Shader %d does not exist.", sid);
                                         });
+                                        */
 
                                         // Advance by size of uniform
                                         gs_byte_buffer_advance_position(&cb->commands, sz);
@@ -2056,17 +2084,21 @@ void gs_graphics_command_buffer_submit(gs_command_buffer_t* cb)
 
                             // Check buffer id. If invalid, then we can't operate, and instead just need to pass over the data.
                             if (!id || !gs_slot_array_exists(ogl->uniform_buffers, id)) {
-                                gs_timed_action(60, {
+                                /*
+                                gs_timed_action(1000, {
                                     gs_println("Warning:Bind Uniform Buffer:Uniform %d does not exist.", id);
                                 });
+                                */
                                 continue;
                             }
 
                             // Grab currently bound pipeline (TODO(john): assert if this isn't valid)
                             if (!ogl->cache.pipeline.id || !gs_slot_array_exists(ogl->pipelines, ogl->cache.pipeline.id)){
-                                gs_timed_action(60, {
+                                /*
+                                gs_timed_action(1000, {
                                     gs_println("Warning:Bind Uniform Buffer:Pipeline %d does not exist.", ogl->cache.pipeline.id);
                                 });
+                                */
                                 continue;
                             }
 
@@ -2084,9 +2116,11 @@ void gs_graphics_command_buffer_submit(gs_command_buffer_t* cb)
                             if ((u->location == UINT32_MAX && u->location != UINT32_MAX - 1) || u->sid != pip->raster.shader.id) 
                             {
                                 if (!sid || !gs_slot_array_exists(ogl->shaders, sid)) {
-                                    gs_timed_action(60, {
+                                    /*
+                                    gs_timed_action(1000, {
                                         gs_println("Warning:Bind Uniform Buffer:Shader %d does not exist.", sid);
                                     });
+                                    */
                                     continue;
                                 }
 
@@ -2117,17 +2151,21 @@ void gs_graphics_command_buffer_submit(gs_command_buffer_t* cb)
 
                             // Grab storage buffer from id
                             if (!sb_slot_id || !gs_slot_array_exists(ogl->storage_buffers, sb_slot_id)) {
-                                gs_timed_action(60, {
+                                /*
+                                gs_timed_action(1000, {
                                     gs_println("Warning:Bind Storage Buffer:Storage Buffer %d does not exist.", sb_slot_id);
                                 });
+                                */
                                 continue;
                             }
 
                             // Grab currently bound pipeline (TODO(john): assert if this isn't valid)
                             if (!ogl->cache.pipeline.id || !gs_slot_array_exists(ogl->pipelines, ogl->cache.pipeline.id)){
-                                gs_timed_action(60, {
+                                /*
+                                gs_timed_action(1000, {
                                     gs_println("Warning:Bind Storage Buffer:Pipeline %d does not exist or is not bound.", ogl->cache.pipeline.id);
                                 });
+                                */
                                 continue;
                             }
 
@@ -2139,9 +2177,11 @@ void gs_graphics_command_buffer_submit(gs_command_buffer_t* cb)
                             uint32_t sid = pip->compute.shader.id ? pip->compute.shader.id : pip->raster.shader.id;
 
                             if (!sid || !gs_slot_array_exists(ogl->shaders, sid)) {
-                                gs_timed_action(60, {
+                                /*
+                                gs_timed_action(1000, {
                                     gs_println("Warning:Bind Uniform Buffer:Shader %d does not exist.", sid);
                                 });
+                                */
                                 continue;
                             }
 
@@ -2189,9 +2229,11 @@ void gs_graphics_command_buffer_submit(gs_command_buffer_t* cb)
 
                             // Grab texture from sampler id
                             if (!tex_slot_id || !gs_slot_array_exists(ogl->textures, tex_slot_id)) {
-                                gs_timed_action(60, {
+                                /*
+                                gs_timed_action(1000, {
                                     gs_println("Warning:Bind Image Buffer:Texture %d does not exist.", tex_slot_id);
                                 });
+                                */
                                 continue;
                             }
 
@@ -2216,7 +2258,11 @@ void gs_graphics_command_buffer_submit(gs_command_buffer_t* cb)
 
                 // Make sure pipeline exists
                 if (!pipid || !gs_slot_array_exists(ogl->pipelines, pipid)) {
-                    gs_println("Warning: Pipeline %d does not exist.", pipid);
+                    /*
+                    gs_timed_action(1000, { 
+                        gs_println("Warning: Pipeline %d does not exist.", pipid);
+                    });
+                    */
                     continue;
                 }
                 
@@ -2240,9 +2286,11 @@ void gs_graphics_command_buffer_submit(gs_command_buffer_t* cb)
                         glUseProgram(gs_slot_array_get(ogl->shaders, pip->compute.shader.id));
                     } 
                     else {
-                        gs_timed_action(60, {
+                        /*
+                        gs_timed_action(1000, {
                             gs_println("Warning:Opengl:BindPipeline:Compute:Shader %d does not exist.", pip->compute.shader.id);
                         });
+                        */
                     }
 
                     continue;
@@ -2300,9 +2348,11 @@ void gs_graphics_command_buffer_submit(gs_command_buffer_t* cb)
                     glUseProgram(gs_slot_array_get(ogl->shaders, pip->raster.shader.id));
                 } 
                 else {
-                    gs_timed_action(60, {
+                    /*
+                    gs_timed_action(1000, {
                         gs_println("Warning:Opengl:BindPipeline:Shader %d does not exist.", pip->raster.shader.id);
                     });
+                    */
                 }
             } break;
 
@@ -2314,9 +2364,11 @@ void gs_graphics_command_buffer_submit(gs_command_buffer_t* cb)
 
                 // Grab currently bound pipeline (TODO(john): assert if this isn't valid)
                 if (ogl->cache.pipeline.id == 0 || !gs_slot_array_exists(ogl->pipelines, ogl->cache.pipeline.id)) {
-                    gs_timed_action(60, {
+                    /*
+                    gs_timed_action(1000, {
                         gs_println("Warning:Opengl:DispatchCompute:Compute Pipeline not bound.");
                     });
+                    */
                     continue;
                 }
 
@@ -2324,9 +2376,11 @@ void gs_graphics_command_buffer_submit(gs_command_buffer_t* cb)
 
                 // If pipeline does not have a compute state bound, then leave
                 if (!pip->compute.shader.id) {
-                    gs_timed_action(60, {
+                    /*
+                    gs_timed_action(1000, {
                         gs_println("Warning:Opengl:DispatchCompute:Compute Pipeline not bound.");
                     });
+                    */
                     continue;
                 }
 
@@ -2345,8 +2399,10 @@ void gs_graphics_command_buffer_submit(gs_command_buffer_t* cb)
 
                 // Must have a vertex buffer bound to draw
                 if (gs_dyn_array_empty(ogl->cache.vdecls)) {
-                    gs_println("Error:Opengl:Draw: No vertex buffer bound.");
-                    gs_assert(false);
+                    gs_timed_action(1000, { 
+                        gs_println("Error:Opengl:Draw: No vertex buffer bound.");
+                    });
+                    // gs_assert(false);
                 }
 
                 // Keep track whether or not the data is to be instanced

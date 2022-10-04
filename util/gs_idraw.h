@@ -110,7 +110,8 @@ typedef struct gs_immediate_draw_t
     gs_dyn_array(gsi_vattr_type) vattributes;
 	gs_immediate_cache_t cache;
 	gs_command_buffer_t commands;
-    uint32_t window_handle; 
+	uint32_t window_handle; 
+	gs_immediate_draw_static_data_t* data;
 } gs_immediate_draw_t;
 
 #ifndef GS_NO_SHORT_NAME
@@ -122,6 +123,7 @@ typedef struct gs_immediate_draw_t
 // Create / Init / Shutdown / Free
 GS_API_DECL gs_immediate_draw_t gs_immediate_draw_new();
 GS_API_DECL void                gs_immediate_draw_free(gs_immediate_draw_t* gsi);
+GS_API_DECL void				gs_immediate_draw_static_data_set(gs_immediate_draw_static_data_t* data);
 
 // Get pipeline from state
 GS_API_DECL gs_handle(gs_graphics_pipeline_t) gsi_get_pipeline(gs_immediate_draw_t* gsi, gsi_pipeline_state_attr_t state);
@@ -455,6 +457,13 @@ void gs_immediate_draw_static_data_init()
    	gs_free(buf_decompressed_data);
    	gs_free(alpha_bitmap);
    	gs_free(flipmap);
+
+}
+
+GS_API_DECL void
+gs_immediate_draw_static_data_set(gs_immediate_draw_static_data_t* data)
+{
+	g_gsi = data;
 }
 
 // Create / Init / Shutdown / Free
@@ -468,6 +477,9 @@ gs_immediate_draw_t gs_immediate_draw_new()
 
 	gs_immediate_draw_t gsi = gs_default_val();
 	memset(&gsi, 0, sizeof(gsi));
+
+	// Set gsi static data
+	gsi.data = g_gsi;
 
 	// Init cache
 	gsi.cache.color = GS_COLOR_WHITE;

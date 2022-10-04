@@ -271,13 +271,20 @@ typedef struct gs_gfxt_scene_s {
 
 //==== API =====//
 
-//=== Creation/Destruction ===// 
+//=== Creation ===// 
 GS_API_DECL gs_gfxt_pipeline_t      gs_gfxt_pipeline_create(const gs_gfxt_pipeline_desc_t* desc);
 GS_API_DECL gs_gfxt_material_t      gs_gfxt_material_create(gs_gfxt_material_desc_t* desc);
 GS_API_DECL gs_gfxt_mesh_t          gs_gfxt_mesh_create(const gs_gfxt_mesh_desc_t* desc);
 GS_API_DECL gs_gfxt_renderable_t    gs_gfxt_renderable_create(const gs_gfxt_renderable_desc_t* desc);
 GS_API_DECL gs_gfxt_uniform_block_t gs_gfxt_uniform_block_create(const gs_gfxt_uniform_block_desc_t* desc);
 GS_API_DECL gs_gfxt_texture_t       gs_gfxt_texture_create(gs_graphics_texture_desc_t* desc); 
+
+//=== Destruction ===// 
+GS_API_DECL void gs_gfxt_texture_destroy(gs_gfxt_texture_t* texture);
+GS_API_DECL void gs_gfxt_material_destroy(gs_gfxt_material_t* material);
+GS_API_DECL void gs_gfxt_mesh_destroy(gs_gfxt_mesh_t* mesh);
+GS_API_DECL void gs_gfxt_uniform_block_destroy(gs_gfxt_uniform_block_t* ub);
+GS_API_DECL void gs_gfxt_pipeline_destroy(gs_gfxt_pipeline_t* pipeline);
 
 //=== Resource Loading ===//
 GS_API_DECL gs_gfxt_pipeline_t gs_gfxt_pipeline_load_from_file(const char* path);
@@ -316,8 +323,8 @@ gs_handle(gs_graphics_texture_t) gs_gfxt_texture_generate_default();
 /*==== Implementation ====*/
 
 // Creation/Destruction
-GS_API_DECL 
-gs_gfxt_pipeline_t gs_gfxt_pipeline_create(const gs_gfxt_pipeline_desc_t* desc)
+GS_API_DECL gs_gfxt_pipeline_t 
+gs_gfxt_pipeline_create(const gs_gfxt_pipeline_desc_t* desc)
 {
     gs_gfxt_pipeline_t pip = gs_default_val();
 
@@ -336,8 +343,8 @@ gs_gfxt_pipeline_t gs_gfxt_pipeline_create(const gs_gfxt_pipeline_desc_t* desc)
     return pip;
 }
 
-GS_API_DECL 
-gs_gfxt_uniform_block_t gs_gfxt_uniform_block_create(const gs_gfxt_uniform_block_desc_t* desc)
+GS_API_DECL gs_gfxt_uniform_block_t 
+gs_gfxt_uniform_block_create(const gs_gfxt_uniform_block_desc_t* desc)
 {
     gs_gfxt_uniform_block_t block = gs_default_val();
 
@@ -401,13 +408,14 @@ gs_gfxt_uniform_block_t gs_gfxt_uniform_block_create(const gs_gfxt_uniform_block
     return block;
 }
 
-GS_API_DECL gs_gfxt_texture_t gs_gfxt_texture_create(gs_graphics_texture_desc_t* desc)
+GS_API_DECL gs_gfxt_texture_t 
+gs_gfxt_texture_create(gs_graphics_texture_desc_t* desc)
 {
     return gs_graphics_texture_create(desc);
 }
 
-GS_API_DECL 
-gs_gfxt_material_t gs_gfxt_material_create(gs_gfxt_material_desc_t* desc)
+GS_API_DECL gs_gfxt_material_t 
+gs_gfxt_material_create(gs_gfxt_material_desc_t* desc)
 {
     gs_gfxt_material_t mat = gs_default_val();
 
@@ -430,8 +438,8 @@ gs_gfxt_material_t gs_gfxt_material_create(gs_gfxt_material_desc_t* desc)
     return mat;
 }
 
-GS_API_DECL 
-gs_gfxt_mesh_t gs_gfxt_mesh_create(const gs_gfxt_mesh_desc_t* desc)
+GS_API_DECL gs_gfxt_mesh_t 
+gs_gfxt_mesh_create(const gs_gfxt_mesh_desc_t* desc)
 {
     gs_gfxt_mesh_t mesh = gs_default_val();
 
@@ -546,8 +554,8 @@ gs_gfxt_mesh_t gs_gfxt_mesh_create(const gs_gfxt_mesh_desc_t* desc)
     return mesh;
 }
 
-GS_API_DECL 
-gs_gfxt_renderable_t gs_gfxt_renderable_create(const gs_gfxt_renderable_desc_t* desc)
+GS_API_DECL gs_gfxt_renderable_t 
+gs_gfxt_renderable_create(const gs_gfxt_renderable_desc_t* desc)
 {
     gs_gfxt_renderable_t rend = gs_default_val();
 
@@ -559,6 +567,83 @@ gs_gfxt_renderable_t gs_gfxt_renderable_create(const gs_gfxt_renderable_desc_t* 
     rend.desc = *desc;
 
     return rend;
+}
+
+//=== Destruction ===// 
+GS_API_DECL void 
+gs_gfxt_texture_destroy(gs_gfxt_texture_t* texture)
+{
+    gs_graphics_texture_destroy(*texture);
+}
+
+GS_API_DECL void 
+gs_gfxt_material_destroy(gs_gfxt_material_t* material)
+{
+    // Destroy all material data
+    gs_byte_buffer_free(&material->uniform_data);
+    gs_byte_buffer_free(&material->image_buffer_data);
+}
+
+GS_API_DECL void 
+gs_gfxt_mesh_destroy(gs_gfxt_mesh_t* mesh)
+{
+    // Iterate through all primitives, destroy all vertex and index buffers
+    for (uint32_t p = 0; p < gs_dyn_array_size(mesh->primitives); ++p)
+    {
+        gs_gfxt_mesh_primitive_t* prim = &mesh->primitives[p]; 
+
+        // Free index buffer
+        gs_graphics_index_buffer_destroy(prim->ibo);
+
+        // Free vertex stream
+        gs_graphics_vertex_buffer_destroy(prim->stream.positions);
+        gs_graphics_vertex_buffer_destroy(prim->stream.normals);
+        gs_graphics_vertex_buffer_destroy(prim->stream.tangents);
+
+        for (uint32_t i = 0; i < GS_GFXT_COLOR_MAX; ++i) 
+            gs_graphics_vertex_buffer_destroy(prim->stream.colors[i]);
+
+        for (uint32_t i = 0; i < GS_GFXT_TEX_COORD_MAX; ++i) 
+            gs_graphics_vertex_buffer_destroy(prim->stream.tex_coords[i]);
+
+        for (uint32_t i = 0; i < GS_GFXT_JOINT_MAX; ++i) 
+            gs_graphics_vertex_buffer_destroy(prim->stream.joints[i]);
+
+        for (uint32_t i = 0; i < GS_GFXT_WEIGHT_MAX; ++i) 
+            gs_graphics_vertex_buffer_destroy(prim->stream.weights[i]);
+    }
+}
+
+GS_API_DECL void 
+gs_gfxt_uniform_block_destroy(gs_gfxt_uniform_block_t* ub)
+{ 
+    for (uint32_t i = 0; i < gs_dyn_array_size(ub->uniforms); ++i)
+    {
+        gs_gfxt_uniform_t* u = &ub->uniforms[i];
+        gs_graphics_uniform_destroy(u->hndl);
+    }
+
+    gs_dyn_array_free(ub->uniforms);
+    gs_hash_table_free(ub->lookup);
+}
+
+GS_API_DECL void 
+gs_gfxt_pipeline_destroy(gs_gfxt_pipeline_t* pipeline)
+{
+typedef struct gs_gfxt_pipeline_s {
+    gs_handle(gs_graphics_pipeline_t) hndl;                         // Graphics handle resource for actual pipeline
+    gs_gfxt_uniform_block_t ublock;                                 // Uniform block for holding all uniform data
+    gs_dyn_array(gs_gfxt_mesh_layout_t) mesh_layout;  
+    gs_graphics_pipeline_desc_t desc;
+} gs_gfxt_pipeline_t;
+
+    // Destroy uniform block for pipeline
+    gs_gfxt_uniform_block_destroy(&pipeline->ublock);
+    
+    // Destroy pipeline
+    gs_dyn_array_free(pipeline->desc.layout.attrs);
+    gs_dyn_array_free(pipeline->mesh_layout);
+    gs_graphics_pipeline_destroy(pipeline->hndl);
 }
 
 //=== Copy API ===//

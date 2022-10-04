@@ -103,15 +103,15 @@
         #define GS_IMPL
         #include "gs.h"
 
-        void my_init() {
+        void my_init(void* app) {
             // Do your initialization   
         }
 
-        void my_update() {
+        void my_update(void* app) {
             // Do your updates  
         }
 
-        void my_shutdown() {
+        void my_shutdown(void* app) {
             // Do your shutdown
         }
 
@@ -497,6 +497,7 @@
 #include <ctype.h>      // tolower
 #include <math.h>       // floor, acos, sin, sqrt, tan
 #include <assert.h>     // assert
+#include <malloc.h>     // alloca/_alloca
 
 /*===========================================================
 // gs_inline, gs_global, gs_local_persist, gs_force_inline
@@ -735,31 +736,54 @@ typedef bool32_t          bool32;
 // Memory Allocation Utils
 ===================================*/
 
+// Operating system function pointer
+typedef struct gs_os_api_s
+{ 
+    void* (* malloc)(size_t sz);
+    void  (* free)(void* ptr);
+    void* (* realloc)(void* ptr, size_t sz);
+    void* (* calloc)(size_t sz);
+    void* (* alloca)(size_t sz);
+    void* (* malloc_init)(size_t sz);
+    char* (* strdup)(const char* str);
+} gs_os_api_t;
+
+// TODO(john): Check if all defaults need to be set, in case gs context will not be used
+
+GS_API_DECL gs_os_api_t
+gs_os_api_new_default(); 
+
+#ifndef gs_os_api_new
+    #define gs_os_api_new gs_os_api_new_default
+#endif 
+
 #ifndef gs_malloc
-    #define gs_malloc(__SZ) malloc(__SZ)
+    #define gs_malloc(__SZ) (gs_ctx()->os.malloc(__SZ))
 #endif
 
+#ifndef gs_malloc_init 
+	#define gs_malloc_init(__T) ((__T*)gs_ctx()->os.malloc_init(sizeof(__T)))
+#endif 
+
 #ifndef gs_free
-    #define gs_free(__MEM) free(__MEM)
+    #define gs_free(__MEM) (gs_ctx()->os.free(__MEM))
 #endif
 
 #ifndef gs_realloc
-    #define gs_realloc(__MEM, __AZ) realloc(__MEM, __AZ)
+    #define gs_realloc(__MEM, __AZ) (gs_ctx()->os.realloc(__MEM, __AZ))
 #endif
 
 #ifndef gs_calloc
-    #define gs_calloc(__NUM, __AZ) calloc(__NUM, __AZ)
+    #define gs_calloc(__SZ) (gs_ctx()->os.calloc(__SZ))
 #endif
 
-gs_force_inline 
-void* _gs_malloc_init_impl(size_t sz)
-{
-    void* data = gs_malloc(sz);
-    memset(data, 0, sz);
-    return data;
-}
+#ifndef gs_alloca
+    #define gs_alloca(__SZ) (gs_ctx()->os.alloca(__SZ))
+#endif 
 
-#define gs_malloc_init(__TYPE) (__TYPE*)_gs_malloc_init_impl(sizeof(__TYPE))
+#ifndef gs_strdup
+    #define gs_strdup(__STR) (gs_ctx()->os.strdup(__STR))
+#endif 
 
 /*============================================================
 // Result
@@ -984,33 +1008,8 @@ gs_util_str_is_numeric(const char* str)
 }
 
 // Will return a null buffer if file does not exist or allocation fails
-gs_force_inline 
-char* gs_read_file_contents_into_string_null_term
-(
-    const char* file_path, 
-    const char* mode,
-    size_t* _sz
-)
-{
-    char* buffer = 0;
-    FILE* fp = fopen(file_path, mode);
-    size_t sz = 0;
-    if (fp)
-    {
-        fseek(fp, 0, SEEK_END);
-        sz = ftell(fp);
-        fseek(fp, 0, SEEK_SET);
-        buffer = (char*)gs_malloc(sz + 1);
-        if (buffer)
-        {
-            fread(buffer, 1, sz, fp);
-        }
-        fclose(fp);
-        buffer[sz] = '\0';
-        if (_sz) *_sz = sz;
-    }
-    return buffer;
-}
+GS_API_DECL char* 
+gs_read_file_contents_into_string_null_term (const char* file_path, const char* mode, size_t* _sz);
 
 gs_force_inline 
 b32 gs_util_file_exists(const char* file_path)
@@ -1648,30 +1647,8 @@ typedef struct gs_dyn_array
 #define gs_dyn_array_full(__ARR)\
     ((gs_dyn_array_size((__ARR)) == gs_dyn_array_capacity((__ARR))))    
 
-gs_inline 
-void* gs_dyn_array_resize_impl(void* arr, size_t sz, size_t amount) 
-{
-    size_t capacity;
-
-    if (arr) {
-        capacity = amount;  
-    } else {
-        capacity = 0;
-    }
-
-    // Create new gs_dyn_array with just the header information
-    gs_dyn_array* data = (gs_dyn_array*)gs_realloc(arr ? gs_dyn_array_head(arr) : 0, capacity * sz + sizeof(gs_dyn_array));
-
-    if (data) {
-        if (!arr) {
-            data->size = 0;
-        }
-        data->capacity = (int32_t)capacity;
-        return ((int32_t*)data + 2);
-    }
-
-    return NULL;
-}
+GS_API_DECL void* 
+gs_dyn_array_resize_impl(void* arr, size_t sz, size_t amount);
 
 #define gs_dyn_array_need_grow(__ARR, __N)\
     ((__ARR) == 0 || gs_dyn_array_size(__ARR) + (__N) >= gs_dyn_array_capacity(__ARR))
@@ -1682,41 +1659,11 @@ void* gs_dyn_array_resize_impl(void* arr, size_t sz, size_t amount)
 #define gs_dyn_array_grow_size(__ARR, __SZ  )\
     gs_dyn_array_resize_impl((__ARR), (__SZ ), gs_dyn_array_capacity(__ARR) ? gs_dyn_array_capacity(__ARR) * 2 : 1)
 
-gs_force_inline
-void** gs_dyn_array_init(void** arr, size_t val_len)
-{
-    if (*arr == NULL) {
-        gs_dyn_array* data = (gs_dyn_array*)gs_malloc(val_len + sizeof(gs_dyn_array));  // Allocate capacity of one
-        data->size = 0;
-        data->capacity = 1;
-        *arr = ((int32_t*)data + 2);
-        return arr;
-    }
-    return NULL;
-}
+GS_API_DECL void** 
+gs_dyn_array_init(void** arr, size_t val_len);
 
-gs_force_inline
-void gs_dyn_array_push_data(void** arr, void* val, size_t val_len)
-{
-    if (*arr == NULL) {
-        gs_dyn_array_init(arr, val_len);
-    }
-    if (gs_dyn_array_need_grow(*arr, 1)) 
-    {
-        int32_t capacity = gs_dyn_array_capacity(*arr) * 2;
-
-        // Create new gs_dyn_array with just the header information
-        gs_dyn_array* data = (gs_dyn_array*)gs_realloc(gs_dyn_array_head(*arr), capacity * val_len + sizeof(gs_dyn_array));
-
-        if (data) {
-            data->capacity = capacity;
-            *arr = ((int32_t*)data + 2);
-        }
-    }
-    size_t offset = gs_dyn_array_size(*arr);
-    memcpy(((uint8_t*)(*arr)) + offset * val_len, val, val_len);
-    gs_dyn_array_head(*arr)->size++;
-}
+GS_API_DECL void 
+gs_dyn_array_push_data(void** arr, void* val, size_t val_len);
 
 gs_force_inline
 void gs_dyn_array_set_data_i(void** arr, void* val, size_t val_len, uint32_t offset)
@@ -1818,11 +1765,8 @@ typedef enum gs_hash_table_entry_state
 #define gs_hash_table_new(__K, __V)\
     NULL
 
-gs_force_inline
-void __gs_hash_table_init_impl(void** ht, size_t sz)
-{
-    *ht = gs_malloc(sz);
-}
+GS_API_DECL void 
+__gs_hash_table_init_impl(void** ht, size_t sz);
 
 #define gs_hash_table_init(__HT, __K, __V)\
     do {\
@@ -2117,18 +2061,8 @@ uint32_t __gs_slot_array_find_next_available_index(gs_dyn_array(uint32_t) indice
     return idx;
 }
 
-gs_force_inline
-void** gs_slot_array_init(void** sa, size_t sz)
-{
-    if (*sa == NULL) {
-        *sa = gs_malloc(sz);
-        memset(*sa, 0, sz);
-        return sa;
-    }
-    else {
-        return NULL;
-    }
-}
+GS_API_DECL void** 
+gs_slot_array_init(void** sa, size_t sz);
 
 #define gs_slot_array_init_all(__SA)\
     (gs_slot_array_init((void**)&(__SA), sizeof(*(__SA))), gs_dyn_array_init((void**)&((__SA)->indices), sizeof(uint32_t)),\
@@ -2310,16 +2244,8 @@ uint32_t _gs_slot_array_iter_find_first_valid_index(gs_dyn_array(uint32_t) indic
 #define gs_slot_map_new(__SMK, __SMV)\
     NULL
 
-gs_force_inline
-void** gs_slot_map_init(void** sm)
-{
-    if (*sm == NULL) {
-        (*sm) = gs_malloc(sizeof(size_t) * 2);\
-        memset((*sm), 0, sizeof(size_t) * 2);\
-        return sm;
-    }   
-    return NULL;
-}
+GS_API_DECL void** 
+gs_slot_map_init(void** sm);
 
 // Could return something, I believe?
 #define gs_slot_map_insert(__SM, __SMK, __SMV)\
@@ -4578,7 +4504,15 @@ typedef struct gs_uuid_t
 #define GS_WINDOW_FLAGS_NO_RESIZE   0x01
 #define GS_WINDOW_FLAGS_FULLSCREEN  0x02
 
-// Should have an internal resource cache of window handles (controlled by the platform api)
+// Should have an internal resource cache of window handles (controlled by the platform api) 
+
+typedef struct gs_platform_window_s
+{ 
+    void* hndl;
+    gs_vec2 framebuffer_size;
+    gs_vec2 window_size;
+    gs_vec2 window_position;
+} gs_platform_window_t; 
 
 typedef enum gs_platform_cursor
 {
@@ -5013,6 +4947,9 @@ typedef void (* gs_framebuffer_resize_callback_t)(void*, int32_t width, int32_t 
 // Platform Interface
 ===============================================================================================*/
 
+struct gs_platform_interface_s;
+
+
 typedef struct gs_platform_t
 {
     // Settings for platform, including video
@@ -5025,7 +4962,7 @@ typedef struct gs_platform_t
     gs_platform_input_t input;
 
     // Window data and handles
-    gs_slot_array(void*) windows;
+    gs_slot_array(gs_platform_window_t) windows;
 
     // Events that user can poll
     gs_dyn_array(gs_platform_event_t) events;
@@ -5035,6 +4972,9 @@ typedef struct gs_platform_t
 
     // Specific user data (for custom implementations)
     void* user_data;
+
+    // Optional api for stable access across .dll boundaries
+    struct gs_platform_interface_s* api;
 
 } gs_platform_t;
 
@@ -5216,6 +5156,12 @@ GS_API_DECL void     gs_platform_set_framebuffer_resize_callback(uint32_t handle
 GS_API_DECL void     gs_platform_set_dropped_files_callback(uint32_t handle, gs_dropped_files_callback_t cb);
 GS_API_DECL void     gs_platform_set_window_close_callback(uint32_t handle, gs_window_close_callback_t cb);
 GS_API_DECL void     gs_platform_set_character_callback(uint32_t handle, gs_character_callback_t cb);
+
+/*
+typedef struct gs_platform_interface_s
+{ 
+} gs_platform_interface_t;
+*/
 
 /** @} */ // end of gs_platform
 
@@ -6215,9 +6161,9 @@ GS_API_DECL bool gs_util_load_gltf_data_from_memory(const void* memory, size_t s
 // Application descriptor for user application
 typedef struct gs_app_desc_t
 {
-    void (* init)();
-    void (* update)();
-    void (* shutdown)();
+    void (* init)(void* app);
+    void (* update)(void* app);
+    void (* shutdown)(void* app);
     const char* window_title;
     uint32_t window_width;
     uint32_t window_height;
@@ -6251,7 +6197,8 @@ typedef struct gs_context_t
     gs_platform_t* platform;
     gs_graphics_t* graphics;
     gs_audio_t* audio;
-    gs_app_desc_t app;
+    gs_app_desc_t app; 
+    gs_os_api_t os;
 } gs_context_t; 
 
 typedef struct gs_t
@@ -6261,21 +6208,40 @@ typedef struct gs_t
 } gs_t;
 
 /* Desc */
-GS_API_DECL gs_t* gs_create(gs_app_desc_t app_desc);
+GS_API_DECL gs_t* 
+gs_create(gs_app_desc_t app_desc);
+
 /* Desc */
-GS_API_DECL void gs_destroy();
+GS_API_DECL void 
+gs_destroy();
+
 /* Desc */
-GS_API_DECL gs_t* gs_instance();
+GS_API_DECL gs_t* 
+gs_instance();
+
 /* Desc */
-GS_API_DECL gs_context_t* gs_ctx();
+GS_API_DECL void 
+gs_set_instance(gs_t* gs);
+
 /* Desc */
-GS_API_DECL gs_app_desc_t* gs_app();
+GS_API_DECL gs_context_t* 
+gs_ctx();
+
 /* Desc */
-GS_API_DECL void gs_frame();
+GS_API_DECL gs_app_desc_t* 
+gs_app();
+
 /* Desc */
-GS_API_DECL void gs_quit();
+GS_API_DECL void 
+gs_frame();
+
 /* Desc */
-GS_API_DECL gs_app_desc_t gs_main(int32_t argc, char** argv);
+GS_API_DECL void 
+gs_quit();
+
+/* Desc */
+GS_API_DECL gs_app_desc_t 
+gs_main(int32_t argc, char** argv);
 
 #define gs_subsystem(__T)\
     (gs_instance()->ctx.__T)
@@ -6349,7 +6315,37 @@ GS_API_DECL gs_app_desc_t gs_main(int32_t argc, char** argv);
 
 #endif
 
-#include "impl/gs_audio_impl.h"
+#include "impl/gs_audio_impl.h" 
+
+/*==========================
+// GS_OS
+==========================*/
+
+GS_API_DECL 
+void* _gs_malloc_init_impl(size_t sz)
+{
+    void* data = gs_malloc(sz);
+    memset(data, 0, sz);
+    return data;
+}
+
+GS_API_DECL gs_os_api_t
+gs_os_api_new_default()
+{ 
+    gs_os_api_t os = gs_default_val();
+    os.malloc = malloc;
+    os.malloc_init = _gs_malloc_init_impl;
+    os.free = free;
+    os.realloc = realloc;
+    os.calloc = calloc;
+    os.strdup = strdup;
+#ifdef GS_PLATFORM_WIN
+    os.alloca = malloc;
+#else
+    os.alloca = malloc;
+#endif
+    return os;
+}
 
 /*========================
 // gs_byte_buffer
@@ -6520,6 +6516,113 @@ gs_byte_buffer_read_from_file
 GS_API_DECL void gs_byte_buffer_memset(gs_byte_buffer_t* buffer, uint8_t val)
 {
     memset(buffer->data, val, buffer->capacity);
+}
+
+/*========================
+// Dynamic Array
+========================*/
+
+GS_API_DECL void* 
+gs_dyn_array_resize_impl(void* arr, size_t sz, size_t amount) 
+{
+    size_t capacity;
+
+    if (arr) {
+        capacity = amount;  
+    } else {
+        capacity = 0;
+    }
+
+    // Create new gs_dyn_array with just the header information
+    gs_dyn_array* data = (gs_dyn_array*)gs_realloc(arr ? gs_dyn_array_head(arr) : 0, capacity * sz + sizeof(gs_dyn_array));
+
+    if (data) {
+        if (!arr) {
+            data->size = 0;
+        }
+        data->capacity = (int32_t)capacity;
+        return ((int32_t*)data + 2);
+    }
+
+    return NULL;
+}
+
+GS_API_DECL void** 
+gs_dyn_array_init(void** arr, size_t val_len)
+{
+    if (*arr == NULL) {
+        gs_dyn_array* data = (gs_dyn_array*)gs_malloc(val_len + sizeof(gs_dyn_array));  // Allocate capacity of one
+        data->size = 0;
+        data->capacity = 1;
+        *arr = ((int32_t*)data + 2);
+        return arr;
+    }
+    return NULL;
+}
+
+GS_API_DECL void 
+gs_dyn_array_push_data(void** arr, void* val, size_t val_len)
+{
+    if (*arr == NULL) {
+        gs_dyn_array_init(arr, val_len);
+    }
+    if (gs_dyn_array_need_grow(*arr, 1)) 
+    {
+        int32_t capacity = gs_dyn_array_capacity(*arr) * 2;
+
+        // Create new gs_dyn_array with just the header information
+        gs_dyn_array* data = (gs_dyn_array*)gs_realloc(gs_dyn_array_head(*arr), capacity * val_len + sizeof(gs_dyn_array));
+
+        if (data) {
+            data->capacity = capacity;
+            *arr = ((int32_t*)data + 2);
+        }
+    }
+    size_t offset = gs_dyn_array_size(*arr);
+    memcpy(((uint8_t*)(*arr)) + offset * val_len, val, val_len);
+    gs_dyn_array_head(*arr)->size++;
+}
+
+/*========================
+// Hash Table
+========================*/
+
+GS_API_DECL void 
+__gs_hash_table_init_impl(void** ht, size_t sz)
+{
+    *ht = gs_malloc(sz);
+}
+
+/*========================
+// Slot Array
+========================*/
+
+GS_API_DECL void** 
+gs_slot_array_init(void** sa, size_t sz)
+{
+    if (*sa == NULL) {
+        *sa = gs_malloc(sz);
+        memset(*sa, 0, sz);
+        return sa;
+    }
+    else {
+        return NULL;
+    }
+}
+
+/*========================
+// Slot Map
+========================*/
+
+GS_API_DECL void** 
+gs_slot_map_init(void** sm)
+{
+    if (*sm == NULL) {
+        (*sm) = gs_malloc(sizeof(size_t) * 2);\
+        memset((*sm), 0, sizeof(size_t) * 2);\
+        return sm;
+    }   
+    return NULL;
 }
 
 /*========================
@@ -7215,6 +7318,34 @@ void gs_camera_offset_orientation(gs_camera_t* cam, f32 yaw, f32 pitch)
 
 // CGLTF
 #include "external/cgltf/cgltf.h"
+
+GS_API_DECL char* 
+gs_read_file_contents_into_string_null_term
+(
+    const char* file_path, 
+    const char* mode,
+    size_t* _sz
+)
+{
+    char* buffer = 0;
+    FILE* fp = fopen(file_path, mode);
+    size_t sz = 0;
+    if (fp)
+    {
+        fseek(fp, 0, SEEK_END);
+        sz = ftell(fp);
+        fseek(fp, 0, SEEK_SET);
+        buffer = (char*)gs_malloc(sz + 1);
+        if (buffer)
+        {
+            fread(buffer, 1, sz, fp);
+        }
+        fclose(fp);
+        buffer[sz] = '\0';
+        if (_sz) *_sz = sz;
+    }
+    return buffer;
+}
 
 bool32_t gs_util_load_texture_data_from_file(const char* file_path, int32_t* width, int32_t* height, uint32_t* num_comps, void** data, bool32_t flip_vertically_on_load)
 {
@@ -8310,13 +8441,17 @@ GS_API_DECL gs_lexer_t gs_lexer_c_ctor(const char* contents)
 // GS_ENGINE
 =============================*/
 
-void gs_default_app_func();
-void gs_default_main_window_close_callback(void* window);
+GS_API_DECL void 
+gs_default_app_func(void *app);
+
+GS_API_DECL void 
+gs_default_main_window_close_callback(void* window);
 
 // Global instance of gunslinger framework (...THERE CAN ONLY BE ONE)
 gs_global gs_t* _gs_instance = gs_default_val();
 
-gs_t* gs_create(gs_app_desc_t app_desc)
+GS_API_DECL gs_t* 
+gs_create(gs_app_desc_t app_desc)
 {
     if (gs_instance() == NULL)
     {
@@ -8327,10 +8462,17 @@ gs_t* gs_create(gs_app_desc_t app_desc)
         if (app_desc.frame_rate <= 0.f)     app_desc.frame_rate = 60.f;
         if (app_desc.update == NULL)        app_desc.update = &gs_default_app_func;
         if (app_desc.shutdown == NULL)      app_desc.shutdown = &gs_default_app_func;
-        if (app_desc.init == NULL)          app_desc.init = &gs_default_app_func;
+        if (app_desc.init == NULL)          app_desc.init = &gs_default_app_func; 
 
-        // Construct instance
-        _gs_instance = gs_malloc_init(gs_t);
+        // Set up os api before all?
+        gs_os_api_t os = gs_os_api_new();
+
+        // Construct instance and set
+        _gs_instance = os.malloc(sizeof(gs_t));
+        memset(_gs_instance, 0, sizeof(gs_t));
+
+        // Set os api now allocated
+        gs_instance()->ctx.os = os;
 
         // Set application description for framework
         gs_instance()->ctx.app = app_desc;
@@ -8368,9 +8510,8 @@ gs_t* gs_create(gs_app_desc_t app_desc)
         // Initialize audio
         gs_audio_init(gs_subsystem(audio));
 
-        // Initialize application
-        app_desc.init();
-
+        // Initialize application and set to running
+        app_desc.init(app_desc.user_data);
         gs_ctx()->app.is_running = true;
 
         // Set default callback for when main window close button is pressed
@@ -8380,17 +8521,26 @@ gs_t* gs_create(gs_app_desc_t app_desc)
     return gs_instance();
 }
 
-gs_t* gs_instance()
+GS_API_DECL void 
+gs_set_instance(gs_t* gs)
+{
+    _gs_instance = gs;
+}
+
+GS_API_DECL gs_t* 
+gs_instance()
 {
     return _gs_instance;
 }
 
-gs_context_t* gs_ctx()
+GS_API_DECL gs_context_t* 
+gs_ctx()
 {
     return &gs_instance()->ctx;
 }
 
-gs_app_desc_t* gs_app()
+GS_API_DECL gs_app_desc_t* 
+gs_app()
 {
     return &gs_instance()->ctx.app;
 }
@@ -8418,7 +8568,7 @@ GS_API_DECL void gs_frame()
     }
 
     // Process application context
-    gs_instance()->ctx.app.update();
+    gs_instance()->ctx.app.update(gs_app()->user_data);
     if (!gs_instance()->ctx.app.is_running) {
         gs_instance()->shutdown();
         return;
@@ -8461,9 +8611,9 @@ GS_API_DECL void gs_frame()
 }
 
 void gs_destroy()
-{
+{ 
     // Shutdown application
-    gs_ctx()->app.shutdown();
+    gs_ctx()->app.shutdown(gs_app()->user_data);
     gs_ctx()->app.is_running = false;
 
     // Shutdown subsystems
@@ -8477,12 +8627,14 @@ void gs_destroy()
     gs_platform_destroy(gs_subsystem(platform));
 }
 
-void gs_default_app_func()
+GS_API_DECL void 
+gs_default_app_func(void* app)
 {
     // Nothing...
 }
 
-void gs_default_main_window_close_callback(void* window)
+GS_API_DECL void 
+gs_default_main_window_close_callback(void* window)
 {
     gs_instance()->ctx.app.is_running = false;
 }

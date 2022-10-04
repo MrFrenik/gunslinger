@@ -997,7 +997,7 @@ GS_API_DECL gs_gui_style_t gs_gui_animation_get_blend_style(gs_gui_context_t* ct
 //=== Style Sheet ===//
 
 GS_API_DECL gs_gui_style_sheet_t gs_gui_style_sheet_create(gs_gui_context_t* ctx, gs_gui_style_sheet_desc_t* desc);
-GS_API_DECL void gs_gui_style_sheet_destroy(gs_gui_context_t* ctx, gs_gui_style_sheet_t* ss);
+GS_API_DECL void gs_gui_style_sheet_destroy(gs_gui_style_sheet_t* ss);
 GS_API_DECL void gs_gui_set_element_style(gs_gui_context_t* ctx, gs_gui_element_type element, gs_gui_element_state state, gs_gui_style_element_t* style, size_t size);
 GS_API_DECL void gs_gui_style_sheet_set_element_styles(gs_gui_style_sheet_t* style_sheet, gs_gui_element_type element, gs_gui_element_state state, gs_gui_style_element_t* styles, size_t size);
 GS_API_DECL void gs_gui_set_style_sheet(gs_gui_context_t* ctx, gs_gui_style_sheet_t* style_sheet);
@@ -2537,7 +2537,8 @@ GS_API_DECL gs_gui_style_sheet_t gs_gui_style_sheet_create(gs_gui_context_t* ctx
     return style_sheet;
 } 
 
-GS_API_DECL void gs_gui_style_sheet_destroy(gs_gui_context_t* ctx, gs_gui_style_sheet_t* ss)
+GS_API_DECL void 
+gs_gui_style_sheet_destroy(gs_gui_style_sheet_t* ss)
 {
     // Need to free all animations
     if (!ss || !ss->animations) {
@@ -2560,12 +2561,14 @@ GS_API_DECL void gs_gui_style_sheet_destroy(gs_gui_context_t* ctx, gs_gui_style_
     gs_hash_table_free(ss->animations);
 }
 
-GS_API_DECL void gs_gui_set_style_sheet(gs_gui_context_t* ctx, gs_gui_style_sheet_t* style_sheet)
+GS_API_DECL void 
+gs_gui_set_style_sheet(gs_gui_context_t* ctx, gs_gui_style_sheet_t* style_sheet)
 {
     ctx->style_sheet = style_sheet ? style_sheet : &gs_gui_default_style_sheet;
 }
 
-GS_API_DECL void gs_gui_style_sheet_set_element_styles(gs_gui_style_sheet_t* ss, gs_gui_element_type element, gs_gui_element_state state, gs_gui_style_element_t* styles, size_t size)
+GS_API_DECL void 
+gs_gui_style_sheet_set_element_styles(gs_gui_style_sheet_t* ss, gs_gui_element_type element, gs_gui_element_state state, gs_gui_style_element_t* styles, size_t size)
 {
     const uint32_t count = size / sizeof(gs_gui_style_element_t);
     uint32_t idx_cnt = 1;
