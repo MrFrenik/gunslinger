@@ -608,6 +608,9 @@ void gs_graphics_destroy(gs_graphics_t* graphics)
     gs_dyn_array_free(ogl->uniform_data.i32);
     gs_dyn_array_free(ogl->uniform_data.ui32);
 
+    // Free data cache
+    gs_dyn_array_free(ogl->cache.vdecls);
+
     gs_free(graphics);
     graphics = NULL;
 }
@@ -1127,7 +1130,8 @@ GS_API_DECL gs_handle(gs_graphics_renderpass_t) gs_graphics_renderpass_create(co
     return (gs_handle_create(gs_graphics_renderpass_t, gs_slot_array_insert(ogl->renderpasses, pass)));
 }
 
-GS_API_DECL gs_handle(gs_graphics_pipeline_t) gs_graphics_pipeline_create(const gs_graphics_pipeline_desc_t* desc)
+GS_API_DECL gs_handle(gs_graphics_pipeline_t) 
+gs_graphics_pipeline_create(const gs_graphics_pipeline_desc_t* desc)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data;
 
@@ -1230,6 +1234,7 @@ gs_graphics_renderpass_destroy(gs_handle(gs_graphics_renderpass_t) hndl)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data;
     if (!gs_slot_array_handle_valid(ogl->renderpasses, hndl.id)) return;
+    // TODO(john): erase all color attachments from renderpasss
     gs_slot_array_erase(ogl->renderpasses, hndl.id);
 }
 

@@ -99,12 +99,12 @@ typedef struct gs_immediate_draw_static_data_t
 	gs_hash_table(gsi_pipeline_state_attr_t, gs_handle(gs_graphics_pipeline_t)) pipeline_table;
 	gs_handle(gs_graphics_uniform_t) uniform;
 	gs_handle(gs_graphics_uniform_t) sampler; 
+	gs_handle(gs_graphics_vertex_buffer_t) vbo;
+	gs_handle(gs_graphics_index_buffer_t) ibo;
 } gs_immediate_draw_static_data_t;
 
 typedef struct gs_immediate_draw_t
 {
-	gs_handle(gs_graphics_vertex_buffer_t) vbo;
-	gs_handle(gs_graphics_index_buffer_t) ibo;
 	gs_byte_buffer_t vertices;
 	gs_dyn_array(uint16_t) indices;
     gs_dyn_array(gsi_vattr_type) vattributes;
@@ -451,7 +451,14 @@ void gs_immediate_draw_static_data_init()
    	// Generate atlas texture for bitmap with bitmap data
    	f->texture.hndl = gs_graphics_texture_create(&desc);
    	f->texture.desc = desc;
-   	*f->texture.desc.data = NULL;
+	*f->texture.desc.data = NULL; 
+
+	// Create vertex buffer 
+	gs_graphics_vertex_buffer_desc_t vdesc = gs_default_val();
+	vdesc.data = NULL;
+	vdesc.size = 0;
+	vdesc.usage = GS_GRAPHICS_BUFFER_USAGE_STREAM; 
+	GSI()->vbo = gs_graphics_vertex_buffer_create(&vdesc); 
 
     gs_free(compressed_ttf_data);
    	gs_free(buf_decompressed_data);
@@ -487,14 +494,6 @@ gs_immediate_draw_t gs_immediate_draw_new()
 	// Init command buffer
 	gsi.commands = gs_command_buffer_new();	// Not totally sure on the syntax for new vs. create 
 
-	// Create vertex buffer 
-	gs_graphics_vertex_buffer_desc_t vdesc = gs_default_val();
-	vdesc.data = NULL;
-	vdesc.size = 0;
-	vdesc.usage = GS_GRAPHICS_BUFFER_USAGE_STREAM;
-
-	gsi.vbo = gs_graphics_vertex_buffer_create(&vdesc); 
-
     gsi.vertices = gs_byte_buffer_new();
 
 	// Set up cache 
@@ -503,18 +502,28 @@ gs_immediate_draw_t gs_immediate_draw_new()
 	return gsi;
 }
 
-void gs_immediate_draw_free(gs_immediate_draw_t* gsi)
+GS_API_DECL void 
+gs_immediate_draw_free(gs_immediate_draw_t* ctx)
 {
-	// Free all data
+	gs_byte_buffer_free(&ctx->vertices);
+	gs_dyn_array_free(ctx->indices);
+	gs_dyn_array_free(ctx->vattributes);
+	gs_command_buffer_free(&ctx->commands); 
+	gs_dyn_array_free(ctx->cache.pipelines); 
+	gs_dyn_array_free(ctx->cache.modelview); 
+	gs_dyn_array_free(ctx->cache.projection); 
+	gs_dyn_array_free(ctx->cache.modes);
 }
 
-GS_API_DECL gs_asset_font_t* gsi_default_font()
+GS_API_DECL gs_asset_font_t* 
+gsi_default_font()
 {
     if (GSI()) return &GSI()->font_default;
     return NULL;
 }
 
-gs_handle(gs_graphics_pipeline_t) gsi_get_pipeline(gs_immediate_draw_t* gsi, gsi_pipeline_state_attr_t state)
+GS_API_DECL gs_handle(gs_graphics_pipeline_t) 
+gsi_get_pipeline(gs_immediate_draw_t* gsi, gsi_pipeline_state_attr_t state)
 {
 	// Bind pipeline
 	gs_assert(gs_hash_table_key_exists(GSI()->pipeline_table, state));
@@ -602,7 +611,7 @@ void gsi_flush(gs_immediate_draw_t* gsi)
 	vdesc.size = gs_byte_buffer_size(&gsi->vertices);
 	vdesc.usage = GS_GRAPHICS_BUFFER_USAGE_STREAM;
 
-	gs_graphics_vertex_buffer_request_update(&gsi->commands, gsi->vbo, &vdesc);
+	gs_graphics_vertex_buffer_request_update(&gsi->commands, GSI()->vbo, &vdesc);
 
     // Calculate draw count
     size_t vsz = sizeof(gs_immediate_vert_t);
@@ -628,7 +637,7 @@ void gsi_flush(gs_immediate_draw_t* gsi)
 
     // Set up all binding data
     gs_graphics_bind_vertex_buffer_desc_t vbuffer = gs_default_val();
-    vbuffer.buffer = gsi->vbo;
+    vbuffer.buffer = GSI()->vbo;
 
     gs_graphics_bind_uniform_desc_t ubinds[2] = gs_default_val();
     ubinds[0].uniform = GSI()->uniform; ubinds[0].data = &mvp;

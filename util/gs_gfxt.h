@@ -204,6 +204,7 @@ GS_API_DECL void gs_gfxt_mesh_import_options_free(gs_gfxt_mesh_import_options_t*
 typedef struct gs_gfxt_mesh_desc_s {
     gs_gfxt_mesh_raw_data_t* meshes;   // Mesh data array
     size_t size;                       // Size of mesh data array in bytes
+    bool32 keep_data;                  // Whether or not to free data after use
 } gs_gfxt_mesh_desc_t;
 
 typedef struct gs_gfxt_vertex_stream_s
@@ -336,10 +337,8 @@ gs_gfxt_pipeline_create(const gs_gfxt_pipeline_desc_t* desc)
     pip.hndl = gs_graphics_pipeline_create(&desc->pip_desc);
     pip.ublock = gs_gfxt_uniform_block_create(&desc->ublock_desc);
     pip.desc = desc->pip_desc;
-    uint32_t ct = desc->pip_desc.layout.size / sizeof(gs_graphics_vertex_attribute_desc_t);
-    for (uint32_t i = 0; i < ct; ++i) {
-        gs_dyn_array_push(pip.desc.layout.attrs, desc->pip_desc.layout.attrs[i]);
-    }
+	pip.desc.layout.attrs = gs_malloc(desc->pip_desc.layout.size);
+	memcpy(pip.desc.layout.attrs, desc->pip_desc.layout.attrs, desc->pip_desc.layout.size);
     return pip;
 }
 
@@ -470,6 +469,10 @@ gs_gfxt_mesh_create(const gs_gfxt_mesh_desc_t* desc)
                 vdesc.data = vdata->positions.data;
                 vdesc.size = vdata->positions.size;
                 prim.stream.positions = gs_graphics_vertex_buffer_create(&vdesc);
+                if (!desc->keep_data)
+                { 
+                    gs_free(vdata->positions.data);
+                }
             }
 
             // Normals
@@ -479,6 +482,10 @@ gs_gfxt_mesh_create(const gs_gfxt_mesh_desc_t* desc)
                 vdesc.data = vdata->normals.data;
                 vdesc.size = vdata->normals.size;
                 prim.stream.normals = gs_graphics_vertex_buffer_create(&vdesc);
+                if (!desc->keep_data)
+                { 
+                    gs_free(vdata->normals.data);
+                }
             }
 
             // Tangents
@@ -488,6 +495,10 @@ gs_gfxt_mesh_create(const gs_gfxt_mesh_desc_t* desc)
                 vdesc.data = vdata->tangents.data;
                 vdesc.size = vdata->tangents.size;
                 prim.stream.tangents = gs_graphics_vertex_buffer_create(&vdesc);
+                if (!desc->keep_data)
+                { 
+                    gs_free(vdata->tangents.data);
+                }
             }
 
             // Texcoords
@@ -499,6 +510,10 @@ gs_gfxt_mesh_create(const gs_gfxt_mesh_desc_t* desc)
                     vdesc.data = vdata->tex_coords[j].data;
                     vdesc.size = vdata->tex_coords[j].size;
                     prim.stream.tex_coords[j] = gs_graphics_vertex_buffer_create(&vdesc);
+                    if (!desc->keep_data)
+                    { 
+                        gs_free(vdata->tex_coords[j].data);
+                    }
                 }
             }
 
@@ -511,6 +526,10 @@ gs_gfxt_mesh_create(const gs_gfxt_mesh_desc_t* desc)
                     vdesc.data = vdata->colors[j].data;
                     vdesc.size = vdata->colors[j].size;
                     prim.stream.colors[j] = gs_graphics_vertex_buffer_create(&vdesc);
+                    if (!desc->keep_data)
+                    { 
+                        gs_free(vdata->colors[j].data);
+                    }
                 }
             }
 
@@ -523,6 +542,10 @@ gs_gfxt_mesh_create(const gs_gfxt_mesh_desc_t* desc)
                     vdesc.data = vdata->joints[j].data;
                     vdesc.size = vdata->joints[j].size;
                     prim.stream.joints[j] = gs_graphics_vertex_buffer_create(&vdesc);
+                    if (!desc->keep_data)
+                    { 
+                        gs_free(vdata->joints[j].data);
+                    }
                 }
             }
 
@@ -534,7 +557,11 @@ gs_gfxt_mesh_create(const gs_gfxt_mesh_desc_t* desc)
                     gs_graphics_vertex_buffer_desc_t vdesc = gs_default_val();
                     vdesc.data = vdata->weights[j].data;
                     vdesc.size = vdata->weights[j].size;
-                    prim.stream.weights[j] = gs_graphics_vertex_buffer_create(&vdesc);
+                    prim.stream.weights[j] = gs_graphics_vertex_buffer_create(&vdesc); 
+                    if (!desc->keep_data)
+                    { 
+                        gs_free(vdata->weights[j].data);
+                    }
                 }
             }
 
@@ -546,9 +573,24 @@ gs_gfxt_mesh_create(const gs_gfxt_mesh_desc_t* desc)
             // Construct index buffer for primitive
             prim.ibo = gs_graphics_index_buffer_create(&idesc);
 
+			if (!desc->keep_data)
+			{
+				gs_free(vdata->indices.data);
+			}
+
             // Add primitive to mesh
-            gs_dyn_array_push(mesh.primitives, prim);
+            gs_dyn_array_push(mesh.primitives, prim); 
         } 
+
+        if (!desc->keep_data)
+        { 
+            gs_dyn_array_free(m->primitives);
+        }
+    }
+
+    if (!desc->keep_data)
+    {
+        gs_free(desc->meshes);
     }
 
     return mesh;
@@ -629,21 +671,17 @@ gs_gfxt_uniform_block_destroy(gs_gfxt_uniform_block_t* ub)
 
 GS_API_DECL void 
 gs_gfxt_pipeline_destroy(gs_gfxt_pipeline_t* pipeline)
-{
-typedef struct gs_gfxt_pipeline_s {
-    gs_handle(gs_graphics_pipeline_t) hndl;                         // Graphics handle resource for actual pipeline
-    gs_gfxt_uniform_block_t ublock;                                 // Uniform block for holding all uniform data
-    gs_dyn_array(gs_gfxt_mesh_layout_t) mesh_layout;  
-    gs_graphics_pipeline_desc_t desc;
-} gs_gfxt_pipeline_t;
-
+{ 
     // Destroy uniform block for pipeline
     gs_gfxt_uniform_block_destroy(&pipeline->ublock);
+
+	// Free shaders (if responsible for them)
+    gs_graphics_shader_destroy(pipeline->desc.raster.shader);
     
     // Destroy pipeline
-    gs_dyn_array_free(pipeline->desc.layout.attrs);
-    gs_dyn_array_free(pipeline->mesh_layout);
-    gs_graphics_pipeline_destroy(pipeline->hndl);
+	if (pipeline->desc.layout.attrs) gs_free(pipeline->desc.layout.attrs);
+    if (pipeline->mesh_layout) gs_dyn_array_free(pipeline->mesh_layout);
+    gs_graphics_pipeline_destroy(pipeline->hndl); 
 }
 
 //=== Copy API ===//
@@ -919,21 +957,15 @@ gs_gfxt_mesh_t gs_gfxt_mesh_load_from_file(const char* path, gs_gfxt_mesh_import
     mdesc.meshes = meshes;
     mdesc.size = mesh_count * sizeof(gs_gfxt_mesh_raw_data_t);
 
-    // Construct mesh from raw data
-    /*
-    mesh = gs_gfxt_mesh_create(&(gs_gfxt_mesh_desc_t) {
-        .meshes = meshes, 
-        .size = mesh_count * sizeof(gs_gfxt_mesh_raw_data_t)
-    });
-    */
     mesh = gs_gfxt_mesh_create(&mdesc);
     mesh.desc = mdesc;
 
     return mesh;
 }
 
-GS_API_DECL 
-bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_options_t* options, gs_gfxt_mesh_raw_data_t** out, uint32_t* mesh_count)
+GS_API_DECL bool 
+gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_options_t* options, 
+    gs_gfxt_mesh_raw_data_t** out, uint32_t* mesh_count)
 {
     // Use cgltf like a boss
     cgltf_options cgltf_options = gs_default_val();
@@ -1032,13 +1064,6 @@ bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_opti
         {
             // Initialize mesh data
             gs_gfxt_mesh_raw_data_t* mesh = &((*out)[i]);
-            /*
-            mesh->prim_count = cmesh->primitives_count;
-            mesh->vertex_sizes = (size_t*)gs_malloc(sizeof(size_t) * mesh->prim_count);
-            mesh->index_sizes = (size_t*)gs_malloc(sizeof(size_t) * mesh->prim_count);
-            mesh->vertices = (void**)gs_malloc(sizeof(size_t) * mesh->prim_count);
-            mesh->indices = (void**)gs_malloc(sizeof(size_t) * mesh->prim_count); 
-            */
             bool warnings[gs_enum_count(gs_asset_mesh_attribute_type)] = gs_default_val();
             bool printed = false;
 
@@ -2886,7 +2911,8 @@ char* gs_pipeline_generate_shader_code(gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t*
     return src;
 }
 
-GS_API_DECL gs_gfxt_pipeline_t gs_gfxt_pipeline_load_from_file(const char* path)
+GS_API_DECL gs_gfxt_pipeline_t 
+gs_gfxt_pipeline_load_from_file(const char* path)
 {
     // Load file, generate lexer off of file data, parse contents for pipeline information 
     size_t len = 0;
@@ -2964,8 +2990,7 @@ GS_API_DECL gs_gfxt_pipeline_t gs_gfxt_pipeline_load_from_memory(const char* fil
         sdesc.size = 2 * sizeof(gs_graphics_shader_source_desc_t);
 
         pdesc.pip_desc.raster.shader = gs_graphics_shader_create(&sdesc);
-    }
-    
+    } 
 
     // Set up layout
     pdesc.pip_desc.layout.size = gs_dyn_array_size(pdesc.pip_desc.layout.attrs) * sizeof(gs_graphics_vertex_attribute_desc_t);
@@ -2985,14 +3010,14 @@ GS_API_DECL gs_gfxt_pipeline_t gs_gfxt_pipeline_load_from_memory(const char* fil
         }
     } 
 
-    pip.desc = pdesc.pip_desc;
-
     // Free all malloc'd data 
     if (v_src) gs_free(v_src);
     if (f_src) gs_free(f_src); 
     if (c_src) gs_free(c_src);
     gs_dyn_array_free(pdesc.ublock_desc.layout);
+	gs_dyn_array_free(pdesc.pip_desc.layout.attrs);
     gs_dyn_array_free(ppd.mesh_layout);
+	gs_dyn_array_free(ppd.vertex_layout);
     
     for (uint32_t i = 0; i < 3; ++i)
     {
@@ -3003,7 +3028,8 @@ GS_API_DECL gs_gfxt_pipeline_t gs_gfxt_pipeline_load_from_memory(const char* fil
     return pip;
 }
 
-GS_API_DECL gs_gfxt_texture_t gs_gfxt_texture_load_from_file(const char* path, gs_graphics_texture_desc_t* desc, bool flip, bool keep_data)
+GS_API_DECL gs_gfxt_texture_t 
+gs_gfxt_texture_load_from_file(const char* path, gs_graphics_texture_desc_t* desc, bool flip, bool keep_data)
 {
     gs_asset_texture_t tex = gs_default_val();
     gs_asset_texture_load_from_file(path, &tex, desc, flip, keep_data);

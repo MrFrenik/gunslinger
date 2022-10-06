@@ -6555,9 +6555,8 @@ gs_dyn_array_init(void** arr, size_t val_len)
         data->size = 0;
         data->capacity = 1;
         *arr = ((int32_t*)data + 2);
-        return arr;
     }
-    return NULL;
+    return arr;
 }
 
 GS_API_DECL void 
