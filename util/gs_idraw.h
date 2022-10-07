@@ -1800,7 +1800,8 @@ void gsi_text(gs_immediate_draw_t* gsi, float x, float y, const char* text, cons
 }
 
 // View/Scissor commands
-GS_API_DECL void gsi_set_view_scissor(gs_immediate_draw_t* gsi, uint32_t x, uint32_t y, uint32_t w, uint32_t h)
+GS_API_DECL void 
+gsi_set_view_scissor(gs_immediate_draw_t* gsi, uint32_t x, uint32_t y, uint32_t w, uint32_t h)
 {
     // Flush previous
     gsi_flush(gsi);
@@ -1810,7 +1811,8 @@ GS_API_DECL void gsi_set_view_scissor(gs_immediate_draw_t* gsi, uint32_t x, uint
 }
 
 // Final Submit / Merge
-void gsi_draw(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb)
+GS_API_DECL void 
+gsi_draw(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb)
 {
 	// Final flush (if necessary)(this might be a part of gsi_end() instead)
 	gsi_flush(gsi);
@@ -1825,7 +1827,8 @@ void gsi_draw(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb)
 	gsi_reset(gsi);
 }
 
-void gsi_renderpass_submit(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, uint32_t view_width, uint32_t view_height, gs_color_t c)
+GS_API_DECL void 
+gsi_renderpass_submit(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, uint32_t view_width, uint32_t view_height, gs_color_t c)
 {
 	gs_graphics_clear_action_t action = gs_default_val();
 	action.color[0] = (float)c.r / 255.f; 

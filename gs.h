@@ -750,6 +750,15 @@ typedef struct gs_os_api_s
 
 // TODO(john): Check if all defaults need to be set, in case gs context will not be used
 
+// Default memory allocations
+#ifdef GS_OS_MEMORY_ALLOC_DEFAULT
+    #define gs_malloc       malloc 
+    #define gs_free         free 
+    #define gs_realloc      realloc 
+    #define gs_calloc       calloc 
+    #define gs_alloca       malloc
+#endif
+
 GS_API_DECL gs_os_api_t
 gs_os_api_new_default(); 
 
