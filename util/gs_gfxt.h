@@ -219,9 +219,8 @@ typedef struct gs_gfxt_vertex_stream_s
 } gs_gfxt_vertex_stream_t;
 
 typedef struct gs_gfxt_mesh_primitive_s {
-    gs_handle(gs_graphics_vertex_buffer_t) vbo;
-    gs_handle(gs_graphics_index_buffer_t) ibo;      // Index buffer
     gs_gfxt_vertex_stream_t stream;                 // All vertex data streams
+    gs_handle(gs_graphics_index_buffer_t) indices;  // Index buffer
     uint32_t count;                                 // Total number of vertices
 } gs_gfxt_mesh_primitive_t;
 
@@ -571,7 +570,7 @@ gs_gfxt_mesh_create(const gs_gfxt_mesh_desc_t* desc)
             idesc.size = vdata->indices.size;
 
             // Construct index buffer for primitive
-            prim.ibo = gs_graphics_index_buffer_create(&idesc);
+            prim.indices = gs_graphics_index_buffer_create(&idesc);
 
 			if (!desc->keep_data)
 			{
@@ -635,7 +634,7 @@ gs_gfxt_mesh_destroy(gs_gfxt_mesh_t* mesh)
         gs_gfxt_mesh_primitive_t* prim = &mesh->primitives[p]; 
 
         // Free index buffer
-        gs_graphics_index_buffer_destroy(prim->ibo);
+        gs_graphics_index_buffer_destroy(prim->indices);
 
         // Free vertex stream
         gs_graphics_vertex_buffer_destroy(prim->stream.positions);
@@ -817,6 +816,7 @@ void gs_gfxt_material_bind_uniforms(gs_command_buffer_t* cb, gs_gfxt_material_t*
 GS_API_DECL void 
 gs_gfxt_mesh_draw(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mp)
 {
+    /*
     // For each primitive in mesh
     for (uint32_t i = 0; i < gs_dyn_array_size(mp->primitives); ++i)
     {
@@ -827,7 +827,7 @@ gs_gfxt_mesh_draw(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mp)
         gs_graphics_bind_vertex_buffer_desc_t vdesc = gs_default_val();
         gs_graphics_bind_index_buffer_desc_t idesc = gs_default_val();
         vdesc.buffer = prim->vbo;
-        idesc.buffer = prim->ibo;
+        idesc.buffer = prim->indices;
         binds.vertex_buffers.desc = &vdesc;
         binds.index_buffers.desc = &idesc;
         gs_graphics_draw_desc_t ddesc = gs_default_val();
@@ -836,6 +836,7 @@ gs_gfxt_mesh_draw(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mp)
         gs_graphics_apply_bindings(cb, &binds);
         gs_graphics_draw(cb, &ddesc);
     }
+    */
 }
 
 GS_API_DECL void 
@@ -873,7 +874,7 @@ gs_gfxt_mesh_draw_layout(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh, gs_gfxt_
         gs_graphics_bind_desc_t binds = {
             // .vertex_buffers = {.desc = vbos, .size = sizeof(vbos)},
             .vertex_buffers = {.desc = vbos, .size = ct * sizeof(gs_graphics_bind_vertex_buffer_desc_t)},
-            .index_buffers = {.desc = &(gs_graphics_bind_index_buffer_desc_t){.buffer = prim->ibo}}
+            .index_buffers = {.desc = &(gs_graphics_bind_index_buffer_desc_t){.buffer = prim->indices}}
         };
         gs_graphics_draw_desc_t ddesc = {
             .start = 0, 
@@ -1520,10 +1521,9 @@ gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_options_t
 GS_API_DECL 
 gs_gfxt_mesh_t gs_gfxt_mesh_unit_quad_generate(gs_gfxt_mesh_import_options_t* options)
 {
-    gs_gfxt_mesh_t mesh = {0};
+    gs_gfxt_mesh_t mesh = gs_default_val();
 
     gs_vec3 v_pos[] = {
-        // Positions
         gs_v3(-1.0f, -1.0f, 0.f), // Top Left
         gs_v3(+1.0f, -1.0f, 0.f), // Top Right 
         gs_v3(-1.0f, +1.0f, 0.f), // Bottom Left
@@ -1532,97 +1532,71 @@ gs_gfxt_mesh_t gs_gfxt_mesh_unit_quad_generate(gs_gfxt_mesh_import_options_t* op
 
     // Vertex data for quad
     gs_vec2 v_uvs[] = {
-        // Positions  UVs
         gs_v2(0.0f, 0.0f),  // Top Left
         gs_v2(1.0f, 0.0f),  // Top Right 
         gs_v2(0.0f, 1.0f),  // Bottom Left
         gs_v2(1.0f, 1.0f)   // Bottom Right
     };
 
-    gs_vec3 norm = gs_v3(0.f, 0.f, 1.f);
-    gs_vec3 tan =  gs_v3(1.f, 0.f, 0.f);
-    gs_color_t color = GS_COLOR_WHITE;
+    gs_vec3 v_norm[] = {
+        gs_v3(0.f, 0.f, 1.f),
+        gs_v3(0.f, 0.f, 1.f),
+        gs_v3(0.f, 0.f, 1.f),
+        gs_v3(0.f, 0.f, 1.f)
+    };
+
+    gs_vec3 v_tan[] = {
+        gs_v3(1.f, 0.f, 0.f),
+        gs_v3(1.f, 0.f, 0.f),
+        gs_v3(1.f, 0.f, 0.f),
+        gs_v3(1.f, 0.f, 0.f)
+    };
+
+    gs_color_t v_color[] = {
+        GS_COLOR_WHITE,
+        GS_COLOR_WHITE,
+        GS_COLOR_WHITE,
+        GS_COLOR_WHITE
+    };
 
     // Index data for quad
-    uint32_t i_data[] = {
+    uint16_t i_data[] = {
         0, 3, 2,    // First Triangle
         0, 1, 3     // Second Triangle
-    };
+    }; 
 
-    // Generate necessary vertex data to push vertex buffer
-    gs_gfxt_mesh_primitive_t prim = gs_default_val();
-    prim.count = 6;
+    // Mesh data
+    gs_gfxt_mesh_raw_data_t mesh_data = gs_default_val();
 
-    gs_gfxt_mesh_layout_t mlayout[2] = gs_default_val();
-    mlayout[0].type = GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION;
-    mlayout[1].type = GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD;
-    gs_gfxt_mesh_import_options_t def_options = gs_default_val();
-    def_options.layout = mlayout;
-    def_options.size = 2 * sizeof(gs_gfxt_mesh_layout_t);
-    def_options.index_buffer_element_size = sizeof(uint32_t);
+    // Primitive to upload
+    gs_gfxt_mesh_vertex_data_t vert_data = gs_default_val();
+    vert_data.positions.data = v_pos; vert_data.positions.size = sizeof(v_pos);
+    vert_data.normals.data = v_norm; vert_data.normals.size = sizeof(v_norm);
+    vert_data.tangents.data = v_tan; vert_data.tangents.size = sizeof(v_tan);
+    vert_data.colors[0].data = v_color; vert_data.colors[0].size = sizeof(v_color);
+    vert_data.tex_coords[0].data = v_uvs; vert_data.tex_coords[0].size = sizeof(v_uvs);
+    vert_data.indices.data = i_data; vert_data.indices.size = sizeof(i_data);
+    vert_data.count = 6;
 
-    /*
-    gs_gfxt_mesh_import_options_t def_options = {
-        .layout = (gs_gfxt_mesh_layout_t[]) {
-            {.type = GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION},
-            {.type = GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD}
-        },
-        .size = 2 * sizeof(gs_gfxt_mesh_layout_t),
-        .index_buffer_element_size = sizeof(uint32_t)
-    };
-    */
+    // Push into primitives
+    gs_dyn_array_push(mesh_data.primitives, vert_data); 
 
     // If no decl, then just use default layout
+    /*
     gs_gfxt_mesh_import_options_t* moptions = options ? options : &def_options; 
     uint32_t ct = moptions->size / sizeof(gs_asset_mesh_layout_t);
-    gs_byte_buffer_t vbuffer = gs_byte_buffer_new();
-
-    // For each vertex
-    for (uint32_t v = 0; v < 4; ++v) {
-        for (uint32_t i = 0; i < ct; ++i) {
-            switch (moptions->layout[i].type) {
-                case GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION:  gs_byte_buffer_write(&vbuffer, gs_vec3, v_pos[v]);  break;
-                case GS_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL:   gs_byte_buffer_write(&vbuffer, gs_vec3, norm);      break;
-                case GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD:  gs_byte_buffer_write(&vbuffer, gs_vec2, v_uvs[v]);  break;
-                case GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR:    gs_byte_buffer_write(&vbuffer, gs_color_t, color);  break;
-                case GS_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT:   gs_byte_buffer_write(&vbuffer, gs_vec3, tan);          break;
-                default: break;
-            }
-        }
-    }
-
-    // Construct primitive for mesh
-    gs_graphics_vertex_buffer_desc_t vdesc = gs_default_val();
-    vdesc.data = vbuffer.data;
-    vdesc.size = vbuffer.size;
-    /*
-    prim.vbo = gs_graphics_vertex_buffer_create(
-        &(gs_graphics_vertex_buffer_desc_t) {
-            .data = vbuffer.data,
-            .size = vbuffer.size
-        }
-    );
     */
-    prim.vbo = gs_graphics_vertex_buffer_create(&vdesc);
 
-    /*
-    prim.ibo = gs_graphics_index_buffer_create(
-        &(gs_graphics_index_buffer_desc_t) {
-            .data = i_data,
-            .size = sizeof(i_data)
-        }
-    );
-    */
-    gs_graphics_index_buffer_desc_t idesc = gs_default_val();
-    idesc.data = i_data;
-    idesc.size = sizeof(i_data);
-    gs_graphics_index_buffer_create(&idesc);
+    gs_gfxt_mesh_desc_t mdesc = gs_default_val();
+    mdesc.meshes = &mesh_data;
+    mdesc.size = 1 * sizeof(gs_gfxt_mesh_raw_data_t);
+    mdesc.keep_data = true;
 
-    // Add primitive
-    gs_dyn_array_push(mesh.primitives, prim);
+    mesh = gs_gfxt_mesh_create(&mdesc);
+    mesh.desc = mdesc;
 
-    // Free buffer
-    gs_byte_buffer_free(&vbuffer);
+    // Free data
+    gs_dyn_array_free(mesh_data.primitives);
 
     return mesh;
 }
