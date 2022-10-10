@@ -3901,8 +3901,12 @@ static void gs_gui_get_split_lowest_zindex(gs_gui_context_t* ctx, gs_gui_split_t
 GS_API_DECL void 
 gs_gui_begin(gs_gui_context_t* ctx, const gs_gui_hints_t* hints)
 { 
-    gs_gui_rect_t vp = gs_gui_rect(hints->viewport.x, 
-        hints->framebuffer_size.y - hints->viewport.h - hints->viewport.y, hints->viewport.w, hints->viewport.h);
+    gs_gui_hints_t default_hints = gs_default_val();
+    default_hints.framebuffer_size = gs_platform_framebuffer_sizev(ctx->window_hndl);
+    default_hints.viewport = gs_gui_rect(0.f, 0.f, default_hints.framebuffer_size.x, default_hints.framebuffer_size.y);
+    gs_gui_hints_t hint = hints ? *hints : default_hints;
+    gs_gui_rect_t vp = gs_gui_rect(hint.viewport.x, 
+        hint.framebuffer_size.y - hint.viewport.h - hint.viewport.y, hint.viewport.w, hint.viewport.h);
 
     // Capture event information
     gs_vec2 platform_m_pos = gs_platform_mouse_positionv();
@@ -3999,8 +4003,8 @@ gs_gui_begin(gs_gui_context_t* ctx, const gs_gui_hints_t* hints)
         }
     }
 
-    ctx->framebuffer_size = hints->framebuffer_size;
-    ctx->viewport = gs_gui_rect(hints->viewport.x, hints->viewport.y, hints->viewport.w, hints->viewport.h);
+    ctx->framebuffer_size = hint.framebuffer_size;
+    ctx->viewport = gs_gui_rect(hint.viewport.x, hint.viewport.y, hint.viewport.w, hint.viewport.h);
     ctx->mouse_pos = mouse_pos;
 	ctx->command_list.idx = 0;
 	ctx->root_list.idx = 0;
