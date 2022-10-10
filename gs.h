@@ -742,7 +742,7 @@ typedef struct gs_os_api_s
     void* (* malloc)(size_t sz);
     void  (* free)(void* ptr);
     void* (* realloc)(void* ptr, size_t sz);
-    void* (* calloc)(size_t, size_t sz);
+    void* (* calloc)(size_t num, size_t sz);
     void* (* alloca)(size_t sz);
     void* (* malloc_init)(size_t sz);
     char* (* strdup)(const char* str);
@@ -787,7 +787,7 @@ gs_os_api_new_default();
 #endif
 
 #ifndef gs_calloc
-    #define gs_calloc(__SZ) (gs_ctx()->os.calloc(__SZ))
+    #define gs_calloc(__NUM, __SZ) (gs_ctx()->os.calloc(__NUM, __SZ))
 #endif
 
 #ifndef gs_alloca
