@@ -742,7 +742,7 @@ typedef struct gs_os_api_s
     void* (* malloc)(size_t sz);
     void  (* free)(void* ptr);
     void* (* realloc)(void* ptr, size_t sz);
-    void* (* calloc)(size_t sz);
+    void* (* calloc)(size_t, size_t sz);
     void* (* alloca)(size_t sz);
     void* (* malloc_init)(size_t sz);
     char* (* strdup)(const char* str);
@@ -750,14 +750,18 @@ typedef struct gs_os_api_s
 
 // TODO(john): Check if all defaults need to be set, in case gs context will not be used
 
+GS_API_DECL 
+void* _gs_malloc_init_impl(size_t sz);
+
 // Default memory allocations
-#ifdef GS_OS_MEMORY_ALLOC_DEFAULT
-    #define gs_malloc       malloc 
-    #define gs_free         free 
-    #define gs_realloc      realloc 
-    #define gs_calloc       calloc 
-    #define gs_alloca       malloc
-#endif
+#ifndef GS_NO_OS_MEMORY_ALLOC_DEFAULT
+    #define gs_malloc           malloc 
+    #define gs_free             free 
+    #define gs_realloc          realloc 
+    #define gs_calloc           calloc 
+    #define gs_alloca           malloc
+    #define gs_malloc_init(__T) (__T*)_gs_malloc_init_impl(sizeof(__T))
+#endif 
 
 GS_API_DECL gs_os_api_t
 gs_os_api_new_default(); 
@@ -770,7 +774,7 @@ gs_os_api_new_default();
     #define gs_malloc(__SZ) (gs_ctx()->os.malloc(__SZ))
 #endif
 
-#ifndef gs_malloc_init 
+#ifndef gs_malloc_init
 	#define gs_malloc_init(__T) ((__T*)gs_ctx()->os.malloc_init(sizeof(__T)))
 #endif 
 
@@ -813,7 +817,7 @@ typedef enum gs_result
 // Useful typedefs for typesafe, internal resource handles
 
 #define gs_handle(TYPE)\
-    gs_handle_##TYPE
+    gs_handle_##TYPE 
 
 #define gs_handle_decl(TYPE)\
     typedef struct {uint32_t id;} gs_handle(TYPE);\
@@ -4421,7 +4425,7 @@ typedef enum gs_token_type
 
 typedef struct gs_token_t 
 {
-	char* text;
+	const char* text;
 	gs_token_type type;
 	uint32_t len;
 } gs_token_t;
@@ -6170,9 +6174,9 @@ GS_API_DECL bool gs_util_load_gltf_data_from_memory(const void* memory, size_t s
 // Application descriptor for user application
 typedef struct gs_app_desc_t
 {
-    void (* init)(void* app);
-    void (* update)(void* app);
-    void (* shutdown)(void* app);
+    void (* init)();
+    void (* update)();
+    void (* shutdown)();
     const char* window_title;
     uint32_t window_width;
     uint32_t window_height;
@@ -8129,7 +8133,8 @@ GS_API_DECL void gs_lexer_c_eat_white_space(gs_lexer_t* lex)
 	}
 }
 
-GS_API_DECL gs_token_t gs_lexer_c_next_token(gs_lexer_t* lex)
+GS_API_DECL gs_token_t 
+gs_lexer_c_next_token(gs_lexer_t* lex)
 { 
     if (lex->skip_white_space)
     {
@@ -8418,7 +8423,8 @@ GS_API_DECL bool gs_lexer_find_next_token_type(gs_lexer_t* lex, gs_token_type ty
 	return false;
 }
 
-GS_API_DECL gs_token_t gs_lexer_advance_before_next_token_type(gs_lexer_t* lex, gs_token_type type)
+GS_API_DECL gs_token_t 
+gs_lexer_advance_before_next_token_type(gs_lexer_t* lex, gs_token_type type)
 {
 	gs_token_t t = lex->current_token;
 	gs_token_t peek_t = gs_lexer_peek(lex);
@@ -8433,7 +8439,8 @@ GS_API_DECL gs_token_t gs_lexer_advance_before_next_token_type(gs_lexer_t* lex, 
 	return t;
 }
 
-GS_API_DECL gs_lexer_t gs_lexer_c_ctor(const char* contents)
+GS_API_DECL gs_lexer_t 
+gs_lexer_c_ctor(const char* contents)
 {
 	gs_lexer_t lex = gs_default_val();
 	lex.contents = contents;
@@ -8450,7 +8457,7 @@ GS_API_DECL gs_lexer_t gs_lexer_c_ctor(const char* contents)
 =============================*/
 
 GS_API_DECL void 
-gs_default_app_func(void *app);
+gs_default_app_func();
 
 GS_API_DECL void 
 gs_default_main_window_close_callback(void* window);
@@ -8476,7 +8483,7 @@ gs_create(gs_app_desc_t app_desc)
         gs_os_api_t os = gs_os_api_new();
 
         // Construct instance and set
-        _gs_instance = os.malloc(sizeof(gs_t));
+        _gs_instance = (gs_t*)os.malloc(sizeof(gs_t));
         memset(_gs_instance, 0, sizeof(gs_t));
 
         // Set os api now allocated
@@ -8519,7 +8526,7 @@ gs_create(gs_app_desc_t app_desc)
         gs_audio_init(gs_subsystem(audio));
 
         // Initialize application and set to running
-        app_desc.init(app_desc.user_data);
+        app_desc.init();
         gs_ctx()->app.is_running = true;
 
         // Set default callback for when main window close button is pressed
@@ -8554,7 +8561,8 @@ gs_app()
 }
 
 // Define main frame function for framework to step
-GS_API_DECL void gs_frame()
+GS_API_DECL void 
+gs_frame()
 {
     // Remove these...
     static uint32_t curr_ticks = 0; 
@@ -8576,7 +8584,7 @@ GS_API_DECL void gs_frame()
     }
 
     // Process application context
-    gs_instance()->ctx.app.update(gs_app()->user_data);
+    gs_instance()->ctx.app.update();
     if (!gs_instance()->ctx.app.is_running) {
         gs_instance()->shutdown();
         return;
@@ -8621,7 +8629,7 @@ GS_API_DECL void gs_frame()
 void gs_destroy()
 { 
     // Shutdown application
-    gs_ctx()->app.shutdown(gs_app()->user_data);
+    gs_ctx()->app.shutdown();
     gs_ctx()->app.is_running = false;
 
     // Shutdown subsystems
@@ -8636,7 +8644,7 @@ void gs_destroy()
 }
 
 GS_API_DECL void 
-gs_default_app_func(void* app)
+gs_default_app_func()
 {
     // Nothing...
 }

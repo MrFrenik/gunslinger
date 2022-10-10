@@ -303,7 +303,6 @@ GS_API_DECL void gs_gfxt_material_bind_uniforms(gs_command_buffer_t* cb, gs_gfxt
 GS_API_DECL gs_gfxt_pipeline_t* gs_gfxt_material_get_pipeline(gs_gfxt_material_t* mat);
 
 //=== Mesh API ===//
-GS_API_DECL void gs_gfxt_mesh_draw(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh);
 GS_API_DECL void gs_gfxt_mesh_draw_pipeline(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh, gs_gfxt_pipeline_t* pip);
 GS_API_DECL void gs_gfxt_mesh_draw_material(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh, gs_gfxt_material_t* mat);
 GS_API_DECL void gs_gfxt_mesh_draw_layout(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh, gs_gfxt_mesh_layout_t* layout, size_t layout_size);

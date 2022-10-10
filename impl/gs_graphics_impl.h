@@ -1044,7 +1044,7 @@ GS_API_DECL gs_handle(gs_graphics_shader_t) gs_graphics_shader_create(const gs_g
             log = NULL;
 
             // gs_assert(false);
-            return;
+            return gs_handle_invalid(gs_graphics_shader_t);
         }
 
         // Attach shader to program
