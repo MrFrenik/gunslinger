@@ -1476,7 +1476,7 @@ void gs_graphics_texture_request_update(gs_command_buffer_t* cb, gs_handle(gs_gr
     gs_byte_buffer_write(&cb->commands, uint32_t, hndl.id);
     gs_byte_buffer_write(&cb->commands, gs_graphics_texture_desc_t, *desc);
     gs_byte_buffer_write(&cb->commands, size_t, total_size);
-    gs_byte_buffer_write_bulk(&cb->commands, desc->data, total_size);
+    gs_byte_buffer_write_bulk(&cb->commands, *desc->data, total_size);
 }
 
 void __gs_graphics_update_buffer_internal(gs_command_buffer_t* cb, 
