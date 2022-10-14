@@ -797,7 +797,7 @@ gs_platform_file_copy_default_impl(const char* src_path, const char* dst_path)
         }
 
         // Close both files
-        fclose(file_f);
+        fclose(file_r);
         fclose(file_w);
 
     #endif
