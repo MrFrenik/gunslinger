@@ -7013,7 +7013,8 @@ GS_API_DECL void gs_heap_allocator_deallocate(gs_heap_allocator_t* ha, void* mem
 #define GS_RAND_TEMPERING_MASK_B    0x9d2c5680
 #define GS_RAND_TEMPERING_MASK_C    0xefc60000 
 
-GS_API_PRIVATE void _gs_rand_seed_impl(gs_mt_rand_t* rand, uint64_t seed) 
+GS_API_PRIVATE void 
+_gs_rand_seed_impl(gs_mt_rand_t* rand, uint64_t seed) 
 {
   /* set initial seeds to mt[STATE_VECTOR_LENGTH] using the generator
    * from Line 25 of Table 1 in: Donald Knuth, "The Art of Computer
@@ -7026,14 +7027,16 @@ GS_API_PRIVATE void _gs_rand_seed_impl(gs_mt_rand_t* rand, uint64_t seed)
   }
 }
 
-GS_API_DECL gs_mt_rand_t gs_rand_seed(uint64_t seed) 
+GS_API_DECL gs_mt_rand_t 
+gs_rand_seed(uint64_t seed) 
 {
   gs_mt_rand_t rand;
   _gs_rand_seed_impl(&rand, seed);
   return rand;
 }
 
-GS_API_DECL uint64_t gs_rand_gen_long(gs_mt_rand_t* rand) 
+GS_API_DECL uint64_t 
+gs_rand_gen_long(gs_mt_rand_t* rand) 
 {
   uint64_t y;
   static uint64_t mag[2] = {0x0, 0x9908b0df}; /* mag[x] = x * 0x9908b0df for x = 0,1 */
@@ -7063,18 +7066,21 @@ GS_API_DECL uint64_t gs_rand_gen_long(gs_mt_rand_t* rand)
   return y;
 }
 
-GS_API_DECL double gs_rand_gen(gs_mt_rand_t* rand) 
+GS_API_DECL double 
+gs_rand_gen(gs_mt_rand_t* rand) 
 {
   return((double)gs_rand_gen_long(rand) / (uint64_t)0xffffffff);
 }
 
-GS_API_DECL uint64_t gs_rand_gen_range_long(gs_mt_rand_t* rand, int32_t min, int32_t max)
+GS_API_DECL uint64_t 
+gs_rand_gen_range_long(gs_mt_rand_t* rand, int32_t min, int32_t max)
 {
     double v = (gs_map_range(0.0, 1.0, (float)min, (float)max, (float)gs_rand_gen(rand)));
     return (uint64_t)round(v);
 }
 
-GS_API_DECL double gs_rand_gen_range(gs_mt_rand_t* rand, double min, double max)
+GS_API_DECL double 
+gs_rand_gen_range(gs_mt_rand_t* rand, double min, double max)
 {
     return gs_map_range(0.0, 1.0, min, max, gs_rand_gen(rand));
 } 
