@@ -1071,7 +1071,7 @@ GS_API_DECL gs_gui_rect_t gs_gui_layout_anchor(const gs_gui_rect_t* parent, int3
 #define gs_gui_slider(_CTX, _VALUE, _LO, _HI)		gs_gui_slider_ex((_CTX), (_VALUE), (_LO), (_HI), 0, GS_GUI_SLIDER_FMT, NULL, GS_GUI_OPT_ALIGNCENTER)
 #define gs_gui_number(_CTX, _VALUE, _STEP)			gs_gui_number_ex((_CTX), (_VALUE), (_STEP), GS_GUI_SLIDER_FMT, NULL, GS_GUI_OPT_ALIGNCENTER)
 #define gs_gui_header(_CTX, _LABEL)		            gs_gui_header_ex((_CTX), (_LABEL), NULL, 0x00)
-#define gs_gui_checkbox(_CTX, _LABEL, _STATE)       gs_gui_checkbox_ex((_CTX), (_LABEL), (_STATE), NULL, 0x00)
+#define gs_gui_checkbox(_CTX, _LABEL, _STATE)       gs_gui_checkbox_ex((_CTX), (_LABEL), (_STATE), NULL, GS_GUI_OPT_LEFTCLICKONLY)
 #define gs_gui_treenode_begin(_CTX, _LABEL)	        gs_gui_treenode_begin_ex((_CTX), (_LABEL), NULL, 0x00)
 #define gs_gui_window_begin(_CTX, _TITLE, _RECT)    gs_gui_window_begin_ex((_CTX), (_TITLE), (_RECT), 0, NULL, 0x00)
 #define gs_gui_popup_begin(_CTX, _TITLE, _RECT)     gs_gui_popup_begin_ex((_CTX), (_TITLE), (_RECT), NULL, 0x00)
@@ -6249,7 +6249,7 @@ GS_API_DECL int32_t gs_gui_checkbox_ex(gs_gui_context_t* ctx, const char* label,
                                gs_gui_get_current_element_style(ctx, desc, elementid, 0x00);
 
 	/* handle click */
-	if (ctx->mouse_pressed == GS_GUI_MOUSE_LEFT && ctx->focus == id) 
+	if ((ctx->mouse_pressed == GS_GUI_MOUSE_LEFT || (ctx->mouse_pressed && ~opt & GS_GUI_OPT_LEFTCLICKONLY)) && ctx->focus == id)
     {
 		res |= GS_GUI_RES_CHANGE;
 		*state = !*state;
