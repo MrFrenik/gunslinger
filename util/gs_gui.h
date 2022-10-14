@@ -6235,7 +6235,7 @@ GS_API_DECL int32_t gs_gui_button_ex(gs_gui_context_t* ctx, const char* label, c
 GS_API_DECL int32_t gs_gui_checkbox_ex(gs_gui_context_t* ctx, const char* label, int32_t* state, const gs_gui_selector_desc_t* desc, int32_t opt)
 {
 	int32_t res = 0;
-	gs_gui_id id = gs_gui_get_id(ctx, state, sizeof(state));
+	gs_gui_id id = gs_gui_get_id(ctx, &state, sizeof(state));
 	gs_gui_rect_t r = gs_gui_layout_next(ctx);
 	gs_gui_rect_t box = gs_gui_rect(r.x, r.y, r.h, r.h);
     int32_t ox = (int32_t)(box.w * 0.2f), oy = (int32_t)(box.h * 0.2f);
