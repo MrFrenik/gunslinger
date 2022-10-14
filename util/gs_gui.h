@@ -3932,7 +3932,7 @@ gs_gui_begin(gs_gui_context_t* ctx, const gs_gui_hints_t* hints)
 
                     case GS_PLATFORM_MOUSE_WHEEL:
                     {
-                        gs_gui_input_scroll(ctx, 0, (int32_t)(-evt.mouse.wheel.y * 30.f));
+                        gs_gui_input_scroll(ctx, (int32_t)(-evt.mouse.wheel.x * 30.f), (int32_t)(-evt.mouse.wheel.y * 30.f));
                     } break;
 
                     case GS_PLATFORM_MOUSE_BUTTON_DOWN:
