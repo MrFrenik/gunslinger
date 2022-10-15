@@ -81,6 +81,10 @@
     #define GS_GFXT_UNIFORM_PROJECTION_MATRIX "U_PROJECTION_MTX"
 #endif
 
+#ifndef GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX
+    #define GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX "U_VIEW_PROJECTION_MTX"
+#endif
+
 #ifndef GS_GFXT_UNIFORM_MODEL_MATRIX
     #define GS_GFXT_UNIFORM_MODEL_MATRIX "U_MODEL_MTX"
 #endif
@@ -305,6 +309,7 @@ GS_API_DECL gs_gfxt_pipeline_t* gs_gfxt_material_get_pipeline(gs_gfxt_material_t
 //=== Mesh API ===//
 GS_API_DECL void gs_gfxt_mesh_draw_pipeline(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh, gs_gfxt_pipeline_t* pip);
 GS_API_DECL void gs_gfxt_mesh_draw_material(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh, gs_gfxt_material_t* mat);
+GS_API_DECL void gs_gfxt_mesh_draw_materials(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh, gs_gfxt_material_t** mats, size_t mats_size);
 GS_API_DECL void gs_gfxt_mesh_draw_layout(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh, gs_gfxt_mesh_layout_t* layout, size_t layout_size);
 GS_API_DECL gs_gfxt_mesh_t gs_gfxt_mesh_load_from_file(const char* file, gs_gfxt_mesh_import_options_t* options);
 GS_API_DECL bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_options_t* options, gs_gfxt_mesh_raw_data_t** out, uint32_t* mesh_count);
@@ -838,6 +843,52 @@ gs_gfxt_mesh_draw(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mp)
     */
 }
 
+GS_API_DECL void
+gs_gfxt_mesh_primitive_draw_layout(gs_command_buffer_t* cb, gs_gfxt_mesh_primitive_t* prim, gs_gfxt_mesh_layout_t* layout, size_t layout_size)
+{ 
+    if (!layout || !layout_size || !prim || !cb)
+    {
+        return;
+    }
+
+    gs_graphics_bind_vertex_buffer_desc_t vbos[8] = {0};     // Make this a define
+    uint32_t l = 0;
+    const uint32_t ct = layout_size / sizeof(gs_gfxt_mesh_layout_t);
+    for (uint32_t a = 0; a < ct; ++a)
+    {
+        vbos[l].data_type = GS_GRAPHICS_VERTEX_DATA_NONINTERLEAVED;
+        switch (layout[a].type)
+        {
+            case GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION: {if (!prim->stream.positions.id) continue; vbos[l].buffer = prim->stream.positions;} break;
+            case GS_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL:   {if (!prim->stream.normals.id) continue; vbos[l].buffer = prim->stream.normals;} break;
+            case GS_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT:  {if (!prim->stream.tangents.id) continue; vbos[l].buffer = prim->stream.tangents;} break;
+            case GS_ASSET_MESH_ATTRIBUTE_TYPE_JOINT:    {if (!prim->stream.joints[0].id) continue; vbos[l].buffer = prim->stream.joints[0];} break;
+            case GS_ASSET_MESH_ATTRIBUTE_TYPE_WEIGHT:   {if (!prim->stream.weights[0].id) continue; vbos[l].buffer = prim->stream.weights[0];} break;
+            case GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD: {if (!prim->stream.tex_coords[0].id) continue; vbos[l].buffer = prim->stream.tex_coords[0];} break;
+            case GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR:    {if (!prim->stream.colors[0].id) continue; vbos[l].buffer = prim->stream.colors[0];} break;
+        }
+        ++l;
+    }
+
+    gs_graphics_bind_index_buffer_desc_t ibos = gs_default_val();
+    ibos.buffer = prim->indices;
+
+    // Bindings for all buffers: vertex, index, uniform, sampler
+    gs_graphics_bind_desc_t binds = gs_default_val();
+
+        // .vertex_buffers = {.desc = vbos, .size = sizeof(vbos)},
+    binds.vertex_buffers.desc = vbos;
+    binds.vertex_buffers.size = l * sizeof(gs_graphics_bind_vertex_buffer_desc_t); 
+    binds.index_buffers.desc = &ibos;
+
+    gs_graphics_draw_desc_t ddesc = gs_default_val();
+    ddesc.start = 0;
+    ddesc.count = prim->count;
+
+    gs_graphics_apply_bindings(cb, &binds);
+    gs_graphics_draw(cb, &ddesc);
+}
+
 GS_API_DECL void 
 gs_gfxt_mesh_draw_layout(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh, gs_gfxt_mesh_layout_t* layout, size_t layout_size)
 {
@@ -851,38 +902,40 @@ gs_gfxt_mesh_draw_layout(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh, gs_gfxt_
     // For each primitive in mesh
     for (uint32_t i = 0; i < gs_dyn_array_size(mesh->primitives); ++i)
     {
-        gs_gfxt_mesh_primitive_t* prim = &mesh->primitives[i];
-
-        gs_graphics_bind_vertex_buffer_desc_t vbos[8] = {0};
-        for (uint32_t l = 0; l < ct; ++l)
-        {
-            vbos[l].data_type = GS_GRAPHICS_VERTEX_DATA_NONINTERLEAVED;
-            switch (layout[l].type)
-            {
-                case GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION: vbos[l].buffer = prim->stream.positions; break;
-                case GS_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL:   vbos[l].buffer = prim->stream.normals; break;
-                case GS_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT:  vbos[l].buffer = prim->stream.tangents; break;
-                case GS_ASSET_MESH_ATTRIBUTE_TYPE_JOINT:    vbos[l].buffer = prim->stream.joints[0]; break;
-                case GS_ASSET_MESH_ATTRIBUTE_TYPE_WEIGHT:   vbos[l].buffer = prim->stream.weights[0]; break;
-                case GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD: vbos[l].buffer = prim->stream.tex_coords[0]; break;
-                case GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR:    vbos[l].buffer = prim->stream.colors[0]; break;
-            }
-        }
-
-        // Bindings for all buffers: vertex, index, uniform, sampler
-        gs_graphics_bind_desc_t binds = {
-            // .vertex_buffers = {.desc = vbos, .size = sizeof(vbos)},
-            .vertex_buffers = {.desc = vbos, .size = ct * sizeof(gs_graphics_bind_vertex_buffer_desc_t)},
-            .index_buffers = {.desc = &(gs_graphics_bind_index_buffer_desc_t){.buffer = prim->indices}}
-        };
-        gs_graphics_draw_desc_t ddesc = {
-            .start = 0, 
-            .count = prim->count
-        };
-        gs_graphics_apply_bindings(cb, &binds);
-        gs_graphics_draw(cb, &ddesc);
+        gs_gfxt_mesh_primitive_t* prim = &mesh->primitives[i]; 
+        gs_gfxt_mesh_primitive_draw_layout(cb, prim, layout, layout_size);
     }
 }
+
+GS_API_DECL void 
+gs_gfxt_mesh_draw_materials(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh, gs_gfxt_material_t** mats, size_t mats_size)
+{
+    // Iterate through primitives, draw each primitive with assigned mat
+    if (!mats || !mats_size || !cb || !mesh)
+    {
+        return;
+    }
+
+    const uint32_t ct = mats_size / sizeof(gs_gfxt_material_t*);
+
+    // For each primitive in mesh
+    for (uint32_t i = 0; i < gs_dyn_array_size(mesh->primitives); ++i)
+    {
+        gs_gfxt_mesh_primitive_t* prim = &mesh->primitives[i]; 
+
+        // Get corresponding material, if available
+        uint32_t mat_idx = i < ct ? i : ct - 1;
+        gs_gfxt_material_t* mat = mats[mat_idx];
+
+        // Bind material pipeline and uniforms
+        gs_gfxt_material_bind(cb, mat); 
+
+        // Get pipeline
+        gs_gfxt_pipeline_t* pip = gs_gfxt_material_get_pipeline(mat);
+
+        gs_gfxt_mesh_primitive_draw_layout(cb, prim, pip->mesh_layout, gs_dyn_array_size(pip->mesh_layout) * sizeof(gs_gfxt_mesh_layout_t));
+    } 
+} 
 
 GS_API_DECL void 
 gs_gfxt_mesh_draw_material(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh, gs_gfxt_material_t* mat)
@@ -1773,6 +1826,30 @@ bool gs_parse_uniform_special_keyword(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* 
         memcpy(uniform->name, GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX, sizeof(GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX));
         return true;
     }
+    else if (gs_token_compare_text(&token, "GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX"))
+    {
+        uniform->type = GS_GRAPHICS_UNIFORM_MAT4; 
+        memcpy(uniform->name, GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX, sizeof(GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX));
+        return true;
+    }
+    else if (gs_token_compare_text(&token, "GS_GFXT_UNIFORM_MODEL_MATRIX"))
+    {
+        uniform->type = GS_GRAPHICS_UNIFORM_MAT4; 
+        memcpy(uniform->name, GS_GFXT_UNIFORM_MODEL_MATRIX, sizeof(GS_GFXT_UNIFORM_MODEL_MATRIX));
+        return true;
+    }
+    else if (gs_token_compare_text(&token, "GS_GFXT_UNIFORM_PROJECTION_MATRIX"))
+    {
+        uniform->type = GS_GRAPHICS_UNIFORM_MAT4; 
+        memcpy(uniform->name, GS_GFXT_UNIFORM_PROJECTION_MATRIX, sizeof(GS_GFXT_UNIFORM_PROJECTION_MATRIX));
+        return true;
+    }
+    else if (gs_token_compare_text(&token, "GS_GFXT_UNIFORM_VIEW_MATRIX"))
+    {
+        uniform->type = GS_GRAPHICS_UNIFORM_MAT4; 
+        memcpy(uniform->name, GS_GFXT_UNIFORM_VIEW_MATRIX, sizeof(GS_GFXT_UNIFORM_VIEW_MATRIX));
+        return true;
+    }
     else if (gs_token_compare_text(&token, "GS_GFXT_UNIFORM_TIME"))
     {
         uniform->type = GS_GRAPHICS_UNIFORM_FLOAT; 
@@ -1950,6 +2027,22 @@ bool gs_parse_code(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd
                 if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX"))
                 {
                     gs_util_string_replace(tkn.text, tkn.len, GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX, (char)32);
+                }
+                else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX"))
+                {
+                    gs_util_string_replace(tkn.text, tkn.len, GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX, (char)32);
+                }
+                else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_MODEL_MATRIX"))
+                {
+                    gs_util_string_replace(tkn.text, tkn.len, GS_GFXT_UNIFORM_MODEL_MATRIX, (char)32);
+                }
+                else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_VIEW_MATRIX"))
+                {
+                    gs_util_string_replace(tkn.text, tkn.len, GS_GFXT_UNIFORM_VIEW_MATRIX, (char)32);
+                }
+                else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_PROJECTION_MATRIX"))
+                {
+                    gs_util_string_replace(tkn.text, tkn.len, GS_GFXT_UNIFORM_PROJECTION_MATRIX, (char)32);
                 }
                 else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_TIME"))
                 {
