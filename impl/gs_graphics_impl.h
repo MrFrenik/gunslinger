@@ -1932,7 +1932,7 @@ void gs_graphics_command_buffer_submit(gs_command_buffer_t* cb)
 
                                     // Construct temp name, concat with base name + uniform field name
                                     char name[256] = gs_default_val();
-                                    memcpy(name, ul->name, 256);
+                                    memcpy(name, ul->name, 64);
                                     if (u->name)
                                     {
                                         gs_snprintfc(UTMP, 256, "%s%s", ul->name, u->name);
