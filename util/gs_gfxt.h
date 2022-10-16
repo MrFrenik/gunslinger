@@ -917,6 +917,7 @@ gs_gfxt_mesh_draw_materials(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh, gs_gf
     }
 
     const uint32_t ct = mats_size / sizeof(gs_gfxt_material_t*);
+    gs_gfxt_material_t* mat = NULL;
 
     // For each primitive in mesh
     for (uint32_t i = 0; i < gs_dyn_array_size(mesh->primitives); ++i)
@@ -925,7 +926,10 @@ gs_gfxt_mesh_draw_materials(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh, gs_gf
 
         // Get corresponding material, if available
         uint32_t mat_idx = i < ct ? i : ct - 1;
-        gs_gfxt_material_t* mat = mats[mat_idx];
+        mat = mats[mat_idx] ? mats[mat_idx] : mat;
+
+        // Can't draw without a valid material present
+        if (!mat) continue;
 
         // Bind material pipeline and uniforms
         gs_gfxt_material_bind(cb, mat); 
