@@ -939,10 +939,17 @@ typedef struct
     const char* classes[GS_GUI_CLS_SELECTOR_MAX];  // Class selectors
 } gs_gui_selector_desc_t;
 
+enum
+{
+    GS_GUI_HINT_FLAG_NO_SCALE_BIAS_MOUSE = (1 << 0),
+    GS_GUI_HINT_FLAG_NO_INVERT_Y         = (1 << 1)
+};
+
 typedef struct gs_gui_hints_s
 { 
     gs_vec2 framebuffer_size;   // Overall framebuffer size
     gs_gui_rect_t viewport;     // Viewport within framebuffer for gui context
+    int32_t flags;              // Flags for hints
 } gs_gui_hints_t;
 
 GS_API_DECL gs_gui_rect_t gs_gui_rect(float x, float y, float w, float h);
@@ -3904,17 +3911,35 @@ gs_gui_begin(gs_gui_context_t* ctx, const gs_gui_hints_t* hints)
     gs_gui_hints_t default_hints = gs_default_val();
     default_hints.framebuffer_size = gs_platform_framebuffer_sizev(ctx->window_hndl);
     default_hints.viewport = gs_gui_rect(0.f, 0.f, default_hints.framebuffer_size.x, default_hints.framebuffer_size.y);
-    gs_gui_hints_t hint = hints ? *hints : default_hints;
-    gs_gui_rect_t vp = gs_gui_rect(hint.viewport.x, 
-        hint.framebuffer_size.y - hint.viewport.h - hint.viewport.y, hint.viewport.w, hint.viewport.h);
+    gs_gui_hints_t hint = hints ? *hints : default_hints; 
 
+    // Set up viewport
+    gs_gui_rect_t vp = hint.viewport;
+    if (~hint.flags & GS_GUI_HINT_FLAG_NO_INVERT_Y) { 
+        vp.y = hint.viewport.y;
+    } else { 
+        vp.y = hint.framebuffer_size.y - hint.viewport.h - hint.viewport.y; 
+    }
+        
     // Capture event information
-    gs_vec2 platform_m_pos = gs_platform_mouse_positionv();
-	float px = (platform_m_pos.x - vp.x) / vp.w;
-    float py = (platform_m_pos.y - vp.y) / vp.h;
-    float xv = vp.w * px;
-    float yv = vp.h * py;
-	gs_vec2 mouse_pos = gs_v2(xv, yv);
+    gs_vec2 mouse_pos = gs_platform_mouse_positionv();
+
+    // Check for scale and bias
+    if (hint.flags & GS_GUI_HINT_FLAG_NO_SCALE_BIAS_MOUSE) { 
+        float px = (mouse_pos.x - vp.x) / vp.w;
+        float py = (mouse_pos.y - vp.y) / vp.h;
+        float xv = vp.w * px;
+        float yv = vp.h * py;
+        mouse_pos = gs_v2(xv, yv);
+    }
+    else { 
+        gs_vec2 fb_vp_ratio = gs_v2(hint.framebuffer_size.x / vp.w, hint.framebuffer_size.y / vp.h);
+        float px = mouse_pos.x - (vp.x * fb_vp_ratio.x);
+        float py = mouse_pos.y + (vp.y * fb_vp_ratio.y);
+        float xv = px / fb_vp_ratio.x;
+        float yv = py / fb_vp_ratio.y;
+        mouse_pos = gs_v2(xv, yv);
+    }
 
     gs_platform_event_t evt = gs_default_val(); 
     while (gs_platform_poll_events(&evt, false))
@@ -4025,8 +4050,8 @@ gs_gui_begin(gs_gui_context_t* ctx, const gs_gui_hints_t* hints)
 
     // Set up overlay draw list
     gs_vec2 fbs = ctx->framebuffer_size;
-    gsi_camera2D(&ctx->overlay_draw_list, (uint32_t)ctx->viewport.w, (uint32_t)ctx->viewport.h);     // Need to pass in a viewport for this instead
     gsi_defaults(&ctx->overlay_draw_list);
+    gsi_camera2D(&ctx->overlay_draw_list, (uint32_t)ctx->viewport.w, (uint32_t)ctx->viewport.h);     // Need to pass in a viewport for this instead
 
     /*
     for (
@@ -8390,13 +8415,34 @@ gs_gui_gizmo(gs_gui_context_t* ctx, gs_camera_t* camera, gs_vqs* model, gs_gui_r
     gs_immediate_draw_t* dl = &ctx->overlay_draw_list;
 
     // This doesn't actually work for the clip...
-    // gs_gui_rect_t clip = gs_gui_layout_next(ctx);
     gs_gui_rect_t clip = viewport;
     if (invert_view_y) {
         clip.y = fbs.y - clip.h - clip.y;
     }
 
-    // Transform mouse into viewport space
+    // Capture event information (might have to do something like this for smaller framebuffers scaled to higher viewports)
+    /*
+    gs_vec2 mc = gs_platform_mouse_positionv();
+
+    // Check for scale and bias 
+    int32_t flags = 0x00;
+    if (flags & GS_GUI_HINT_FLAG_NO_SCALE_BIAS_MOUSE) { 
+        float px = (mc.x - clip.x) / clip.w;
+        float py = (mc.y - clip.y) / clip.h;
+        float xv = clip.w * px;
+        float yv = clip.h * py;
+        mc = gs_v2(xv, yv);
+    }
+    else { 
+        gs_vec2 fb_vp_ratio = gs_v2(fbs.x / clip.w, fbs.y / clip.h);
+        float px = mc.x - (clip.x * fb_vp_ratio.x);
+        float py = mc.y + (clip.y * fb_vp_ratio.y);
+        float xv = px / fb_vp_ratio.x;
+        float yv = py / fb_vp_ratio.y;
+        mc = gs_v2(xv, yv);
+    }
+    */
+
     gs_vec2 mc = gs_platform_mouse_positionv();
     mc = gs_vec2_sub(mc, gs_v2(clip.x, clip.y));
 
