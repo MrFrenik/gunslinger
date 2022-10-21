@@ -46,6 +46,11 @@ gs_app_desc_t gs_main(int32_t argc, char** argv)
    return (gs_app_desc_t){0};
 }
 ```
+## Projects using GS
+
+### Drop Down Terminal Util
+https://github.com/Samdal/gs_ddt_ex
+
 ## Roadmap
 
 * Support iOS/RPI/UWP backends
