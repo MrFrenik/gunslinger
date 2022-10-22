@@ -3827,7 +3827,8 @@ gs_quat gs_quat_inverse(gs_quat q)
     return (gs_quat_scale(gs_quat_conjugate(q), 1.0f / gs_quat_dot(q, q)));
 } 
 
-gs_inline gs_quat gs_quat_angle_axis(f32 rad, gs_vec3 axis)
+gs_inline gs_quat 
+gs_quat_angle_axis(f32 rad, gs_vec3 axis)
 {
     // Normalize axis
     gs_vec3 a = gs_vec3_norm(axis);
@@ -3839,7 +3840,8 @@ gs_inline gs_quat gs_quat_angle_axis(f32 rad, gs_vec3 axis)
     return gs_quat_ctor(a.x * s, a.y * s, a.z * s, (float)cos(half_angle));
 }
 
-gs_inline gs_vec3 gs_quat_rotate(gs_quat q, gs_vec3 v)
+gs_inline gs_vec3 
+gs_quat_rotate(gs_quat q, gs_vec3 v)
 {
     // nVidia SDK implementation
     gs_vec3 qvec = gs_vec3_ctor(q.x, q.y, q.z);
@@ -3919,8 +3921,9 @@ gs_quat_from_to_rotation(gs_vec3 src, gs_vec3 dst)
 }
 
 gs_inline 
-gs_quat gs_quat_look_rotation(gs_vec3 forward, gs_vec3 up)
+gs_quat gs_quat_look_rotation(gs_vec3 position, gs_vec3 target, gs_vec3 up)
 { 
+    const gs_vec3 forward = gs_vec3_norm(gs_vec3_sub(position, target));
     const gs_quat q0 = gs_quat_from_to_rotation(GS_ZAXIS, forward);
     if (gs_vec3_len2(gs_vec3_cross(forward, up)) < 1e-6)
     {
@@ -4105,7 +4108,8 @@ gs_vqs_default()
 // AbsScale = ParentScale * LocalScale
 // AbsRot   = LocalRot * ParentRot
 // AbsTrans = ParentPos + [ParentRot * (ParentScale * LocalPos)]
-gs_inline gs_vqs gs_vqs_absolute_transform(const gs_vqs* local, const gs_vqs* parent)
+gs_inline gs_vqs 
+gs_vqs_absolute_transform(const gs_vqs* local, const gs_vqs* parent)
 {
     if (!local || !parent) {
         return gs_vqs_default();
@@ -4128,7 +4132,8 @@ gs_inline gs_vqs gs_vqs_absolute_transform(const gs_vqs* local, const gs_vqs* pa
 // RelScale = AbsScale / ParentScale 
 // RelRot   = Inverse(ParentRot) * AbsRot
 // RelTrans = [Inverse(ParentRot) * (AbsPos - ParentPosition)] / ParentScale;
-gs_inline gs_vqs gs_vqs_relative_transform(const gs_vqs* absolute, const gs_vqs* parent)
+gs_inline gs_vqs 
+gs_vqs_relative_transform(const gs_vqs* absolute, const gs_vqs* parent)
 {
     if (!absolute || !parent) {
         return gs_vqs_default();
@@ -4149,7 +4154,8 @@ gs_inline gs_vqs gs_vqs_relative_transform(const gs_vqs* absolute, const gs_vqs*
     return gs_vqs_ctor(tns, rot, scl);
 }
 
-gs_inline gs_mat4 gs_vqs_to_mat4(const gs_vqs* transform)
+gs_inline gs_mat4 
+gs_vqs_to_mat4(const gs_vqs* transform)
 {
     gs_mat4 mat = gs_mat4_identity();
     gs_mat4 trans = gs_mat4_translatev(transform->position);
@@ -4161,7 +4167,8 @@ gs_inline gs_mat4 gs_vqs_to_mat4(const gs_vqs* transform)
     return mat;
 }
 
-gs_inline gs_vqs gs_vqs_from_mat4(const gs_mat4* m)
+gs_inline gs_vqs 
+gs_vqs_from_mat4(const gs_mat4* m)
 {
     gs_vec3 translation = gs_v3s(0.f), rotation = gs_v3s(0.f), scale = gs_v3s(1.f);
     gs_mat4_decompose(m, (float*)&translation, (float*)&rotation, (float*)&scale);
@@ -4172,32 +4179,38 @@ gs_inline gs_vqs gs_vqs_from_mat4(const gs_mat4* m)
     );
 }
 
-gs_inline gs_vec3 gs_vqs_forward(const gs_vqs* transform)
+gs_inline gs_vec3 
+gs_vqs_forward(const gs_vqs* transform)
 {
     return (gs_quat_rotate(transform->rotation, gs_v3(0.0f, 0.0f, -1.0f)));
 } 
 
-gs_inline gs_vec3 gs_vqs_backward(const gs_vqs* transform)
+gs_inline gs_vec3 
+gs_vqs_backward(const gs_vqs* transform)
 {
     return (gs_quat_rotate(transform->rotation, gs_v3(0.0f, 0.0f, 1.0f)));
 } 
 
-gs_inline gs_vec3 gs_vqs_left(const gs_vqs* transform)
+gs_inline gs_vec3 
+gs_vqs_left(const gs_vqs* transform)
 {
     return (gs_quat_rotate(transform->rotation, gs_v3(-1.0f, 0.0f, 0.0f)));
 } 
 
-gs_inline gs_vec3 gs_vqs_right(const gs_vqs* transform)
+gs_inline gs_vec3 
+gs_vqs_right(const gs_vqs* transform)
 {
     return (gs_quat_rotate(transform->rotation, gs_v3(1.0f, 0.0f, 0.0f)));
 } 
 
-gs_inline gs_vec3 gs_vqs_up(const gs_vqs* transform)
+gs_inline gs_vec3 
+gs_vqs_up(const gs_vqs* transform)
 {
     return (gs_quat_rotate(transform->rotation, gs_v3(0.0f, 1.0f, 0.0f)));
 } 
 
-gs_inline gs_vec3 gs_vqs_down(const gs_vqs* transform)
+gs_inline gs_vec3 
+gs_vqs_down(const gs_vqs* transform)
 {
     return (gs_quat_rotate(transform->rotation, gs_v3(0.0f, -1.0f, 0.0f)));
 } 
@@ -4222,6 +4235,7 @@ GS_API_DECL uint64_t gs_rand_gen_long(gs_mt_rand_t* rand);
 GS_API_DECL double gs_rand_gen(gs_mt_rand_t* rand);
 GS_API_DECL double gs_rand_gen_range(gs_mt_rand_t* rand, double min, double max);
 GS_API_DECL uint64_t gs_rand_gen_range_long(gs_mt_rand_t* rand, int32_t min, int32_t max);
+GS_API_DECL gs_color_t gs_rand_gen_color(gs_mt_rand_t* rand);
 
 #ifndef GS_NO_SHORT_NAME
     typedef gs_mt_rand_t    gs_rand;
@@ -7085,6 +7099,17 @@ gs_rand_gen_range(gs_mt_rand_t* rand, double min, double max)
     return gs_map_range(0.0, 1.0, min, max, gs_rand_gen(rand));
 } 
 
+GS_API_DECL gs_color_t 
+gs_rand_gen_color(gs_mt_rand_t* rand)
+{
+    gs_color_t c = gs_default_val();
+    c.r = (uint8_t)gs_rand_gen_range_long(rand, 0, 255);
+    c.g = (uint8_t)gs_rand_gen_range_long(rand, 0, 255);
+    c.b = (uint8_t)gs_rand_gen_range_long(rand, 0, 255);
+    c.a = (uint8_t)gs_rand_gen_range_long(rand, 0, 255);
+    return c;
+}
+
 /*================================================================================
 // Noise
 ================================================================================*/ 
@@ -7093,43 +7118,51 @@ gs_rand_gen_range(gs_mt_rand_t* rand, double min, double max)
 #include "external/sg_noise/sg_noise.h"
 
 // Perlin noise
-GS_API_DECL float gs_perlin1(float x)
+GS_API_DECL float 
+gs_perlin1(float x)
 {
     return sg_noise1(x);
 }
 
-GS_API_DECL float gs_perlin2(float x, float y)
+GS_API_DECL float 
+gs_perlin2(float x, float y)
 {
     return sg_noise2(x, y);
 }
 
-GS_API_DECL float gs_perlin3(float x, float y, float z)
+GS_API_DECL float 
+gs_perlin3(float x, float y, float z)
 {
     return sg_noise3(x, y, z);
 }
 
-GS_API_DECL float gs_perlin4(float x, float y, float z, float w)
+GS_API_DECL float 
+gs_perlin4(float x, float y, float z, float w)
 {
     return sg_noise4(x, y, z, w);
 }
 
 // Perlin periodic noise
-GS_API_DECL float gs_perlin1p(float x, int32_t px)
+GS_API_DECL float 
+gs_perlin1p(float x, int32_t px)
 {
     return sg_pnoise1(x, px);
 }
 
-GS_API_DECL float gs_perlin2p(float x, float y, int32_t px, int32_t py)
+GS_API_DECL float 
+gs_perlin2p(float x, float y, int32_t px, int32_t py)
 {
     return sg_pnoise2(x, y, px, py);
 }
 
-GS_API_DECL float gs_perlin3p(float x, float y, float z, int32_t px, int32_t py, int32_t pz)
+GS_API_DECL float 
+gs_perlin3p(float x, float y, float z, int32_t px, int32_t py, int32_t pz)
 {
     return sg_pnoise3(x, y, z, px, py, pz);
 }
 
-GS_API_DECL float gs_perlin4p(float x, float y, float z, float w, int32_t px, int32_t py, int32_t pz, int32_t pw)
+GS_API_DECL float 
+gs_perlin4p(float x, float y, float z, float w, int32_t px, int32_t py, int32_t pz, int32_t pw)
 {
     return sg_pnoise4(x, y, z, w, px, py, pz, pw);
 }
@@ -7138,7 +7171,8 @@ GS_API_DECL float gs_perlin4p(float x, float y, float z, float w, int32_t px, in
 // Camera
 =============================*/
 
-gs_camera_t gs_camera_default()
+GS_API_DECL gs_camera_t 
+gs_camera_default()
 {
     // Construct default camera parameters
     gs_camera_t cam = gs_default_val();
@@ -7152,7 +7186,8 @@ gs_camera_t gs_camera_default()
     return cam;
 }
 
-gs_camera_t gs_camera_perspective()
+GS_API_DECL gs_camera_t 
+gs_camera_perspective()
 {
     gs_camera_t cam = gs_camera_default();
     cam.proj_type = GS_PROJECTION_TYPE_PERSPECTIVE;
@@ -7160,37 +7195,44 @@ gs_camera_t gs_camera_perspective()
     return cam;
 }
 
-gs_vec3 gs_camera_forward(const gs_camera_t* cam)
+GS_API_DECL gs_vec3 
+gs_camera_forward(const gs_camera_t* cam)
 {
     return (gs_quat_rotate(cam->transform.rotation, gs_v3(0.0f, 0.0f, -1.0f)));
 } 
 
-gs_vec3 gs_camera_backward(const gs_camera_t* cam)
+GS_API_DECL gs_vec3 
+gs_camera_backward(const gs_camera_t* cam)
 {
     return (gs_quat_rotate(cam->transform.rotation, gs_v3(0.0f, 0.0f, 1.0f)));
 } 
 
-gs_vec3 gs_camera_up(const gs_camera_t* cam)
+GS_API_DECL gs_vec3 
+gs_camera_up(const gs_camera_t* cam)
 {
     return (gs_quat_rotate(cam->transform.rotation, gs_v3(0.0f, 1.0f, 0.0f)));
 }
 
-gs_vec3 gs_camera_down(const gs_camera_t* cam)
+GS_API_DECL gs_vec3 
+gs_camera_down(const gs_camera_t* cam)
 {
     return (gs_quat_rotate(cam->transform.rotation, gs_v3(0.0f, -1.0f, 0.0f)));
 }
 
-gs_vec3 gs_camera_right(const gs_camera_t* cam)
+GS_API_DECL gs_vec3 
+gs_camera_right(const gs_camera_t* cam)
 {
     return (gs_quat_rotate(cam->transform.rotation, gs_v3(1.0f, 0.0f, 0.0f)));
 }
 
-gs_vec3 gs_camera_left(const gs_camera_t* cam)
+GS_API_DECL gs_vec3 
+gs_camera_left(const gs_camera_t* cam)
 {
     return (gs_quat_rotate(cam->transform.rotation, gs_v3(-1.0f, 0.0f, 0.0f)));
 }
 
-GS_API_DECL gs_vec3 gs_camera_world_to_screen(const gs_camera_t* cam, gs_vec3 coords, int32_t view_width, int32_t view_height)
+GS_API_DECL gs_vec3 
+gs_camera_world_to_screen(const gs_camera_t* cam, gs_vec3 coords, int32_t view_width, int32_t view_height)
 {
     // Transform world coords to screen coords to place billboarded UI elements in world
     gs_mat4 vp = gs_camera_get_view_projection(cam, view_width, view_height);
@@ -7211,7 +7253,8 @@ GS_API_DECL gs_vec3 gs_camera_world_to_screen(const gs_camera_t* cam, gs_vec3 co
     return gs_v3(p4.x, p4.y, p4.z);
 }
 
-gs_vec3 gs_camera_screen_to_world(const gs_camera_t* cam, gs_vec3 coords, s32 view_x, s32 view_y, s32 view_width, s32 view_height)
+GS_API_DECL gs_vec3 
+gs_camera_screen_to_world(const gs_camera_t* cam, gs_vec3 coords, s32 view_x, s32 view_y, s32 view_width, s32 view_height)
 {
     gs_vec3 wc = gs_default_val();
 
@@ -7246,14 +7289,16 @@ gs_vec3 gs_camera_screen_to_world(const gs_camera_t* cam, gs_vec3 coords, s32 vi
     return wc;
 }
 
-gs_mat4 gs_camera_get_view_projection(const gs_camera_t* cam, s32 view_width, s32 view_height)
+GS_API_DECL gs_mat4 
+gs_camera_get_view_projection(const gs_camera_t* cam, s32 view_width, s32 view_height)
 {
     gs_mat4 view = gs_camera_get_view(cam);
     gs_mat4 proj = gs_camera_get_proj(cam, view_width, view_height);
     return gs_mat4_mul(proj, view); 
 }
 
-gs_mat4 gs_camera_get_view(const gs_camera_t* cam)
+GS_API_DECL gs_mat4 
+gs_camera_get_view(const gs_camera_t* cam)
 {
     gs_vec3 up = gs_camera_up(cam);
     gs_vec3 forward = gs_camera_forward(cam);
@@ -7261,7 +7306,8 @@ gs_mat4 gs_camera_get_view(const gs_camera_t* cam)
     return gs_mat4_look_at(cam->transform.position, target, up);
 }
 
-gs_mat4 gs_camera_get_proj(const gs_camera_t* cam, s32 view_width, s32 view_height)
+GS_API_DECL gs_mat4 
+gs_camera_get_proj(const gs_camera_t* cam, s32 view_width, s32 view_height)
 {
     gs_mat4 proj_mat = gs_mat4_identity();
 
@@ -7294,7 +7340,8 @@ gs_mat4 gs_camera_get_proj(const gs_camera_t* cam, s32 view_width, s32 view_heig
     return proj_mat;
 }
 
-void gs_camera_offset_orientation(gs_camera_t* cam, f32 yaw, f32 pitch)
+GS_API_DECL void 
+gs_camera_offset_orientation(gs_camera_t* cam, f32 yaw, f32 pitch)
 {
     gs_quat x = gs_quat_angle_axis(gs_deg2rad(yaw), gs_v3(0.f, 1.f, 0.f));              // Absolute up
     gs_quat y = gs_quat_angle_axis(gs_deg2rad(pitch), gs_camera_right(cam));            // Relative right
@@ -7378,7 +7425,8 @@ bool32_t gs_util_load_texture_data_from_file(const char* file_path, int32_t* wid
     return ret;
 }
 
-bool32_t gs_util_load_texture_data_from_memory(const void* memory, size_t sz, int32_t* width, int32_t* height, uint32_t* num_comps, void** data, bool32_t flip_vertically_on_load)
+GS_API_DECL bool32_t 
+gs_util_load_texture_data_from_memory(const void* memory, size_t sz, int32_t* width, int32_t* height, uint32_t* num_comps, void** data, bool32_t flip_vertically_on_load)
 {
     // Load texture data
     stbi_set_flip_vertically_on_load(flip_vertically_on_load);
@@ -7395,7 +7443,8 @@ bool32_t gs_util_load_texture_data_from_memory(const void* memory, size_t sz, in
 // GS_ASSET_TYPES
 ==========================*/
 
-bool gs_asset_texture_load_from_file(const char* path, void* out, gs_graphics_texture_desc_t* desc, bool32_t flip_on_load, bool32_t keep_data)
+GS_API_DECL bool 
+gs_asset_texture_load_from_file(const char* path, void* out, gs_graphics_texture_desc_t* desc, bool32_t flip_on_load, bool32_t keep_data)
 {
     gs_asset_texture_t* t = (gs_asset_texture_t*)out;
 

@@ -84,7 +84,7 @@ typedef struct gs_capsule_t
     float r, height;                                 
 } gs_capsule_t;
 
-typedef struct gs_ray_t      
+typedef struct gs_ray_s      
 {
     gs_vec3 p, d;    
     float len;
