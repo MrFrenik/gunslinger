@@ -189,7 +189,7 @@ typedef struct
     gs_gfxt_mesh_vertex_attribute_t joints[GS_GFXT_JOINT_MAX];
     gs_gfxt_mesh_vertex_attribute_t weights[GS_GFXT_WEIGHT_MAX];
     gs_gfxt_mesh_vertex_attribute_t indices;                           
-    uint16_t count;                                                     // Total count of indices
+    uint32_t count;                                                     // Total count of indices
 } gs_gfxt_mesh_vertex_data_t;
 
 // Structured/packed raw mesh data
@@ -278,7 +278,8 @@ typedef struct gs_gfxt_scene_s {
 //=== Creation ===// 
 GS_API_DECL gs_gfxt_pipeline_t      gs_gfxt_pipeline_create(const gs_gfxt_pipeline_desc_t* desc);
 GS_API_DECL gs_gfxt_material_t      gs_gfxt_material_create(gs_gfxt_material_desc_t* desc);
-GS_API_DECL gs_gfxt_mesh_t          gs_gfxt_mesh_create(const gs_gfxt_mesh_desc_t* desc);
+GS_API_DECL gs_gfxt_mesh_t          gs_gfxt_mesh_create(const gs_gfxt_mesh_desc_t* desc); 
+GS_API_DECL void                    gs_gfxt_mesh_update_or_create(gs_gfxt_mesh_t* mesh, const gs_gfxt_mesh_desc_t* desc);
 GS_API_DECL gs_gfxt_renderable_t    gs_gfxt_renderable_create(const gs_gfxt_renderable_desc_t* desc);
 GS_API_DECL gs_gfxt_uniform_block_t gs_gfxt_uniform_block_create(const gs_gfxt_uniform_block_desc_t* desc);
 GS_API_DECL gs_gfxt_texture_t       gs_gfxt_texture_create(gs_graphics_texture_desc_t* desc); 
@@ -583,6 +584,242 @@ gs_gfxt_mesh_create(const gs_gfxt_mesh_desc_t* desc)
 
             // Add primitive to mesh
             gs_dyn_array_push(mesh.primitives, prim); 
+        } 
+
+        if (!desc->keep_data)
+        { 
+            gs_dyn_array_free(m->primitives);
+        }
+    }
+
+    if (!desc->keep_data)
+    {
+        gs_free(desc->meshes);
+    }
+
+    return mesh;
+}
+
+GS_API_DECL void 
+gs_gfxt_mesh_update_or_create(gs_gfxt_mesh_t* mesh, const gs_gfxt_mesh_desc_t* desc)
+{
+    if (!desc || !mesh) {
+        return;
+    }
+
+    /*
+    // Need to create mesh if not already done 
+    if (gs_dyn_array_empty(mesh->primitives)) { 
+        *mesh = gs_gfxt_mesh_create(desc);
+        return;
+    } 
+    */
+
+    const uint32_t mesh_count = desc->size / sizeof(gs_gfxt_mesh_raw_data_t);
+
+    // Process all mesh data, add meshes
+    for (uint32_t i = 0; i < mesh_count; ++i)
+    {
+        gs_gfxt_mesh_raw_data_t* m = &desc->meshes[i];
+
+        for (uint32_t p = 0; p < gs_dyn_array_size(m->primitives); ++p)
+        {
+            // Get raw vertex data
+            gs_gfxt_mesh_vertex_data_t* vdata = &m->primitives[p];
+
+            // Construct or retrieve mesh primitive
+            gs_gfxt_mesh_primitive_t* prim = NULL;
+            if (gs_dyn_array_empty(mesh->primitives) || gs_dyn_array_size(mesh->primitives) < p)
+            { 
+                gs_gfxt_mesh_primitive_t dprim = gs_default_val(); 
+                gs_dyn_array_push(mesh->primitives, dprim);
+            }
+            prim = &mesh->primitives[p];
+
+            // Set prim count
+            prim->count = vdata->count;
+
+            // Positions
+            if (vdata->positions.data) 
+            {
+                gs_graphics_vertex_buffer_desc_t vdesc = gs_default_val();
+                vdesc.data = vdata->positions.data;
+                vdesc.size = vdata->positions.size;
+
+                // Update
+                if (prim->stream.positions.id) 
+                {
+                    gs_graphics_vertex_buffer_update(prim->stream.positions, &vdesc); 
+                }
+                // Create
+                else 
+                {
+                    prim->stream.positions = gs_graphics_vertex_buffer_create(&vdesc);
+                }
+                if (!desc->keep_data)
+                { 
+                    gs_free(vdata->positions.data);
+                }
+            }
+
+            // Normals
+            if (vdata->normals.data) 
+            {
+                gs_graphics_vertex_buffer_desc_t vdesc = gs_default_val();
+                vdesc.data = vdata->normals.data;
+                vdesc.size = vdata->normals.size;
+
+                // Update
+                if (prim->stream.normals.id) 
+                { 
+                    gs_graphics_vertex_buffer_update(prim->stream.normals, &vdesc);
+                }
+                else
+                { 
+                    prim->stream.normals = gs_graphics_vertex_buffer_create(&vdesc);
+                }
+                if (!desc->keep_data)
+                { 
+                    gs_free(vdata->normals.data);
+                }
+            }
+
+            // Tangents
+            if (vdata->tangents.data) 
+            {
+                gs_graphics_vertex_buffer_desc_t vdesc = gs_default_val();
+                vdesc.data = vdata->tangents.data;
+                vdesc.size = vdata->tangents.size;
+
+                if (prim->stream.tangents.id) 
+                { 
+                    gs_graphics_vertex_buffer_update(prim->stream.tangents, &vdesc);
+                } 
+                else
+                { 
+                    prim->stream.tangents = gs_graphics_vertex_buffer_create(&vdesc);
+                }
+                if (!desc->keep_data)
+                { 
+                    gs_free(vdata->tangents.data);
+                }
+            }
+
+            // Texcoords
+            for (uint32_t j = 0; j < GS_GFXT_TEX_COORD_MAX; ++j)
+            {
+                if (vdata->tex_coords[j].data) 
+                {
+                    gs_graphics_vertex_buffer_desc_t vdesc = gs_default_val();
+                    vdesc.data = vdata->tex_coords[j].data;
+                    vdesc.size = vdata->tex_coords[j].size;
+
+                    if (prim->stream.tex_coords[j].id)
+                    { 
+                        gs_graphics_vertex_buffer_update(prim->stream.tex_coords[j], &vdesc);
+                    }
+                    else
+                    { 
+                        prim->stream.tex_coords[j] = gs_graphics_vertex_buffer_create(&vdesc);
+                    }
+                    if (!desc->keep_data)
+                    { 
+                        gs_free(vdata->tex_coords[j].data);
+                    }
+                }
+            }
+
+            // Colors
+            for (uint32_t j = 0; j < GS_GFXT_COLOR_MAX; ++j)
+            {
+                if (vdata->colors[j].data) 
+                {
+                    gs_graphics_vertex_buffer_desc_t vdesc = gs_default_val();
+                    vdesc.data = vdata->colors[j].data;
+                    vdesc.size = vdata->colors[j].size; 
+                    
+                    if (prim->stream.colors[j].id)
+                    { 
+                        gs_graphics_vertex_buffer_update(prim->stream.colors[j], &vdesc); 
+                    }
+                    else
+                    {
+                        prim->stream.colors[j] = gs_graphics_vertex_buffer_create(&vdesc); 
+                    }
+                    if (!desc->keep_data)
+                    { 
+                        gs_free(vdata->colors[j].data);
+                    }
+                }
+            }
+
+            // Joints
+            for (uint32_t j = 0; j < GS_GFXT_JOINT_MAX; ++j)
+            {
+                if (vdata->joints[j].data) 
+                {
+                    gs_graphics_vertex_buffer_desc_t vdesc = gs_default_val();
+                    vdesc.data = vdata->joints[j].data;
+                    vdesc.size = vdata->joints[j].size;
+
+                    if (prim->stream.joints[j].id)
+                    {
+                        gs_graphics_vertex_buffer_update(prim->stream.joints[j], &vdesc); 
+                    }
+                    else
+                    { 
+                        prim->stream.joints[j] = gs_graphics_vertex_buffer_create(&vdesc); 
+                    }
+                    if (!desc->keep_data)
+                    { 
+                        gs_free(vdata->joints[j].data);
+                    }
+                }
+            }
+
+            // Weights
+            for (uint32_t j = 0; j < GS_GFXT_WEIGHT_MAX; ++j)
+            {
+                if (vdata->weights[j].data) 
+                {
+                    gs_graphics_vertex_buffer_desc_t vdesc = gs_default_val();
+                    vdesc.data = vdata->weights[j].data;
+                    vdesc.size = vdata->weights[j].size;
+
+                    if (prim->stream.weights[j].id)
+                    { 
+                        gs_graphics_vertex_buffer_update(prim->stream.weights[j], &vdesc); 
+                    }
+                    else
+                    { 
+                        prim->stream.weights[j] = gs_graphics_vertex_buffer_create(&vdesc); 
+                    }
+                    if (!desc->keep_data)
+                    { 
+                        gs_free(vdata->weights[j].data);
+                    }
+                }
+            }
+
+            // Index buffer decl
+            gs_graphics_index_buffer_desc_t idesc = gs_default_val();
+            idesc.data = vdata->indices.data;
+            idesc.size = vdata->indices.size;
+
+            // Construct index buffer for primitive
+            if (prim->indices.id)
+            {
+                gs_graphics_index_buffer_update(prim->indices, &idesc); 
+            }
+            else
+            { 
+                prim->indices = gs_graphics_index_buffer_create(&idesc); 
+            }
+
+			if (!desc->keep_data)
+			{
+				gs_free(vdata->indices.data);
+			}
         } 
 
         if (!desc->keep_data)

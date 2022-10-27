@@ -5953,13 +5953,51 @@ typedef struct gs_graphics_info_t
 
 typedef struct gs_graphics_t
 {
-    void* user_data;            // For internal use
-    gs_graphics_info_t info;    // Used for querying by user for features
+    void* user_data;                // For internal use
+    gs_graphics_info_t info;        // Used for querying by user for features 
+    struct { 
+
+        // Create
+        gs_handle(gs_graphics_texture_t)        (* texture_create)(const gs_graphics_texture_desc_t* desc);
+        gs_handle(gs_graphics_uniform_t)        (* uniform_create)(const gs_graphics_uniform_desc_t* desc);
+        gs_handle(gs_graphics_shader_t)         (* shader_create)(const gs_graphics_shader_desc_t* desc);
+        gs_handle(gs_graphics_vertex_buffer_t)  (* vertex_buffer_create)(const gs_graphics_vertex_buffer_desc_t* desc);
+        gs_handle(gs_graphics_index_buffer_t)   (* index_buffer_create)(const gs_graphics_index_buffer_desc_t* desc);
+        gs_handle(gs_graphics_uniform_buffer_t) (* uniform_buffer_create)(const gs_graphics_uniform_buffer_desc_t* desc);
+        gs_handle(gs_graphics_storage_buffer_t) (* storage_buffer_create)(const gs_graphics_storage_buffer_desc_t* desc);
+        gs_handle(gs_graphics_framebuffer_t)    (* framebuffer_create)(const gs_graphics_framebuffer_desc_t* desc);
+        gs_handle(gs_graphics_renderpass_t)     (* renderpass_create)(const gs_graphics_renderpass_desc_t* desc);
+        gs_handle(gs_graphics_pipeline_t)       (* pipeline_create)(const gs_graphics_pipeline_desc_t* desc); 
+
+        // Destroy
+        void (* texture_destroy)(gs_handle(gs_graphics_texture_t) hndl); 
+        void (* uniform_destroy)(gs_handle(gs_graphics_uniform_t) hndl);
+        void (* shader_destroy)(gs_handle(gs_graphics_shader_t) hndl);
+        void (* vertex_buffer_destroy)(gs_handle(gs_graphics_vertex_buffer_t) hndl);
+        void (* index_buffer_destroy)(gs_handle(gs_graphics_index_buffer_t) hndl);
+        void (* uniform_buffer_destroy)(gs_handle(gs_graphics_uniform_buffer_t) hndl);
+        void (* storage_buffer_destroy)(gs_handle(gs_graphics_storage_buffer_t) hndl);
+        void (* framebuffer_destroy)(gs_handle(gs_graphics_framebuffer_t) hndl);
+        void (* renderpass_destroy)(gs_handle(gs_graphics_renderpass_t) hndl);
+        void (* pipeline_destroy)(gs_handle(gs_graphics_pipeline_t) hndl); 
+
+        // Resource Updates (main thread only) 
+        void (* vertex_buffer_update)(gs_handle(gs_graphics_vertex_buffer_t) hndl, gs_graphics_vertex_buffer_desc_t* desc); 
+        void (* index_buffer_update)(gs_handle(gs_graphics_index_buffer_t) hndl, gs_graphics_index_buffer_desc_t* desc);
+        void (* storage_buffer_update)(gs_handle(gs_graphics_storage_buffer_t) hndl, gs_graphics_storage_buffer_desc_t* desc);
+        void (* texture_update)(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);
+
+        // Submission (Main Thread)
+        void (* command_buffer_submit)(gs_command_buffer_t* cb);
+
+    } api;                          // Interface for stable access across .dll boundaries
 } gs_graphics_t;
 
 /*==========================
 // Graphics API
 ==========================*/
+
+#define gs_graphics()   gs_ctx()->graphics
 
 // Graphics Interface Creation / Initialization / Shutdown / Destruction
 GS_API_DECL gs_graphics_t* gs_graphics_create();
@@ -5971,44 +6009,38 @@ GS_API_DECL void           gs_graphics_shutdown(gs_graphics_t* graphics);
 GS_API_DECL                gs_graphics_info_t* gs_graphics_info();
 
 // Resource Creation
-GS_API_DECL gs_handle(gs_graphics_texture_t)        gs_graphics_texture_create(const gs_graphics_texture_desc_t* desc);
-GS_API_DECL gs_handle(gs_graphics_uniform_t)        gs_graphics_uniform_create(const gs_graphics_uniform_desc_t* desc);
-GS_API_DECL gs_handle(gs_graphics_shader_t)         gs_graphics_shader_create(const gs_graphics_shader_desc_t* desc);
-GS_API_DECL gs_handle(gs_graphics_vertex_buffer_t)  gs_graphics_vertex_buffer_create(const gs_graphics_vertex_buffer_desc_t* desc);
-GS_API_DECL gs_handle(gs_graphics_index_buffer_t)   gs_graphics_index_buffer_create(const gs_graphics_index_buffer_desc_t* desc);
-GS_API_DECL gs_handle(gs_graphics_uniform_buffer_t) gs_graphics_uniform_buffer_create(const gs_graphics_uniform_buffer_desc_t* desc);
-GS_API_DECL gs_handle(gs_graphics_storage_buffer_t) gs_graphics_storage_buffer_create(const gs_graphics_storage_buffer_desc_t* desc);
-GS_API_DECL gs_handle(gs_graphics_framebuffer_t)    gs_graphics_framebuffer_create(const gs_graphics_framebuffer_desc_t* desc);
-GS_API_DECL gs_handle(gs_graphics_renderpass_t)    gs_graphics_renderpass_create(const gs_graphics_renderpass_desc_t* desc);
-GS_API_DECL gs_handle(gs_graphics_pipeline_t)       gs_graphics_pipeline_create(const gs_graphics_pipeline_desc_t* desc);
+#define gs_graphics_texture_create(DESC)        gs_graphics()->api.texture_create((DESC))
+#define gs_graphics_uniform_create(DESC)        gs_graphics()->api.uniform_create((DESC))
+#define gs_graphics_shader_create(DESC)         gs_graphics()->api.shader_create((DESC))
+#define gs_graphics_vertex_buffer_create(DESC)  gs_graphics()->api.vertex_buffer_create((DESC))
+#define gs_graphics_index_buffer_create(DESC)   gs_graphics()->api.index_buffer_create((DESC))
+#define gs_graphics_uniform_buffer_create(DESC) gs_graphics()->api.uniform_buffer_create((DESC))
+#define gs_graphics_storage_buffer_create(DESC) gs_graphics()->api.storage_buffer_create((DESC))
+#define gs_graphics_framebuffer_create(DESC)    gs_graphics()->api.framebuffer_create((DESC))
+#define gs_graphics_renderpass_create(DESC)     gs_graphics()->api.renderpass_create((DESC))
+#define gs_graphics_pipeline_create(DESC)       gs_graphics()->api.pipeline_create((DESC))
 
 // Resource Destruction
-GS_API_DECL void gs_graphics_texture_destroy(gs_handle(gs_graphics_texture_t) hndl);
-GS_API_DECL void gs_graphics_uniform_destroy(gs_handle(gs_graphics_uniform_t) hndl);
-GS_API_DECL void gs_graphics_shader_destroy(gs_handle(gs_graphics_shader_t) hndl);
-GS_API_DECL void gs_graphics_vertex_buffer_destroy(gs_handle(gs_graphics_vertex_buffer_t) hndl);
-GS_API_DECL void gs_graphics_index_buffer_destroy(gs_handle(gs_graphics_index_buffer_t) hndl);
-GS_API_DECL void gs_graphics_uniform_buffer_destroy(gs_handle(gs_graphics_uniform_buffer_t) hndl);
-GS_API_DECL void gs_graphics_storage_buffer_destroy(gs_handle(gs_graphics_storage_buffer_t) hndl);
-GS_API_DECL void gs_graphics_framebuffer_destroy(gs_handle(gs_graphics_framebuffer_t) hndl);
-GS_API_DECL void gs_graphics_renderpass_destroy(gs_handle(gs_graphics_renderpass_t) hndl);
-GS_API_DECL void gs_graphics_pipeline_destroy(gs_handle(gs_graphics_pipeline_t) hndl); 
+#define gs_graphics_texture_destroy(HNDL)           gs_graphics()->api.texture_destroy((HNDL))
+#define gs_graphics_uniform_destroy(HNDL)           gs_graphics()->api.uniform_destroy((HNDL))  
+#define gs_graphics_shader_destroy(HNDL)            gs_graphics()->api.shader_destroy((HNDL))
+#define gs_graphics_vertex_buffer_destroy(HNDL)     gs_graphics()->api.vertex_buffer_destroy((HNDL))
+#define gs_graphics_index_buffer_destroy(HNDL)      gs_graphics()->api.index_buffer_destroy((HNDL))
+#define gs_graphics_uniform_buffer_destroy(HNDL)    gs_graphics()->api.uniform_buffer_destroy((HNDL))
+#define gs_graphics_storage_buffer_destroy(HNDL)    gs_graphics()->api.storage_buffer_destroy((HNDL))
+#define gs_graphics_framebuffer_destroy(HNDL)       gs_graphics()->api.framebuffer_destroy((HNDL))
+#define gs_graphics_renderpass_destroy(HNDL)        gs_graphics()->api.renderpass_destroy((HNDL))
+#define gs_graphics_pipeline_destroy(HNDL)          gs_graphics()->api.pipeline_destroy((HNDL))
 
 // Resource Queries
 GS_API_DECL void gs_graphics_pipeline_desc_query(gs_handle(gs_graphics_pipeline_t) hndl, gs_graphics_pipeline_desc_t* out);
 GS_API_DECL void gs_graphics_texture_desc_query(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* out);
 
 // Resource Updates (main thread only) 
-GS_API_DECL void gs_graphics_vertex_buffer_update(gs_handle(gs_graphics_vertex_buffer_t) hndl, gs_graphics_vertex_buffer_desc_t* desc); 
-GS_API_DECL void gs_graphics_index_buffer_update(gs_handle(gs_graphics_index_buffer_t) hndl, gs_graphics_index_buffer_desc_t* desc);
-GS_API_DECL void gs_graphics_storage_buffer_update(gs_handle(gs_graphics_storage_buffer_t) hndl, gs_graphics_storage_buffer_desc_t* desc);
-GS_API_DECL void gs_graphics_texture_update(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);
-
-// Resource Destruction
-GS_API_DECL void gs_graphics_texture_destroy(gs_handle(gs_graphics_texture_t) hndl);
-GS_API_DECL void gs_graphics_shader_destroy(gs_handle(gs_graphics_shader_t) hndl);
-GS_API_DECL void gs_graphics_renderpass_destroy(gs_handle(gs_graphics_renderpass_t) hndl);
-GS_API_DECL void gs_graphics_pipeline_destroy(gs_handle(gs_graphics_pipeline_t) hndl);
+#define gs_graphics_vertex_buffer_update(HNDL, DESC)    gs_graphics()->api.vertex_buffer_update((HNDL), (DESC))
+#define gs_graphics_index_buffer_update(HNDL, DESC)     gs_graphics()->api.index_buffer_update((HNDL), (DESC))
+#define gs_graphics_storage_buffer_update(HNDL, DESC)   gs_graphics()->api.storage_buffer_update((HNDL), (DESC))
+#define gs_graphics_texture_update(HNDL, DESC)          gs_graphics()->api.texture_update((HNDL), (DESC))
 
 // Resource In-Flight Update
 GS_API_DECL void gs_graphics_texture_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);
@@ -6029,7 +6061,7 @@ GS_API_DECL void gs_graphics_draw(gs_command_buffer_t* cb, gs_graphics_draw_desc
 GS_API_DECL void gs_graphics_dispatch_compute(gs_command_buffer_t* cb, uint32_t num_x_groups, uint32_t num_y_groups, uint32_t num_z_groups);
 
 // Submission (Main Thread)
-GS_API_DECL void gs_graphics_command_buffer_submit(gs_command_buffer_t* cb);
+#define gs_graphics_command_buffer_submit(CB)  gs_graphics()->api.command_buffer_submit((CB))
 
 #ifndef GS_NO_SHORT_NAME
     
@@ -6043,7 +6075,7 @@ typedef gs_handle(gs_graphics_index_buffer_t)   gs_ibo;
 typedef gs_handle(gs_graphics_uniform_buffer_t) gs_ubo;
 typedef gs_handle(gs_graphics_uniform_t)        gs_uniform;
 
-#endif
+#endif 
 
 /** @} */ // end of gs_graphics
 
