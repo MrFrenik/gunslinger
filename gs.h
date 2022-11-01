@@ -7632,8 +7632,8 @@ bool gs_asset_font_load_from_memory(const void* memory, size_t sz, void* out, ui
     *f->texture.desc.data = NULL;
 
     bool success = false;
-    if (v == 0) {
-        gs_println("Font Failed to Load: %d", v);
+    if (v <= 0) {
+        gs_println("Font Failed to Load, Baked Texture Was Too Small: %d", v);
     }
     else {
         gs_println("Font Successfully Loaded: %d", v);
