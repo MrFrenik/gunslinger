@@ -159,8 +159,8 @@ GS_API_DECL void gsi_set_view_scissor(gs_immediate_draw_t* gsi, uint32_t x, uint
 
 // Final Submit / Merge
 GS_API_DECL void gsi_draw(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb);
-GS_API_DECL void gsi_renderpass_submit(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, uint32_t vw, uint32_t vh, gs_color_t clear_color);
-GS_API_DECL void gsi_renderpass_submit_ex(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, uint32_t vw, uint32_t  vh, gs_graphics_clear_action_t* action);
+GS_API_DECL void gsi_renderpass_submit(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, gs_vec4 viewport, gs_color_t clear_color);
+GS_API_DECL void gsi_renderpass_submit_ex(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, gs_vec4 viewport, gs_graphics_clear_action_t* action);
 
 // Core Matrix Functions
 GS_API_DECL void gsi_push_matrix(gs_immediate_draw_t* gsi, gsi_matrix_type type);
@@ -1828,7 +1828,7 @@ gsi_draw(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb)
 }
 
 GS_API_DECL void 
-gsi_renderpass_submit(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, uint32_t view_width, uint32_t view_height, gs_color_t c)
+gsi_renderpass_submit(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, gs_vec4 viewport, gs_color_t c)
 {
 	gs_graphics_clear_action_t action = gs_default_val();
 	action.color[0] = (float)c.r / 255.f; 
@@ -1839,19 +1839,19 @@ gsi_renderpass_submit(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, uint32_
 	clear.actions = &action;
 	gs_renderpass pass = gs_default_val();
 	gs_graphics_renderpass_begin(cb, pass);
-	gs_graphics_set_viewport(cb, 0, 0, view_width, view_height);
+	gs_graphics_set_viewport(cb, (uint32_t)viewport.x, (uint32_t)viewport.y, (uint32_t)viewport.z, (uint32_t)viewport.w);
 	gs_graphics_clear(cb, &clear);
 	gsi_draw(gsi, cb);
 	gs_graphics_renderpass_end(cb);
 }
 
-GS_API_DECL void gsi_renderpass_submit_ex(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, uint32_t view_width, uint32_t view_height, gs_graphics_clear_action_t* action)
+GS_API_DECL void gsi_renderpass_submit_ex(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, gs_vec4 viewport, gs_graphics_clear_action_t* action)
 {
     gs_graphics_clear_desc_t clear = gs_default_val();
     clear.actions = action;
 	gs_renderpass pass = gs_default_val();
 	gs_graphics_renderpass_begin(cb, pass);
-	gs_graphics_set_viewport(cb, 0, 0, view_width, view_height);
+	gs_graphics_set_viewport(cb, (uint32_t)viewport.x, (uint32_t)viewport.y, (uint32_t)viewport.z, (uint32_t)viewport.w);
 	gs_graphics_clear(cb, &clear);
 	gsi_draw(gsi, cb);
 	gs_graphics_renderpass_end(cb);

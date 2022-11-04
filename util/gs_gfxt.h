@@ -89,6 +89,10 @@
     #define GS_GFXT_UNIFORM_MODEL_MATRIX "U_MODEL_MTX"
 #endif
 
+#ifndef GS_GFXT_UNIFORM_INVERSE_MODEL_MATRIX
+    #define GS_GFXT_UNIFORM_INVERSE_MODEL_MATRIX "U_INVERSE_MODEL_MTX"
+#endif
+
 #ifndef GS_GFXT_UNIFORM_VIEW_WORLD_POSITION
     #define GS_GFXT_UNIFORM_VIEW_WORLD_POSITION "U_VIEW_WORLD_POSITION"
 #endif
@@ -2079,6 +2083,12 @@ bool gs_parse_uniform_special_keyword(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* 
         memcpy(uniform->name, GS_GFXT_UNIFORM_MODEL_MATRIX, sizeof(GS_GFXT_UNIFORM_MODEL_MATRIX));
         return true;
     }
+    else if (gs_token_compare_text(&token, "GS_GFXT_UNIFORM_INVERSE_MODEL_MATRIX"))
+    {
+        uniform->type = GS_GRAPHICS_UNIFORM_MAT4; 
+        memcpy(uniform->name, GS_GFXT_UNIFORM_INVERSE_MODEL_MATRIX, sizeof(GS_GFXT_UNIFORM_INVERSE_MODEL_MATRIX));
+        return true;
+    }
     else if (gs_token_compare_text(&token, "GS_GFXT_UNIFORM_PROJECTION_MATRIX"))
     {
         uniform->type = GS_GRAPHICS_UNIFORM_MAT4; 
@@ -2276,6 +2286,10 @@ bool gs_parse_code(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd
                 else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_MODEL_MATRIX"))
                 {
                     gs_util_string_replace(tkn.text, tkn.len, GS_GFXT_UNIFORM_MODEL_MATRIX, (char)32);
+                }
+                else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_INVERSE_MODEL_MATRIX"))
+                {
+                    gs_util_string_replace(tkn.text, tkn.len, GS_GFXT_UNIFORM_INVERSE_MODEL_MATRIX, (char)32);
                 }
                 else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_VIEW_MATRIX"))
                 {

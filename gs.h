@@ -523,6 +523,10 @@
     #define gs_force_inline gs_inline
 #endif
 
+#define GS_INLINE           gs_force_inline
+#define GS_GLOBAL           gs_global
+#define GS_LOCAL_PERSIST    gs_local_persist
+
 #ifdef __cplusplus
     #pragma warning(disable:4996)
 #endif
@@ -4242,6 +4246,49 @@ GS_API_DECL gs_color_t gs_rand_gen_color(gs_mt_rand_t* rand);
 #endif 
 
 /*================================================================================
+// Coroutine (Light wrapper around Minicoro)
+================================================================================*/ 
+
+#define MCO_MALLOC  gs_malloc
+#define MCO_FREE    gs_free
+
+#include "external/minicoro/minicoro.h" 
+
+typedef mco_coro gs_coro_t;
+typedef mco_desc gs_coro_desc_t;
+typedef mco_result gs_coro_result;
+
+// Result
+#define GS_CORO_SUCCESS                 MCO_SUCCESS
+#define GS_CORO_GENERIC_ERROR           MCO_GENERIC_ERROR
+#define GS_CORO_INVALID_POINTER         MCO_INVALID_POINTER
+#define GS_CORO_INVALID_COROUTINE       MCO_INVALID_COROUTINE
+#define GS_CORO_NOT_SUSPENDED           MCO_NOT_SUSPENDED
+#define GS_CORO_NOT_RUNNING             MCO_NOT_RUNNING
+#define GS_CORO_MAKE_CONTEXT_ERROR      MCO_MAKE_CONTEXT_ERROR
+#define GS_CORO_SWITCH_CONTEXT_ERROR    MCO_SWITCH_CONTEXT_ERROR
+#define GS_CORO_NOT_ENOUGH_SPACE        MCO_NOT_ENOUGH_SPACE
+#define GS_CORO_OUT_OF_MEMORY           MCO_OUT_OF_MEMORY
+#define GS_CORO_INVALID_ARGUMENTS       MCO_INVALID_ARGUMENTS
+#define GS_CORO_INVALID_OPERATION       MCO_INVALID_OPERATION
+#define GS_CORO_STACK_OVERFLOW          MCO_STACK_OVERFLOW
+
+// State
+#define GS_CORO_DEAD        MCO_DEAD        // The coroutine has finished normally or was uninitialized before finishing.
+#define GS_CORO_NORMAL      MCO_NORMAL      // The coroutine is active but not running (that is, it has resumed another coroutine).
+#define GS_CORO_RUNNING     MCO_RUNNING     // The coroutine is active and running
+#define GS_CORO_SUSPENDED   MCO_SUSPENDED   //  The coroutine is suspended (in a call to yield, or it has not started running yet).
+
+// Functions
+#define gs_coro_desc_init(DESC, V)       mco_desc_init((DESC), (V))
+#define gs_coro_create(CO, DESC)         mco_create((CO), (DESC))
+#define gs_coro_destroy(CO)              mco_destroy((CO))
+#define gs_coro_yield(CO)                mco_yield((CO))
+#define gs_coro_resume(CO)               mco_resume((CO))
+#define gs_coro_result_description(RES)  mco_result_description((RES))
+#define gs_coro_status(CO)               mco_status((CO))
+
+/*================================================================================
 // Noise
 ================================================================================*/
 
@@ -7141,6 +7188,14 @@ gs_rand_gen_color(gs_mt_rand_t* rand)
     c.a = (uint8_t)gs_rand_gen_range_long(rand, 0, 255);
     return c;
 }
+
+/*================================================================================
+// Coroutine
+================================================================================*/ 
+
+// Light wrapper around Minicoro
+#define MINICORO_IMPL
+#include "external/minicoro/minicoro.h"
 
 /*================================================================================
 // Noise
