@@ -4868,7 +4868,7 @@ GS_API_DECL void gs_gui_renderpass_submit_ex(gs_gui_context_t* ctx, gs_command_b
     gs_gui_rect_t* vp = &ctx->viewport;
     gs_graphics_clear_desc_t clear = gs_default_val();
     clear.actions = action;
-	gs_renderpass pass = gs_default_val();
+	gs_renderpass_t pass = gs_default_val();
 	gs_graphics_renderpass_begin(cb, pass);
     gs_graphics_set_viewport(cb, (uint32_t)vp->x, (uint32_t)vp->y, (uint32_t)vp->w, (uint32_t)vp->h);
 	gs_graphics_clear(cb, &clear);

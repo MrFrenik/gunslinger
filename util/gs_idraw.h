@@ -1837,7 +1837,7 @@ gsi_renderpass_submit(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, gs_vec4
 	action.color[3] = (float)c.a / 255.f;
 	gs_graphics_clear_desc_t clear = gs_default_val();
 	clear.actions = &action;
-	gs_renderpass pass = gs_default_val();
+	gs_renderpass_t pass = gs_default_val();
 	gs_graphics_renderpass_begin(cb, pass);
 	gs_graphics_set_viewport(cb, (uint32_t)viewport.x, (uint32_t)viewport.y, (uint32_t)viewport.z, (uint32_t)viewport.w);
 	gs_graphics_clear(cb, &clear);
@@ -1849,7 +1849,7 @@ GS_API_DECL void gsi_renderpass_submit_ex(gs_immediate_draw_t* gsi, gs_command_b
 {
     gs_graphics_clear_desc_t clear = gs_default_val();
     clear.actions = action;
-	gs_renderpass pass = gs_default_val();
+	gs_renderpass_t pass = gs_default_val();
 	gs_graphics_renderpass_begin(cb, pass);
 	gs_graphics_set_viewport(cb, (uint32_t)viewport.x, (uint32_t)viewport.y, (uint32_t)viewport.z, (uint32_t)viewport.w);
 	gs_graphics_clear(cb, &clear);

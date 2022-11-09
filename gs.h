@@ -724,6 +724,9 @@ typedef bool32_t          bool32;
 
 //=== Logging ===//
 
+#define gs_log_info(MESSAGE, ...)\
+    gs_println("LOG::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+
 #define gs_log_success(MESSAGE, ...)\
     gs_println("SUCCESS::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
 
@@ -4281,6 +4284,8 @@ typedef mco_result gs_coro_result;
 
 // Functions
 #define gs_coro_desc_init(DESC, V)       mco_desc_init((DESC), (V))
+#define gs_coro_init(CO, DESC)           mco_init((CO), (DESC))
+#define gs_coro_uninit(CO, DESC)         mco_uninit((CO))
 #define gs_coro_create(CO, DESC)         mco_create((CO), (DESC))
 #define gs_coro_destroy(CO)              mco_destroy((CO))
 #define gs_coro_yield(CO)                mco_yield((CO))
@@ -4580,13 +4585,25 @@ typedef struct gs_uuid_t
 
 // Should have an internal resource cache of window handles (controlled by the platform api) 
 
+typedef struct gs_platform_window_desc_t
+{
+    const char* title;
+    uint32_t width;
+    uint32_t height;
+    uint32_t flags; 
+    uint32_t num_samples;       // Multisamples (if 0, then disabled)
+    uint32_t monitor_index;
+    bool32 vsync; 
+    float frame_rate;
+} gs_platform_window_desc_t;
+
 typedef struct gs_platform_window_s
 { 
     void* hndl;
     gs_vec2 framebuffer_size;
     gs_vec2 window_size;
     gs_vec2 window_position;
-} gs_platform_window_t; 
+} gs_platform_window_t;
 
 typedef enum gs_platform_cursor
 {
@@ -5021,8 +5038,7 @@ typedef void (* gs_framebuffer_resize_callback_t)(void*, int32_t width, int32_t 
 // Platform Interface
 ===============================================================================================*/
 
-struct gs_platform_interface_s;
-
+struct gs_platform_interface_s; 
 
 typedef struct gs_platform_t
 {
@@ -5115,7 +5131,7 @@ GS_API_DECL bool      gs_platform_poll_events(gs_platform_event_t* evt, bool32_t
 GS_API_DECL void      gs_platform_add_event(gs_platform_event_t* evt);
 
 // Platform Window
-GS_API_DECL uint32_t gs_platform_create_window(const char* title, uint32_t width, uint32_t height, uint32_t monitor_index);
+GS_API_DECL uint32_t gs_platform_window_create(const gs_platform_window_desc_t* desc);
 GS_API_DECL uint32_t gs_platform_main_window();
 
 typedef struct gs_platform_file_stats_s
@@ -5203,27 +5219,27 @@ GS_API_DECL gs_platform_keycode  gs_platform_codepoint_to_key(uint32_t code);
 GS_API_DECL void                 gs_platform_mouse_set_position(uint32_t handle, float x, float y);
 GS_API_DECL void                 gs_platform_lock_mouse(uint32_t handle, bool32_t lock);
 
-GS_API_DECL void*    gs_platform_create_window_internal(const char* title, uint32_t width, uint32_t height, uint32_t monitor_index);
-GS_API_DECL void     gs_platform_window_swap_buffer(uint32_t handle);
-GS_API_DECL gs_vec2  gs_platform_window_sizev(uint32_t handle);
-GS_API_DECL void     gs_platform_window_size(uint32_t handle, uint32_t* width, uint32_t* height);
-GS_API_DECL uint32_t gs_platform_window_width(uint32_t handle);
-GS_API_DECL uint32_t gs_platform_window_height(uint32_t handle);
-GS_API_DECL bool32_t gs_platform_window_fullscreen(uint32_t handle);
-GS_API_DECL gs_vec2  gs_platform_window_positionv(uint32_t handle);
-GS_API_DECL void     gs_platform_window_position(uint32_t handle, uint32_t* x, uint32_t* y);
-GS_API_DECL void     gs_platform_set_window_size(uint32_t handle, uint32_t width, uint32_t height);
-GS_API_DECL void     gs_platform_set_window_sizev(uint32_t handle, gs_vec2 v);
-GS_API_DECL void     gs_platform_set_window_fullscreen(uint32_t handle, bool32_t fullscreen);
-GS_API_DECL void     gs_platform_set_window_position(uint32_t handle, uint32_t x, uint32_t y);
-GS_API_DECL void     gs_platform_set_window_positionv(uint32_t handle, gs_vec2 v);
-GS_API_DECL void     gs_platform_set_cursor(uint32_t handle, gs_platform_cursor cursor);
-GS_API_DECL void*    gs_platform_raw_window_handle(uint32_t handle);
-GS_API_DECL gs_vec2  gs_platform_framebuffer_sizev(uint32_t handle);
-GS_API_DECL void     gs_platform_framebuffer_size(uint32_t handle, uint32_t* w, uint32_t* h);
-GS_API_DECL uint32_t gs_platform_framebuffer_width(uint32_t handle);
-GS_API_DECL uint32_t gs_platform_framebuffer_height(uint32_t handle);
-GS_API_DECL gs_vec2  gs_platform_monitor_sizev(uint32_t id);
+GS_API_DECL gs_platform_window_t gs_platform_window_create_internal(const gs_platform_window_desc_t* desc);
+GS_API_DECL void                 gs_platform_window_swap_buffer(uint32_t handle);
+GS_API_DECL gs_vec2              gs_platform_window_sizev(uint32_t handle);
+GS_API_DECL void                 gs_platform_window_size(uint32_t handle, uint32_t* width, uint32_t* height);
+GS_API_DECL uint32_t             gs_platform_window_width(uint32_t handle);
+GS_API_DECL uint32_t             gs_platform_window_height(uint32_t handle);
+GS_API_DECL bool32_t             gs_platform_window_fullscreen(uint32_t handle);
+GS_API_DECL gs_vec2              gs_platform_window_positionv(uint32_t handle);
+GS_API_DECL void                 gs_platform_window_position(uint32_t handle, uint32_t* x, uint32_t* y);
+GS_API_DECL void                 gs_platform_set_window_size(uint32_t handle, uint32_t width, uint32_t height);
+GS_API_DECL void                 gs_platform_set_window_sizev(uint32_t handle, gs_vec2 v);
+GS_API_DECL void                 gs_platform_set_window_fullscreen(uint32_t handle, bool32_t fullscreen);
+GS_API_DECL void                 gs_platform_set_window_position(uint32_t handle, uint32_t x, uint32_t y);
+GS_API_DECL void                 gs_platform_set_window_positionv(uint32_t handle, gs_vec2 v);
+GS_API_DECL void                 gs_platform_set_cursor(uint32_t handle, gs_platform_cursor cursor);
+GS_API_DECL void*                gs_platform_raw_window_handle(uint32_t handle);
+GS_API_DECL gs_vec2              gs_platform_framebuffer_sizev(uint32_t handle);
+GS_API_DECL void                 gs_platform_framebuffer_size(uint32_t handle, uint32_t* w, uint32_t* h);
+GS_API_DECL uint32_t             gs_platform_framebuffer_width(uint32_t handle);
+GS_API_DECL uint32_t             gs_platform_framebuffer_height(uint32_t handle);
+GS_API_DECL gs_vec2              gs_platform_monitor_sizev(uint32_t id);
 
 // Platform callbacks
 GS_API_DECL void     gs_platform_set_framebuffer_resize_callback(uint32_t handle, gs_framebuffer_resize_callback_t cb);
@@ -6055,39 +6071,40 @@ GS_API_DECL void           gs_graphics_shutdown(gs_graphics_t* graphics);
 // Graphics Info Object Query
 GS_API_DECL                gs_graphics_info_t* gs_graphics_info();
 
-// Resource Creation
-#define gs_graphics_texture_create(DESC)        gs_graphics()->api.texture_create((DESC))
-#define gs_graphics_uniform_create(DESC)        gs_graphics()->api.uniform_create((DESC))
-#define gs_graphics_shader_create(DESC)         gs_graphics()->api.shader_create((DESC))
-#define gs_graphics_vertex_buffer_create(DESC)  gs_graphics()->api.vertex_buffer_create((DESC))
-#define gs_graphics_index_buffer_create(DESC)   gs_graphics()->api.index_buffer_create((DESC))
-#define gs_graphics_uniform_buffer_create(DESC) gs_graphics()->api.uniform_buffer_create((DESC))
-#define gs_graphics_storage_buffer_create(DESC) gs_graphics()->api.storage_buffer_create((DESC))
-#define gs_graphics_framebuffer_create(DESC)    gs_graphics()->api.framebuffer_create((DESC))
-#define gs_graphics_renderpass_create(DESC)     gs_graphics()->api.renderpass_create((DESC))
-#define gs_graphics_pipeline_create(DESC)       gs_graphics()->api.pipeline_create((DESC))
+// Resource Creation 
+// Create
+GS_API_DECL gs_handle(gs_graphics_texture_t)        gs_graphics_texture_create(const gs_graphics_texture_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_uniform_t)        gs_graphics_uniform_create(const gs_graphics_uniform_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_shader_t)         gs_graphics_shader_create(const gs_graphics_shader_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_vertex_buffer_t)  gs_graphics_vertex_buffer_create(const gs_graphics_vertex_buffer_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_index_buffer_t)   gs_graphics_index_buffer_create(const gs_graphics_index_buffer_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_uniform_buffer_t) gs_graphics_uniform_buffer_create(const gs_graphics_uniform_buffer_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_storage_buffer_t) gs_graphics_storage_buffer_create(const gs_graphics_storage_buffer_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_framebuffer_t)    gs_graphics_framebuffer_create(const gs_graphics_framebuffer_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_renderpass_t)     gs_graphics_renderpass_create(const gs_graphics_renderpass_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_pipeline_t)       gs_graphics_pipeline_create(const gs_graphics_pipeline_desc_t* desc); 
 
-// Resource Destruction
-#define gs_graphics_texture_destroy(HNDL)           gs_graphics()->api.texture_destroy((HNDL))
-#define gs_graphics_uniform_destroy(HNDL)           gs_graphics()->api.uniform_destroy((HNDL))  
-#define gs_graphics_shader_destroy(HNDL)            gs_graphics()->api.shader_destroy((HNDL))
-#define gs_graphics_vertex_buffer_destroy(HNDL)     gs_graphics()->api.vertex_buffer_destroy((HNDL))
-#define gs_graphics_index_buffer_destroy(HNDL)      gs_graphics()->api.index_buffer_destroy((HNDL))
-#define gs_graphics_uniform_buffer_destroy(HNDL)    gs_graphics()->api.uniform_buffer_destroy((HNDL))
-#define gs_graphics_storage_buffer_destroy(HNDL)    gs_graphics()->api.storage_buffer_destroy((HNDL))
-#define gs_graphics_framebuffer_destroy(HNDL)       gs_graphics()->api.framebuffer_destroy((HNDL))
-#define gs_graphics_renderpass_destroy(HNDL)        gs_graphics()->api.renderpass_destroy((HNDL))
-#define gs_graphics_pipeline_destroy(HNDL)          gs_graphics()->api.pipeline_destroy((HNDL))
+// Destroy
+GS_API_DECL void gs_graphics_texture_destroy(gs_handle(gs_graphics_texture_t) hndl); 
+GS_API_DECL void gs_graphics_uniform_destroy(gs_handle(gs_graphics_uniform_t) hndl);
+GS_API_DECL void  gs_graphics_shader_destroy(gs_handle(gs_graphics_shader_t) hndl);
+GS_API_DECL void  gs_graphics_vertex_buffer_destroy(gs_handle(gs_graphics_vertex_buffer_t) hndl);
+GS_API_DECL void  gs_graphics_index_buffer_destroy(gs_handle(gs_graphics_index_buffer_t) hndl);
+GS_API_DECL void  gs_graphics_uniform_buffer_destroy(gs_handle(gs_graphics_uniform_buffer_t) hndl);
+GS_API_DECL void  gs_graphics_storage_buffer_destroy(gs_handle(gs_graphics_storage_buffer_t) hndl);
+GS_API_DECL void  gs_graphics_framebuffer_destroy(gs_handle(gs_graphics_framebuffer_t) hndl);
+GS_API_DECL void  gs_graphics_renderpass_destroy(gs_handle(gs_graphics_renderpass_t) hndl);
+GS_API_DECL void  gs_graphics_pipeline_destroy(gs_handle(gs_graphics_pipeline_t) hndl); 
+
+// Resource Updates (main thread only) 
+GS_API_DECL void  gs_graphics_vertex_buffer_update(gs_handle(gs_graphics_vertex_buffer_t) hndl, gs_graphics_vertex_buffer_desc_t* desc); 
+GS_API_DECL void  gs_graphics_index_buffer_update(gs_handle(gs_graphics_index_buffer_t) hndl, gs_graphics_index_buffer_desc_t* desc);
+GS_API_DECL void  gs_graphics_storage_buffer_update(gs_handle(gs_graphics_storage_buffer_t) hndl, gs_graphics_storage_buffer_desc_t* desc);
+GS_API_DECL void  gs_graphics_texture_update(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc); 
 
 // Resource Queries
 GS_API_DECL void gs_graphics_pipeline_desc_query(gs_handle(gs_graphics_pipeline_t) hndl, gs_graphics_pipeline_desc_t* out);
-GS_API_DECL void gs_graphics_texture_desc_query(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* out);
-
-// Resource Updates (main thread only) 
-#define gs_graphics_vertex_buffer_update(HNDL, DESC)    gs_graphics()->api.vertex_buffer_update((HNDL), (DESC))
-#define gs_graphics_index_buffer_update(HNDL, DESC)     gs_graphics()->api.index_buffer_update((HNDL), (DESC))
-#define gs_graphics_storage_buffer_update(HNDL, DESC)   gs_graphics()->api.storage_buffer_update((HNDL), (DESC))
-#define gs_graphics_texture_update(HNDL, DESC)          gs_graphics()->api.texture_update((HNDL), (DESC))
+GS_API_DECL void gs_graphics_texture_desc_query(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* out); 
 
 // Resource In-Flight Update
 GS_API_DECL void gs_graphics_texture_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);
@@ -6112,15 +6129,15 @@ GS_API_DECL void gs_graphics_dispatch_compute(gs_command_buffer_t* cb, uint32_t 
 
 #ifndef GS_NO_SHORT_NAME
     
-typedef gs_handle(gs_graphics_shader_t)         gs_shader;
-typedef gs_handle(gs_graphics_texture_t)        gs_texture;
-typedef gs_handle(gs_graphics_renderpass_t)     gs_renderpass;
-typedef gs_handle(gs_graphics_framebuffer_t)    gs_framebuffer;
-typedef gs_handle(gs_graphics_pipeline_t)       gs_pipeline;
-typedef gs_handle(gs_graphics_vertex_buffer_t)  gs_vbo;
-typedef gs_handle(gs_graphics_index_buffer_t)   gs_ibo;
-typedef gs_handle(gs_graphics_uniform_buffer_t) gs_ubo;
-typedef gs_handle(gs_graphics_uniform_t)        gs_uniform;
+typedef gs_handle(gs_graphics_shader_t)         gs_shader_t;
+typedef gs_handle(gs_graphics_texture_t)        gs_texture_t;
+typedef gs_handle(gs_graphics_renderpass_t)     gs_renderpass_t;
+typedef gs_handle(gs_graphics_framebuffer_t)    gs_framebuffer_t;
+typedef gs_handle(gs_graphics_pipeline_t)       gs_pipeline_t;
+typedef gs_handle(gs_graphics_vertex_buffer_t)  gs_vbo_t;
+typedef gs_handle(gs_graphics_index_buffer_t)   gs_ibo_t;
+typedef gs_handle(gs_graphics_uniform_buffer_t) gs_ubo_t;
+typedef gs_handle(gs_graphics_uniform_t)        gs_uniform_t;
 
 #endif 
 
@@ -6262,7 +6279,7 @@ GS_API_DECL bool gs_util_load_gltf_data_from_memory(const void* memory, size_t s
 /** @defgroup gs_app App/Engine
  *  Gunslinger App/Engine
  *  @{
- */
+ */ 
 
 // Application descriptor for user application
 typedef struct gs_app_desc_t
@@ -6270,13 +6287,7 @@ typedef struct gs_app_desc_t
     void (* init)();
     void (* update)();
     void (* shutdown)();
-    const char* window_title;
-    uint32_t window_width;
-    uint32_t window_height;
-    uint32_t window_flags;
-    uint32_t monitor_index;
-    float frame_rate;
-    bool32 enable_vsync;
+    gs_platform_window_desc_t window;
     bool32 is_running;
     bool32 debug_gfx;
     void* user_data;
@@ -6410,6 +6421,153 @@ gs_main(int32_t argc, char** argv);
 #endif
 
 #include "impl/gs_graphics_impl.h"
+
+// Resource Creation 
+GS_API_DECL gs_handle(gs_graphics_texture_t)        
+gs_graphics_texture_create(const gs_graphics_texture_desc_t* desc)
+{
+    return gs_graphics()->api.texture_create(desc);
+}
+
+GS_API_DECL gs_handle(gs_graphics_uniform_t)        
+gs_graphics_uniform_create(const gs_graphics_uniform_desc_t* desc)
+{
+    return gs_graphics()->api.uniform_create(desc);
+}
+
+GS_API_DECL gs_handle(gs_graphics_shader_t)         
+gs_graphics_shader_create(const gs_graphics_shader_desc_t* desc)
+{
+    return gs_graphics()->api.shader_create(desc);
+}
+
+GS_API_DECL gs_handle(gs_graphics_vertex_buffer_t)  
+gs_graphics_vertex_buffer_create(const gs_graphics_vertex_buffer_desc_t* desc)
+{ 
+    return gs_graphics()->api.vertex_buffer_create(desc);
+}
+
+GS_API_DECL gs_handle(gs_graphics_index_buffer_t)   
+gs_graphics_index_buffer_create(const gs_graphics_index_buffer_desc_t* desc)
+{ 
+    return gs_graphics()->api.index_buffer_create(desc);
+}
+
+GS_API_DECL gs_handle(gs_graphics_uniform_buffer_t) 
+gs_graphics_uniform_buffer_create(const gs_graphics_uniform_buffer_desc_t* desc)
+{
+    return gs_graphics()->api.uniform_buffer_create(desc); 
+}
+
+GS_API_DECL gs_handle(gs_graphics_storage_buffer_t) 
+gs_graphics_storage_buffer_create(const gs_graphics_storage_buffer_desc_t* desc)
+{ 
+    return gs_graphics()->api.storage_buffer_create(desc); 
+}
+
+GS_API_DECL gs_handle(gs_graphics_framebuffer_t)    
+gs_graphics_framebuffer_create(const gs_graphics_framebuffer_desc_t* desc)
+{
+    return gs_graphics()->api.framebuffer_create(desc); 
+}
+
+GS_API_DECL gs_handle(gs_graphics_renderpass_t)     
+gs_graphics_renderpass_create(const gs_graphics_renderpass_desc_t* desc)
+{ 
+    return gs_graphics()->api.renderpass_create(desc); 
+}
+
+GS_API_DECL gs_handle(gs_graphics_pipeline_t)       
+gs_graphics_pipeline_create(const gs_graphics_pipeline_desc_t* desc)
+{
+    return gs_graphics()->api.pipeline_create(desc); 
+} 
+
+// Destroy
+GS_API_DECL void 
+gs_graphics_texture_destroy(gs_handle(gs_graphics_texture_t) hndl)
+{
+    return gs_graphics()->api.texture_destroy(hndl); 
+} 
+
+GS_API_DECL void 
+gs_graphics_uniform_destroy(gs_handle(gs_graphics_uniform_t) hndl)
+{ 
+    return gs_graphics()->api.uniform_destroy(hndl); 
+}
+
+GS_API_DECL void  
+gs_graphics_shader_destroy(gs_handle(gs_graphics_shader_t) hndl)
+{ 
+    return gs_graphics()->api.shader_destroy(hndl); 
+}
+
+GS_API_DECL void  
+gs_graphics_vertex_buffer_destroy(gs_handle(gs_graphics_vertex_buffer_t) hndl)
+{
+    return gs_graphics()->api.vertex_buffer_destroy(hndl); 
+}
+
+GS_API_DECL void  
+gs_graphics_index_buffer_destroy(gs_handle(gs_graphics_index_buffer_t) hndl)
+{ 
+    return gs_graphics()->api.index_buffer_destroy(hndl); 
+}
+
+GS_API_DECL void  
+gs_graphics_uniform_buffer_destroy(gs_handle(gs_graphics_uniform_buffer_t) hndl)
+{
+    return gs_graphics()->api.uniform_buffer_destroy(hndl); 
+}
+
+GS_API_DECL void  
+gs_graphics_storage_buffer_destroy(gs_handle(gs_graphics_storage_buffer_t) hndl)
+{ 
+    return gs_graphics()->api.storage_buffer_destroy(hndl); 
+}
+
+GS_API_DECL void  
+gs_graphics_framebuffer_destroy(gs_handle(gs_graphics_framebuffer_t) hndl)
+{
+    return gs_graphics()->api.framebuffer_destroy(hndl); 
+}
+
+GS_API_DECL void  
+gs_graphics_renderpass_destroy(gs_handle(gs_graphics_renderpass_t) hndl)
+{ 
+    return gs_graphics()->api.renderpass_destroy(hndl); 
+}
+
+GS_API_DECL void  
+gs_graphics_pipeline_destroy(gs_handle(gs_graphics_pipeline_t) hndl)
+{
+    return gs_graphics()->api.pipeline_destroy(hndl); 
+}
+
+// Resource Updates (main thread only) 
+GS_API_DECL void  
+gs_graphics_vertex_buffer_update(gs_handle(gs_graphics_vertex_buffer_t) hndl, gs_graphics_vertex_buffer_desc_t* desc)
+{
+    return gs_graphics()->api.vertex_buffer_update(hndl, desc); 
+}
+
+GS_API_DECL void  
+gs_graphics_index_buffer_update(gs_handle(gs_graphics_index_buffer_t) hndl, gs_graphics_index_buffer_desc_t* desc)
+{ 
+    return gs_graphics()->api.index_buffer_update(hndl, desc); 
+}
+
+GS_API_DECL void  
+gs_graphics_storage_buffer_update(gs_handle(gs_graphics_storage_buffer_t) hndl, gs_graphics_storage_buffer_desc_t* desc)
+{
+    return gs_graphics()->api.storage_buffer_update(hndl, desc); 
+}
+
+GS_API_DECL void  
+gs_graphics_texture_update(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc)
+{
+    return gs_graphics()->api.texture_update(hndl, desc); 
+} 
 
 /*=============================
 // GS_AUDIO
@@ -8613,13 +8771,13 @@ gs_create(gs_app_desc_t app_desc)
     if (gs_instance() == NULL)
     {
         // Check app desc for defaults
-        if (app_desc.window_width == 0)     app_desc.window_width = 800;
-        if (app_desc.window_height == 0)    app_desc.window_height = 600;
-        if (app_desc.window_title == 0)     app_desc.window_title = "App";
-        if (app_desc.frame_rate <= 0.f)     app_desc.frame_rate = 60.f;
-        if (app_desc.update == NULL)        app_desc.update = &gs_default_app_func;
-        if (app_desc.shutdown == NULL)      app_desc.shutdown = &gs_default_app_func;
-        if (app_desc.init == NULL)          app_desc.init = &gs_default_app_func; 
+        if (app_desc.window.width == 0)         app_desc.window.width = 800;
+        if (app_desc.window.height == 0)        app_desc.window.height = 600;
+        if (app_desc.window.title == 0)         app_desc.window.title = "App";
+        if (app_desc.window.frame_rate <= 0.f)  app_desc.window.frame_rate = 60.f;
+        if (app_desc.update == NULL)            app_desc.update = &gs_default_app_func;
+        if (app_desc.shutdown == NULL)          app_desc.shutdown = &gs_default_app_func;
+        if (app_desc.init == NULL)              app_desc.init = &gs_default_app_func; 
 
         // Set up os api before all?
         gs_os_api_t os = gs_os_api_new();
@@ -8647,13 +8805,13 @@ gs_create(gs_app_desc_t app_desc)
         gs_platform_init(gs_subsystem(platform));
 
         // Set frame rate for application
-        gs_subsystem(platform)->time.max_fps = app_desc.frame_rate;
+        gs_subsystem(platform)->time.max_fps = app_desc.window.frame_rate;
 
-        // Construct main window
-        gs_platform_create_window(app_desc.window_title, app_desc.window_width, app_desc.window_height, app_desc.monitor_index);
+        // Construct main window 
+        gs_platform_window_create(&app_desc.window);
 
         // Set vsync for video
-        gs_platform_enable_vsync(app_desc.enable_vsync); 
+        gs_platform_enable_vsync(app_desc.window.vsync); 
 
         // Construct graphics api 
         gs_subsystem(graphics) = gs_graphics_create();

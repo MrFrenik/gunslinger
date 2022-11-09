@@ -735,9 +735,13 @@ gsgl_texture_t gl_texture_update_internal(const gs_graphics_texture_desc_t* desc
         glGenerateMipmap(target);
     }
 
-    // float aniso = 0.0f;
-    // glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &aniso);
-    // glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, aniso); 
+    // Need to make sure this is available before being able to use
+
+    CHECK_GL_CORE(
+        float aniso = 0.0f;
+        glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &aniso);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, aniso); 
+    );
 
     glTexParameteri(target, GL_TEXTURE_WRAP_S, texture_wrap_s);
     glTexParameteri(target, GL_TEXTURE_WRAP_T, texture_wrap_t);
