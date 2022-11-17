@@ -836,8 +836,6 @@ gs_gfxt_mesh_update_or_create(gs_gfxt_mesh_t* mesh, const gs_gfxt_mesh_desc_t* d
     {
         gs_free(desc->meshes);
     }
-
-    return mesh;
 }
 
 GS_API_DECL gs_gfxt_renderable_t 
