@@ -1756,6 +1756,7 @@ void gs_graphics_command_buffer_submit_impl(gs_command_buffer_t* cb)
                     }
                     if (action.flag & GS_GRAPHICS_CLEAR_STENCIL || action.flag == 0x00) {
                         bit |= GL_STENCIL_BUFFER_BIT;
+                        glStencilMask(~0);
                     }
 
                     glClear(bit);

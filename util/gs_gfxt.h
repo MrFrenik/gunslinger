@@ -879,24 +879,32 @@ gs_gfxt_mesh_destroy(gs_gfxt_mesh_t* mesh)
         gs_gfxt_mesh_primitive_t* prim = &mesh->primitives[p]; 
 
         // Free index buffer
-        gs_graphics_index_buffer_destroy(prim->indices);
+		if (prim->indices.id) gs_graphics_index_buffer_destroy(prim->indices);
 
         // Free vertex stream
-        gs_graphics_vertex_buffer_destroy(prim->stream.positions);
-        gs_graphics_vertex_buffer_destroy(prim->stream.normals);
-        gs_graphics_vertex_buffer_destroy(prim->stream.tangents);
+        if (prim->stream.positions.id) gs_graphics_vertex_buffer_destroy(prim->stream.positions);
+        if (prim->stream.normals.id)   gs_graphics_vertex_buffer_destroy(prim->stream.normals);
+        if (prim->stream.tangents.id)  gs_graphics_vertex_buffer_destroy(prim->stream.tangents);
 
-        for (uint32_t i = 0; i < GS_GFXT_COLOR_MAX; ++i) 
-            gs_graphics_vertex_buffer_destroy(prim->stream.colors[i]);
+		for (uint32_t i = 0; i < GS_GFXT_COLOR_MAX; ++i)
+		{
+			if (prim->stream.colors[i].id) gs_graphics_vertex_buffer_destroy(prim->stream.colors[i]);
+		}
 
-        for (uint32_t i = 0; i < GS_GFXT_TEX_COORD_MAX; ++i) 
-            gs_graphics_vertex_buffer_destroy(prim->stream.tex_coords[i]);
+		for (uint32_t i = 0; i < GS_GFXT_TEX_COORD_MAX; ++i)
+		{ 
+            if (prim->stream.tex_coords[i].id) gs_graphics_vertex_buffer_destroy(prim->stream.tex_coords[i]);
+		}
 
-        for (uint32_t i = 0; i < GS_GFXT_JOINT_MAX; ++i) 
-            gs_graphics_vertex_buffer_destroy(prim->stream.joints[i]);
+		for (uint32_t i = 0; i < GS_GFXT_JOINT_MAX; ++i)
+		{ 
+            if (prim->stream.joints[i].id) gs_graphics_vertex_buffer_destroy(prim->stream.joints[i]);
+		}
 
-        for (uint32_t i = 0; i < GS_GFXT_WEIGHT_MAX; ++i) 
-            gs_graphics_vertex_buffer_destroy(prim->stream.weights[i]);
+		for ( uint32_t i = 0; i < GS_GFXT_WEIGHT_MAX; ++i )
+		{ 
+            if (prim->stream.weights[i].id) gs_graphics_vertex_buffer_destroy(prim->stream.weights[i]);
+		}
     }
 }
 
@@ -2324,6 +2332,7 @@ gs_gfxt_mesh_attribute_type gs_mesh_attribute_type_from_token(const gs_token_t* 
     if (gs_token_compare_text(token, "POSITION"))       return GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION;
     else if (gs_token_compare_text(token, "NORMAL"))    return GS_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL;
     else if (gs_token_compare_text(token, "COLOR"))     return GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR;
+    else if (gs_token_compare_text(token, "TANGENT"))     return GS_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT;
     else if (gs_token_compare_text(token, "TEXCOORD0"))  return GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD;
     else if (gs_token_compare_text(token, "TEXCOORD1"))  return GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD;
     else if (gs_token_compare_text(token, "TEXCOORD2"))  return GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD;
@@ -2384,6 +2393,7 @@ bool gs_parse_vertex_mesh_attributes(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* d
                 if (gs_token_compare_text(&token, "POSITION"))        PUSH_ATTR(POSITION, FLOAT3);
                 else if (gs_token_compare_text(&token, "NORMAL"))     PUSH_ATTR(NORMAL, FLOAT3);
                 else if (gs_token_compare_text(&token, "COLOR"))      PUSH_ATTR(COLOR, BYTE4);
+                else if (gs_token_compare_text(&token, "TANGENT"))    PUSH_ATTR(TANGENT, FLOAT3);
                 else if (gs_token_compare_text(&token, "TEXCOORD"))   PUSH_ATTR(TEXCOORD, FLOAT2);
                 else if (gs_token_compare_text(&token, "TEXCOORD0"))  PUSH_ATTR(TEXCOORD, FLOAT2);
                 else if (gs_token_compare_text(&token, "TEXCOORD1"))  PUSH_ATTR(TEXCOORD, FLOAT2);
@@ -2400,7 +2410,7 @@ bool gs_parse_vertex_mesh_attributes(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* d
                 else if (gs_token_compare_text(&token, "FLOAT"))      PUSH_ATTR(WEIGHT, FLOAT4);   
                 else if (gs_token_compare_text(&token, "FLOAT2"))     PUSH_ATTR(TEXCOORD, FLOAT2); 
                 else if (gs_token_compare_text(&token, "FLOAT3"))     PUSH_ATTR(POSITION, FLOAT3);  
-                else if (gs_token_compare_text(&token, "FLOAT4"))     PUSH_ATTR(TANGENT, FLOAT4);  
+                // else if (gs_token_compare_text(&token, "FLOAT4"))     PUSH_ATTR(TANGENT, FLOAT4);  
                 else 
                 {
                     gs_log_warning("Unidentified vertex attribute: %.*s: %.*s", 

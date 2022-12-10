@@ -920,6 +920,126 @@ gs_color_t gs_color_alpha(gs_color_t c, uint8_t a)
     return gs_color(c.r, c.g, c.b, a); 
 }
 
+gs_force_inline gs_hsv_t 
+gs_rgb2hsv(gs_color_t in)
+{
+    float ir = (float)in.r / 255.f;
+    float ig = (float)in.g / 255.f;
+    float ib = (float)in.b / 255.f;
+    float ia = (float)in.a / 255.f;
+
+    gs_hsv_t out = gs_default_val();
+    double min, max, delta;
+
+    min = ir < ig ? ir : ig;
+    min = min  < ib ? min  : ib;
+
+    max = ir > ig ? ir : ig;
+    max = max > ib ? max  : ib;
+
+    out.v = max;                                // v
+    delta = max - min;
+    if (delta < 0.00001)
+    {
+        out.s = 0;
+        out.h = 0; // undefined, maybe nan?
+        return out;
+    }
+
+    if(max > 0.0) 
+    { // NOTE: if Max is == 0, this divide would cause a crash
+        out.s = (delta / max);                  // s
+    } 
+    else 
+    {
+        // if max is 0, then r = g = b = 0              
+        // s = 0, h is undefined
+        out.s = 0.0;
+        out.h = NAN;                            // its now undefined
+        return out;
+    }
+    if(ir >= max)                           // > is bogus, just keeps compilor happy
+        out.h = (ig - ib) / delta;        // between yellow & magenta
+    else
+    if( ig >= max )
+        out.h = 2.0 + ( ib - ir ) / delta;  // between cyan & yellow
+    else
+        out.h = 4.0 + ( ir - ig ) / delta;  // between magenta & cyan
+
+    out.h *= 60.0;                              // degrees
+
+    if( out.h < 0.0 )
+        out.h += 360.0;
+
+    return out;
+}
+
+gs_force_inline gs_color_t 
+gs_hsv2rgb(gs_hsv_t in)
+{
+    double      hh, p, q, t, ff;
+    long        i;
+    gs_color_t  out;
+
+    if(in.s <= 0.0) {       // < is bogus, just shuts up warnings
+        out.r = in.v * 255;
+        out.g = in.v * 255;
+        out.b = in.v * 255;
+        out.a = 255;
+        return out;
+    }
+    hh = in.h;
+    if(hh >= 360.0) hh = 0.0;
+    hh /= 60.0;
+    i = (long)hh;
+    ff = hh - i;
+    p = in.v * (1.0 - in.s);
+    q = in.v * (1.0 - (in.s * ff));
+    t = in.v * (1.0 - (in.s * (1.0 - ff)));
+
+    uint8_t iv = in.v * 255;
+    uint8_t it = t * 255;
+    uint8_t ip = p * 255;
+    uint8_t iq = q * 255;
+
+    switch(i) 
+    {
+        case 0:
+            out.r = iv;
+            out.g = it;
+            out.b = ip;
+            break;
+        case 1:
+            out.r = iq;
+            out.g = iv;
+            out.b = ip;
+            break;
+        case 2:
+            out.r = ip;
+            out.g = iv;
+            out.b = it;
+            break;
+
+        case 3:
+            out.r = ip;
+            out.g = iq;
+            out.b = iv;
+            break;
+        case 4:
+            out.r = it;
+            out.g = ip;
+            out.b = iv;
+            break;
+        case 5:
+        default:
+            out.r = iv;
+            out.g = ip;
+            out.b = iq;
+            break;
+        }
+    return out;
+}
+
 /*===================================
 // String Utils
 ===================================*/
@@ -5727,6 +5847,7 @@ typedef struct gs_graphics_texture_desc_t
         uint32_t height;    // Height in texels for texture
         size_t size;        // Size in bytes for data to be read
     } read;
+    uint16_t flip_y;        // Whether or not y is flipped
 } gs_graphics_texture_desc_t;
 
 /* Graphics Uniform Layout Desc */
@@ -7712,7 +7833,7 @@ gs_asset_texture_load_from_file(const char* path, void* out, gs_graphics_texture
     }
 
     int32_t comp = 0;
-    stbi_set_flip_vertically_on_load(flip_on_load);
+    stbi_set_flip_vertically_on_load(t->desc.flip_y);
     *t->desc.data = (uint8_t*)stbi_load_from_file(f, (int32_t*)&t->desc.width, (int32_t*)&t->desc.height, (int32_t*)&comp, STBI_rgb_alpha);
 
     if (!t->desc.data) {
@@ -7762,7 +7883,7 @@ bool gs_asset_texture_load_from_memory(const void* memory, size_t sz, void* out,
     // Load texture data
     int32_t num_comps = 0;
     bool32_t loaded = gs_util_load_texture_data_from_memory(memory, sz, (int32_t*)&t->desc.width, 
-        (int32_t*)&t->desc.height, (uint32_t*)&num_comps, (void**)&t->desc.data, flip_on_load);
+        (int32_t*)&t->desc.height, (uint32_t*)&num_comps, (void**)&t->desc.data, t->desc.flip_y);
 
     if (!loaded) {
         return false;
