@@ -7989,7 +7989,7 @@ GS_API_DECL float gs_asset_font_max_height(const gs_asset_font_t* fp)
     while (txt[0] != '\0')
     {
         char c = txt[0];
-        if (c >= 32 && c <= 127) 
+        if (c >= 32 && c <= 127)
         {
             stbtt_aligned_quad q = gs_default_val();
             stbtt_GetBakedQuad((stbtt_bakedchar*)fp->glyphs, fp->texture.desc.width, fp->texture.desc.height, c - 32, &x, &y, &q, 1);
