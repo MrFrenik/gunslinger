@@ -523,6 +523,10 @@
     #define gs_force_inline gs_inline
 #endif
 
+#define GS_INLINE           gs_force_inline
+#define GS_GLOBAL           gs_global
+#define GS_LOCAL_PERSIST    gs_local_persist
+
 #ifdef __cplusplus
     #pragma warning(disable:4996)
 #endif
@@ -720,6 +724,9 @@ typedef bool32_t          bool32;
 
 //=== Logging ===//
 
+#define gs_log_info(MESSAGE, ...)\
+    gs_println("LOG::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+
 #define gs_log_success(MESSAGE, ...)\
     gs_println("SUCCESS::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
 
@@ -911,6 +918,126 @@ gs_force_inline
 gs_color_t gs_color_alpha(gs_color_t c, uint8_t a)
 {
     return gs_color(c.r, c.g, c.b, a); 
+}
+
+gs_force_inline gs_hsv_t 
+gs_rgb2hsv(gs_color_t in)
+{
+    float ir = (float)in.r / 255.f;
+    float ig = (float)in.g / 255.f;
+    float ib = (float)in.b / 255.f;
+    float ia = (float)in.a / 255.f;
+
+    gs_hsv_t out = gs_default_val();
+    double min, max, delta;
+
+    min = ir < ig ? ir : ig;
+    min = min  < ib ? min  : ib;
+
+    max = ir > ig ? ir : ig;
+    max = max > ib ? max  : ib;
+
+    out.v = max;                                // v
+    delta = max - min;
+    if (delta < 0.00001)
+    {
+        out.s = 0;
+        out.h = 0; // undefined, maybe nan?
+        return out;
+    }
+
+    if(max > 0.0) 
+    { // NOTE: if Max is == 0, this divide would cause a crash
+        out.s = (delta / max);                  // s
+    } 
+    else 
+    {
+        // if max is 0, then r = g = b = 0              
+        // s = 0, h is undefined
+        out.s = 0.0;
+        out.h = NAN;                            // its now undefined
+        return out;
+    }
+    if(ir >= max)                           // > is bogus, just keeps compilor happy
+        out.h = (ig - ib) / delta;        // between yellow & magenta
+    else
+    if( ig >= max )
+        out.h = 2.0 + ( ib - ir ) / delta;  // between cyan & yellow
+    else
+        out.h = 4.0 + ( ir - ig ) / delta;  // between magenta & cyan
+
+    out.h *= 60.0;                              // degrees
+
+    if( out.h < 0.0 )
+        out.h += 360.0;
+
+    return out;
+}
+
+gs_force_inline gs_color_t 
+gs_hsv2rgb(gs_hsv_t in)
+{
+    double      hh, p, q, t, ff;
+    long        i;
+    gs_color_t  out;
+
+    if(in.s <= 0.0) {       // < is bogus, just shuts up warnings
+        out.r = in.v * 255;
+        out.g = in.v * 255;
+        out.b = in.v * 255;
+        out.a = 255;
+        return out;
+    }
+    hh = in.h;
+    if(hh >= 360.0) hh = 0.0;
+    hh /= 60.0;
+    i = (long)hh;
+    ff = hh - i;
+    p = in.v * (1.0 - in.s);
+    q = in.v * (1.0 - (in.s * ff));
+    t = in.v * (1.0 - (in.s * (1.0 - ff)));
+
+    uint8_t iv = in.v * 255;
+    uint8_t it = t * 255;
+    uint8_t ip = p * 255;
+    uint8_t iq = q * 255;
+
+    switch(i) 
+    {
+        case 0:
+            out.r = iv;
+            out.g = it;
+            out.b = ip;
+            break;
+        case 1:
+            out.r = iq;
+            out.g = iv;
+            out.b = ip;
+            break;
+        case 2:
+            out.r = ip;
+            out.g = iv;
+            out.b = it;
+            break;
+
+        case 3:
+            out.r = ip;
+            out.g = iq;
+            out.b = iv;
+            break;
+        case 4:
+            out.r = it;
+            out.g = ip;
+            out.b = iv;
+            break;
+        case 5:
+        default:
+            out.r = iv;
+            out.g = ip;
+            out.b = iq;
+            break;
+        }
+    return out;
 }
 
 /*===================================
@@ -4242,6 +4369,51 @@ GS_API_DECL gs_color_t gs_rand_gen_color(gs_mt_rand_t* rand);
 #endif 
 
 /*================================================================================
+// Coroutine (Light wrapper around Minicoro)
+================================================================================*/ 
+
+#define MCO_MALLOC  gs_malloc
+#define MCO_FREE    gs_free
+
+#include "external/minicoro/minicoro.h" 
+
+typedef mco_coro gs_coro_t;
+typedef mco_desc gs_coro_desc_t;
+typedef mco_result gs_coro_result;
+
+// Result
+#define GS_CORO_SUCCESS                 MCO_SUCCESS
+#define GS_CORO_GENERIC_ERROR           MCO_GENERIC_ERROR
+#define GS_CORO_INVALID_POINTER         MCO_INVALID_POINTER
+#define GS_CORO_INVALID_COROUTINE       MCO_INVALID_COROUTINE
+#define GS_CORO_NOT_SUSPENDED           MCO_NOT_SUSPENDED
+#define GS_CORO_NOT_RUNNING             MCO_NOT_RUNNING
+#define GS_CORO_MAKE_CONTEXT_ERROR      MCO_MAKE_CONTEXT_ERROR
+#define GS_CORO_SWITCH_CONTEXT_ERROR    MCO_SWITCH_CONTEXT_ERROR
+#define GS_CORO_NOT_ENOUGH_SPACE        MCO_NOT_ENOUGH_SPACE
+#define GS_CORO_OUT_OF_MEMORY           MCO_OUT_OF_MEMORY
+#define GS_CORO_INVALID_ARGUMENTS       MCO_INVALID_ARGUMENTS
+#define GS_CORO_INVALID_OPERATION       MCO_INVALID_OPERATION
+#define GS_CORO_STACK_OVERFLOW          MCO_STACK_OVERFLOW
+
+// State
+#define GS_CORO_DEAD        MCO_DEAD        // The coroutine has finished normally or was uninitialized before finishing.
+#define GS_CORO_NORMAL      MCO_NORMAL      // The coroutine is active but not running (that is, it has resumed another coroutine).
+#define GS_CORO_RUNNING     MCO_RUNNING     // The coroutine is active and running
+#define GS_CORO_SUSPENDED   MCO_SUSPENDED   //  The coroutine is suspended (in a call to yield, or it has not started running yet).
+
+// Functions
+#define gs_coro_desc_init(DESC, V)       mco_desc_init((DESC), (V))
+#define gs_coro_init(CO, DESC)           mco_init((CO), (DESC))
+#define gs_coro_uninit(CO, DESC)         mco_uninit((CO))
+#define gs_coro_create(CO, DESC)         mco_create((CO), (DESC))
+#define gs_coro_destroy(CO)              mco_destroy((CO))
+#define gs_coro_yield(CO)                mco_yield((CO))
+#define gs_coro_resume(CO)               mco_resume((CO))
+#define gs_coro_result_description(RES)  mco_result_description((RES))
+#define gs_coro_status(CO)               mco_status((CO))
+
+/*================================================================================
 // Noise
 ================================================================================*/
 
@@ -4533,13 +4705,25 @@ typedef struct gs_uuid_t
 
 // Should have an internal resource cache of window handles (controlled by the platform api) 
 
+typedef struct gs_platform_window_desc_t
+{
+    const char* title;
+    uint32_t width;
+    uint32_t height;
+    uint32_t flags; 
+    uint32_t num_samples;       // Multisamples (if 0, then disabled)
+    uint32_t monitor_index;
+    bool32 vsync; 
+    float frame_rate;
+} gs_platform_window_desc_t;
+
 typedef struct gs_platform_window_s
 { 
     void* hndl;
     gs_vec2 framebuffer_size;
     gs_vec2 window_size;
     gs_vec2 window_position;
-} gs_platform_window_t; 
+} gs_platform_window_t;
 
 typedef enum gs_platform_cursor
 {
@@ -4974,8 +5158,7 @@ typedef void (* gs_framebuffer_resize_callback_t)(void*, int32_t width, int32_t 
 // Platform Interface
 ===============================================================================================*/
 
-struct gs_platform_interface_s;
-
+struct gs_platform_interface_s; 
 
 typedef struct gs_platform_t
 {
@@ -5068,7 +5251,7 @@ GS_API_DECL bool      gs_platform_poll_events(gs_platform_event_t* evt, bool32_t
 GS_API_DECL void      gs_platform_add_event(gs_platform_event_t* evt);
 
 // Platform Window
-GS_API_DECL uint32_t gs_platform_create_window(const char* title, uint32_t width, uint32_t height, uint32_t monitor_index);
+GS_API_DECL uint32_t gs_platform_window_create(const gs_platform_window_desc_t* desc);
 GS_API_DECL uint32_t gs_platform_main_window();
 
 typedef struct gs_platform_file_stats_s
@@ -5156,27 +5339,27 @@ GS_API_DECL gs_platform_keycode  gs_platform_codepoint_to_key(uint32_t code);
 GS_API_DECL void                 gs_platform_mouse_set_position(uint32_t handle, float x, float y);
 GS_API_DECL void                 gs_platform_lock_mouse(uint32_t handle, bool32_t lock);
 
-GS_API_DECL void*    gs_platform_create_window_internal(const char* title, uint32_t width, uint32_t height, uint32_t monitor_index);
-GS_API_DECL void     gs_platform_window_swap_buffer(uint32_t handle);
-GS_API_DECL gs_vec2  gs_platform_window_sizev(uint32_t handle);
-GS_API_DECL void     gs_platform_window_size(uint32_t handle, uint32_t* width, uint32_t* height);
-GS_API_DECL uint32_t gs_platform_window_width(uint32_t handle);
-GS_API_DECL uint32_t gs_platform_window_height(uint32_t handle);
-GS_API_DECL bool32_t gs_platform_window_fullscreen(uint32_t handle);
-GS_API_DECL gs_vec2  gs_platform_window_positionv(uint32_t handle);
-GS_API_DECL void     gs_platform_window_position(uint32_t handle, uint32_t* x, uint32_t* y);
-GS_API_DECL void     gs_platform_set_window_size(uint32_t handle, uint32_t width, uint32_t height);
-GS_API_DECL void     gs_platform_set_window_sizev(uint32_t handle, gs_vec2 v);
-GS_API_DECL void     gs_platform_set_window_fullscreen(uint32_t handle, bool32_t fullscreen);
-GS_API_DECL void     gs_platform_set_window_position(uint32_t handle, uint32_t x, uint32_t y);
-GS_API_DECL void     gs_platform_set_window_positionv(uint32_t handle, gs_vec2 v);
-GS_API_DECL void     gs_platform_set_cursor(uint32_t handle, gs_platform_cursor cursor);
-GS_API_DECL void*    gs_platform_raw_window_handle(uint32_t handle);
-GS_API_DECL gs_vec2  gs_platform_framebuffer_sizev(uint32_t handle);
-GS_API_DECL void     gs_platform_framebuffer_size(uint32_t handle, uint32_t* w, uint32_t* h);
-GS_API_DECL uint32_t gs_platform_framebuffer_width(uint32_t handle);
-GS_API_DECL uint32_t gs_platform_framebuffer_height(uint32_t handle);
-GS_API_DECL gs_vec2  gs_platform_monitor_sizev(uint32_t id);
+GS_API_DECL gs_platform_window_t gs_platform_window_create_internal(const gs_platform_window_desc_t* desc);
+GS_API_DECL void                 gs_platform_window_swap_buffer(uint32_t handle);
+GS_API_DECL gs_vec2              gs_platform_window_sizev(uint32_t handle);
+GS_API_DECL void                 gs_platform_window_size(uint32_t handle, uint32_t* width, uint32_t* height);
+GS_API_DECL uint32_t             gs_platform_window_width(uint32_t handle);
+GS_API_DECL uint32_t             gs_platform_window_height(uint32_t handle);
+GS_API_DECL bool32_t             gs_platform_window_fullscreen(uint32_t handle);
+GS_API_DECL gs_vec2              gs_platform_window_positionv(uint32_t handle);
+GS_API_DECL void                 gs_platform_window_position(uint32_t handle, uint32_t* x, uint32_t* y);
+GS_API_DECL void                 gs_platform_set_window_size(uint32_t handle, uint32_t width, uint32_t height);
+GS_API_DECL void                 gs_platform_set_window_sizev(uint32_t handle, gs_vec2 v);
+GS_API_DECL void                 gs_platform_set_window_fullscreen(uint32_t handle, bool32_t fullscreen);
+GS_API_DECL void                 gs_platform_set_window_position(uint32_t handle, uint32_t x, uint32_t y);
+GS_API_DECL void                 gs_platform_set_window_positionv(uint32_t handle, gs_vec2 v);
+GS_API_DECL void                 gs_platform_set_cursor(uint32_t handle, gs_platform_cursor cursor);
+GS_API_DECL void*                gs_platform_raw_window_handle(uint32_t handle);
+GS_API_DECL gs_vec2              gs_platform_framebuffer_sizev(uint32_t handle);
+GS_API_DECL void                 gs_platform_framebuffer_size(uint32_t handle, uint32_t* w, uint32_t* h);
+GS_API_DECL uint32_t             gs_platform_framebuffer_width(uint32_t handle);
+GS_API_DECL uint32_t             gs_platform_framebuffer_height(uint32_t handle);
+GS_API_DECL gs_vec2              gs_platform_monitor_sizev(uint32_t id);
 
 // Platform callbacks
 GS_API_DECL void     gs_platform_set_framebuffer_resize_callback(uint32_t handle, gs_framebuffer_resize_callback_t cb);
@@ -5485,6 +5668,7 @@ gs_enum_decl(gs_graphics_buffer_type,
     GS_GRAPHICS_BUFFER_FRAME,
     GS_GRAPHICS_BUFFER_UNIFORM,
     GS_GRAPHICS_BUFFER_UNIFORM_CONSTANT,
+    GS_GRAPHICS_BUFFER_SHADER_STORAGE,
     GS_GRAPHICS_BUFFER_SAMPLER
 );
 
@@ -5664,6 +5848,7 @@ typedef struct gs_graphics_texture_desc_t
         uint32_t height;    // Height in texels for texture
         size_t size;        // Size in bytes for data to be read
     } read;
+    uint16_t flip_y;        // Whether or not y is flipped
 } gs_graphics_texture_desc_t;
 
 /* Graphics Uniform Layout Desc */
@@ -6008,39 +6193,40 @@ GS_API_DECL void           gs_graphics_shutdown(gs_graphics_t* graphics);
 // Graphics Info Object Query
 GS_API_DECL                gs_graphics_info_t* gs_graphics_info();
 
-// Resource Creation
-#define gs_graphics_texture_create(DESC)        gs_graphics()->api.texture_create((DESC))
-#define gs_graphics_uniform_create(DESC)        gs_graphics()->api.uniform_create((DESC))
-#define gs_graphics_shader_create(DESC)         gs_graphics()->api.shader_create((DESC))
-#define gs_graphics_vertex_buffer_create(DESC)  gs_graphics()->api.vertex_buffer_create((DESC))
-#define gs_graphics_index_buffer_create(DESC)   gs_graphics()->api.index_buffer_create((DESC))
-#define gs_graphics_uniform_buffer_create(DESC) gs_graphics()->api.uniform_buffer_create((DESC))
-#define gs_graphics_storage_buffer_create(DESC) gs_graphics()->api.storage_buffer_create((DESC))
-#define gs_graphics_framebuffer_create(DESC)    gs_graphics()->api.framebuffer_create((DESC))
-#define gs_graphics_renderpass_create(DESC)     gs_graphics()->api.renderpass_create((DESC))
-#define gs_graphics_pipeline_create(DESC)       gs_graphics()->api.pipeline_create((DESC))
+// Resource Creation 
+// Create
+GS_API_DECL gs_handle(gs_graphics_texture_t)        gs_graphics_texture_create(const gs_graphics_texture_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_uniform_t)        gs_graphics_uniform_create(const gs_graphics_uniform_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_shader_t)         gs_graphics_shader_create(const gs_graphics_shader_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_vertex_buffer_t)  gs_graphics_vertex_buffer_create(const gs_graphics_vertex_buffer_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_index_buffer_t)   gs_graphics_index_buffer_create(const gs_graphics_index_buffer_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_uniform_buffer_t) gs_graphics_uniform_buffer_create(const gs_graphics_uniform_buffer_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_storage_buffer_t) gs_graphics_storage_buffer_create(const gs_graphics_storage_buffer_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_framebuffer_t)    gs_graphics_framebuffer_create(const gs_graphics_framebuffer_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_renderpass_t)     gs_graphics_renderpass_create(const gs_graphics_renderpass_desc_t* desc);
+GS_API_DECL gs_handle(gs_graphics_pipeline_t)       gs_graphics_pipeline_create(const gs_graphics_pipeline_desc_t* desc); 
 
-// Resource Destruction
-#define gs_graphics_texture_destroy(HNDL)           gs_graphics()->api.texture_destroy((HNDL))
-#define gs_graphics_uniform_destroy(HNDL)           gs_graphics()->api.uniform_destroy((HNDL))  
-#define gs_graphics_shader_destroy(HNDL)            gs_graphics()->api.shader_destroy((HNDL))
-#define gs_graphics_vertex_buffer_destroy(HNDL)     gs_graphics()->api.vertex_buffer_destroy((HNDL))
-#define gs_graphics_index_buffer_destroy(HNDL)      gs_graphics()->api.index_buffer_destroy((HNDL))
-#define gs_graphics_uniform_buffer_destroy(HNDL)    gs_graphics()->api.uniform_buffer_destroy((HNDL))
-#define gs_graphics_storage_buffer_destroy(HNDL)    gs_graphics()->api.storage_buffer_destroy((HNDL))
-#define gs_graphics_framebuffer_destroy(HNDL)       gs_graphics()->api.framebuffer_destroy((HNDL))
-#define gs_graphics_renderpass_destroy(HNDL)        gs_graphics()->api.renderpass_destroy((HNDL))
-#define gs_graphics_pipeline_destroy(HNDL)          gs_graphics()->api.pipeline_destroy((HNDL))
+// Destroy
+GS_API_DECL void gs_graphics_texture_destroy(gs_handle(gs_graphics_texture_t) hndl); 
+GS_API_DECL void gs_graphics_uniform_destroy(gs_handle(gs_graphics_uniform_t) hndl);
+GS_API_DECL void  gs_graphics_shader_destroy(gs_handle(gs_graphics_shader_t) hndl);
+GS_API_DECL void  gs_graphics_vertex_buffer_destroy(gs_handle(gs_graphics_vertex_buffer_t) hndl);
+GS_API_DECL void  gs_graphics_index_buffer_destroy(gs_handle(gs_graphics_index_buffer_t) hndl);
+GS_API_DECL void  gs_graphics_uniform_buffer_destroy(gs_handle(gs_graphics_uniform_buffer_t) hndl);
+GS_API_DECL void  gs_graphics_storage_buffer_destroy(gs_handle(gs_graphics_storage_buffer_t) hndl);
+GS_API_DECL void  gs_graphics_framebuffer_destroy(gs_handle(gs_graphics_framebuffer_t) hndl);
+GS_API_DECL void  gs_graphics_renderpass_destroy(gs_handle(gs_graphics_renderpass_t) hndl);
+GS_API_DECL void  gs_graphics_pipeline_destroy(gs_handle(gs_graphics_pipeline_t) hndl); 
+
+// Resource Updates (main thread only) 
+GS_API_DECL void  gs_graphics_vertex_buffer_update(gs_handle(gs_graphics_vertex_buffer_t) hndl, gs_graphics_vertex_buffer_desc_t* desc); 
+GS_API_DECL void  gs_graphics_index_buffer_update(gs_handle(gs_graphics_index_buffer_t) hndl, gs_graphics_index_buffer_desc_t* desc);
+GS_API_DECL void  gs_graphics_storage_buffer_update(gs_handle(gs_graphics_storage_buffer_t) hndl, gs_graphics_storage_buffer_desc_t* desc);
+GS_API_DECL void  gs_graphics_texture_update(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc); 
 
 // Resource Queries
 GS_API_DECL void gs_graphics_pipeline_desc_query(gs_handle(gs_graphics_pipeline_t) hndl, gs_graphics_pipeline_desc_t* out);
-GS_API_DECL void gs_graphics_texture_desc_query(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* out);
-
-// Resource Updates (main thread only) 
-#define gs_graphics_vertex_buffer_update(HNDL, DESC)    gs_graphics()->api.vertex_buffer_update((HNDL), (DESC))
-#define gs_graphics_index_buffer_update(HNDL, DESC)     gs_graphics()->api.index_buffer_update((HNDL), (DESC))
-#define gs_graphics_storage_buffer_update(HNDL, DESC)   gs_graphics()->api.storage_buffer_update((HNDL), (DESC))
-#define gs_graphics_texture_update(HNDL, DESC)          gs_graphics()->api.texture_update((HNDL), (DESC))
+GS_API_DECL void gs_graphics_texture_desc_query(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* out); 
 
 // Resource In-Flight Update
 GS_API_DECL void gs_graphics_texture_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);
@@ -6065,15 +6251,15 @@ GS_API_DECL void gs_graphics_dispatch_compute(gs_command_buffer_t* cb, uint32_t 
 
 #ifndef GS_NO_SHORT_NAME
     
-typedef gs_handle(gs_graphics_shader_t)         gs_shader;
-typedef gs_handle(gs_graphics_texture_t)        gs_texture;
-typedef gs_handle(gs_graphics_renderpass_t)     gs_renderpass;
-typedef gs_handle(gs_graphics_framebuffer_t)    gs_framebuffer;
-typedef gs_handle(gs_graphics_pipeline_t)       gs_pipeline;
-typedef gs_handle(gs_graphics_vertex_buffer_t)  gs_vbo;
-typedef gs_handle(gs_graphics_index_buffer_t)   gs_ibo;
-typedef gs_handle(gs_graphics_uniform_buffer_t) gs_ubo;
-typedef gs_handle(gs_graphics_uniform_t)        gs_uniform;
+typedef gs_handle(gs_graphics_shader_t)         gs_shader_t;
+typedef gs_handle(gs_graphics_texture_t)        gs_texture_t;
+typedef gs_handle(gs_graphics_renderpass_t)     gs_renderpass_t;
+typedef gs_handle(gs_graphics_framebuffer_t)    gs_framebuffer_t;
+typedef gs_handle(gs_graphics_pipeline_t)       gs_pipeline_t;
+typedef gs_handle(gs_graphics_vertex_buffer_t)  gs_vbo_t;
+typedef gs_handle(gs_graphics_index_buffer_t)   gs_ibo_t;
+typedef gs_handle(gs_graphics_uniform_buffer_t) gs_ubo_t;
+typedef gs_handle(gs_graphics_uniform_t)        gs_uniform_t;
 
 #endif 
 
@@ -6216,7 +6402,7 @@ GS_API_DECL bool gs_util_load_gltf_data_from_memory(const void* memory, size_t s
 /** @defgroup gs_app App/Engine
  *  Gunslinger App/Engine
  *  @{
- */
+ */ 
 
 // Application descriptor for user application
 typedef struct gs_app_desc_t
@@ -6224,13 +6410,7 @@ typedef struct gs_app_desc_t
     void (* init)();
     void (* update)();
     void (* shutdown)();
-    const char* window_title;
-    uint32_t window_width;
-    uint32_t window_height;
-    uint32_t window_flags;
-    uint32_t monitor_index;
-    float frame_rate;
-    bool32 enable_vsync;
+    gs_platform_window_desc_t window;
     bool32 is_running;
     bool32 debug_gfx;
     void* user_data;
@@ -6364,6 +6544,153 @@ gs_main(int32_t argc, char** argv);
 #endif
 
 #include "impl/gs_graphics_impl.h"
+
+// Resource Creation 
+GS_API_DECL gs_handle(gs_graphics_texture_t)        
+gs_graphics_texture_create(const gs_graphics_texture_desc_t* desc)
+{
+    return gs_graphics()->api.texture_create(desc);
+}
+
+GS_API_DECL gs_handle(gs_graphics_uniform_t)        
+gs_graphics_uniform_create(const gs_graphics_uniform_desc_t* desc)
+{
+    return gs_graphics()->api.uniform_create(desc);
+}
+
+GS_API_DECL gs_handle(gs_graphics_shader_t)         
+gs_graphics_shader_create(const gs_graphics_shader_desc_t* desc)
+{
+    return gs_graphics()->api.shader_create(desc);
+}
+
+GS_API_DECL gs_handle(gs_graphics_vertex_buffer_t)  
+gs_graphics_vertex_buffer_create(const gs_graphics_vertex_buffer_desc_t* desc)
+{ 
+    return gs_graphics()->api.vertex_buffer_create(desc);
+}
+
+GS_API_DECL gs_handle(gs_graphics_index_buffer_t)   
+gs_graphics_index_buffer_create(const gs_graphics_index_buffer_desc_t* desc)
+{ 
+    return gs_graphics()->api.index_buffer_create(desc);
+}
+
+GS_API_DECL gs_handle(gs_graphics_uniform_buffer_t) 
+gs_graphics_uniform_buffer_create(const gs_graphics_uniform_buffer_desc_t* desc)
+{
+    return gs_graphics()->api.uniform_buffer_create(desc); 
+}
+
+GS_API_DECL gs_handle(gs_graphics_storage_buffer_t) 
+gs_graphics_storage_buffer_create(const gs_graphics_storage_buffer_desc_t* desc)
+{ 
+    return gs_graphics()->api.storage_buffer_create(desc); 
+}
+
+GS_API_DECL gs_handle(gs_graphics_framebuffer_t)    
+gs_graphics_framebuffer_create(const gs_graphics_framebuffer_desc_t* desc)
+{
+    return gs_graphics()->api.framebuffer_create(desc); 
+}
+
+GS_API_DECL gs_handle(gs_graphics_renderpass_t)     
+gs_graphics_renderpass_create(const gs_graphics_renderpass_desc_t* desc)
+{ 
+    return gs_graphics()->api.renderpass_create(desc); 
+}
+
+GS_API_DECL gs_handle(gs_graphics_pipeline_t)       
+gs_graphics_pipeline_create(const gs_graphics_pipeline_desc_t* desc)
+{
+    return gs_graphics()->api.pipeline_create(desc); 
+} 
+
+// Destroy
+GS_API_DECL void 
+gs_graphics_texture_destroy(gs_handle(gs_graphics_texture_t) hndl)
+{
+    return gs_graphics()->api.texture_destroy(hndl); 
+} 
+
+GS_API_DECL void 
+gs_graphics_uniform_destroy(gs_handle(gs_graphics_uniform_t) hndl)
+{ 
+    return gs_graphics()->api.uniform_destroy(hndl); 
+}
+
+GS_API_DECL void  
+gs_graphics_shader_destroy(gs_handle(gs_graphics_shader_t) hndl)
+{ 
+    return gs_graphics()->api.shader_destroy(hndl); 
+}
+
+GS_API_DECL void  
+gs_graphics_vertex_buffer_destroy(gs_handle(gs_graphics_vertex_buffer_t) hndl)
+{
+    return gs_graphics()->api.vertex_buffer_destroy(hndl); 
+}
+
+GS_API_DECL void  
+gs_graphics_index_buffer_destroy(gs_handle(gs_graphics_index_buffer_t) hndl)
+{ 
+    return gs_graphics()->api.index_buffer_destroy(hndl); 
+}
+
+GS_API_DECL void  
+gs_graphics_uniform_buffer_destroy(gs_handle(gs_graphics_uniform_buffer_t) hndl)
+{
+    return gs_graphics()->api.uniform_buffer_destroy(hndl); 
+}
+
+GS_API_DECL void  
+gs_graphics_storage_buffer_destroy(gs_handle(gs_graphics_storage_buffer_t) hndl)
+{ 
+    return gs_graphics()->api.storage_buffer_destroy(hndl); 
+}
+
+GS_API_DECL void  
+gs_graphics_framebuffer_destroy(gs_handle(gs_graphics_framebuffer_t) hndl)
+{
+    return gs_graphics()->api.framebuffer_destroy(hndl); 
+}
+
+GS_API_DECL void  
+gs_graphics_renderpass_destroy(gs_handle(gs_graphics_renderpass_t) hndl)
+{ 
+    return gs_graphics()->api.renderpass_destroy(hndl); 
+}
+
+GS_API_DECL void  
+gs_graphics_pipeline_destroy(gs_handle(gs_graphics_pipeline_t) hndl)
+{
+    return gs_graphics()->api.pipeline_destroy(hndl); 
+}
+
+// Resource Updates (main thread only) 
+GS_API_DECL void  
+gs_graphics_vertex_buffer_update(gs_handle(gs_graphics_vertex_buffer_t) hndl, gs_graphics_vertex_buffer_desc_t* desc)
+{
+    return gs_graphics()->api.vertex_buffer_update(hndl, desc); 
+}
+
+GS_API_DECL void  
+gs_graphics_index_buffer_update(gs_handle(gs_graphics_index_buffer_t) hndl, gs_graphics_index_buffer_desc_t* desc)
+{ 
+    return gs_graphics()->api.index_buffer_update(hndl, desc); 
+}
+
+GS_API_DECL void  
+gs_graphics_storage_buffer_update(gs_handle(gs_graphics_storage_buffer_t) hndl, gs_graphics_storage_buffer_desc_t* desc)
+{
+    return gs_graphics()->api.storage_buffer_update(hndl, desc); 
+}
+
+GS_API_DECL void  
+gs_graphics_texture_update(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc)
+{
+    return gs_graphics()->api.texture_update(hndl, desc); 
+} 
 
 /*=============================
 // GS_AUDIO
@@ -7144,6 +7471,14 @@ gs_rand_gen_color(gs_mt_rand_t* rand)
 }
 
 /*================================================================================
+// Coroutine
+================================================================================*/ 
+
+// Light wrapper around Minicoro
+#define MINICORO_IMPL
+#include "external/minicoro/minicoro.h"
+
+/*================================================================================
 // Noise
 ================================================================================*/ 
 
@@ -7500,7 +7835,7 @@ gs_asset_texture_load_from_file(const char* path, void* out, gs_graphics_texture
     }
 
     int32_t comp = 0;
-    stbi_set_flip_vertically_on_load(flip_on_load);
+    stbi_set_flip_vertically_on_load(t->desc.flip_y);
     *t->desc.data = (uint8_t*)stbi_load_from_file(f, (int32_t*)&t->desc.width, (int32_t*)&t->desc.height, (int32_t*)&comp, STBI_rgb_alpha);
 
     if (!t->desc.data) {
@@ -7550,7 +7885,7 @@ bool gs_asset_texture_load_from_memory(const void* memory, size_t sz, void* out,
     // Load texture data
     int32_t num_comps = 0;
     bool32_t loaded = gs_util_load_texture_data_from_memory(memory, sz, (int32_t*)&t->desc.width, 
-        (int32_t*)&t->desc.height, (uint32_t*)&num_comps, (void**)&t->desc.data, flip_on_load);
+        (int32_t*)&t->desc.height, (uint32_t*)&num_comps, (void**)&t->desc.data, t->desc.flip_y);
 
     if (!loaded) {
         return false;
@@ -8569,13 +8904,13 @@ gs_create(gs_app_desc_t app_desc)
     if (gs_instance() == NULL)
     {
         // Check app desc for defaults
-        if (app_desc.window_width == 0)     app_desc.window_width = 800;
-        if (app_desc.window_height == 0)    app_desc.window_height = 600;
-        if (app_desc.window_title == 0)     app_desc.window_title = "App";
-        if (app_desc.frame_rate <= 0.f)     app_desc.frame_rate = 60.f;
-        if (app_desc.update == NULL)        app_desc.update = &gs_default_app_func;
-        if (app_desc.shutdown == NULL)      app_desc.shutdown = &gs_default_app_func;
-        if (app_desc.init == NULL)          app_desc.init = &gs_default_app_func; 
+        if (app_desc.window.width == 0)         app_desc.window.width = 800;
+        if (app_desc.window.height == 0)        app_desc.window.height = 600;
+        if (app_desc.window.title == 0)         app_desc.window.title = "App";
+        if (app_desc.window.frame_rate <= 0.f)  app_desc.window.frame_rate = 60.f;
+        if (app_desc.update == NULL)            app_desc.update = &gs_default_app_func;
+        if (app_desc.shutdown == NULL)          app_desc.shutdown = &gs_default_app_func;
+        if (app_desc.init == NULL)              app_desc.init = &gs_default_app_func; 
 
         // Set up os api before all?
         gs_os_api_t os = gs_os_api_new();
@@ -8603,13 +8938,13 @@ gs_create(gs_app_desc_t app_desc)
         gs_platform_init(gs_subsystem(platform));
 
         // Set frame rate for application
-        gs_subsystem(platform)->time.max_fps = app_desc.frame_rate;
+        gs_subsystem(platform)->time.max_fps = app_desc.window.frame_rate;
 
-        // Construct main window
-        gs_platform_create_window(app_desc.window_title, app_desc.window_width, app_desc.window_height, app_desc.monitor_index);
+        // Construct main window 
+        gs_platform_window_create(&app_desc.window);
 
         // Set vsync for video
-        gs_platform_enable_vsync(app_desc.enable_vsync); 
+        gs_platform_enable_vsync(app_desc.window.vsync); 
 
         // Construct graphics api 
         gs_subsystem(graphics) = gs_graphics_create();
