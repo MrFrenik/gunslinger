@@ -735,9 +735,13 @@ gsgl_texture_t gl_texture_update_internal(const gs_graphics_texture_desc_t* desc
         glGenerateMipmap(target);
     }
 
-    // float aniso = 0.0f;
-    // glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &aniso);
-    // glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, aniso); 
+    // Need to make sure this is available before being able to use
+
+    CHECK_GL_CORE(
+        float aniso = 0.0f;
+        glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &aniso);
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, aniso); 
+    );
 
     glTexParameteri(target, GL_TEXTURE_WRAP_S, texture_wrap_s);
     glTexParameteri(target, GL_TEXTURE_WRAP_T, texture_wrap_t);
@@ -1523,6 +1527,8 @@ gs_graphics_storage_buffer_request_update(gs_command_buffer_t* cb, gs_handle(gs_
 
     // Return if handle not valid
     if (!hndl.id) return;
+
+    __gs_graphics_update_buffer_internal(cb, hndl.id, GS_GRAPHICS_BUFFER_SHADER_STORAGE, desc->usage, desc->size, desc->update.offset, desc->update.type, desc->data);
 }
 
 void gs_graphics_apply_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t* binds)
@@ -1752,6 +1758,7 @@ void gs_graphics_command_buffer_submit_impl(gs_command_buffer_t* cb)
                     }
                     if (action.flag & GS_GRAPHICS_CLEAR_STENCIL || action.flag == 0x00) {
                         bit |= GL_STENCIL_BUFFER_BIT;
+                        glStencilMask(~0);
                     }
 
                     glClear(bit);
@@ -2585,6 +2592,23 @@ void gs_graphics_command_buffer_submit_impl(gs_command_buffer_t* cb)
                         }
 
                         glBindBuffer(GL_UNIFORM_BUFFER, 0);
+                    } break;
+
+                    case GS_GRAPHICS_BUFFER_SHADER_STORAGE:
+                    {
+                        gs_graphics_storage_buffer_desc_t desc = {
+                            .data = cb->commands.data + cb->commands.position,
+                            .size = sz,
+                            .usage = usage,
+                            .update = {
+                                .type = update_type,
+                                .offset = offset,
+                            },
+                        };
+                        gs_handle(gs_graphics_storage_buffer_t) hndl;
+                        hndl.id = id;
+                        gs_graphics_storage_buffer_update(hndl, &desc);
+
                     } break;
                 }
 

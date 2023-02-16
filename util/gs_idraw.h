@@ -159,8 +159,8 @@ GS_API_DECL void gsi_set_view_scissor(gs_immediate_draw_t* gsi, uint32_t x, uint
 
 // Final Submit / Merge
 GS_API_DECL void gsi_draw(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb);
-GS_API_DECL void gsi_renderpass_submit(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, uint32_t vw, uint32_t vh, gs_color_t clear_color);
-GS_API_DECL void gsi_renderpass_submit_ex(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, uint32_t vw, uint32_t  vh, gs_graphics_clear_action_t* action);
+GS_API_DECL void gsi_renderpass_submit(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, gs_vec4 viewport, gs_color_t clear_color);
+GS_API_DECL void gsi_renderpass_submit_ex(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, gs_vec4 viewport, gs_graphics_clear_action_t* action);
 
 // Core Matrix Functions
 GS_API_DECL void gsi_push_matrix(gs_immediate_draw_t* gsi, gsi_matrix_type type);
@@ -192,7 +192,7 @@ GS_API_DECL void gsi_trianglevxmc(gs_immediate_draw_t* gsi, gs_vec3 v0, gs_vec3 
 GS_API_DECL void gsi_line(gs_immediate_draw_t* gsi, float x0, float y0, float x1, float y1, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 GS_API_DECL void gsi_linev(gs_immediate_draw_t* gsi, gs_vec2 v0, gs_vec2 v1, gs_color_t c);
 GS_API_DECL void gsi_line3D(gs_immediate_draw_t* gsi, float x0, float y0, float z0, float x1, float y1, float z1, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
-GS_API_DECL void gsi_line3Dv(gs_immediate_draw_t* gsi, gs_vec3 s, gs_vec3 e, gs_color_t color);
+GS_API_DECL void gsi_line3Dv(gs_immediate_draw_t* gsi, gs_vec3 s, gs_vec3 e, gs_color_t color); 
 GS_API_DECL void gsi_line3Dmc(gs_immediate_draw_t* gsi, float x0, float y0, float z0, float x1, float y1, float z1, uint8_t r0, uint8_t g0, uint8_t b0, uint8_t a0, uint8_t r1, uint8_t g1, uint8_t b1, uint8_t a1);
 
 // Shape Drawing Util
@@ -202,6 +202,7 @@ GS_API_DECL void gsi_rectx(gs_immediate_draw_t* gsi, float l, float b, float r, 
 GS_API_DECL void gsi_rectvx(gs_immediate_draw_t* gsi, gs_vec2 bl, gs_vec2 tr, gs_vec2 uv0, gs_vec2 uv1, gs_color_t color, gs_graphics_primitive_type type);
 GS_API_DECL void gsi_rectvd(gs_immediate_draw_t* gsi, gs_vec2 xy, gs_vec2 wh, gs_vec2 uv0, gs_vec2 uv1, gs_color_t color, gs_graphics_primitive_type type);
 GS_API_DECL void gsi_rect3Dv(gs_immediate_draw_t* gsi, gs_vec3 min, gs_vec3 max, gs_vec2 uv0, gs_vec2 uv1, gs_color_t color, gs_graphics_primitive_type type);
+GS_API_DECL void gsi_rect3Dvd(gs_immediate_draw_t* gsi, gs_vec3 xyz, gs_vec3 whd, gs_vec2 uv0, gs_vec2 uv1, gs_color_t c, gs_graphics_primitive_type type);
 GS_API_DECL void gsi_circle(gs_immediate_draw_t* gsi, float cx, float cy, float radius, int32_t segments, uint8_t r, uint8_t g, uint8_t b, uint8_t a, gs_graphics_primitive_type type);
 GS_API_DECL void gsi_circlevx(gs_immediate_draw_t* gsi, gs_vec3 c, float radius, int32_t segments, gs_color_t color, gs_graphics_primitive_type type);
 GS_API_DECL void gsi_circle_sector(gs_immediate_draw_t* gsi, float cx, float cy, float radius, int32_t start_angle, int32_t end_angle, int32_t segments, uint8_t r, uint8_t g, uint8_t b, uint8_t a, gs_graphics_primitive_type type);
@@ -280,7 +281,9 @@ GSI_GL_VERSION_STR
 "uniform sampler2D u_tex;\n"
 "out vec4 frag_color;\n"
 "void main() {\n"
-"  frag_color = color * texture(u_tex, uv);\n"
+"  vec4 tex_col = texture(u_tex, uv);\n"
+"  if (tex_col.a < 0.5) discard;\n" 
+"  frag_color = color * tex_col;\n"
 "}\n";
 
 gsi_pipeline_state_attr_t gsi_pipeline_state_default()
@@ -396,6 +399,13 @@ void gs_immediate_draw_static_data_init()
 		pdesc.blend.src = GS_GRAPHICS_BLEND_MODE_SRC_ALPHA;
 		pdesc.blend.dst = GS_GRAPHICS_BLEND_MODE_ONE_MINUS_SRC_ALPHA;
 		pdesc.depth.func = d ? GS_GRAPHICS_DEPTH_FUNC_LESS : (gs_graphics_depth_func_type)0x00;
+		pdesc.stencil.func = s ? GS_GRAPHICS_STENCIL_FUNC_ALWAYS : (gs_graphics_stencil_func_type)0x00;
+		pdesc.stencil.ref = s ? 1 : 0x00;
+		pdesc.stencil.comp_mask = s ? 0xFF : 0x00;
+		pdesc.stencil.write_mask = s ? 0xFF : 0x00;
+		pdesc.stencil.sfail = s ? GS_GRAPHICS_STENCIL_OP_KEEP : (gs_graphics_stencil_op_type)0x00; 
+		pdesc.stencil.dpfail = s ? GS_GRAPHICS_STENCIL_OP_KEEP : (gs_graphics_stencil_op_type)0x00; 
+		pdesc.stencil.dppass = s ? GS_GRAPHICS_STENCIL_OP_REPLACE : (gs_graphics_stencil_op_type)0x00; 
 		pdesc.layout.attrs = gsi_vattrs;
 		pdesc.layout.size = sizeof(gsi_vattrs);
 
@@ -1278,19 +1288,25 @@ GS_API_DECL void gsi_rect3Dv(gs_immediate_draw_t* gsi, gs_vec3 min, gs_vec3 max,
 				// First triangle
 				gsi_c4ub(gsi, c.r, c.g, c.b, c.a);
 				gsi_tc2f(gsi, u0, v0); gsi_v3fv(gsi, vt0);
-				gsi_tc2f(gsi, u1, v0); gsi_v3fv(gsi, vt3);
-				gsi_tc2f(gsi, u0, v1); gsi_v3fv(gsi, vt1);
+				gsi_tc2f(gsi, u0, v1); gsi_v3fv(gsi, vt2);
+				gsi_tc2f(gsi, u1, v0); gsi_v3fv(gsi, vt1);
 
 				// Second triangle
 				gsi_c4ub(gsi, c.r, c.g, c.b, c.a);
-				gsi_tc2f(gsi, u1, v0); gsi_v3fv(gsi, vt0);
-				gsi_tc2f(gsi, u1, v1); gsi_v3fv(gsi, vt2);
-				gsi_tc2f(gsi, u0, v1); gsi_v3fv(gsi, vt3);
+				gsi_tc2f(gsi, u0, v1); gsi_v3fv(gsi, vt2);
+				gsi_tc2f(gsi, u1, v1); gsi_v3fv(gsi, vt3);
+				gsi_tc2f(gsi, u1, v0); gsi_v3fv(gsi, vt1);
 				
 			gsi_end(gsi);
 
 		} break;
 	}
+}
+
+GS_API_DECL void 
+gsi_rect3Dvd(gs_immediate_draw_t* gsi, gs_vec3 xyz, gs_vec3 whd, gs_vec2 uv0, gs_vec2 uv1, gs_color_t c, gs_graphics_primitive_type type)
+{
+	gsi_rect3Dv(gsi, xyz, gs_vec3_add(xyz, whd), uv0, uv1, c, type);
 }
 
 void gsi_circle_sector(gs_immediate_draw_t* gsi, float cx, float cy, float radius, int32_t start_angle, 
@@ -1828,7 +1844,7 @@ gsi_draw(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb)
 }
 
 GS_API_DECL void 
-gsi_renderpass_submit(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, uint32_t view_width, uint32_t view_height, gs_color_t c)
+gsi_renderpass_submit(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, gs_vec4 viewport, gs_color_t c)
 {
 	gs_graphics_clear_action_t action = gs_default_val();
 	action.color[0] = (float)c.r / 255.f; 
@@ -1837,21 +1853,21 @@ gsi_renderpass_submit(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, uint32_
 	action.color[3] = (float)c.a / 255.f;
 	gs_graphics_clear_desc_t clear = gs_default_val();
 	clear.actions = &action;
-	gs_renderpass pass = gs_default_val();
+	gs_renderpass_t pass = gs_default_val();
 	gs_graphics_renderpass_begin(cb, pass);
-	gs_graphics_set_viewport(cb, 0, 0, view_width, view_height);
+	gs_graphics_set_viewport(cb, (uint32_t)viewport.x, (uint32_t)viewport.y, (uint32_t)viewport.z, (uint32_t)viewport.w);
 	gs_graphics_clear(cb, &clear);
 	gsi_draw(gsi, cb);
 	gs_graphics_renderpass_end(cb);
 }
 
-GS_API_DECL void gsi_renderpass_submit_ex(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, uint32_t view_width, uint32_t view_height, gs_graphics_clear_action_t* action)
+GS_API_DECL void gsi_renderpass_submit_ex(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb, gs_vec4 viewport, gs_graphics_clear_action_t* action)
 {
     gs_graphics_clear_desc_t clear = gs_default_val();
     clear.actions = action;
-	gs_renderpass pass = gs_default_val();
+	gs_renderpass_t pass = gs_default_val();
 	gs_graphics_renderpass_begin(cb, pass);
-	gs_graphics_set_viewport(cb, 0, 0, view_width, view_height);
+	gs_graphics_set_viewport(cb, (uint32_t)viewport.x, (uint32_t)viewport.y, (uint32_t)viewport.z, (uint32_t)viewport.w);
 	gs_graphics_clear(cb, &clear);
 	gsi_draw(gsi, cb);
 	gs_graphics_renderpass_end(cb);
