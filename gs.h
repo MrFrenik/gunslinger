@@ -6305,6 +6305,7 @@ typedef struct gs_asset_font_t
 GS_API_DECL bool gs_asset_font_load_from_file(const char* path, void* out, uint32_t point_size);
 GS_API_DECL bool gs_asset_font_load_from_memory(const void* memory, size_t sz, void* out, uint32_t point_size);
 GS_API_DECL gs_vec2 gs_asset_font_text_dimensions(const gs_asset_font_t* font, const char* text, int32_t len);
+GS_API_DECL gs_vec2 gs_asset_font_text_dimensions_ex(const gs_asset_font_t* fp, const char* text, int32_t len, bool32_t include_past_baseline);
 GS_API_DECL float gs_asset_font_max_height(const gs_asset_font_t* font);
 
 // Audio
@@ -7988,7 +7989,7 @@ GS_API_DECL float gs_asset_font_max_height(const gs_asset_font_t* fp)
     while (txt[0] != '\0')
     {
         char c = txt[0];
-        if (c >= 32 && c <= 127) 
+        if (c >= 32 && c <= 127)
         {
             stbtt_aligned_quad q = gs_default_val();
             stbtt_GetBakedQuad((stbtt_bakedchar*)fp->glyphs, fp->texture.desc.width, fp->texture.desc.height, c - 32, &x, &y, &q, 1);
@@ -8001,25 +8002,35 @@ GS_API_DECL float gs_asset_font_max_height(const gs_asset_font_t* fp)
 
 GS_API_DECL gs_vec2 gs_asset_font_text_dimensions(const gs_asset_font_t* fp, const char* text, int32_t len)
 {
+    return gs_asset_font_text_dimensions_ex(fp, text, len, 0);
+}
+
+GS_API_DECL gs_vec2 gs_asset_font_text_dimensions_ex(const gs_asset_font_t* fp, const char* text, int32_t len, bool32_t include_past_baseline)
+{
     gs_vec2 dimensions = gs_v2s(0.f);
 
     if (!fp || !text) return dimensions;
     float x = 0.f;
     float y = 0.f;
+    float y_under = 0;
 
     while (text[0] != '\0' && len--)
     {
         char c = text[0];
-        if (c >= 32 && c <= 127) 
+        if (c >= 32 && c <= 127)
         {
             stbtt_aligned_quad q = gs_default_val();
             stbtt_GetBakedQuad((stbtt_bakedchar*)fp->glyphs, fp->texture.desc.width, fp->texture.desc.height, c - 32, &x, &y, &q, 1);
             dimensions.x = gs_max(dimensions.x, x);
-            dimensions.y = gs_max(gs_max(dimensions.y, fabsf(q.y0)), fabsf(q.y1));
+            dimensions.y = gs_max(dimensions.y, fabsf(q.y0));
+            if (include_past_baseline)
+                y_under = gs_max(y_under, fabsf(q.y1));
         }
         text++;
     };
 
+    if (include_past_baseline)
+        dimensions.y += y_under;
     return dimensions;
 }
 
