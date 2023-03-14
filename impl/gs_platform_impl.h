@@ -695,10 +695,8 @@ GS_API_DECL int32_t gs_platform_mkdir_default_impl(const char* dir_path, int32_t
 { 
     #ifdef __MINGW32__
         return mkdir(dir_path);
-    #elif (defined __linux__ || defined __APPLE__)
-        return mkdir(dir_path, opt);
     #else
-        return _mkdir(dir_path);
+        return mkdir(dir_path, opt);
     #endif
 }
 
@@ -2334,6 +2332,7 @@ EM_BOOL gs_ems_size_changed_cb(int32_t type, const EmscriptenUiEvent* evt, void*
 EM_BOOL gs_ems_fullscreenchange_cb(int32_t type, const EmscriptenFullscreenChangeEvent* evt, void* user_data)
 {
     (void)user_data;
+    (void)evt;
     (void)type;
     gs_ems_t* ems = GS_EMS_DATA();
     // emscripten_get_element_css_size(ems->canvas_name, &ems->canvas_width, &ems->canvas_height);
@@ -2341,7 +2340,7 @@ EM_BOOL gs_ems_fullscreenchange_cb(int32_t type, const EmscriptenFullscreenChang
         EmscriptenFullscreenStrategy strategy;
         strategy.scaleMode = EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_STDDEF;
         strategy.filteringMode = EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT;
-        strategy.canvasResizedCallback = gs_ems_size_changed_cb;
+        strategy.canvasResizedCallback = (int (*)(int, const void*, void*)) gs_ems_size_changed_cb;
         emscripten_enter_soft_fullscreen(ems->canvas_name, &strategy);
         // gs_println("fullscreen!");
         // emscripten_enter_soft_fullscreen(ems->canvas_name, NULL);
@@ -2515,7 +2514,7 @@ gs_platform_init(gs_platform_t* platform)
 
     // Just set this to defaults for now
     ems->canvas_name = "#canvas";
-    emscripten_set_canvas_element_size(ems->canvas_name, app->window_width, app->window_height);
+    emscripten_set_canvas_element_size(ems->canvas_name, app->window.width, app->window.height);
     emscripten_get_element_css_size(ems->canvas_name, &ems->canvas_width, &ems->canvas_height);
 
     // Set up callbacks
@@ -2786,7 +2785,7 @@ gs_platform_framebuffer_height(uint32_t handle)
     {
         gs_app_desc_t app = gs_main(argc, argv);
         gs_create(app);
-        emscripten_set_main_loop(gs_frame, (int32_t)app.frame_rate, true);
+        emscripten_set_main_loop(gs_frame, (int32_t)app.window.frame_rate, true);
         return 0;
     }
 #endif // GS_NO_HIJACK_MAIN
