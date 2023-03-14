@@ -7928,8 +7928,11 @@ bool gs_asset_font_load_from_memory(const void* memory, size_t sz, void* out, ui
         point_size = 16;
     } 
 
-    const uint32_t w = 512;
-    const uint32_t h = 512;
+    // Poor attempt at an auto resized texture
+    const uint32_t point_wh = gs_max(point_size, 32);
+    const uint32_t w = (point_wh/32 * 512) + (point_wh/32 * 512) % 512;
+    const uint32_t h = (point_wh/32 * 512) + (point_wh/32 * 512) % 512;
+
     const uint32_t num_comps = 4;
     u8* alpha_bitmap = (uint8_t*)gs_malloc(w * h);
     u8* flipmap = (uint8_t*)gs_malloc(w * h * num_comps);
@@ -7968,8 +7971,8 @@ bool gs_asset_font_load_from_memory(const void* memory, size_t sz, void* out, ui
     *f->texture.desc.data = NULL;
 
     bool success = false;
-    if (v == 0) {
-        gs_println("Font Failed to Load: %d", v);
+    if (v <= 0) {
+        gs_println("Font Failed to Load, Baked Texture Was Too Small: %d", v);
     }
     else {
         gs_println("Font Successfully Loaded: %d", v);
