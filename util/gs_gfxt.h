@@ -1863,7 +1863,7 @@ gs_gfxt_mesh_t gs_gfxt_mesh_unit_quad_generate(gs_gfxt_mesh_import_options_t* op
     };
 
     // Index data for quad
-    uint32_t i_data[] = {
+    uint16_t i_data[] = {
         0, 3, 2,    // First Triangle
         0, 1, 3     // Second Triangle
     }; 
