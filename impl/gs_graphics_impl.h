@@ -1282,7 +1282,7 @@ GS_API_DECL void
 gs_graphics_vertex_buffer_update_impl(gs_handle(gs_graphics_vertex_buffer_t) hndl, gs_graphics_vertex_buffer_desc_t* desc)
 { 
     /*
-    void __gs_graphics_update_buffer_internal(gs_command_buffer_t* cb, 
+    void __gs_graphics_update_buffer_internal(gs_graphics_command_buffer_t* cb, 
         uint32_t id, 
         gs_graphics_buffer_type type,
         gs_graphics_buffer_usage_type usage, 
@@ -1373,7 +1373,7 @@ do {\
 
 /* Command Buffer Ops: Pipeline / Pass / Bind / Draw */
 GS_API_DECL void 
-gs_graphics_renderpass_begin(gs_command_buffer_t* cb, gs_handle(gs_graphics_renderpass_t) hndl)
+gs_graphics_renderpass_begin(gs_graphics_command_buffer_t* cb, gs_handle(gs_graphics_renderpass_t) hndl)
 {
     __ogl_push_command(cb, GS_OPENGL_OP_BEGIN_RENDER_PASS, {
         gs_byte_buffer_write(&cb->commands, uint32_t, hndl.id);
@@ -1381,7 +1381,7 @@ gs_graphics_renderpass_begin(gs_command_buffer_t* cb, gs_handle(gs_graphics_rend
 }
 
 GS_API_DECL void 
-gs_graphics_renderpass_end(gs_command_buffer_t* cb)
+gs_graphics_renderpass_end(gs_graphics_command_buffer_t* cb)
 {
     __ogl_push_command(cb, GS_OPENGL_OP_END_RENDER_PASS, {
         // Nothing...
@@ -1389,7 +1389,7 @@ gs_graphics_renderpass_end(gs_command_buffer_t* cb)
 }
 
 GS_API_DECL void 
-gs_graphics_clear(gs_command_buffer_t* cb, gs_graphics_clear_desc_t* desc)
+gs_graphics_clear(gs_graphics_command_buffer_t* cb, gs_graphics_clear_desc_t* desc)
 {
     __ogl_push_command(cb, GS_OPENGL_OP_CLEAR, {
         uint32_t count = !desc->actions ? 0 : !desc->size ? 1 : (uint32_t)((size_t)desc->size / (size_t)sizeof(gs_graphics_clear_action_t));
@@ -1401,7 +1401,7 @@ gs_graphics_clear(gs_command_buffer_t* cb, gs_graphics_clear_desc_t* desc)
 }
 
 GS_API_DECL void 
-gs_graphics_set_viewport(gs_command_buffer_t* cb, uint32_t x, uint32_t y, uint32_t w, uint32_t h)
+gs_graphics_set_viewport(gs_graphics_command_buffer_t* cb, uint32_t x, uint32_t y, uint32_t w, uint32_t h)
 {
     __ogl_push_command(cb, GS_OPENGL_OP_SET_VIEWPORT, {
         gs_byte_buffer_write(&cb->commands, uint32_t, x);
@@ -1412,7 +1412,7 @@ gs_graphics_set_viewport(gs_command_buffer_t* cb, uint32_t x, uint32_t y, uint32
 }
 
 GS_API_DECL void 
-gs_graphics_set_view_scissor(gs_command_buffer_t* cb, uint32_t x, uint32_t y, uint32_t w, uint32_t h)
+gs_graphics_set_view_scissor(gs_graphics_command_buffer_t* cb, uint32_t x, uint32_t y, uint32_t w, uint32_t h)
 { 
     __ogl_push_command(cb, GS_OPENGL_OP_SET_VIEW_SCISSOR, {
         gs_byte_buffer_write(&cb->commands, uint32_t, x);
@@ -1423,7 +1423,7 @@ gs_graphics_set_view_scissor(gs_command_buffer_t* cb, uint32_t x, uint32_t y, ui
 }
 
 GS_API_DECL void 
-gs_graphics_texture_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc)
+gs_graphics_texture_request_update(gs_graphics_command_buffer_t* cb, gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc)
 {
     // Write command
     gs_byte_buffer_write(&cb->commands, uint32_t, (uint32_t)GS_OPENGL_OP_REQUEST_TEXTURE_UPDATE);
@@ -1458,7 +1458,7 @@ gs_graphics_texture_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphic
     gs_byte_buffer_write_bulk(&cb->commands, *desc->data, total_size);
 }
 
-void __gs_graphics_update_buffer_internal(gs_command_buffer_t* cb, 
+void __gs_graphics_update_buffer_internal(gs_graphics_command_buffer_t* cb, 
     uint32_t id, 
     gs_graphics_buffer_type type,
     gs_graphics_buffer_usage_type usage, 
@@ -1488,7 +1488,7 @@ void __gs_graphics_update_buffer_internal(gs_command_buffer_t* cb,
 }
 
 GS_API_DECL void 
-gs_graphics_vertex_buffer_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_vertex_buffer_t) hndl, gs_graphics_vertex_buffer_desc_t* desc)
+gs_graphics_vertex_buffer_request_update(gs_graphics_command_buffer_t* cb, gs_handle(gs_graphics_vertex_buffer_t) hndl, gs_graphics_vertex_buffer_desc_t* desc)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data;
 
@@ -1499,7 +1499,7 @@ gs_graphics_vertex_buffer_request_update(gs_command_buffer_t* cb, gs_handle(gs_g
 }
 
 GS_API_DECL void 
-gs_graphics_index_buffer_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_index_buffer_t) hndl, gs_graphics_index_buffer_desc_t* desc)
+gs_graphics_index_buffer_request_update(gs_graphics_command_buffer_t* cb, gs_handle(gs_graphics_index_buffer_t) hndl, gs_graphics_index_buffer_desc_t* desc)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data;
 
@@ -1510,7 +1510,7 @@ gs_graphics_index_buffer_request_update(gs_command_buffer_t* cb, gs_handle(gs_gr
 }
 
 GS_API_DECL void 
-gs_graphics_uniform_buffer_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_uniform_buffer_t) hndl, gs_graphics_uniform_buffer_desc_t* desc)
+gs_graphics_uniform_buffer_request_update(gs_graphics_command_buffer_t* cb, gs_handle(gs_graphics_uniform_buffer_t) hndl, gs_graphics_uniform_buffer_desc_t* desc)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data;
 
@@ -1521,7 +1521,7 @@ gs_graphics_uniform_buffer_request_update(gs_command_buffer_t* cb, gs_handle(gs_
 }
 
 GS_API_DECL void 
-gs_graphics_storage_buffer_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_storage_buffer_t) hndl, gs_graphics_storage_buffer_desc_t* desc)
+gs_graphics_storage_buffer_request_update(gs_graphics_command_buffer_t* cb, gs_handle(gs_graphics_storage_buffer_t) hndl, gs_graphics_storage_buffer_desc_t* desc)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data;
 
@@ -1531,7 +1531,7 @@ gs_graphics_storage_buffer_request_update(gs_command_buffer_t* cb, gs_handle(gs_
     __gs_graphics_update_buffer_internal(cb, hndl.id, GS_GRAPHICS_BUFFER_SHADER_STORAGE, desc->usage, desc->size, desc->update.offset, desc->update.type, desc->data);
 }
 
-void gs_graphics_apply_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t* binds)
+void gs_graphics_apply_bindings(gs_graphics_command_buffer_t* cb, gs_graphics_bind_desc_t* binds)
 {
     gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data;
 
@@ -1625,7 +1625,7 @@ void gs_graphics_apply_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t
     };
 }
 
-void gs_graphics_pipeline_bind(gs_command_buffer_t* cb, gs_handle(gs_graphics_pipeline_t) hndl)
+void gs_graphics_pipeline_bind(gs_graphics_command_buffer_t* cb, gs_handle(gs_graphics_pipeline_t) hndl)
 {
     // NOTE(john): Not sure if this is safe in the future, since the data for pipelines is on the main thread and MIGHT be tampered with on a separate thread.
     __ogl_push_command(cb, GS_OPENGL_OP_BIND_PIPELINE, {
@@ -1633,7 +1633,7 @@ void gs_graphics_pipeline_bind(gs_command_buffer_t* cb, gs_handle(gs_graphics_pi
     });
 }
 
-void gs_graphics_draw(gs_command_buffer_t* cb, gs_graphics_draw_desc_t* desc)
+void gs_graphics_draw(gs_graphics_command_buffer_t* cb, gs_graphics_draw_desc_t* desc)
 {
     __ogl_push_command(cb, GS_OPENGL_OP_DRAW, {
         gs_byte_buffer_write(&cb->commands, uint32_t, desc->start);
@@ -1645,7 +1645,7 @@ void gs_graphics_draw(gs_command_buffer_t* cb, gs_graphics_draw_desc_t* desc)
     });
 }
 
-void gs_graphics_dispatch_compute(gs_command_buffer_t* cb, uint32_t num_x_groups, uint32_t num_y_groups, uint32_t num_z_groups)
+void gs_graphics_dispatch_compute(gs_graphics_command_buffer_t* cb, uint32_t num_x_groups, uint32_t num_y_groups, uint32_t num_z_groups)
 {
     __ogl_push_command(cb, GS_OPENGL_OP_DISPATCH_COMPUTE, {
         gs_byte_buffer_write(&cb->commands, uint32_t, num_x_groups);
@@ -1655,7 +1655,7 @@ void gs_graphics_dispatch_compute(gs_command_buffer_t* cb, uint32_t num_x_groups
 }
 
 /* Submission (Main Thread) */
-void gs_graphics_command_buffer_submit_impl(gs_command_buffer_t* cb)
+void gs_graphics_command_buffer_submit_impl(gs_graphics_command_buffer_t* cb)
 {
     /*
         // Structure of command: 
