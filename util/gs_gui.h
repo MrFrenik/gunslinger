@@ -999,6 +999,7 @@ GS_API_DECL void gs_gui_tab_item_swap(gs_gui_context_t* ctx, gs_gui_container_t*
 GS_API_DECL gs_gui_container_t* gs_gui_get_root_container(gs_gui_context_t* ctx, gs_gui_container_t* cnt); 
 GS_API_DECL gs_gui_container_t* gs_gui_get_root_container_from_split(gs_gui_context_t* ctx, gs_gui_split_t* split);
 GS_API_DECL gs_gui_container_t* gs_gui_get_parent(gs_gui_context_t* ctx, gs_gui_container_t* cnt);
+GS_API_DECL void gs_gui_current_container_close(gs_gui_context_t* ctx);
 
 //=== Animation ===//
 
@@ -1085,6 +1086,7 @@ GS_API_DECL gs_gui_rect_t gs_gui_layout_anchor(const gs_gui_rect_t* parent, int3
 #define gs_gui_panel_begin(_CTX, _NAME)			    gs_gui_panel_begin_ex((_CTX), (_NAME), NULL, 0x00)
 #define gs_gui_image(_CTX, _HNDL)                   gs_gui_image_ex((_CTX), (_HNDL), gs_v2s(0.f), gs_v2s(1.f), NULL, 0x00)
 #define gs_gui_combo_begin(_CTX, _ID, _ITEM, _MAX)  gs_gui_combo_begin_ex((_CTX), (_ID), (_ITEM), (_MAX), NULL, 0x00)
+#define gs_gui_combo_item(_CTX, _NAME)              gs_gui_combo_item_ex((_CTX), (_NAME), NULL, 0x00)
 #define gs_gui_dock(_CTX, _DST, _SRC, _TYPE)        gs_gui_dock_ex((_CTX), (_DST), (_SRC), (_TYPE), 0.5f)
 #define gs_gui_undock(_CTX, _NAME)                  gs_gui_undock_ex((_CTX), (_NAME)) 
 #define gs_gui_label(_CTX, _FMT, ...)\
@@ -1117,6 +1119,7 @@ GS_API_DECL void gs_gui_panel_begin_ex(gs_gui_context_t* ctx, const char* name, 
 GS_API_DECL void gs_gui_panel_end(gs_gui_context_t* ctx); 
 GS_API_DECL int32_t gs_gui_combo_begin_ex(gs_gui_context_t* ctx, const char* id, const char* current_item, int32_t max_items, gs_gui_selector_desc_t* desc, int32_t opt);
 GS_API_DECL void gs_gui_combo_end(gs_gui_context_t* ctx);
+GS_API_DECL int32_t gs_gui_combo_item_ex(gs_gui_context_t* ctx, const char* label, const gs_gui_selector_desc_t* desc, int32_t opt);
 
 //=== Demos ===//
 
@@ -4934,7 +4937,8 @@ GS_API_DECL gs_gui_rect_t gs_gui_get_clip_rect(gs_gui_context_t* ctx)
 	return ctx->clip_stack.items[ctx->clip_stack.idx - 1];
 } 
 
-GS_API_DECL int32_t gs_gui_check_clip(gs_gui_context_t* ctx, gs_gui_rect_t r) 
+GS_API_DECL int32_t 
+gs_gui_check_clip(gs_gui_context_t* ctx, gs_gui_rect_t r) 
 {
 	gs_gui_rect_t cr = gs_gui_get_clip_rect(ctx);
 
@@ -4953,19 +4957,29 @@ GS_API_DECL int32_t gs_gui_check_clip(gs_gui_context_t* ctx, gs_gui_rect_t r)
 	return GS_GUI_CLIP_PART;
 }
 
-GS_API_DECL gs_gui_container_t* gs_gui_get_current_container(gs_gui_context_t* ctx) 
+GS_API_DECL gs_gui_container_t* 
+gs_gui_get_current_container(gs_gui_context_t* ctx) 
 {
 	gs_gui_expect(ctx->container_stack.idx > 0);
 	return ctx->container_stack.items[ ctx->container_stack.idx - 1 ];
 } 
 
-GS_API_DECL gs_gui_container_t* gs_gui_get_container(gs_gui_context_t* ctx, const char* name) 
+GS_API_DECL void 
+gs_gui_current_container_close(gs_gui_context_t* ctx)
+{
+    gs_gui_container_t* cnt = gs_gui_get_current_container(ctx);
+    cnt->open = false;
+}
+
+GS_API_DECL gs_gui_container_t* 
+gs_gui_get_container(gs_gui_context_t* ctx, const char* name) 
 {
 	gs_gui_id id = gs_gui_get_id(ctx, name, strlen(name));
 	return gs_gui_get_container_ex(ctx, id, 0);
 }
 
-GS_API_DECL void gs_gui_bring_to_front(gs_gui_context_t* ctx, gs_gui_container_t* cnt) 
+GS_API_DECL void 
+gs_gui_bring_to_front(gs_gui_context_t* ctx, gs_gui_container_t* cnt) 
 {
     gs_gui_container_t* root = gs_gui_get_root_container(ctx, cnt);
     if (root->opt & GS_GUI_OPT_NOBRINGTOFRONT)
@@ -6113,7 +6127,8 @@ GS_API_DECL int32_t gs_gui_image_ex(gs_gui_context_t* ctx, gs_handle(gs_graphics
 	return res;
 }
 
-GS_API_DECL int32_t gs_gui_combo_begin_ex(gs_gui_context_t* ctx, const char* id, const char* current_item, int32_t max_items, gs_gui_selector_desc_t* desc, int32_t opt)
+GS_API_DECL int32_t 
+gs_gui_combo_begin_ex(gs_gui_context_t* ctx, const char* id, const char* current_item, int32_t max_items, gs_gui_selector_desc_t* desc, int32_t opt)
 {
     int32_t res = 0;
     opt = GS_GUI_OPT_NOMOVE | 
@@ -6132,12 +6147,24 @@ GS_API_DECL int32_t gs_gui_combo_begin_ex(gs_gui_context_t* ctx, const char* id,
     return gs_gui_popup_begin_ex(ctx, id, rect, NULL, opt);
 }
 
-GS_API_DECL void gs_gui_combo_end(gs_gui_context_t* ctx) 
+GS_API_DECL int32_t 
+gs_gui_combo_item_ex(gs_gui_context_t* ctx, const char* label, const gs_gui_selector_desc_t* desc, int32_t opt)
+{
+    int32_t res = gs_gui_button_ex(ctx, label, desc, opt);
+    if (res) {
+        gs_gui_current_container_close(ctx);
+    }
+    return res;
+}
+
+GS_API_DECL void 
+gs_gui_combo_end(gs_gui_context_t* ctx) 
 {
     gs_gui_popup_end(ctx);
 }
 
-GS_API_DECL void gs_gui_parse_label_tag(gs_gui_context_t* ctx, const char* str, char* buffer, size_t sz)
+GS_API_DECL void 
+gs_gui_parse_label_tag(gs_gui_context_t* ctx, const char* str, char* buffer, size_t sz)
 {
     gs_lexer_t lex = gs_lexer_c_ctor(str);
     while (gs_lexer_can_lex(&lex))
