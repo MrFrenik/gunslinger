@@ -167,9 +167,14 @@ Gunslinger is a header-only framework, so no prior building is required before u
    -lopengl32
    ```
 ## Linux (GCC/G++)
-* System Libs
+NOTE: if you want to build with wayland, you should define `_GLFW_WAYLAND` with the `GS_IMPL`.
+* System Libs on X11.
    ```
    -ldl -lX11 -lXi -lm
+   ```
+* System Libs on Wayland.
+   ```
+   -ldl -lwayland-client -lm
    ```
 * Flags (gcc)
    ```
