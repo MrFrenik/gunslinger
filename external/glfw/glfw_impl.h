@@ -51,8 +51,12 @@
         #include "wl_init.c"
         #include "wl_monitor.c"
         #include "wl_window.c"
-        #include "wayland-pointer-constraints-unstable-v1-client-protocol.c"
-        #include "wayland-relative-pointer-unstable-v1-client-protocol.c"
+        #include "./wayland-protocol/wayland-pointer-constraints-unstable-v1-client-protocol.c"
+        #include "./wayland-protocol/wayland-relative-pointer-unstable-v1-client-protocol.c"
+        #include "./wayland-protocol/wayland-idle-inhibit-unstable-v1-client-protocol.c"
+        #include "./wayland-protocol/wayland-xdg-shell-client-protocol.c"
+        #include "./wayland-protocol/wayland-viewporter-client-protocol.c"
+        #include "./wayland-protocol/wayland-xdg-decoration-unstable-v1-client-protocol.c"
         #endif
     #if defined(_GLFW_X11)
         #include "x11_init.c"
