@@ -733,7 +733,7 @@ typedef bool32_t          bool32;
 #define gs_log_error(MESSAGE, ...)\
     do {\
         gs_println("ERROR::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);\
-    gs_assert(false);\
+        gs_assert(false);\
     } while (0)
 
 #define gs_log_warning(MESSAGE, ...)\
@@ -2073,7 +2073,7 @@ uint32_t gs_hash_table_get_key_index_func(void** data, void* key, size_t key_len
         ((__HT)->tmp_idx != GS_HASH_TABLE_INVALID_INDEX ? &gs_hash_table_geti((__HT), (__HT)->tmp_idx) : NULL)\
     )
 
-#define gs_hash_table_key_exists(__HT, __HTK)\
+#define _gs_hash_table_key_exists_internal(__HT, __HTK)\
     ((__HT)->tmp_key = (__HTK),\
         (gs_hash_table_get_key_index_func((void**)&(__HT->data), (void*)&(__HT->tmp_key), sizeof(__HT->tmp_key),\
             sizeof(__HT->tmp_val), __HT->stride, __HT->klpvl) != GS_HASH_TABLE_INVALID_INDEX))
@@ -2081,16 +2081,22 @@ uint32_t gs_hash_table_get_key_index_func(void** data, void* key, size_t key_len
 // uint32_t gs_hash_table_get_key_index_func(void** data, void* key, size_t key_len, size_t val_len, size_t stride, size_t klpvl)
 
 #define gs_hash_table_exists(__HT, __HTK)\
-		(__HT && gs_hash_table_key_exists((__HT), (__HTK)))
+        (__HT && _gs_hash_table_key_exists_internal((__HT), (__HTK)))
+
+#define gs_hash_table_key_exists(__HT, __HTK)\
+		(gs_hash_table_exists((__HT), (__HTK)))
 
 #define gs_hash_table_erase(__HT, __HTK)\
     do {\
-        /* Get idx for key */\
-        (__HT)->tmp_key = (__HTK);\
-        uint32_t __IDX = gs_hash_table_get_key_index_func((void**)&(__HT)->data, (void*)&((__HT)->tmp_key), sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), (__HT)->stride, (__HT)->klpvl);\
-        if (__IDX != GS_HASH_TABLE_INVALID_INDEX) {\
-            (__HT)->data[__IDX].state = GS_HASH_TABLE_ENTRY_INACTIVE;\
-            if (gs_dyn_array_head((__HT)->data)->size) gs_dyn_array_head((__HT)->data)->size--;\
+        if ((__HT))\
+        {\
+            /* Get idx for key */\
+            (__HT)->tmp_key = (__HTK);\
+            uint32_t __IDX = gs_hash_table_get_key_index_func((void**)&(__HT)->data, (void*)&((__HT)->tmp_key), sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), (__HT)->stride, (__HT)->klpvl);\
+            if (__IDX != GS_HASH_TABLE_INVALID_INDEX) {\
+                (__HT)->data[__IDX].state = GS_HASH_TABLE_ENTRY_INACTIVE;\
+                if (gs_dyn_array_head((__HT)->data)->size) gs_dyn_array_head((__HT)->data)->size--;\
+            }\
         }\
     } while (0)
 
