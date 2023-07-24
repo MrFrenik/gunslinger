@@ -1911,7 +1911,7 @@ __gs_hash_table_init_impl(void** ht, size_t sz);
 #define gs_hash_table_init(__HT, __K, __V)\
     do {\
         size_t entry_sz = sizeof(__K) + sizeof(__V) + sizeof(gs_hash_table_entry_state);\
-        size_t ht_sz = sizeof(__K) + sizeof(__V) + sizeof(void*) + 3 * sizeof(size_t);\
+        size_t ht_sz = sizeof(*__HT);\
         __gs_hash_table_init_impl((void**)&(__HT), ht_sz);\
         memset((__HT), 0, ht_sz);\
         gs_dyn_array_reserve(__HT->data, 2);\
