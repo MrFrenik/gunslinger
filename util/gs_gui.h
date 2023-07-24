@@ -6189,7 +6189,7 @@ gs_gui_parse_label_tag(gs_gui_context_t* ctx, const char* str, char* buffer, siz
     } 
 
     // Reached end, so just memcpy
-    memcpy(buffer, str, sz);
+    memcpy(buffer, str, gs_min(sz, strlen(str) + 1));
 }
 
 GS_API_DECL void gs_gui_parse_id_tag(gs_gui_context_t* ctx, const char* str, char* buffer, size_t sz)
