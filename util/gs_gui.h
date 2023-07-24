@@ -10362,8 +10362,10 @@ bool _gs_gui_style_sheet_parse_attribute_color(gs_gui_context_t* ctx, gs_lexer_t
         // Set alpha, if not provided
 		if (i < 4)
 		{
-			ss->styles[elementid][state].colors[color].a = 255;
-			se.color.a = 255;
+            if (idsl)
+                se.color.a = 255;
+            else
+                ss->styles[elementid][state].colors[color].a = 255;{
 		}
 
         // Push style element
