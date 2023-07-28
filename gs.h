@@ -3806,13 +3806,6 @@ gs_inline
 gs_vec3 gs_mat4_mul_vec3(gs_mat4 m, gs_vec3 v)
 {
     return gs_v4_to_v3(gs_mat4_mul_vec4(m, gs_v4_xyz_s(v, 1.f)));
-    // return gs_v4_to_v3(v4);
-    // return gs_vec3_ctor
-    // (
-    //     m.elements[0 + 4 * 0] * v.x + m.elements[0 + 4 * 1] * v.y + m.elements[0 + 4 * 2] * v.z,  
-    //     m.elements[1 + 4 * 0] * v.x + m.elements[1 + 4 * 1] * v.y + m.elements[1 + 4 * 2] * v.z,  
-    //     m.elements[2 + 4 * 0] * v.x + m.elements[2 + 4 * 1] * v.y + m.elements[2 + 4 * 2] * v.z
-    // );
 }
     
 
