@@ -1910,8 +1910,8 @@ __gs_hash_table_init_impl(void** ht, size_t sz);
 
 #define gs_hash_table_init(__HT, __K, __V)\
     do {\
-        size_t entry_sz = sizeof(__K) + sizeof(__V) + sizeof(gs_hash_table_entry_state);\
-        size_t ht_sz = sizeof(__K) + sizeof(__V) + sizeof(void*) + 3 * sizeof(size_t);\
+        size_t entry_sz = sizeof(*__HT->data);\
+        size_t ht_sz = sizeof(*__HT);\
         __gs_hash_table_init_impl((void**)&(__HT), ht_sz);\
         memset((__HT), 0, ht_sz);\
         gs_dyn_array_reserve(__HT->data, 2);\
@@ -3806,13 +3806,6 @@ gs_inline
 gs_vec3 gs_mat4_mul_vec3(gs_mat4 m, gs_vec3 v)
 {
     return gs_v4_to_v3(gs_mat4_mul_vec4(m, gs_v4_xyz_s(v, 1.f)));
-    // return gs_v4_to_v3(v4);
-    // return gs_vec3_ctor
-    // (
-    //     m.elements[0 + 4 * 0] * v.x + m.elements[0 + 4 * 1] * v.y + m.elements[0 + 4 * 2] * v.z,  
-    //     m.elements[1 + 4 * 0] * v.x + m.elements[1 + 4 * 1] * v.y + m.elements[1 + 4 * 2] * v.z,  
-    //     m.elements[2 + 4 * 0] * v.x + m.elements[2 + 4 * 1] * v.y + m.elements[2 + 4 * 2] * v.z
-    // );
 }
     
 
