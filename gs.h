@@ -7720,7 +7720,7 @@ gs_camera_offset_orientation(gs_camera_t* cam, f32 yaw, f32 pitch)
 =============================*/
 
 #ifndef GS_NO_STB_RECT_PACK
-    // #define STB_RECT_PACK_IMPLEMENTATION
+    #define STB_RECT_PACK_IMPLEMENTATION
 #endif
 
 #ifndef GS_NO_STB_TRUETYPE
@@ -7745,6 +7745,7 @@ gs_camera_offset_orientation(gs_camera_t* cam, f32 yaw, f32 pitch)
 #ifdef GS_STB_INCLUDE
     #include "external/stb/stb.h"
 #endif
+#include "external/stb/stb_rect_pack.h"
 #include "external/stb/stb_truetype.h"
 #include "external/stb/stb_image.h"
 
