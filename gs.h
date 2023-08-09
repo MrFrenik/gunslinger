@@ -6170,6 +6170,7 @@ typedef struct gs_graphics_t
         void (* index_buffer_update)(gs_handle(gs_graphics_index_buffer_t) hndl, gs_graphics_index_buffer_desc_t* desc);
         void (* storage_buffer_update)(gs_handle(gs_graphics_storage_buffer_t) hndl, gs_graphics_storage_buffer_desc_t* desc);
         void (* texture_update)(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);
+        void (* texture_read)(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);
 
         // Submission (Main Thread)
         void (* command_buffer_submit)(gs_command_buffer_t* cb);
@@ -6221,7 +6222,8 @@ GS_API_DECL void  gs_graphics_pipeline_destroy(gs_handle(gs_graphics_pipeline_t)
 GS_API_DECL void  gs_graphics_vertex_buffer_update(gs_handle(gs_graphics_vertex_buffer_t) hndl, gs_graphics_vertex_buffer_desc_t* desc); 
 GS_API_DECL void  gs_graphics_index_buffer_update(gs_handle(gs_graphics_index_buffer_t) hndl, gs_graphics_index_buffer_desc_t* desc);
 GS_API_DECL void  gs_graphics_storage_buffer_update(gs_handle(gs_graphics_storage_buffer_t) hndl, gs_graphics_storage_buffer_desc_t* desc);
-GS_API_DECL void  gs_graphics_texture_update(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc); 
+GS_API_DECL void  gs_graphics_texture_update(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);
+GS_API_DECL void  gs_graphics_texture_read(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);
 
 // Resource Queries
 GS_API_DECL void gs_graphics_pipeline_desc_query(gs_handle(gs_graphics_pipeline_t) hndl, gs_graphics_pipeline_desc_t* out);
@@ -6323,7 +6325,8 @@ gs_enum_decl(gs_asset_mesh_attribute_type,
     GS_ASSET_MESH_ATTRIBUTE_TYPE_JOINT,
     GS_ASSET_MESH_ATTRIBUTE_TYPE_WEIGHT,
     GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD,
-    GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR
+    GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR,
+    GS_ASSET_MESH_ATTRIBUTE_TYPE_UINT
 );
 
 typedef struct gs_asset_mesh_layout_t {
@@ -6689,6 +6692,12 @@ GS_API_DECL void
 gs_graphics_texture_update(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc)
 {
     return gs_graphics()->api.texture_update(hndl, desc); 
+} 
+
+GS_API_DECL void  
+gs_graphics_texture_read(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc)
+{
+    return gs_graphics()->api.texture_read(hndl, desc); 
 } 
 
 /*=============================
@@ -7798,7 +7807,7 @@ gs_util_load_texture_data_from_memory(const void* memory, size_t sz, int32_t* wi
 {
     // Load texture data
     stbi_set_flip_vertically_on_load(flip_vertically_on_load);
-    *data =  stbi_load_from_memory((const stbi_uc*)memory, (int32_t)sz, (int32_t*)width, (int32_t*)height, (int32_t*)num_comps, 0x00);
+    *data =  stbi_load_from_memory((const stbi_uc*)memory, (int32_t)sz, (int32_t*)width, (int32_t*)height, (int32_t*)num_comps, STBI_rgb_alpha);
     if (!*data) {
         gs_free(*data);
         return false;
