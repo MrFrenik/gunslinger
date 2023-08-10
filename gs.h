@@ -1787,6 +1787,9 @@ typedef struct gs_dyn_array
 #define gs_dyn_array_full(__ARR)\
     ((gs_dyn_array_size((__ARR)) == gs_dyn_array_capacity((__ARR))))    
 
+#define gs_dyn_array_byte_size(__ARR)\
+    (gs_dyn_array_size((__ARR)) * sizeof(*__ARR))
+
 GS_API_DECL void* 
 gs_dyn_array_resize_impl(void* arr, size_t sz, size_t amount);
 
