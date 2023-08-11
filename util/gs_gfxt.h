@@ -2345,7 +2345,7 @@ bool gs_parse_code(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd
         }
     }
 
-    gs_println("code: %s", code);
+    // gs_println("code: %s", code);
 
     switch (stage)
     {
