@@ -724,20 +724,12 @@ typedef bool32_t          bool32;
 
 //=== Logging ===//
 
-#define gs_log_info(MESSAGE, ...)\
-    gs_println("LOG::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
-
-#define gs_log_success(MESSAGE, ...)\
-    gs_println("SUCCESS::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
-
-#define gs_log_error(MESSAGE, ...)\
-    do {\
-        gs_println("ERROR::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);\
-        gs_assert(false);\
-    } while (0)
-
-#define gs_log_warning(MESSAGE, ...)\
-    gs_println("WARNING::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define gs_log_info(MESSAGE, ...) gs_println("LOG::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define gs_log_success(MESSAGE, ...) gs_println("SUCCESS::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define gs_log_warning(MESSAGE, ...) gs_println("WARNING::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define gs_log_error(MESSAGE, ...) do {gs_println("ERROR::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);\
+                                        gs_assert(false);\
+                                    } while (0)
 
 /*===================================
 // Memory Allocation Utils
@@ -4642,6 +4634,8 @@ typedef struct gs_lexer_t
 	void (* eat_white_space)(struct gs_lexer_t* lex);
 	gs_token_t (* next_token)(struct gs_lexer_t*);
     bool32 skip_white_space;
+    size_t size;          // Optional
+    size_t contents_size; // Optional
 } gs_lexer_t;
 
 GS_API_DECL void gs_lexer_set_contents(gs_lexer_t* lex, const char* contents);
@@ -8534,7 +8528,8 @@ GS_API_DECL void gs_lexer_set_contents(gs_lexer_t* lex, const char* contents)
 
 GS_API_DECL bool gs_lexer_c_can_lex(gs_lexer_t* lex)
 {
-	return (lex->at && !gs_char_is_null_term(*(lex->at)));
+    bool size_pass = lex->contents_size ? lex->size < lex->contents_size : true;
+	return (size_pass && lex->at && !gs_char_is_null_term(*(lex->at)));
 }
 
 GS_API_DECL void gs_lexer_set_token(gs_lexer_t* lex, gs_token_t token)
@@ -8648,7 +8643,6 @@ gs_lexer_c_next_token(gs_lexer_t* lex)
                     {
                         // Grab decimal
                         num_decimals = lex->at[0] == '.' ? num_decimals++ : num_decimals;
-                        gs_println("%c", *lex->at);
 
                         //Increment
                         lex->at++;
@@ -8765,7 +8759,10 @@ gs_lexer_c_next_token(gs_lexer_t* lex)
 	}
 
 	// Set current token for lex
-	lex->current_token = t;
+    lex->current_token = t;
+    
+    // Record size
+    lex->size += t.len;
 
 	return t;
 }

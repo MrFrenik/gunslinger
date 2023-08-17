@@ -2286,6 +2286,7 @@ bool gs_parse_code(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd
         return false; 
     } 
 
+	// Something is broken up here...
     uint32_t bc = 1; 
     gs_token_t cur = gs_lexer_peek(lex);
     gs_token_t token = lex->current_token;
@@ -2299,9 +2300,10 @@ bool gs_parse_code(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd
         }
     }
 
-    const size_t sz = (size_t)(token.text - cur.text - 1);
-    char* code = (char*)gs_malloc(sz + 1);
-    memset(code, 0, sz + 1);
+    // This is most likely incorrect...
+    const size_t sz = (size_t)(token.text - cur.text);
+    char* code = (char*)gs_malloc(sz);
+    memset(code, 0, sz); 
     memcpy(code, cur.text, sz - 1);
 
     // Need to parse through code and replace keywords with appropriate mappings
@@ -2419,7 +2421,7 @@ bool gs_parse_vertex_mesh_attributes(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* d
                         memcpy(attr.name, token_name.text, token_name.len);\
                         attr.format = GS_GRAPHICS_VERTEX_ATTRIBUTE_##VERT_ATTR;\
                         gs_dyn_array_push(desc->pip_desc.layout.attrs, attr);\
-                        gs_println("%s: %s", #MESH_ATTR, #VERT_ATTR);\
+                        /*gs_println("%s: %s", #MESH_ATTR, #VERT_ATTR);*/\
                     } while (0) 
 
                 if (gs_token_compare_text(&token, "POSITION"))        PUSH_ATTR(POSITION, FLOAT3);
@@ -2492,7 +2494,8 @@ bool gs_parse_shader_stage(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_pp
                 }
 
                 else if (gs_token_compare_text(&token, "uniforms"))
-                {
+                { 
+                    gs_println("parsing uniforms...");
                     if (!gs_parse_uniforms(lex, desc, ppd, stage))
                     {
                         gs_log_warning("Unable to parse 'uniforms' for stage: %zu.", (u32)stage);
@@ -2502,6 +2505,7 @@ bool gs_parse_shader_stage(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_pp
 
                 else if (gs_token_compare_text(&token, "out"))
                 {
+                    gs_println("parsing out...");
                     if (!gs_parse_io(lex, desc, ppd, stage))
                     {
                         gs_log_warning("Unable to parse 'out' for stage: %zu.", (u32)stage);
@@ -2511,6 +2515,7 @@ bool gs_parse_shader_stage(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_pp
 
                 else if (gs_token_compare_text(&token, "in"))
                 {
+                    gs_println("parsing in...");
                     if (!gs_parse_io(lex, desc, ppd, stage))
                     {
                         gs_log_warning("Unable to parse 'in' for stage: %zu.", (u32)stage);
@@ -2520,6 +2525,7 @@ bool gs_parse_shader_stage(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_pp
 
                 else if (gs_token_compare_text(&token, "code"))
                 {
+                    gs_println("parsing code...");
                     if (!gs_parse_code(lex, desc, ppd, stage))
                     {
                         gs_log_warning("Unable to parse 'code' for stage: %zu.", (u32)stage);
@@ -3282,7 +3288,7 @@ gs_gfxt_pipeline_load_from_file(const char* path)
     size_t len = 0;
     char* file_data = gs_platform_read_file_contents(path, "rb", &len);
     gs_assert(file_data); 
-    gs_log_success("Parsing pipeline: %s", path); 
+    gs_log_success("Parsing pipeline: %s", path);
     gs_gfxt_pipeline_t pip = gs_gfxt_pipeline_load_from_memory(file_data, len);
     gs_free(file_data);
     return pip;
