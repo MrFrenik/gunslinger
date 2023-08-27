@@ -1275,7 +1275,12 @@ gs_graphics_texture_update_impl(gs_handle(gs_graphics_texture_t) hndl, gs_graphi
     if (!desc) return;
 
     gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data; 
-    gsgl_texture_t* tex = gs_slot_array_getp(ogl->textures, hndl.id); 
+    if (!gs_slot_array_handle_valid(ogl->textures, hndl.id))
+    {
+        gs_log_warning("Texture handle invalid: %zu", hndl.id);
+        return;
+    }
+    gl_texture_update_internal(desc, hndl.id);
 }
 
 GS_API_DECL void 
@@ -1362,6 +1367,40 @@ gs_graphics_storage_buffer_update_impl(gs_handle(gs_graphics_storage_buffer_t) h
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     );
 } 
+
+GS_API_DECL void 
+gs_graphics_texture_read_impl(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc)
+{ 
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data; 
+    if (!desc) return;
+    if (!gs_slot_array_handle_valid(ogl->textures, hndl.id))
+    {
+        gs_log_warning("Texture handle invalid: %zu", hndl.id);
+    }
+
+    gsgl_texture_t* tex = gs_slot_array_getp(ogl->textures, hndl.id);
+    // Bind texture
+    GLenum target = 0x00;
+    switch (tex->desc.type)
+    {
+        default: 
+        case GS_GRAPHICS_TEXTURE_2D:      {target = GL_TEXTURE_2D;} break;
+        case GS_GRAPHICS_TEXTURE_CUBEMAP: {target = GL_TEXTURE_CUBE_MAP;} break;
+    } 
+    uint32_t gl_format = gsgl_texture_format_to_gl_texture_format(tex->desc.format);
+    uint32_t gl_type = gsgl_texture_format_to_gl_data_type(tex->desc.format);
+    glBindTexture(target, tex->id);
+    glReadPixels(
+        desc->read.x, 
+        desc->read.y, 
+        desc->read.width, 
+        desc->read.height, 
+        gl_format, 
+        gl_type,
+        *desc->data
+    );
+    glBindTexture(target, 0x00);
+}
 
 #define __ogl_push_command(CB, OP_CODE, ...)\
 do {\
@@ -2724,6 +2763,7 @@ gs_graphics_init(gs_graphics_t* graphics)
     graphics->api.index_buffer_update = gs_graphics_index_buffer_update_impl;
     graphics->api.storage_buffer_update = gs_graphics_storage_buffer_update_impl;
     graphics->api.texture_update = gs_graphics_texture_update_impl;
+    graphics->api.texture_read = gs_graphics_texture_read_impl;
 
     // Submission (Main Thread)
     graphics->api.command_buffer_submit = gs_graphics_command_buffer_submit_impl;

@@ -724,20 +724,12 @@ typedef bool32_t          bool32;
 
 //=== Logging ===//
 
-#define gs_log_info(MESSAGE, ...)\
-    gs_println("LOG::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
-
-#define gs_log_success(MESSAGE, ...)\
-    gs_println("SUCCESS::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
-
-#define gs_log_error(MESSAGE, ...)\
-    do {\
-        gs_println("ERROR::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);\
-        gs_assert(false);\
-    } while (0)
-
-#define gs_log_warning(MESSAGE, ...)\
-    gs_println("WARNING::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define gs_log_info(MESSAGE, ...) gs_println("LOG::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define gs_log_success(MESSAGE, ...) gs_println("SUCCESS::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define gs_log_warning(MESSAGE, ...) gs_println("WARNING::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define gs_log_error(MESSAGE, ...) do {gs_println("ERROR::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);\
+                                        gs_assert(false);\
+                                    } while (0)
 
 /*===================================
 // Memory Allocation Utils
@@ -913,6 +905,8 @@ gs_color_t gs_color_ctor(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 #define GS_COLOR_ORANGE gs_color(255, 100, 0, 255)
 #define GS_COLOR_YELLOW gs_color(255, 255, 0, 255)
 #define GS_COLOR_PURPLE gs_color(128, 0, 128, 255)
+#define GS_COLOR_MAROON gs_color(128, 0, 0, 255)
+#define GS_COLOR_BROWN  gs_color(165, 42, 42, 255)
 
 gs_force_inline 
 gs_color_t gs_color_alpha(gs_color_t c, uint8_t a)
@@ -1786,6 +1780,9 @@ typedef struct gs_dyn_array
 
 #define gs_dyn_array_full(__ARR)\
     ((gs_dyn_array_size((__ARR)) == gs_dyn_array_capacity((__ARR))))    
+
+#define gs_dyn_array_byte_size(__ARR)\
+    (gs_dyn_array_size((__ARR)) * sizeof(*__ARR))
 
 GS_API_DECL void* 
 gs_dyn_array_resize_impl(void* arr, size_t sz, size_t amount);
@@ -4637,6 +4634,8 @@ typedef struct gs_lexer_t
 	void (* eat_white_space)(struct gs_lexer_t* lex);
 	gs_token_t (* next_token)(struct gs_lexer_t*);
     bool32 skip_white_space;
+    size_t size;          // Optional
+    size_t contents_size; // Optional
 } gs_lexer_t;
 
 GS_API_DECL void gs_lexer_set_contents(gs_lexer_t* lex, const char* contents);
@@ -6170,6 +6169,7 @@ typedef struct gs_graphics_t
         void (* index_buffer_update)(gs_handle(gs_graphics_index_buffer_t) hndl, gs_graphics_index_buffer_desc_t* desc);
         void (* storage_buffer_update)(gs_handle(gs_graphics_storage_buffer_t) hndl, gs_graphics_storage_buffer_desc_t* desc);
         void (* texture_update)(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);
+        void (* texture_read)(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);
 
         // Submission (Main Thread)
         void (* command_buffer_submit)(gs_command_buffer_t* cb);
@@ -6221,7 +6221,8 @@ GS_API_DECL void  gs_graphics_pipeline_destroy(gs_handle(gs_graphics_pipeline_t)
 GS_API_DECL void  gs_graphics_vertex_buffer_update(gs_handle(gs_graphics_vertex_buffer_t) hndl, gs_graphics_vertex_buffer_desc_t* desc); 
 GS_API_DECL void  gs_graphics_index_buffer_update(gs_handle(gs_graphics_index_buffer_t) hndl, gs_graphics_index_buffer_desc_t* desc);
 GS_API_DECL void  gs_graphics_storage_buffer_update(gs_handle(gs_graphics_storage_buffer_t) hndl, gs_graphics_storage_buffer_desc_t* desc);
-GS_API_DECL void  gs_graphics_texture_update(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc); 
+GS_API_DECL void  gs_graphics_texture_update(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);
+GS_API_DECL void  gs_graphics_texture_read(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);
 
 // Resource Queries
 GS_API_DECL void gs_graphics_pipeline_desc_query(gs_handle(gs_graphics_pipeline_t) hndl, gs_graphics_pipeline_desc_t* out);
@@ -6323,7 +6324,8 @@ gs_enum_decl(gs_asset_mesh_attribute_type,
     GS_ASSET_MESH_ATTRIBUTE_TYPE_JOINT,
     GS_ASSET_MESH_ATTRIBUTE_TYPE_WEIGHT,
     GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD,
-    GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR
+    GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR,
+    GS_ASSET_MESH_ATTRIBUTE_TYPE_UINT
 );
 
 typedef struct gs_asset_mesh_layout_t {
@@ -6689,6 +6691,12 @@ GS_API_DECL void
 gs_graphics_texture_update(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc)
 {
     return gs_graphics()->api.texture_update(hndl, desc); 
+} 
+
+GS_API_DECL void  
+gs_graphics_texture_read(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc)
+{
+    return gs_graphics()->api.texture_read(hndl, desc); 
 } 
 
 /*=============================
@@ -7720,7 +7728,7 @@ gs_camera_offset_orientation(gs_camera_t* cam, f32 yaw, f32 pitch)
 =============================*/
 
 #ifndef GS_NO_STB_RECT_PACK
-    // #define STB_RECT_PACK_IMPLEMENTATION
+    #define STB_RECT_PACK_IMPLEMENTATION
 #endif
 
 #ifndef GS_NO_STB_TRUETYPE
@@ -7745,6 +7753,7 @@ gs_camera_offset_orientation(gs_camera_t* cam, f32 yaw, f32 pitch)
 #ifdef GS_STB_INCLUDE
     #include "external/stb/stb.h"
 #endif
+#include "external/stb/stb_rect_pack.h"
 #include "external/stb/stb_truetype.h"
 #include "external/stb/stb_image.h"
 
@@ -7797,7 +7806,7 @@ gs_util_load_texture_data_from_memory(const void* memory, size_t sz, int32_t* wi
 {
     // Load texture data
     stbi_set_flip_vertically_on_load(flip_vertically_on_load);
-    *data =  stbi_load_from_memory((const stbi_uc*)memory, (int32_t)sz, (int32_t*)width, (int32_t*)height, (int32_t*)num_comps, 0x00);
+    *data =  stbi_load_from_memory((const stbi_uc*)memory, (int32_t)sz, (int32_t*)width, (int32_t*)height, (int32_t*)num_comps, STBI_rgb_alpha);
     if (!*data) {
         gs_free(*data);
         return false;
@@ -8519,7 +8528,8 @@ GS_API_DECL void gs_lexer_set_contents(gs_lexer_t* lex, const char* contents)
 
 GS_API_DECL bool gs_lexer_c_can_lex(gs_lexer_t* lex)
 {
-	return (lex->at && !gs_char_is_null_term(*(lex->at)));
+    bool size_pass = lex->contents_size ? lex->size < lex->contents_size : true;
+	return (size_pass && lex->at && !gs_char_is_null_term(*(lex->at)));
 }
 
 GS_API_DECL void gs_lexer_set_token(gs_lexer_t* lex, gs_token_t token)
@@ -8633,7 +8643,6 @@ gs_lexer_c_next_token(gs_lexer_t* lex)
                     {
                         // Grab decimal
                         num_decimals = lex->at[0] == '.' ? num_decimals++ : num_decimals;
-                        gs_println("%c", *lex->at);
 
                         //Increment
                         lex->at++;
@@ -8750,7 +8759,10 @@ gs_lexer_c_next_token(gs_lexer_t* lex)
 	}
 
 	// Set current token for lex
-	lex->current_token = t;
+    lex->current_token = t;
+    
+    // Record size
+    lex->size += t.len;
 
 	return t;
 }
