@@ -5769,6 +5769,11 @@ gs_enum_decl(gs_graphics_depth_func_type,       // Default value of 0x00 means d
     GS_GRAPHICS_DEPTH_FUNC_ALWAYS
 );
 
+gs_enum_decl(gs_graphics_depth_mask_type,       // Default value 0x00 means depth writing enabled
+    GS_GRAPHICS_DEPTH_MASK_ENABLED,
+    GS_GRAPHICS_DEPTH_MASK_DISABLED
+);
+
 /* Stencil Function Type */
 gs_enum_decl(gs_graphics_stencil_func_type,
     GS_GRAPHICS_STENCIL_FUNC_NEVER,             // Default value of 0x00 means stencil is disabled
@@ -6037,6 +6042,7 @@ typedef struct gs_graphics_blend_state_desc_t
 typedef struct gs_graphics_depth_state_desc_t
 {
     gs_graphics_depth_func_type func;           // Function to set for depth test
+    gs_graphics_depth_mask_type mask;           // Whether or not writing is enabled/disabled
 } gs_graphics_depth_state_desc_t;
 
 /* Graphics Stencil State Desc */

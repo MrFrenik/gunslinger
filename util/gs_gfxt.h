@@ -2664,6 +2664,31 @@ bool gs_parse_depth(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* p
                 return false;
             }
         }
+        if (gs_token_compare_text(&token, "mask"))
+        {
+            if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER))
+            {
+                token = lex->current_token;
+                gs_log_warning("Depth mask type not found after function decl: %.*s", token.len, token.text);
+                return false;
+            }
+
+            token = lex->current_token;
+            
+            if      (gs_token_compare_text(&token, "ENABLED"))  pdesc->pip_desc.depth.mask = GS_GRAPHICS_DEPTH_MASK_ENABLED;
+            else if (gs_token_compare_text(&token, "TRUE"))     pdesc->pip_desc.depth.mask = GS_GRAPHICS_DEPTH_MASK_ENABLED;
+            else if (gs_token_compare_text(&token, "true"))     pdesc->pip_desc.depth.mask = GS_GRAPHICS_DEPTH_MASK_ENABLED;
+            else if (gs_token_compare_text(&token, "DISABLED")) pdesc->pip_desc.depth.mask = GS_GRAPHICS_DEPTH_MASK_DISABLED;
+            else if (gs_token_compare_text(&token, "FALSE"))    pdesc->pip_desc.depth.mask = GS_GRAPHICS_DEPTH_MASK_DISABLED;
+            else if (gs_token_compare_text(&token, "false"))    pdesc->pip_desc.depth.mask = GS_GRAPHICS_DEPTH_MASK_DISABLED;
+            else
+            {
+                token = lex->current_token;
+                gs_log_warning("Mask type %.*s not valid.", token.len, token.text);
+                return false;
+            } 
+            gs_println("MASK: %zu", (uint32_t)pdesc->pip_desc.depth.mask);
+        }
     });
     return true;
 }

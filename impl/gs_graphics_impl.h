@@ -409,6 +409,17 @@ uint32_t gsgl_depth_func_to_gl_depth_func(gs_graphics_depth_func_type type)
     return func;
 }
 
+bool gsgl_depth_mask_to_gl_mask(gs_graphics_depth_mask_type type)
+{
+    bool ret = true;
+    switch (type) {
+        default: 
+        case GS_GRAPHICS_DEPTH_MASK_ENABLED: ret = true; break;
+        case GS_GRAPHICS_DEPTH_MASK_DISABLED: ret = false; break; 
+    }
+    return ret;
+}
+
 uint32_t gsgl_stencil_func_to_gl_stencil_func(gs_graphics_stencil_func_type type)
 {
     uint32_t func = GL_ALWAYS;
@@ -2334,7 +2345,8 @@ void gs_graphics_command_buffer_submit_impl(gs_command_buffer_t* cb)
                 else {
                     glEnable(GL_DEPTH_TEST);    
                     glDepthFunc(gsgl_depth_func_to_gl_depth_func(pip->depth.func));
-                }
+                } 
+                glDepthMask(gsgl_depth_mask_to_gl_mask(pip->depth.mask));
 
                 /* Stencil */
                 if (!pip->stencil.func) {
