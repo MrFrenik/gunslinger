@@ -2686,10 +2686,18 @@ GS_API_DECL void gs_paged_allocator_clear(gs_paged_allocator_t* pa);
 // Interpolation
 // Source: https://codeplea.com/simple-interpolation
 
+// Returns v based on t
 gs_inline float
 gs_interp_linear(float a, float b, float t)
 {
     return (a + t * (b - a));
+}
+
+// Returns t based on v
+gs_inline float
+gs_interp_linear_inv(float a, float b, float v)
+{
+    return (v - a) / (b - a);
 }
 
 gs_inline float
@@ -6233,6 +6241,7 @@ GS_API_DECL void  gs_graphics_texture_read(gs_handle(gs_graphics_texture_t) hndl
 // Resource Queries
 GS_API_DECL void gs_graphics_pipeline_desc_query(gs_handle(gs_graphics_pipeline_t) hndl, gs_graphics_pipeline_desc_t* out);
 GS_API_DECL void gs_graphics_texture_desc_query(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* out); 
+GS_API_DECL size_t gs_graphics_uniform_size_query(gs_handle(gs_graphics_uniform_t) hndl);
 
 // Resource In-Flight Update
 GS_API_DECL void gs_graphics_texture_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);

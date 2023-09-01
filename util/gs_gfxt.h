@@ -311,6 +311,9 @@ GS_API_DECL gs_gfxt_texture_t  gs_gfxt_texture_load_from_memory(const char* data
 //=== Copy ===//
 GS_API_DECL gs_gfxt_material_t gs_gfxt_material_deep_copy(gs_gfxt_material_t* src);
 
+//=== Pipeline API ===//
+GS_API_DECL gs_gfxt_uniform_t* gs_gfxt_pipeline_get_uniform(gs_gfxt_pipeline_t* pip, const char* name);
+
 //=== Material API ===//
 GS_API_DECL void gs_gfxt_material_set_uniform(gs_gfxt_material_t* mat, const char* name, const void* data);
 GS_API_DECL void gs_gfxt_material_bind(gs_command_buffer_t* cb, gs_gfxt_material_t* mat);
@@ -972,6 +975,19 @@ GS_API_DECL gs_gfxt_material_t gs_gfxt_material_deep_copy(gs_gfxt_material_t* sr
     gs_gfxt_material_t mat = gs_gfxt_material_create(&src->desc);
     gs_byte_buffer_copy_contents(&mat.uniform_data, &src->uniform_data);
     return mat;
+}
+
+//=== Pipeline API ===//
+GS_API_DECL gs_gfxt_uniform_t* 
+gs_gfxt_pipeline_get_uniform(gs_gfxt_pipeline_t* pip, const char* name)
+{
+    uint64_t key = gs_hash_str64(name);
+    if (!gs_hash_table_exists(pip->ublock.lookup, key)) {
+        return NULL;
+    }
+    // Based on name, need to get uniform
+    uint32_t uidx = gs_hash_table_get(pip->ublock.lookup, key);
+    return &pip->ublock.uniforms[uidx];
 }
 
 //=== Material API ===//
@@ -3428,6 +3444,9 @@ gs_gfxt_texture_load_from_file(const char* path, gs_graphics_texture_desc_t* des
 {
     gs_asset_texture_t tex = gs_default_val();
     gs_asset_texture_load_from_file(path, &tex, desc, flip, keep_data);
+    if (desc) {
+        *desc = tex.desc;
+    }
     return tex.hndl;
 }
 
@@ -3435,6 +3454,9 @@ GS_API_DECL gs_gfxt_texture_t gs_gfxt_texture_load_from_memory(const char* data,
 {
     gs_asset_texture_t tex = gs_default_val(); 
     gs_asset_texture_load_from_memory(data, sz, &tex, desc, flip, keep_data);
+    if (desc) {
+        *desc = tex.desc;
+    }
     return tex.hndl;
 }
 

@@ -55,6 +55,11 @@ typedef enum {
     GSI_VATTR_COLOR
 } gsi_vattr_type;
 
+gs_enum_decl(gsi_layout_type, 
+	GSI_LAYOUT_VATTR, 				// Using vattr type directly
+	GSI_LAYOUT_MESH					// Using asset mesh types indirectly to be converted internally
+);
+
 // Need a configurable pipeline matrix
 /*
 	depth | stencil | face cull | blend | prim
@@ -792,6 +797,8 @@ GS_API_DECL void gsi_texture(gs_immediate_draw_t* gsi, gs_handle(gs_graphics_tex
 GS_API_DECL void 
 gsi_pipeline_set(gs_immediate_draw_t* gsi, gs_handle(gs_graphics_pipeline_t) pipeline)
 { 
+	gsi_flush(gsi);
+	
 	// Bind if valid
 	if (pipeline.id)
 	{

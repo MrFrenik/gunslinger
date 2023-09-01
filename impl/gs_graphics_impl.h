@@ -56,9 +56,9 @@ typedef struct gsgl_uniform_t {
 
 // When a user passes in a uniform layout, that handle could then pass to a WHOLE list of uniforms (if describing a struct)
 typedef struct gsgl_uniform_list_t {
-    size_t size;                                // Total size of uniform data
-    char name[64];                           // Base name of uniform
     gs_dyn_array(gsgl_uniform_t) uniforms;      // Individual uniforms in list
+    size_t size;                                // Total size of uniform data
+    char name[64];                              // Base name of uniform
 } gsgl_uniform_list_t;
 
 typedef struct gsgl_uniform_buffer_t {
@@ -1277,6 +1277,14 @@ gs_graphics_texture_desc_query(gs_handle(gs_graphics_texture_t) hndl, gs_graphic
     } 
 
     *out = tex->desc; 
+}
+
+GS_API_DECL size_t 
+gs_graphics_uniform_size_query(gs_handle(gs_graphics_uniform_t) hndl)
+{ 
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data; 
+    gsgl_uniform_list_t* u = gs_slot_array_getp(ogl->uniforms, hndl.id);
+    return u->uniforms[0].size;
 }
 
 // Resource Updates (main thread only) 
