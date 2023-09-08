@@ -4409,7 +4409,7 @@ typedef mco_result gs_coro_result;
 // Functions
 #define gs_coro_desc_init(DESC, V)       mco_desc_init((DESC), (V))
 #define gs_coro_init(CO, DESC)           mco_init((CO), (DESC))
-#define gs_coro_uninit(CO, DESC)         mco_uninit((CO))
+#define gs_coro_uninit(CO)               mco_uninit((CO))
 #define gs_coro_create(CO, DESC)         mco_create((CO), (DESC))
 #define gs_coro_destroy(CO)              mco_destroy((CO))
 #define gs_coro_yield(CO)                mco_yield((CO))
