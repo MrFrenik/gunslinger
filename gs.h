@@ -7472,8 +7472,7 @@ gs_rand_gen(gs_mt_rand_t* rand)
 GS_API_DECL uint64_t 
 gs_rand_gen_range_long(gs_mt_rand_t* rand, int32_t min, int32_t max)
 {
-    double v = (gs_map_range(0.0, 1.0, (float)min, (float)max, (float)gs_rand_gen(rand)));
-    return (uint64_t)round(v);
+    return (uint64_t)(floorf(gs_rand_gen_range(rand, (double)min, (double)max)));
 }
 
 GS_API_DECL double 
