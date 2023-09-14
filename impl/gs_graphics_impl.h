@@ -251,6 +251,7 @@ uint32_t gsgl_texture_format_to_gl_data_type(gs_graphics_texture_format_type typ
         default:
         case GS_GRAPHICS_TEXTURE_FORMAT_A8:                 format = GL_UNSIGNED_BYTE; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_R8:                 format = GL_UNSIGNED_BYTE; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_R32:                format = GL_UNSIGNED_INT; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGB8:               format = GL_UNSIGNED_BYTE; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGBA8:              format = GL_UNSIGNED_BYTE; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F:            format = GL_FLOAT; break;
@@ -274,6 +275,7 @@ uint32_t gsgl_texture_format_to_gl_texture_format(gs_graphics_texture_format_typ
         case GS_GRAPHICS_TEXTURE_FORMAT_RGBA8:              dt = GL_RGBA; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_A8:                 dt = GL_ALPHA; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_R8:                 dt = GL_RED; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_R32:                dt = GL_RED_INTEGER; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGB8:               dt = GL_RGB; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F:            dt = GL_RGBA; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGBA32F:            dt = GL_RGBA; break;
@@ -294,6 +296,7 @@ uint32_t gsgl_texture_format_to_gl_texture_internal_format(gs_graphics_texture_f
     switch (type) {
         case GS_GRAPHICS_TEXTURE_FORMAT_A8:                 format = GL_ALPHA; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_R8:                 format = GL_RED; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_R32:                format = GL_R32UI; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGB8:               format = GL_RGB8; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGBA8:              format = GL_RGBA8; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F:            format = GL_RGBA16F; break;
@@ -465,6 +468,7 @@ gsgl_uniform_type gsgl_uniform_type_to_gl_uniform_type(gs_graphics_uniform_type 
         case GS_GRAPHICS_UNIFORM_VEC3: type = GSGL_UNIFORMTYPE_VEC3; break;
         case GS_GRAPHICS_UNIFORM_VEC4: type = GSGL_UNIFORMTYPE_VEC4; break;
         case GS_GRAPHICS_UNIFORM_MAT4: type = GSGL_UNIFORMTYPE_MAT4; break;
+        case GS_GRAPHICS_UNIFORM_USAMPLER2D: type = GSGL_UNIFORMTYPE_SAMPLER2D; break;
         case GS_GRAPHICS_UNIFORM_SAMPLER2D: type = GSGL_UNIFORMTYPE_SAMPLER2D; break;
         case GS_GRAPHICS_UNIFORM_SAMPLERCUBE: type = GSGL_UNIFORMTYPE_SAMPLERCUBE; break;
     }
@@ -546,6 +550,7 @@ size_t gsgl_uniform_data_size_in_bytes(gs_graphics_uniform_type type)
         case GS_GRAPHICS_UNIFORM_VEC4:  sz = 4 * sizeof(float); break;
         case GS_GRAPHICS_UNIFORM_MAT4:  sz = 16 * sizeof(float); break;
         case GS_GRAPHICS_UNIFORM_SAMPLER2D:  sz = sizeof(gs_handle(gs_graphics_texture_t)); break;  // handle size
+        case GS_GRAPHICS_UNIFORM_USAMPLER2D:  sz = sizeof(gs_handle(gs_graphics_texture_t)); break;  // handle size
         case GS_GRAPHICS_UNIFORM_SAMPLERCUBE:  sz = sizeof(gs_handle(gs_graphics_texture_t)); break;  // handle size
         default: {
             sz = 0;
@@ -683,9 +688,11 @@ gsgl_texture_t gl_texture_update_internal(const gs_graphics_texture_desc_t* desc
             {
                 case GS_GRAPHICS_TEXTURE_FORMAT_A8: glTexImage2D(itarget, 0, GL_ALPHA, width, height, 0, GL_ALPHA, GL_UNSIGNED_BYTE, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_R8: glTexImage2D(itarget, 0, GL_RED, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_R32: glTexImage2D(itarget, 0, GL_R32UI, width, height, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_RG8: glTexImage2D(itarget, 0, GL_RG8, width, height, 0, GL_RG, GL_UNSIGNED_BYTE, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_RGB8: glTexImage2D(itarget, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_RGBA8: glTexImage2D(itarget, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_R32F: glTexImage2D(itarget, 0, GL_R32F, width, height, 0, GL_RED, GL_FLOAT, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F: glTexImage2D(itarget, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_RGBA32F: glTexImage2D(itarget, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH8: glTexImage2D(itarget, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
@@ -707,9 +714,11 @@ gsgl_texture_t gl_texture_update_internal(const gs_graphics_texture_desc_t* desc
             {
                 case GS_GRAPHICS_TEXTURE_FORMAT_A8: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_ALPHA, GL_UNSIGNED_BYTE, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_R8: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RED, GL_UNSIGNED_BYTE, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_R32: glTexImage2D(itarget, 0, GL_R32UI, width, height, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_RG8: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RG, GL_UNSIGNED_BYTE, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_RGB8: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RGB, GL_UNSIGNED_BYTE, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_RGBA8: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_R32F: glTexImage2D(itarget, 0, GL_R32F, width, height, 0, GL_RED, GL_FLOAT, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RGBA, GL_FLOAT, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_RGBA32F: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RGBA, GL_FLOAT, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH8: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
@@ -1499,6 +1508,7 @@ gs_graphics_texture_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphic
         case GS_GRAPHICS_TEXTURE_FORMAT_RGB8:               num_comps = 3; data_type_size = sizeof(uint8_t); break;
         case GS_GRAPHICS_TEXTURE_FORMAT_A8:                 num_comps = 1; data_type_size = sizeof(uint8_t); break;
         case GS_GRAPHICS_TEXTURE_FORMAT_R8:                 num_comps = 1; data_type_size = sizeof(uint8_t); break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_R32:                num_comps = 1; data_type_size = sizeof(uint32_t); break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F:            num_comps = 4; data_type_size = sizeof(float); break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGBA32F:            num_comps = 4; data_type_size = sizeof(float); break;
         case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH8:             num_comps = 1; data_type_size = sizeof(float); break;
@@ -2752,7 +2762,10 @@ gs_graphics_init(gs_graphics_t* graphics)
             // Work group invocations
             glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, (int32_t*)&info->compute.max_work_group_invocations);
         }
-    )
+    ) 
+
+    const GLubyte* glslv = glGetString(GL_SHADING_LANGUAGE_VERSION);
+    gs_println("GLSL Version: %s", glslv);
 
     // Set up all function pointers for graphics context
 

@@ -1096,7 +1096,8 @@ GS_API_DECL void gs_gui_layout_width(gs_gui_context_t *ctx, int32_t width);
 GS_API_DECL void gs_gui_layout_height(gs_gui_context_t *ctx, int32_t height);
 GS_API_DECL void gs_gui_layout_column_begin(gs_gui_context_t *ctx);
 GS_API_DECL void gs_gui_layout_column_end(gs_gui_context_t *ctx);
-GS_API_DECL void gs_gui_layout_set_next(gs_gui_context_t *ctx, gs_gui_rect_t r, int32_t relative);
+GS_API_DECL void gs_gui_layout_set_next(gs_gui_context_t *ctx, gs_gui_rect_t r, int32_t relative); 
+GS_API_DECL gs_gui_rect_t gs_gui_layout_peek_next(gs_gui_context_t *ctx);
 GS_API_DECL gs_gui_rect_t gs_gui_layout_next(gs_gui_context_t *ctx); 
 GS_API_DECL gs_gui_rect_t gs_gui_layout_anchor(const gs_gui_rect_t* parent, int32_t width, int32_t height, int32_t xoff, int32_t yoff, gs_gui_layout_anchor_type type);
 
@@ -5636,7 +5637,9 @@ enum {
     GS_GUI_ABSOLUTE = 2
 }; 
 
-GS_API_DECL gs_gui_rect_t gs_gui_layout_anchor(const gs_gui_rect_t* p, int32_t width, int32_t height, int32_t xoff, int32_t yoff, gs_gui_layout_anchor_type type)
+GS_API_DECL gs_gui_rect_t 
+gs_gui_layout_anchor(const gs_gui_rect_t* p, int32_t width, int32_t height, 
+    int32_t xoff, int32_t yoff, gs_gui_layout_anchor_type type)
 { 
     float w = (float)width;
     float h = (float)height;
@@ -5768,24 +5771,95 @@ GS_API_DECL void gs_gui_layout_row_ex(gs_gui_context_t *ctx, int32_t items, cons
     }
 }
 
-GS_API_DECL void gs_gui_layout_width(gs_gui_context_t *ctx, int32_t width) 
+GS_API_DECL void 
+gs_gui_layout_width(gs_gui_context_t *ctx, int32_t width) 
 {
 	gs_gui_get_layout(ctx)->size.x = (f32)width;
 } 
 
-GS_API_DECL void gs_gui_layout_height(gs_gui_context_t *ctx, int32_t height) 
+GS_API_DECL void 
+gs_gui_layout_height(gs_gui_context_t *ctx, int32_t height) 
 {
 	gs_gui_get_layout(ctx)->size.y = (f32)height;
 } 
 
-GS_API_DECL void gs_gui_layout_set_next(gs_gui_context_t *ctx, gs_gui_rect_t r, int32_t relative) 
+GS_API_DECL void 
+gs_gui_layout_set_next(gs_gui_context_t *ctx, gs_gui_rect_t r, int32_t relative) 
 {
 	gs_gui_layout_t *layout = gs_gui_get_layout(ctx);
 	layout->next = r;
 	layout->next_type = relative ? GS_GUI_RELATIVE : GS_GUI_ABSOLUTE;
 } 
 
-GS_API_DECL gs_gui_rect_t gs_gui_layout_next(gs_gui_context_t *ctx) 
+GS_API_DECL gs_gui_rect_t 
+gs_gui_layout_peek_next(gs_gui_context_t *ctx)
+{
+    gs_gui_layout_t layout = *gs_gui_get_layout(ctx);
+	gs_gui_style_t* style = ctx->style;
+	gs_gui_rect_t res;
+
+	if (layout.next_type)
+    {
+		/* handle rect set by `gs_gui_layout_set_next` */
+		int32_t type = layout.next_type;
+		res = layout.next;
+		if (type == GS_GUI_ABSOLUTE) 
+        { 
+            return res;
+        }
+
+	} 
+    else 
+    {
+		// handle next row
+		if (layout.item_index == layout.items) 
+        {
+			gs_gui_layout_row(ctx, layout.items, NULL, (s32)layout.size.y);
+		} 
+
+        const int32_t items = layout.items;
+        const int32_t idx = layout.item_index; 
+
+        int32_t ml = style->margin[GS_GUI_MARGIN_LEFT];
+        int32_t mr = style->margin[GS_GUI_MARGIN_RIGHT];
+        int32_t mt = style->margin[GS_GUI_MARGIN_TOP];
+        int32_t mb = style->margin[GS_GUI_MARGIN_BOTTOM]; 
+
+		// position
+		res.x = layout.position.x + ml;
+		res.y = layout.position.y + mt;
+
+		// size
+		res.w = layout.items > 0 ? layout.widths[layout.item_index] : layout.size.x;
+		res.h = layout.size.y;
+
+        // default fallbacks
+        if (res.w == 0) { res.w = style->size[0]; }
+        if (res.h == 0) { res.h = style->size[1]; }
+
+        if (res.w < 0) { res.w += layout.body.w - res.x + 1; }
+        if (res.h < 0) { res.h += layout.body.h - res.y + 1; }
+
+		layout.item_index++;
+	} 
+
+	/* update position */
+	layout.position.x += res.w + style->margin[GS_GUI_MARGIN_RIGHT];
+	layout.next_row = (s32)gs_max(layout.next_row, res.y + res.h + style->margin[GS_GUI_MARGIN_BOTTOM]);
+
+	/* apply body offset */
+	res.x += layout.body.x;
+	res.y += layout.body.y;
+
+	/* update max position */
+	layout.max.x = gs_max(layout.max.x, res.x + res.w);
+	layout.max.y = gs_max(layout.max.y, res.y + res.h);
+
+    return res;
+} 
+
+GS_API_DECL gs_gui_rect_t 
+gs_gui_layout_next(gs_gui_context_t *ctx) 
 {
 	gs_gui_layout_t* layout = gs_gui_get_layout(ctx);
 	gs_gui_style_t* style = ctx->style;

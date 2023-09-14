@@ -2664,7 +2664,7 @@ GS_API_DECL void gs_paged_allocator_clear(gs_paged_allocator_t* pa);
 
 #define gs_v2s(__S)  gs_vec2_ctor((__S), (__S))
 #define gs_v3s(__S)  gs_vec3_ctor((__S), (__S), (__S))
-#define gs_v4s(__S)  gs_vec4_ctor((__S), (__S), (__S), (__S))
+#define gs_v4s(__S)  gs_vec4_ctor((__S), (__S), (__S), (__S)) 
 
 #define gs_v4_xy_v(__X, __Y, __V) gs_vec4_ctor((__X), (__Y), (__V).x, (__V).y)
 #define gs_v4_xyz_s(__XYZ, __S) gs_vec4_ctor((__XYZ).x, (__XYZ).y, (__XYZ).z, (__S))
@@ -2789,6 +2789,13 @@ gs_vec2_ctor(f32 _x, f32 _y)
     v.x = _x;
     v.y = _y;
     return v;
+}
+
+gs_inline bool
+gs_vec2_nan(gs_vec2 v)
+{
+    if (v.x != v.x || v.y != v.y) return true;
+    return false; 
 }
 
 gs_inline gs_vec2 
@@ -3185,15 +3192,21 @@ gs_vec4_dist(gs_vec4 v0, gs_vec4 v1)
 ================================================================================*/
 
 gs_inline
-gs_vec3 gs_v4_to_v3(gs_vec4 v) 
+gs_vec3 gs_v4tov3(gs_vec4 v) 
 {
     return gs_v3(v.x, v.y, v.z);
 }
 
 gs_inline
-gs_vec2 gs_v3_to_v2(gs_vec3 v) 
+gs_vec2 gs_v3tov2(gs_vec3 v) 
 {
     return gs_v2(v.x, v.y);
+}
+
+gs_inline
+gs_vec3 gs_v2tov3(gs_vec2 v)
+{
+    return gs_v3(v.x, v.y, 0.f);
 }
 
 /*================================================================================
@@ -3810,7 +3823,7 @@ gs_vec4 gs_mat4_mul_vec4(gs_mat4 m, gs_vec4 v)
 gs_inline
 gs_vec3 gs_mat4_mul_vec3(gs_mat4 m, gs_vec3 v)
 {
-    return gs_v4_to_v3(gs_mat4_mul_vec4(m, gs_v4_xyz_s(v, 1.f)));
+    return gs_v4tov3(gs_mat4_mul_vec4(m, gs_v4_xyz_s(v, 1.f)));
 }
     
 
@@ -5628,6 +5641,7 @@ gs_enum_decl(gs_graphics_uniform_type,
     GS_GRAPHICS_UNIFORM_VEC4,
     GS_GRAPHICS_UNIFORM_MAT4,
     GS_GRAPHICS_UNIFORM_SAMPLER2D,
+    GS_GRAPHICS_UNIFORM_USAMPLER2D,
     GS_GRAPHICS_UNIFORM_SAMPLERCUBE,
     GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F,
     GS_GRAPHICS_UNIFORM_BLOCK
@@ -5718,6 +5732,8 @@ gs_enum_decl(gs_graphics_texture_format_type,
     GS_GRAPHICS_TEXTURE_FORMAT_RGBA8,
     GS_GRAPHICS_TEXTURE_FORMAT_RGB8,
     GS_GRAPHICS_TEXTURE_FORMAT_RG8,
+    GS_GRAPHICS_TEXTURE_FORMAT_R32,
+    GS_GRAPHICS_TEXTURE_FORMAT_R32F,
     GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F,
     GS_GRAPHICS_TEXTURE_FORMAT_RGBA32F,
     GS_GRAPHICS_TEXTURE_FORMAT_A8,

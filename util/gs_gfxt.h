@@ -409,6 +409,7 @@ gs_gfxt_uniform_block_create(const gs_gfxt_uniform_block_desc_t* desc)
             case GS_GRAPHICS_UNIFORM_VEC4:      offset += sizeof(gs_vec4); break;
             case GS_GRAPHICS_UNIFORM_MAT4:      offset += sizeof(gs_mat4); break;
             case GS_GRAPHICS_UNIFORM_SAMPLER2D: offset += sizeof(gs_handle(gs_graphics_texture_t)); break;
+            case GS_GRAPHICS_UNIFORM_USAMPLER2D: offset += sizeof(gs_handle(gs_graphics_texture_t)); break;
             case GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F: 
             {
                 image2D_offset += sizeof(gs_handle(gs_graphics_texture_t));
@@ -1034,7 +1035,8 @@ void gs_gfxt_material_set_uniform(gs_gfxt_material_t* mat, const char* name, con
         case GS_GRAPHICS_UNIFORM_MAT4:  gs_byte_buffer_write(&mat->uniform_data, gs_mat4, *(gs_mat4*)data); break;
 
 		case GS_GRAPHICS_UNIFORM_SAMPLERCUBE:
-        case GS_GRAPHICS_UNIFORM_SAMPLER2D: 
+        case GS_GRAPHICS_UNIFORM_SAMPLER2D:
+        case GS_GRAPHICS_UNIFORM_USAMPLER2D:
 		{
             gs_byte_buffer_write(&mat->uniform_data, gs_handle(gs_graphics_texture_t), *(gs_handle(gs_graphics_texture_t)*)data);
         } break;
@@ -2090,6 +2092,7 @@ gs_graphics_uniform_type gs_uniform_type_from_token(const gs_token_t* t)
     else if (gs_token_compare_text(t, "vec4"))           return GS_GRAPHICS_UNIFORM_VEC4; 
     else if (gs_token_compare_text(t, "mat4"))           return GS_GRAPHICS_UNIFORM_MAT4; 
     else if (gs_token_compare_text(t, "sampler2D"))      return GS_GRAPHICS_UNIFORM_SAMPLER2D; 
+    else if (gs_token_compare_text(t, "usampler2D"))     return GS_GRAPHICS_UNIFORM_USAMPLER2D; 
     else if (gs_token_compare_text(t, "samplerCube"))    return GS_GRAPHICS_UNIFORM_SAMPLERCUBE; 
     else if (gs_token_compare_text(t, "img2D_rgba32f"))  return GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F; 
     return (gs_graphics_uniform_type)0x00;
@@ -2106,6 +2109,7 @@ const char* gs_uniform_string_from_type(gs_graphics_uniform_type type)
         case GS_GRAPHICS_UNIFORM_VEC4:            return "vec4"; break; 
         case GS_GRAPHICS_UNIFORM_MAT4:            return "mat4"; break;
         case GS_GRAPHICS_UNIFORM_SAMPLER2D:       return "sampler2D"; break; 
+        case GS_GRAPHICS_UNIFORM_USAMPLER2D:      return "usampler2D"; break; 
         case GS_GRAPHICS_UNIFORM_SAMPLERCUBE:     return "samplerCube"; break; 
         case GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F: return "image2D"; break; 
         default: return "UNKNOWN"; break;
@@ -2200,6 +2204,7 @@ bool gs_parse_uniforms(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t*
                         default: break;
 
                         case GS_GRAPHICS_UNIFORM_SAMPLER2D:
+                        case GS_GRAPHICS_UNIFORM_USAMPLER2D:
                         case GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F:
                         {
                             uniform.binding = image_binding++;
@@ -3144,11 +3149,15 @@ char* gs_pipeline_generate_shader_code(gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t*
 {
     gs_println("GENERATING CODE...");
 
+    // Get major/minor version of shader 
+    gs_graphics_info_t* ginfo = gs_graphics_info();
+    gs_snprintfc(MAJMINSTR, 128, "#version %zu%zu0\n", ginfo->major_version, ginfo->minor_version);
+
     // Shaders
     #ifdef GS_PLATFORM_WEB
         #define _GS_VERSION_STR "#version 300 es\n"
     #else
-        #define _GS_VERSION_STR "#version 330 core\n"
+        #define _GS_VERSION_STR MAJMINSTR
     #endif
 
     // Source code 
@@ -3169,11 +3178,8 @@ char* gs_pipeline_generate_shader_code(gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t*
         return src;
     }
 
-    const char* shader_header = 
-    stage == GS_GRAPHICS_SHADER_STAGE_COMPUTE ? 
-    "#version 430\n" : 
-    _GS_VERSION_STR
-    "precision mediump float;\n";
+    // Shader header
+    gs_snprintfc(shader_header, 512, "%s precision mediump float;\n", stage == GS_GRAPHICS_SHADER_STAGE_COMPUTE ? "#version 430\n" : _GS_VERSION_STR);
 
     // Generate shader code
     if (ppd->code[sidx])
