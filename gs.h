@@ -2664,7 +2664,7 @@ GS_API_DECL void gs_paged_allocator_clear(gs_paged_allocator_t* pa);
 
 #define gs_v2s(__S)  gs_vec2_ctor((__S), (__S))
 #define gs_v3s(__S)  gs_vec3_ctor((__S), (__S), (__S))
-#define gs_v4s(__S)  gs_vec4_ctor((__S), (__S), (__S), (__S))
+#define gs_v4s(__S)  gs_vec4_ctor((__S), (__S), (__S), (__S)) 
 
 #define gs_v4_xy_v(__X, __Y, __V) gs_vec4_ctor((__X), (__Y), (__V).x, (__V).y)
 #define gs_v4_xyz_s(__XYZ, __S) gs_vec4_ctor((__XYZ).x, (__XYZ).y, (__XYZ).z, (__S))
@@ -2686,10 +2686,18 @@ GS_API_DECL void gs_paged_allocator_clear(gs_paged_allocator_t* pa);
 // Interpolation
 // Source: https://codeplea.com/simple-interpolation
 
+// Returns v based on t
 gs_inline float
 gs_interp_linear(float a, float b, float t)
 {
     return (a + t * (b - a));
+}
+
+// Returns t based on v
+gs_inline float
+gs_interp_linear_inv(float a, float b, float v)
+{
+    return (v - a) / (b - a);
 }
 
 gs_inline float
@@ -2781,6 +2789,13 @@ gs_vec2_ctor(f32 _x, f32 _y)
     v.x = _x;
     v.y = _y;
     return v;
+}
+
+gs_inline bool
+gs_vec2_nan(gs_vec2 v)
+{
+    if (v.x != v.x || v.y != v.y) return true;
+    return false; 
 }
 
 gs_inline gs_vec2 
@@ -3177,15 +3192,21 @@ gs_vec4_dist(gs_vec4 v0, gs_vec4 v1)
 ================================================================================*/
 
 gs_inline
-gs_vec3 gs_v4_to_v3(gs_vec4 v) 
+gs_vec3 gs_v4tov3(gs_vec4 v) 
 {
     return gs_v3(v.x, v.y, v.z);
 }
 
 gs_inline
-gs_vec2 gs_v3_to_v2(gs_vec3 v) 
+gs_vec2 gs_v3tov2(gs_vec3 v) 
 {
     return gs_v2(v.x, v.y);
+}
+
+gs_inline
+gs_vec3 gs_v2tov3(gs_vec2 v)
+{
+    return gs_v3(v.x, v.y, 0.f);
 }
 
 /*================================================================================
@@ -3802,7 +3823,7 @@ gs_vec4 gs_mat4_mul_vec4(gs_mat4 m, gs_vec4 v)
 gs_inline
 gs_vec3 gs_mat4_mul_vec3(gs_mat4 m, gs_vec3 v)
 {
-    return gs_v4_to_v3(gs_mat4_mul_vec4(m, gs_v4_xyz_s(v, 1.f)));
+    return gs_v4tov3(gs_mat4_mul_vec4(m, gs_v4_xyz_s(v, 1.f)));
 }
     
 
@@ -4408,6 +4429,24 @@ typedef mco_result gs_coro_result;
 #define gs_coro_resume(CO)               mco_resume((CO))
 #define gs_coro_result_description(RES)  mco_result_description((RES))
 #define gs_coro_status(CO)               mco_status((CO))
+
+/*================================================================================
+// Scheduler
+================================================================================*/
+
+#include "external/sched/sched.h"
+
+#define GS_SCHED_DEFAULT            SCHED_DEFAULT
+#define gs_sched_task_t             struct sched_task
+#define gs_sched_task_partition_t   struct sched_task_partition
+#define gs_scheduler_t              struct scheduler
+#define gs_sched_profiling_t        struct sched_profiling
+#define gs_scheduler_init           scheduler_init
+#define gs_scheduler_start          scheduler_start
+#define gs_scheduler_add            scheduler_add
+#define gs_scheduler_join           scheduler_join
+#define gs_scheduler_wait           scheduler_wait
+#define gs_scheduler_stop           scheduler_stop
 
 /*================================================================================
 // Noise
@@ -5620,6 +5659,7 @@ gs_enum_decl(gs_graphics_uniform_type,
     GS_GRAPHICS_UNIFORM_VEC4,
     GS_GRAPHICS_UNIFORM_MAT4,
     GS_GRAPHICS_UNIFORM_SAMPLER2D,
+    GS_GRAPHICS_UNIFORM_USAMPLER2D,
     GS_GRAPHICS_UNIFORM_SAMPLERCUBE,
     GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F,
     GS_GRAPHICS_UNIFORM_BLOCK
@@ -5709,6 +5749,9 @@ typedef enum
 gs_enum_decl(gs_graphics_texture_format_type,
     GS_GRAPHICS_TEXTURE_FORMAT_RGBA8,
     GS_GRAPHICS_TEXTURE_FORMAT_RGB8,
+    GS_GRAPHICS_TEXTURE_FORMAT_RG8,
+    GS_GRAPHICS_TEXTURE_FORMAT_R32,
+    GS_GRAPHICS_TEXTURE_FORMAT_R32F,
     GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F,
     GS_GRAPHICS_TEXTURE_FORMAT_RGBA32F,
     GS_GRAPHICS_TEXTURE_FORMAT_A8,
@@ -5767,6 +5810,11 @@ gs_enum_decl(gs_graphics_depth_func_type,       // Default value of 0x00 means d
     GS_GRAPHICS_DEPTH_FUNC_NOTEQUAL,
     GS_GRAPHICS_DEPTH_FUNC_GEQUAL,
     GS_GRAPHICS_DEPTH_FUNC_ALWAYS
+);
+
+gs_enum_decl(gs_graphics_depth_mask_type,       // Default value 0x00 means depth writing enabled
+    GS_GRAPHICS_DEPTH_MASK_ENABLED,
+    GS_GRAPHICS_DEPTH_MASK_DISABLED
 );
 
 /* Stencil Function Type */
@@ -6037,6 +6085,7 @@ typedef struct gs_graphics_blend_state_desc_t
 typedef struct gs_graphics_depth_state_desc_t
 {
     gs_graphics_depth_func_type func;           // Function to set for depth test
+    gs_graphics_depth_mask_type mask;           // Whether or not writing is enabled/disabled
 } gs_graphics_depth_state_desc_t;
 
 /* Graphics Stencil State Desc */
@@ -6227,6 +6276,7 @@ GS_API_DECL void  gs_graphics_texture_read(gs_handle(gs_graphics_texture_t) hndl
 // Resource Queries
 GS_API_DECL void gs_graphics_pipeline_desc_query(gs_handle(gs_graphics_pipeline_t) hndl, gs_graphics_pipeline_desc_t* out);
 GS_API_DECL void gs_graphics_texture_desc_query(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* out); 
+GS_API_DECL size_t gs_graphics_uniform_size_query(gs_handle(gs_graphics_uniform_t) hndl);
 
 // Resource In-Flight Update
 GS_API_DECL void gs_graphics_texture_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);
@@ -7456,8 +7506,7 @@ gs_rand_gen(gs_mt_rand_t* rand)
 GS_API_DECL uint64_t 
 gs_rand_gen_range_long(gs_mt_rand_t* rand, int32_t min, int32_t max)
 {
-    double v = (gs_map_range(0.0, 1.0, (float)min, (float)max, (float)gs_rand_gen(rand)));
-    return (uint64_t)round(v);
+    return (uint64_t)(floorf(gs_rand_gen_range(rand, (double)min, (double)max)));
 }
 
 GS_API_DECL double 
@@ -7484,6 +7533,12 @@ gs_rand_gen_color(gs_mt_rand_t* rand)
 // Light wrapper around Minicoro
 #define MINICORO_IMPL
 #include "external/minicoro/minicoro.h"
+
+/*================================================================================
+// Scheduler
+================================================================================*/
+#define SCHED_IMPLEMENTATION
+#include "external/sched/sched.h"
 
 /*================================================================================
 // Noise

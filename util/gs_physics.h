@@ -119,8 +119,8 @@ typedef struct gs_cone_t
 } gs_cone_t;
 
 // 2D shapes
+typedef struct gs_circle_t   {float r; gs_vec2 c;                                            } gs_circle_t;
 // typedef struct gs_rect_t     {gs_vec2 min; gs_vec2 max;                                      } gs_rect_t;
-// typedef struct gs_circle_t   {float r; gs_vec2 c;                                            } gs_circle_t;
 // typedef struct gs_triangle_t {gs_vec2 a,b,c;                                                 } gs_triangle_t;
 // typedef struct gs_pill_t     {gs_vec2 base; float r, height;                                 } gs_pill_t;
 

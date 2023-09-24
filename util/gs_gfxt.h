@@ -311,6 +311,9 @@ GS_API_DECL gs_gfxt_texture_t  gs_gfxt_texture_load_from_memory(const char* data
 //=== Copy ===//
 GS_API_DECL gs_gfxt_material_t gs_gfxt_material_deep_copy(gs_gfxt_material_t* src);
 
+//=== Pipeline API ===//
+GS_API_DECL gs_gfxt_uniform_t* gs_gfxt_pipeline_get_uniform(gs_gfxt_pipeline_t* pip, const char* name);
+
 //=== Material API ===//
 GS_API_DECL void gs_gfxt_material_set_uniform(gs_gfxt_material_t* mat, const char* name, const void* data);
 GS_API_DECL void gs_gfxt_material_bind(gs_command_buffer_t* cb, gs_gfxt_material_t* mat);
@@ -406,6 +409,7 @@ gs_gfxt_uniform_block_create(const gs_gfxt_uniform_block_desc_t* desc)
             case GS_GRAPHICS_UNIFORM_VEC4:      offset += sizeof(gs_vec4); break;
             case GS_GRAPHICS_UNIFORM_MAT4:      offset += sizeof(gs_mat4); break;
             case GS_GRAPHICS_UNIFORM_SAMPLER2D: offset += sizeof(gs_handle(gs_graphics_texture_t)); break;
+            case GS_GRAPHICS_UNIFORM_USAMPLER2D: offset += sizeof(gs_handle(gs_graphics_texture_t)); break;
             case GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F: 
             {
                 image2D_offset += sizeof(gs_handle(gs_graphics_texture_t));
@@ -974,6 +978,19 @@ GS_API_DECL gs_gfxt_material_t gs_gfxt_material_deep_copy(gs_gfxt_material_t* sr
     return mat;
 }
 
+//=== Pipeline API ===//
+GS_API_DECL gs_gfxt_uniform_t* 
+gs_gfxt_pipeline_get_uniform(gs_gfxt_pipeline_t* pip, const char* name)
+{
+    uint64_t key = gs_hash_str64(name);
+    if (!gs_hash_table_exists(pip->ublock.lookup, key)) {
+        return NULL;
+    }
+    // Based on name, need to get uniform
+    uint32_t uidx = gs_hash_table_get(pip->ublock.lookup, key);
+    return &pip->ublock.uniforms[uidx];
+}
+
 //=== Material API ===//
 
 GS_API_DECL
@@ -1018,7 +1035,8 @@ void gs_gfxt_material_set_uniform(gs_gfxt_material_t* mat, const char* name, con
         case GS_GRAPHICS_UNIFORM_MAT4:  gs_byte_buffer_write(&mat->uniform_data, gs_mat4, *(gs_mat4*)data); break;
 
 		case GS_GRAPHICS_UNIFORM_SAMPLERCUBE:
-        case GS_GRAPHICS_UNIFORM_SAMPLER2D: 
+        case GS_GRAPHICS_UNIFORM_SAMPLER2D:
+        case GS_GRAPHICS_UNIFORM_USAMPLER2D:
 		{
             gs_byte_buffer_write(&mat->uniform_data, gs_handle(gs_graphics_texture_t), *(gs_handle(gs_graphics_texture_t)*)data);
         } break;
@@ -2074,6 +2092,7 @@ gs_graphics_uniform_type gs_uniform_type_from_token(const gs_token_t* t)
     else if (gs_token_compare_text(t, "vec4"))           return GS_GRAPHICS_UNIFORM_VEC4; 
     else if (gs_token_compare_text(t, "mat4"))           return GS_GRAPHICS_UNIFORM_MAT4; 
     else if (gs_token_compare_text(t, "sampler2D"))      return GS_GRAPHICS_UNIFORM_SAMPLER2D; 
+    else if (gs_token_compare_text(t, "usampler2D"))     return GS_GRAPHICS_UNIFORM_USAMPLER2D; 
     else if (gs_token_compare_text(t, "samplerCube"))    return GS_GRAPHICS_UNIFORM_SAMPLERCUBE; 
     else if (gs_token_compare_text(t, "img2D_rgba32f"))  return GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F; 
     return (gs_graphics_uniform_type)0x00;
@@ -2090,6 +2109,7 @@ const char* gs_uniform_string_from_type(gs_graphics_uniform_type type)
         case GS_GRAPHICS_UNIFORM_VEC4:            return "vec4"; break; 
         case GS_GRAPHICS_UNIFORM_MAT4:            return "mat4"; break;
         case GS_GRAPHICS_UNIFORM_SAMPLER2D:       return "sampler2D"; break; 
+        case GS_GRAPHICS_UNIFORM_USAMPLER2D:      return "usampler2D"; break; 
         case GS_GRAPHICS_UNIFORM_SAMPLERCUBE:     return "samplerCube"; break; 
         case GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F: return "image2D"; break; 
         default: return "UNKNOWN"; break;
@@ -2184,6 +2204,7 @@ bool gs_parse_uniforms(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t*
                         default: break;
 
                         case GS_GRAPHICS_UNIFORM_SAMPLER2D:
+                        case GS_GRAPHICS_UNIFORM_USAMPLER2D:
                         case GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F:
                         {
                             uniform.binding = image_binding++;
@@ -2664,6 +2685,31 @@ bool gs_parse_depth(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t* p
                 return false;
             }
         }
+        if (gs_token_compare_text(&token, "mask"))
+        {
+            if (!gs_lexer_find_next_token_type(lex, GS_TOKEN_IDENTIFIER))
+            {
+                token = lex->current_token;
+                gs_log_warning("Depth mask type not found after function decl: %.*s", token.len, token.text);
+                return false;
+            }
+
+            token = lex->current_token;
+            
+            if      (gs_token_compare_text(&token, "ENABLED"))  pdesc->pip_desc.depth.mask = GS_GRAPHICS_DEPTH_MASK_ENABLED;
+            else if (gs_token_compare_text(&token, "TRUE"))     pdesc->pip_desc.depth.mask = GS_GRAPHICS_DEPTH_MASK_ENABLED;
+            else if (gs_token_compare_text(&token, "true"))     pdesc->pip_desc.depth.mask = GS_GRAPHICS_DEPTH_MASK_ENABLED;
+            else if (gs_token_compare_text(&token, "DISABLED")) pdesc->pip_desc.depth.mask = GS_GRAPHICS_DEPTH_MASK_DISABLED;
+            else if (gs_token_compare_text(&token, "FALSE"))    pdesc->pip_desc.depth.mask = GS_GRAPHICS_DEPTH_MASK_DISABLED;
+            else if (gs_token_compare_text(&token, "false"))    pdesc->pip_desc.depth.mask = GS_GRAPHICS_DEPTH_MASK_DISABLED;
+            else
+            {
+                token = lex->current_token;
+                gs_log_warning("Mask type %.*s not valid.", token.len, token.text);
+                return false;
+            } 
+            gs_println("MASK: %zu", (uint32_t)pdesc->pip_desc.depth.mask);
+        }
     });
     return true;
 }
@@ -3103,11 +3149,15 @@ char* gs_pipeline_generate_shader_code(gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t*
 {
     gs_println("GENERATING CODE...");
 
+    // Get major/minor version of shader 
+    gs_graphics_info_t* ginfo = gs_graphics_info();
+    gs_snprintfc(MAJMINSTR, 128, "#version %zu%zu0\n", ginfo->major_version, ginfo->minor_version);
+
     // Shaders
     #ifdef GS_PLATFORM_WEB
         #define _GS_VERSION_STR "#version 300 es\n"
     #else
-        #define _GS_VERSION_STR "#version 330 core\n"
+        #define _GS_VERSION_STR MAJMINSTR
     #endif
 
     // Source code 
@@ -3128,11 +3178,8 @@ char* gs_pipeline_generate_shader_code(gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t*
         return src;
     }
 
-    const char* shader_header = 
-    stage == GS_GRAPHICS_SHADER_STAGE_COMPUTE ? 
-    "#version 430\n" : 
-    _GS_VERSION_STR
-    "precision mediump float;\n";
+    // Shader header
+    gs_snprintfc(shader_header, 512, "%s precision mediump float;\n", stage == GS_GRAPHICS_SHADER_STAGE_COMPUTE ? "#version 430\n" : _GS_VERSION_STR);
 
     // Generate shader code
     if (ppd->code[sidx])
@@ -3403,6 +3450,9 @@ gs_gfxt_texture_load_from_file(const char* path, gs_graphics_texture_desc_t* des
 {
     gs_asset_texture_t tex = gs_default_val();
     gs_asset_texture_load_from_file(path, &tex, desc, flip, keep_data);
+    if (desc) {
+        *desc = tex.desc;
+    }
     return tex.hndl;
 }
 
@@ -3410,6 +3460,9 @@ GS_API_DECL gs_gfxt_texture_t gs_gfxt_texture_load_from_memory(const char* data,
 {
     gs_asset_texture_t tex = gs_default_val(); 
     gs_asset_texture_load_from_memory(data, sz, &tex, desc, flip, keep_data);
+    if (desc) {
+        *desc = tex.desc;
+    }
     return tex.hndl;
 }
 
