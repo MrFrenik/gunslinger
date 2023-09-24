@@ -4431,6 +4431,24 @@ typedef mco_result gs_coro_result;
 #define gs_coro_status(CO)               mco_status((CO))
 
 /*================================================================================
+// Scheduler
+================================================================================*/
+
+#include "external/sched/sched.h"
+
+#define GS_SCHED_DEFAULT            SCHED_DEFAULT
+#define gs_sched_task_t             struct sched_task
+#define gs_sched_task_partition_t   struct sched_task_partition
+#define gs_scheduler_t              struct scheduler
+#define gs_sched_profiling_t        struct sched_profiling
+#define gs_scheduler_init           scheduler_init
+#define gs_scheduler_start          scheduler_start
+#define gs_scheduler_add            scheduler_add
+#define gs_scheduler_join           scheduler_join
+#define gs_scheduler_wait           scheduler_wait
+#define gs_scheduler_stop           scheduler_stop
+
+/*================================================================================
 // Noise
 ================================================================================*/
 
@@ -7515,6 +7533,12 @@ gs_rand_gen_color(gs_mt_rand_t* rand)
 // Light wrapper around Minicoro
 #define MINICORO_IMPL
 #include "external/minicoro/minicoro.h"
+
+/*================================================================================
+// Scheduler
+================================================================================*/
+#define SCHED_IMPLEMENTATION
+#include "external/sched/sched.h"
 
 /*================================================================================
 // Noise
