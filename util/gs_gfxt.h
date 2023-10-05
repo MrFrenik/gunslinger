@@ -203,6 +203,7 @@ typedef struct
 } gs_gfxt_mesh_vertex_data_t;
 
 // Structured/packed raw mesh data
+// TODO(john): Make the primitives array static to avoid heap alloc
 typedef struct gs_gfxt_mesh_raw_data_t {
     gs_dyn_array(gs_gfxt_mesh_vertex_data_t) primitives;   // All primitive data
 } gs_gfxt_mesh_raw_data_t;
@@ -1229,7 +1230,7 @@ gs_gfxt_mesh_draw_materials(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh, gs_gf
         if (!mat) continue;
 
         // Bind material pipeline and uniforms
-        gs_gfxt_material_bind(cb, mat); 
+        gs_gfxt_material_bind(cb, mat);
 
         // Get pipeline
         gs_gfxt_pipeline_t* pip = gs_gfxt_material_get_pipeline(mat);

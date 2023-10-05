@@ -1708,6 +1708,9 @@ gs_platform_window_create_internal(const gs_platform_window_desc_t* desc)
     if (desc->num_samples) {
         glfwWindowHint(GLFW_SAMPLES, desc->num_samples); 
     }
+    else {
+        glfwWindowHint(GLFW_SAMPLES, 0);
+    }
 
     // Get monitor if fullscreen
     GLFWmonitor* monitor = NULL;

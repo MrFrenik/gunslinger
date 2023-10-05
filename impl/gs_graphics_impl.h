@@ -192,6 +192,7 @@ void gsgl_pipeline_state()
     CHECK_GL_CORE(
         glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
     );
+    glDisable(GL_MULTISAMPLE);
 
     CHECK_GL_CORE(
         gs_graphics_info_t* info = gs_graphics_info();
