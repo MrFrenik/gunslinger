@@ -1141,7 +1141,7 @@ gs_gfxt_mesh_draw(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mp)
 }
 
 GS_API_DECL void
-gs_gfxt_mesh_primitive_draw_layout(gs_command_buffer_t* cb, gs_gfxt_mesh_primitive_t* prim, gs_gfxt_mesh_layout_t* layout, size_t layout_size)
+gs_gfxt_mesh_primitive_draw_layout(gs_command_buffer_t* cb, gs_gfxt_mesh_primitive_t* prim, gs_gfxt_mesh_layout_t* layout, size_t layout_size, uint32_t instance_count)
 { 
     if (!layout || !layout_size || !prim || !cb)
     {
@@ -1182,6 +1182,7 @@ gs_gfxt_mesh_primitive_draw_layout(gs_command_buffer_t* cb, gs_gfxt_mesh_primiti
     gs_graphics_draw_desc_t ddesc = gs_default_val();
     ddesc.start = 0;
     ddesc.count = prim->count;
+    ddesc.instances = instance_count;
 
     gs_graphics_apply_bindings(cb, &binds);
     gs_graphics_draw(cb, &ddesc);
@@ -1201,7 +1202,7 @@ gs_gfxt_mesh_draw_layout(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh, gs_gfxt_
     for (uint32_t i = 0; i < gs_dyn_array_size(mesh->primitives); ++i)
     {
         gs_gfxt_mesh_primitive_t* prim = &mesh->primitives[i]; 
-        gs_gfxt_mesh_primitive_draw_layout(cb, prim, layout, layout_size);
+        gs_gfxt_mesh_primitive_draw_layout(cb, prim, layout, layout_size, 1);
     }
 }
 
@@ -1235,7 +1236,7 @@ gs_gfxt_mesh_draw_materials(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh, gs_gf
         // Get pipeline
         gs_gfxt_pipeline_t* pip = gs_gfxt_material_get_pipeline(mat);
 
-        gs_gfxt_mesh_primitive_draw_layout(cb, prim, pip->mesh_layout, gs_dyn_array_size(pip->mesh_layout) * sizeof(gs_gfxt_mesh_layout_t));
+        gs_gfxt_mesh_primitive_draw_layout(cb, prim, pip->mesh_layout, gs_dyn_array_size(pip->mesh_layout) * sizeof(gs_gfxt_mesh_layout_t), 1);
     } 
 } 
 
@@ -1955,7 +1956,8 @@ gs_gfxt_mesh_t gs_gfxt_mesh_unit_quad_generate(gs_gfxt_mesh_import_options_t* op
     return mesh;
 }
 
-gs_handle(gs_graphics_texture_t) gs_gfxt_texture_generate_default()
+GS_API_DECL gs_handle(gs_graphics_texture_t) 
+gs_gfxt_texture_generate_default()
 {
     // Generate procedural texture data (checkered texture)
     #define GS_GFXT_ROW_COL_CT  5
@@ -3158,7 +3160,7 @@ char* gs_pipeline_generate_shader_code(gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t*
     #ifdef GS_PLATFORM_WEB
         #define _GS_VERSION_STR "#version 300 es\n"
     #else
-        #define _GS_VERSION_STR MAJMINSTR
+        #define _GS_VERSION_STR "#version 430\n"
     #endif
 
     // Source code 
@@ -3300,6 +3302,7 @@ char* gs_pipeline_generate_shader_code(gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t*
 
             case GS_GRAPHICS_SHADER_STAGE_COMPUTE:
             {
+                /*
                 gs_snprintfc(TMP, 64, "layout(");
                 strncat(src, "layout(", 7);
 
@@ -3314,6 +3317,7 @@ char* gs_pipeline_generate_shader_code(gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t*
                 }
 
                 strncat(src, ") in;\n", 7);
+                */
             } break;
 
             default: break;

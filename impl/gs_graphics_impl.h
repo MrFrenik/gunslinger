@@ -75,6 +75,7 @@ typedef struct gsgl_storage_buffer_t {
     int32_t access; 
     size_t size;
     uint32_t block_idx;
+    uint32_t location;
 } gsgl_storage_buffer_t;
 
 /* Pipeline */
@@ -2249,8 +2250,6 @@ void gs_graphics_command_buffer_submit_impl(gs_command_buffer_t* cb)
 
                             gsgl_shader_t shader = gs_slot_array_get(ogl->shaders, sid);
 
-                            static uint32_t location = UINT32_MAX;
-
                             if ((sbo->block_idx == UINT32_MAX && sbo->block_idx != UINT32_MAX - 1)) 
                             {
                                 // Get uniform location based on name and bound shader
@@ -2259,7 +2258,9 @@ void gs_graphics_command_buffer_submit_impl(gs_command_buffer_t* cb)
                                     int32_t params[1];
                                     GLenum props[1] = {GL_BUFFER_BINDING};
                                     glGetProgramResourceiv(shader, GL_SHADER_STORAGE_BLOCK, sbo->block_idx, 1, props, 1, NULL, params);
-                                    location = (uint32_t)params[0];
+                                    sbo->location = (uint32_t)params[0];
+                                    gs_println("Bind Storage Buffer: Binding \"%s\" to location %zu, block index: %zu, binding: %zu", 
+                                        sbo->name, sbo->location, sbo->block_idx, binding);
                                 );
 
                                 if (sbo->block_idx >= UINT32_MAX) {
@@ -2272,7 +2273,7 @@ void gs_graphics_command_buffer_submit_impl(gs_command_buffer_t* cb)
                             {
                                 // Not sure what this actually does atm... 
                                 CHECK_GL_CORE(
-                                    glShaderStorageBlockBinding(shader, sbo->block_idx, location);
+                                    glShaderStorageBlockBinding(shader, sbo->block_idx, sbo->location);
                                 );
                             } 
 
