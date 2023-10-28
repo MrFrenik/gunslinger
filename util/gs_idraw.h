@@ -1297,22 +1297,26 @@ void gsi_rectx(gs_immediate_draw_t* gsi, float l, float b, float r, float t, flo
 	}
 }
 
-void gsi_rect(gs_immediate_draw_t* gsi, float l, float b, float r, float t, uint8_t _r, uint8_t _g, uint8_t _b, uint8_t _a, gs_graphics_primitive_type type)
+GS_API_DECL void 
+gsi_rect(gs_immediate_draw_t* gsi, float l, float b, float r, float t, uint8_t _r, uint8_t _g, uint8_t _b, uint8_t _a, gs_graphics_primitive_type type)
 {
 	gsi_rectx(gsi, l, b, r, t, 0.f, 0.f, 1.f, 1.f, _r, _g, _b, _a, type);
 }
 
-void gsi_rectv(gs_immediate_draw_t* gsi, gs_vec2 bl, gs_vec2 tr, gs_color_t color, gs_graphics_primitive_type type)
+GS_API_DECL void 
+gsi_rectv(gs_immediate_draw_t* gsi, gs_vec2 bl, gs_vec2 tr, gs_color_t color, gs_graphics_primitive_type type)
 {
 	gsi_rectx(gsi, bl.x, bl.y, tr.x, tr.y, 0.f, 0.f, 1.f, 1.f, color.r, color.g, color.b, color.a, type);
 }
 
-void gsi_rectvx(gs_immediate_draw_t* gsi, gs_vec2 bl, gs_vec2 tr, gs_vec2 uv0, gs_vec2 uv1, gs_color_t color, gs_graphics_primitive_type type)
+GS_API_DECL void 
+gsi_rectvx(gs_immediate_draw_t* gsi, gs_vec2 bl, gs_vec2 tr, gs_vec2 uv0, gs_vec2 uv1, gs_color_t color, gs_graphics_primitive_type type)
 {
 	gsi_rectx(gsi, bl.x, bl.y, tr.x, tr.y, uv0.x, uv0.y, uv1.x, uv1.y, color.r, color.g, color.b, color.a, type);
 }
 
-void gsi_rectvd(gs_immediate_draw_t* gsi, gs_vec2 xy, gs_vec2 wh, gs_vec2 uv0, gs_vec2 uv1, gs_color_t color, gs_graphics_primitive_type type)
+GS_API_DECL void 
+gsi_rectvd(gs_immediate_draw_t* gsi, gs_vec2 xy, gs_vec2 wh, gs_vec2 uv0, gs_vec2 uv1, gs_color_t color, gs_graphics_primitive_type type)
 {
 	gsi_rectx(gsi, xy.x, xy.y, xy.x + wh.x, xy.y + wh.y, uv0.x, uv0.y, uv1.x, uv1.y, color.r, color.g, color.b, color.a, type);
 }
