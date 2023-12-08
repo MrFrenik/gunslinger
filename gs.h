@@ -1339,6 +1339,9 @@ void gs_util_string_replace_delim
     }
 }
 
+GS_API_DECL char* 
+gs_util_string_concat(char* s1, const char* s2);
+
 gs_force_inline 
 void gs_util_normalize_path
 (
@@ -7422,10 +7425,26 @@ GS_API_DECL void* gs_heap_allocator_allocate(gs_heap_allocator_t* ha, size_t sz)
     return gs_ptr_add(node, sizeof(gs_heap_allocator_header_t));
 }
 
-GS_API_DECL void gs_heap_allocator_deallocate(gs_heap_allocator_t* ha, void* memory)
+GS_API_DECL void 
+gs_heap_allocator_deallocate(gs_heap_allocator_t* ha, void* memory)
 {
     // Fill this out...
 } 
+
+/*========================
+// Util
+========================*/ 
+
+GS_API_DECL char* 
+gs_util_string_concat(char* s1, const char* s2)
+{
+    const size_t a = strlen(s1);
+    const size_t b = strlen(s2);
+    const size_t ab = a + b + 1;
+    s1 = gs_realloc(s1, ab);
+    memcpy(s1 + a, s2, b + 1);
+    return s1;
+}
 
 /*========================
 // Random

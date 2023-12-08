@@ -78,6 +78,10 @@
     #define GS_GFXT_CUSTOM_UINT_MAX 4
 #endif
 
+#ifndef GS_GFXT_INCLUDE_DIR_MAX
+    #define GS_GFXT_INCLUDE_DIR_MAX 8 
+#endif
+
 #ifndef GS_GFXT_UNIFORM_VIEW_MATRIX
     #define GS_GFXT_UNIFORM_VIEW_MATRIX "U_VIEW_MTX"
 #endif
@@ -306,6 +310,7 @@ GS_API_DECL void gs_gfxt_pipeline_destroy(gs_gfxt_pipeline_t* pipeline);
 //=== Resource Loading ===//
 GS_API_DECL gs_gfxt_pipeline_t gs_gfxt_pipeline_load_from_file(const char* path);
 GS_API_DECL gs_gfxt_pipeline_t gs_gfxt_pipeline_load_from_memory(const char* data, size_t sz);
+GS_API_DECL gs_gfxt_pipeline_t gs_gfxt_pipeline_load_from_memory_ext(const char* data, size_t sz, const char* file_dir);
 GS_API_DECL gs_gfxt_texture_t  gs_gfxt_texture_load_from_file(const char* path, gs_graphics_texture_desc_t* desc, bool flip, bool keep_data);
 GS_API_DECL gs_gfxt_texture_t  gs_gfxt_texture_load_from_memory(const char* data, size_t sz, gs_graphics_texture_desc_t* desc, bool flip, bool keep_data);
 
@@ -2006,7 +2011,8 @@ typedef struct gs_pipeline_parse_data_t
     gs_dyn_array(gs_gfxt_mesh_layout_t) mesh_layout;
     gs_dyn_array(gs_graphics_vertex_attribute_type) vertex_layout;
     char* code[3];
-} gs_ppd_t; 
+    char dir[256];
+} gs_ppd_t;
 
 #define gs_parse_warning(TXT, ...)\
     do {\
@@ -2324,11 +2330,15 @@ bool gs_parse_code(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd
         }
     }
 
-    // This is most likely incorrect...
+    // Allocate size for code
     const size_t sz = (size_t)(token.text - cur.text);
     char* code = (char*)gs_malloc(sz);
     memset(code, 0, sz); 
     memcpy(code, cur.text, sz - 1);
+
+    // List of include directories to gather
+    uint32_t iidx = 0;
+    char includes[GS_GFXT_INCLUDE_DIR_MAX][256] = {0};
 
     // Need to parse through code and replace keywords with appropriate mappings
     gs_lexer_t clex = gs_lexer_c_ctor(code);
@@ -2367,17 +2377,61 @@ bool gs_parse_code(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd
                 {
                     gs_util_string_replace(tkn.text, tkn.len, GS_GFXT_UNIFORM_TIME, (char)32);
                 }
-            };
+            } break;
+
+            case GS_TOKEN_HASH:
+            { 
+                // Parse include
+                tkn = clex.next_token(&clex);
+                switch (tkn.type)
+                {
+                    case GS_TOKEN_IDENTIFIER:
+                    { 
+                        if (gs_token_compare_text(&tkn, "include") && iidx < GS_GFXT_INCLUDE_DIR_MAX)
+                        { 
+                            // Length of include string
+                            size_t ilen = 8;
+
+                            // Grab next token, expect string
+                            tkn = clex.next_token(&clex);
+                            if (tkn.type == GS_TOKEN_STRING)
+                            {
+                                memcpy(includes[iidx], tkn.text + 1, tkn.len - 2);
+                                gs_util_string_replace(tkn.text - ilen, tkn.len + ilen,
+                                    " ", (char)32);
+                                iidx++;
+                            }
+                        }
+                    }
+                }
+            } break;
         }
     }
 
-    // gs_println("code: %s", code);
+    for (uint32_t i = 0; i < GS_GFXT_INCLUDE_DIR_MAX; ++i)
+    { 
+        if (!includes[i][0]) continue;
+
+        // Need to collect other uniforms from these includes (parse code)
+        gs_snprintfc(FINAL_PATH, 256, "%s/%s", ppd->dir, includes[i]);
+        // gs_println("INC_DIR: %s", FINAL_PATH);
+
+        // Load include using final path and relative path from include
+        size_t len = 0;
+        char* inc_src = gs_platform_read_file_contents(FINAL_PATH, "rb", &len);
+        gs_assert(inc_src);
+
+        // Realloc previous code to greater size, shift contents around
+        char* cat = gs_util_string_concat(inc_src, code);
+        gs_free(code);
+        code = cat;
+    }
 
     switch (stage)
     {
-        case GS_GRAPHICS_SHADER_STAGE_VERTEX: ppd->code[0]   = code; break; 
+        case GS_GRAPHICS_SHADER_STAGE_VERTEX:   ppd->code[0] = code; break; 
         case GS_GRAPHICS_SHADER_STAGE_FRAGMENT: ppd->code[1] = code; break;
-        case GS_GRAPHICS_SHADER_STAGE_COMPUTE: ppd->code[2] = code; break;
+        case GS_GRAPHICS_SHADER_STAGE_COMPUTE:  ppd->code[2] = code; break;
     }
 
     return true;
@@ -3341,19 +3395,51 @@ gs_gfxt_pipeline_load_from_file(const char* path)
     char* file_data = gs_platform_read_file_contents(path, "rb", &len);
     gs_assert(file_data); 
     gs_log_success("Parsing pipeline: %s", path);
-    gs_gfxt_pipeline_t pip = gs_gfxt_pipeline_load_from_memory(file_data, len);
+    gs_gfxt_pipeline_t pip = gs_gfxt_pipeline_load_from_memory_ext(file_data, len, path);
     gs_free(file_data);
     return pip;
 }
 
-GS_API_DECL gs_gfxt_pipeline_t gs_gfxt_pipeline_load_from_memory(const char* file_data, size_t sz)
+GS_API_DECL gs_gfxt_pipeline_t 
+gs_gfxt_pipeline_load_from_memory(const char* file_data, size_t sz)
+{ 
+    return gs_gfxt_pipeline_load_from_memory_ext(file_data, sz, ".");
+}
+
+GS_API_DECL gs_gfxt_pipeline_t 
+gs_gfxt_pipeline_load_from_memory_ext(const char* file_data, size_t sz, const char* file_path)
 { 
     // Cast to pip
-    gs_gfxt_pipeline_t pip = gs_default_val(); 
+    gs_gfxt_pipeline_t pip = gs_default_val();
 
     gs_ppd_t ppd = gs_default_val();
     gs_gfxt_pipeline_desc_t pdesc = gs_default_val();
     pdesc.pip_desc.raster.index_buffer_element_size = sizeof(uint32_t); 
+
+    // Determine original file directory from path
+    if (file_path)
+    {
+        gs_lexer_t lex = gs_lexer_c_ctor(file_path);
+        gs_token_t tparen = {0};
+        while (lex.can_lex(&lex))
+        { 
+            gs_token_t token = lex.next_token(&lex);
+
+            // Look for last paren + identifier combo
+            switch (token.type)
+            { 
+                case GS_TOKEN_FSLASH:
+                case GS_TOKEN_BSLASH:
+                { 
+                    tparen = token;
+                } break;
+            }
+        }
+        // Now save dir
+        gs_println("HERE: %zu", tparen.text - file_path);
+        memcpy(ppd.dir, file_path, tparen.text - file_path);
+        gs_println("PPD_DIR: %s", ppd.dir);
+    }
 
     gs_lexer_t lex = gs_lexer_c_ctor(file_data);
     while (lex.can_lex(&lex))
