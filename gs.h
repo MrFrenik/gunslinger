@@ -7631,7 +7631,7 @@ gs_camera_default()
     cam.transform.position.z = 1.f;
     cam.fov = 60.f;
     cam.near_plane = 0.1f;
-    cam.far_plane = 1000.f;
+    cam.far_plane = 100.f;
     cam.ortho_scale = 1.f;
     cam.proj_type = GS_PROJECTION_TYPE_ORTHOGRAPHIC;
     return cam;
