@@ -1166,23 +1166,15 @@ void gs_util_get_file_extension
     const char* file_path 
 )
 {
-    uint32_t str_len = gs_string_length(file_path);
-    const char* at = (file_path + str_len - 1);
-    while (*at != '.' && at != file_path)
-    {
-        at--;
-    }
-
-    if (*at == '.')
-    {
-        at++;
-        uint32_t i = 0; 
-        while (*at)
-        {
-            char c = *at;
-            buffer[i++] = *at++;
-        }
-        buffer[i] = '\0';
+    // assumes that buffer and buffer_size is non-zero
+    char* extension = strrchr(file_path, '.');
+    if (extension) {
+        uint32_t extension_len = strlen(extension+1);
+        uint32_t len = (extension_len >= buffer_size) ? buffer_size - 1 : extension_len;
+        memcpy(buffer, extension+1, len);
+        buffer[len] = '\0';
+    } else {
+        buffer[0] = '\0';
     }
 }
 
