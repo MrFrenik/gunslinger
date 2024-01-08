@@ -153,8 +153,8 @@ gs_handle(gs_audio_source_t) gs_audio_load_from_file(const char* file_path)
     }
 
     char ext[64] = gs_default_val();
-    gs_util_str_to_lower(file_path, ext, sizeof(ext));
-    gs_platform_file_extension(ext, sizeof(ext), ext);
+    gs_platform_file_extension(ext, sizeof(ext), file_path);
+    gs_util_str_to_lower(ext, ext, sizeof(ext));
     gs_println("Audio: File Extension: %s", ext);
 
     // Load OGG data
