@@ -1118,11 +1118,12 @@ gs_util_str_to_lower
 )
 {
     size_t src_sz = gs_string_length(src);
-    size_t len = gs_min(src_sz, buffer_sz);
+    size_t len = gs_min(src_sz, buffer_sz-1);
 
     for (uint32_t i = 0; i < len; ++i) {
         buffer[i] = tolower(src[i]);
     }
+    if (len) buffer[len] = '\0';
 }
 
 gs_force_inline b32
