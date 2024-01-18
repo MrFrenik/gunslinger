@@ -6473,28 +6473,10 @@ gs_gui_parse_label_tag(gs_gui_context_t* ctx, const char* str, char* buffer, siz
 
 GS_API_DECL void gs_gui_parse_id_tag(gs_gui_context_t* ctx, const char* str, char* buffer, size_t sz)
 {
-    gs_lexer_t lex = gs_lexer_c_ctor(str);
-    while (gs_lexer_can_lex(&lex))
-    {
-        gs_token_t token = gs_lexer_next_token(&lex);
-        switch (token.type)
-        {
-            case GS_TOKEN_HASH:
-            {
-                if (gs_lexer_peek(&lex).type == GS_TOKEN_HASH)
-                {
-                    gs_token_t end = gs_lexer_next_token(&lex);
-                    end = gs_lexer_next_token(&lex);
-
-                    // Determine len
-                    size_t len = gs_min((str + strlen(str)) - end.text, sz);
-
-                    memcpy(buffer, end.text, len);
-                    return;
-                }
-            } break;
-        }
-    } 
+    size_t str_sz = strlen(str);
+    size_t actual_sz = gs_min(str_sz, sz-1);
+    memcpy(buffer, str, actual_sz);
+    buffer[actual_sz] = 0;
 }
 
 GS_API_DECL int32_t 
@@ -6598,6 +6580,8 @@ GS_API_DECL int32_t gs_gui_checkbox_ex(gs_gui_context_t* ctx, const char* label,
 	return res;
 }
 
+GS_API_DECL const char* gs_platform_get_clipboard(uint32_t handle);
+
 GS_API_DECL int32_t gs_gui_textbox_raw(gs_gui_context_t* ctx, char* buf, int32_t bufsz, gs_gui_id id, gs_gui_rect_t rect, 
         const gs_gui_selector_desc_t* desc, uint64_t opt)
 {
@@ -6641,14 +6625,37 @@ GS_API_DECL int32_t gs_gui_textbox_raw(gs_gui_context_t* ctx, char* buf, int32_t
 			res |= GS_GUI_RES_CHANGE;
 		}
 
-		/* handle backspace */
-		if (ctx->key_pressed & GS_GUI_KEY_BACKSPACE && len > 0) 
+        /* handle backspace */
+        if (ctx->key_pressed & GS_GUI_KEY_BACKSPACE && len > 0)
         {
-			/* skip utf-8 continuation bytes */
-			while ((buf[--len] & 0xc0) == 0x80 && len > 0);
-			buf[len] = '\0';
-			res |= GS_GUI_RES_CHANGE;
-		}
+            if (ctx->key_down & GS_GUI_KEY_CTRL) {
+                for (--len; len > 0 ;len--) {
+                    /* skip utf-8 continuation bytes */
+                    if ((buf[len-1] & 0xc0) == 0x80) continue;
+                    /* seek until seperator character */
+                    if (strchr(" ()[]{},.-+*=/\\^~|\"'&%#@!<>;:", buf[len-1])) break;
+                }
+            } else {
+                /* skip utf-8 continuation bytes */
+                while ((buf[--len] & 0xc0) == 0x80 && len > 0);
+            }
+            buf[len] = '\0';
+            res |= GS_GUI_RES_CHANGE;
+        }
+
+        /* handle paste */
+        if (gs_platform_key_pressed(GS_KEYCODE_V) && ctx->key_down & GS_GUI_KEY_CTRL)
+        {
+            const char* clipboard = gs_platform_get_clipboard(ctx->window_hndl);
+            printf("%s --\n", clipboard);
+            int32_t n = gs_min(bufsz - len - 1, (int32_t) strlen(clipboard));
+            if (n > 0) {
+                memcpy(buf + len, clipboard, n);
+                len += n;
+                buf[len] = '\0';
+                res |= GS_GUI_RES_CHANGE;
+            }
+        }
 
 		/* handle return */
 		if (ctx->key_pressed & GS_GUI_KEY_RETURN) 
