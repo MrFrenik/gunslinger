@@ -8147,7 +8147,23 @@ gs_gui_window_end(gs_gui_context_t *ctx)
                 {
                     r->x = gs_min(r->x + ctx->mouse_delta.x, max_x);
                 }
-            }); 
+            });
+
+        // move instead of resize?
+        _gui_window_resize_ctrl(
+            gs_gui_get_id(ctx, "!res_c", 6),
+            gs_gui_rect(r->x + r->w * border_ratio,
+                        r->y + r->h * border_ratio,
+                        r->w * border_ratio,
+                        r->h * border_ratio),
+            GS_GUI_MOUSE_LEFT,
+            GS_GUI_SPLIT_MOVE,
+            GS_GUI_KEY_ALT,
+            {
+                ctx->next_focus_root = cnt;
+                r->x += ctx->mouse_delta.x;
+                r->y += ctx->mouse_delta.y;
+            });
 
         static bool capture = false;
         static gs_vec2 mp = {0};
