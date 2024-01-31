@@ -193,7 +193,8 @@ enum {
     GS_GUI_OPT_NOCARET              = (1 << 27),
     GS_GUI_OPT_NOSCROLLHORIZONTAL   = (1 << 28),
     GS_GUI_OPT_NOSCROLLVERTICAL     = (1 << 29),
-    GS_GUI_OPT_NOSTYLEBACKGROUND    = (1 << 30)
+    GS_GUI_OPT_NOSTYLEBACKGROUND    = (1 << 30),
+    GS_GUI_OPT_PARSEIDTAGONLY       = (1 << 31),
 };
 
 enum {
@@ -325,7 +326,7 @@ typedef union
 struct gs_gui_context_t;
 
 typedef void (* gs_gui_on_draw_button_callback)(struct gs_gui_context_t* ctx, gs_gui_rect_t rect, 
-    gs_gui_id id, bool hovered, bool focused, int32_t opt, const char* label, int32_t icon);
+    gs_gui_id id, bool hovered, bool focused, uint64_t opt, const char* label, int32_t icon);
 
 typedef enum {
     GS_GUI_LAYOUT_ANCHOR_TOPLEFT = 0x00,
@@ -994,7 +995,7 @@ GS_API_DECL void gs_gui_render(gs_gui_context_t* ctx, gs_command_buffer_t* cb);
 //=== Util ===//
 GS_API_DECL void gs_gui_renderpass_submit(gs_gui_context_t* ctx, gs_command_buffer_t* cb, gs_color_t clear); 
 GS_API_DECL void gs_gui_renderpass_submit_ex(gs_gui_context_t* ctx, gs_command_buffer_t* cb, gs_graphics_clear_action_t* action);
-GS_API_DECL void gs_gui_parse_id_tag(gs_gui_context_t* ctx, const char* str, char* buffer, size_t sz);
+GS_API_DECL void gs_gui_parse_id_tag(gs_gui_context_t* ctx, const char* str, char* buffer, size_t sz, uint64_t opt);
 GS_API_DECL void gs_gui_parse_label_tag(gs_gui_context_t* ctx, const char* str, char* buffer, size_t sz);
 
 //=== Main API ===//
@@ -4111,15 +4112,15 @@ gs_gui_begin(gs_gui_context_t* ctx, const gs_gui_hints_t* hints)
             r.y -= 10.f;
             r.h += 20.f;
             gs_snprintfc(TMP, 256, "!dockspace%zu", (size_t)split);
-            int32_t opt = GS_GUI_OPT_NOFRAME | 
-                          GS_GUI_OPT_FORCESETRECT | 
-                          GS_GUI_OPT_NOMOVE | 
-                          GS_GUI_OPT_NOTITLE | 
-                          GS_GUI_OPT_NOSCROLL | 
-                          GS_GUI_OPT_NOCLIP | 
-                          GS_GUI_OPT_NODOCK | 
-                          GS_GUI_OPT_DOCKSPACE | 
-                          GS_GUI_OPT_NOBORDER;
+            uint64_t opt = GS_GUI_OPT_NOFRAME |
+                           GS_GUI_OPT_FORCESETRECT |
+                           GS_GUI_OPT_NOMOVE |
+                           GS_GUI_OPT_NOTITLE |
+                           GS_GUI_OPT_NOSCROLL |
+                           GS_GUI_OPT_NOCLIP |
+                           GS_GUI_OPT_NODOCK |
+                           GS_GUI_OPT_DOCKSPACE |
+                           GS_GUI_OPT_NOBORDER;
             gs_gui_window_begin_ex(ctx, TMP, r, NULL, opt); 
             {
                 // Set zindex for sorting (always below the bottom most window in this split tree)
@@ -6311,7 +6312,7 @@ gs_gui_label_ex(gs_gui_context_t* ctx, const char* label, const gs_gui_selector_
 
     char id_tag[256] = gs_default_val(); 
     char label_tag[256] = gs_default_val(); 
-    gs_gui_parse_id_tag(ctx, label, id_tag, sizeof(id_tag));
+    gs_gui_parse_id_tag(ctx, label, id_tag, sizeof(id_tag), opt);
     gs_gui_parse_label_tag(ctx, label, label_tag, sizeof(label_tag));
 
 	if (id_tag) gs_gui_push_id(ctx, id_tag, strlen(id_tag));
@@ -6471,12 +6472,37 @@ gs_gui_parse_label_tag(gs_gui_context_t* ctx, const char* str, char* buffer, siz
     memcpy(buffer, str, gs_min(sz, strlen(str) + 1));
 }
 
-GS_API_DECL void gs_gui_parse_id_tag(gs_gui_context_t* ctx, const char* str, char* buffer, size_t sz)
+GS_API_DECL void gs_gui_parse_id_tag(gs_gui_context_t* ctx, const char* str, char* buffer, size_t sz, uint64_t opt)
 {
-    size_t str_sz = strlen(str);
-    size_t actual_sz = gs_min(str_sz, sz-1);
-    memcpy(buffer, str, actual_sz);
-    buffer[actual_sz] = 0;
+    if (opt & GS_GUI_OPT_PARSEIDTAGONLY) {
+        gs_lexer_t lex = gs_lexer_c_ctor(str);
+        while (gs_lexer_can_lex(&lex))
+        {
+            gs_token_t token = gs_lexer_next_token(&lex);
+            switch (token.type)
+            {
+            case GS_TOKEN_HASH:
+            {
+                if (gs_lexer_peek(&lex).type == GS_TOKEN_HASH)
+                {
+                    gs_token_t end = gs_lexer_next_token(&lex);
+                    end = gs_lexer_next_token(&lex);
+
+                    // Determine len
+                    size_t len = gs_min((str + strlen(str)) - end.text, sz);
+
+                    memcpy(buffer, end.text, len);
+                    return;
+                }
+            } break;
+            }
+        }
+    } else {
+        size_t str_sz = strlen(str);
+        size_t actual_sz = gs_min(str_sz, sz-1);
+        memcpy(buffer, str, actual_sz);
+        buffer[actual_sz] = 0;
+    }
 }
 
 GS_API_DECL int32_t 
@@ -6490,7 +6516,7 @@ gs_gui_button_ex(gs_gui_context_t* ctx, const char* label, const gs_gui_selector
 
     char id_tag[256] = gs_default_val(); 
     char label_tag[256] = gs_default_val(); 
-    gs_gui_parse_id_tag(ctx, label, id_tag, sizeof(id_tag));
+    gs_gui_parse_id_tag(ctx, label, id_tag, sizeof(id_tag), opt);
     gs_gui_parse_label_tag(ctx, label, label_tag, sizeof(label_tag));
 
     gs_gui_style_t style = gs_default_val();
@@ -6962,15 +6988,16 @@ static int32_t _gs_gui_header(gs_gui_context_t *ctx, const char *label, int32_t 
 {
 	gs_gui_rect_t r;
 	int32_t active, expanded;
-	gs_gui_id id = gs_gui_get_id(ctx, label, strlen(label));
-	int32_t idx = gs_gui_pool_get(ctx, ctx->treenode_pool, GS_GUI_TREENODEPOOL_SIZE, id);
 	int32_t width = -1;
 	gs_gui_layout_row(ctx, 1, &width, 0);
 
     char id_tag[256] = gs_default_val(); 
     char label_tag[256] = gs_default_val(); 
-    gs_gui_parse_id_tag(ctx, label, id_tag, sizeof(id_tag));
+    gs_gui_parse_id_tag(ctx, label, id_tag, sizeof(id_tag), opt);
     gs_gui_parse_label_tag(ctx, label, label_tag, sizeof(label_tag));
+
+	gs_gui_id id = gs_gui_get_id(ctx, id_tag, strlen(id_tag));
+	int32_t idx = gs_gui_pool_get(ctx, ctx->treenode_pool, GS_GUI_TREENODEPOOL_SIZE, id);
 
     if (id_tag) gs_gui_push_id(ctx, id_tag, strlen(id_tag));
 
@@ -7101,7 +7128,7 @@ gs_gui_window_begin_ex(gs_gui_context_t * ctx, const char* title, gs_gui_rect_t 
 
     char id_tag[256] = gs_default_val(); 
     char label_tag[256] = gs_default_val(); 
-    gs_gui_parse_id_tag(ctx, title, id_tag, sizeof(id_tag));
+    gs_gui_parse_id_tag(ctx, title, id_tag, sizeof(id_tag), opt);
     gs_gui_parse_label_tag(ctx, title, label_tag, sizeof(label_tag));
 
     gs_gui_id id = 0x00;
@@ -8233,7 +8260,7 @@ GS_API_DECL void
 gs_gui_popup_open(gs_gui_context_t* ctx, const char* name) 
 {
     char id_tag[256] = gs_default_val(); 
-    gs_gui_parse_id_tag(ctx, name, id_tag, sizeof(id_tag));
+    gs_gui_parse_id_tag(ctx, name, id_tag, sizeof(id_tag), 0);
 
     gs_gui_container_t *cnt = gs_gui_get_container(ctx, *id_tag ? id_tag : name);
 
@@ -8266,7 +8293,7 @@ gs_gui_panel_begin_ex(gs_gui_context_t* ctx, const char* name, const gs_gui_sele
 	gs_gui_container_t *cnt; 
     const int32_t elementid = GS_GUI_ELEMENT_PANEL;
     char id_tag[256] = gs_default_val(); 
-    gs_gui_parse_id_tag(ctx, name, id_tag, sizeof(id_tag));
+    gs_gui_parse_id_tag(ctx, name, id_tag, sizeof(id_tag), opt);
 
 	// if (id_tag) gs_gui_push_id(ctx, id_tag, strlen(id_tag));
     // else gs_gui_push_id(ctx, name, strlen(name));
