@@ -6606,9 +6606,7 @@ GS_API_DECL int32_t gs_gui_checkbox_ex(gs_gui_context_t* ctx, const char* label,
 	return res;
 }
 
-GS_API_DECL const char* gs_platform_get_clipboard(uint32_t handle);
-
-GS_API_DECL int32_t gs_gui_textbox_raw(gs_gui_context_t* ctx, char* buf, int32_t bufsz, gs_gui_id id, gs_gui_rect_t rect, 
+GS_API_DECL int32_t gs_gui_textbox_raw(gs_gui_context_t* ctx, char* buf, int32_t bufsz, gs_gui_id id, gs_gui_rect_t rect,
         const gs_gui_selector_desc_t* desc, uint64_t opt)
 {
 	int32_t res = 0;
@@ -6672,7 +6670,7 @@ GS_API_DECL int32_t gs_gui_textbox_raw(gs_gui_context_t* ctx, char* buf, int32_t
         /* handle paste */
         if (gs_platform_key_pressed(GS_KEYCODE_V) && ctx->key_down & GS_GUI_KEY_CTRL)
         {
-            const char* clipboard = gs_platform_get_clipboard(ctx->window_hndl);
+            const char* clipboard = gs_platform_window_get_clipboard(ctx->window_hndl);
             printf("%s --\n", clipboard);
             int32_t n = gs_min(bufsz - len - 1, (int32_t) strlen(clipboard));
             if (n > 0) {
