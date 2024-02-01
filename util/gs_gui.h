@@ -163,38 +163,38 @@ typedef enum gs_gui_alt_drag_mode_type {
 } gs_gui_alt_drag_mode_type;
 
 enum {
-	GS_GUI_OPT_NOSTYLESHADOW    = (1 << 0),
-	GS_GUI_OPT_NOSTYLEBORDER    = (1 << 1),
-	GS_GUI_OPT_NOINTERACT	    = (1 << 2),
-	GS_GUI_OPT_NOFRAME		    = (1 << 3),
-	GS_GUI_OPT_NORESIZE		    = (1 << 4),
-	GS_GUI_OPT_NOSCROLL		    = (1 << 5),
-	GS_GUI_OPT_NOCLOSE		    = (1 << 6),
-	GS_GUI_OPT_NOTITLE		    = (1 << 7),
-	GS_GUI_OPT_HOLDFOCUS	    = (1 << 8),
-	GS_GUI_OPT_AUTOSIZE		    = (1 << 9),
-	GS_GUI_OPT_POPUP		    = (1 << 10),
-	GS_GUI_OPT_CLOSED		    = (1 << 11),
-	GS_GUI_OPT_EXPANDED		    = (1 << 12),
-	GS_GUI_OPT_NOHOVER		    = (1 << 13),
-	GS_GUI_OPT_FORCESETRECT	    = (1 << 14),
-	GS_GUI_OPT_NOFOCUS	        = (1 << 15),
-	GS_GUI_OPT_FORCEFOCUS	    = (1 << 16),
-    GS_GUI_OPT_NOMOVE           = (1 << 17),
-    GS_GUI_OPT_NOCLIP           = (1 << 18),
-    GS_GUI_OPT_NODOCK           = (1 << 19),
-    GS_GUI_OPT_FULLSCREEN       = (1 << 20),
-    GS_GUI_OPT_DOCKSPACE        = (1 << 21),
-    GS_GUI_OPT_NOBRINGTOFRONT   = (1 << 22), 
-    GS_GUI_OPT_LEFTCLICKONLY    = (1 << 23),
-    GS_GUI_OPT_NOSWITCHSTATE    = (1 << 24),
-    GS_GUI_OPT_NOBORDER         = (1 << 25),
-    GS_GUI_OPT_ISCONTENT        = (1 << 26),
-    GS_GUI_OPT_NOCARET              = (1 << 27),
-    GS_GUI_OPT_NOSCROLLHORIZONTAL   = (1 << 28),
-    GS_GUI_OPT_NOSCROLLVERTICAL     = (1 << 29),
-    GS_GUI_OPT_NOSTYLEBACKGROUND    = (1 << 30),
-    GS_GUI_OPT_PARSEIDTAGONLY       = (1 << 31),
+	GS_GUI_OPT_NOSTYLESHADOW    = (1ULL << 0),
+	GS_GUI_OPT_NOSTYLEBORDER    = (1ULL << 1),
+	GS_GUI_OPT_NOINTERACT	    = (1ULL << 2),
+	GS_GUI_OPT_NOFRAME		    = (1ULL << 3),
+	GS_GUI_OPT_NORESIZE		    = (1ULL << 4),
+	GS_GUI_OPT_NOSCROLL		    = (1ULL << 5),
+	GS_GUI_OPT_NOCLOSE		    = (1ULL << 6),
+	GS_GUI_OPT_NOTITLE		    = (1ULL << 7),
+	GS_GUI_OPT_HOLDFOCUS	    = (1ULL << 8),
+	GS_GUI_OPT_AUTOSIZE		    = (1ULL << 9),
+	GS_GUI_OPT_POPUP		    = (1ULL << 10),
+	GS_GUI_OPT_CLOSED		    = (1ULL << 11),
+	GS_GUI_OPT_EXPANDED		    = (1ULL << 12),
+	GS_GUI_OPT_NOHOVER		    = (1ULL << 13),
+	GS_GUI_OPT_FORCESETRECT	    = (1ULL << 14),
+	GS_GUI_OPT_NOFOCUS	        = (1ULL << 15),
+	GS_GUI_OPT_FORCEFOCUS	    = (1ULL << 16),
+    GS_GUI_OPT_NOMOVE           = (1ULL << 17),
+    GS_GUI_OPT_NOCLIP           = (1ULL << 18),
+    GS_GUI_OPT_NODOCK           = (1ULL << 19),
+    GS_GUI_OPT_FULLSCREEN       = (1ULL << 20),
+    GS_GUI_OPT_DOCKSPACE        = (1ULL << 21),
+    GS_GUI_OPT_NOBRINGTOFRONT   = (1ULL << 22),
+    GS_GUI_OPT_LEFTCLICKONLY    = (1ULL << 23),
+    GS_GUI_OPT_NOSWITCHSTATE    = (1ULL << 24),
+    GS_GUI_OPT_NOBORDER         = (1ULL << 25),
+    GS_GUI_OPT_ISCONTENT        = (1ULL << 26),
+    GS_GUI_OPT_NOCARET              = (1ULL << 27),
+    GS_GUI_OPT_NOSCROLLHORIZONTAL   = (1ULL << 28),
+    GS_GUI_OPT_NOSCROLLVERTICAL     = (1ULL << 29),
+    GS_GUI_OPT_NOSTYLEBACKGROUND    = (1ULL << 30),
+    GS_GUI_OPT_PARSEIDTAGONLY       = (1ULL << 31),
 };
 
 enum {
@@ -1043,6 +1043,8 @@ GS_API_DECL void gs_gui_style_sheet_destroy(gs_gui_style_sheet_t* ss);
 GS_API_DECL void gs_gui_set_element_style(gs_gui_context_t* ctx, gs_gui_element_type element, gs_gui_element_state state, gs_gui_style_element_t* style, size_t size);
 GS_API_DECL void gs_gui_style_sheet_set_element_styles(gs_gui_style_sheet_t* style_sheet, gs_gui_element_type element, gs_gui_element_state state, gs_gui_style_element_t* styles, size_t size);
 GS_API_DECL void gs_gui_set_style_sheet(gs_gui_context_t* ctx, gs_gui_style_sheet_t* style_sheet);
+GS_API_DECL void gs_gui_push_inline_style(gs_gui_context_t* ctx, gs_gui_element_type elementid, gs_gui_inline_style_desc_t* desc);
+GS_API_DECL void gs_gui_pop_inline_style(gs_gui_context_t* ctx, gs_gui_element_type elementid);
 
 //=== Resource Loading ===//
 
@@ -2154,7 +2156,7 @@ static gs_gui_style_t* gs_gui_push_style(gs_gui_context_t* ctx, gs_gui_style_t* 
     return save;
 }
 
-static void gs_gui_push_inline_style(gs_gui_context_t* ctx, gs_gui_element_type elementid, gs_gui_inline_style_desc_t* desc)
+GS_API_DECL void gs_gui_push_inline_style(gs_gui_context_t* ctx, gs_gui_element_type elementid, gs_gui_inline_style_desc_t* desc)
 { 
     if (elementid >= GS_GUI_ELEMENT_COUNT || !desc)
     {
@@ -2243,7 +2245,7 @@ static void gs_gui_push_inline_style(gs_gui_context_t* ctx, gs_gui_element_type 
     gs_dyn_array_push(iss->animation_counts, anim_ct[2]);
 }
 
-static void gs_gui_pop_inline_style(gs_gui_context_t* ctx, gs_gui_element_type elementid)
+GS_API_DECL void gs_gui_pop_inline_style(gs_gui_context_t* ctx, gs_gui_element_type elementid)
 {
     if (elementid >= GS_GUI_ELEMENT_COUNT)
     {
