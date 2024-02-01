@@ -7481,11 +7481,15 @@ gs_gui_window_begin_ex(gs_gui_context_t * ctx, const char* title, gs_gui_rect_t 
         gs_gui_id id = gs_gui_get_id(ctx, "!body", 5);
         // gs_gui_update_control(ctx, id, br, (opt | GS_GUI_OPT_NOSWITCHSTATE)); 
 
-        // Need to move the entire thing
-        if (ctx->hover_root == cnt && !ctx->focus_split && !ctx->focus && !ctx->lock_focus && !ctx->hover && ctx->mouse_down == GS_GUI_MOUSE_LEFT) 
+        if (ctx->hover_root == cnt && !ctx->focus_split && !ctx->lock_focus && ctx->mouse_down == GS_GUI_MOUSE_LEFT)
         {
             ctx->active_root = cnt;
-            ctx->next_focus_root = cnt; 
+            ctx->next_focus_root = cnt;
+        }
+        // Need to move the entire thing
+
+        if (ctx->hover_root == cnt && !ctx->focus_split && !ctx->focus && !ctx->lock_focus && !ctx->hover && ctx->mouse_down == GS_GUI_MOUSE_LEFT)
+        {
             if (root_split)
             {
                 gs_gui_request_t req = gs_default_val();
