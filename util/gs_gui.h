@@ -5478,7 +5478,7 @@ gs_gui_draw_text(gs_gui_context_t* ctx, gs_asset_font_t* font, const char *str,
     } while (0)
 
     // Draw shadow
-    if (shadow_x || shadow_y && shadow_color.a)
+    if ((shadow_x || shadow_y) && shadow_color.a)
     {
         DRAW_TEXT(str, gs_gui_rect(pos.x + (float)shadow_x, pos.y + (float)shadow_y, td.x, td.y), shadow_color);
     }
@@ -7246,8 +7246,8 @@ gs_gui_window_begin_ex(gs_gui_context_t * ctx, const char* title, gs_gui_rect_t 
         if (tab_bar->focus == tab_item->idx) 
         {
             cnt->flags |= GS_GUI_WINDOW_FLAGS_VISIBLE;
-            cnt->opt &= !GS_GUI_OPT_NOINTERACT; 
-            cnt->opt &= !GS_GUI_OPT_NOHOVER; 
+            cnt->opt &= ~GS_GUI_OPT_NOINTERACT;
+            cnt->opt &= ~GS_GUI_OPT_NOHOVER;
         }
         else
         {
