@@ -2876,6 +2876,14 @@ f32 gs_vec2_dist(gs_vec2 a, gs_vec2 b)
     return (float)(sqrt(dx * dx + dy * dy));
 }
 
+gs_inline 
+f32 gs_vec2_dist2(gs_vec2 a, gs_vec2 b)
+{
+    f32 dx = (a.x - b.x);
+    f32 dy = (a.y - b.y);
+    return (float)(dx * dx + dy * dy);
+}
+
 gs_inline
 f32 gs_vec2_cross(gs_vec2 a, gs_vec2 b) 
 {
@@ -7631,7 +7639,7 @@ gs_camera_default()
     cam.transform.position.z = 1.f;
     cam.fov = 60.f;
     cam.near_plane = 0.1f;
-    cam.far_plane = 100.f;
+    cam.far_plane = 1000.f;
     cam.ortho_scale = 1.f;
     cam.proj_type = GS_PROJECTION_TYPE_ORTHOGRAPHIC;
     return cam;
