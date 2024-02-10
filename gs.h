@@ -5402,6 +5402,8 @@ GS_API_DECL void                 gs_platform_framebuffer_size(uint32_t handle, u
 GS_API_DECL uint32_t             gs_platform_framebuffer_width(uint32_t handle);
 GS_API_DECL uint32_t             gs_platform_framebuffer_height(uint32_t handle);
 GS_API_DECL gs_vec2              gs_platform_monitor_sizev(uint32_t id);
+GS_API_DECL void                 gs_platform_window_set_clipboard(uint32_t handle, const char* str);
+GS_API_DECL const char*          gs_platform_window_get_clipboard(uint32_t handle);
 
 // Platform callbacks
 GS_API_DECL void     gs_platform_set_framebuffer_resize_callback(uint32_t handle, gs_framebuffer_resize_callback_t cb);

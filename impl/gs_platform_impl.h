@@ -1984,6 +1984,17 @@ GS_API_DECL gs_vec2 gs_platform_monitor_sizev(uint32_t id)
     return ms;
 }
 
+GS_API_DECL void gs_platform_window_set_clipboard(uint32_t handle, const char* str)
+{
+    gs_platform_window_t* win = gs_slot_array_getp(gs_subsystem(platform)->windows, handle);
+    glfwSetClipboardString((GLFWwindow*)win->hndl, str);
+}
+GS_API_DECL const char* gs_platform_window_get_clipboard(uint32_t handle)
+{
+    gs_platform_window_t* win = gs_slot_array_getp(gs_subsystem(platform)->windows, handle);
+    return glfwGetClipboardString((GLFWwindow*)win->hndl);
+}
+
 void gs_platform_set_cursor(uint32_t handle, gs_platform_cursor cursor)
 {
     gs_platform_t* platform = gs_subsystem(platform);
