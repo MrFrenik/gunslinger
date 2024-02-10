@@ -1168,7 +1168,7 @@ void gs_util_get_file_extension
 )
 {
     // assumes that buffer and buffer_size is non-zero
-    char* extension = strrchr(file_path, '.');
+    const char* extension = strrchr(file_path, '.');
     if (extension) {
         uint32_t extension_len = strlen(extension+1);
         uint32_t len = (extension_len >= buffer_size) ? buffer_size - 1 : extension_len;
