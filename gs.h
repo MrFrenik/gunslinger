@@ -317,8 +317,8 @@
                 ) {
                     float v = gs_hash_table_iter_get(ht, it);         // Get value using iterator
                     float* vp = gs_hash_table_iter_getp(ht, it);      // Get value pointer using iterator
-                    key_t k = gs_hash_table_iter_get_key(ht, it);     // Get key using iterator
-                    key_t* kp = gs_hash_table_iter_get_keyp(ht, it);  // Get key pointer using iterator
+                    key_t k = gs_hash_table_iter_getk(ht, it);     // Get key using iterator
+                    key_t* kp = gs_hash_table_iter_getkp(ht, it);  // Get key pointer using iterator
                 }
 
             Hash Table Usage:
@@ -2162,7 +2162,7 @@ void __gs_hash_table_iter_advance_func(void** data, size_t key_len, size_t val_l
 #define GS_SLOT_ARRAY_INVALID_HANDLE    UINT32_MAX
 
 #define gs_slot_array_handle_valid(__SA, __ID)\
-    (__ID < gs_dyn_array_size((__SA)->indices) && (__SA)->indices[__ID] != GS_SLOT_ARRAY_INVALID_HANDLE)
+    ((__SA) && __ID < gs_dyn_array_size((__SA)->indices) && (__SA)->indices[__ID] != GS_SLOT_ARRAY_INVALID_HANDLE)
 
 typedef struct __gs_slot_array_dummy_header {
     gs_dyn_array(uint32_t) indices;
