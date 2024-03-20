@@ -56,12 +56,12 @@ typedef VkBool32 (APIENTRY *PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR
 #include "egl_context.h"
 #include "osmesa_context.h"
 
-#include "wayland-xdg-shell-client-protocol.h"
-#include "wayland-xdg-decoration-client-protocol.h"
-#include "wayland-viewporter-client-protocol.h"
-#include "wayland-relative-pointer-unstable-v1-client-protocol.h"
-#include "wayland-pointer-constraints-unstable-v1-client-protocol.h"
-#include "wayland-idle-inhibit-unstable-v1-client-protocol.h"
+#include "./wayland-protocol/wayland-xdg-shell-client-protocol.h"
+#include "./wayland-protocol/wayland-xdg-decoration-client-protocol.h"
+#include "./wayland-protocol/wayland-viewporter-client-protocol.h"
+#include "./wayland-protocol/wayland-relative-pointer-unstable-v1-client-protocol.h"
+#include "./wayland-protocol/wayland-pointer-constraints-unstable-v1-client-protocol.h"
+#include "./wayland-protocol/wayland-idle-inhibit-unstable-v1-client-protocol.h"
 
 #define _glfw_dlopen(name) dlopen(name, RTLD_LAZY | RTLD_LOCAL)
 #define _glfw_dlclose(handle) dlclose(handle)
