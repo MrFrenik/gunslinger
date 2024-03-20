@@ -2349,33 +2349,34 @@ bool gs_parse_code(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd
         {
             case GS_TOKEN_IDENTIFIER:
             {
+                // evil replace a const char*
                 if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX"))
                 {
-                    gs_util_string_replace(tkn.text, tkn.len, GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX, (char)32);
+                    gs_util_string_replace((char*)tkn.text, tkn.len, GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX, (char)32);
                 }
                 else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX"))
                 {
-                    gs_util_string_replace(tkn.text, tkn.len, GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX, (char)32);
+                    gs_util_string_replace((char*)tkn.text, tkn.len, GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX, (char)32);
                 }
                 else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_MODEL_MATRIX"))
                 {
-                    gs_util_string_replace(tkn.text, tkn.len, GS_GFXT_UNIFORM_MODEL_MATRIX, (char)32);
+                    gs_util_string_replace((char*)tkn.text, tkn.len, GS_GFXT_UNIFORM_MODEL_MATRIX, (char)32);
                 }
                 else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_INVERSE_MODEL_MATRIX"))
                 {
-                    gs_util_string_replace(tkn.text, tkn.len, GS_GFXT_UNIFORM_INVERSE_MODEL_MATRIX, (char)32);
+                    gs_util_string_replace((char*)tkn.text, tkn.len, GS_GFXT_UNIFORM_INVERSE_MODEL_MATRIX, (char)32);
                 }
                 else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_VIEW_MATRIX"))
                 {
-                    gs_util_string_replace(tkn.text, tkn.len, GS_GFXT_UNIFORM_VIEW_MATRIX, (char)32);
+                    gs_util_string_replace((char*)tkn.text, tkn.len, GS_GFXT_UNIFORM_VIEW_MATRIX, (char)32);
                 }
                 else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_PROJECTION_MATRIX"))
                 {
-                    gs_util_string_replace(tkn.text, tkn.len, GS_GFXT_UNIFORM_PROJECTION_MATRIX, (char)32);
+                    gs_util_string_replace((char*)tkn.text, tkn.len, GS_GFXT_UNIFORM_PROJECTION_MATRIX, (char)32);
                 }
                 else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_TIME"))
                 {
-                    gs_util_string_replace(tkn.text, tkn.len, GS_GFXT_UNIFORM_TIME, (char)32);
+                    gs_util_string_replace((char*)tkn.text, tkn.len, GS_GFXT_UNIFORM_TIME, (char)32);
                 }
             } break;
 
@@ -2397,7 +2398,8 @@ bool gs_parse_code(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd
                             if (tkn.type == GS_TOKEN_STRING)
                             {
                                 memcpy(includes[iidx], tkn.text + 1, tkn.len - 2);
-                                gs_util_string_replace(tkn.text - ilen, tkn.len + ilen,
+                                // evil replace a const char*
+                                gs_util_string_replace((char*)tkn.text - ilen, tkn.len + ilen,
                                     " ", (char)32);
                                 iidx++;
                             }
