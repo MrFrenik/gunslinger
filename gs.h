@@ -2097,6 +2097,7 @@ uint32_t gs_hash_table_get_key_index_func(void** data, void* key, size_t key_len
 /*===== Hash Table Iterator ====*/
 
 typedef uint32_t gs_hash_table_iter;
+typedef gs_hash_table_iter gs_hash_table_iter_t;
 
 gs_force_inline
 uint32_t __gs_find_first_valid_iterator(void* data, size_t key_len, size_t val_len, uint32_t idx, size_t stride, size_t klpvl)
