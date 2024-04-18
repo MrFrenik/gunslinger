@@ -797,6 +797,16 @@ gs_os_api_new_default();
     #define gs_strdup(__STR) (gs_ctx()->os.strdup(__STR))
 #endif 
 
+// Modified from: https://stackoverflow.com/questions/11815894/how-to-read-write-arbitrary-bits-in-c-c
+#define gs_bit_mask(INDEX, SIZE)\
+    (((1u << (SIZE)) - 1u) << (INDEX))
+
+#define gs_write_bits(DATA, INDEX, SIZE, VAL)\
+    ((DATA) = (((DATA) & (~BIT_MASK((INDEX), (SIZE)))) | (((VAL) << (INDEX)) & (BIT_MASK((INDEX), (SIZE))))))
+
+#define gs_read_bits(DATA, INDEX, SIZE)\
+    (((DATA) & BIT_MASK((INDEX), (SIZE))) >> (INDEX))
+
 /*============================================================
 // Result
 ============================================================*/
@@ -2464,6 +2474,192 @@ typedef uint32_t gs_slot_map_iter;
     (&((__SM)->sa->data[gs_hash_table_geti((__SM)->ht, (__IT))]))
 
     // (gs_hash_table_find_valid_iter(__SM->ht, __IT), &((__SM)->sa->data[gs_hash_table_geti((__SM)->ht, (__IT))]))
+
+/*===================================
+// Priority Queue
+===================================*/
+
+// Min heap
+#define gs_pqueue(__T)\
+    struct\
+    {\
+        gs_dyn_array(__T) data;\
+        gs_dyn_array(int32_t) priority;\
+        __T tmp;\
+    }*
+
+#define gs_pqueue_parent_idx(I)      gs_max((uint32_t)(ceil(((float)I / 2.f) - 1)), 0)
+#define gs_pqueue_child_left_idx(I)  ((I * 2) + 1)
+#define gs_pqueue_child_right_idx(I) ((I * 2) + 2)
+
+GS_API_DECL void** 
+gs_pqueue_init(void** pq);
+
+#define gs_pqueue_init_all(__PQ, __V)\
+    (gs_pqueue_init((void**)&(__PQ), sizeof(*(__PQ))), gs_dyn_array_init((void**)&((__PQ)->priority), sizeof(int32_t)),\
+        gs_dyn_array_init((void**)&((__PQ)->data), sizeof(__V)))
+
+#define gs_pqueue_size(__PQ)\
+    gs_dyn_array_size((__PQ)->data)
+
+#define gs_pqueue_capacity(__PQ)\
+    gs_dyn_array_capacity((__PQ)->data)
+
+#define gs_pqueue_clear(__PQ)\
+    do {\
+        gs_dyn_array_clear((__PQ)->data);\
+        gs_dyn_array_clear((__PQ)->priority);\
+    } while (0) 
+
+#define gs_pqueue_empty(__PQ)\
+    (!gs_pqueue_size(__PQ))
+
+#define __gs_pqueue_swp(__PQ, __I0, __I1, __SZ)\
+    do {\
+        /* Move data */\
+        {\
+            const size_t sz = (__SZ);\
+            memmove(&((__PQ)->tmp), &((__PQ)->data[__I0]), sz);\
+            memmove(&((__PQ)->data[__I0]), &((__PQ)->data[__I1]), sz);\
+            memmove(&((__PQ)->data[__I1]), &((__PQ)->tmp), sz);\
+        }\
+        /* Move priority */\
+        {\
+            int32_t tmp = 0;\
+            const size_t sz = sizeof(int32_t);\
+            memmove(&tmp, &((__PQ)->priority[__I0]), sz);\
+            memmove(&((__PQ)->priority[__I0]), &((__PQ)->priority[__I1]), sz);\
+            memmove(&((__PQ)->priority[__I1]), &tmp, sz);\
+        }\
+    } while (0)
+
+#define gs_pqueue_push(__PQ, __V, __PRI)\
+    do {\
+        /*Init*/\
+        gs_pqueue_init_all((__PQ), (__V));\
+        /*Push to end of array*/\
+        gs_dyn_array_push((__PQ)->data, (__V));\
+        gs_dyn_array_push((__PQ)->priority, (__PRI));\
+        /*Compare and sort up*/\
+        const size_t dsize = sizeof(__V);\
+        int32_t i = gs_max(gs_pqueue_size((__PQ)) - 1, 0);\
+        while (i)\
+        {\
+            /* Look at parent, compare, then swap indices with parent */\
+            int32_t pidx = gs_pqueue_parent_idx(i);\
+            if ((__PQ)->priority[pidx] > __PRI) {\
+                __gs_pqueue_swp(__PQ, i, pidx, dsize);\
+            }\
+            else {\
+                break;\
+            }\
+            i = pidx;\
+        }\
+    } while (0)
+
+#if 0
+/*
+    Need to call into another function to return what I need... Not sure how to do this, since I need to know what TYPE to return...
+*/
+#define gs_pqueue_pop(__PQ)\
+    (\
+        __gs_pqueue_pop_internal(\
+            (void**)&(__PQ),\
+            &(__PQ)->tmp,\
+            (void**)(&(__PQ)->data),\
+            (__PQ)->priority,\
+            gs_pqueue_size((__PQ)),\
+            sizeof((__PQ)->tmp)\
+        ),\
+        (__PQ)->tmp = (__PQ)->data[gs_pqueue_size((__PQ)) - 1],\
+        (gs_dyn_array_head((__PQ)->data))->size--,\
+        (gs_dyn_array_head((__PQ)->priority))->size--,\
+        (__PQ)->tmp\
+    )
+#endif
+
+#if 1
+/*
+    No return.
+*/
+#define gs_pqueue_pop(__PQ)\
+    do {\
+        /* Swap elements */\
+        if (gs_pqueue_empty((__PQ))) break;\
+        __gs_pqueue_swp(__PQ, 0, gs_pqueue_size((__PQ)) - 1, sizeof((__PQ)->tmp));\
+\
+        int32_t i = 0;\
+        int32_t c = 0;\
+        int32_t psz = gs_dyn_array_size((__PQ)->priority) - 1;\
+        for (int32_t i = 0; gs_pqueue_child_left_idx(i) < psz; i = c)\
+        {\
+            /* Set child to smaller of two */\
+            c = gs_pqueue_child_left_idx(i);\
+\
+            /* Set to right child if valid and less priority */\
+            if ((c + 1) < psz && (__PQ)->priority[c + 1] < (__PQ)->priority[c]) {\
+                c++;\
+            }\
+\
+            /* Check to swp, if necessary */\
+            if ((__PQ)->priority[i] > (__PQ)->priority[c]) {\
+                __gs_pqueue_swp((__PQ), i, c, sizeof((__PQ)->tmp));\
+            }\
+            /* Otherwise, we're done */\
+            else\
+            {\
+                break;\
+            }\
+        }\
+        (gs_dyn_array_head((__PQ)->data))->size--;\
+        (gs_dyn_array_head((__PQ)->priority))->size--;\
+    } while (0)
+#endif
+
+#if 1
+/*
+*/
+GS_API_PRIVATE void
+__gs_pqueue_pop_internal(void** pqueue, void* tmp, void** data, int32_t* priority, int32_t pq_sz, size_t d_sz);
+
+#endif
+
+#define gs_pqueue_peek(__PQ)\
+    (__PQ)->data[0]
+
+#define gs_pqueue_peek_pri(__PQ)\
+    (__PQ)->priority[0]
+
+#define gs_pqueue_free(__PQ)\
+    do {\
+        if ((__PQ) && (__PQ)->data) gs_dyn_array_free((__PQ)->data);\
+        if ((__PQ) && (__PQ)->priority) gs_dyn_array_free((__PQ)->priority);\
+        if ((__PQ)) gs_free((__PQ));\
+    } while (0)
+
+/*=== Priority Queue Iterator ===*/
+
+typedef uint32_t gs_pqueue_iter;
+typedef gs_pqueue_iter gs_pqueue_iter_t;
+
+#define gs_pqueue_iter_new(__PQ)    0
+
+#define gs_pqueue_iter_valid(__PQ, __IT)\
+    ((__IT) < gs_pqueue_size((__PQ)))
+
+#define gs_pqueue_iter_advance(__PQ, __IT) ++(__IT)
+
+#define gs_pqueue_iter_get(__PQ, __IT)\
+    (__PQ)->data[(__IT)]
+
+#define gs_pqueue_iter_getp(__PQ, __IT)\
+    &(__PQ)->data[(__IT)]
+
+#define gs_pqueue_iter_get_pri(__PQ, __IT)\
+    (__PQ)->priority[(__IT)]
+
+#define gs_pqueue_iter_get_prip(__PQ, __IT)\
+    &(__PQ)->priority[(__IT)]
 
 /*===================================
 // Command Buffer
@@ -4453,6 +4649,13 @@ typedef mco_result gs_coro_result;
 #define gs_scheduler_join           scheduler_join
 #define gs_scheduler_wait           scheduler_wait
 #define gs_scheduler_stop           scheduler_stop
+#define gs_atomic_int_t             int32_t
+
+GS_API_DECL uint32_t
+gs_atomic_cmp_swp(volatile uint32_t *dst, uint32_t swap, uint32_t cmp);
+
+GS_API_DECL int32_t 
+gs_atomic_add(volatile int32_t *dst, int32_t value);
 
 /*================================================================================
 // Noise
@@ -7078,6 +7281,85 @@ gs_slot_map_init(void** sm)
 }
 
 /*========================
+// Priotity Queue
+========================*/
+
+GS_API_DECL void**
+gs_pqueue_init(void** pq, size_t sz)
+{
+    if (*pq == NULL) {
+        (*pq) = gs_malloc(sz);
+        memset((*pq), 0, sz);
+        return pq;
+    }
+    return NULL;
+}
+
+GS_API_PRIVATE void
+__gs_pqueue_pop_internal(void** pqueue, void* tmp, void** data, int32_t* priority, int32_t pq_sz, size_t d_sz)
+{
+    // TODO(): Remove these checks for perf
+    if (!pqueue || !tmp || !data || !priority || !pq_sz || !d_sz) return;
+
+    #define __SWP(__I0, __I1)\
+    do {\
+        {\
+            size_t i0 = d_sz * (__I0);\
+            size_t i1 = d_sz * (__I1);\
+            uint8_t** d = (uint8_t**)data;\
+            memcpy(tmp, ((char*)*(d)) + i0, d_sz);\
+            memcpy(((char*)(*d)) + i0, ((char*)(*d)) + i1, d_sz);\
+            memcpy(((char*)(*d)) + i1, tmp, d_sz);\
+        }\
+        {\
+            int32_t t = 0;\
+            uint32_t i0 = (__I0);\
+            uint32_t i1 = (__I1);\
+            uint32_t sz = sizeof(int32_t);\
+            memcpy(&t, ((char*)((priority)) + i0), sz);\
+            memcpy((char*)((priority) + i0), (char*)((priority) + i1), sz);\
+            memcpy((char*)((priority) + i1), &t, sz);\
+        }\
+    } while (0)
+
+    // Swap elements internal
+    __SWP(0, pq_sz - 1);
+
+    // Work down list from top until priority is sorted
+    // THIS PART IS FUCKED
+    // return;
+    int32_t i = 0;
+    int32_t c = 0;
+    int32_t nwsz = pq_sz - 1;   // Right up until the last item we removed
+    int32_t psz = gs_dyn_array_size(priority) - 1;
+    // int32_t* pa = priority;
+    for (int32_t i = 0; gs_pqueue_child_left_idx(i) < psz; i = c)
+    {
+        // Set child to smaller of two
+        c = gs_pqueue_child_left_idx(i);
+
+        // if (c >= psz) break;
+        
+        // Set to right child if valid and less priority
+        if ((c + 1) < psz && priority[c + 1] < priority[c]) {
+            c++;
+        }
+
+        // Check to swp, if necessary
+        if (priority[i] > priority[c]) {
+            __SWP(i, c);
+        }
+        // Otherwise, we're done
+        else
+        {
+            break;
+        }
+    }
+
+    // gs_println("P: %d", priority[nwsz - 1]);
+}
+
+/*========================
 // GS_MEMORY
 ========================*/
 
@@ -7564,6 +7846,42 @@ gs_rand_gen_color(gs_mt_rand_t* rand)
 ================================================================================*/
 #define SCHED_IMPLEMENTATION
 #include "external/sched/sched.h"
+  
+/* ---------------------------------------------------------------
+ *                          ATOMIC
+ * ---------------------------------------------------------------*/
+#if  defined(_WIN32) && !(defined(__MINGW32__) || defined(__MINGW64__))
+    #include <intrin.h>
+    void _ReadWriteBarrier();
+    #pragma intrinsic(_ReadWriteBarrier)
+    #pragma intrinsic(_InterlockedCompareExchange)
+    #pragma intrinsic(_InterlockedExchangeAdd)
+#endif
+
+GS_API_DECL uint32_t
+gs_atomic_cmp_swp(volatile uint32_t *dst, uint32_t swap, uint32_t cmp)
+{
+/* Atomically performs: if (*dst == swapTp){ *dst = swapTo;}
+ * return old *dst (so if sucessfull return cmp) */
+#if defined(_WIN32) && !(defined(__MINGW32__) || defined(__MINGW64__))
+    /* assumes two's complement - unsigned /signed conversion leads to same bit pattern */
+    return _InterlockedCompareExchange((volatile long*)dst, swap, cmp);
+#else
+    return __sync_val_compare_and_swap(dst, cmp, swap);
+#endif
+}
+
+GS_API_DECL gs_atomic_int_t
+gs_atomic_add(volatile gs_atomic_int_t *dst, int32_t value)
+{
+/* Atomically performs: tmp = *dst: *dst += value; return tmp; */
+#if defined(_WIN32) && !(defined(__MINGW32__) || defined(__MINGW64__))
+    return _InterlockedExchangeAdd((long*)dst, value);
+#else
+    return (sched_int)__sync_add_and_fetch(dst, value);
+#endif
+}
+
 
 /*================================================================================
 // Noise
