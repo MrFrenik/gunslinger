@@ -8244,7 +8244,7 @@ gs_asset_texture_load_from_file(const char* path, void* out, gs_graphics_texture
     stbi_set_flip_vertically_on_load(t->desc.flip_y);
     *t->desc.data = (uint8_t*)stbi_load_from_file(f, (int32_t*)&t->desc.width, (int32_t*)&t->desc.height, (int32_t*)&comp, STBI_rgb_alpha);
 
-    if (!t->desc.data) {
+    if (!*t->desc.data) {
         fclose(f);
         return false;
     }
@@ -8291,7 +8291,7 @@ bool gs_asset_texture_load_from_memory(const void* memory, size_t sz, void* out,
     // Load texture data
     int32_t num_comps = 0;
     bool32_t loaded = gs_util_load_texture_data_from_memory(memory, sz, (int32_t*)&t->desc.width, 
-        (int32_t*)&t->desc.height, (uint32_t*)&num_comps, (void**)&t->desc.data, t->desc.flip_y);
+        (int32_t*)&t->desc.height, (uint32_t*)&num_comps, t->desc.data, t->desc.flip_y);
 
     if (!loaded) {
         return false;
@@ -8300,7 +8300,7 @@ bool gs_asset_texture_load_from_memory(const void* memory, size_t sz, void* out,
     t->hndl = gs_graphics_texture_create(&t->desc);
 
     if (!keep_data) {
-        gs_free(t->desc.data);
+        gs_free(*t->desc.data);
         *t->desc.data = NULL;
     }
 
@@ -9040,7 +9040,7 @@ gs_lexer_c_next_token(gs_lexer_t* lex)
                     )
                     {
                         // Grab decimal
-                        num_decimals = lex->at[0] == '.' ? num_decimals++ : num_decimals;
+                        num_decimals = lex->at[0] == '.' ? num_decimals + 1 : num_decimals;
 
                         //Increment
                         lex->at++;
@@ -9137,7 +9137,7 @@ gs_lexer_c_next_token(gs_lexer_t* lex)
 					)
 					{
 						// Grab decimal
-						num_decimals = lex->at[0] == '.' ? num_decimals++ : num_decimals;
+						num_decimals = lex->at[0] == '.' ? num_decimals + 1 : num_decimals;
 
 						//Increment
 						lex->at++;
