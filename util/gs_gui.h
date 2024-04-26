@@ -5476,7 +5476,7 @@ gs_gui_draw_text(gs_gui_context_t* ctx, gs_asset_font_t* font, const char *str,
     } while (0)
 
     // Draw shadow
-    if (shadow_x || shadow_y && shadow_color.a)
+    if ((shadow_x || shadow_y) && shadow_color.a)
     {
         DRAW_TEXT(str, gs_gui_rect(pos.x + (float)shadow_x, pos.y + (float)shadow_y, td.x, td.y), shadow_color);
     }
@@ -6315,7 +6315,7 @@ gs_gui_label_ex(gs_gui_context_t* ctx, const char* label, const gs_gui_selector_
     gs_gui_parse_id_tag(ctx, label, id_tag, sizeof(id_tag), opt);
     gs_gui_parse_label_tag(ctx, label, label_tag, sizeof(label_tag));
 
-	if (id_tag) gs_gui_push_id(ctx, id_tag, strlen(id_tag));
+	gs_gui_push_id(ctx, id_tag, strlen(id_tag));
 
     gs_gui_style_t style = gs_default_val();
     gs_gui_animation_t* anim = gs_gui_get_animation(ctx, id, desc, elementid); 
@@ -6339,7 +6339,7 @@ gs_gui_label_ex(gs_gui_context_t* ctx, const char* label, const gs_gui_selector_
 	gs_gui_update_control(ctx, id, r, 0x00); 
 	gs_gui_draw_control_text(ctx, label_tag, r, &style, 0x00); 
     gs_gui_pop_style(ctx, save);
-	if (id_tag) gs_gui_pop_id(ctx);
+	gs_gui_pop_id(ctx);
 
 	/* handle click */
     if (
@@ -6523,9 +6523,7 @@ gs_gui_button_ex(gs_gui_context_t* ctx, const char* label, const gs_gui_selector
     gs_gui_animation_t* anim = gs_gui_get_animation(ctx, id, desc, GS_GUI_ELEMENT_BUTTON);
 
 	// Push id if tag available
-	if (id_tag) {
-		gs_gui_push_id(ctx, id_tag, strlen(id_tag));
-	}
+    gs_gui_push_id(ctx, id_tag, strlen(id_tag));
 
     // Update anim (keep states locally within animation, only way to do this) 
     if (anim)
@@ -6565,7 +6563,7 @@ gs_gui_button_ex(gs_gui_context_t* ctx, const char* label, const gs_gui_selector
 
     gs_gui_pop_style(ctx, save);
 
-	if (id_tag) gs_gui_pop_id(ctx);
+	gs_gui_pop_id(ctx);
 
 	return res;
 }
@@ -6997,7 +6995,7 @@ static int32_t _gs_gui_header(gs_gui_context_t *ctx, const char *label, int32_t 
 	gs_gui_id id = gs_gui_get_id(ctx, id_tag, strlen(id_tag));
 	int32_t idx = gs_gui_pool_get(ctx, ctx->treenode_pool, GS_GUI_TREENODEPOOL_SIZE, id);
 
-    if (id_tag) gs_gui_push_id(ctx, id_tag, strlen(id_tag));
+    gs_gui_push_id(ctx, id_tag, strlen(id_tag));
 
 	active = (idx >= 0);
 	expanded = (opt & GS_GUI_OPT_EXPANDED) ? !active : active;
@@ -7058,7 +7056,7 @@ static int32_t _gs_gui_header(gs_gui_context_t *ctx, const char *label, int32_t 
 	r.w -= r.h - ctx->style->padding[GS_GUI_PADDING_BOTTOM]; 
 	gs_gui_draw_control_text(ctx, label_tag, r, &ctx->style_sheet->styles[GS_GUI_ELEMENT_TEXT][0x00], 0);
 
-    if (id_tag) gs_gui_pop_id(ctx);
+    gs_gui_pop_id(ctx);
 
 	return expanded ? GS_GUI_RES_ACTIVE : 0;
 } 
@@ -7158,9 +7156,7 @@ gs_gui_window_begin_ex(gs_gui_context_t * ctx, const char* title, gs_gui_rect_t 
     } 
 
     // Push id flag
-    if (id_tag) {
-        // cnt->flags |= GS_GUI_WINDOW_FLAGS_PUSH_ID;
-    }
+    // cnt->flags |= GS_GUI_WINDOW_FLAGS_PUSH_ID;
 
     if (cnt->flags & GS_GUI_WINDOW_FLAGS_FIRST_INIT) {
 	    memcpy(cnt->name, label_tag, 256);
@@ -7244,8 +7240,8 @@ gs_gui_window_begin_ex(gs_gui_context_t * ctx, const char* title, gs_gui_rect_t 
         if (tab_bar->focus == tab_item->idx) 
         {
             cnt->flags |= GS_GUI_WINDOW_FLAGS_VISIBLE;
-            cnt->opt &= !GS_GUI_OPT_NOINTERACT; 
-            cnt->opt &= !GS_GUI_OPT_NOHOVER; 
+            cnt->opt &= ~GS_GUI_OPT_NOINTERACT;
+            cnt->opt &= ~GS_GUI_OPT_NOHOVER;
         }
         else
         {
