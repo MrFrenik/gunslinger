@@ -2853,8 +2853,6 @@ gs_gui_get_container_ex(gs_gui_context_t* ctx, gs_gui_id id, uint64_t opt)
 	cnt->id = id;
     cnt->flags |= GS_GUI_WINDOW_FLAGS_VISIBLE | GS_GUI_WINDOW_FLAGS_FIRST_INIT;
     gs_gui_bring_to_front(ctx, cnt);
-    
-    gs_println("CONSTRUCTING: %zu", id);
 
 	return cnt;
 }

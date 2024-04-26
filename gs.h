@@ -2034,6 +2034,8 @@ uint32_t gs_hash_table_get_key_index_func(void** data, void* key, size_t key_len
     // Need a better way to handle this. Can't do it like this anymore.
     // Need to fix this. Seriously messing me up.
     uint32_t capacity = gs_dyn_array_capacity(*data);
+	uint32_t size = gs_dyn_array_size(*data);
+	if (!capacity || !size) return (size_t)GS_HASH_TABLE_INVALID_INDEX;
     size_t idx = (size_t)GS_HASH_TABLE_INVALID_INDEX;
     size_t hash = (size_t)gs_hash_bytes(key, key_len, GS_HASH_TABLE_HASH_SEED);
     size_t hash_idx = (hash % capacity);
@@ -2626,6 +2628,9 @@ __gs_pqueue_pop_internal(void** pqueue, void* tmp, void** data, int32_t* priorit
 
 #define gs_pqueue_peek(__PQ)\
     (__PQ)->data[0]
+
+#define gs_pqueue_peekp(__PQ)\
+    &((__PQ)->data[0])
 
 #define gs_pqueue_peek_pri(__PQ)\
     (__PQ)->priority[0]
