@@ -2495,7 +2495,7 @@ typedef uint32_t gs_slot_map_iter;
 #define gs_pqueue_child_right_idx(I) ((I * 2) + 2)
 
 GS_API_DECL void** 
-gs_pqueue_init(void** pq);
+gs_pqueue_init(void** pq, size_t sz);
 
 #define gs_pqueue_init_all(__PQ, __V)\
     (gs_pqueue_init((void**)&(__PQ), sizeof(*(__PQ))), gs_dyn_array_init((void**)&((__PQ)->priority), sizeof(int32_t)),\
@@ -2514,7 +2514,7 @@ gs_pqueue_init(void** pq);
     } while (0) 
 
 #define gs_pqueue_empty(__PQ)\
-    (!gs_pqueue_size(__PQ))
+    (!(__PQ) || !gs_pqueue_size(__PQ))
 
 #define __gs_pqueue_swp(__PQ, __I0, __I1, __SZ)\
     do {\
@@ -6707,7 +6707,8 @@ typedef struct gs_context_t
     gs_audio_t* audio;
     gs_app_desc_t app; 
     gs_os_api_t os;
-} gs_context_t; 
+    gs_atomic_int_t lock;
+} gs_context_t;
 
 typedef struct gs_t
 {
@@ -8844,6 +8845,7 @@ GS_API_DECL bool gs_token_compare_type(const gs_token_t* t, gs_token_type type)
 
 GS_API_DECL bool gs_token_compare_text(const gs_token_t* t, const char* match)
 {
+    if (t->len != gs_string_length(match)) return false;
 	return (gs_string_compare_equal_n(t->text, match, t->len));
 }
 
@@ -9335,6 +9337,8 @@ gs_create(gs_app_desc_t app_desc)
         // Construct instance and set
         _gs_instance = (gs_t*)os.malloc(sizeof(gs_t));
         memset(_gs_instance, 0, sizeof(gs_t));
+
+        gs_instance()->ctx.lock = SCHED_PIPE_INVALID;
 
         // Set os api now allocated
         gs_instance()->ctx.os = os;

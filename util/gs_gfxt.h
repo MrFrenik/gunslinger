@@ -1956,7 +1956,7 @@ gs_gfxt_mesh_t gs_gfxt_mesh_unit_quad_generate(gs_gfxt_mesh_import_options_t* op
     mesh.desc = mdesc;
 
     // Free data
-    gs_dyn_array_free(mesh_data.primitives);
+    if (mesh_data.primitives) gs_dyn_array_free(mesh_data.primitives);
 
     return mesh;
 }
