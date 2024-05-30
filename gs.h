@@ -1870,6 +1870,10 @@ void gs_dyn_array_set_data_i(void** arr, void* val, size_t val_len, uint32_t off
     } while (0)
 
 /*===================================
+// Static Array
+===================================*/
+
+/*===================================
 // Hash Table
 ===================================*/
 
@@ -8147,7 +8151,11 @@ gs_camera_offset_orientation(gs_camera_t* cam, f32 yaw, f32 pitch)
 #ifndef GS_NO_STB_IMAGE
     #define STB_IMAGE_IMPLEMENTATION
     // #define STB_IMAGE_WRITE_IMPLEMENTATION
-#endif
+#endif 
+
+// #ifndef GS_NO_STB_DS_DEFINE
+//     #define STB_DS_IMPLEMENTATION
+// #endif
 
 #ifndef GS_NO_CGLTF
     #define CGLTF_IMPLEMENTATION
@@ -8160,6 +8168,7 @@ gs_camera_offset_orientation(gs_camera_t* cam, f32 yaw, f32 pitch)
 #include "external/stb/stb_rect_pack.h"
 #include "external/stb/stb_truetype.h"
 #include "external/stb/stb_image.h"
+// #include "external/stb/stb_ds.h"
 
 // CGLTF
 #include "external/cgltf/cgltf.h"
