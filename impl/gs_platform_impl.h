@@ -1708,6 +1708,9 @@ gs_platform_window_create_internal(const gs_platform_window_desc_t* desc)
     if (desc->num_samples) {
         glfwWindowHint(GLFW_SAMPLES, desc->num_samples); 
     }
+    else {
+        glfwWindowHint(GLFW_SAMPLES, 0);
+    }
 
     // Get monitor if fullscreen
     GLFWmonitor* monitor = NULL;
@@ -1979,6 +1982,17 @@ GS_API_DECL gs_vec2 gs_platform_monitor_sizev(uint32_t id)
     ms.x = (float)width;
     ms.y = (float)height;
     return ms;
+}
+
+GS_API_DECL void gs_platform_window_set_clipboard(uint32_t handle, const char* str)
+{
+    gs_platform_window_t* win = gs_slot_array_getp(gs_subsystem(platform)->windows, handle);
+    glfwSetClipboardString((GLFWwindow*)win->hndl, str);
+}
+GS_API_DECL const char* gs_platform_window_get_clipboard(uint32_t handle)
+{
+    gs_platform_window_t* win = gs_slot_array_getp(gs_subsystem(platform)->windows, handle);
+    return glfwGetClipboardString((GLFWwindow*)win->hndl);
 }
 
 void gs_platform_set_cursor(uint32_t handle, gs_platform_cursor cursor)

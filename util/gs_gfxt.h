@@ -78,6 +78,10 @@
     #define GS_GFXT_CUSTOM_UINT_MAX 4
 #endif
 
+#ifndef GS_GFXT_INCLUDE_DIR_MAX
+    #define GS_GFXT_INCLUDE_DIR_MAX 8 
+#endif
+
 #ifndef GS_GFXT_UNIFORM_VIEW_MATRIX
     #define GS_GFXT_UNIFORM_VIEW_MATRIX "U_VIEW_MTX"
 #endif
@@ -203,6 +207,7 @@ typedef struct
 } gs_gfxt_mesh_vertex_data_t;
 
 // Structured/packed raw mesh data
+// TODO(john): Make the primitives array static to avoid heap alloc
 typedef struct gs_gfxt_mesh_raw_data_t {
     gs_dyn_array(gs_gfxt_mesh_vertex_data_t) primitives;   // All primitive data
 } gs_gfxt_mesh_raw_data_t;
@@ -305,6 +310,7 @@ GS_API_DECL void gs_gfxt_pipeline_destroy(gs_gfxt_pipeline_t* pipeline);
 //=== Resource Loading ===//
 GS_API_DECL gs_gfxt_pipeline_t gs_gfxt_pipeline_load_from_file(const char* path);
 GS_API_DECL gs_gfxt_pipeline_t gs_gfxt_pipeline_load_from_memory(const char* data, size_t sz);
+GS_API_DECL gs_gfxt_pipeline_t gs_gfxt_pipeline_load_from_memory_ext(const char* data, size_t sz, const char* file_dir);
 GS_API_DECL gs_gfxt_texture_t  gs_gfxt_texture_load_from_file(const char* path, gs_graphics_texture_desc_t* desc, bool flip, bool keep_data);
 GS_API_DECL gs_gfxt_texture_t  gs_gfxt_texture_load_from_memory(const char* data, size_t sz, gs_graphics_texture_desc_t* desc, bool flip, bool keep_data);
 
@@ -1140,7 +1146,7 @@ gs_gfxt_mesh_draw(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mp)
 }
 
 GS_API_DECL void
-gs_gfxt_mesh_primitive_draw_layout(gs_command_buffer_t* cb, gs_gfxt_mesh_primitive_t* prim, gs_gfxt_mesh_layout_t* layout, size_t layout_size)
+gs_gfxt_mesh_primitive_draw_layout(gs_command_buffer_t* cb, gs_gfxt_mesh_primitive_t* prim, gs_gfxt_mesh_layout_t* layout, size_t layout_size, uint32_t instance_count)
 { 
     if (!layout || !layout_size || !prim || !cb)
     {
@@ -1181,6 +1187,7 @@ gs_gfxt_mesh_primitive_draw_layout(gs_command_buffer_t* cb, gs_gfxt_mesh_primiti
     gs_graphics_draw_desc_t ddesc = gs_default_val();
     ddesc.start = 0;
     ddesc.count = prim->count;
+    ddesc.instances = instance_count;
 
     gs_graphics_apply_bindings(cb, &binds);
     gs_graphics_draw(cb, &ddesc);
@@ -1200,7 +1207,7 @@ gs_gfxt_mesh_draw_layout(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh, gs_gfxt_
     for (uint32_t i = 0; i < gs_dyn_array_size(mesh->primitives); ++i)
     {
         gs_gfxt_mesh_primitive_t* prim = &mesh->primitives[i]; 
-        gs_gfxt_mesh_primitive_draw_layout(cb, prim, layout, layout_size);
+        gs_gfxt_mesh_primitive_draw_layout(cb, prim, layout, layout_size, 1);
     }
 }
 
@@ -1229,12 +1236,12 @@ gs_gfxt_mesh_draw_materials(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh, gs_gf
         if (!mat) continue;
 
         // Bind material pipeline and uniforms
-        gs_gfxt_material_bind(cb, mat); 
+        gs_gfxt_material_bind(cb, mat);
 
         // Get pipeline
         gs_gfxt_pipeline_t* pip = gs_gfxt_material_get_pipeline(mat);
 
-        gs_gfxt_mesh_primitive_draw_layout(cb, prim, pip->mesh_layout, gs_dyn_array_size(pip->mesh_layout) * sizeof(gs_gfxt_mesh_layout_t));
+        gs_gfxt_mesh_primitive_draw_layout(cb, prim, pip->mesh_layout, gs_dyn_array_size(pip->mesh_layout) * sizeof(gs_gfxt_mesh_layout_t), 1);
     } 
 } 
 
@@ -1949,12 +1956,13 @@ gs_gfxt_mesh_t gs_gfxt_mesh_unit_quad_generate(gs_gfxt_mesh_import_options_t* op
     mesh.desc = mdesc;
 
     // Free data
-    gs_dyn_array_free(mesh_data.primitives);
+    if (mesh_data.primitives) gs_dyn_array_free(mesh_data.primitives);
 
     return mesh;
 }
 
-gs_handle(gs_graphics_texture_t) gs_gfxt_texture_generate_default()
+GS_API_DECL gs_handle(gs_graphics_texture_t) 
+gs_gfxt_texture_generate_default()
 {
     // Generate procedural texture data (checkered texture)
     #define GS_GFXT_ROW_COL_CT  5
@@ -2003,7 +2011,8 @@ typedef struct gs_pipeline_parse_data_t
     gs_dyn_array(gs_gfxt_mesh_layout_t) mesh_layout;
     gs_dyn_array(gs_graphics_vertex_attribute_type) vertex_layout;
     char* code[3];
-} gs_ppd_t; 
+    char dir[256];
+} gs_ppd_t;
 
 #define gs_parse_warning(TXT, ...)\
     do {\
@@ -2321,11 +2330,15 @@ bool gs_parse_code(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd
         }
     }
 
-    // This is most likely incorrect...
+    // Allocate size for code
     const size_t sz = (size_t)(token.text - cur.text);
     char* code = (char*)gs_malloc(sz);
     memset(code, 0, sz); 
     memcpy(code, cur.text, sz - 1);
+
+    // List of include directories to gather
+    uint32_t iidx = 0;
+    char includes[GS_GFXT_INCLUDE_DIR_MAX][256] = {0};
 
     // Need to parse through code and replace keywords with appropriate mappings
     gs_lexer_t clex = gs_lexer_c_ctor(code);
@@ -2336,45 +2349,91 @@ bool gs_parse_code(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd
         {
             case GS_TOKEN_IDENTIFIER:
             {
+                // evil replace a const char*
                 if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX"))
                 {
-                    gs_util_string_replace(tkn.text, tkn.len, GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX, (char)32);
+                    gs_util_string_replace((char*)tkn.text, tkn.len, GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX, (char)32);
                 }
                 else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX"))
                 {
-                    gs_util_string_replace(tkn.text, tkn.len, GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX, (char)32);
+                    gs_util_string_replace((char*)tkn.text, tkn.len, GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX, (char)32);
                 }
                 else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_MODEL_MATRIX"))
                 {
-                    gs_util_string_replace(tkn.text, tkn.len, GS_GFXT_UNIFORM_MODEL_MATRIX, (char)32);
+                    gs_util_string_replace((char*)tkn.text, tkn.len, GS_GFXT_UNIFORM_MODEL_MATRIX, (char)32);
                 }
                 else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_INVERSE_MODEL_MATRIX"))
                 {
-                    gs_util_string_replace(tkn.text, tkn.len, GS_GFXT_UNIFORM_INVERSE_MODEL_MATRIX, (char)32);
+                    gs_util_string_replace((char*)tkn.text, tkn.len, GS_GFXT_UNIFORM_INVERSE_MODEL_MATRIX, (char)32);
                 }
                 else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_VIEW_MATRIX"))
                 {
-                    gs_util_string_replace(tkn.text, tkn.len, GS_GFXT_UNIFORM_VIEW_MATRIX, (char)32);
+                    gs_util_string_replace((char*)tkn.text, tkn.len, GS_GFXT_UNIFORM_VIEW_MATRIX, (char)32);
                 }
                 else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_PROJECTION_MATRIX"))
                 {
-                    gs_util_string_replace(tkn.text, tkn.len, GS_GFXT_UNIFORM_PROJECTION_MATRIX, (char)32);
+                    gs_util_string_replace((char*)tkn.text, tkn.len, GS_GFXT_UNIFORM_PROJECTION_MATRIX, (char)32);
                 }
                 else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_TIME"))
                 {
-                    gs_util_string_replace(tkn.text, tkn.len, GS_GFXT_UNIFORM_TIME, (char)32);
+                    gs_util_string_replace((char*)tkn.text, tkn.len, GS_GFXT_UNIFORM_TIME, (char)32);
                 }
-            };
+            } break;
+
+            case GS_TOKEN_HASH:
+            { 
+                // Parse include
+                tkn = clex.next_token(&clex);
+                switch (tkn.type)
+                {
+                    case GS_TOKEN_IDENTIFIER:
+                    { 
+                        if (gs_token_compare_text(&tkn, "include") && iidx < GS_GFXT_INCLUDE_DIR_MAX)
+                        { 
+                            // Length of include string
+                            size_t ilen = 8;
+
+                            // Grab next token, expect string
+                            tkn = clex.next_token(&clex);
+                            if (tkn.type == GS_TOKEN_STRING)
+                            {
+                                memcpy(includes[iidx], tkn.text + 1, tkn.len - 2);
+                                // evil replace a const char*
+                                gs_util_string_replace((char*)tkn.text - ilen, tkn.len + ilen,
+                                    " ", (char)32);
+                                iidx++;
+                            }
+                        }
+                    }
+                }
+            } break;
         }
     }
 
-    // gs_println("code: %s", code);
+    for (uint32_t i = 0; i < GS_GFXT_INCLUDE_DIR_MAX; ++i)
+    { 
+        if (!includes[i][0]) continue;
+
+        // Need to collect other uniforms from these includes (parse code)
+        gs_snprintfc(FINAL_PATH, 256, "%s/%s", ppd->dir, includes[i]);
+        // gs_println("INC_DIR: %s", FINAL_PATH);
+
+        // Load include using final path and relative path from include
+        size_t len = 0;
+        char* inc_src = gs_platform_read_file_contents(FINAL_PATH, "rb", &len);
+        gs_assert(inc_src);
+
+        // Realloc previous code to greater size, shift contents around
+        char* cat = gs_util_string_concat(inc_src, code);
+        gs_free(code);
+        code = cat;
+    }
 
     switch (stage)
     {
-        case GS_GRAPHICS_SHADER_STAGE_VERTEX: ppd->code[0]   = code; break; 
+        case GS_GRAPHICS_SHADER_STAGE_VERTEX:   ppd->code[0] = code; break; 
         case GS_GRAPHICS_SHADER_STAGE_FRAGMENT: ppd->code[1] = code; break;
-        case GS_GRAPHICS_SHADER_STAGE_COMPUTE: ppd->code[2] = code; break;
+        case GS_GRAPHICS_SHADER_STAGE_COMPUTE:  ppd->code[2] = code; break;
     }
 
     return true;
@@ -3157,7 +3216,7 @@ char* gs_pipeline_generate_shader_code(gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t*
     #ifdef GS_PLATFORM_WEB
         #define _GS_VERSION_STR "#version 300 es\n"
     #else
-        #define _GS_VERSION_STR MAJMINSTR
+        #define _GS_VERSION_STR "#version 430\n"
     #endif
 
     // Source code 
@@ -3299,6 +3358,7 @@ char* gs_pipeline_generate_shader_code(gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t*
 
             case GS_GRAPHICS_SHADER_STAGE_COMPUTE:
             {
+                /*
                 gs_snprintfc(TMP, 64, "layout(");
                 strncat(src, "layout(", 7);
 
@@ -3313,6 +3373,7 @@ char* gs_pipeline_generate_shader_code(gs_gfxt_pipeline_desc_t* pdesc, gs_ppd_t*
                 }
 
                 strncat(src, ") in;\n", 7);
+                */
             } break;
 
             default: break;
@@ -3336,19 +3397,51 @@ gs_gfxt_pipeline_load_from_file(const char* path)
     char* file_data = gs_platform_read_file_contents(path, "rb", &len);
     gs_assert(file_data); 
     gs_log_success("Parsing pipeline: %s", path);
-    gs_gfxt_pipeline_t pip = gs_gfxt_pipeline_load_from_memory(file_data, len);
+    gs_gfxt_pipeline_t pip = gs_gfxt_pipeline_load_from_memory_ext(file_data, len, path);
     gs_free(file_data);
     return pip;
 }
 
-GS_API_DECL gs_gfxt_pipeline_t gs_gfxt_pipeline_load_from_memory(const char* file_data, size_t sz)
+GS_API_DECL gs_gfxt_pipeline_t 
+gs_gfxt_pipeline_load_from_memory(const char* file_data, size_t sz)
+{ 
+    return gs_gfxt_pipeline_load_from_memory_ext(file_data, sz, ".");
+}
+
+GS_API_DECL gs_gfxt_pipeline_t 
+gs_gfxt_pipeline_load_from_memory_ext(const char* file_data, size_t sz, const char* file_path)
 { 
     // Cast to pip
-    gs_gfxt_pipeline_t pip = gs_default_val(); 
+    gs_gfxt_pipeline_t pip = gs_default_val();
 
     gs_ppd_t ppd = gs_default_val();
     gs_gfxt_pipeline_desc_t pdesc = gs_default_val();
     pdesc.pip_desc.raster.index_buffer_element_size = sizeof(uint32_t); 
+
+    // Determine original file directory from path
+    if (file_path)
+    {
+        gs_lexer_t lex = gs_lexer_c_ctor(file_path);
+        gs_token_t tparen = {0};
+        while (lex.can_lex(&lex))
+        { 
+            gs_token_t token = lex.next_token(&lex);
+
+            // Look for last paren + identifier combo
+            switch (token.type)
+            { 
+                case GS_TOKEN_FSLASH:
+                case GS_TOKEN_BSLASH:
+                { 
+                    tparen = token;
+                } break;
+            }
+        }
+        // Now save dir
+        gs_println("HERE: %zu", tparen.text - file_path);
+        memcpy(ppd.dir, file_path, tparen.text - file_path);
+        gs_println("PPD_DIR: %s", ppd.dir);
+    }
 
     gs_lexer_t lex = gs_lexer_c_ctor(file_data);
     while (lex.can_lex(&lex))
