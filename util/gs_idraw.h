@@ -1619,8 +1619,8 @@ void gsi_box(gs_immediate_draw_t* gsi, float x, float y, float z, float hx, floa
 void gsi_sphere(gs_immediate_draw_t* gsi, float cx, float cy, float cz, float radius, uint8_t r, uint8_t g, uint8_t b, uint8_t a, gs_graphics_primitive_type type)
 {
 	// Modified from: http://www.songho.ca/opengl/gl_sphere.html
-	const uint32_t stacks = 16;
-	const uint32_t sectors = 32; 
+	const uint32_t stacks = 32;
+	const uint32_t sectors = 64; 
 	float sector_step = 2.f * (float)GS_PI / (float)sectors;
 	float stack_step = (float)GS_PI / (float)stacks;
 	struct { 

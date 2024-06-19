@@ -76,6 +76,8 @@ typedef struct gsgl_storage_buffer_t {
     size_t size;
     uint32_t block_idx;
     uint32_t location;
+    void* map;
+    GLsync sync;    // Not sure about this being here...
 } gsgl_storage_buffer_t;
 
 /* Pipeline */
@@ -201,6 +203,17 @@ void gsgl_pipeline_state()
             glBindImageTexture(0, 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
         }
     )
+}
+
+void GLAPIENTRY
+gsgl_message_cb(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, 
+    const GLchar* message, void* user_param)
+{
+    return;
+    if (type == GL_DEBUG_TYPE_ERROR) {
+        gs_println("GL [DEBUG]: %s type = 0x%x, severity = 0x%x, message = %s", 
+            type == GL_DEBUG_TYPE_ERROR ? "GL ERROR" : "", type, severity, message);
+    }
 }
 
 /* GS/OGL Utilities */
@@ -931,12 +944,43 @@ gs_graphics_storage_buffer_create_impl(const gs_graphics_storage_buffer_desc_t* 
 
     glGenBuffers(1, &sbo.buffer); 
 
-    CHECK_GL_CORE(
+    // CHECK_GL_CORE(
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo.buffer); 
-        glBufferData(GL_SHADER_STORAGE_BUFFER, desc->size, desc->data, gsgl_buffer_usage_to_gl_enum(desc->usage));
+
+        // Check for desc flags to map buffer
+        GLbitfield flags = 0x00;
+        if (desc->flags & GS_GRAPHICS_BUFFER_FLAG_MAP_PERSISTENT) {flags |= GL_MAP_PERSISTENT_BIT;}
+        if (desc->flags & GS_GRAPHICS_BUFFER_FLAG_MAP_COHERENT)   {flags |= GL_MAP_PERSISTENT_BIT; flags |= GL_MAP_COHERENT_BIT;}
+        if (desc->access & GS_GRAPHICS_ACCESS_READ_ONLY)          {flags |= GL_MAP_READ_BIT;}
+        else if (desc->access & GS_GRAPHICS_ACCESS_WRITE_ONLY)    {flags |= GL_MAP_WRITE_BIT;}
+        else if (desc->access & GS_GRAPHICS_ACCESS_READ_WRITE)    {flags |= (GL_MAP_READ_BIT | GL_MAP_WRITE_BIT);}
+
+        GLbitfield store_flags = flags;
+        if (desc->usage == GS_GRAPHICS_BUFFER_USAGE_DYNAMIC) {
+            store_flags |= GL_DYNAMIC_STORAGE_BIT;
+        }
+
+        // For now, just do read/write access
+        // flags |= GL_MAP_READ_BIT; flags |= GL_MAP_WRITE_BIT;
+        glBufferStorage(GL_SHADER_STORAGE_BUFFER, desc->size, desc->data, store_flags);
+        // glBufferData(GL_SHADER_STORAGE_BUFFER, desc->size, desc->data, gsgl_buffer_usage_to_gl_enum(desc->usage));
         glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+        // Store mapping
+        if (flags & GL_MAP_PERSISTENT_BIT) {
+            sbo.map = glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, desc->size, flags);
+            // while ((err = glGetError()) != GL_NO_ERROR) {
+            //     gs_println("GL ERROR: 0x%x: %s", err, glGetString(err));
+            // }
+        }
+
+        GLenum err = glGetError();
+        if (err) {
+            gs_println("GL ERROR: 0x%x: %s", err, glGetString(err));
+        }
+
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); 
-    );
+    // );
 
     memcpy(sbo.name, desc->name, 64);
     sbo.access = desc->access;
@@ -1434,6 +1478,67 @@ gs_graphics_texture_read_impl(gs_handle(gs_graphics_texture_t) hndl, gs_graphics
         *desc->data
     );
     glBindTexture(target, 0x00);
+}
+
+GS_API_DECL void*
+gs_graphics_storage_buffer_map_get_impl(gs_handle(gs_graphics_storage_buffer_t) hndl)
+{
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data; 
+    if (!gs_slot_array_handle_valid(ogl->storage_buffers, hndl.id)) {
+        gs_log_warning("Storage buffer handle invalid: %zu", hndl.id);
+        return NULL;
+    }
+    gsgl_storage_buffer_t* sbo = gs_slot_array_getp(ogl->storage_buffers, hndl.id); 
+    return sbo->map;
+}
+
+GS_API_DECL void
+gs_grapics_storage_buffer_unlock_impl(gs_handle(gs_graphics_storage_buffer_t) hndl)
+{
+    // Unlock and return mapped pointer
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data; 
+    if (!gs_slot_array_handle_valid(ogl->storage_buffers, hndl.id)) {
+        gs_log_warning("Storage buffer handle invalid: %zu", hndl.id);
+        return NULL;
+    }
+    gsgl_storage_buffer_t* sbo = gs_slot_array_getp(ogl->storage_buffers, hndl.id); 
+
+    // Already unlocked?
+    if (sbo->sync) {
+        while (1) {
+            GLenum wait = glClientWaitSync(sbo->sync, GL_SYNC_FLUSH_COMMANDS_BIT, 1);
+            if (wait == GL_ALREADY_SIGNALED || wait == GL_CONDITION_SATISFIED) {
+                break;
+            }
+        }
+    }
+}
+
+GS_API_DECL void*
+gs_grapics_storage_buffer_lock_impl(gs_handle(gs_graphics_storage_buffer_t) hndl)
+{
+    // Lock
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data; 
+    if (!gs_slot_array_handle_valid(ogl->storage_buffers, hndl.id)) {
+        gs_log_warning("Storage buffer handle invalid: %zu", hndl.id);
+        return NULL;
+    }
+    gsgl_storage_buffer_t* sbo = gs_slot_array_getp(ogl->storage_buffers, hndl.id); 
+
+    // Already locked?
+    if (sbo->sync) {
+        glDeleteSync(sbo->sync);
+    }
+    sbo->sync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+    if (sbo->sync) {
+        while (1) {
+            GLenum wait = glClientWaitSync(sbo->sync, GL_SYNC_FLUSH_COMMANDS_BIT, 1);
+            if (wait == GL_ALREADY_SIGNALED || wait == GL_CONDITION_SATISFIED) {
+                break;
+            }
+        }
+    }
+    return sbo->map;
 }
 
 #define __ogl_push_command(CB, OP_CODE, ...)\
@@ -2801,8 +2906,17 @@ gs_graphics_init(gs_graphics_t* graphics)
     graphics->api.texture_update = gs_graphics_texture_update_impl;
     graphics->api.texture_read = gs_graphics_texture_read_impl;
 
+    // Util
+    graphics->api.storage_buffer_map_get = gs_graphics_storage_buffer_map_get_impl; 
+    graphics->api.storage_buffer_lock = gs_grapics_storage_buffer_lock_impl;
+    graphics->api.storage_buffer_unlock = gs_grapics_storage_buffer_unlock_impl;
+
     // Submission (Main Thread)
-    graphics->api.command_buffer_submit = gs_graphics_command_buffer_submit_impl;
+    graphics->api.command_buffer_submit = gs_graphics_command_buffer_submit_impl; 
+
+    // Enable debug output
+    glEnable(GL_DEBUG_OUTPUT);
+    glDebugMessageCallback(gsgl_message_cb, 0);
 }
 
 

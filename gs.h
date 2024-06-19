@@ -4586,10 +4586,10 @@ typedef struct gs_mt_rand_t
 } gs_mt_rand_t;
 
 GS_API_DECL gs_mt_rand_t gs_rand_seed(uint64_t seed);
-GS_API_DECL uint64_t gs_rand_gen_long(gs_mt_rand_t* rand);
+GS_API_DECL int64_t gs_rand_gen_long(gs_mt_rand_t* rand);
 GS_API_DECL double gs_rand_gen(gs_mt_rand_t* rand);
 GS_API_DECL double gs_rand_gen_range(gs_mt_rand_t* rand, double min, double max);
-GS_API_DECL uint64_t gs_rand_gen_range_long(gs_mt_rand_t* rand, int32_t min, int32_t max);
+GS_API_DECL int64_t gs_rand_gen_range_long(gs_mt_rand_t* rand, int32_t min, int32_t max);
 GS_API_DECL gs_color_t gs_rand_gen_color(gs_mt_rand_t* rand);
 
 #ifndef GS_NO_SHORT_NAME
@@ -4648,6 +4648,7 @@ typedef mco_result gs_coro_result;
 #include "external/sched/sched.h"
 
 #define GS_SCHED_DEFAULT            SCHED_DEFAULT
+#define gs_sched_fp_t               sched_run
 #define gs_sched_task_t             struct sched_task
 #define gs_sched_task_partition_t   struct sched_task_partition
 #define gs_scheduler_t              struct scheduler
@@ -4658,6 +4659,7 @@ typedef mco_result gs_coro_result;
 #define gs_scheduler_join           scheduler_join
 #define gs_scheduler_wait           scheduler_wait
 #define gs_scheduler_stop           scheduler_stop
+#define gs_sched_task_done          sched_task_done
 #define gs_atomic_int_t             int32_t
 
 GS_API_DECL uint32_t
@@ -4893,6 +4895,7 @@ typedef struct gs_lexer_t
     bool32 skip_white_space;
     size_t size;          // Optional
     size_t contents_size; // Optional
+    uint32_t line;        // Line number
 } gs_lexer_t;
 
 GS_API_DECL void gs_lexer_set_contents(gs_lexer_t* lex, const char* contents);
@@ -5949,6 +5952,11 @@ gs_enum_decl(gs_graphics_access_type,
     GS_GRAPHICS_ACCESS_READ_WRITE
 ); 
 
+gs_enum_decl(gs_graphics_buffer_flags, 
+    GS_GRAPHICS_BUFFER_FLAG_MAP_PERSISTENT,
+    GS_GRAPHICS_BUFFER_FLAG_MAP_COHERENT
+);
+
 //=== Texture ===// 
 typedef enum
 {
@@ -6171,11 +6179,13 @@ typedef struct gs_graphics_uniform_buffer_desc_t
 typedef struct gs_graphics_storage_buffer_desc_t
 {
     void* data;
+    void* map;
     size_t size;
     char name[64];                               
     gs_graphics_buffer_usage_type usage;
     gs_graphics_access_type access;
-    gs_graphics_buffer_update_desc_t update;
+    gs_graphics_buffer_flags flags;
+    gs_graphics_buffer_update_desc_t update; 
 } gs_graphics_storage_buffer_desc_t;
 
 typedef struct gs_graphics_framebuffer_desc_t 
@@ -6440,6 +6450,11 @@ typedef struct gs_graphics_t
         void (* texture_update)(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);
         void (* texture_read)(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);
 
+        // Util
+        void* (* storage_buffer_map_get)(gs_handle(gs_graphics_storage_buffer_t) hndl); 
+        void* (* storage_buffer_lock)(gs_handle(gs_graphics_storage_buffer_t) hndl);
+        void  (* storage_buffer_unlock)(gs_handle(gs_graphics_storage_buffer_t) hndl);
+
         // Submission (Main Thread)
         void (* command_buffer_submit)(gs_command_buffer_t* cb);
 
@@ -6497,6 +6512,11 @@ GS_API_DECL void  gs_graphics_texture_read(gs_handle(gs_graphics_texture_t) hndl
 GS_API_DECL void gs_graphics_pipeline_desc_query(gs_handle(gs_graphics_pipeline_t) hndl, gs_graphics_pipeline_desc_t* out);
 GS_API_DECL void gs_graphics_texture_desc_query(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* out); 
 GS_API_DECL size_t gs_graphics_uniform_size_query(gs_handle(gs_graphics_uniform_t) hndl);
+
+// Util
+GS_API_DECL void* gs_graphics_storage_buffer_map_get(gs_handle(gs_graphics_storage_buffer_t) hndl); 
+GS_API_DECL void* gs_graphics_storage_buffer_lock(gs_handle(gs_graphics_storage_buffer_t) hndl);
+GS_API_DECL void  gs_graphics_storage_buffer_unlock(gs_handle(gs_graphics_storage_buffer_t) hndl);
 
 // Resource In-Flight Update
 GS_API_DECL void gs_graphics_texture_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);
@@ -6970,6 +6990,24 @@ gs_graphics_texture_read(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_text
 {
     return gs_graphics()->api.texture_read(hndl, desc); 
 } 
+
+GS_API_DECL void*  
+gs_graphics_storage_buffer_map_get(gs_handle(gs_graphics_storage_buffer_t) hndl)
+{
+    return gs_graphics()->api.storage_buffer_map_get(hndl); 
+} 
+
+GS_API_DECL void
+gs_grapics_storage_buffer_unlock(gs_handle(gs_graphics_storage_buffer_t) hndl)
+{
+    return gs_graphics()->api.storage_buffer_unlock(hndl);
+}
+
+GS_API_DECL void*
+gs_grapics_storage_buffer_lock(gs_handle(gs_graphics_storage_buffer_t) hndl)
+{
+    return gs_graphics()->api.storage_buffer_lock(hndl);
+}
 
 /*=============================
 // GS_AUDIO
@@ -7783,7 +7821,7 @@ gs_rand_seed(uint64_t seed)
   return rand;
 }
 
-GS_API_DECL uint64_t 
+GS_API_DECL int64_t 
 gs_rand_gen_long(gs_mt_rand_t* rand) 
 {
   uint64_t y;
@@ -7820,10 +7858,10 @@ gs_rand_gen(gs_mt_rand_t* rand)
   return((double)gs_rand_gen_long(rand) / (uint64_t)0xffffffff);
 }
 
-GS_API_DECL uint64_t 
+GS_API_DECL int64_t 
 gs_rand_gen_range_long(gs_mt_rand_t* rand, int32_t min, int32_t max)
 {
-    return (uint64_t)(floorf(gs_rand_gen_range(rand, (double)min, (double)max)));
+    return (int64_t)(floorf(gs_rand_gen_range(rand, (double)min, (double)max)));
 }
 
 GS_API_DECL double 
@@ -8956,9 +8994,10 @@ GS_API_DECL void gs_lexer_c_eat_white_space(gs_lexer_t* lex)
 {
 	for (;;)
 	{
-		if (gs_char_is_white_space(*lex->at))
+        if (gs_char_is_white_space(*lex->at))
 		{
-			lex->at++;
+            if (gs_char_is_end_of_line(*lex->at)) {lex->line++;}
+            lex->at++;
 		}
 
 		// Single line comment
@@ -8977,6 +9016,7 @@ GS_API_DECL void gs_lexer_c_eat_white_space(gs_lexer_t* lex)
 			lex->at += 2;
 			while (lex->at[0] && lex->at[1] && !(lex->at[0] == '*' && lex->at[1] == '/'))
 			{
+                // if (gs_char_is_end_of_line(*lex->at)) {lex->line++;}
 				lex->at++;
 			}
 			if (lex->at[0] == '*')
@@ -9088,6 +9128,7 @@ gs_lexer_c_next_token(gs_lexer_t* lex)
 					lex->at += 2;
 					while (lex->can_lex(lex))
 					{
+                        // if (gs_char_is_end_of_line(*lex->at)) {lex->line++;}
 						if (lex->at[0] == '*' && lex->at[1] == '/')
 						{
 							lex->at += 2;
@@ -9113,6 +9154,7 @@ gs_lexer_c_next_token(gs_lexer_t* lex)
 
 				while (lex->at && *lex->at  != '"')
 				{
+                    // if (gs_char_is_end_of_line(*lex->at)) {lex->line++;}
 					if (lex->at[0] == '\\' && lex->at[1])
 					{
 						lex->at++;
