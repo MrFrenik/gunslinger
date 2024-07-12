@@ -1548,7 +1548,7 @@ gs_grapics_storage_buffer_lock_impl(gs_handle(gs_graphics_storage_buffer_t) hndl
     if (!sbo->map) {
         // Get buffer size 
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo->buffer);
-        size_t buffer_sz = 0;
+        GLint buffer_sz = 0;
         glGetBufferParameteriv(GL_SHADER_STORAGE_BUFFER, GL_BUFFER_SIZE, &buffer_sz); 
         gs_println("SZ: %zu, requested: %zu", buffer_sz, sz);
         sbo->map = glMapBufferRange(GL_SHADER_STORAGE_BUFFER, (GLintptr)offset, (GLsizeiptr)sz, GL_MAP_READ_BIT);
