@@ -4960,6 +4960,7 @@ typedef struct gs_uuid_t
 
 #define GS_WINDOW_FLAGS_NO_RESIZE   0x01
 #define GS_WINDOW_FLAGS_FULLSCREEN  0x02
+#define GS_WINDOW_FLAGS_INVISIBLE   0x03
 
 // Should have an internal resource cache of window handles (controlled by the platform api) 
 
@@ -5511,6 +5512,8 @@ GS_API_DECL void      gs_platform_add_event(gs_platform_event_t* evt);
 // Platform Window
 GS_API_DECL uint32_t gs_platform_window_create(const gs_platform_window_desc_t* desc);
 GS_API_DECL uint32_t gs_platform_main_window();
+GS_API_DECL void     gs_platform_window_make_current(uint32_t hndl);    // Binds context (main thread only)
+GS_API_DECL void     gs_platform_window_make_current_raw(void* win);    // Binds context (can be on separate thread with raw handle)
 
 typedef struct gs_platform_file_stats_s
 {
@@ -6257,9 +6260,14 @@ typedef struct gs_graphics_bind_uniform_buffer_desc_t {
     } range; 
 } gs_graphics_bind_uniform_buffer_desc_t;
 
+// All this needs to be unified...
 typedef struct gs_graphics_bind_storage_buffer_desc_t {
     gs_handle(gs_graphics_storage_buffer_t) buffer;
     uint32_t binding;
+    struct {
+        size_t offset;      // Specify an offset for ranged binds.
+        size_t size;        // Specify size for ranged binds.
+    } range; 
 } gs_graphics_bind_storage_buffer_desc_t;
 
 typedef struct gs_graphics_bind_uniform_desc_t {
@@ -6452,8 +6460,9 @@ typedef struct gs_graphics_t
 
         // Util
         void* (* storage_buffer_map_get)(gs_handle(gs_graphics_storage_buffer_t) hndl); 
-        void* (* storage_buffer_lock)(gs_handle(gs_graphics_storage_buffer_t) hndl);
-        void  (* storage_buffer_unlock)(gs_handle(gs_graphics_storage_buffer_t) hndl);
+        void* (* storage_buffer_lock)(gs_handle(gs_graphics_storage_buffer_t) hndl, size_t offset, size_t sz);
+        void  (* storage_buffer_unlock)(gs_handle(gs_graphics_storage_buffer_t) hndl); 
+        void  (* storage_buffer_get_data)(gs_handle(gs_graphics_storage_buffer_t) hndl, size_t offset, size_t stride, void* out);
 
         // Submission (Main Thread)
         void (* command_buffer_submit)(gs_command_buffer_t* cb);
@@ -6515,8 +6524,9 @@ GS_API_DECL size_t gs_graphics_uniform_size_query(gs_handle(gs_graphics_uniform_
 
 // Util
 GS_API_DECL void* gs_graphics_storage_buffer_map_get(gs_handle(gs_graphics_storage_buffer_t) hndl); 
-GS_API_DECL void* gs_graphics_storage_buffer_lock(gs_handle(gs_graphics_storage_buffer_t) hndl);
-GS_API_DECL void  gs_graphics_storage_buffer_unlock(gs_handle(gs_graphics_storage_buffer_t) hndl);
+GS_API_DECL void* gs_graphics_storage_buffer_lock(gs_handle(gs_graphics_storage_buffer_t) hndl, size_t offset, size_t sz);
+GS_API_DECL void  gs_graphics_storage_buffer_unlock(gs_handle(gs_graphics_storage_buffer_t) hndl); 
+GS_API_DECL void  gs_graphics_storage_buffer_get_data(gs_handle(gs_graphics_storage_buffer_t) hndl, size_t offset, size_t stride, void* out);
 
 // Resource In-Flight Update
 GS_API_DECL void gs_graphics_texture_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);
@@ -7004,9 +7014,15 @@ gs_grapics_storage_buffer_unlock(gs_handle(gs_graphics_storage_buffer_t) hndl)
 }
 
 GS_API_DECL void*
-gs_grapics_storage_buffer_lock(gs_handle(gs_graphics_storage_buffer_t) hndl)
+gs_graphics_storage_buffer_lock(gs_handle(gs_graphics_storage_buffer_t) hndl, size_t offset, size_t sz)
 {
-    return gs_graphics()->api.storage_buffer_lock(hndl);
+    return gs_graphics()->api.storage_buffer_lock(hndl, offset, sz);
+}
+
+GS_API_DECL void  
+gs_graphics_storage_buffer_get_data(gs_handle(gs_graphics_storage_buffer_t) hndl, size_t offset, size_t sz, void* out)
+{ 
+    return gs_graphics()->api.storage_buffer_get_data(hndl, offset, sz, out);
 }
 
 /*=============================

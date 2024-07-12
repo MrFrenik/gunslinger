@@ -1512,10 +1512,16 @@ gs_grapics_storage_buffer_unlock_impl(gs_handle(gs_graphics_storage_buffer_t) hn
             }
         }
     }
+
+    // Check for persistence here?...
+    if (sbo->map) { 
+        glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);    // Do this via DSA instead...
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    }
 }
 
 GS_API_DECL void*
-gs_grapics_storage_buffer_lock_impl(gs_handle(gs_graphics_storage_buffer_t) hndl)
+gs_grapics_storage_buffer_lock_impl(gs_handle(gs_graphics_storage_buffer_t) hndl, size_t offset, size_t sz)
 {
     // Lock
     gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data; 
@@ -1529,6 +1535,7 @@ gs_grapics_storage_buffer_lock_impl(gs_handle(gs_graphics_storage_buffer_t) hndl
     if (sbo->sync) {
         glDeleteSync(sbo->sync);
     }
+    // Not sure if this is correct...
     sbo->sync = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
     if (sbo->sync) {
         while (1) {
@@ -1538,7 +1545,38 @@ gs_grapics_storage_buffer_lock_impl(gs_handle(gs_graphics_storage_buffer_t) hndl
             }
         }
     }
+    if (!sbo->map) {
+        // Get buffer size 
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo->buffer);
+        size_t buffer_sz = 0;
+        glGetBufferParameteriv(GL_SHADER_STORAGE_BUFFER, GL_BUFFER_SIZE, &buffer_sz); 
+        gs_println("SZ: %zu, requested: %zu", buffer_sz, sz);
+        sbo->map = glMapBufferRange(GL_SHADER_STORAGE_BUFFER, (GLintptr)offset, (GLsizeiptr)sz, GL_MAP_READ_BIT);
+        GLenum err = glGetError();
+        if (err) {
+            gs_println("GL ERROR: 0x%x: %s", err, glGetString(err));
+        }
+    }
     return sbo->map;
+}
+
+GS_API_DECL void  
+gs_storage_buffer_get_data_impl(gs_handle(gs_graphics_storage_buffer_t) hndl, size_t offset, size_t stride, void* out)
+{
+    // Lock
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data; 
+    if (!gs_slot_array_handle_valid(ogl->storage_buffers, hndl.id)) {
+        gs_log_warning("Storage buffer handle invalid: %zu", hndl.id);
+        return NULL;
+    }
+    gsgl_storage_buffer_t* sbo = gs_slot_array_getp(ogl->storage_buffers, hndl.id);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo->buffer);
+    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, offset, stride, out);
+        // GLenum err = glGetError();
+        // if (err) {
+            // gs_println("GL ERROR: 0x%x: %s", err, glGetString(err));
+        // }
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
 
 #define __ogl_push_command(CB, OP_CODE, ...)\
@@ -1799,6 +1837,8 @@ void gs_graphics_apply_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t
                 gs_byte_buffer_write(&cb->commands, gs_graphics_bind_type, GS_GRAPHICS_BIND_STORAGE_BUFFER);
                 gs_byte_buffer_write(&cb->commands, uint32_t, decl->buffer.id);
                 gs_byte_buffer_write(&cb->commands, uint32_t, decl->binding);
+                gs_byte_buffer_write(&cb->commands, size_t, decl->range.offset);
+                gs_byte_buffer_write(&cb->commands, size_t, decl->range.size);
             }
         );
     };
@@ -2315,6 +2355,8 @@ void gs_graphics_command_buffer_submit_impl(gs_command_buffer_t* cb)
                         {
                             gs_byte_buffer_readc(&cb->commands, uint32_t, sb_slot_id);
                             gs_byte_buffer_readc(&cb->commands, uint32_t, binding);
+                            gs_byte_buffer_readc(&cb->commands, size_t, range_offset);
+                            gs_byte_buffer_readc(&cb->commands, size_t, range_size);
 
                             // Grab storage buffer from id
                             if (!sb_slot_id || !gs_slot_array_exists(ogl->storage_buffers, sb_slot_id)) {
@@ -2383,7 +2425,9 @@ void gs_graphics_command_buffer_submit_impl(gs_command_buffer_t* cb)
 
                             // This is required
                             CHECK_GL_CORE(
-                                glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, sbo->buffer); 
+                                // glBindBufferRange(GL_SHADER_STORAGE_BUFFER, binding, sbo->buffer, 
+                                //     range_offset, range_size ? range_size : sbo->size - range_offset);
+                                glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding, sbo->buffer);
                             );
 
                         } break;
@@ -2557,6 +2601,7 @@ void gs_graphics_command_buffer_submit_impl(gs_command_buffer_t* cb)
                     // Memory barrier (TODO(john): make this specifically set in the pipeline state)
                     glDispatchCompute(num_x_groups, num_y_groups, num_z_groups); 
                     glMemoryBarrier(GL_ALL_BARRIER_BITS);
+                    // glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
                 )
             } break;
 
@@ -2909,7 +2954,8 @@ gs_graphics_init(gs_graphics_t* graphics)
     // Util
     graphics->api.storage_buffer_map_get = gs_graphics_storage_buffer_map_get_impl; 
     graphics->api.storage_buffer_lock = gs_grapics_storage_buffer_lock_impl;
-    graphics->api.storage_buffer_unlock = gs_grapics_storage_buffer_unlock_impl;
+    graphics->api.storage_buffer_unlock = gs_grapics_storage_buffer_unlock_impl; 
+    graphics->api.storage_buffer_get_data = gs_storage_buffer_get_data_impl;
 
     // Submission (Main Thread)
     graphics->api.command_buffer_submit = gs_graphics_command_buffer_submit_impl; 
