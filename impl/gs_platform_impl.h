@@ -1851,7 +1851,7 @@ gs_platform_window_make_current(uint32_t hndl)
 {
     gs_platform_t* platform = gs_subsystem(platform);
     gs_platform_window_t* win = gs_slot_array_getp(platform->windows, hndl);
-    glfwMakeContextCurrent(win);
+    glfwMakeContextCurrent((GLFWwindow*)win->hndl);
 }
 
 GS_API_DECL void     
