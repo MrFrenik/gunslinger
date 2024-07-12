@@ -944,7 +944,7 @@ gs_graphics_storage_buffer_create_impl(const gs_graphics_storage_buffer_desc_t* 
 
     glGenBuffers(1, &sbo.buffer); 
 
-    // CHECK_GL_CORE(
+    CHECK_GL_CORE(
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo.buffer); 
 
         // Check for desc flags to map buffer
@@ -980,7 +980,7 @@ gs_graphics_storage_buffer_create_impl(const gs_graphics_storage_buffer_desc_t* 
         }
 
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); 
-    // );
+    );
 
     memcpy(sbo.name, desc->name, 64);
     sbo.access = desc->access;
