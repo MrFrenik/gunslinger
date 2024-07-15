@@ -4710,6 +4710,7 @@ GS_API_DECL gs_camera_t gs_camera_perspective();
 GS_API_DECL gs_mat4 gs_camera_get_view(const gs_camera_t* cam);
 GS_API_DECL gs_mat4 gs_camera_get_proj(const gs_camera_t* cam, int32_t view_width, int32_t view_height);
 GS_API_DECL gs_mat4 gs_camera_get_view_projection(const gs_camera_t* cam, int32_t view_width, int32_t view_height);
+GS_API_DECL gs_mat4 gs_camera_get_sky_view_projection(const gs_camera_t* cam, int32_t view_width, int32_t view_height);
 GS_API_DECL gs_vec3 gs_camera_forward(const gs_camera_t* cam);
 GS_API_DECL gs_vec3 gs_camera_backward(const gs_camera_t* cam);
 GS_API_DECL gs_vec3 gs_camera_up(const gs_camera_t* cam);
@@ -8124,6 +8125,62 @@ gs_camera_screen_to_world(const gs_camera_t* cam, gs_vec3 coords, s32 view_x, s3
     );
 
     return wc;
+}
+
+gs_inline gs_mat4 
+gs_mat4_sky_look_at(gs_vec3 position, gs_vec3 target, gs_vec3 up)
+{
+    gs_vec3 f = gs_vec3_norm(gs_vec3_sub(target, position));
+    gs_vec3 s = gs_vec3_norm(gs_vec3_cross(f, up));
+    gs_vec3 u = gs_vec3_cross(s, f);
+
+    gs_mat4 m_res = gs_mat4_identity();
+    m_res.elements[0 * 4 + 0] = s.x;
+    m_res.elements[1 * 4 + 0] = s.y;
+    m_res.elements[2 * 4 + 0] = s.z;
+
+    m_res.elements[0 * 4 + 1] = u.x;
+    m_res.elements[1 * 4 + 1] = u.y;
+    m_res.elements[2 * 4 + 1] = u.z;
+
+    m_res.elements[0 * 4 + 2] = -f.x;
+    m_res.elements[1 * 4 + 2] = -f.y;
+    m_res.elements[2 * 4 + 2] = -f.z;
+    // no position column
+    return m_res;
+}
+gs_inline gs_mat4 
+gs_mat4_sky_perspective(f32 fov, f32 asp_ratio, f32 n, f32 f)
+{
+    // Zero matrix
+    gs_mat4 m_res = gs_mat4_ctor();
+
+    f32 q = 1.0f / (float)tan(gs_deg2rad(0.5f * fov));
+    f32 a = q / asp_ratio;
+    f32 b = (n + f) / (n - f);
+    
+    m_res.elements[0 + 0 * 4] = a;
+    m_res.elements[1 + 1 * 4] = q;
+    m_res.elements[2 + 2 * 4] = b;
+    m_res.elements[3 + 2 * 4] = -1.0f;
+
+    return m_res;
+}
+gs_inline gs_mat4 
+gs_camera_get_sky_view(const gs_camera_t* cam)
+{
+    gs_vec3 up = gs_camera_up(cam);
+    gs_vec3 forward = gs_camera_forward(cam);
+    gs_vec3 target = gs_vec3_add(forward, cam->transform.position);
+    return gs_mat4_sky_look_at(cam->transform.position, target, up);
+}
+
+GS_API_DECL gs_mat4 
+gs_camera_get_sky_view_projection(const gs_camera_t* cam, s32 view_width, s32 view_height)
+{
+    gs_mat4 view = gs_camera_get_sky_view(cam);
+    gs_mat4 proj = gs_mat4_sky_perspective(cam->fov, (f32)view_width / (f32)view_height, cam->near_plane, cam->far_plane);;
+    return gs_mat4_mul(proj, view); 
 }
 
 GS_API_DECL gs_mat4 
