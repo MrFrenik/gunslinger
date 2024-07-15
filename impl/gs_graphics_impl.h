@@ -2686,7 +2686,7 @@ void gs_graphics_command_buffer_submit_impl(gs_command_buffer_t* cb)
                 gs_byte_buffer_readc(&cb->commands, uint32_t, range_start);
                 gs_byte_buffer_readc(&cb->commands, uint32_t, range_end);
 
-                range_end = (range_end && range_end < range_start) ? range_end : count;
+                range_end = (range_end && range_end > range_start) ? range_end : start + count;
 
                 // Bind element buffer ranged
                 if (ogl->cache.ibo) {
