@@ -2969,8 +2969,8 @@ gs_graphics_init(gs_graphics_t* graphics)
     graphics->api.command_buffer_submit = gs_graphics_command_buffer_submit_impl; 
 
     // Enable debug output
-    glEnable(GL_DEBUG_OUTPUT);
-    glDebugMessageCallback(gsgl_message_cb, 0);
+    //glEnable(GL_DEBUG_OUTPUT);
+    //glDebugMessageCallback(gsgl_message_cb, 0);
 }
 
 
