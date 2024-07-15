@@ -1501,7 +1501,7 @@ gs_grapics_storage_buffer_unlock_impl(gs_handle(gs_graphics_storage_buffer_t) hn
     gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data; 
     if (!gs_slot_array_handle_valid(ogl->storage_buffers, hndl.id)) {
         gs_log_warning("Storage buffer handle invalid: %zu", hndl.id);
-        return NULL;
+        return;
     }
     gsgl_storage_buffer_t* sbo = gs_slot_array_getp(ogl->storage_buffers, hndl.id); 
 
@@ -1573,7 +1573,7 @@ gs_storage_buffer_get_data_impl(gs_handle(gs_graphics_storage_buffer_t) hndl, si
     gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data; 
     if (!gs_slot_array_handle_valid(ogl->storage_buffers, hndl.id)) {
         gs_log_warning("Storage buffer handle invalid: %zu", hndl.id);
-        return NULL;
+        return;
     }
     gsgl_storage_buffer_t* sbo = gs_slot_array_getp(ogl->storage_buffers, hndl.id);
     CHECK_GL_CORE(
