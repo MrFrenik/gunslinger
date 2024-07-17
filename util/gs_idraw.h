@@ -55,6 +55,11 @@ typedef enum {
     GSI_VATTR_COLOR
 } gsi_vattr_type;
 
+gs_enum_decl(gsi_layout_type, 
+	GSI_LAYOUT_VATTR, 				// Using vattr type directly
+	GSI_LAYOUT_MESH					// Using asset mesh types indirectly to be converted internally
+);
+
 // Need a configurable pipeline matrix
 /*
 	depth | stencil | face cull | blend | prim
@@ -62,6 +67,11 @@ typedef enum {
 
 	2 ^ 5 = 32 generated pipeline choices.
 */
+
+enum {
+	GSI_FLAG_NO_BIND_UNIFORMS 			= (1 << 0),
+	GSI_FLAG_NO_BIND_CACHED_PIPELINES 	= (1 << 1)
+};
 
 // Hash bytes of state attr struct to get index key for pipeline
 typedef struct gsi_pipeline_state_attr_t
@@ -83,12 +93,12 @@ typedef struct gs_immediate_vert_t
 typedef struct gs_immediate_cache_t
 {
 	gs_dyn_array(gs_handle(gs_graphics_pipeline_t)) pipelines; 
-	gs_dyn_array(gs_mat4) modelview; 
-	gs_dyn_array(gs_mat4) projection; 
-	gs_dyn_array(gsi_matrix_type) modes; 
-	gs_vec2 uv; 
-	gs_color_t color; 
-	gs_handle(gs_graphics_texture_t) texture; 
+	gs_dyn_array(gs_mat4) modelview;
+	gs_dyn_array(gs_mat4) projection;
+	gs_dyn_array(gsi_matrix_type) modes;
+	gs_vec2 uv;
+	gs_color_t color;
+	gs_handle(gs_graphics_texture_t) texture;
 	gsi_pipeline_state_attr_t pipeline;
 } gs_immediate_cache_t;
 
@@ -112,6 +122,7 @@ typedef struct gs_immediate_draw_t
 	gs_command_buffer_t commands;
 	uint32_t window_handle; 
 	gs_immediate_draw_static_data_t* data;
+	uint32_t flags;
 } gs_immediate_draw_t;
 
 #ifndef GS_NO_SHORT_NAME
@@ -151,8 +162,9 @@ GS_API_DECL void gsi_depth_enabled(gs_immediate_draw_t* gsi, bool enabled);
 GS_API_DECL void gsi_stencil_enabled(gs_immediate_draw_t* gsi, bool enabled);
 GS_API_DECL void gsi_face_cull_enabled(gs_immediate_draw_t* gsi, bool enabled);
 GS_API_DECL void gsi_defaults(gs_immediate_draw_t* gsi);
-GS_API_DECL void gsi_vattr_list(gs_immediate_draw_t* gsi, gsi_vattr_type* layout, size_t sz); 
-GS_API_DECL void gsi_vattr_list_mesh(gs_immediate_draw_t* gsi, gs_asset_mesh_layout_t* layout, size_t sz);
+GS_API_DECL void gsi_pipeline_set(gs_immediate_draw_t* gsi, gs_handle(gs_graphics_pipeline_t) pipeline);		// Binds custom user pipeline, sets flag GSI_FLAG_NO_BIND_CACHED_PIPELINES
+GS_API_DECL void gsi_vattr_list(gs_immediate_draw_t* gsi, gsi_vattr_type* layout, size_t sz);					// Sets user vertex attribute list for custom bound pipeline
+GS_API_DECL void gsi_vattr_list_mesh(gs_immediate_draw_t* gsi, gs_asset_mesh_layout_t* layout, size_t sz);		// Same as above but uses mesh layout to determine which vertex attributes to bind and in what order
 
 // View/Scissor commands
 GS_API_DECL void gsi_set_view_scissor(gs_immediate_draw_t* gsi, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
@@ -192,7 +204,7 @@ GS_API_DECL void gsi_trianglevxmc(gs_immediate_draw_t* gsi, gs_vec3 v0, gs_vec3 
 GS_API_DECL void gsi_line(gs_immediate_draw_t* gsi, float x0, float y0, float x1, float y1, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 GS_API_DECL void gsi_linev(gs_immediate_draw_t* gsi, gs_vec2 v0, gs_vec2 v1, gs_color_t c);
 GS_API_DECL void gsi_line3D(gs_immediate_draw_t* gsi, float x0, float y0, float z0, float x1, float y1, float z1, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
-GS_API_DECL void gsi_line3Dv(gs_immediate_draw_t* gsi, gs_vec3 s, gs_vec3 e, gs_color_t color);
+GS_API_DECL void gsi_line3Dv(gs_immediate_draw_t* gsi, gs_vec3 s, gs_vec3 e, gs_color_t color); 
 GS_API_DECL void gsi_line3Dmc(gs_immediate_draw_t* gsi, float x0, float y0, float z0, float x1, float y1, float z1, uint8_t r0, uint8_t g0, uint8_t b0, uint8_t a0, uint8_t r1, uint8_t g1, uint8_t b1, uint8_t a1);
 
 // Shape Drawing Util
@@ -202,6 +214,7 @@ GS_API_DECL void gsi_rectx(gs_immediate_draw_t* gsi, float l, float b, float r, 
 GS_API_DECL void gsi_rectvx(gs_immediate_draw_t* gsi, gs_vec2 bl, gs_vec2 tr, gs_vec2 uv0, gs_vec2 uv1, gs_color_t color, gs_graphics_primitive_type type);
 GS_API_DECL void gsi_rectvd(gs_immediate_draw_t* gsi, gs_vec2 xy, gs_vec2 wh, gs_vec2 uv0, gs_vec2 uv1, gs_color_t color, gs_graphics_primitive_type type);
 GS_API_DECL void gsi_rect3Dv(gs_immediate_draw_t* gsi, gs_vec3 min, gs_vec3 max, gs_vec2 uv0, gs_vec2 uv1, gs_color_t color, gs_graphics_primitive_type type);
+GS_API_DECL void gsi_rect3Dvd(gs_immediate_draw_t* gsi, gs_vec3 xyz, gs_vec3 whd, gs_vec2 uv0, gs_vec2 uv1, gs_color_t c, gs_graphics_primitive_type type);
 GS_API_DECL void gsi_circle(gs_immediate_draw_t* gsi, float cx, float cy, float radius, int32_t segments, uint8_t r, uint8_t g, uint8_t b, uint8_t a, gs_graphics_primitive_type type);
 GS_API_DECL void gsi_circlevx(gs_immediate_draw_t* gsi, gs_vec3 c, float radius, int32_t segments, gs_color_t color, gs_graphics_primitive_type type);
 GS_API_DECL void gsi_circle_sector(gs_immediate_draw_t* gsi, float cx, float cy, float radius, int32_t start_angle, int32_t end_angle, int32_t segments, uint8_t r, uint8_t g, uint8_t b, uint8_t a, gs_graphics_primitive_type type);
@@ -255,7 +268,15 @@ const f32 gsi_deg2rad = (f32)GS_PI / 180.f;
     #define GSI_GL_VERSION_STR "#version 300 es\n"
 #else
     #define GSI_GL_VERSION_STR "#version 330 core\n"
-#endif 
+#endif
+
+#ifndef GSI_UNIFORM_MVP_MATRIX
+    #define GSI_UNIFORM_MVP_MATRIX "u_mvp"
+#endif
+
+#ifndef GSI_UNIFORM_TEXTURE2D
+    #define GSI_UNIFORM_TEXTURE2D "u_tex"
+#endif
 
 const char* gsi_v_fillsrc =
 GSI_GL_VERSION_STR
@@ -263,11 +284,15 @@ GSI_GL_VERSION_STR
 "layout(location = 0) in vec3 a_position;\n"
 "layout(location = 1) in vec2 a_uv;\n"
 "layout(location = 2) in vec4 a_color;\n"
-"uniform mat4 u_mvp;\n"
+"uniform mat4 " 
+GSI_UNIFORM_MVP_MATRIX
+";\n"
 "out vec2 uv;\n"
 "out vec4 color;\n"
 "void main() {\n"
-"  gl_Position = u_mvp * vec4(a_position, 1.0);\n"
+"  gl_Position = "
+	GSI_UNIFORM_MVP_MATRIX
+	"* vec4(a_position, 1.0);\n"
 "  uv = a_uv;\n"
 "  color = a_color;\n"
 "}\n";
@@ -277,10 +302,16 @@ GSI_GL_VERSION_STR
 "precision mediump float;\n"
 "in vec2 uv;\n"
 "in vec4 color;\n"
-"uniform sampler2D u_tex;\n"
+"uniform sampler2D " 
+GSI_UNIFORM_TEXTURE2D 
+";\n"
 "out vec4 frag_color;\n"
 "void main() {\n"
-"  frag_color = color * texture(u_tex, uv);\n"
+"  vec4 tex_col = texture("
+GSI_UNIFORM_TEXTURE2D
+", uv);\n"
+"  if (tex_col.a < 0.5) discard;\n" 
+"  frag_color = color * tex_col;\n"
 "}\n";
 
 gsi_pipeline_state_attr_t gsi_pipeline_state_default()
@@ -314,6 +345,7 @@ void gsi_reset(gs_immediate_draw_t* gsi)
 	gsi->cache.pipeline.prim_type = 0x00;
 	gsi->cache.uv = gs_v2(0.f, 0.f);
 	gsi->cache.color = GS_COLOR_WHITE;
+	gsi->flags = 0x00;
 }
 
 void gs_immediate_draw_static_data_init()
@@ -324,7 +356,7 @@ void gs_immediate_draw_static_data_init()
 	gs_graphics_uniform_layout_desc_t uldesc = gs_default_val();
 	uldesc.type = GS_GRAPHICS_UNIFORM_MAT4;
 	gs_graphics_uniform_desc_t udesc = gs_default_val();
-	memcpy(udesc.name, "u_mvp", sizeof("u_mvp"));
+	memcpy(udesc.name, GSI_UNIFORM_MVP_MATRIX, sizeof(GSI_UNIFORM_MVP_MATRIX));
 	udesc.layout = &uldesc;
 	GSI()->uniform = gs_graphics_uniform_create(&udesc);
 
@@ -332,7 +364,7 @@ void gs_immediate_draw_static_data_init()
 	gs_graphics_uniform_layout_desc_t sldesc = gs_default_val(); 
 	sldesc.type = GS_GRAPHICS_UNIFORM_SAMPLER2D;
 	gs_graphics_uniform_desc_t sbdesc = gs_default_val();
-	memcpy(sbdesc.name, "u_tex", sizeof("u_tex"));
+	memcpy(sbdesc.name, GSI_UNIFORM_TEXTURE2D, sizeof(GSI_UNIFORM_TEXTURE2D));
 	sbdesc.layout = &sldesc;
 	GSI()->sampler = gs_graphics_uniform_create(&sbdesc); 
 
@@ -396,6 +428,13 @@ void gs_immediate_draw_static_data_init()
 		pdesc.blend.src = GS_GRAPHICS_BLEND_MODE_SRC_ALPHA;
 		pdesc.blend.dst = GS_GRAPHICS_BLEND_MODE_ONE_MINUS_SRC_ALPHA;
 		pdesc.depth.func = d ? GS_GRAPHICS_DEPTH_FUNC_LESS : (gs_graphics_depth_func_type)0x00;
+		pdesc.stencil.func = s ? GS_GRAPHICS_STENCIL_FUNC_ALWAYS : (gs_graphics_stencil_func_type)0x00;
+		pdesc.stencil.ref = s ? 1 : 0x00;
+		pdesc.stencil.comp_mask = s ? 0xFF : 0x00;
+		pdesc.stencil.write_mask = s ? 0xFF : 0x00;
+		pdesc.stencil.sfail = s ? GS_GRAPHICS_STENCIL_OP_KEEP : (gs_graphics_stencil_op_type)0x00; 
+		pdesc.stencil.dpfail = s ? GS_GRAPHICS_STENCIL_OP_KEEP : (gs_graphics_stencil_op_type)0x00; 
+		pdesc.stencil.dppass = s ? GS_GRAPHICS_STENCIL_OP_REPLACE : (gs_graphics_stencil_op_type)0x00; 
 		pdesc.layout.attrs = gsi_vattrs;
 		pdesc.layout.size = sizeof(gsi_vattrs);
 
@@ -532,6 +571,11 @@ gsi_get_pipeline(gs_immediate_draw_t* gsi, gsi_pipeline_state_attr_t state)
 
 void gs_immediate_draw_set_pipeline(gs_immediate_draw_t* gsi)
 {
+	if (gsi->flags & GSI_FLAG_NO_BIND_CACHED_PIPELINES)
+	{
+		return;
+	}
+
 	// Check validity 
 	if (gsi->cache.pipeline.prim_type != (uint16_t)GS_GRAPHICS_PRIMITIVE_TRIANGLES && gsi->cache.pipeline.prim_type != (uint16_t)GS_GRAPHICS_PRIMITIVE_LINES) 
 	{
@@ -647,7 +691,8 @@ void gsi_flush(gs_immediate_draw_t* gsi)
     gs_graphics_bind_desc_t binds = gs_default_val();
     binds.vertex_buffers.desc = &vbuffer; 
 
-    if (gs_dyn_array_empty(gsi->vattributes))
+    // if (gs_dyn_array_empty(gsi->vattributes))
+    if (~gsi->flags & GSI_FLAG_NO_BIND_UNIFORMS)
     {
         binds.uniforms.desc = ubinds;
         binds.uniforms.size = sizeof(ubinds);
@@ -669,7 +714,7 @@ void gsi_flush(gs_immediate_draw_t* gsi)
 void gsi_blend_enabled(gs_immediate_draw_t* gsi, bool enabled)
 {
 	// Push a new pipeline?
-	if (gsi->cache.pipeline.blend_enabled == enabled) {
+	if (gsi->flags & GSI_FLAG_NO_BIND_CACHED_PIPELINES || gsi->cache.pipeline.blend_enabled == enabled) {
 		return;
 	}
 
@@ -687,7 +732,7 @@ void gsi_blend_enabled(gs_immediate_draw_t* gsi, bool enabled)
 void gsi_depth_enabled(gs_immediate_draw_t* gsi, bool enabled)
 {
 	// Push a new pipeline?
-	if (gsi->cache.pipeline.depth_enabled == (uint16_t)enabled) {
+	if (gsi->flags & GSI_FLAG_NO_BIND_CACHED_PIPELINES || gsi->cache.pipeline.depth_enabled == (uint16_t)enabled) {
 		return;
 	}
 
@@ -704,7 +749,7 @@ void gsi_depth_enabled(gs_immediate_draw_t* gsi, bool enabled)
 void gsi_stencil_enabled(gs_immediate_draw_t* gsi, bool enabled)
 {
 	// Push a new pipeline?
-	if (gsi->cache.pipeline.stencil_enabled == (uint16_t)enabled) {
+	if (gsi->flags & GSI_FLAG_NO_BIND_CACHED_PIPELINES || gsi->cache.pipeline.stencil_enabled == (uint16_t)enabled) {
 		return;
 	}
 
@@ -721,7 +766,7 @@ void gsi_stencil_enabled(gs_immediate_draw_t* gsi, bool enabled)
 void gsi_face_cull_enabled(gs_immediate_draw_t* gsi, bool enabled)
 {
 	// Push a new pipeline?
-	if (gsi->cache.pipeline.face_cull_enabled == (uint16_t)enabled) {
+	if (gsi->flags & GSI_FLAG_NO_BIND_CACHED_PIPELINES || gsi->cache.pipeline.face_cull_enabled == (uint16_t)enabled) {
 		return;
 	}
 
@@ -749,7 +794,28 @@ GS_API_DECL void gsi_texture(gs_immediate_draw_t* gsi, gs_handle(gs_graphics_tex
 	gsi->cache.texture = texture.id && texture.id != UINT32_MAX ? texture : GSI()->tex_default;
 }
 
-GS_API_DECL void gsi_vattr_list(gs_immediate_draw_t* gsi, gsi_vattr_type* list, size_t sz)
+GS_API_DECL void 
+gsi_pipeline_set(gs_immediate_draw_t* gsi, gs_handle(gs_graphics_pipeline_t) pipeline)
+{ 
+	gsi_flush(gsi);
+	
+	// Bind if valid
+	if (pipeline.id)
+	{
+		gs_graphics_pipeline_bind(&gsi->commands, pipeline);
+		gsi->flags |= GSI_FLAG_NO_BIND_CACHED_PIPELINES;
+	}
+	// Otherwise we set back to cache, clear vattributes, clear flag
+	else 
+	{ 
+		gsi->flags &= ~GSI_FLAG_NO_BIND_CACHED_PIPELINES;
+		gs_dyn_array_clear(gsi->vattributes);
+		gs_immediate_draw_set_pipeline(gsi);
+	}
+}
+
+GS_API_DECL void 
+gsi_vattr_list(gs_immediate_draw_t* gsi, gsi_vattr_type* list, size_t sz)
 { 
 	gsi_flush(gsi);
 
@@ -761,7 +827,8 @@ GS_API_DECL void gsi_vattr_list(gs_immediate_draw_t* gsi, gsi_vattr_type* list, 
     }
 }
 
-GS_API_DECL void gsi_vattr_list_mesh(gs_immediate_draw_t* gsi, gs_asset_mesh_layout_t* layout, size_t sz)
+GS_API_DECL void 
+gsi_vattr_list_mesh(gs_immediate_draw_t* gsi, gs_asset_mesh_layout_t* layout, size_t sz)
 {
 	gsi_flush(gsi);
 
@@ -796,7 +863,10 @@ GS_API_DECL void gsi_defaults(gs_immediate_draw_t* gsi)
 	gsi->cache.pipeline.prim_type = 0x00;
 	gsi->cache.uv = gs_v2(0.f, 0.f);
 	gsi->cache.color = GS_COLOR_WHITE;
-    gs_dyn_array_clear(gsi->vattributes); 
+	gs_dyn_array_clear(gsi->vattributes);
+	
+	// Reset flags
+	gsi->flags = 0x00;
 
 	gs_immediate_draw_set_pipeline(gsi);
 }
@@ -1227,22 +1297,26 @@ void gsi_rectx(gs_immediate_draw_t* gsi, float l, float b, float r, float t, flo
 	}
 }
 
-void gsi_rect(gs_immediate_draw_t* gsi, float l, float b, float r, float t, uint8_t _r, uint8_t _g, uint8_t _b, uint8_t _a, gs_graphics_primitive_type type)
+GS_API_DECL void 
+gsi_rect(gs_immediate_draw_t* gsi, float l, float b, float r, float t, uint8_t _r, uint8_t _g, uint8_t _b, uint8_t _a, gs_graphics_primitive_type type)
 {
 	gsi_rectx(gsi, l, b, r, t, 0.f, 0.f, 1.f, 1.f, _r, _g, _b, _a, type);
 }
 
-void gsi_rectv(gs_immediate_draw_t* gsi, gs_vec2 bl, gs_vec2 tr, gs_color_t color, gs_graphics_primitive_type type)
+GS_API_DECL void 
+gsi_rectv(gs_immediate_draw_t* gsi, gs_vec2 bl, gs_vec2 tr, gs_color_t color, gs_graphics_primitive_type type)
 {
 	gsi_rectx(gsi, bl.x, bl.y, tr.x, tr.y, 0.f, 0.f, 1.f, 1.f, color.r, color.g, color.b, color.a, type);
 }
 
-void gsi_rectvx(gs_immediate_draw_t* gsi, gs_vec2 bl, gs_vec2 tr, gs_vec2 uv0, gs_vec2 uv1, gs_color_t color, gs_graphics_primitive_type type)
+GS_API_DECL void 
+gsi_rectvx(gs_immediate_draw_t* gsi, gs_vec2 bl, gs_vec2 tr, gs_vec2 uv0, gs_vec2 uv1, gs_color_t color, gs_graphics_primitive_type type)
 {
 	gsi_rectx(gsi, bl.x, bl.y, tr.x, tr.y, uv0.x, uv0.y, uv1.x, uv1.y, color.r, color.g, color.b, color.a, type);
 }
 
-void gsi_rectvd(gs_immediate_draw_t* gsi, gs_vec2 xy, gs_vec2 wh, gs_vec2 uv0, gs_vec2 uv1, gs_color_t color, gs_graphics_primitive_type type)
+GS_API_DECL void 
+gsi_rectvd(gs_immediate_draw_t* gsi, gs_vec2 xy, gs_vec2 wh, gs_vec2 uv0, gs_vec2 uv1, gs_color_t color, gs_graphics_primitive_type type)
 {
 	gsi_rectx(gsi, xy.x, xy.y, xy.x + wh.x, xy.y + wh.y, uv0.x, uv0.y, uv1.x, uv1.y, color.r, color.g, color.b, color.a, type);
 }
@@ -1278,19 +1352,25 @@ GS_API_DECL void gsi_rect3Dv(gs_immediate_draw_t* gsi, gs_vec3 min, gs_vec3 max,
 				// First triangle
 				gsi_c4ub(gsi, c.r, c.g, c.b, c.a);
 				gsi_tc2f(gsi, u0, v0); gsi_v3fv(gsi, vt0);
-				gsi_tc2f(gsi, u1, v0); gsi_v3fv(gsi, vt3);
-				gsi_tc2f(gsi, u0, v1); gsi_v3fv(gsi, vt1);
+				gsi_tc2f(gsi, u0, v1); gsi_v3fv(gsi, vt2);
+				gsi_tc2f(gsi, u1, v0); gsi_v3fv(gsi, vt1);
 
 				// Second triangle
 				gsi_c4ub(gsi, c.r, c.g, c.b, c.a);
-				gsi_tc2f(gsi, u1, v0); gsi_v3fv(gsi, vt0);
-				gsi_tc2f(gsi, u1, v1); gsi_v3fv(gsi, vt2);
-				gsi_tc2f(gsi, u0, v1); gsi_v3fv(gsi, vt3);
+				gsi_tc2f(gsi, u0, v1); gsi_v3fv(gsi, vt2);
+				gsi_tc2f(gsi, u1, v1); gsi_v3fv(gsi, vt3);
+				gsi_tc2f(gsi, u1, v0); gsi_v3fv(gsi, vt1);
 				
 			gsi_end(gsi);
 
 		} break;
 	}
+}
+
+GS_API_DECL void 
+gsi_rect3Dvd(gs_immediate_draw_t* gsi, gs_vec3 xyz, gs_vec3 whd, gs_vec2 uv0, gs_vec2 uv1, gs_color_t c, gs_graphics_primitive_type type)
+{
+	gsi_rect3Dv(gsi, xyz, gs_vec3_add(xyz, whd), uv0, uv1, c, type);
 }
 
 void gsi_circle_sector(gs_immediate_draw_t* gsi, float cx, float cy, float radius, int32_t start_angle, 
@@ -1539,8 +1619,8 @@ void gsi_box(gs_immediate_draw_t* gsi, float x, float y, float z, float hx, floa
 void gsi_sphere(gs_immediate_draw_t* gsi, float cx, float cy, float cz, float radius, uint8_t r, uint8_t g, uint8_t b, uint8_t a, gs_graphics_primitive_type type)
 {
 	// Modified from: http://www.songho.ca/opengl/gl_sphere.html
-	const uint32_t stacks = 16;
-	const uint32_t sectors = 32; 
+	const uint32_t stacks = 32;
+	const uint32_t sectors = 64; 
 	float sector_step = 2.f * (float)GS_PI / (float)sectors;
 	float stack_step = (float)GS_PI / (float)stacks;
 	struct { 

@@ -317,8 +317,8 @@
                 ) {
                     float v = gs_hash_table_iter_get(ht, it);         // Get value using iterator
                     float* vp = gs_hash_table_iter_getp(ht, it);      // Get value pointer using iterator
-                    key_t k = gs_hash_table_iter_get_key(ht, it);     // Get key using iterator
-                    key_t* kp = gs_hash_table_iter_get_keyp(ht, it);  // Get key pointer using iterator
+                    key_t k = gs_hash_table_iter_getk(ht, it);     // Get key using iterator
+                    key_t* kp = gs_hash_table_iter_getkp(ht, it);  // Get key pointer using iterator
                 }
 
             Hash Table Usage:
@@ -724,20 +724,12 @@ typedef bool32_t          bool32;
 
 //=== Logging ===//
 
-#define gs_log_info(MESSAGE, ...)\
-    gs_println("LOG::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
-
-#define gs_log_success(MESSAGE, ...)\
-    gs_println("SUCCESS::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
-
-#define gs_log_error(MESSAGE, ...)\
-    do {\
-        gs_println("ERROR::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);\
-    gs_assert(false);\
-    } while (0)
-
-#define gs_log_warning(MESSAGE, ...)\
-    gs_println("WARNING::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define gs_log_info(MESSAGE, ...) gs_println("LOG::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define gs_log_success(MESSAGE, ...) gs_println("SUCCESS::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define gs_log_warning(MESSAGE, ...) gs_println("WARNING::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
+#define gs_log_error(MESSAGE, ...) do {gs_println("ERROR::%s::%s(%zu)::" MESSAGE, __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__);\
+                                        gs_assert(false);\
+                                    } while (0)
 
 /*===================================
 // Memory Allocation Utils
@@ -804,6 +796,16 @@ gs_os_api_new_default();
 #ifndef gs_strdup
     #define gs_strdup(__STR) (gs_ctx()->os.strdup(__STR))
 #endif 
+
+// Modified from: https://stackoverflow.com/questions/11815894/how-to-read-write-arbitrary-bits-in-c-c
+#define gs_bit_mask(INDEX, SIZE)\
+    (((1u << (SIZE)) - 1u) << (INDEX))
+
+#define gs_write_bits(DATA, INDEX, SIZE, VAL)\
+    ((DATA) = (((DATA) & (~BIT_MASK((INDEX), (SIZE)))) | (((VAL) << (INDEX)) & (BIT_MASK((INDEX), (SIZE))))))
+
+#define gs_read_bits(DATA, INDEX, SIZE)\
+    (((DATA) & BIT_MASK((INDEX), (SIZE))) >> (INDEX))
 
 /*============================================================
 // Result
@@ -905,19 +907,142 @@ gs_color_t gs_color_ctor(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
     return color;
 }
 
-#define GS_COLOR_BLACK  gs_color(0, 0, 0, 255)
-#define GS_COLOR_WHITE  gs_color(255, 255, 255, 255)
-#define GS_COLOR_RED    gs_color(255, 0, 0, 255)
-#define GS_COLOR_GREEN  gs_color(0, 255, 0, 255)
-#define GS_COLOR_BLUE   gs_color(0, 0, 255, 255)
-#define GS_COLOR_ORANGE gs_color(255, 100, 0, 255)
-#define GS_COLOR_YELLOW gs_color(255, 255, 0, 255)
-#define GS_COLOR_PURPLE gs_color(128, 0, 128, 255)
+#define GS_COLOR_BLACK      gs_color(0, 0, 0, 255)
+#define GS_COLOR_WHITE      gs_color(255, 255, 255, 255)
+#define GS_COLOR_RED        gs_color(255, 0, 0, 255)
+#define GS_COLOR_GREEN      gs_color(0, 255, 0, 255)
+#define GS_COLOR_BLUE       gs_color(0, 0, 255, 255)
+#define GS_COLOR_ORANGE     gs_color(255, 100, 0, 255)
+#define GS_COLOR_YELLOW     gs_color(255, 255, 0, 255)
+#define GS_COLOR_PURPLE     gs_color(128, 0, 128, 255)
+#define GS_COLOR_MAROON     gs_color(128, 0, 0, 255)
+#define GS_COLOR_BROWN      gs_color(165, 42, 42, 255)
+#define GS_COLOR_MAGENTA    gs_color(255, 0, 255, 255)
 
 gs_force_inline 
 gs_color_t gs_color_alpha(gs_color_t c, uint8_t a)
 {
     return gs_color(c.r, c.g, c.b, a); 
+}
+
+gs_force_inline gs_hsv_t 
+gs_rgb2hsv(gs_color_t in)
+{
+    float ir = (float)in.r / 255.f;
+    float ig = (float)in.g / 255.f;
+    float ib = (float)in.b / 255.f;
+    float ia = (float)in.a / 255.f;
+
+    gs_hsv_t out = gs_default_val();
+    double min, max, delta;
+
+    min = ir < ig ? ir : ig;
+    min = min  < ib ? min  : ib;
+
+    max = ir > ig ? ir : ig;
+    max = max > ib ? max  : ib;
+
+    out.v = max;                                // v
+    delta = max - min;
+    if (delta < 0.00001)
+    {
+        out.s = 0;
+        out.h = 0; // undefined, maybe nan?
+        return out;
+    }
+
+    if(max > 0.0) 
+    { // NOTE: if Max is == 0, this divide would cause a crash
+        out.s = (delta / max);                  // s
+    } 
+    else 
+    {
+        // if max is 0, then r = g = b = 0              
+        // s = 0, h is undefined
+        out.s = 0.0;
+        out.h = NAN;                            // its now undefined
+        return out;
+    }
+    if(ir >= max)                           // > is bogus, just keeps compilor happy
+        out.h = (ig - ib) / delta;        // between yellow & magenta
+    else
+    if( ig >= max )
+        out.h = 2.0 + ( ib - ir ) / delta;  // between cyan & yellow
+    else
+        out.h = 4.0 + ( ir - ig ) / delta;  // between magenta & cyan
+
+    out.h *= 60.0;                              // degrees
+
+    if( out.h < 0.0 )
+        out.h += 360.0;
+
+    return out;
+}
+
+gs_force_inline gs_color_t 
+gs_hsv2rgb(gs_hsv_t in)
+{
+    double      hh, p, q, t, ff;
+    long        i;
+    gs_color_t  out;
+
+    if(in.s <= 0.0) {       // < is bogus, just shuts up warnings
+        out.r = in.v * 255;
+        out.g = in.v * 255;
+        out.b = in.v * 255;
+        out.a = 255;
+        return out;
+    }
+    hh = in.h;
+    if(hh >= 360.0) hh = 0.0;
+    hh /= 60.0;
+    i = (long)hh;
+    ff = hh - i;
+    p = in.v * (1.0 - in.s);
+    q = in.v * (1.0 - (in.s * ff));
+    t = in.v * (1.0 - (in.s * (1.0 - ff)));
+
+    uint8_t iv = in.v * 255;
+    uint8_t it = t * 255;
+    uint8_t ip = p * 255;
+    uint8_t iq = q * 255;
+
+    switch(i) 
+    {
+        case 0:
+            out.r = iv;
+            out.g = it;
+            out.b = ip;
+            break;
+        case 1:
+            out.r = iq;
+            out.g = iv;
+            out.b = ip;
+            break;
+        case 2:
+            out.r = ip;
+            out.g = iv;
+            out.b = it;
+            break;
+
+        case 3:
+            out.r = ip;
+            out.g = iq;
+            out.b = iv;
+            break;
+        case 4:
+            out.r = it;
+            out.g = ip;
+            out.b = iv;
+            break;
+        case 5:
+        default:
+            out.r = iv;
+            out.g = ip;
+            out.b = iq;
+            break;
+        }
+    return out;
 }
 
 /*===================================
@@ -1003,11 +1128,12 @@ gs_util_str_to_lower
 )
 {
     size_t src_sz = gs_string_length(src);
-    size_t len = gs_min(src_sz, buffer_sz);
+    size_t len = gs_min(src_sz, buffer_sz-1);
 
     for (uint32_t i = 0; i < len; ++i) {
         buffer[i] = tolower(src[i]);
     }
+    if (len) buffer[len] = '\0';
 }
 
 gs_force_inline b32
@@ -1051,23 +1177,15 @@ void gs_util_get_file_extension
     const char* file_path 
 )
 {
-    uint32_t str_len = gs_string_length(file_path);
-    const char* at = (file_path + str_len - 1);
-    while (*at != '.' && at != file_path)
-    {
-        at--;
-    }
-
-    if (*at == '.')
-    {
-        at++;
-        uint32_t i = 0; 
-        while (*at)
-        {
-            char c = *at;
-            buffer[i++] = *at++;
-        }
-        buffer[i] = '\0';
+    // assumes that buffer and buffer_size is non-zero
+    const char* extension = strrchr(file_path, '.');
+    if (extension) {
+        uint32_t extension_len = strlen(extension+1);
+        uint32_t len = (extension_len >= buffer_size) ? buffer_size - 1 : extension_len;
+        memcpy(buffer, extension+1, len);
+        buffer[len] = '\0';
+    } else {
+        buffer[0] = '\0';
     }
 }
 
@@ -1223,6 +1341,9 @@ void gs_util_string_replace_delim
         at++;
     }
 }
+
+GS_API_DECL char* 
+gs_util_string_concat(char* s1, const char* s2);
 
 gs_force_inline 
 void gs_util_normalize_path
@@ -1667,6 +1788,9 @@ typedef struct gs_dyn_array
 #define gs_dyn_array_full(__ARR)\
     ((gs_dyn_array_size((__ARR)) == gs_dyn_array_capacity((__ARR))))    
 
+#define gs_dyn_array_byte_size(__ARR)\
+    (gs_dyn_array_size((__ARR)) * sizeof(*__ARR))
+
 GS_API_DECL void* 
 gs_dyn_array_resize_impl(void* arr, size_t sz, size_t amount);
 
@@ -1746,6 +1870,10 @@ void gs_dyn_array_set_data_i(void** arr, void* val, size_t val_len, uint32_t off
     } while (0)
 
 /*===================================
+// Static Array
+===================================*/
+
+/*===================================
 // Hash Table
 ===================================*/
 
@@ -1790,8 +1918,8 @@ __gs_hash_table_init_impl(void** ht, size_t sz);
 
 #define gs_hash_table_init(__HT, __K, __V)\
     do {\
-        size_t entry_sz = sizeof(__K) + sizeof(__V) + sizeof(gs_hash_table_entry_state);\
-        size_t ht_sz = sizeof(__K) + sizeof(__V) + sizeof(void*) + 3 * sizeof(size_t);\
+        size_t entry_sz = sizeof(*__HT->data);\
+        size_t ht_sz = sizeof(*__HT);\
         __gs_hash_table_init_impl((void**)&(__HT), ht_sz);\
         memset((__HT), 0, ht_sz);\
         gs_dyn_array_reserve(__HT->data, 2);\
@@ -1910,6 +2038,8 @@ uint32_t gs_hash_table_get_key_index_func(void** data, void* key, size_t key_len
     // Need a better way to handle this. Can't do it like this anymore.
     // Need to fix this. Seriously messing me up.
     uint32_t capacity = gs_dyn_array_capacity(*data);
+	uint32_t size = gs_dyn_array_size(*data);
+	if (!capacity || !size) return (size_t)GS_HASH_TABLE_INVALID_INDEX;
     size_t idx = (size_t)GS_HASH_TABLE_INVALID_INDEX;
     size_t hash = (size_t)gs_hash_bytes(key, key_len, GS_HASH_TABLE_HASH_SEED);
     size_t hash_idx = (hash % capacity);
@@ -1953,7 +2083,7 @@ uint32_t gs_hash_table_get_key_index_func(void** data, void* key, size_t key_len
         ((__HT)->tmp_idx != GS_HASH_TABLE_INVALID_INDEX ? &gs_hash_table_geti((__HT), (__HT)->tmp_idx) : NULL)\
     )
 
-#define gs_hash_table_key_exists(__HT, __HTK)\
+#define _gs_hash_table_key_exists_internal(__HT, __HTK)\
     ((__HT)->tmp_key = (__HTK),\
         (gs_hash_table_get_key_index_func((void**)&(__HT->data), (void*)&(__HT->tmp_key), sizeof(__HT->tmp_key),\
             sizeof(__HT->tmp_val), __HT->stride, __HT->klpvl) != GS_HASH_TABLE_INVALID_INDEX))
@@ -1961,22 +2091,29 @@ uint32_t gs_hash_table_get_key_index_func(void** data, void* key, size_t key_len
 // uint32_t gs_hash_table_get_key_index_func(void** data, void* key, size_t key_len, size_t val_len, size_t stride, size_t klpvl)
 
 #define gs_hash_table_exists(__HT, __HTK)\
-		(__HT && gs_hash_table_key_exists((__HT), (__HTK)))
+        (__HT && _gs_hash_table_key_exists_internal((__HT), (__HTK)))
+
+#define gs_hash_table_key_exists(__HT, __HTK)\
+		(gs_hash_table_exists((__HT), (__HTK)))
 
 #define gs_hash_table_erase(__HT, __HTK)\
     do {\
-        /* Get idx for key */\
-        (__HT)->tmp_key = (__HTK);\
-        uint32_t __IDX = gs_hash_table_get_key_index_func((void**)&(__HT)->data, (void*)&((__HT)->tmp_key), sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), (__HT)->stride, (__HT)->klpvl);\
-        if (__IDX != GS_HASH_TABLE_INVALID_INDEX) {\
-            (__HT)->data[__IDX].state = GS_HASH_TABLE_ENTRY_INACTIVE;\
-            if (gs_dyn_array_head((__HT)->data)->size) gs_dyn_array_head((__HT)->data)->size--;\
+        if ((__HT))\
+        {\
+            /* Get idx for key */\
+            (__HT)->tmp_key = (__HTK);\
+            uint32_t __IDX = gs_hash_table_get_key_index_func((void**)&(__HT)->data, (void*)&((__HT)->tmp_key), sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), (__HT)->stride, (__HT)->klpvl);\
+            if (__IDX != GS_HASH_TABLE_INVALID_INDEX) {\
+                (__HT)->data[__IDX].state = GS_HASH_TABLE_ENTRY_INACTIVE;\
+                if (gs_dyn_array_head((__HT)->data)->size) gs_dyn_array_head((__HT)->data)->size--;\
+            }\
         }\
     } while (0)
 
 /*===== Hash Table Iterator ====*/
 
 typedef uint32_t gs_hash_table_iter;
+typedef gs_hash_table_iter gs_hash_table_iter_t;
 
 gs_force_inline
 uint32_t __gs_find_first_valid_iterator(void* data, size_t key_len, size_t val_len, uint32_t idx, size_t stride, size_t klpvl)
@@ -2042,7 +2179,7 @@ void __gs_hash_table_iter_advance_func(void** data, size_t key_len, size_t val_l
 #define GS_SLOT_ARRAY_INVALID_HANDLE    UINT32_MAX
 
 #define gs_slot_array_handle_valid(__SA, __ID)\
-    (__ID < gs_dyn_array_size((__SA)->indices) && (__SA)->indices[__ID] != GS_SLOT_ARRAY_INVALID_HANDLE)
+    ((__SA) && __ID < gs_dyn_array_size((__SA)->indices) && (__SA)->indices[__ID] != GS_SLOT_ARRAY_INVALID_HANDLE)
 
 typedef struct __gs_slot_array_dummy_header {
     gs_dyn_array(uint32_t) indices;
@@ -2345,6 +2482,195 @@ typedef uint32_t gs_slot_map_iter;
     // (gs_hash_table_find_valid_iter(__SM->ht, __IT), &((__SM)->sa->data[gs_hash_table_geti((__SM)->ht, (__IT))]))
 
 /*===================================
+// Priority Queue
+===================================*/
+
+// Min heap
+#define gs_pqueue(__T)\
+    struct\
+    {\
+        gs_dyn_array(__T) data;\
+        gs_dyn_array(int32_t) priority;\
+        __T tmp;\
+    }*
+
+#define gs_pqueue_parent_idx(I)      gs_max((uint32_t)(ceil(((float)I / 2.f) - 1)), 0)
+#define gs_pqueue_child_left_idx(I)  ((I * 2) + 1)
+#define gs_pqueue_child_right_idx(I) ((I * 2) + 2)
+
+GS_API_DECL void** 
+gs_pqueue_init(void** pq, size_t sz);
+
+#define gs_pqueue_init_all(__PQ, __V)\
+    (gs_pqueue_init((void**)&(__PQ), sizeof(*(__PQ))), gs_dyn_array_init((void**)&((__PQ)->priority), sizeof(int32_t)),\
+        gs_dyn_array_init((void**)&((__PQ)->data), sizeof(__V)))
+
+#define gs_pqueue_size(__PQ)\
+    gs_dyn_array_size((__PQ)->data)
+
+#define gs_pqueue_capacity(__PQ)\
+    gs_dyn_array_capacity((__PQ)->data)
+
+#define gs_pqueue_clear(__PQ)\
+    do {\
+        gs_dyn_array_clear((__PQ)->data);\
+        gs_dyn_array_clear((__PQ)->priority);\
+    } while (0) 
+
+#define gs_pqueue_empty(__PQ)\
+    (!(__PQ) || !gs_pqueue_size(__PQ))
+
+#define __gs_pqueue_swp(__PQ, __I0, __I1, __SZ)\
+    do {\
+        /* Move data */\
+        {\
+            const size_t sz = (__SZ);\
+            memmove(&((__PQ)->tmp), &((__PQ)->data[__I0]), sz);\
+            memmove(&((__PQ)->data[__I0]), &((__PQ)->data[__I1]), sz);\
+            memmove(&((__PQ)->data[__I1]), &((__PQ)->tmp), sz);\
+        }\
+        /* Move priority */\
+        {\
+            int32_t tmp = 0;\
+            const size_t sz = sizeof(int32_t);\
+            memmove(&tmp, &((__PQ)->priority[__I0]), sz);\
+            memmove(&((__PQ)->priority[__I0]), &((__PQ)->priority[__I1]), sz);\
+            memmove(&((__PQ)->priority[__I1]), &tmp, sz);\
+        }\
+    } while (0)
+
+#define gs_pqueue_push(__PQ, __V, __PRI)\
+    do {\
+        /*Init*/\
+        gs_pqueue_init_all((__PQ), (__V));\
+        /*Push to end of array*/\
+        gs_dyn_array_push((__PQ)->data, (__V));\
+        gs_dyn_array_push((__PQ)->priority, (__PRI));\
+        /*Compare and sort up*/\
+        const size_t dsize = sizeof(__V);\
+        int32_t i = gs_max(gs_pqueue_size((__PQ)) - 1, 0);\
+        while (i)\
+        {\
+            /* Look at parent, compare, then swap indices with parent */\
+            int32_t pidx = gs_pqueue_parent_idx(i);\
+            if ((__PQ)->priority[pidx] > __PRI) {\
+                __gs_pqueue_swp(__PQ, i, pidx, dsize);\
+            }\
+            else {\
+                break;\
+            }\
+            i = pidx;\
+        }\
+    } while (0)
+
+#if 0
+/*
+    Need to call into another function to return what I need... Not sure how to do this, since I need to know what TYPE to return...
+*/
+#define gs_pqueue_pop(__PQ)\
+    (\
+        __gs_pqueue_pop_internal(\
+            (void**)&(__PQ),\
+            &(__PQ)->tmp,\
+            (void**)(&(__PQ)->data),\
+            (__PQ)->priority,\
+            gs_pqueue_size((__PQ)),\
+            sizeof((__PQ)->tmp)\
+        ),\
+        (__PQ)->tmp = (__PQ)->data[gs_pqueue_size((__PQ)) - 1],\
+        (gs_dyn_array_head((__PQ)->data))->size--,\
+        (gs_dyn_array_head((__PQ)->priority))->size--,\
+        (__PQ)->tmp\
+    )
+#endif
+
+#if 1
+/*
+    No return.
+*/
+#define gs_pqueue_pop(__PQ)\
+    do {\
+        /* Swap elements */\
+        if (gs_pqueue_empty((__PQ))) break;\
+        __gs_pqueue_swp(__PQ, 0, gs_pqueue_size((__PQ)) - 1, sizeof((__PQ)->tmp));\
+\
+        int32_t i = 0;\
+        int32_t c = 0;\
+        int32_t psz = gs_dyn_array_size((__PQ)->priority) - 1;\
+        for (int32_t i = 0; gs_pqueue_child_left_idx(i) < psz; i = c)\
+        {\
+            /* Set child to smaller of two */\
+            c = gs_pqueue_child_left_idx(i);\
+\
+            /* Set to right child if valid and less priority */\
+            if ((c + 1) < psz && (__PQ)->priority[c + 1] < (__PQ)->priority[c]) {\
+                c++;\
+            }\
+\
+            /* Check to swp, if necessary */\
+            if ((__PQ)->priority[i] > (__PQ)->priority[c]) {\
+                __gs_pqueue_swp((__PQ), i, c, sizeof((__PQ)->tmp));\
+            }\
+            /* Otherwise, we're done */\
+            else\
+            {\
+                break;\
+            }\
+        }\
+        (gs_dyn_array_head((__PQ)->data))->size--;\
+        (gs_dyn_array_head((__PQ)->priority))->size--;\
+    } while (0)
+#endif
+
+#if 1
+/*
+*/
+GS_API_PRIVATE void
+__gs_pqueue_pop_internal(void** pqueue, void* tmp, void** data, int32_t* priority, int32_t pq_sz, size_t d_sz);
+
+#endif
+
+#define gs_pqueue_peek(__PQ)\
+    (__PQ)->data[0]
+
+#define gs_pqueue_peekp(__PQ)\
+    &((__PQ)->data[0])
+
+#define gs_pqueue_peek_pri(__PQ)\
+    (__PQ)->priority[0]
+
+#define gs_pqueue_free(__PQ)\
+    do {\
+        if ((__PQ) && (__PQ)->data) gs_dyn_array_free((__PQ)->data);\
+        if ((__PQ) && (__PQ)->priority) gs_dyn_array_free((__PQ)->priority);\
+        if ((__PQ)) gs_free((__PQ));\
+    } while (0)
+
+/*=== Priority Queue Iterator ===*/
+
+typedef uint32_t gs_pqueue_iter;
+typedef gs_pqueue_iter gs_pqueue_iter_t;
+
+#define gs_pqueue_iter_new(__PQ)    0
+
+#define gs_pqueue_iter_valid(__PQ, __IT)\
+    ((__IT) < gs_pqueue_size((__PQ)))
+
+#define gs_pqueue_iter_advance(__PQ, __IT) ++(__IT)
+
+#define gs_pqueue_iter_get(__PQ, __IT)\
+    (__PQ)->data[(__IT)]
+
+#define gs_pqueue_iter_getp(__PQ, __IT)\
+    &(__PQ)->data[(__IT)]
+
+#define gs_pqueue_iter_get_pri(__PQ, __IT)\
+    (__PQ)->priority[(__IT)]
+
+#define gs_pqueue_iter_get_prip(__PQ, __IT)\
+    &(__PQ)->priority[(__IT)]
+
+/*===================================
 // Command Buffer
 ===================================*/
 
@@ -2541,7 +2867,7 @@ GS_API_DECL void gs_paged_allocator_clear(gs_paged_allocator_t* pa);
 
 #define gs_v2s(__S)  gs_vec2_ctor((__S), (__S))
 #define gs_v3s(__S)  gs_vec3_ctor((__S), (__S), (__S))
-#define gs_v4s(__S)  gs_vec4_ctor((__S), (__S), (__S), (__S))
+#define gs_v4s(__S)  gs_vec4_ctor((__S), (__S), (__S), (__S)) 
 
 #define gs_v4_xy_v(__X, __Y, __V) gs_vec4_ctor((__X), (__Y), (__V).x, (__V).y)
 #define gs_v4_xyz_s(__XYZ, __S) gs_vec4_ctor((__XYZ).x, (__XYZ).y, (__XYZ).z, (__S))
@@ -2563,10 +2889,18 @@ GS_API_DECL void gs_paged_allocator_clear(gs_paged_allocator_t* pa);
 // Interpolation
 // Source: https://codeplea.com/simple-interpolation
 
+// Returns v based on t
 gs_inline float
 gs_interp_linear(float a, float b, float t)
 {
     return (a + t * (b - a));
+}
+
+// Returns t based on v
+gs_inline float
+gs_interp_linear_inv(float a, float b, float v)
+{
+    return (v - a) / (b - a);
 }
 
 gs_inline float
@@ -2660,6 +2994,13 @@ gs_vec2_ctor(f32 _x, f32 _y)
     return v;
 }
 
+gs_inline bool
+gs_vec2_nan(gs_vec2 v)
+{
+    if (v.x != v.x || v.y != v.y) return true;
+    return false; 
+}
+
 gs_inline gs_vec2 
 gs_vec2_add(gs_vec2 v0, gs_vec2 v1) 
 {
@@ -2732,6 +3073,14 @@ f32 gs_vec2_dist(gs_vec2 a, gs_vec2 b)
     f32 dx = (a.x - b.x);
     f32 dy = (a.y - b.y);
     return (float)(sqrt(dx * dx + dy * dy));
+}
+
+gs_inline 
+f32 gs_vec2_dist2(gs_vec2 a, gs_vec2 b)
+{
+    f32 dx = (a.x - b.x);
+    f32 dy = (a.y - b.y);
+    return (float)(dx * dx + dy * dy);
 }
 
 gs_inline
@@ -3054,15 +3403,21 @@ gs_vec4_dist(gs_vec4 v0, gs_vec4 v1)
 ================================================================================*/
 
 gs_inline
-gs_vec3 gs_v4_to_v3(gs_vec4 v) 
+gs_vec3 gs_v4tov3(gs_vec4 v) 
 {
     return gs_v3(v.x, v.y, v.z);
 }
 
 gs_inline
-gs_vec2 gs_v3_to_v2(gs_vec3 v) 
+gs_vec2 gs_v3tov2(gs_vec3 v) 
 {
     return gs_v2(v.x, v.y);
+}
+
+gs_inline
+gs_vec3 gs_v2tov3(gs_vec2 v)
+{
+    return gs_v3(v.x, v.y, 0.f);
 }
 
 /*================================================================================
@@ -3679,14 +4034,7 @@ gs_vec4 gs_mat4_mul_vec4(gs_mat4 m, gs_vec4 v)
 gs_inline
 gs_vec3 gs_mat4_mul_vec3(gs_mat4 m, gs_vec3 v)
 {
-    return gs_v4_to_v3(gs_mat4_mul_vec4(m, gs_v4_xyz_s(v, 1.f)));
-    // return gs_v4_to_v3(v4);
-    // return gs_vec3_ctor
-    // (
-    //     m.elements[0 + 4 * 0] * v.x + m.elements[0 + 4 * 1] * v.y + m.elements[0 + 4 * 2] * v.z,  
-    //     m.elements[1 + 4 * 0] * v.x + m.elements[1 + 4 * 1] * v.y + m.elements[1 + 4 * 2] * v.z,  
-    //     m.elements[2 + 4 * 0] * v.x + m.elements[2 + 4 * 1] * v.y + m.elements[2 + 4 * 2] * v.z
-    // );
+    return gs_v4tov3(gs_mat4_mul_vec4(m, gs_v4_xyz_s(v, 1.f)));
 }
     
 
@@ -4238,10 +4586,10 @@ typedef struct gs_mt_rand_t
 } gs_mt_rand_t;
 
 GS_API_DECL gs_mt_rand_t gs_rand_seed(uint64_t seed);
-GS_API_DECL uint64_t gs_rand_gen_long(gs_mt_rand_t* rand);
+GS_API_DECL int64_t gs_rand_gen_long(gs_mt_rand_t* rand);
 GS_API_DECL double gs_rand_gen(gs_mt_rand_t* rand);
 GS_API_DECL double gs_rand_gen_range(gs_mt_rand_t* rand, double min, double max);
-GS_API_DECL uint64_t gs_rand_gen_range_long(gs_mt_rand_t* rand, int32_t min, int32_t max);
+GS_API_DECL int64_t gs_rand_gen_range_long(gs_mt_rand_t* rand, int32_t min, int32_t max);
 GS_API_DECL gs_color_t gs_rand_gen_color(gs_mt_rand_t* rand);
 
 #ifndef GS_NO_SHORT_NAME
@@ -4285,13 +4633,40 @@ typedef mco_result gs_coro_result;
 // Functions
 #define gs_coro_desc_init(DESC, V)       mco_desc_init((DESC), (V))
 #define gs_coro_init(CO, DESC)           mco_init((CO), (DESC))
-#define gs_coro_uninit(CO, DESC)         mco_uninit((CO))
+#define gs_coro_uninit(CO)               mco_uninit((CO))
 #define gs_coro_create(CO, DESC)         mco_create((CO), (DESC))
 #define gs_coro_destroy(CO)              mco_destroy((CO))
 #define gs_coro_yield(CO)                mco_yield((CO))
 #define gs_coro_resume(CO)               mco_resume((CO))
 #define gs_coro_result_description(RES)  mco_result_description((RES))
 #define gs_coro_status(CO)               mco_status((CO))
+
+/*================================================================================
+// Scheduler
+================================================================================*/
+
+#include "external/sched/sched.h"
+
+#define GS_SCHED_DEFAULT            SCHED_DEFAULT
+#define gs_sched_fp_t               sched_run
+#define gs_sched_task_t             struct sched_task
+#define gs_sched_task_partition_t   struct sched_task_partition
+#define gs_scheduler_t              struct scheduler
+#define gs_sched_profiling_t        struct sched_profiling
+#define gs_scheduler_init           scheduler_init
+#define gs_scheduler_start          scheduler_start
+#define gs_scheduler_add            scheduler_add
+#define gs_scheduler_join           scheduler_join
+#define gs_scheduler_wait           scheduler_wait
+#define gs_scheduler_stop           scheduler_stop
+#define gs_sched_task_done          sched_task_done
+#define gs_atomic_int_t             int32_t
+
+GS_API_DECL uint32_t
+gs_atomic_cmp_swp(volatile uint32_t *dst, uint32_t swap, uint32_t cmp);
+
+GS_API_DECL int32_t 
+gs_atomic_add(volatile int32_t *dst, int32_t value);
 
 /*================================================================================
 // Noise
@@ -4518,6 +4893,9 @@ typedef struct gs_lexer_t
 	void (* eat_white_space)(struct gs_lexer_t* lex);
 	gs_token_t (* next_token)(struct gs_lexer_t*);
     bool32 skip_white_space;
+    size_t size;          // Optional
+    size_t contents_size; // Optional
+    uint32_t line;        // Line number
 } gs_lexer_t;
 
 GS_API_DECL void gs_lexer_set_contents(gs_lexer_t* lex, const char* contents);
@@ -4582,6 +4960,7 @@ typedef struct gs_uuid_t
 
 #define GS_WINDOW_FLAGS_NO_RESIZE   0x01
 #define GS_WINDOW_FLAGS_FULLSCREEN  0x02
+#define GS_WINDOW_FLAGS_INVISIBLE   0x03
 
 // Should have an internal resource cache of window handles (controlled by the platform api) 
 
@@ -5133,6 +5512,8 @@ GS_API_DECL void      gs_platform_add_event(gs_platform_event_t* evt);
 // Platform Window
 GS_API_DECL uint32_t gs_platform_window_create(const gs_platform_window_desc_t* desc);
 GS_API_DECL uint32_t gs_platform_main_window();
+GS_API_DECL void     gs_platform_window_make_current(uint32_t hndl);    // Binds context (main thread only)
+GS_API_DECL void     gs_platform_window_make_current_raw(void* win);    // Binds context (can be on separate thread with raw handle)
 
 typedef struct gs_platform_file_stats_s
 {
@@ -5240,6 +5621,8 @@ GS_API_DECL void                 gs_platform_framebuffer_size(uint32_t handle, u
 GS_API_DECL uint32_t             gs_platform_framebuffer_width(uint32_t handle);
 GS_API_DECL uint32_t             gs_platform_framebuffer_height(uint32_t handle);
 GS_API_DECL gs_vec2              gs_platform_monitor_sizev(uint32_t id);
+GS_API_DECL void                 gs_platform_window_set_clipboard(uint32_t handle, const char* str);
+GS_API_DECL const char*          gs_platform_window_get_clipboard(uint32_t handle);
 
 // Platform callbacks
 GS_API_DECL void     gs_platform_set_framebuffer_resize_callback(uint32_t handle, gs_framebuffer_resize_callback_t cb);
@@ -5502,6 +5885,7 @@ gs_enum_decl(gs_graphics_uniform_type,
     GS_GRAPHICS_UNIFORM_VEC4,
     GS_GRAPHICS_UNIFORM_MAT4,
     GS_GRAPHICS_UNIFORM_SAMPLER2D,
+    GS_GRAPHICS_UNIFORM_USAMPLER2D,
     GS_GRAPHICS_UNIFORM_SAMPLERCUBE,
     GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F,
     GS_GRAPHICS_UNIFORM_BLOCK
@@ -5548,6 +5932,7 @@ gs_enum_decl(gs_graphics_buffer_type,
     GS_GRAPHICS_BUFFER_FRAME,
     GS_GRAPHICS_BUFFER_UNIFORM,
     GS_GRAPHICS_BUFFER_UNIFORM_CONSTANT,
+    GS_GRAPHICS_BUFFER_SHADER_STORAGE,
     GS_GRAPHICS_BUFFER_SAMPLER
 );
 
@@ -5570,6 +5955,11 @@ gs_enum_decl(gs_graphics_access_type,
     GS_GRAPHICS_ACCESS_READ_WRITE
 ); 
 
+gs_enum_decl(gs_graphics_buffer_flags, 
+    GS_GRAPHICS_BUFFER_FLAG_MAP_PERSISTENT,
+    GS_GRAPHICS_BUFFER_FLAG_MAP_COHERENT
+);
+
 //=== Texture ===// 
 typedef enum
 {
@@ -5590,6 +5980,9 @@ typedef enum
 gs_enum_decl(gs_graphics_texture_format_type,
     GS_GRAPHICS_TEXTURE_FORMAT_RGBA8,
     GS_GRAPHICS_TEXTURE_FORMAT_RGB8,
+    GS_GRAPHICS_TEXTURE_FORMAT_RG8,
+    GS_GRAPHICS_TEXTURE_FORMAT_R32,
+    GS_GRAPHICS_TEXTURE_FORMAT_R32F,
     GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F,
     GS_GRAPHICS_TEXTURE_FORMAT_RGBA32F,
     GS_GRAPHICS_TEXTURE_FORMAT_A8,
@@ -5648,6 +6041,11 @@ gs_enum_decl(gs_graphics_depth_func_type,       // Default value of 0x00 means d
     GS_GRAPHICS_DEPTH_FUNC_NOTEQUAL,
     GS_GRAPHICS_DEPTH_FUNC_GEQUAL,
     GS_GRAPHICS_DEPTH_FUNC_ALWAYS
+);
+
+gs_enum_decl(gs_graphics_depth_mask_type,       // Default value 0x00 means depth writing enabled
+    GS_GRAPHICS_DEPTH_MASK_ENABLED,
+    GS_GRAPHICS_DEPTH_MASK_DISABLED
 );
 
 /* Stencil Function Type */
@@ -5727,6 +6125,7 @@ typedef struct gs_graphics_texture_desc_t
         uint32_t height;    // Height in texels for texture
         size_t size;        // Size in bytes for data to be read
     } read;
+    uint16_t flip_y;        // Whether or not y is flipped
 } gs_graphics_texture_desc_t;
 
 /* Graphics Uniform Layout Desc */
@@ -5783,11 +6182,13 @@ typedef struct gs_graphics_uniform_buffer_desc_t
 typedef struct gs_graphics_storage_buffer_desc_t
 {
     void* data;
+    void* map;
     size_t size;
     char name[64];                               
     gs_graphics_buffer_usage_type usage;
     gs_graphics_access_type access;
-    gs_graphics_buffer_update_desc_t update;
+    gs_graphics_buffer_flags flags;
+    gs_graphics_buffer_update_desc_t update; 
 } gs_graphics_storage_buffer_desc_t;
 
 typedef struct gs_graphics_framebuffer_desc_t 
@@ -5859,9 +6260,14 @@ typedef struct gs_graphics_bind_uniform_buffer_desc_t {
     } range; 
 } gs_graphics_bind_uniform_buffer_desc_t;
 
+// All this needs to be unified...
 typedef struct gs_graphics_bind_storage_buffer_desc_t {
     gs_handle(gs_graphics_storage_buffer_t) buffer;
     uint32_t binding;
+    struct {
+        size_t offset;      // Specify an offset for ranged binds.
+        size_t size;        // Specify size for ranged binds.
+    } range; 
 } gs_graphics_bind_storage_buffer_desc_t;
 
 typedef struct gs_graphics_bind_uniform_desc_t {
@@ -5917,6 +6323,7 @@ typedef struct gs_graphics_blend_state_desc_t
 typedef struct gs_graphics_depth_state_desc_t
 {
     gs_graphics_depth_func_type func;           // Function to set for depth test
+    gs_graphics_depth_mask_type mask;           // Whether or not writing is enabled/disabled
 } gs_graphics_depth_state_desc_t;
 
 /* Graphics Stencil State Desc */
@@ -6049,6 +6456,13 @@ typedef struct gs_graphics_t
         void (* index_buffer_update)(gs_handle(gs_graphics_index_buffer_t) hndl, gs_graphics_index_buffer_desc_t* desc);
         void (* storage_buffer_update)(gs_handle(gs_graphics_storage_buffer_t) hndl, gs_graphics_storage_buffer_desc_t* desc);
         void (* texture_update)(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);
+        void (* texture_read)(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);
+
+        // Util
+        void* (* storage_buffer_map_get)(gs_handle(gs_graphics_storage_buffer_t) hndl); 
+        void* (* storage_buffer_lock)(gs_handle(gs_graphics_storage_buffer_t) hndl, size_t offset, size_t sz);
+        void  (* storage_buffer_unlock)(gs_handle(gs_graphics_storage_buffer_t) hndl); 
+        void  (* storage_buffer_get_data)(gs_handle(gs_graphics_storage_buffer_t) hndl, size_t offset, size_t stride, void* out);
 
         // Submission (Main Thread)
         void (* command_buffer_submit)(gs_command_buffer_t* cb);
@@ -6100,11 +6514,19 @@ GS_API_DECL void  gs_graphics_pipeline_destroy(gs_handle(gs_graphics_pipeline_t)
 GS_API_DECL void  gs_graphics_vertex_buffer_update(gs_handle(gs_graphics_vertex_buffer_t) hndl, gs_graphics_vertex_buffer_desc_t* desc); 
 GS_API_DECL void  gs_graphics_index_buffer_update(gs_handle(gs_graphics_index_buffer_t) hndl, gs_graphics_index_buffer_desc_t* desc);
 GS_API_DECL void  gs_graphics_storage_buffer_update(gs_handle(gs_graphics_storage_buffer_t) hndl, gs_graphics_storage_buffer_desc_t* desc);
-GS_API_DECL void  gs_graphics_texture_update(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc); 
+GS_API_DECL void  gs_graphics_texture_update(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);
+GS_API_DECL void  gs_graphics_texture_read(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);
 
 // Resource Queries
 GS_API_DECL void gs_graphics_pipeline_desc_query(gs_handle(gs_graphics_pipeline_t) hndl, gs_graphics_pipeline_desc_t* out);
 GS_API_DECL void gs_graphics_texture_desc_query(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* out); 
+GS_API_DECL size_t gs_graphics_uniform_size_query(gs_handle(gs_graphics_uniform_t) hndl);
+
+// Util
+GS_API_DECL void* gs_graphics_storage_buffer_map_get(gs_handle(gs_graphics_storage_buffer_t) hndl); 
+GS_API_DECL void* gs_graphics_storage_buffer_lock(gs_handle(gs_graphics_storage_buffer_t) hndl, size_t offset, size_t sz);
+GS_API_DECL void  gs_graphics_storage_buffer_unlock(gs_handle(gs_graphics_storage_buffer_t) hndl); 
+GS_API_DECL void  gs_graphics_storage_buffer_get_data(gs_handle(gs_graphics_storage_buffer_t) hndl, size_t offset, size_t stride, void* out);
 
 // Resource In-Flight Update
 GS_API_DECL void gs_graphics_texture_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);
@@ -6138,6 +6560,7 @@ typedef gs_handle(gs_graphics_vertex_buffer_t)  gs_vbo_t;
 typedef gs_handle(gs_graphics_index_buffer_t)   gs_ibo_t;
 typedef gs_handle(gs_graphics_uniform_buffer_t) gs_ubo_t;
 typedef gs_handle(gs_graphics_uniform_t)        gs_uniform_t;
+typedef gs_handle(gs_graphics_storage_buffer_t) gs_ssbo_t;
 
 #endif 
 
@@ -6183,6 +6606,7 @@ typedef struct gs_asset_font_t
 GS_API_DECL bool gs_asset_font_load_from_file(const char* path, void* out, uint32_t point_size);
 GS_API_DECL bool gs_asset_font_load_from_memory(const void* memory, size_t sz, void* out, uint32_t point_size);
 GS_API_DECL gs_vec2 gs_asset_font_text_dimensions(const gs_asset_font_t* font, const char* text, int32_t len);
+GS_API_DECL gs_vec2 gs_asset_font_text_dimensions_ex(const gs_asset_font_t* fp, const char* text, int32_t len, bool32_t include_past_baseline);
 GS_API_DECL float gs_asset_font_max_height(const gs_asset_font_t* font);
 
 // Audio
@@ -6201,7 +6625,8 @@ gs_enum_decl(gs_asset_mesh_attribute_type,
     GS_ASSET_MESH_ATTRIBUTE_TYPE_JOINT,
     GS_ASSET_MESH_ATTRIBUTE_TYPE_WEIGHT,
     GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD,
-    GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR
+    GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR,
+    GS_ASSET_MESH_ATTRIBUTE_TYPE_UINT
 );
 
 typedef struct gs_asset_mesh_layout_t {
@@ -6316,7 +6741,8 @@ typedef struct gs_context_t
     gs_audio_t* audio;
     gs_app_desc_t app; 
     gs_os_api_t os;
-} gs_context_t; 
+    gs_atomic_int_t lock;
+} gs_context_t;
 
 typedef struct gs_t
 {
@@ -6568,6 +6994,36 @@ gs_graphics_texture_update(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_te
 {
     gs_graphics()->api.texture_update(hndl, desc); 
 } 
+
+GS_API_DECL void  
+gs_graphics_texture_read(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc)
+{
+    return gs_graphics()->api.texture_read(hndl, desc); 
+} 
+
+GS_API_DECL void*  
+gs_graphics_storage_buffer_map_get(gs_handle(gs_graphics_storage_buffer_t) hndl)
+{
+    return gs_graphics()->api.storage_buffer_map_get(hndl); 
+} 
+
+GS_API_DECL void
+gs_grapics_storage_buffer_unlock(gs_handle(gs_graphics_storage_buffer_t) hndl)
+{
+    return gs_graphics()->api.storage_buffer_unlock(hndl);
+}
+
+GS_API_DECL void*
+gs_graphics_storage_buffer_lock(gs_handle(gs_graphics_storage_buffer_t) hndl, size_t offset, size_t sz)
+{
+    return gs_graphics()->api.storage_buffer_lock(hndl, offset, sz);
+}
+
+GS_API_DECL void  
+gs_graphics_storage_buffer_get_data(gs_handle(gs_graphics_storage_buffer_t) hndl, size_t offset, size_t sz, void* out)
+{ 
+    return gs_graphics()->api.storage_buffer_get_data(hndl, offset, sz, out);
+}
 
 /*=============================
 // GS_AUDIO
@@ -6886,6 +7342,85 @@ gs_slot_map_init(void** sm)
         return sm;
     }   
     return NULL;
+}
+
+/*========================
+// Priotity Queue
+========================*/
+
+GS_API_DECL void**
+gs_pqueue_init(void** pq, size_t sz)
+{
+    if (*pq == NULL) {
+        (*pq) = gs_malloc(sz);
+        memset((*pq), 0, sz);
+        return pq;
+    }
+    return NULL;
+}
+
+GS_API_PRIVATE void
+__gs_pqueue_pop_internal(void** pqueue, void* tmp, void** data, int32_t* priority, int32_t pq_sz, size_t d_sz)
+{
+    // TODO(): Remove these checks for perf
+    if (!pqueue || !tmp || !data || !priority || !pq_sz || !d_sz) return;
+
+    #define __SWP(__I0, __I1)\
+    do {\
+        {\
+            size_t i0 = d_sz * (__I0);\
+            size_t i1 = d_sz * (__I1);\
+            uint8_t** d = (uint8_t**)data;\
+            memcpy(tmp, ((char*)*(d)) + i0, d_sz);\
+            memcpy(((char*)(*d)) + i0, ((char*)(*d)) + i1, d_sz);\
+            memcpy(((char*)(*d)) + i1, tmp, d_sz);\
+        }\
+        {\
+            int32_t t = 0;\
+            uint32_t i0 = (__I0);\
+            uint32_t i1 = (__I1);\
+            uint32_t sz = sizeof(int32_t);\
+            memcpy(&t, ((char*)((priority)) + i0), sz);\
+            memcpy((char*)((priority) + i0), (char*)((priority) + i1), sz);\
+            memcpy((char*)((priority) + i1), &t, sz);\
+        }\
+    } while (0)
+
+    // Swap elements internal
+    __SWP(0, pq_sz - 1);
+
+    // Work down list from top until priority is sorted
+    // THIS PART IS FUCKED
+    // return;
+    int32_t i = 0;
+    int32_t c = 0;
+    int32_t nwsz = pq_sz - 1;   // Right up until the last item we removed
+    int32_t psz = gs_dyn_array_size(priority) - 1;
+    // int32_t* pa = priority;
+    for (int32_t i = 0; gs_pqueue_child_left_idx(i) < psz; i = c)
+    {
+        // Set child to smaller of two
+        c = gs_pqueue_child_left_idx(i);
+
+        // if (c >= psz) break;
+        
+        // Set to right child if valid and less priority
+        if ((c + 1) < psz && priority[c + 1] < priority[c]) {
+            c++;
+        }
+
+        // Check to swp, if necessary
+        if (priority[i] > priority[c]) {
+            __SWP(i, c);
+        }
+        // Otherwise, we're done
+        else
+        {
+            break;
+        }
+    }
+
+    // gs_println("P: %d", priority[nwsz - 1]);
 }
 
 /*========================
@@ -7240,10 +7775,26 @@ GS_API_DECL void* gs_heap_allocator_allocate(gs_heap_allocator_t* ha, size_t sz)
     return gs_ptr_add(node, sizeof(gs_heap_allocator_header_t));
 }
 
-GS_API_DECL void gs_heap_allocator_deallocate(gs_heap_allocator_t* ha, void* memory)
+GS_API_DECL void 
+gs_heap_allocator_deallocate(gs_heap_allocator_t* ha, void* memory)
 {
     // Fill this out...
 } 
+
+/*========================
+// Util
+========================*/ 
+
+GS_API_DECL char* 
+gs_util_string_concat(char* s1, const char* s2)
+{
+    const size_t a = strlen(s1);
+    const size_t b = strlen(s2);
+    const size_t ab = a + b + 1;
+    s1 = gs_realloc(s1, ab);
+    memcpy(s1 + a, s2, b + 1);
+    return s1;
+}
 
 /*========================
 // Random
@@ -7286,7 +7837,7 @@ gs_rand_seed(uint64_t seed)
   return rand;
 }
 
-GS_API_DECL uint64_t 
+GS_API_DECL int64_t 
 gs_rand_gen_long(gs_mt_rand_t* rand) 
 {
   uint64_t y;
@@ -7323,11 +7874,10 @@ gs_rand_gen(gs_mt_rand_t* rand)
   return((double)gs_rand_gen_long(rand) / (uint64_t)0xffffffff);
 }
 
-GS_API_DECL uint64_t 
+GS_API_DECL int64_t 
 gs_rand_gen_range_long(gs_mt_rand_t* rand, int32_t min, int32_t max)
 {
-    double v = (gs_map_range(0.0, 1.0, (float)min, (float)max, (float)gs_rand_gen(rand)));
-    return (uint64_t)round(v);
+    return (int64_t)(floorf(gs_rand_gen_range(rand, (double)min, (double)max)));
 }
 
 GS_API_DECL double 
@@ -7354,6 +7904,48 @@ gs_rand_gen_color(gs_mt_rand_t* rand)
 // Light wrapper around Minicoro
 #define MINICORO_IMPL
 #include "external/minicoro/minicoro.h"
+
+/*================================================================================
+// Scheduler
+================================================================================*/
+#define SCHED_IMPLEMENTATION
+#include "external/sched/sched.h"
+  
+/* ---------------------------------------------------------------
+ *                          ATOMIC
+ * ---------------------------------------------------------------*/
+#if  defined(_WIN32) && !(defined(__MINGW32__) || defined(__MINGW64__))
+    #include <intrin.h>
+    void _ReadWriteBarrier();
+    #pragma intrinsic(_ReadWriteBarrier)
+    #pragma intrinsic(_InterlockedCompareExchange)
+    #pragma intrinsic(_InterlockedExchangeAdd)
+#endif
+
+GS_API_DECL uint32_t
+gs_atomic_cmp_swp(volatile uint32_t *dst, uint32_t swap, uint32_t cmp)
+{
+/* Atomically performs: if (*dst == swapTp){ *dst = swapTo;}
+ * return old *dst (so if sucessfull return cmp) */
+#if defined(_WIN32) && !(defined(__MINGW32__) || defined(__MINGW64__))
+    /* assumes two's complement - unsigned /signed conversion leads to same bit pattern */
+    return _InterlockedCompareExchange((volatile long*)dst, swap, cmp);
+#else
+    return __sync_val_compare_and_swap(dst, cmp, swap);
+#endif
+}
+
+GS_API_DECL gs_atomic_int_t
+gs_atomic_add(volatile gs_atomic_int_t *dst, int32_t value)
+{
+/* Atomically performs: tmp = *dst: *dst += value; return tmp; */
+#if defined(_WIN32) && !(defined(__MINGW32__) || defined(__MINGW64__))
+    return _InterlockedExchangeAdd((long*)dst, value);
+#else
+    return (sched_int)__sync_add_and_fetch(dst, value);
+#endif
+}
+
 
 /*================================================================================
 // Noise
@@ -7598,7 +8190,7 @@ gs_camera_offset_orientation(gs_camera_t* cam, f32 yaw, f32 pitch)
 =============================*/
 
 #ifndef GS_NO_STB_RECT_PACK
-    // #define STB_RECT_PACK_IMPLEMENTATION
+    #define STB_RECT_PACK_IMPLEMENTATION
 #endif
 
 #ifndef GS_NO_STB_TRUETYPE
@@ -7613,7 +8205,11 @@ gs_camera_offset_orientation(gs_camera_t* cam, f32 yaw, f32 pitch)
 #ifndef GS_NO_STB_IMAGE
     #define STB_IMAGE_IMPLEMENTATION
     // #define STB_IMAGE_WRITE_IMPLEMENTATION
-#endif
+#endif 
+
+// #ifndef GS_NO_STB_DS_DEFINE
+//     #define STB_DS_IMPLEMENTATION
+// #endif
 
 #ifndef GS_NO_CGLTF
     #define CGLTF_IMPLEMENTATION
@@ -7623,8 +8219,10 @@ gs_camera_offset_orientation(gs_camera_t* cam, f32 yaw, f32 pitch)
 #ifdef GS_STB_INCLUDE
     #include "external/stb/stb.h"
 #endif
+#include "external/stb/stb_rect_pack.h"
 #include "external/stb/stb_truetype.h"
 #include "external/stb/stb_image.h"
+// #include "external/stb/stb_ds.h"
 
 // CGLTF
 #include "external/cgltf/cgltf.h"
@@ -7675,7 +8273,7 @@ gs_util_load_texture_data_from_memory(const void* memory, size_t sz, int32_t* wi
 {
     // Load texture data
     stbi_set_flip_vertically_on_load(flip_vertically_on_load);
-    *data =  stbi_load_from_memory((const stbi_uc*)memory, (int32_t)sz, (int32_t*)width, (int32_t*)height, (int32_t*)num_comps, 0x00);
+    *data =  stbi_load_from_memory((const stbi_uc*)memory, (int32_t)sz, (int32_t*)width, (int32_t*)height, (int32_t*)num_comps, STBI_rgb_alpha);
     if (!*data) {
         gs_free(*data);
         return false;
@@ -7712,10 +8310,10 @@ gs_asset_texture_load_from_file(const char* path, void* out, gs_graphics_texture
     }
 
     int32_t comp = 0;
-    stbi_set_flip_vertically_on_load(flip_on_load);
+    stbi_set_flip_vertically_on_load(t->desc.flip_y);
     *t->desc.data = (uint8_t*)stbi_load_from_file(f, (int32_t*)&t->desc.width, (int32_t*)&t->desc.height, (int32_t*)&comp, STBI_rgb_alpha);
 
-    if (!t->desc.data) {
+    if (!*t->desc.data) {
         fclose(f);
         return false;
     }
@@ -7762,7 +8360,7 @@ bool gs_asset_texture_load_from_memory(const void* memory, size_t sz, void* out,
     // Load texture data
     int32_t num_comps = 0;
     bool32_t loaded = gs_util_load_texture_data_from_memory(memory, sz, (int32_t*)&t->desc.width, 
-        (int32_t*)&t->desc.height, (uint32_t*)&num_comps, (void**)&t->desc.data, flip_on_load);
+        (int32_t*)&t->desc.height, (uint32_t*)&num_comps, t->desc.data, t->desc.flip_y);
 
     if (!loaded) {
         return false;
@@ -7771,7 +8369,7 @@ bool gs_asset_texture_load_from_memory(const void* memory, size_t sz, void* out,
     t->hndl = gs_graphics_texture_create(&t->desc);
 
     if (!keep_data) {
-        gs_free(t->desc.data);
+        gs_free(*t->desc.data);
         *t->desc.data = NULL;
     }
 
@@ -7805,8 +8403,11 @@ bool gs_asset_font_load_from_memory(const void* memory, size_t sz, void* out, ui
         point_size = 16;
     } 
 
-    const uint32_t w = 512;
-    const uint32_t h = 512;
+    // Poor attempt at an auto resized texture
+    const uint32_t point_wh = gs_max(point_size, 32);
+    const uint32_t w = (point_wh/32 * 512) + (point_wh/32 * 512) % 512;
+    const uint32_t h = (point_wh/32 * 512) + (point_wh/32 * 512) % 512;
+
     const uint32_t num_comps = 4;
     u8* alpha_bitmap = (uint8_t*)gs_malloc(w * h);
     u8* flipmap = (uint8_t*)gs_malloc(w * h * num_comps);
@@ -7845,8 +8446,8 @@ bool gs_asset_font_load_from_memory(const void* memory, size_t sz, void* out, ui
     *f->texture.desc.data = NULL;
 
     bool success = false;
-    if (v == 0) {
-        gs_println("Font Failed to Load: %d", v);
+    if (v <= 0) {
+        gs_println("Font Failed to Load, Baked Texture Was Too Small: %d", v);
     }
     else {
         gs_println("Font Successfully Loaded: %d", v);
@@ -7866,7 +8467,7 @@ GS_API_DECL float gs_asset_font_max_height(const gs_asset_font_t* fp)
     while (txt[0] != '\0')
     {
         char c = txt[0];
-        if (c >= 32 && c <= 127) 
+        if (c >= 32 && c <= 127)
         {
             stbtt_aligned_quad q = gs_default_val();
             stbtt_GetBakedQuad((stbtt_bakedchar*)fp->glyphs, fp->texture.desc.width, fp->texture.desc.height, c - 32, &x, &y, &q, 1);
@@ -7879,25 +8480,35 @@ GS_API_DECL float gs_asset_font_max_height(const gs_asset_font_t* fp)
 
 GS_API_DECL gs_vec2 gs_asset_font_text_dimensions(const gs_asset_font_t* fp, const char* text, int32_t len)
 {
+    return gs_asset_font_text_dimensions_ex(fp, text, len, 0);
+}
+
+GS_API_DECL gs_vec2 gs_asset_font_text_dimensions_ex(const gs_asset_font_t* fp, const char* text, int32_t len, bool32_t include_past_baseline)
+{
     gs_vec2 dimensions = gs_v2s(0.f);
 
     if (!fp || !text) return dimensions;
     float x = 0.f;
     float y = 0.f;
+    float y_under = 0;
 
     while (text[0] != '\0' && len--)
     {
         char c = text[0];
-        if (c >= 32 && c <= 127) 
+        if (c >= 32 && c <= 127)
         {
             stbtt_aligned_quad q = gs_default_val();
             stbtt_GetBakedQuad((stbtt_bakedchar*)fp->glyphs, fp->texture.desc.width, fp->texture.desc.height, c - 32, &x, &y, &q, 1);
             dimensions.x = gs_max(dimensions.x, x);
-            dimensions.y = gs_max(gs_max(dimensions.y, fabsf(q.y0)), fabsf(q.y1));
+            dimensions.y = gs_max(dimensions.y, fabsf(q.y0));
+            if (include_past_baseline)
+                y_under = gs_max(y_under, fabsf(q.y1));
         }
         text++;
     };
 
+    if (include_past_baseline)
+        dimensions.y += y_under;
     return dimensions;
 }
 
@@ -8297,6 +8908,7 @@ GS_API_DECL bool gs_token_compare_type(const gs_token_t* t, gs_token_type type)
 
 GS_API_DECL bool gs_token_compare_text(const gs_token_t* t, const char* match)
 {
+    if (t->len != gs_string_length(match)) return false;
 	return (gs_string_compare_equal_n(t->text, match, t->len));
 }
 
@@ -8384,7 +8996,8 @@ GS_API_DECL void gs_lexer_set_contents(gs_lexer_t* lex, const char* contents)
 
 GS_API_DECL bool gs_lexer_c_can_lex(gs_lexer_t* lex)
 {
-	return (lex->at && !gs_char_is_null_term(*(lex->at)));
+    bool size_pass = lex->contents_size ? lex->size < lex->contents_size : true;
+	return (size_pass && lex->at && !gs_char_is_null_term(*(lex->at)));
 }
 
 GS_API_DECL void gs_lexer_set_token(gs_lexer_t* lex, gs_token_t token)
@@ -8397,9 +9010,10 @@ GS_API_DECL void gs_lexer_c_eat_white_space(gs_lexer_t* lex)
 {
 	for (;;)
 	{
-		if (gs_char_is_white_space(*lex->at))
+        if (gs_char_is_white_space(*lex->at))
 		{
-			lex->at++;
+            if (gs_char_is_end_of_line(*lex->at)) {lex->line++;}
+            lex->at++;
 		}
 
 		// Single line comment
@@ -8418,6 +9032,7 @@ GS_API_DECL void gs_lexer_c_eat_white_space(gs_lexer_t* lex)
 			lex->at += 2;
 			while (lex->at[0] && lex->at[1] && !(lex->at[0] == '*' && lex->at[1] == '/'))
 			{
+                // if (gs_char_is_end_of_line(*lex->at)) {lex->line++;}
 				lex->at++;
 			}
 			if (lex->at[0] == '*')
@@ -8497,8 +9112,7 @@ gs_lexer_c_next_token(gs_lexer_t* lex)
                     )
                     {
                         // Grab decimal
-                        num_decimals = lex->at[0] == '.' ? num_decimals++ : num_decimals;
-                        gs_println("%c", *lex->at);
+                        num_decimals = lex->at[0] == '.' ? num_decimals + 1 : num_decimals;
 
                         //Increment
                         lex->at++;
@@ -8530,6 +9144,7 @@ gs_lexer_c_next_token(gs_lexer_t* lex)
 					lex->at += 2;
 					while (lex->can_lex(lex))
 					{
+                        // if (gs_char_is_end_of_line(*lex->at)) {lex->line++;}
 						if (lex->at[0] == '*' && lex->at[1] == '/')
 						{
 							lex->at += 2;
@@ -8555,6 +9170,7 @@ gs_lexer_c_next_token(gs_lexer_t* lex)
 
 				while (lex->at && *lex->at  != '"')
 				{
+                    // if (gs_char_is_end_of_line(*lex->at)) {lex->line++;}
 					if (lex->at[0] == '\\' && lex->at[1])
 					{
 						lex->at++;
@@ -8595,7 +9211,7 @@ gs_lexer_c_next_token(gs_lexer_t* lex)
 					)
 					{
 						// Grab decimal
-						num_decimals = lex->at[0] == '.' ? num_decimals++ : num_decimals;
+						num_decimals = lex->at[0] == '.' ? num_decimals + 1 : num_decimals;
 
 						//Increment
 						lex->at++;
@@ -8615,7 +9231,10 @@ gs_lexer_c_next_token(gs_lexer_t* lex)
 	}
 
 	// Set current token for lex
-	lex->current_token = t;
+    lex->current_token = t;
+    
+    // Record size
+    lex->size += t.len;
 
 	return t;
 }
@@ -8785,6 +9404,8 @@ gs_create(gs_app_desc_t app_desc)
         // Construct instance and set
         _gs_instance = (gs_t*)os.malloc(sizeof(gs_t));
         memset(_gs_instance, 0, sizeof(gs_t));
+
+        gs_instance()->ctx.lock = SCHED_PIPE_INVALID;
 
         // Set os api now allocated
         gs_instance()->ctx.os = os;

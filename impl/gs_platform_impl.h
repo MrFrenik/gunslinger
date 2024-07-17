@@ -695,10 +695,8 @@ GS_API_DECL int32_t gs_platform_mkdir_default_impl(const char* dir_path, int32_t
 { 
     #ifdef __MINGW32__
         return mkdir(dir_path);
-    #elif (defined __linux__ || defined __APPLE__)
-        return mkdir(dir_path, opt);
     #else
-        return _mkdir(dir_path);
+        return mkdir(dir_path, opt);
     #endif
 }
 
@@ -1702,75 +1700,82 @@ gs_platform_window_create_internal(const gs_platform_window_desc_t* desc)
 
     // Grab window hints from application desc
     u32 window_hints = desc->flags;
+    bool visible = ~window_hints & GS_WINDOW_FLAGS_INVISIBLE;
 
     // Set whether or not the screen is resizable
-    glfwWindowHint(GLFW_RESIZABLE, (window_hints & GS_WINDOW_FLAGS_NO_RESIZE) != GS_WINDOW_FLAGS_NO_RESIZE);
+    glfwWindowHint(GLFW_RESIZABLE, (window_hints & GS_WINDOW_FLAGS_NO_RESIZE) != GS_WINDOW_FLAGS_NO_RESIZE); 
+    glfwWindowHint(GLFW_VISIBLE, visible); 
+    GLFWwindow* window = NULL;
 
-    // Set multi-samples
-    if (desc->num_samples) {
-        glfwWindowHint(GLFW_SAMPLES, desc->num_samples); 
-    }
+    #define CONSTRUCT_WINDOW(W, H, T, M, I)\
+    do {\
+        window = glfwCreateWindow(W, H, T, M, I);\
+        win.hndl = window;\
+    } while (0)
 
-    // Get monitor if fullscreen
-    GLFWmonitor* monitor = NULL;
-    if ((window_hints & GS_WINDOW_FLAGS_FULLSCREEN) == GS_WINDOW_FLAGS_FULLSCREEN)
-    {
-        int monitor_count;
-        GLFWmonitor** monitors = glfwGetMonitors(&monitor_count);
-        if (desc->monitor_index < monitor_count)
-        {
-            monitor = monitors[desc->monitor_index];
+    if (visible) {
+        // Set multi-samples
+        if (desc->num_samples) {
+            glfwWindowHint(GLFW_SAMPLES, desc->num_samples); 
         }
+        else {
+            glfwWindowHint(GLFW_SAMPLES, 0);
+        }
+
+        // Get monitor if fullscreen
+        GLFWmonitor* monitor = NULL;
+        if ((window_hints & GS_WINDOW_FLAGS_FULLSCREEN) == GS_WINDOW_FLAGS_FULLSCREEN) {
+            int monitor_count;
+            GLFWmonitor** monitors = glfwGetMonitors(&monitor_count);
+            if (desc->monitor_index < monitor_count) {
+                monitor = monitors[desc->monitor_index];
+            }
+        } 
+        CONSTRUCT_WINDOW(desc->width, desc->height, desc->title, monitor, NULL);
+
+        // Callbacks for window
+        glfwMakeContextCurrent(window);
+        glfwSetKeyCallback(window, &__glfw_key_callback);
+        glfwSetCharCallback(window, &__glfw_char_callback);
+        glfwSetMouseButtonCallback(window, &__glfw_mouse_button_callback);
+        glfwSetCursorEnterCallback(window, &__glfw_mouse_cursor_enter_callback);
+        glfwSetCursorPosCallback(window, &__glfw_mouse_cursor_position_callback);
+        glfwSetScrollCallback(window, &__glfw_mouse_scroll_wheel_callback);
+
+        // Cache all necessary window information 
+        int32_t wx = 0, wy = 0, fx = 0, fy = 0, wpx = 0, wpy = 0;
+        glfwGetWindowSize((GLFWwindow*)win.hndl, &wx, &wy);
+        glfwGetFramebufferSize((GLFWwindow*)win.hndl, &fx, &fy);
+        glfwGetWindowPos((GLFWwindow*)win.hndl, &wpx, &wpy);
+        win.window_size = gs_v2((float)wx, (float)wy);
+        win.window_position = gs_v2((float)wpx, (float)wpy);
+        win.framebuffer_size = gs_v2((float)fx, (float)fy);
+    }
+    else { 
+        void* mwin = gs_platform_raw_window_handle(gs_platform_main_window());
+        CONSTRUCT_WINDOW(1, 1, desc->title, 0, mwin);
     }
 
-    GLFWwindow* window = glfwCreateWindow(desc->width, desc->height, desc->title, monitor, NULL);
-    if (window == NULL)
-    {
+    if (window == NULL) {
         gs_log_error("Failed to create window.");
         glfwTerminate();
         return win;
-   }
-
-    win.hndl = window;
-
-    // Callbacks for window
-    glfwMakeContextCurrent(window);
-    glfwSetKeyCallback(window, &__glfw_key_callback);
-    glfwSetCharCallback(window, &__glfw_char_callback);
-    glfwSetMouseButtonCallback(window, &__glfw_mouse_button_callback);
-    glfwSetCursorEnterCallback(window, &__glfw_mouse_cursor_enter_callback);
-    glfwSetCursorPosCallback(window, &__glfw_mouse_cursor_position_callback);
-    glfwSetScrollCallback(window, &__glfw_mouse_scroll_wheel_callback);
-
-    // Cache all necessary window information 
-    int32_t wx = 0, wy = 0, fx = 0, fy = 0, wpx = 0, wpy = 0;
-    glfwGetWindowSize((GLFWwindow*)win.hndl, &wx, &wy);
-    glfwGetFramebufferSize((GLFWwindow*)win.hndl, &fx, &fy);
-    glfwGetWindowPos((GLFWwindow*)win.hndl, &wpx, &wpy);
-    win.window_size = gs_v2((float)wx, (float)wy);
-    win.window_position = gs_v2((float)wpx, (float)wpy);
-    win.framebuffer_size = gs_v2((float)fx, (float)fy);
+    }
 
     // Need to make sure this is ONLY done once.
-    if (gs_slot_array_empty(gs_subsystem(platform)->windows))
-    {
-        if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-        {
+    if (gs_slot_array_empty(gs_subsystem(platform)->windows)) {
+        if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
             gs_log_warning("Failed to initialize GLFW.");
             return win;
         }
 
-        switch (gs_subsystem(platform)->settings.video.driver)
-        {
-            case GS_PLATFORM_VIDEO_DRIVER_TYPE_OPENGL: 
-            {
+        switch (gs_subsystem(platform)->settings.video.driver) {
+            case GS_PLATFORM_VIDEO_DRIVER_TYPE_OPENGL: {
                 gs_log_info("OpenGL Version: %s", glGetString(GL_VERSION));
-                if (gs_subsystem(platform)->settings.video.graphics.debug)
-                {
+                if (gs_subsystem(platform)->settings.video.graphics.debug) {
                     glDebugMessageCallback(__gs_platform_gl_debug, NULL);
                 }
             } break;
-
             default: break;
         }
     }
@@ -1839,6 +1844,20 @@ gs_platform_window_swap_buffer(uint32_t handle)
     // Grab window from handle
     gs_platform_window_t* win = gs_slot_array_getp(platform->windows, handle);
     glfwSwapBuffers((GLFWwindow*)win->hndl);
+}
+
+GS_API_DECL void     
+gs_platform_window_make_current(uint32_t hndl)
+{
+    gs_platform_t* platform = gs_subsystem(platform);
+    gs_platform_window_t* win = gs_slot_array_getp(platform->windows, hndl);
+    glfwMakeContextCurrent((GLFWwindow*)win->hndl);
+}
+
+GS_API_DECL void     
+gs_platform_window_make_current_raw(void* win)
+{
+    glfwMakeContextCurrent(win);
 }
 
 GS_API_DECL gs_vec2 
@@ -1981,6 +2000,17 @@ GS_API_DECL gs_vec2 gs_platform_monitor_sizev(uint32_t id)
     ms.x = (float)width;
     ms.y = (float)height;
     return ms;
+}
+
+GS_API_DECL void gs_platform_window_set_clipboard(uint32_t handle, const char* str)
+{
+    gs_platform_window_t* win = gs_slot_array_getp(gs_subsystem(platform)->windows, handle);
+    glfwSetClipboardString((GLFWwindow*)win->hndl, str);
+}
+GS_API_DECL const char* gs_platform_window_get_clipboard(uint32_t handle)
+{
+    gs_platform_window_t* win = gs_slot_array_getp(gs_subsystem(platform)->windows, handle);
+    return glfwGetClipboardString((GLFWwindow*)win->hndl);
 }
 
 void gs_platform_set_cursor(uint32_t handle, gs_platform_cursor cursor)
@@ -2334,6 +2364,7 @@ EM_BOOL gs_ems_size_changed_cb(int32_t type, const EmscriptenUiEvent* evt, void*
 EM_BOOL gs_ems_fullscreenchange_cb(int32_t type, const EmscriptenFullscreenChangeEvent* evt, void* user_data)
 {
     (void)user_data;
+    (void)evt;
     (void)type;
     gs_ems_t* ems = GS_EMS_DATA();
     // emscripten_get_element_css_size(ems->canvas_name, &ems->canvas_width, &ems->canvas_height);
@@ -2341,7 +2372,7 @@ EM_BOOL gs_ems_fullscreenchange_cb(int32_t type, const EmscriptenFullscreenChang
         EmscriptenFullscreenStrategy strategy;
         strategy.scaleMode = EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_STDDEF;
         strategy.filteringMode = EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT;
-        strategy.canvasResizedCallback = gs_ems_size_changed_cb;
+        strategy.canvasResizedCallback = (int (*)(int, const void*, void*)) gs_ems_size_changed_cb;
         emscripten_enter_soft_fullscreen(ems->canvas_name, &strategy);
         // gs_println("fullscreen!");
         // emscripten_enter_soft_fullscreen(ems->canvas_name, NULL);
@@ -2515,7 +2546,7 @@ gs_platform_init(gs_platform_t* platform)
 
     // Just set this to defaults for now
     ems->canvas_name = "#canvas";
-    emscripten_set_canvas_element_size(ems->canvas_name, app->window_width, app->window_height);
+    emscripten_set_canvas_element_size(ems->canvas_name, app->window.width, app->window.height);
     emscripten_get_element_css_size(ems->canvas_name, &ems->canvas_width, &ems->canvas_height);
 
     // Set up callbacks
@@ -2786,7 +2817,7 @@ gs_platform_framebuffer_height(uint32_t handle)
     {
         gs_app_desc_t app = gs_main(argc, argv);
         gs_create(app);
-        emscripten_set_main_loop(gs_frame, (int32_t)app.frame_rate, true);
+        emscripten_set_main_loop(gs_frame, (int32_t)app.window.frame_rate, true);
         return 0;
     }
 #endif // GS_NO_HIJACK_MAIN

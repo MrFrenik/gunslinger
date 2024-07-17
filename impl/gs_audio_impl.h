@@ -153,8 +153,8 @@ gs_handle(gs_audio_source_t) gs_audio_load_from_file(const char* file_path)
     }
 
     char ext[64] = gs_default_val();
-    gs_util_str_to_lower(file_path, ext, sizeof(ext));
-    gs_platform_file_extension(ext, sizeof(ext), ext);
+    gs_platform_file_extension(ext, sizeof(ext), file_path);
+    gs_util_str_to_lower(ext, ext, sizeof(ext));
     gs_println("Audio: File Extension: %s", ext);
 
     // Load OGG data
@@ -478,10 +478,12 @@ void ma_audio_commit(ma_device* device, void* output, const void* input, ma_uint
             gs_audio_source_t* src = gs_slot_array_getp(audio->sources, inst->src.id);
 
             // Easy out if the instance is not playing currently or the source is invalid
-            if (!inst->playing || !src) {
-                handles_to_destroy[destroy_count++] = it;
+            if (!src || (!inst->playing && !inst->persistent)) {
+                if (destroy_count < gs_array_size(handles_to_destroy))
+                    handles_to_destroy[destroy_count++] = it;
                 continue;
             }
+            if (!inst->playing) continue;
 
             s16* sample_out = (s16*)output;
             s16* samples = (s16*)src->samples;
@@ -547,7 +549,8 @@ void ma_audio_commit(ma_device* device, void* output, const void* input, ma_uint
                         // Need to destroy the instance at this point...
                         inst->playing = false;
                         inst->sample_position = 0;
-                        handles_to_destroy[destroy_count++] = it;
+                        if (!inst->persistent && destroy_count < gs_array_size(handles_to_destroy))
+                            handles_to_destroy[destroy_count++] = it;
                         break;
                     }
                 }
@@ -656,6 +659,7 @@ gs_result gs_audio_shutdown(gs_audio_t* audio)
 #endif // GS_AUDIO_IMPL_MINIAUDIO
 
 #endif // GS_AUDIO_IMPL_H
+
 
 
 
