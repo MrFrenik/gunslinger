@@ -6487,86 +6487,86 @@ gs_graphics_pipeline_create(const gs_graphics_pipeline_desc_t* desc)
 GS_API_DECL void 
 gs_graphics_texture_destroy(gs_handle(gs_graphics_texture_t) hndl)
 {
-    return gs_graphics()->api.texture_destroy(hndl); 
+    gs_graphics()->api.texture_destroy(hndl); 
 } 
 
 GS_API_DECL void 
 gs_graphics_uniform_destroy(gs_handle(gs_graphics_uniform_t) hndl)
 { 
-    return gs_graphics()->api.uniform_destroy(hndl); 
+    gs_graphics()->api.uniform_destroy(hndl); 
 }
 
 GS_API_DECL void  
 gs_graphics_shader_destroy(gs_handle(gs_graphics_shader_t) hndl)
 { 
-    return gs_graphics()->api.shader_destroy(hndl); 
+    gs_graphics()->api.shader_destroy(hndl); 
 }
 
 GS_API_DECL void  
 gs_graphics_vertex_buffer_destroy(gs_handle(gs_graphics_vertex_buffer_t) hndl)
 {
-    return gs_graphics()->api.vertex_buffer_destroy(hndl); 
+    gs_graphics()->api.vertex_buffer_destroy(hndl); 
 }
 
 GS_API_DECL void  
 gs_graphics_index_buffer_destroy(gs_handle(gs_graphics_index_buffer_t) hndl)
 { 
-    return gs_graphics()->api.index_buffer_destroy(hndl); 
+    gs_graphics()->api.index_buffer_destroy(hndl); 
 }
 
 GS_API_DECL void  
 gs_graphics_uniform_buffer_destroy(gs_handle(gs_graphics_uniform_buffer_t) hndl)
 {
-    return gs_graphics()->api.uniform_buffer_destroy(hndl); 
+    gs_graphics()->api.uniform_buffer_destroy(hndl); 
 }
 
 GS_API_DECL void  
 gs_graphics_storage_buffer_destroy(gs_handle(gs_graphics_storage_buffer_t) hndl)
 { 
-    return gs_graphics()->api.storage_buffer_destroy(hndl); 
+    gs_graphics()->api.storage_buffer_destroy(hndl); 
 }
 
 GS_API_DECL void  
 gs_graphics_framebuffer_destroy(gs_handle(gs_graphics_framebuffer_t) hndl)
 {
-    return gs_graphics()->api.framebuffer_destroy(hndl); 
+    gs_graphics()->api.framebuffer_destroy(hndl); 
 }
 
 GS_API_DECL void  
 gs_graphics_renderpass_destroy(gs_handle(gs_graphics_renderpass_t) hndl)
 { 
-    return gs_graphics()->api.renderpass_destroy(hndl); 
+    gs_graphics()->api.renderpass_destroy(hndl); 
 }
 
 GS_API_DECL void  
 gs_graphics_pipeline_destroy(gs_handle(gs_graphics_pipeline_t) hndl)
 {
-    return gs_graphics()->api.pipeline_destroy(hndl); 
+    gs_graphics()->api.pipeline_destroy(hndl); 
 }
 
 // Resource Updates (main thread only) 
 GS_API_DECL void  
 gs_graphics_vertex_buffer_update(gs_handle(gs_graphics_vertex_buffer_t) hndl, gs_graphics_vertex_buffer_desc_t* desc)
 {
-    return gs_graphics()->api.vertex_buffer_update(hndl, desc); 
+    gs_graphics()->api.vertex_buffer_update(hndl, desc); 
 }
 
 GS_API_DECL void  
 gs_graphics_index_buffer_update(gs_handle(gs_graphics_index_buffer_t) hndl, gs_graphics_index_buffer_desc_t* desc)
 { 
-    return gs_graphics()->api.index_buffer_update(hndl, desc); 
+    gs_graphics()->api.index_buffer_update(hndl, desc); 
 }
 
 GS_API_DECL void  
 gs_graphics_storage_buffer_update(gs_handle(gs_graphics_storage_buffer_t) hndl, gs_graphics_storage_buffer_desc_t* desc)
 {
-    return gs_graphics()->api.storage_buffer_update(hndl, desc); 
+    gs_graphics()->api.storage_buffer_update(hndl, desc); 
 }
 
 GS_API_DECL void  
 gs_graphics_texture_update(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc)
 {
-    return gs_graphics()->api.texture_update(hndl, desc); 
+    gs_graphics()->api.texture_update(hndl, desc); 
 } 
 
 /*=============================
