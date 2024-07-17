@@ -2546,8 +2546,8 @@ gs_platform_init(gs_platform_t* platform)
 
     // Just set this to defaults for now
     ems->canvas_name = "#canvas";
-    emscripten_set_canvas_element_size(ems->canvas_name, app->window.width, app->window.height);
     emscripten_get_element_css_size(ems->canvas_name, &ems->canvas_width, &ems->canvas_height);
+    emscripten_set_canvas_element_size(ems->canvas_name, ems->canvas_width, ems->canvas_height);
 
     // Set up callbacks
     emscripten_set_fullscreenchange_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, true, gs_ems_fullscreenchange_cb);
