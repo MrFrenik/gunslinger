@@ -1,0 +1,84 @@
+/*
+    TODO(john): Need a description of the .sf format here
+*/
+
+pipeline {
+
+    raster
+    {
+        primitive: TRIANGLES
+        index_buffer_element_size: UINT32
+    },
+
+    depth
+    {
+        func: LESS
+    },
+
+
+    shader {
+
+        vertex {
+
+            attributes {
+
+                /*
+                    Vertex layout required for this pipeline (for input assembler)
+
+                    fields:
+
+                    POSITION: 	      	float3
+                    TEXCOORD: 	      	float2
+                    TEXCOORD[0 - 12]: 	float2
+                    COLOR:    		uint8[4]
+                    NORMAL:   		float3
+                    TANGENT:  		float4
+                    JOINT:    		float4
+                    WEIGHT:   		float
+                    FLOAT: 		float
+                    FLOAT2: 		float2
+                    FLOAT3: 		float3
+                    FLOAT4: 		float4
+                */
+
+                POSITION : a_position
+                TEXCOORD : a_uv
+                COLOR    : a_color
+            },
+
+            uniforms {
+                mat4 u_mvp;
+            },
+
+            out {
+                vec2 uv;
+                vec3 position;
+            },
+
+            code {
+                void main() {
+                    gl_Position = u_mvp * vec4(a_position, 1.0);
+                    uv = a_uv;
+                    position = a_position;
+                }
+            }
+        },
+
+        fragment {
+        
+            uniforms {
+                sampler2D u_base_col_tex;
+            },
+            
+            out {
+                vec4 frag_color;
+            },
+
+            code {
+                void main() {
+                    frag_color = texture(u_base_col_tex, uv);
+                }
+            }
+        }
+    }
+}
