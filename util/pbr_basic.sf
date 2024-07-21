@@ -68,6 +68,7 @@ pipeline {
         
             uniforms {
                 sampler2D u_base_col_tex;
+                vec4 u_base_col_fact;
             },
             
             out {
@@ -76,7 +77,7 @@ pipeline {
 
             code {
                 void main() {
-                    frag_color = texture(u_base_col_tex, uv);
+                    frag_color = texture(u_base_col_tex, uv);//vec4(0.3,0.2,0.2,1.0);
                 }
             }
         }
