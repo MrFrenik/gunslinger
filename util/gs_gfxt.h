@@ -408,8 +408,9 @@ void gs_gfxt_scene_pbr_draw(gs_command_buffer_t* cb, gs_gfxt_scene_t* scene, gs_
       gs_gfxt_material_t material = node.material;
       gs_gfxt_pbr_raw_data_t pbr_texs = node.pbr_textures.textures;
       gs_gfxt_pbr_desc_t pbr_desc = node.pbr_textures.desc;
+      uint32_t pbr_tex_i = 0;
       if(pbr_desc.has_base_color_texture) {
-          gs_gfxt_material_set_uniform(&material, "u_base_col_tex", &pbr_texs.textures[0]);
+          gs_gfxt_material_set_uniform(&material, "u_base_col_tex", &pbr_texs.textures[pbr_tex_i]);
       }
       gs_gfxt_material_set_uniform(&material, "u_mvp", &mvp);
       gs_gfxt_material_bind(cb, &material);
@@ -450,33 +451,54 @@ gs_gfxt_load_into_scene_from_file(const char* dir, const char* fname, gs_gfxt_sc
   
   if( success ) { gs_println("we loaded %zu meshes and %zu pbr infos, from the gltf!", mesh_count, pbr_count); } 
   else { gs_println("ERROR::GsGfxtLoadIntoSceneFromFile::something went wrong laoding gltf"); return; }
-
   
-  // create node 0 mesh
+  // this code will duplicate reused textures.
+  uint32_t first_hndl = 0;
+  for(uint32_t i = 0; i < mesh_count; i++) {
+      // create node 0 mesh
+      gs_gfxt_mesh_desc_t mdesc = gs_default_val();
+      gs_gfxt_mesh_raw_data_t mesh_raw_data = meshes[i];
+      gs_println("corruption warnign dont free. *meshes might be dealloc'd");
+      mdesc.keep_data = true;
+      mdesc.meshes = &mesh_raw_data; // only one mesh at a time
+      mdesc.size = sizeof(gs_gfxt_mesh_raw_data_t);
+
+      gs_gfxt_mesh_t mesh = gs_default_val();
+      mesh = gs_gfxt_mesh_create(&mdesc);
+      mesh.desc = mdesc;
+      
+      gs_println("getting the material index from mesh_raw_data.");
+      uint32_t material_idx = mesh_raw_data.primitives[0].mat_i;
+      // node 0 material 
+      gs_gfxt_material_t material =gs_gfxt_material_create(&(gs_gfxt_material_desc_t){
+          .pip_func.hndl = &scene->pbr_pip
+      });
+      // node 0 pbr_t.
+      gs_gfxt_pbr_t pbr_info = gs_default_val();
+      pbr_info.desc = pbr_descs[material_idx];
+      pbr_info.textures = pbr_texs[material_idx];
+      
+      gs_gfxt_pbr_node_t pbr_node = gs_default_val();
+      pbr_node.pbr_textures = pbr_info;
+      pbr_node.mesh = mesh;
+      pbr_node.material = material;
+      if(i == 0){    
+          gs_println("first mesh");
+          first_hndl = gs_slot_array_insert(scene->nodes, pbr_node);
+      } else {
+          gs_println("%zu index mesh/node", i);
+          gs_slot_array_insert(scene->nodes, pbr_node);
+      }
+  }
+  
+  // free the malloc'd mesh data by calling create
   gs_gfxt_mesh_desc_t mdesc = gs_default_val();
-  mdesc.meshes = &meshes[0]; // only one mesh
-  mdesc.size = sizeof(gs_gfxt_mesh_raw_data_t);
-
-  gs_gfxt_mesh_t mesh = gs_default_val();
-  mesh = gs_gfxt_mesh_create(&mdesc);
-  mesh.desc = mdesc;
-  // node 0 material 
-  gs_gfxt_material_t material =gs_gfxt_material_create(&(gs_gfxt_material_desc_t){
-      .pip_func.hndl = &scene->pbr_pip
-  });
-  // node 0 pbr_t.
-  gs_gfxt_pbr_t pbr_info = gs_default_val();
-  pbr_info.desc = pbr_descs[0];
-  pbr_info.textures = pbr_texs[0];
-  
-  gs_gfxt_pbr_node_t pbr_node = gs_default_val();
-  pbr_node.pbr_textures = pbr_info;
-  pbr_node.mesh = mesh;
-  pbr_node.material = material;
-  uint32_t hndl = gs_slot_array_insert(scene->nodes, pbr_node);
-  // free?
+  mdesc.meshes = meshes;
+  mdesc.size = mesh_count * sizeof(gs_gfxt_mesh_raw_data_t);
+  gs_gfxt_mesh_create(&mdesc);
+ 
   gs_println("done placing data into scene structs");
-  return hndl;
+  return first_hndl;
 }
 
 gs_inline gs_graphics_texture_desc_t
@@ -673,7 +695,7 @@ gs_gfxt_load_gltf_all_data_from_file(const char* dir, const char* fname,
           gs_gfxt_mesh_vertex_data_t primitive = gs_default_val();
           if( prim->material ){
             mat_idx = gs_slot_map_get(mat_index_map, prim->material);
-            gs_println("found material index %zu for %zu mesh.", mat_idx, p);
+            gs_println("found material index %zu for %zu mesh.", mat_idx, _m);
           }
           primitive.mat_i = mat_idx;
 
