@@ -278,7 +278,7 @@ typedef struct gs_gfxt_pbr_desc_s {
     gs_vec3 emissive_factor;
     float metal_factor;
     float rough_factor;
-    uint32_t pbr_texs_count; // match pbr_texs array count.
+    uint32_t pbr_textures_count; // textures array count.
 } gs_gfxt_pbr_desc_t;
 
 typedef struct gs_gfxt_pbr_s { // mirrors the cgltf_material
@@ -307,16 +307,16 @@ typedef struct gs_gfxt_renderable_s {
     gs_mat4 model_matrix;               // Model matrix for renderable
 } gs_gfxt_renderable_t;
 
-typedef struct gs_gfxt_pbr_node_s { // 1:1 from cgltf data
-    gs_gfxt_pbr_t pbr_textures;
+typedef struct gs_gfxt_pbr_node_s { // trying to mirror cgltf
     gs_gfxt_mesh_t mesh;
-    gs_gfxt_material_t material;
+    uint32_t material_hndl;
 } gs_gfxt_pbr_node_t;
 
 //=== Graphics scene ===//
 typedef struct gs_gfxt_scene_s {
     gs_slot_array(gs_gfxt_renderable_t) renderables;
     gs_slot_array(gs_gfxt_pbr_node_t) nodes;
+    gs_slot_array(gs_gfxt_material_t) materials;
     gs_gfxt_pipeline_t pbr_pip; // standard gltf pipeline
 } gs_gfxt_scene_t;
 
@@ -389,9 +389,10 @@ GS_API_DECL void gs_gfxt_scene_free(gs_gfxt_scene_t* scene);
 GS_API_DECL void 
 gs_gfxt_scene_free(gs_gfxt_scene_t* scene)
 {
-  // free all the gs_malloc()'d data.
-      if( gs_slot_array_size(scene->renderables) != 0 ) { gs_slot_array_free(scene->renderables); }
-      
+    // free all the gs_malloc()'d data.
+    if( gs_slot_array_size(scene->renderables) != 0 ) { gs_slot_array_free(scene->renderables); }
+    if( gs_slot_array_size(scene->nodes) != 0 ) { gs_slot_array_free(scene->nodes); }
+    if( gs_slot_array_size(scene->materials) != 0 ) { gs_slot_array_free(scene->materials); }
 }
 
 GS_API_DECL 
@@ -405,13 +406,7 @@ void gs_gfxt_scene_pbr_draw(gs_command_buffer_t* cb, gs_gfxt_scene_t* scene, gs_
     ) {
       gs_gfxt_pbr_node_t node = gs_slot_array_iter_get(scene->nodes, it);
       gs_gfxt_mesh_t mesh = node.mesh;
-      gs_gfxt_material_t material = node.material;
-      gs_gfxt_pbr_raw_data_t pbr_texs = node.pbr_textures.textures;
-      gs_gfxt_pbr_desc_t pbr_desc = node.pbr_textures.desc;
-      uint32_t pbr_tex_i = 0;
-      if(pbr_desc.has_base_color_texture) {
-          gs_gfxt_material_set_uniform(&material, "u_base_col_tex", &pbr_texs.textures[pbr_tex_i]);
-      }
+      gs_gfxt_material_t material = gs_slot_array_get(scene->materials, node.material_hndl);
       gs_gfxt_material_set_uniform(&material, "u_mvp", &mvp);
       gs_gfxt_material_bind(cb, &material);
       gs_gfxt_material_bind_uniforms(cb, &material);
@@ -452,8 +447,25 @@ gs_gfxt_load_into_scene_from_file(const char* dir, const char* fname, gs_gfxt_sc
   if( success ) { gs_println("we loaded %zu meshes and %zu pbr infos, from the gltf!", mesh_count, pbr_count); } 
   else { gs_println("ERROR::GsGfxtLoadIntoSceneFromFile::something went wrong laoding gltf"); return; }
   
-  // this code will duplicate reused textures.
-  uint32_t first_hndl = 0;
+  uint32_t material_handles[pbr_count];
+  for(uint32_t _m = 0; _m < pbr_count; _m++) {
+      // node 0 material 
+      gs_gfxt_material_t material = gs_gfxt_material_create(&(gs_gfxt_material_desc_t){
+          .pip_func.hndl = &scene->pbr_pip
+      });
+      // node 0 pbr_t.
+      gs_gfxt_pbr_t pbr_info = gs_default_val();
+      pbr_info.desc = pbr_descs[_m];
+      pbr_info.textures = pbr_texs[_m];
+      uint32_t hndl = gs_slot_array_insert(scene->materials, material);
+      
+      if(pbr_info.desc.has_base_color_texture) {
+          gs_gfxt_material_set_uniform(gs_slot_array_getp(scene->materials, hndl), "u_base_col_tex", &(pbr_texs[_m].textures[0]));
+      }
+      material_handles[_m] = hndl;
+  }
+  
+  uint32_t first_node_hndl = 0;
   for(uint32_t i = 0; i < mesh_count; i++) {
       // create node 0 mesh
       gs_gfxt_mesh_desc_t mdesc = gs_default_val();
@@ -469,22 +481,13 @@ gs_gfxt_load_into_scene_from_file(const char* dir, const char* fname, gs_gfxt_sc
       
       gs_println("getting the material index from mesh_raw_data.");
       uint32_t material_idx = mesh_raw_data.primitives[0].mat_i;
-      // node 0 material 
-      gs_gfxt_material_t material =gs_gfxt_material_create(&(gs_gfxt_material_desc_t){
-          .pip_func.hndl = &scene->pbr_pip
-      });
-      // node 0 pbr_t.
-      gs_gfxt_pbr_t pbr_info = gs_default_val();
-      pbr_info.desc = pbr_descs[material_idx];
-      pbr_info.textures = pbr_texs[material_idx];
       
       gs_gfxt_pbr_node_t pbr_node = gs_default_val();
-      pbr_node.pbr_textures = pbr_info;
       pbr_node.mesh = mesh;
-      pbr_node.material = material;
+      pbr_node.material_hndl = material_handles[material_idx];
       if(i == 0){    
           gs_println("first mesh");
-          first_hndl = gs_slot_array_insert(scene->nodes, pbr_node);
+          first_node_hndl = gs_slot_array_insert(scene->nodes, pbr_node);
       } else {
           gs_println("%zu index mesh/node", i);
           gs_slot_array_insert(scene->nodes, pbr_node);
@@ -498,7 +501,7 @@ gs_gfxt_load_into_scene_from_file(const char* dir, const char* fname, gs_gfxt_sc
   gs_gfxt_mesh_create(&mdesc);
  
   gs_println("done placing data into scene structs");
-  return first_hndl;
+  return first_node_hndl;
 }
 
 gs_inline gs_graphics_texture_desc_t
@@ -660,7 +663,6 @@ gs_gfxt_load_gltf_all_data_from_file(const char* dir, const char* fname,
           
           gs_gfxt_texture_t base_color_tex = gs_gfxt_texture_load_from_file(TMP, &bct_desc, false, false);
           gs_dyn_array_push(pbr_textures->textures, base_color_tex);
-          
         } 
         
         if(mr->base_color_factor) { 
