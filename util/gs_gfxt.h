@@ -204,6 +204,7 @@ typedef struct
     gs_gfxt_mesh_vertex_attribute_t custom_uint[GS_GFXT_CUSTOM_UINT_MAX];
     gs_gfxt_mesh_vertex_attribute_t indices;                           
     uint32_t count;                                                     // Total count of indices
+    uint32_t mat_i;
 } gs_gfxt_mesh_vertex_data_t;
 
 // Structured/packed raw mesh data
@@ -264,17 +265,25 @@ typedef struct gs_gfxt_pipeline_s {
 } gs_gfxt_pipeline_t;
 
 //=== Material ===//
-typedef struct gs_gfxt_pbr_s { // mirrors the cgltf_material
-    gs_gfxt_texture_t base_color_tex;
-    gs_gfxt_texture_t metal_rough_tex;
-    gs_gfxt_texture_t normal_tex;
-    gs_gfxt_texture_t occlusion_tex;
-    gs_gfxt_texture_t emissive_tex; // do transmission, specular, clearcoat and sheen later...
+typedef struct gs_gfxt_pbr_raw_data_t
+{
+    gs_dyn_array(gs_gfxt_texture_t) textures; // each pbr texture for this material.
+} gs_gfxt_pbr_raw_data_t;
+
+typedef struct gs_gfxt_pbr_desc_s {
     bool has_metal_rough;
-    gs_vec4 base_color_fact;
-    gs_vec3 emissive_fact;
-    float metal_fact;
-    float rough_fact;
+    bool has_base_color_texture; // going in order for pbr_texs
+    bool has_metal_rough_texture;
+    gs_vec4 base_color_factor;
+    gs_vec3 emissive_factor;
+    float metal_factor;
+    float rough_factor;
+    uint32_t pbr_texs_count; // match pbr_texs array count.
+} gs_gfxt_pbr_desc_t;
+
+typedef struct gs_gfxt_pbr_s { // mirrors the cgltf_material
+    gs_gfxt_pbr_raw_data_t textures;
+    gs_gfxt_pbr_desc_t desc;
 } gs_gfxt_pbr_t;
 
 typedef struct gs_gfxt_material_desc_s {
@@ -295,16 +304,19 @@ typedef struct gs_gfxt_renderable_desc_s {
 
 typedef struct gs_gfxt_renderable_s {
     gs_gfxt_renderable_desc_t desc;     // Renderable description object
-    uint32_t mat_count;
     gs_mat4 model_matrix;               // Model matrix for renderable
 } gs_gfxt_renderable_t;
 
+typedef struct gs_gfxt_pbr_node_s { // 1:1 from cgltf data
+    gs_gfxt_pbr_t pbr_textures;
+    gs_gfxt_mesh_t mesh;
+    gs_gfxt_material_t material;
+} gs_gfxt_pbr_node_t;
+
 //=== Graphics scene ===//
 typedef struct gs_gfxt_scene_s {
-    gs_slot_map(uint32_t, gs_gfxt_renderable_t) renderables;
-    gs_slot_map(uint32_t, gs_gfxt_mesh_t) meshes;
-    gs_slot_map(uint32_t, gs_gfxt_pbr_t*) pbrs; // save for convenient texture handling
-    gs_slot_map(uint32_t, gs_gfxt_material_t*) materials; // materials per mesh
+    gs_slot_array(gs_gfxt_renderable_t) renderables;
+    gs_slot_array(gs_gfxt_pbr_node_t) nodes;
     gs_gfxt_pipeline_t pbr_pip; // standard gltf pipeline
 } gs_gfxt_scene_t;
 
@@ -356,8 +368,8 @@ GS_API_DECL bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh
 GS_API_DECL bool 
 gs_gfxt_load_gltf_all_data_from_file(const char* dir, const char* fname,
     gs_gfxt_mesh_import_options_t* options, 
-    gs_gfxt_mesh_raw_data_t** out, uint32_t* mesh_count,
-    gs_gfxt_pbr_t** pbr_infos, uint32_t* pbr_count);
+    gs_gfxt_mesh_raw_data_t** out, uint32_t* mesh_count, 
+    gs_gfxt_pbr_raw_data_t** pbrout, gs_gfxt_pbr_desc_t** pbrdescs, uint32_t* pbr_count);
 // Util API
 GS_API_DECL void* gs_gfxt_raw_data_default_impl(GS_GFXT_HNDL hndl, void* user_data);
 
@@ -378,43 +390,32 @@ GS_API_DECL void
 gs_gfxt_scene_free(gs_gfxt_scene_t* scene)
 {
   // free all the gs_malloc()'d data.
+      if( gs_slot_array_size(scene->renderables) != 0 ) { gs_slot_array_free(scene->renderables); }
+      
 }
 
 GS_API_DECL 
 void gs_gfxt_scene_pbr_draw(gs_command_buffer_t* cb, gs_gfxt_scene_t* scene, gs_mat4_t mvp)
 {
-  for (
-      gs_slot_map_iter it = 0; 
-      gs_slot_map_iter_valid(scene->renderables, it);
-      gs_slot_map_iter_advance(scene->renderables, it) 
-  ) {
-    uint32_t k = gs_slot_map_iter_getk(scene->renderables, it);     // Get key using iterator
-      gs_gfxt_renderable_t rend = gs_slot_map_iter_get(scene->renderables, it);
-      if(&rend) {
-        gs_println("got renderable from scene with %zu materials", rend.mat_count);
-      } else { gs_println("renderable exists."); continue;}
-      gs_println("get materials pointer.");
-
-      gs_gfxt_material_t* mats = rend.desc.material.hndl;
-      if(mats) {
-        gs_println("materials exist.", rend.mat_count);
-      } else { gs_println("renderable was NULL in draw."); continue;}
-      gs_gfxt_mesh_t* mesh = rend.desc.mesh.hndl;
-      if(mats) {
+    if( gs_slot_array_size(scene->nodes) == 0 ) { return; }
+    for (
+      gs_slot_array_iter it = 0; 
+      gs_slot_array_iter_valid(scene->nodes, it);
+      gs_slot_array_iter_advance(scene->nodes, it) 
+    ) {
+      gs_gfxt_pbr_node_t node = gs_slot_array_iter_get(scene->nodes, it);
+      gs_gfxt_mesh_t mesh = node.mesh;
+      gs_gfxt_material_t material = node.material;
+      gs_gfxt_pbr_raw_data_t pbr_texs = node.pbr_textures.textures;
+      gs_gfxt_pbr_desc_t pbr_desc = node.pbr_textures.desc;
+      if(pbr_desc.has_base_color_texture) {
+          gs_gfxt_material_set_uniform(&material, "u_base_col_tex", &pbr_texs.textures[0]);
       }
-      gs_gfxt_pbr_t* pbr = gs_slot_map_get(scene->pbrs, k);
-      gs_println("set base color texs.");
-      
-      for(uint32_t i = 0; i < rend.mat_count; i++){
-        if(pbr[i].has_metal_rough && &pbr[i].base_color_tex) {
-        gs_gfxt_material_set_uniform(&mats[i], "u_base_color_tex", &pbr[i].base_color_tex);
-        }
-      }  
-      gs_gfxt_material_set_uniform(&mats[0], "u_mvp", &mvp);
-    
-      gs_println("draw call. materials size %zu", rend.mat_count * sizeof(gs_gfxt_material_t*));
-      gs_gfxt_mesh_draw_materials(cb, mesh, &mats, rend.mat_count * sizeof(gs_gfxt_material_t*));
-  }
+      gs_gfxt_material_set_uniform(&material, "u_mvp", &mvp);
+      gs_gfxt_material_bind(cb, &material);
+      gs_gfxt_material_bind_uniforms(cb, &material);
+      gs_gfxt_mesh_draw_material(cb, &mesh, &material);
+    }
 };
 
 GS_API_DECL 
@@ -432,7 +433,8 @@ gs_gfxt_load_into_scene_from_file(const char* dir, const char* fname, gs_gfxt_sc
 {
   gs_println("load into scene from file %s/%s", dir, fname);
 
-  gs_gfxt_pbr_t* pbr_infos = gs_default_val();
+  gs_gfxt_pbr_raw_data_t* pbr_texs = gs_default_val();
+  gs_gfxt_pbr_desc_t* pbr_descs = gs_default_val();
   uint32_t pbr_count;
   gs_gfxt_mesh_raw_data_t* meshes = gs_default_val();
   uint32_t mesh_count;
@@ -444,54 +446,37 @@ gs_gfxt_load_into_scene_from_file(const char* dir, const char* fname, gs_gfxt_sc
   
   bool success = gs_gfxt_load_gltf_all_data_from_file(dir, fname, &pbr_options,
                                                       &meshes, &mesh_count,
-                                                      &pbr_infos, &pbr_count);
+                                                      &pbr_texs, &pbr_descs, &pbr_count);
   
   if( success ) { gs_println("we loaded %zu meshes and %zu pbr infos, from the gltf!", mesh_count, pbr_count); } 
   else { gs_println("ERROR::GsGfxtLoadIntoSceneFromFile::something went wrong laoding gltf"); return; }
-  gs_uuid_t uuid = gs_platform_uuid_generate();
-  uint32_t node_id = gs_platform_uuid_hash(&uuid);
+
   
-  gs_println("making the info for node. uuid: %zu", node_id);
-  gs_gfxt_material_t* materials = gs_malloc( pbr_count * sizeof(gs_gfxt_material_t) );
-  for(uint32_t i = 0; i < pbr_count; i++){
-    gs_gfxt_pbr_t* pbr = &pbr_infos[i];
-    gs_gfxt_material_desc_t matdesc = { 
-      .pip_func.hndl = &scene->pbr_pip
-    };
-    gs_gfxt_material_t mat = gs_gfxt_material_create(&matdesc);
-    materials[i] = mat;
-    if( &pbr->base_color_tex && pbr->has_metal_rough) {
-      gs_println("setting the base color texture on this material %zu.", i);
-      gs_gfxt_material_set_uniform(&materials[i], "u_base_color_tex", &pbr->base_color_tex);
-    }
-  } // material binding done.
-  
-  // create the mesh
+  // create node 0 mesh
   gs_gfxt_mesh_desc_t mdesc = gs_default_val();
-  mdesc.meshes = meshes;
-  mdesc.size = mesh_count * sizeof(gs_gfxt_mesh_raw_data_t);
+  mdesc.meshes = &meshes[0]; // only one mesh
+  mdesc.size = sizeof(gs_gfxt_mesh_raw_data_t);
 
   gs_gfxt_mesh_t mesh = gs_default_val();
   mesh = gs_gfxt_mesh_create(&mdesc);
   mesh.desc = mdesc;
-
-  // use slot arrays to spare data from local scope dealloc
-  gs_slot_map_insert(scene->meshes, node_id, mesh);
-  gs_slot_map_insert(scene->materials, node_id, materials);
-
-  //create the renderable
-  gs_gfxt_renderable_desc_t rdesc = {
-    .material.hndl = gs_slot_map_get(scene->materials, node_id),
-    .mesh.hndl = gs_slot_map_getp(scene->meshes, node_id)
-  };
-  gs_gfxt_renderable_t rend = gs_gfxt_renderable_create(&rdesc);
-  rend.mat_count = pbr_count;
-  gs_slot_map_insert(scene->renderables, node_id, rend);
-
-  gs_slot_map_insert(scene->pbrs, node_id, pbr_infos);
+  // node 0 material 
+  gs_gfxt_material_t material =gs_gfxt_material_create(&(gs_gfxt_material_desc_t){
+      .pip_func.hndl = &scene->pbr_pip
+  });
+  // node 0 pbr_t.
+  gs_gfxt_pbr_t pbr_info = gs_default_val();
+  pbr_info.desc = pbr_descs[0];
+  pbr_info.textures = pbr_texs[0];
   
+  gs_gfxt_pbr_node_t pbr_node = gs_default_val();
+  pbr_node.pbr_textures = pbr_info;
+  pbr_node.mesh = mesh;
+  pbr_node.material = material;
+  uint32_t hndl = gs_slot_array_insert(scene->nodes, pbr_node);
+  // free?
   gs_println("done placing data into scene structs");
-  return node_id;
+  return hndl;
 }
 
 gs_inline gs_graphics_texture_desc_t
@@ -546,7 +531,7 @@ GS_API_DECL bool
 gs_gfxt_load_gltf_all_data_from_file(const char* dir, const char* fname,
     gs_gfxt_mesh_import_options_t* options, 
     gs_gfxt_mesh_raw_data_t** out, uint32_t* mesh_count, 
-    gs_gfxt_pbr_t** pbr_infos, uint32_t* pbr_count)
+    gs_gfxt_pbr_raw_data_t** pbrout, gs_gfxt_pbr_desc_t** pbrdescs, uint32_t* pbr_count)
 {
     // Use cgltf like a boss
     cgltf_options cgltf_options = gs_default_val();
@@ -615,25 +600,32 @@ gs_gfxt_load_gltf_all_data_from_file(const char* dir, const char* fname,
     memset(*out, 0, sizeof(gs_gfxt_mesh_raw_data_t) * data->meshes_count);
 
     *pbr_count = data->materials_count;
-    *pbr_infos = (gs_gfxt_pbr_t*)gs_malloc( data->materials_count * sizeof(gs_gfxt_pbr_t) );
-    memset(*pbr_infos, 0, data->materials_count * sizeof(gs_gfxt_pbr_t) );
+    *pbrout = (gs_gfxt_pbr_raw_data_t*)gs_malloc( data->materials_count * sizeof(gs_gfxt_pbr_raw_data_t) );
+    memset(*pbrout, 0, data->materials_count * sizeof(gs_gfxt_pbr_raw_data_t) );
     gs_println("%zu meshes and %zu pbr_infos to parse.", data->meshes_count, data->materials_count);
+    *pbrdescs = (gs_gfxt_pbr_desc_t*)gs_malloc( data->materials_count * sizeof(gs_gfxt_pbr_desc_t));
+    memset(*pbrdescs, 0, data->materials_count * sizeof(gs_gfxt_pbr_desc_t) );
+
+    gs_slot_map(cgltf_material*, uint32_t) mat_index_map = NULL;
+    
     // loop over all materials.
     for (uint32_t i = 0; i < data->materials_count; ++i)
     {
       gs_println("getting material index: %zu ", i);
       cgltf_material* cmat = &data->materials[i];
-      
+      gs_slot_map_insert(mat_index_map, cmat, i);
+
       gs_println("preparing write pbr info: %zu ",i);
-      gs_gfxt_pbr_t* pbr = &((*pbr_infos)[i]);
-      pbr->base_color_tex = gs_gfxt_texture_generate_default();
-      pbr->has_metal_rough = cmat->has_pbr_metallic_roughness;
-      
+      gs_gfxt_pbr_raw_data_t* pbr_textures = &((*pbrout)[i]);
       gs_println("this material has pbr_met rough. %zu ",i);  
+      gs_gfxt_pbr_desc_t* pbr_desc = &((*pbrdescs)[i]);
       // base color texture first thing in the metal_roughness.
-      if(pbr->has_metal_rough) {
+      if(cmat->has_pbr_metallic_roughness) {
+        pbr_desc->has_metal_rough = true;
+        
         cgltf_pbr_metallic_roughness* mr = &cmat->pbr_metallic_roughness;
         if(mr->base_color_texture.texture){
+          pbr_desc->has_base_color_texture = true;
           cgltf_texture_view* bc_texview = &mr->base_color_texture;
           cgltf_texture* bc_tex = bc_texview->texture;
           cgltf_image* bc_img = bc_tex->image;
@@ -643,11 +635,14 @@ gs_gfxt_load_gltf_all_data_from_file(const char* dir, const char* fname,
           gs_graphics_texture_desc_t bct_desc = gs_tex_desc_from_sampler(bc_sampler);
           gs_snprintf(TMP, sizeof(TMP), "%s/%s", dir, bc_img->uri);
           gs_println("base_color texture from gltf loading: %s ... ", TMP);
-          pbr->base_color_tex = gs_gfxt_texture_load_from_file(TMP, &bct_desc, false, false);
+          
+          gs_gfxt_texture_t base_color_tex = gs_gfxt_texture_load_from_file(TMP, &bct_desc, false, false);
+          gs_dyn_array_push(pbr_textures->textures, base_color_tex);
+          
         } 
         
         if(mr->base_color_factor) { 
-          pbr->base_color_fact = (gs_vec4){ .x = mr->base_color_factor[0],
+          pbr_desc->base_color_factor = (gs_vec4){ .x = mr->base_color_factor[0],
             .y = mr->base_color_factor[1],
             .z = mr->base_color_factor[2],
             .w = mr->base_color_factor[3] };
@@ -669,12 +664,18 @@ gs_gfxt_load_gltf_all_data_from_file(const char* dir, const char* fname,
       // Do node mesh data
       cgltf_mesh* cmesh = &data->meshes[_m];
       // For each primitive in mesh 
+      uint32_t mat_idx = 0;
       for (uint32_t p = 0; p < cmesh->primitives_count; ++p)
       {
           cgltf_primitive* prim = &cmesh->primitives[p];
-
+          
           // Mesh primitive to fill out
           gs_gfxt_mesh_vertex_data_t primitive = gs_default_val();
+          if( prim->material ){
+            mat_idx = gs_slot_map_get(mat_index_map, prim->material);
+            gs_println("found material index %zu for %zu mesh.", mat_idx, p);
+          }
+          primitive.mat_i = mat_idx;
 
           // Clear temp data from previous use
           gs_dyn_array_clear(positions);
@@ -997,6 +998,7 @@ gs_gfxt_load_gltf_all_data_from_file(const char* dir, const char* fname,
     
     // Free all data at the end
     cgltf_free(data);
+    gs_slot_map_free(mat_index_map);
     gs_dyn_array_free(positions);
     gs_dyn_array_free(normals);
     gs_dyn_array_free(tangents);
@@ -1148,6 +1150,7 @@ gs_gfxt_mesh_create(const gs_gfxt_mesh_desc_t* desc)
             // Construct primitive
             gs_gfxt_mesh_primitive_t prim = gs_default_val();
             prim.count = vdata->count;
+            prim.mat_i = vdata->mat_i;
 
             // Positions
             if (vdata->positions.data) 
@@ -1891,18 +1894,20 @@ gs_gfxt_mesh_draw_materials(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh, gs_gf
         gs_gfxt_mesh_primitive_t* prim = &mesh->primitives[i]; 
 
         // Get corresponding material, if available
-        uint32_t mat_idx = 0;//prim->mat_i < ct ? prim->mat_i : 0;
+        uint32_t mat_idx = prim->mat_i < ct ? prim->mat_i : 0;
         mat = mats[mat_idx] ? mats[mat_idx] : mat;
 
         // Can't draw without a valid material present
         if (!mat) continue;
-
+        gs_println("binding, mat.");
+        if( mat_idx == i) { 
         // Bind material pipeline and uniforms
         gs_gfxt_material_bind(cb, mat);
+        }
 
         // Get pipeline
         gs_gfxt_pipeline_t* pip = gs_gfxt_material_get_pipeline(mat);
-
+gs_println("drawing, mat. %zu index", mat_idx);
         gs_gfxt_mesh_primitive_draw_layout(cb, prim, pip->mesh_layout, gs_dyn_array_size(pip->mesh_layout) * sizeof(gs_gfxt_mesh_layout_t), 1);
     } 
 } 
