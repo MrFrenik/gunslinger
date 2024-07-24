@@ -417,7 +417,9 @@ void gs_gfxt_scene_pbr_draw(gs_command_buffer_t* cb, gs_gfxt_scene_t* scene, gs_
 GS_API_DECL 
 gs_gfxt_scene_t gs_gfxt_scene_new()
 {
-  const char* pbr_basic_path = "./third_party/include/gs/util/pbr_basic.sf";
+  // maybe we can ship this standard pipeline with the gs framework
+  gs_println("looking for pbr_basic in ./assets/pipelines/pbr_basic.sf");
+  const char* pbr_basic_path = "./assets/pipelines/pbr_basic.sf"; 
   gs_gfxt_pipeline_t pbr_pip = gs_gfxt_pipeline_load_from_file(pbr_basic_path);
   gs_gfxt_scene_t scene = {0};
   scene.pbr_pip = pbr_pip;
