@@ -379,7 +379,7 @@ gs_handle(gs_graphics_texture_t) gs_gfxt_texture_generate_default();
 
 // Scenes
 GS_API_DECL gs_gfxt_scene_t gs_gfxt_scene_new();
-GS_API_DECL uint32_t gs_gfxt_load_into_scene_from_file(const char* dir, const char* fname, gs_gfxt_scene_t* scene);
+GS_API_DECL void gs_gfxt_load_into_scene_from_file(const char* dir, const char* fname, gs_gfxt_scene_t* scene);
 GS_API_DECL void gs_gfxt_scene_pbr_draw(gs_command_buffer_t* cb, gs_gfxt_scene_t* scene, gs_mat4_t mvp);
 GS_API_DECL void gs_gfxt_scene_free(gs_gfxt_scene_t* scene);
 /** @} */ // end of gs_graphics_extension_util
@@ -424,7 +424,7 @@ gs_gfxt_scene_t gs_gfxt_scene_new()
   return scene;
 };
 
-GS_API_DECL uint32_t
+GS_API_DECL void
 gs_gfxt_load_into_scene_from_file(const char* dir, const char* fname, gs_gfxt_scene_t* scene)
 {
   gs_println("load into scene from file %s/%s", dir, fname);
@@ -449,11 +449,11 @@ gs_gfxt_load_into_scene_from_file(const char* dir, const char* fname, gs_gfxt_sc
   
   uint32_t material_handles[pbr_count];
   for(uint32_t _m = 0; _m < pbr_count; _m++) {
-      // node 0 material 
+      // node material 
       gs_gfxt_material_t material = gs_gfxt_material_create(&(gs_gfxt_material_desc_t){
           .pip_func.hndl = &scene->pbr_pip
       });
-      // node 0 pbr_t.
+      // node pbr textures.
       gs_gfxt_pbr_t pbr_info = gs_default_val();
       pbr_info.desc = pbr_descs[_m];
       pbr_info.textures = pbr_texs[_m];
@@ -470,7 +470,6 @@ gs_gfxt_load_into_scene_from_file(const char* dir, const char* fname, gs_gfxt_sc
       // create node 0 mesh
       gs_gfxt_mesh_desc_t mdesc = gs_default_val();
       gs_gfxt_mesh_raw_data_t mesh_raw_data = meshes[i];
-      gs_println("corruption warnign dont free. *meshes might be dealloc'd");
       mdesc.keep_data = true;
       mdesc.meshes = &mesh_raw_data; // only one mesh at a time
       mdesc.size = sizeof(gs_gfxt_mesh_raw_data_t);
@@ -479,19 +478,12 @@ gs_gfxt_load_into_scene_from_file(const char* dir, const char* fname, gs_gfxt_sc
       mesh = gs_gfxt_mesh_create(&mdesc);
       mesh.desc = mdesc;
       
-      gs_println("getting the material index from mesh_raw_data.");
       uint32_t material_idx = mesh_raw_data.primitives[0].mat_i;
       
       gs_gfxt_pbr_node_t pbr_node = gs_default_val();
       pbr_node.mesh = mesh;
       pbr_node.material_hndl = material_handles[material_idx];
-      if(i == 0){    
-          gs_println("first mesh");
-          first_node_hndl = gs_slot_array_insert(scene->nodes, pbr_node);
-      } else {
-          gs_println("%zu index mesh/node", i);
-          gs_slot_array_insert(scene->nodes, pbr_node);
-      }
+      gs_slot_array_insert(scene->nodes, pbr_node);
   }
   
   // free the malloc'd mesh data by calling create
@@ -499,9 +491,6 @@ gs_gfxt_load_into_scene_from_file(const char* dir, const char* fname, gs_gfxt_sc
   mdesc.meshes = meshes;
   mdesc.size = mesh_count * sizeof(gs_gfxt_mesh_raw_data_t);
   gs_gfxt_mesh_create(&mdesc);
- 
-  gs_println("done placing data into scene structs");
-  return first_node_hndl;
 }
 
 gs_inline gs_graphics_texture_desc_t
@@ -1918,20 +1907,18 @@ gs_gfxt_mesh_draw_materials(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh, gs_gf
         gs_gfxt_mesh_primitive_t* prim = &mesh->primitives[i]; 
 
         // Get corresponding material, if available
-        uint32_t mat_idx = prim->mat_i < ct ? prim->mat_i : 0;
+        uint32_t mat_idx = 0;//prim->mat_i < ct ? prim->mat_i : 0;
         mat = mats[mat_idx] ? mats[mat_idx] : mat;
 
         // Can't draw without a valid material present
         if (!mat) continue;
-        gs_println("binding, mat.");
-        if( mat_idx == i) { 
+
         // Bind material pipeline and uniforms
         gs_gfxt_material_bind(cb, mat);
-        }
 
         // Get pipeline
         gs_gfxt_pipeline_t* pip = gs_gfxt_material_get_pipeline(mat);
-gs_println("drawing, mat. %zu index", mat_idx);
+
         gs_gfxt_mesh_primitive_draw_layout(cb, prim, pip->mesh_layout, gs_dyn_array_size(pip->mesh_layout) * sizeof(gs_gfxt_mesh_layout_t), 1);
     } 
 } 
