@@ -4710,7 +4710,7 @@ GS_API_DECL gs_camera_t gs_camera_perspective();
 GS_API_DECL gs_mat4 gs_camera_get_view(const gs_camera_t* cam);
 GS_API_DECL gs_mat4 gs_camera_get_proj(const gs_camera_t* cam, int32_t view_width, int32_t view_height);
 GS_API_DECL gs_mat4 gs_camera_get_view_projection(const gs_camera_t* cam, int32_t view_width, int32_t view_height);
-GS_API_DECL gs_mat4 gs_camera_get_sky_view_projection(const gs_camera_t* cam, int32_t view_width, int32_t view_height);
+GS_API_DECL gs_mat4 gs_camera_get_sky_view_projection(const gs_camera_t* cam, int32_t view_width, int32_t view_height); // Camera position is ignored
 GS_API_DECL gs_vec3 gs_camera_forward(const gs_camera_t* cam);
 GS_API_DECL gs_vec3 gs_camera_backward(const gs_camera_t* cam);
 GS_API_DECL gs_vec3 gs_camera_up(const gs_camera_t* cam);
@@ -8128,9 +8128,9 @@ gs_camera_screen_to_world(const gs_camera_t* cam, gs_vec3 coords, s32 view_x, s3
 }
 
 gs_inline gs_mat4 
-gs_mat4_sky_look_at(gs_vec3 position, gs_vec3 target, gs_vec3 up)
+gs_mat4_sky_look_at(gs_vec3 forward, gs_vec3 up)
 {
-    gs_vec3 f = gs_vec3_norm(gs_vec3_sub(target, position));
+    gs_vec3 f = forward;
     gs_vec3 s = gs_vec3_norm(gs_vec3_cross(f, up));
     gs_vec3 u = gs_vec3_cross(s, f);
 
@@ -8171,8 +8171,7 @@ gs_camera_get_sky_view(const gs_camera_t* cam)
 {
     gs_vec3 up = gs_camera_up(cam);
     gs_vec3 forward = gs_camera_forward(cam);
-    gs_vec3 target = gs_vec3_add(forward, cam->transform.position);
-    return gs_mat4_sky_look_at(cam->transform.position, target, up);
+    return gs_mat4_sky_look_at(forward, up);
 }
 
 GS_API_DECL gs_mat4 
