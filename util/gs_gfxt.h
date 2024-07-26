@@ -363,14 +363,8 @@ GS_API_DECL void gs_gfxt_mesh_draw_pipeline(gs_command_buffer_t* cb, gs_gfxt_mes
 GS_API_DECL void gs_gfxt_mesh_draw_material(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh, gs_gfxt_material_t* mat);
 GS_API_DECL void gs_gfxt_mesh_draw_materials(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh, gs_gfxt_material_t** mats, size_t mats_size);
 GS_API_DECL void gs_gfxt_mesh_draw_layout(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh, gs_gfxt_mesh_layout_t* layout, size_t layout_size);
-GS_API_DECL gs_gfxt_mesh_t gs_gfxt_mesh_load_from_file(const char* file, gs_gfxt_mesh_import_options_t* options);
-GS_API_DECL bool gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_options_t* options, gs_gfxt_mesh_raw_data_t** out, uint32_t* mesh_count);
-GS_API_DECL bool 
-gs_gfxt_load_gltf_all_data_from_file(const char* dir, const char* fname,
-    gs_gfxt_mesh_import_options_t* options, 
-    gs_gfxt_mesh_raw_data_t** out, uint32_t* mesh_count, 
-    gs_gfxt_pbr_raw_data_t** pbrout, gs_gfxt_pbr_desc_t** pbrdescs, uint32_t* pbr_count);
-// Util API
+GS_API_DECL gs_gfxt_mesh_t gs_gfxt_mesh_load_from_file(const char* dir, const char* fname, gs_gfxt_mesh_import_options_t* options);
+GS_API_DECL bool gs_gfxt_load_gltf_data_from_file(const char* dir, const char* fname, gs_gfxt_mesh_import_options_t* options, gs_gfxt_mesh_raw_data_t** out, uint32_t* mesh_count, gs_gfxt_pbr_raw_data_t** pbrout, gs_gfxt_pbr_desc_t** pbrdescs, uint32_t* pbr_count);
 GS_API_DECL void* gs_gfxt_raw_data_default_impl(GS_GFXT_HNDL hndl, void* user_data);
 
 // Mesh Generation API
@@ -378,25 +372,31 @@ GS_API_DECL gs_gfxt_mesh_t gs_gfxt_mesh_unit_quad_generate(gs_gfxt_mesh_import_o
 gs_handle(gs_graphics_texture_t) gs_gfxt_texture_generate_default();
 
 // Scenes
-GS_API_DECL gs_gfxt_scene_t gs_gfxt_scene_new();
+GS_API_DECL gs_gfxt_pipeline_t gs_gfxt_default_pbr_pipeline(void);
 GS_API_DECL void gs_gfxt_load_into_scene_from_file(const char* dir, const char* fname, gs_gfxt_scene_t* scene);
-GS_API_DECL void gs_gfxt_scene_pbr_draw(gs_command_buffer_t* cb, gs_gfxt_scene_t* scene, gs_mat4_t mvp);
+GS_API_DECL void gs_gfxt_default_pbr_pipeline_draw(gs_command_buffer_t* cb, gs_gfxt_scene_t* scene, gs_mat4_t mvp);
 GS_API_DECL void gs_gfxt_scene_free(gs_gfxt_scene_t* scene);
 /** @} */ // end of gs_graphics_extension_util
 
 #ifdef GS_GFXT_IMPL
+#include "pbr_default.h"
 /*==== Implementation ====*/
 GS_API_DECL void 
 gs_gfxt_scene_free(gs_gfxt_scene_t* scene)
 {
-    // free all the gs_malloc()'d data.
-    if( gs_slot_array_size(scene->renderables) != 0 ) { gs_slot_array_free(scene->renderables); }
-    if( gs_slot_array_size(scene->nodes) != 0 ) { gs_slot_array_free(scene->nodes); }
-    if( gs_slot_array_size(scene->materials) != 0 ) { gs_slot_array_free(scene->materials); }
+    if( gs_slot_array_size(scene->renderables) != 0 ) {
+         gs_slot_array_free(scene->renderables); 
+    }
+    if( gs_slot_array_size(scene->nodes) != 0 ) {
+         gs_slot_array_free(scene->nodes); 
+     }
+    if( gs_slot_array_size(scene->materials) != 0 ) {
+         gs_slot_array_free(scene->materials); 
+     }
 }
 
 GS_API_DECL 
-void gs_gfxt_scene_pbr_draw(gs_command_buffer_t* cb, gs_gfxt_scene_t* scene, gs_mat4_t mvp)
+void gs_gfxt_default_pbr_pipeline_draw(gs_command_buffer_t* cb, gs_gfxt_scene_t* scene, gs_mat4_t mvp)
 {
     if( gs_slot_array_size(scene->nodes) == 0 ) { return; }
     for (
@@ -414,43 +414,34 @@ void gs_gfxt_scene_pbr_draw(gs_command_buffer_t* cb, gs_gfxt_scene_t* scene, gs_
     }
 };
 
-GS_API_DECL 
-gs_gfxt_scene_t gs_gfxt_scene_new()
-{
-  // maybe we can ship this standard pipeline with the gs framework
-  gs_println("looking for pbr_basic in ./assets/pipelines/pbr_basic.sf");
-  const char* pbr_basic_path = "./assets/pipelines/pbr_basic.sf"; 
-  gs_gfxt_pipeline_t pbr_pip = gs_gfxt_pipeline_load_from_file(pbr_basic_path);
-  gs_gfxt_scene_t scene = {0};
-  scene.pbr_pip = pbr_pip;
-  return scene;
-};
-
 GS_API_DECL void
 gs_gfxt_load_into_scene_from_file(const char* dir, const char* fname, gs_gfxt_scene_t* scene)
 {
-  gs_println("load into scene from file %s/%s", dir, fname);
-
-  gs_gfxt_pbr_raw_data_t* pbr_texs = gs_default_val();
-  gs_gfxt_pbr_desc_t* pbr_descs = gs_default_val();
-  uint32_t pbr_count;
-  gs_gfxt_mesh_raw_data_t* meshes = gs_default_val();
-  uint32_t mesh_count;
-  gs_gfxt_mesh_import_options_t pbr_options = {
+    char path[256] = {0};
+    gs_snprintf(path, sizeof(path), "%s/%s", dir, fname);
+    if (!gs_platform_file_exists(path)) {
+        gs_println("Warning:GFXT:LoadIntoSceneFromFile:File does not exist: %s", path);
+        return;
+    }
+    
+    gs_gfxt_pbr_raw_data_t* pbr_texs = gs_default_val();
+    gs_gfxt_pbr_desc_t* pbr_descs = gs_default_val();
+    uint32_t pbr_count;
+    gs_gfxt_mesh_raw_data_t* meshes = gs_default_val();
+    uint32_t mesh_count;
+    gs_gfxt_mesh_import_options_t pbr_options = {
       .layout = scene->pbr_pip.mesh_layout,
       .size = gs_dyn_array_size(scene->pbr_pip.mesh_layout) * sizeof(gs_gfxt_mesh_layout_t),
       .index_buffer_element_size = scene->pbr_pip.desc.raster.index_buffer_element_size
-  };
+    };
+    
+    bool success = gs_gfxt_load_gltf_data_from_file(dir, fname, &pbr_options, &meshes, &mesh_count, &pbr_texs, &pbr_descs, &pbr_count);
+            
+    if( success ) { gs_println("we loaded %zu meshes and %zu pbr infos, from the gltf!", mesh_count, pbr_count); } 
+    else { gs_println("ERROR::GsGfxtLoadIntoSceneFromFile::something went wrong laoding gltf"); return; }
   
-  bool success = gs_gfxt_load_gltf_all_data_from_file(dir, fname, &pbr_options,
-                                                      &meshes, &mesh_count,
-                                                      &pbr_texs, &pbr_descs, &pbr_count);
-  
-  if( success ) { gs_println("we loaded %zu meshes and %zu pbr infos, from the gltf!", mesh_count, pbr_count); } 
-  else { gs_println("ERROR::GsGfxtLoadIntoSceneFromFile::something went wrong laoding gltf"); return; }
-  
-  uint32_t material_handles[pbr_count];
-  for(uint32_t _m = 0; _m < pbr_count; _m++) {
+    uint32_t material_handles[pbr_count];
+    for(uint32_t _m = 0; _m < pbr_count; _m++) {
       // node material 
       gs_gfxt_material_t material = gs_gfxt_material_create(&(gs_gfxt_material_desc_t){
           .pip_func.hndl = &scene->pbr_pip
@@ -465,15 +456,13 @@ gs_gfxt_load_into_scene_from_file(const char* dir, const char* fname, gs_gfxt_sc
           gs_gfxt_material_set_uniform(gs_slot_array_getp(scene->materials, hndl), "u_base_col_tex", &(pbr_texs[_m].textures[0]));
       }
       material_handles[_m] = hndl;
-  }
-  
-  uint32_t first_node_hndl = 0;
-  for(uint32_t i = 0; i < mesh_count; i++) {
-      // create node 0 mesh
+    }
+
+    for(uint32_t i = 0; i < mesh_count; i++) {
       gs_gfxt_mesh_desc_t mdesc = gs_default_val();
       gs_gfxt_mesh_raw_data_t mesh_raw_data = meshes[i];
       mdesc.keep_data = true;
-      mdesc.meshes = &mesh_raw_data; // only one mesh at a time
+      mdesc.meshes = &mesh_raw_data;
       mdesc.size = sizeof(gs_gfxt_mesh_raw_data_t);
 
       gs_gfxt_mesh_t mesh = gs_default_val();
@@ -486,13 +475,13 @@ gs_gfxt_load_into_scene_from_file(const char* dir, const char* fname, gs_gfxt_sc
       pbr_node.mesh = mesh;
       pbr_node.material_hndl = material_handles[material_idx];
       gs_slot_array_insert(scene->nodes, pbr_node);
-  }
-  
-  // free the malloc'd mesh data by calling create
-  gs_gfxt_mesh_desc_t mdesc = gs_default_val();
-  mdesc.meshes = meshes;
-  mdesc.size = mesh_count * sizeof(gs_gfxt_mesh_raw_data_t);
-  gs_gfxt_mesh_create(&mdesc);
+    }
+
+    // free the malloc'd mesh data by calling create
+    gs_gfxt_mesh_desc_t mdesc = gs_default_val();
+    mdesc.meshes = meshes;
+    mdesc.size = mesh_count * sizeof(gs_gfxt_mesh_raw_data_t);
+    gs_gfxt_mesh_create(&mdesc);
 }
 
 gs_inline gs_graphics_texture_desc_t
@@ -543,489 +532,6 @@ gs_tex_desc_from_sampler(cgltf_sampler* sampler)
   return desc;
 }
 
-GS_API_DECL bool 
-gs_gfxt_load_gltf_all_data_from_file(const char* dir, const char* fname,
-    gs_gfxt_mesh_import_options_t* options, 
-    gs_gfxt_mesh_raw_data_t** out, uint32_t* mesh_count, 
-    gs_gfxt_pbr_raw_data_t** pbrout, gs_gfxt_pbr_desc_t** pbrdescs, uint32_t* pbr_count)
-{
-    // Use cgltf like a boss
-    cgltf_options cgltf_options = gs_default_val();
-    size_t len = 0;
-    char* file_data = NULL;
-    
-    char TMP[256] = {0};
-    gs_snprintf(TMP, sizeof(TMP), "%s/%s", dir, fname);
-    char* path = TMP;
-    // Get file extension from path
-    gs_transient_buffer(file_ext, 32);
-    gs_platform_file_extension(file_ext, 32, path);
-
-    // GLTF
-    if (gs_string_compare_equal(file_ext, "gltf")) {
-        file_data = gs_platform_read_file_contents(path, "rb", &len);
-        gs_println("GFXT:Loading GLTF: %s", path);
-    }
-    // GLB
-    else if (gs_string_compare_equal(file_ext, "glb")) {
-        file_data = gs_platform_read_file_contents(path, "rb", &len);
-        gs_println("GFXT:Loading GLTF: %s", path);
-    }
-    else {
-        gs_println("Warning:GFXT:LoadGLTFDataFromFile:File extension not supported: %s, file: %s", file_ext, path);
-        return false;
-    }
-
-    cgltf_data* data = NULL;
-    cgltf_result result = cgltf_parse(&cgltf_options, file_data, (cgltf_size)len, &data);
-    gs_free(file_data);
-
-    if (result != cgltf_result_success) {
-        gs_println("GFXT:Mesh:LoadFromFile:Failed load gltf");
-        cgltf_free(data);
-        return false;
-    }
-
-    // Load buffers as well
-    result = cgltf_load_buffers(&cgltf_options, data, path);
-    if (result != cgltf_result_success) {
-        cgltf_free(data);
-        gs_println("GFXT:Mesh:LoadFromFile:Failed to load buffers");
-        return false;
-    }
-
-    // Type of index data
-    size_t index_element_size = options ? options->index_buffer_element_size : 0;
-
-    // Temporary structures
-    gs_dyn_array(gs_vec3) positions = NULL;
-    gs_dyn_array(gs_vec3) normals = NULL;
-    gs_dyn_array(gs_vec3) tangents = NULL;
-    gs_dyn_array(gs_color_t) colors[GS_GFXT_COLOR_MAX] = gs_default_val();
-    gs_dyn_array(gs_vec2) uvs[GS_GFXT_TEX_COORD_MAX] = gs_default_val();
-    gs_dyn_array(float) weights[GS_GFXT_WEIGHT_MAX] = gs_default_val();
-    gs_dyn_array(float) joints[GS_GFXT_JOINT_MAX] = gs_default_val();
-    gs_dyn_array(gs_gfxt_mesh_layout_t) layouts = gs_default_val();
-    gs_byte_buffer_t v_data = gs_byte_buffer_new();
-    gs_byte_buffer_t i_data = gs_byte_buffer_new();
-    gs_mat4 world_mat = gs_mat4_identity();
-
-    // Allocate memory for buffers
-    *mesh_count = data->meshes_count;
-    *out = (gs_gfxt_mesh_raw_data_t*)gs_malloc(data->meshes_count * sizeof(gs_gfxt_mesh_raw_data_t));
-    memset(*out, 0, sizeof(gs_gfxt_mesh_raw_data_t) * data->meshes_count);
-
-    *pbr_count = data->materials_count;
-    *pbrout = (gs_gfxt_pbr_raw_data_t*)gs_malloc( data->materials_count * sizeof(gs_gfxt_pbr_raw_data_t) );
-    memset(*pbrout, 0, data->materials_count * sizeof(gs_gfxt_pbr_raw_data_t) );
-    gs_println("%zu meshes and %zu pbr_infos to parse.", data->meshes_count, data->materials_count);
-    *pbrdescs = (gs_gfxt_pbr_desc_t*)gs_malloc( data->materials_count * sizeof(gs_gfxt_pbr_desc_t));
-    memset(*pbrdescs, 0, data->materials_count * sizeof(gs_gfxt_pbr_desc_t) );
-
-    gs_slot_map(cgltf_material*, uint32_t) mat_index_map = NULL;
-    
-    // loop over all materials.
-    for (uint32_t i = 0; i < data->materials_count; ++i)
-    {
-      gs_println("getting material index: %zu ", i);
-      cgltf_material* cmat = &data->materials[i];
-      gs_slot_map_insert(mat_index_map, cmat, i);
-
-      gs_println("preparing write pbr info: %zu ",i);
-      gs_gfxt_pbr_raw_data_t* pbr_textures = &((*pbrout)[i]);
-      gs_println("this material has pbr_met rough. %zu ",i);  
-      gs_gfxt_pbr_desc_t* pbr_desc = &((*pbrdescs)[i]);
-      // base color texture first thing in the metal_roughness.
-      if(cmat->has_pbr_metallic_roughness) {
-        pbr_desc->has_metal_rough = true;
-        
-        cgltf_pbr_metallic_roughness* mr = &cmat->pbr_metallic_roughness;
-        if(mr->base_color_texture.texture){
-          pbr_desc->has_base_color_texture = true;
-          cgltf_texture_view* bc_texview = &mr->base_color_texture;
-          cgltf_texture* bc_tex = bc_texview->texture;
-          cgltf_image* bc_img = bc_tex->image;
-          cgltf_sampler* bc_sampler = bc_tex->sampler;
-
-          gs_println("getting sampler from material: %zu ", i);
-          gs_graphics_texture_desc_t bct_desc = gs_tex_desc_from_sampler(bc_sampler);
-          gs_snprintf(TMP, sizeof(TMP), "%s/%s", dir, bc_img->uri);
-          gs_println("base_color texture from gltf loading: %s ... ", TMP);
-          
-          gs_gfxt_texture_t base_color_tex = gs_gfxt_texture_load_from_file(TMP, &bct_desc, false, false);
-          gs_dyn_array_push(pbr_textures->textures, base_color_tex);
-        } 
-        
-        if(mr->base_color_factor) { 
-          pbr_desc->base_color_factor = (gs_vec4){ .x = mr->base_color_factor[0],
-            .y = mr->base_color_factor[1],
-            .z = mr->base_color_factor[2],
-            .w = mr->base_color_factor[3] };
-        }
-      }
-      gs_println("%zu material iter", i);
-    } // materials
-    
-    // all meshes
-    for (uint32_t _m = 0; _m < data->meshes_count; ++_m)
-    {
-      // Reset matrix
-      world_mat = gs_mat4_identity();
-      // Initialize mesh data
-      gs_gfxt_mesh_raw_data_t* mesh = &((*out)[_m]);
-      bool warnings[gs_enum_count(gs_asset_mesh_attribute_type)] = gs_default_val();
-      bool printed = false;
-      
-      // Do node mesh data
-      cgltf_mesh* cmesh = &data->meshes[_m];
-      // For each primitive in mesh 
-      uint32_t mat_idx = 0;
-      for (uint32_t p = 0; p < cmesh->primitives_count; ++p)
-      {
-          cgltf_primitive* prim = &cmesh->primitives[p];
-          
-          // Mesh primitive to fill out
-          gs_gfxt_mesh_vertex_data_t primitive = gs_default_val();
-          if( prim->material ){
-            mat_idx = gs_slot_map_get(mat_index_map, prim->material);
-            gs_println("found material index %zu for %zu mesh.", mat_idx, _m);
-          }
-          primitive.mat_i = mat_idx;
-
-          // Clear temp data from previous use
-          gs_dyn_array_clear(positions);
-          gs_dyn_array_clear(normals);
-          gs_dyn_array_clear(tangents);
-          for (uint32_t ci = 0; ci < GS_GFXT_COLOR_MAX; ++ci) gs_dyn_array_clear(colors[ci]);
-          for (uint32_t tci = 0; tci < GS_GFXT_TEX_COORD_MAX; ++tci) gs_dyn_array_clear(uvs[tci]);
-          for (uint32_t wi = 0; wi < GS_GFXT_WEIGHT_MAX; ++wi) gs_dyn_array_clear(weights[wi]);
-          for (uint32_t ji = 0; ji < GS_GFXT_JOINT_MAX; ++ji) gs_dyn_array_clear(joints[ji]);
-          gs_dyn_array_clear(layouts);
-          gs_byte_buffer_clear(&v_data);
-          gs_byte_buffer_clear(&i_data);
-
-          // Collect all provided attribute data for each vertex that's available in gltf data
-          #define __GFXT_GLTF_PUSH_ATTR(ATTR, TYPE, COUNT, ARR, ARR_TYPE, LAYOUTS, LAYOUT_TYPE)\
-              do {\
-                  int32_t N = 0;\
-                  TYPE* BUF = (TYPE*)ATTR->buffer_view->buffer->data + ATTR->buffer_view->offset/sizeof(TYPE) + ATTR->offset/sizeof(TYPE);\
-                  gs_assert(BUF);\
-                  TYPE V[COUNT] = gs_default_val();\
-                  /* For each vertex */\
-                  for (uint32_t k = 0; k < ATTR->count; k++)\
-                  {\
-                      /* For each element */\
-                      for (int l = 0; l < COUNT; l++) {\
-                          V[l] = BUF[N + l];\
-                      }\
-                      N += (int32_t)(ATTR->stride/sizeof(TYPE));\
-                      /* Add to temp data array */\
-                      ARR_TYPE ELEM = gs_default_val();\
-                      memcpy((void*)&ELEM, (void*)V, sizeof(ARR_TYPE));\
-                      gs_dyn_array_push(ARR, ELEM);\
-                  }\
-                  /* Push into layout */\
-                  gs_gfxt_mesh_layout_t LAYOUT = gs_default_val();\
-                  LAYOUT.type = LAYOUT_TYPE;\
-                  gs_dyn_array_push(LAYOUTS, LAYOUT);\
-              } while (0)
-
-          // For each attribute in primitive
-          for (uint32_t a = 0; a < prim->attributes_count; ++a)
-          {
-              // Accessor for attribute data
-              cgltf_accessor* attr = prim->attributes[a].data;
-
-              // Index for data
-              int32_t aidx = prim->attributes[a].index;
-
-              // Switch on type for reading data
-              switch (prim->attributes[a].type)
-              {
-                  case cgltf_attribute_type_position: {
-                      int32_t N = 0;
-                      float* BUF = (float*)attr->buffer_view->buffer->data + attr->buffer_view->offset/sizeof(float) + attr->offset/sizeof(float);
-                      gs_assert(BUF);
-                      float V[3] = gs_default_val();
-                      /* For each vertex */
-                      for (uint32_t k = 0; k < attr->count; k++)
-                      {
-                          /* For each element */
-                          for (int l = 0; l < 3; l++) {
-                              V[l] = BUF[N + l];
-                          } 
-                          N += (int32_t)(attr->stride/sizeof(float));
-                          /* Add to temp data array */
-                          gs_vec3 ELEM = gs_default_val();
-                          memcpy((void*)&ELEM, (void*)V, sizeof(gs_vec3));
-                          // Transform into world space
-                          ELEM = gs_mat4_mul_vec3(world_mat, ELEM);
-                          gs_dyn_array_push(positions, ELEM);
-                      }
-                      /* Push into layout */
-                      gs_gfxt_mesh_layout_t LAYOUT = gs_default_val();
-                      LAYOUT.type = GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION;
-                      gs_dyn_array_push(layouts, LAYOUT);
-                  } break;
-
-                  case cgltf_attribute_type_normal: {
-                      __GFXT_GLTF_PUSH_ATTR(attr, float, 3, normals, gs_vec3, layouts, GS_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL);
-                  } break;
-
-                  case cgltf_attribute_type_tangent: {
-                      __GFXT_GLTF_PUSH_ATTR(attr, float, 3, tangents, gs_vec3, layouts, GS_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT);
-                  } break;
-
-                  case cgltf_attribute_type_texcoord: {
-                      __GFXT_GLTF_PUSH_ATTR(attr, float, 2, uvs[aidx], gs_vec2, layouts, GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD);
-                  } break;
-
-                  case cgltf_attribute_type_color: {
-                      // Need to parse color as sRGB then convert to gs_color_t
-                      int32_t N = 0;
-                      float* BUF = (float*)attr->buffer_view->buffer->data + attr->buffer_view->offset/sizeof(float) + attr->offset/sizeof(float);
-                      gs_assert(BUF);
-                      float V[3] = gs_default_val();
-                      /* For each vertex */\
-                      for (uint32_t k = 0; k < attr->count; k++)
-                      {
-                          /* For each element */
-                          for (int l = 0; l < 3; l++) {
-                              V[l] = BUF[N + l];
-                          }
-                          N += (int32_t)(attr->stride/sizeof(float));
-                          /* Add to temp data array */
-                          gs_color_t ELEM = gs_default_val();
-                          // Need to convert over now
-                          ELEM.r = (uint8_t)(V[0] * 255.f);
-                          ELEM.g = (uint8_t)(V[1] * 255.f);
-                          ELEM.b = (uint8_t)(V[2] * 255.f);
-                          ELEM.a = 255; 
-                          gs_dyn_array_push(colors[aidx], ELEM);
-                      }
-                      /* Push into layout */
-                      gs_gfxt_mesh_layout_t LAYOUT = gs_default_val();
-                      LAYOUT.type = GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR;
-                      gs_dyn_array_push(layouts, LAYOUT);
-                  } break;
-
-                  // Not sure what to do with these for now
-                  case cgltf_attribute_type_joints: 
-                  {
-                      // Push into layout
-                      gs_gfxt_mesh_layout_t layout = gs_default_val();
-                      layout.type = GS_ASSET_MESH_ATTRIBUTE_TYPE_JOINT;
-                      gs_dyn_array_push(layouts, layout);
-                  } break;
-
-                  case cgltf_attribute_type_weights:
-                  {
-                      // Push into layout
-                      gs_gfxt_mesh_layout_t layout = gs_default_val();
-                      layout.type = GS_ASSET_MESH_ATTRIBUTE_TYPE_WEIGHT;
-                      gs_dyn_array_push(layouts, layout);
-                  } break;
-
-                  // Shouldn't hit here...   
-                  default: {
-                  } break;
-              }
-          }
-
-          // Indices for primitive
-          cgltf_accessor* acc = prim->indices;
-
-          #define __GFXT_GLTF_PUSH_IDX(BB, ACC, TYPE)\
-              do {\
-                  int32_t n = 0;\
-                  TYPE* buf = (TYPE*)acc->buffer_view->buffer->data + acc->buffer_view->offset/sizeof(TYPE) + acc->offset/sizeof(TYPE);\
-                  gs_assert(buf);\
-                  TYPE v = 0;\
-                  /* For each index */\
-                  for (uint32_t k = 0; k < acc->count; k++) {\
-                      /* For each element */\
-                      for (int l = 0; l < 1; l++) {\
-                          v = buf[n + l];\
-                      }\
-                      n += (int32_t)(acc->stride/sizeof(TYPE));\
-                      /* Add to temp positions array */\
-                      switch (index_element_size) {\
-                          case 0: gs_byte_buffer_write(BB, uint16_t, (uint16_t)v); break;\
-                          case 2: gs_byte_buffer_write(BB, uint16_t, (uint16_t)v); break;\
-                          case 4: gs_byte_buffer_write(BB, uint32_t, (uint32_t)v); break;\
-                      }\
-                  }\
-              } while (0)
-
-          // If indices are available
-          if (acc) 
-          {
-              switch (acc->component_type) 
-              {
-                  case cgltf_component_type_r_8:   __GFXT_GLTF_PUSH_IDX(&i_data, acc, int8_t);   break;
-                  case cgltf_component_type_r_8u:  __GFXT_GLTF_PUSH_IDX(&i_data, acc, uint8_t);  break;
-                  case cgltf_component_type_r_16:  __GFXT_GLTF_PUSH_IDX(&i_data, acc, int16_t);  break;
-                  case cgltf_component_type_r_16u: __GFXT_GLTF_PUSH_IDX(&i_data, acc, uint16_t); break;
-                  case cgltf_component_type_r_32u: __GFXT_GLTF_PUSH_IDX(&i_data, acc, uint32_t); break;
-                  case cgltf_component_type_r_32f: __GFXT_GLTF_PUSH_IDX(&i_data, acc, float);    break;
-
-                  // Shouldn't hit here
-                  default: {
-                  } break;
-              }
-          }
-          else 
-          {
-              // Iterate over positions size, then just push back indices
-              for (uint32_t i = 0; i < gs_dyn_array_size(positions); ++i) 
-              {
-                  switch (index_element_size)
-                  {
-                      default:
-                      case 0: gs_byte_buffer_write(&i_data, uint16_t, (uint16_t)i); break;
-                      case 2: gs_byte_buffer_write(&i_data, uint16_t, (uint16_t)i); break;
-                      case 4: gs_byte_buffer_write(&i_data, uint32_t, (uint32_t)i); break;
-                  }
-              }
-          }
-          // Count
-          primitive.count = prim->indices->count;
-
-          // Indices
-          primitive.indices.size = i_data.size;
-          primitive.indices.data = gs_malloc(i_data.size);
-          memcpy(primitive.indices.data, i_data.data, i_data.size);
-
-          // Positions
-          if (!gs_dyn_array_empty(positions))
-          {
-              primitive.positions.size = gs_dyn_array_size(positions) * sizeof(gs_vec3);
-              primitive.positions.data = gs_malloc(primitive.positions.size);
-              memcpy(primitive.positions.data, positions, primitive.positions.size);
-          }
-
-          // Normals
-          if (!gs_dyn_array_empty(normals))
-          {
-              primitive.normals.size = gs_dyn_array_size(normals) * sizeof(gs_vec3);
-              primitive.normals.data = gs_malloc(primitive.normals.size);
-              memcpy(primitive.normals.data, normals, primitive.normals.size);
-          }
-
-          // Tangents
-          if (!gs_dyn_array_empty(tangents))
-          {
-              primitive.tangents.size = gs_dyn_array_size(tangents) * sizeof(gs_vec3);
-              primitive.tangents.data = gs_malloc(primitive.tangents.size);
-              memcpy(primitive.tangents.data, tangents, primitive.tangents.size);
-          }
-
-          // Texcoords
-          for (uint32_t tci = 0; tci < GS_GFXT_TEX_COORD_MAX; ++tci)
-          {
-              if (!gs_dyn_array_empty(uvs[tci]))
-              {
-                  primitive.tex_coords[tci].size = gs_dyn_array_size(uvs[tci]) * sizeof(gs_vec2);
-                  primitive.tex_coords[tci].data = gs_malloc(primitive.tex_coords[tci].size);
-                  memcpy(primitive.tex_coords[tci].data, uvs[tci], primitive.tex_coords[tci].size);
-              }
-              else
-              {
-                  break;
-              }
-          }
-
-          // Colors
-          for (uint32_t ci = 0; ci < GS_GFXT_COLOR_MAX; ++ci)
-          {
-              if (!gs_dyn_array_empty(colors[ci]))
-              {
-                  primitive.colors[ci].size = gs_dyn_array_size(colors[ci]) * sizeof(gs_color_t);
-                  primitive.colors[ci].data = gs_malloc(primitive.colors[ci].size);
-                  memcpy(primitive.colors[ci].data, colors[ci], primitive.colors[ci].size);
-              }
-              else
-              {
-                  break;
-              }
-          }
-
-          // Joints
-          for (uint32_t ji = 0; ji < GS_GFXT_JOINT_MAX; ++ji)
-          {
-              if (!gs_dyn_array_empty(joints[ji]))
-              {
-                  primitive.joints[ji].size = gs_dyn_array_size(joints[ji]) * sizeof(float);
-                  primitive.joints[ji].data = gs_malloc(primitive.joints[ji].size);
-                  memcpy(primitive.joints[ji].data, joints[ji], primitive.joints[ji].size);
-              }
-              else
-              {
-                  break;
-              }
-          }
-
-          // Weights
-          for (uint32_t wi = 0; wi < GS_GFXT_WEIGHT_MAX; ++wi)
-          {
-              if (!gs_dyn_array_empty(weights[wi]))
-              {
-                  primitive.weights[wi].size = gs_dyn_array_size(weights[wi]) * sizeof(float);
-                  primitive.weights[wi].data = gs_malloc(primitive.weights[wi].size);
-                  memcpy(primitive.weights[wi].data, weights[wi], primitive.weights[wi].size);
-              }
-              else
-              {
-                  break;
-              }
-          }
-
-          // Add primitive to mesh
-          gs_dyn_array_push(mesh->primitives, primitive);
-      } 
-
-      if (!printed)
-      {
-          printed = true;
-          if (warnings[GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION]){
-              gs_log_warning("Mesh attribute: POSITION not found. Resorting to default."); 
-          }
-
-          if (warnings[GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD]) {
-              gs_log_warning("Mesh attribute: TEXCOORD not found. Resorting to default."); 
-          }
-
-          if (warnings[GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR]) {
-              gs_log_warning("Mesh attribute: COLOR not found. Resorting to default."); 
-          }
-
-          if (warnings[GS_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL]) {
-              gs_log_warning("Mesh attribute: NORMAL not found. Resorting to default."); 
-          }
-
-          if (warnings[GS_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT]) {
-              gs_log_warning("Mesh attribute: WEIGHTS not found. Resorting to default."); 
-          } 
-      }
-    } // meshes
-    
-    gs_println("Finished loading mesh.");
-    
-    // Free all data at the end
-    cgltf_free(data);
-    gs_slot_map_free(mat_index_map);
-    gs_dyn_array_free(positions);
-    gs_dyn_array_free(normals);
-    gs_dyn_array_free(tangents);
-    for (uint32_t ci = 0; ci < GS_GFXT_COLOR_MAX; ++ci) gs_dyn_array_free(colors[ci]);
-    for (uint32_t tci = 0; tci < GS_GFXT_TEX_COORD_MAX; ++tci) gs_dyn_array_free(uvs[tci]);
-    for (uint32_t wi = 0; wi < GS_GFXT_WEIGHT_MAX; ++wi) gs_dyn_array_free(weights[wi]);
-    for (uint32_t ji = 0; ji < GS_GFXT_JOINT_MAX; ++ji) gs_dyn_array_free(joints[ji]);
-    gs_dyn_array_free(layouts);
-    gs_byte_buffer_free(&v_data);
-    gs_byte_buffer_free(&i_data);
-    return true;
-}
 // Creation/Destruction
 GS_API_DECL gs_gfxt_pipeline_t 
 gs_gfxt_pipeline_create(const gs_gfxt_pipeline_desc_t* desc)
@@ -1964,10 +1470,12 @@ GS_API_DECL void gs_gfxt_mesh_import_options_free(gs_gfxt_mesh_import_options_t*
 }
 
 GS_API_DECL 
-gs_gfxt_mesh_t gs_gfxt_mesh_load_from_file(const char* path, gs_gfxt_mesh_import_options_t* options)
+gs_gfxt_mesh_t gs_gfxt_mesh_load_from_file(const char* dir, const char* fname, gs_gfxt_mesh_import_options_t* options)
 {
     gs_gfxt_mesh_t mesh = gs_default_val();
-
+    
+    char path[256] = {0};
+    gs_snprintf(path, sizeof(path), "%s/%s", dir, fname);
     if (!gs_platform_file_exists(path)) {
         gs_println("Warning:GFXT:MeshLoadFromFile:File does not exist: %s", path);
         return mesh;
@@ -1976,18 +1484,22 @@ gs_gfxt_mesh_t gs_gfxt_mesh_load_from_file(const char* path, gs_gfxt_mesh_import
     // Mesh data to fill out
     uint32_t mesh_count = 0;
     gs_gfxt_mesh_raw_data_t* meshes = NULL;
-
+    
+    // pbr textures to free after load
+    gs_gfxt_pbr_raw_data_t* pbr_texs = NULL;
+    gs_gfxt_pbr_desc_t* pbr_descs = NULL;
+    uint32_t pbr_count = 0;
     // Get file extension from path
     gs_transient_buffer(file_ext, 32);
-    gs_platform_file_extension(file_ext, 32, path);
-
+    gs_platform_file_extension(file_ext, 32, fname);
+    
     // GLTF
     if (gs_string_compare_equal(file_ext, "gltf")) {
-        gs_gfxt_load_gltf_data_from_file(path, options, &meshes, &mesh_count);
+        gs_gfxt_load_gltf_data_from_file(dir, fname, options, &meshes, &mesh_count, &pbr_texs, &pbr_descs, &pbr_count);
     }
     // GLB
     else if (gs_string_compare_equal(file_ext, "glb")) {
-        gs_gfxt_load_gltf_data_from_file(path, options, &meshes, &mesh_count);
+        gs_gfxt_load_gltf_data_from_file(dir, fname, options, &meshes, &mesh_count, &pbr_texs, &pbr_descs, &pbr_count);
     }
     else {
         gs_println("Warning:GFXT:MeshLoadFromFile:File extension not supported: %s, file: %s", file_ext, path);
@@ -2005,13 +1517,16 @@ gs_gfxt_mesh_t gs_gfxt_mesh_load_from_file(const char* path, gs_gfxt_mesh_import
 }
 
 GS_API_DECL bool 
-gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_options_t* options, 
-    gs_gfxt_mesh_raw_data_t** out, uint32_t* mesh_count)
+gs_gfxt_load_gltf_data_from_file(const char* dir, const char* fname, gs_gfxt_mesh_import_options_t* options, gs_gfxt_mesh_raw_data_t** out, uint32_t* mesh_count, gs_gfxt_pbr_raw_data_t** pbrout, gs_gfxt_pbr_desc_t** pbrdescs, uint32_t* pbr_count)
 {
     // Use cgltf like a boss
     cgltf_options cgltf_options = gs_default_val();
     size_t len = 0;
     char* file_data = NULL;
+    
+    char TMP[256] = {0}; // reuse to load dir/image_uri
+    char path[256] = {0};
+    gs_snprintf(path, sizeof(path), "%s/%s", dir, fname);
 
     // Get file extension from path
     gs_transient_buffer(file_ext, 32);
@@ -2071,480 +1586,401 @@ gs_gfxt_load_gltf_data_from_file(const char* path, gs_gfxt_mesh_import_options_t
     *out = (gs_gfxt_mesh_raw_data_t*)gs_malloc(data->meshes_count * sizeof(gs_gfxt_mesh_raw_data_t));
     memset(*out, 0, sizeof(gs_gfxt_mesh_raw_data_t) * data->meshes_count);
 
-    // For each node, for each mesh
-    uint32_t i = 0;
-    for (uint32_t _n = 0; _n < data->nodes_count; ++_n)
+    *pbr_count = data->materials_count;
+    *pbrout = (gs_gfxt_pbr_raw_data_t*)gs_malloc( data->materials_count * sizeof(gs_gfxt_pbr_raw_data_t) );
+    memset(*pbrout, 0, data->materials_count * sizeof(gs_gfxt_pbr_raw_data_t) );
+    gs_println("%zu meshes and %zu pbr_infos to parse.", data->meshes_count, data->materials_count);
+    *pbrdescs = (gs_gfxt_pbr_desc_t*)gs_malloc( data->materials_count * sizeof(gs_gfxt_pbr_desc_t));
+    memset(*pbrdescs, 0, data->materials_count * sizeof(gs_gfxt_pbr_desc_t) );
+
+    gs_slot_map(cgltf_material*, uint32_t) mat_index_map = NULL;
+    
+    // loop over all materials.
+    for (uint32_t i = 0; i < data->materials_count; ++i)
     {
-        cgltf_node* node = &data->nodes[_n];
-        if (node->mesh == NULL) continue;
+      gs_println("getting material index: %zu ", i);
+      cgltf_material* cmat = &data->materials[i];
+      gs_slot_map_insert(mat_index_map, cmat, i);
 
-        gs_println("Load mesh from node: %s", node->name);
-
-        // Reset matrix
-        world_mat = gs_mat4_identity();
-
-        // gs_println("i: %zu, r: %zu, t: %zu, s: %zu, m: %zu", i, node->has_rotation, node->has_translation, node->has_scale, node->has_matrix);
-
-        // Not sure what "local transform" does, since world gives me the actual world result...probably for animation
-        if (node->has_rotation || node->has_translation || node->has_scale) 
-        {
-            cgltf_node_transform_world(node, (float*)&world_mat);
-        }
-
-        // if (node->has_matrix)
-        // {
-        //  // Multiply local by world
-        //  gs_mat4 tmp = gs_default_val();
-        //  cgltf_node_transform_world(node, (float*)&tmp);
-        //  world_mat = gs_mat4_mul(world_mat, tmp);
-        // }
-
+      gs_gfxt_pbr_raw_data_t* pbr_textures = &((*pbrout)[i]);
+      gs_gfxt_pbr_desc_t* pbr_desc = &((*pbrdescs)[i]);
+      // base color texture first thing in the metal_roughness.
+      if(cmat->has_pbr_metallic_roughness) {
+        pbr_desc->has_metal_rough = true;
         
-        // Do node mesh data
-        cgltf_mesh* cmesh = node->mesh;
-        {
-            // Initialize mesh data
-            gs_gfxt_mesh_raw_data_t* mesh = &((*out)[i]);
-            bool warnings[gs_enum_count(gs_asset_mesh_attribute_type)] = gs_default_val();
-            bool printed = false;
+        cgltf_pbr_metallic_roughness* mr = &cmat->pbr_metallic_roughness;
+        if(mr->base_color_texture.texture){
+          pbr_desc->has_base_color_texture = true;
+          cgltf_texture_view* bc_texview = &mr->base_color_texture;
+          cgltf_texture* bc_tex = bc_texview->texture;
+          cgltf_image* bc_img = bc_tex->image;
+          cgltf_sampler* bc_sampler = bc_tex->sampler;
 
-            // For each primitive in mesh 
-            for (uint32_t p = 0; p < cmesh->primitives_count; ++p)
-            {
-                cgltf_primitive* prim = &cmesh->primitives[p];
-
-                // Mesh primitive to fill out
-                gs_gfxt_mesh_vertex_data_t primitive = gs_default_val();
-
-                // Clear temp data from previous use
-                gs_dyn_array_clear(positions);
-                gs_dyn_array_clear(normals);
-                gs_dyn_array_clear(tangents);
-                for (uint32_t ci = 0; ci < GS_GFXT_COLOR_MAX; ++ci) gs_dyn_array_clear(colors[ci]);
-                for (uint32_t tci = 0; tci < GS_GFXT_TEX_COORD_MAX; ++tci) gs_dyn_array_clear(uvs[tci]);
-                for (uint32_t wi = 0; wi < GS_GFXT_WEIGHT_MAX; ++wi) gs_dyn_array_clear(weights[wi]);
-                for (uint32_t ji = 0; ji < GS_GFXT_JOINT_MAX; ++ji) gs_dyn_array_clear(joints[ji]);
-                gs_dyn_array_clear(layouts);
-                gs_byte_buffer_clear(&v_data);
-                gs_byte_buffer_clear(&i_data);
-
-                // Collect all provided attribute data for each vertex that's available in gltf data
-                #define __GFXT_GLTF_PUSH_ATTR(ATTR, TYPE, COUNT, ARR, ARR_TYPE, LAYOUTS, LAYOUT_TYPE)\
-                    do {\
-                        int32_t N = 0;\
-                        TYPE* BUF = (TYPE*)ATTR->buffer_view->buffer->data + ATTR->buffer_view->offset/sizeof(TYPE) + ATTR->offset/sizeof(TYPE);\
-                        gs_assert(BUF);\
-                        TYPE V[COUNT] = gs_default_val();\
-                        /* For each vertex */\
-                        for (uint32_t k = 0; k < ATTR->count; k++)\
-                        {\
-                            /* For each element */\
-                            for (int l = 0; l < COUNT; l++) {\
-                                V[l] = BUF[N + l];\
-                            }\
-                            N += (int32_t)(ATTR->stride/sizeof(TYPE));\
-                            /* Add to temp data array */\
-                            ARR_TYPE ELEM = gs_default_val();\
-                            memcpy((void*)&ELEM, (void*)V, sizeof(ARR_TYPE));\
-                            gs_dyn_array_push(ARR, ELEM);\
-                        }\
-                        /* Push into layout */\
-                        gs_gfxt_mesh_layout_t LAYOUT = gs_default_val();\
-                        LAYOUT.type = LAYOUT_TYPE;\
-                        gs_dyn_array_push(LAYOUTS, LAYOUT);\
-                    } while (0)
-
-                // For each attribute in primitive
-                for (uint32_t a = 0; a < prim->attributes_count; ++a)
-                {
-                    // Accessor for attribute data
-                    cgltf_accessor* attr = prim->attributes[a].data;
-
-                    // Index for data
-                    int32_t aidx = prim->attributes[a].index;
-
-                    // Switch on type for reading data
-                    switch (prim->attributes[a].type)
-                    {
-                        case cgltf_attribute_type_position: {
-                            int32_t N = 0;
-                            float* BUF = (float*)attr->buffer_view->buffer->data + attr->buffer_view->offset/sizeof(float) + attr->offset/sizeof(float);
-                            gs_assert(BUF);
-                            float V[3] = gs_default_val();
-                            /* For each vertex */
-                            for (uint32_t k = 0; k < attr->count; k++)
-                            {
-                                /* For each element */
-                                for (int l = 0; l < 3; l++) {
-                                    V[l] = BUF[N + l];
-                                } 
-                                N += (int32_t)(attr->stride/sizeof(float));
-                                /* Add to temp data array */
-                                gs_vec3 ELEM = gs_default_val();
-                                memcpy((void*)&ELEM, (void*)V, sizeof(gs_vec3));
-                                // Transform into world space
-                                ELEM = gs_mat4_mul_vec3(world_mat, ELEM);
-                                gs_dyn_array_push(positions, ELEM);
-                            }
-                            /* Push into layout */
-                            gs_gfxt_mesh_layout_t LAYOUT = gs_default_val();
-                            LAYOUT.type = GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION;
-                            gs_dyn_array_push(layouts, LAYOUT);
-                        } break;
-
-                        case cgltf_attribute_type_normal: {
-                            __GFXT_GLTF_PUSH_ATTR(attr, float, 3, normals, gs_vec3, layouts, GS_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL);
-                        } break;
-
-                        case cgltf_attribute_type_tangent: {
-                            __GFXT_GLTF_PUSH_ATTR(attr, float, 3, tangents, gs_vec3, layouts, GS_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT);
-                        } break;
-
-                        case cgltf_attribute_type_texcoord: {
-                            __GFXT_GLTF_PUSH_ATTR(attr, float, 2, uvs[aidx], gs_vec2, layouts, GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD);
-                        } break;
-
-                        case cgltf_attribute_type_color: {
-                            // Need to parse color as sRGB then convert to gs_color_t
-                            int32_t N = 0;
-                            float* BUF = (float*)attr->buffer_view->buffer->data + attr->buffer_view->offset/sizeof(float) + attr->offset/sizeof(float);
-                            gs_assert(BUF);
-                            float V[3] = gs_default_val();
-                            /* For each vertex */\
-                            for (uint32_t k = 0; k < attr->count; k++)
-                            {
-                                /* For each element */
-                                for (int l = 0; l < 3; l++) {
-                                    V[l] = BUF[N + l];
-                                }
-                                N += (int32_t)(attr->stride/sizeof(float));
-                                /* Add to temp data array */
-                                gs_color_t ELEM = gs_default_val();
-                                // Need to convert over now
-                                ELEM.r = (uint8_t)(V[0] * 255.f);
-                                ELEM.g = (uint8_t)(V[1] * 255.f);
-                                ELEM.b = (uint8_t)(V[2] * 255.f);
-                                ELEM.a = 255; 
-                                gs_dyn_array_push(colors[aidx], ELEM);
-                            }
-                            /* Push into layout */
-                            gs_gfxt_mesh_layout_t LAYOUT = gs_default_val();
-                            LAYOUT.type = GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR;
-                            gs_dyn_array_push(layouts, LAYOUT);
-                        } break;
-
-                        // Not sure what to do with these for now
-                        case cgltf_attribute_type_joints: 
-                        {
-                            // Push into layout
-                            gs_gfxt_mesh_layout_t layout = gs_default_val();
-                            layout.type = GS_ASSET_MESH_ATTRIBUTE_TYPE_JOINT;
-                            gs_dyn_array_push(layouts, layout);
-                        } break;
-
-                        case cgltf_attribute_type_weights:
-                        {
-                            // Push into layout
-                            gs_gfxt_mesh_layout_t layout = gs_default_val();
-                            layout.type = GS_ASSET_MESH_ATTRIBUTE_TYPE_WEIGHT;
-                            gs_dyn_array_push(layouts, layout);
-                        } break;
-
-                        // Shouldn't hit here...   
-                        default: {
-                        } break;
-                    }
-                }
-
-                // Indices for primitive
-                cgltf_accessor* acc = prim->indices;
-
-                #define __GFXT_GLTF_PUSH_IDX(BB, ACC, TYPE)\
-                    do {\
-                        int32_t n = 0;\
-                        TYPE* buf = (TYPE*)acc->buffer_view->buffer->data + acc->buffer_view->offset/sizeof(TYPE) + acc->offset/sizeof(TYPE);\
-                        gs_assert(buf);\
-                        TYPE v = 0;\
-                        /* For each index */\
-                        for (uint32_t k = 0; k < acc->count; k++) {\
-                            /* For each element */\
-                            for (int l = 0; l < 1; l++) {\
-                                v = buf[n + l];\
-                            }\
-                            n += (int32_t)(acc->stride/sizeof(TYPE));\
-                            /* Add to temp positions array */\
-                            switch (index_element_size) {\
-                                case 0: gs_byte_buffer_write(BB, uint16_t, (uint16_t)v); break;\
-                                case 2: gs_byte_buffer_write(BB, uint16_t, (uint16_t)v); break;\
-                                case 4: gs_byte_buffer_write(BB, uint32_t, (uint32_t)v); break;\
-                            }\
-                        }\
-                    } while (0)
-
-                // If indices are available
-                if (acc) 
-                {
-                    switch (acc->component_type) 
-                    {
-                        case cgltf_component_type_r_8:   __GFXT_GLTF_PUSH_IDX(&i_data, acc, int8_t);   break;
-                        case cgltf_component_type_r_8u:  __GFXT_GLTF_PUSH_IDX(&i_data, acc, uint8_t);  break;
-                        case cgltf_component_type_r_16:  __GFXT_GLTF_PUSH_IDX(&i_data, acc, int16_t);  break;
-                        case cgltf_component_type_r_16u: __GFXT_GLTF_PUSH_IDX(&i_data, acc, uint16_t); break;
-                        case cgltf_component_type_r_32u: __GFXT_GLTF_PUSH_IDX(&i_data, acc, uint32_t); break;
-                        case cgltf_component_type_r_32f: __GFXT_GLTF_PUSH_IDX(&i_data, acc, float);    break;
-
-                        // Shouldn't hit here
-                        default: {
-                        } break;
-                    }
-                }
-                else 
-                {
-                    // Iterate over positions size, then just push back indices
-                    for (uint32_t i = 0; i < gs_dyn_array_size(positions); ++i) 
-                    {
-                        switch (index_element_size)
-                        {
-                            default:
-                            case 0: gs_byte_buffer_write(&i_data, uint16_t, (uint16_t)i); break;
-                            case 2: gs_byte_buffer_write(&i_data, uint16_t, (uint16_t)i); break;
-                            case 4: gs_byte_buffer_write(&i_data, uint32_t, (uint32_t)i); break;
-                        }
-                    }
-                }
-
-                // Grab mesh layout pointer to use
-                /*
-                gs_gfxt_mesh_layout_t* layoutp = options ? options->layout : layouts;
-                uint32_t layout_ct = options ? options->size / sizeof(gs_gfxt_mesh_layout_t) : gs_dyn_array_size(layouts);
-
-                // Iterate layout to fill data buffers according to provided layout
-                {
-                    uint32_t vct = 0; 
-                    vct = gs_max(vct, gs_dyn_array_size(positions)); 
-                    vct = gs_max(vct, gs_dyn_array_size(colors)); 
-                    vct = gs_max(vct, gs_dyn_array_size(uvs));
-                    vct = gs_max(vct, gs_dyn_array_size(normals));
-                    vct = gs_max(vct, gs_dyn_array_size(tangents));
-
-                    #define __GLTF_WRITE_DATA(IT, VDATA, ARR, ARR_TYPE, ARR_DEF_VAL, LAYOUT_TYPE)\
-                        do {\
-                            if (IT < gs_dyn_array_size(ARR)) {\
-                                gs_byte_buffer_write(&(VDATA), ARR_TYPE, ARR[IT]);\
-                            }\
-                            else {\
-                                gs_byte_buffer_write(&(VDATA), ARR_TYPE, ARR_DEF_VAL);\
-                                if (!warnings[LAYOUT_TYPE]) {\
-                                    warnings[LAYOUT_TYPE] = true;\
-                                }\
-                            }\
-                        } while (0)
-
-                    for (uint32_t it = 0; it < vct; ++it)
-                    {
-                        // For each attribute in layout
-                        for (uint32_t l = 0; l < layout_ct; ++l)
-                        {
-                            switch (layoutp[l].type)
-                            {
-                                case GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION: {
-                                    __GLTF_WRITE_DATA(it, v_data, positions, gs_vec3, gs_v3(0.f, 0.f, 0.f), GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION); 
-                                } break;
-
-                                case GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD: {
-                                    __GLTF_WRITE_DATA(it, v_data, uvs, gs_vec2, gs_v2(0.f, 0.f), GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD); 
-                                } break;
-
-                                case GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR: {
-                                    __GLTF_WRITE_DATA(it, v_data, colors, gs_color_t, GS_COLOR_WHITE, GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR); 
-                                } break;
-
-                                case GS_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL: {
-                                    __GLTF_WRITE_DATA(it, v_data, normals, gs_vec3, gs_v3(0.f, 0.f, 1.f), GS_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL); 
-                                } break;
-
-                                case GS_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT: {
-                                    __GLTF_WRITE_DATA(it, v_data, tangents, gs_vec3, gs_v3(0.f, 1.f, 0.f), GS_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT); 
-                                } break;
-
-                                default:
-                                {
-                                } break;
-                            }
-                        }
-                    }
-                }
-
-                // Add to out data
-                mesh->vertices[p] = gs_malloc(v_data.size);
-                mesh->indices[p] = gs_malloc(i_data.size);
-                mesh->vertex_sizes[p] = v_data.size;
-                mesh->index_sizes[p] = i_data.size;
-
-                // Copy data
-                memcpy(mesh->vertices[p], v_data.data, v_data.size);
-                memcpy(mesh->indices[p], i_data.data, i_data.size);
-                */
-
-                /*
-                    typedef struct
-                    {
-                        void* data;
-                        size_t size;
-                    } gs_gfxt_mesh_vertex_attribute_t;
-
-                    typedef struct 
-                    {
-                        gs_gfxt_mesh_vertex_attribute_t positions;         // All position data
-                        gs_gfxt_mesh_vertex_attribute_t normals;
-                        gs_gfxt_mesh_vertex_attribute_t tangents;
-                        gs_gfxt_mesh_vertex_attribute_t tex_coords[GS_GFXT_TEX_COORD_MAX];
-                        gs_gfxt_mesh_vertex_attribute_t joints[GS_GFXT_JOINT_MAX];
-                        gs_gfxt_mesh_vertex_attribute_t weights[GS_GFXT_WEIGHT_MAX];
-                        gs_gfxt_mesh_vertex_attribute_t indices;
-                    } gs_gfxt_mesh_vertex_data_t;
-
-                    // Structured/packed raw mesh data
-                    typedef struct gs_gfxt_mesh_raw_data_t {
-                        uint16_t prim_count;
-                        size_t* vertex_sizes;
-                        size_t* index_sizes;
-                        void** vertices;
-                        void** indices;
-
-                        gs_dyn_array(gs_gfxt_mesh_vertex_data_t) primitives;   // All primitive data
-                    } gs_gfxt_mesh_raw_data_t;
-                */
-
-                // Count
-                primitive.count = prim->indices->count;
-
-                // Indices
-                primitive.indices.size = i_data.size;
-                primitive.indices.data = gs_malloc(i_data.size);
-                memcpy(primitive.indices.data, i_data.data, i_data.size);
-
-                // Positions
-                if (!gs_dyn_array_empty(positions))
-                {
-                    primitive.positions.size = gs_dyn_array_size(positions) * sizeof(gs_vec3);
-                    primitive.positions.data = gs_malloc(primitive.positions.size);
-                    memcpy(primitive.positions.data, positions, primitive.positions.size);
-                }
-
-                // Normals
-                if (!gs_dyn_array_empty(normals))
-                {
-                    primitive.normals.size = gs_dyn_array_size(normals) * sizeof(gs_vec3);
-                    primitive.normals.data = gs_malloc(primitive.normals.size);
-                    memcpy(primitive.normals.data, normals, primitive.normals.size);
-                }
-
-                // Tangents
-                if (!gs_dyn_array_empty(tangents))
-                {
-                    primitive.tangents.size = gs_dyn_array_size(tangents) * sizeof(gs_vec3);
-                    primitive.tangents.data = gs_malloc(primitive.tangents.size);
-                    memcpy(primitive.tangents.data, tangents, primitive.tangents.size);
-                }
-
-                // Texcoords
-                for (uint32_t tci = 0; tci < GS_GFXT_TEX_COORD_MAX; ++tci)
-                {
-                    if (!gs_dyn_array_empty(uvs[tci]))
-                    {
-                        primitive.tex_coords[tci].size = gs_dyn_array_size(uvs[tci]) * sizeof(gs_vec2);
-                        primitive.tex_coords[tci].data = gs_malloc(primitive.tex_coords[tci].size);
-                        memcpy(primitive.tex_coords[tci].data, uvs[tci], primitive.tex_coords[tci].size);
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
-
-                // Colors
-                for (uint32_t ci = 0; ci < GS_GFXT_COLOR_MAX; ++ci)
-                {
-                    if (!gs_dyn_array_empty(colors[ci]))
-                    {
-                        primitive.colors[ci].size = gs_dyn_array_size(colors[ci]) * sizeof(gs_color_t);
-                        primitive.colors[ci].data = gs_malloc(primitive.colors[ci].size);
-                        memcpy(primitive.colors[ci].data, colors[ci], primitive.colors[ci].size);
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
-
-                // Joints
-                for (uint32_t ji = 0; ji < GS_GFXT_JOINT_MAX; ++ji)
-                {
-                    if (!gs_dyn_array_empty(joints[ji]))
-                    {
-                        primitive.joints[ji].size = gs_dyn_array_size(joints[ji]) * sizeof(float);
-                        primitive.joints[ji].data = gs_malloc(primitive.joints[ji].size);
-                        memcpy(primitive.joints[ji].data, joints[ji], primitive.joints[ji].size);
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
-
-                // Weights
-                for (uint32_t wi = 0; wi < GS_GFXT_WEIGHT_MAX; ++wi)
-                {
-                    if (!gs_dyn_array_empty(weights[wi]))
-                    {
-                        primitive.weights[wi].size = gs_dyn_array_size(weights[wi]) * sizeof(float);
-                        primitive.weights[wi].data = gs_malloc(primitive.weights[wi].size);
-                        memcpy(primitive.weights[wi].data, weights[wi], primitive.weights[wi].size);
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
-
-                // Add primitive to mesh
-                gs_dyn_array_push(mesh->primitives, primitive);
-            } 
-
-            if (!printed)
-            {
-                printed = true;
-                if (warnings[GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION]){
-                    gs_log_warning("Mesh attribute: POSITION not found. Resorting to default."); 
-                }
-
-                if (warnings[GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD]) {
-                    gs_log_warning("Mesh attribute: TEXCOORD not found. Resorting to default."); 
-                }
-
-                if (warnings[GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR]) {
-                    gs_log_warning("Mesh attribute: COLOR not found. Resorting to default."); 
-                }
-
-                if (warnings[GS_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL]) {
-                    gs_log_warning("Mesh attribute: NORMAL not found. Resorting to default."); 
-                }
-
-                if (warnings[GS_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT]) {
-                    gs_log_warning("Mesh attribute: WEIGHTS not found. Resorting to default."); 
-                } 
-            }
+          gs_graphics_texture_desc_t bct_desc = gs_tex_desc_from_sampler(bc_sampler);
+          gs_snprintf(TMP, sizeof(TMP), "%s/%s", dir, bc_img->uri);
+          gs_println("base_color texture from gltf loading: %s ... ", TMP);
+          
+          gs_gfxt_texture_t base_color_tex = gs_gfxt_texture_load_from_file(TMP, &bct_desc, false, false);
+          gs_dyn_array_push(pbr_textures->textures, base_color_tex);
+        } 
+        
+        if(mr->base_color_factor) { 
+          pbr_desc->base_color_factor = (gs_vec4){ .x = mr->base_color_factor[0],
+            .y = mr->base_color_factor[1],
+            .z = mr->base_color_factor[2],
+            .w = mr->base_color_factor[3] };
         }
+      }
+    } // materials
+    
+    // all meshes
+    for (uint32_t _m = 0; _m < data->meshes_count; ++_m)
+    {
+      // Reset matrix
+      world_mat = gs_mat4_identity();
+      // Initialize mesh data
+      gs_gfxt_mesh_raw_data_t* mesh = &((*out)[_m]);
+      bool warnings[gs_enum_count(gs_asset_mesh_attribute_type)] = gs_default_val();
+      bool printed = false;
+      
+      // Do node mesh data
+      cgltf_mesh* cmesh = &data->meshes[_m];
+      // For each primitive in mesh 
+      uint32_t mat_idx = 0;
+      for (uint32_t p = 0; p < cmesh->primitives_count; ++p)
+      {
+          cgltf_primitive* prim = &cmesh->primitives[p];
+          
+          // Mesh primitive to fill out
+          gs_gfxt_mesh_vertex_data_t primitive = gs_default_val();
+          if( prim->material ) {
+            mat_idx = gs_slot_map_get(mat_index_map, prim->material);
+            gs_println("found material index %zu for %zu mesh.", mat_idx, _m);
+          }
+          primitive.mat_i = mat_idx;
 
-        // Increment i if successful
-        i++;
-    }
+          // Clear temp data from previous use
+          gs_dyn_array_clear(positions);
+          gs_dyn_array_clear(normals);
+          gs_dyn_array_clear(tangents);
+          for (uint32_t ci = 0; ci < GS_GFXT_COLOR_MAX; ++ci) gs_dyn_array_clear(colors[ci]);
+          for (uint32_t tci = 0; tci < GS_GFXT_TEX_COORD_MAX; ++tci) gs_dyn_array_clear(uvs[tci]);
+          for (uint32_t wi = 0; wi < GS_GFXT_WEIGHT_MAX; ++wi) gs_dyn_array_clear(weights[wi]);
+          for (uint32_t ji = 0; ji < GS_GFXT_JOINT_MAX; ++ji) gs_dyn_array_clear(joints[ji]);
+          gs_dyn_array_clear(layouts);
+          gs_byte_buffer_clear(&v_data);
+          gs_byte_buffer_clear(&i_data);
 
+          // Collect all provided attribute data for each vertex that's available in gltf data
+          #define __GFXT_GLTF_PUSH_ATTR(ATTR, TYPE, COUNT, ARR, ARR_TYPE, LAYOUTS, LAYOUT_TYPE)\
+              do {\
+                  int32_t N = 0;\
+                  TYPE* BUF = (TYPE*)ATTR->buffer_view->buffer->data + ATTR->buffer_view->offset/sizeof(TYPE) + ATTR->offset/sizeof(TYPE);\
+                  gs_assert(BUF);\
+                  TYPE V[COUNT] = gs_default_val();\
+                  /* For each vertex */\
+                  for (uint32_t k = 0; k < ATTR->count; k++)\
+                  {\
+                      /* For each element */\
+                      for (int l = 0; l < COUNT; l++) {\
+                          V[l] = BUF[N + l];\
+                      }\
+                      N += (int32_t)(ATTR->stride/sizeof(TYPE));\
+                      /* Add to temp data array */\
+                      ARR_TYPE ELEM = gs_default_val();\
+                      memcpy((void*)&ELEM, (void*)V, sizeof(ARR_TYPE));\
+                      gs_dyn_array_push(ARR, ELEM);\
+                  }\
+                  /* Push into layout */\
+                  gs_gfxt_mesh_layout_t LAYOUT = gs_default_val();\
+                  LAYOUT.type = LAYOUT_TYPE;\
+                  gs_dyn_array_push(LAYOUTS, LAYOUT);\
+              } while (0)
+
+          // For each attribute in primitive
+          for (uint32_t a = 0; a < prim->attributes_count; ++a)
+          {
+              // Accessor for attribute data
+              cgltf_accessor* attr = prim->attributes[a].data;
+
+              // Index for data
+              int32_t aidx = prim->attributes[a].index;
+
+              // Switch on type for reading data
+              switch (prim->attributes[a].type)
+              {
+                  case cgltf_attribute_type_position: {
+                      int32_t N = 0;
+                      float* BUF = (float*)attr->buffer_view->buffer->data + attr->buffer_view->offset/sizeof(float) + attr->offset/sizeof(float);
+                      gs_assert(BUF);
+                      float V[3] = gs_default_val();
+                      /* For each vertex */
+                      for (uint32_t k = 0; k < attr->count; k++)
+                      {
+                          /* For each element */
+                          for (int l = 0; l < 3; l++) {
+                              V[l] = BUF[N + l];
+                          } 
+                          N += (int32_t)(attr->stride/sizeof(float));
+                          /* Add to temp data array */
+                          gs_vec3 ELEM = gs_default_val();
+                          memcpy((void*)&ELEM, (void*)V, sizeof(gs_vec3));
+                          // Transform into world space
+                          ELEM = gs_mat4_mul_vec3(world_mat, ELEM);
+                          gs_dyn_array_push(positions, ELEM);
+                      }
+                      /* Push into layout */
+                      gs_gfxt_mesh_layout_t LAYOUT = gs_default_val();
+                      LAYOUT.type = GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION;
+                      gs_dyn_array_push(layouts, LAYOUT);
+                  } break;
+
+                  case cgltf_attribute_type_normal: {
+                      __GFXT_GLTF_PUSH_ATTR(attr, float, 3, normals, gs_vec3, layouts, GS_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL);
+                  } break;
+
+                  case cgltf_attribute_type_tangent: {
+                      __GFXT_GLTF_PUSH_ATTR(attr, float, 3, tangents, gs_vec3, layouts, GS_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT);
+                  } break;
+
+                  case cgltf_attribute_type_texcoord: {
+                      __GFXT_GLTF_PUSH_ATTR(attr, float, 2, uvs[aidx], gs_vec2, layouts, GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD);
+                  } break;
+
+                  case cgltf_attribute_type_color: {
+                      // Need to parse color as sRGB then convert to gs_color_t
+                      int32_t N = 0;
+                      float* BUF = (float*)attr->buffer_view->buffer->data + attr->buffer_view->offset/sizeof(float) + attr->offset/sizeof(float);
+                      gs_assert(BUF);
+                      float V[3] = gs_default_val();
+                      /* For each vertex */\
+                      for (uint32_t k = 0; k < attr->count; k++)
+                      {
+                          /* For each element */
+                          for (int l = 0; l < 3; l++) {
+                              V[l] = BUF[N + l];
+                          }
+                          N += (int32_t)(attr->stride/sizeof(float));
+                          /* Add to temp data array */
+                          gs_color_t ELEM = gs_default_val();
+                          // Need to convert over now
+                          ELEM.r = (uint8_t)(V[0] * 255.f);
+                          ELEM.g = (uint8_t)(V[1] * 255.f);
+                          ELEM.b = (uint8_t)(V[2] * 255.f);
+                          ELEM.a = 255; 
+                          gs_dyn_array_push(colors[aidx], ELEM);
+                      }
+                      /* Push into layout */
+                      gs_gfxt_mesh_layout_t LAYOUT = gs_default_val();
+                      LAYOUT.type = GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR;
+                      gs_dyn_array_push(layouts, LAYOUT);
+                  } break;
+
+                  // Not sure what to do with these for now
+                  case cgltf_attribute_type_joints: 
+                  {
+                      // Push into layout
+                      gs_gfxt_mesh_layout_t layout = gs_default_val();
+                      layout.type = GS_ASSET_MESH_ATTRIBUTE_TYPE_JOINT;
+                      gs_dyn_array_push(layouts, layout);
+                  } break;
+
+                  case cgltf_attribute_type_weights:
+                  {
+                      // Push into layout
+                      gs_gfxt_mesh_layout_t layout = gs_default_val();
+                      layout.type = GS_ASSET_MESH_ATTRIBUTE_TYPE_WEIGHT;
+                      gs_dyn_array_push(layouts, layout);
+                  } break;
+
+                  // Shouldn't hit here...   
+                  default: {
+                  } break;
+              }
+          }
+
+          // Indices for primitive
+          cgltf_accessor* acc = prim->indices;
+
+          #define __GFXT_GLTF_PUSH_IDX(BB, ACC, TYPE)\
+              do {\
+                  int32_t n = 0;\
+                  TYPE* buf = (TYPE*)acc->buffer_view->buffer->data + acc->buffer_view->offset/sizeof(TYPE) + acc->offset/sizeof(TYPE);\
+                  gs_assert(buf);\
+                  TYPE v = 0;\
+                  /* For each index */\
+                  for (uint32_t k = 0; k < acc->count; k++) {\
+                      /* For each element */\
+                      for (int l = 0; l < 1; l++) {\
+                          v = buf[n + l];\
+                      }\
+                      n += (int32_t)(acc->stride/sizeof(TYPE));\
+                      /* Add to temp positions array */\
+                      switch (index_element_size) {\
+                          case 0: gs_byte_buffer_write(BB, uint16_t, (uint16_t)v); break;\
+                          case 2: gs_byte_buffer_write(BB, uint16_t, (uint16_t)v); break;\
+                          case 4: gs_byte_buffer_write(BB, uint32_t, (uint32_t)v); break;\
+                      }\
+                  }\
+              } while (0)
+
+          // If indices are available
+          if (acc) 
+          {
+              switch (acc->component_type) 
+              {
+                  case cgltf_component_type_r_8:   __GFXT_GLTF_PUSH_IDX(&i_data, acc, int8_t);   break;
+                  case cgltf_component_type_r_8u:  __GFXT_GLTF_PUSH_IDX(&i_data, acc, uint8_t);  break;
+                  case cgltf_component_type_r_16:  __GFXT_GLTF_PUSH_IDX(&i_data, acc, int16_t);  break;
+                  case cgltf_component_type_r_16u: __GFXT_GLTF_PUSH_IDX(&i_data, acc, uint16_t); break;
+                  case cgltf_component_type_r_32u: __GFXT_GLTF_PUSH_IDX(&i_data, acc, uint32_t); break;
+                  case cgltf_component_type_r_32f: __GFXT_GLTF_PUSH_IDX(&i_data, acc, float);    break;
+
+                  // Shouldn't hit here
+                  default: {
+                  } break;
+              }
+          }
+          else 
+          {
+              // Iterate over positions size, then just push back indices
+              for (uint32_t i = 0; i < gs_dyn_array_size(positions); ++i) 
+              {
+                  switch (index_element_size)
+                  {
+                      default:
+                      case 0: gs_byte_buffer_write(&i_data, uint16_t, (uint16_t)i); break;
+                      case 2: gs_byte_buffer_write(&i_data, uint16_t, (uint16_t)i); break;
+                      case 4: gs_byte_buffer_write(&i_data, uint32_t, (uint32_t)i); break;
+                  }
+              }
+          }
+          // Count
+          primitive.count = prim->indices->count;
+
+          // Indices
+          primitive.indices.size = i_data.size;
+          primitive.indices.data = gs_malloc(i_data.size);
+          memcpy(primitive.indices.data, i_data.data, i_data.size);
+
+          // Positions
+          if (!gs_dyn_array_empty(positions))
+          {
+              primitive.positions.size = gs_dyn_array_size(positions) * sizeof(gs_vec3);
+              primitive.positions.data = gs_malloc(primitive.positions.size);
+              memcpy(primitive.positions.data, positions, primitive.positions.size);
+          }
+
+          // Normals
+          if (!gs_dyn_array_empty(normals))
+          {
+              primitive.normals.size = gs_dyn_array_size(normals) * sizeof(gs_vec3);
+              primitive.normals.data = gs_malloc(primitive.normals.size);
+              memcpy(primitive.normals.data, normals, primitive.normals.size);
+          }
+
+          // Tangents
+          if (!gs_dyn_array_empty(tangents))
+          {
+              primitive.tangents.size = gs_dyn_array_size(tangents) * sizeof(gs_vec3);
+              primitive.tangents.data = gs_malloc(primitive.tangents.size);
+              memcpy(primitive.tangents.data, tangents, primitive.tangents.size);
+          }
+
+          // Texcoords
+          for (uint32_t tci = 0; tci < GS_GFXT_TEX_COORD_MAX; ++tci)
+          {
+              if (!gs_dyn_array_empty(uvs[tci]))
+              {
+                  primitive.tex_coords[tci].size = gs_dyn_array_size(uvs[tci]) * sizeof(gs_vec2);
+                  primitive.tex_coords[tci].data = gs_malloc(primitive.tex_coords[tci].size);
+                  memcpy(primitive.tex_coords[tci].data, uvs[tci], primitive.tex_coords[tci].size);
+              }
+              else
+              {
+                  break;
+              }
+          }
+
+          // Colors
+          for (uint32_t ci = 0; ci < GS_GFXT_COLOR_MAX; ++ci)
+          {
+              if (!gs_dyn_array_empty(colors[ci]))
+              {
+                  primitive.colors[ci].size = gs_dyn_array_size(colors[ci]) * sizeof(gs_color_t);
+                  primitive.colors[ci].data = gs_malloc(primitive.colors[ci].size);
+                  memcpy(primitive.colors[ci].data, colors[ci], primitive.colors[ci].size);
+              }
+              else
+              {
+                  break;
+              }
+          }
+
+          // Joints
+          for (uint32_t ji = 0; ji < GS_GFXT_JOINT_MAX; ++ji)
+          {
+              if (!gs_dyn_array_empty(joints[ji]))
+              {
+                  primitive.joints[ji].size = gs_dyn_array_size(joints[ji]) * sizeof(float);
+                  primitive.joints[ji].data = gs_malloc(primitive.joints[ji].size);
+                  memcpy(primitive.joints[ji].data, joints[ji], primitive.joints[ji].size);
+              }
+              else
+              {
+                  break;
+              }
+          }
+
+          // Weights
+          for (uint32_t wi = 0; wi < GS_GFXT_WEIGHT_MAX; ++wi)
+          {
+              if (!gs_dyn_array_empty(weights[wi]))
+              {
+                  primitive.weights[wi].size = gs_dyn_array_size(weights[wi]) * sizeof(float);
+                  primitive.weights[wi].data = gs_malloc(primitive.weights[wi].size);
+                  memcpy(primitive.weights[wi].data, weights[wi], primitive.weights[wi].size);
+              }
+              else
+              {
+                  break;
+              }
+          }
+
+          // Add primitive to mesh
+          gs_dyn_array_push(mesh->primitives, primitive);
+      } 
+
+      if (!printed)
+      {
+          printed = true;
+          if (warnings[GS_ASSET_MESH_ATTRIBUTE_TYPE_POSITION]){
+              gs_log_warning("Mesh attribute: POSITION not found. Resorting to default."); 
+          }
+
+          if (warnings[GS_ASSET_MESH_ATTRIBUTE_TYPE_TEXCOORD]) {
+              gs_log_warning("Mesh attribute: TEXCOORD not found. Resorting to default."); 
+          }
+
+          if (warnings[GS_ASSET_MESH_ATTRIBUTE_TYPE_COLOR]) {
+              gs_log_warning("Mesh attribute: COLOR not found. Resorting to default."); 
+          }
+
+          if (warnings[GS_ASSET_MESH_ATTRIBUTE_TYPE_NORMAL]) {
+              gs_log_warning("Mesh attribute: NORMAL not found. Resorting to default."); 
+          }
+
+          if (warnings[GS_ASSET_MESH_ATTRIBUTE_TYPE_TANGENT]) {
+              gs_log_warning("Mesh attribute: WEIGHTS not found. Resorting to default."); 
+          } 
+      }
+    } // meshes
+    
     gs_println("Finished loading mesh.");
-
+    
     // Free all data at the end
     cgltf_free(data);
+    gs_slot_map_free(mat_index_map);
     gs_dyn_array_free(positions);
     gs_dyn_array_free(normals);
     gs_dyn_array_free(tangents);
