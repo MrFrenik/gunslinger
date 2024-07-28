@@ -483,7 +483,7 @@ gs_gfxt_load_into_scene_from_file(const char* dir, const char* fname, gs_gfxt_sc
         gs_gfxt_pbr_raw_data_t* pbr_textures = &pbr_texs[pbr_i]; // pbr texture array per material
         // gs_dyn_array_free(pbr_textures->textures); 
     }
-    memset(pbr_descs, 0, pbr_count * sizeof(gs_gfxt_pbr_desc_t));
+    gs_free(pbr_descs);
 }
 
 gs_inline gs_graphics_texture_desc_t
@@ -1167,7 +1167,6 @@ GS_API_DECL void
 gs_gfxt_pbr_node_destroy(gs_gfxt_pbr_node_t* node)
 {
     gs_gfxt_mesh_destroy(&node->mesh);
-    memset(node, 0, sizeof(gs_gfxt_pbr_node_t));
 }
 
 GS_API_DECL void 
@@ -1187,6 +1186,7 @@ gs_gfxt_scene_free(gs_gfxt_scene_t* scene)
             gs_gfxt_pbr_node_destroy(node); 
         }
         gs_slot_array_free(scene->nodes); 
+        gs_println("scene nodes freed.");
     }
     
     if( gs_slot_array_size(scene->materials) != 0 ) {
