@@ -273,6 +273,7 @@ typedef struct gs_gfxt_pbr_raw_data_t
 typedef struct gs_gfxt_pbr_desc_s {
     bool has_metal_rough;
     bool has_base_color_texture; // going in order for pbr_texs
+    bool has_base_color_factor;
     bool has_metal_rough_texture;
     gs_vec4 base_color_factor;
     gs_vec3 emissive_factor;
@@ -317,7 +318,8 @@ typedef struct gs_gfxt_scene_s {
     gs_slot_array(gs_gfxt_renderable_t) renderables;
     gs_slot_array(gs_gfxt_pbr_node_t) nodes;
     gs_slot_array(gs_gfxt_material_t) materials;
-    gs_gfxt_pipeline_t pbr_pip; // standard gltf pipeline
+    gs_slot_array(gs_gfxt_pbr_t) pbr_textures;
+    gs_gfxt_pipeline_t pbr_pip; // gs_gfxt_default_pbr_pipeline() from pbr_default.h
 } gs_gfxt_scene_t;
 
 //==== API =====//
@@ -337,6 +339,8 @@ GS_API_DECL void gs_gfxt_material_destroy(gs_gfxt_material_t* material);
 GS_API_DECL void gs_gfxt_mesh_destroy(gs_gfxt_mesh_t* mesh);
 GS_API_DECL void gs_gfxt_uniform_block_destroy(gs_gfxt_uniform_block_t* ub);
 GS_API_DECL void gs_gfxt_pipeline_destroy(gs_gfxt_pipeline_t* pipeline);
+GS_API_DECL void gs_gfxt_pbr_node_destroy(gs_gfxt_pbr_node_t* node);
+GS_API_DECL void gs_gfxt_scene_free(gs_gfxt_scene_t* scene);
 
 //=== Resource Loading ===//
 GS_API_DECL gs_gfxt_pipeline_t gs_gfxt_pipeline_load_from_file(const char* path);
@@ -375,25 +379,11 @@ gs_handle(gs_graphics_texture_t) gs_gfxt_texture_generate_default();
 GS_API_DECL gs_gfxt_pipeline_t gs_gfxt_default_pbr_pipeline(void);
 GS_API_DECL void gs_gfxt_load_into_scene_from_file(const char* dir, const char* fname, gs_gfxt_scene_t* scene);
 GS_API_DECL void gs_gfxt_default_pbr_pipeline_draw(gs_command_buffer_t* cb, gs_gfxt_scene_t* scene, gs_mat4_t mvp);
-GS_API_DECL void gs_gfxt_scene_free(gs_gfxt_scene_t* scene);
 /** @} */ // end of gs_graphics_extension_util
 
 #ifdef GS_GFXT_IMPL
 #include "pbr_default.h"
 /*==== Implementation ====*/
-GS_API_DECL void 
-gs_gfxt_scene_free(gs_gfxt_scene_t* scene)
-{
-    if( gs_slot_array_size(scene->renderables) != 0 ) {
-         gs_slot_array_free(scene->renderables); 
-    }
-    if( gs_slot_array_size(scene->nodes) != 0 ) {
-         gs_slot_array_free(scene->nodes); 
-     }
-    if( gs_slot_array_size(scene->materials) != 0 ) {
-         gs_slot_array_free(scene->materials); 
-     }
-}
 
 GS_API_DECL 
 void gs_gfxt_default_pbr_pipeline_draw(gs_command_buffer_t* cb, gs_gfxt_scene_t* scene, gs_mat4_t mvp)
@@ -450,10 +440,15 @@ gs_gfxt_load_into_scene_from_file(const char* dir, const char* fname, gs_gfxt_sc
       gs_gfxt_pbr_t pbr_info = gs_default_val();
       pbr_info.desc = pbr_descs[_m];
       pbr_info.textures = pbr_texs[_m];
+      
       uint32_t hndl = gs_slot_array_insert(scene->materials, material);
       
+      uint32_t tex_i = 0;
       if(pbr_info.desc.has_base_color_texture) {
-          gs_gfxt_material_set_uniform(gs_slot_array_getp(scene->materials, hndl), "u_base_col_tex", &(pbr_texs[_m].textures[0]));
+          gs_gfxt_material_set_uniform(gs_slot_array_getp(scene->materials, hndl), "u_base_col_tex", &(pbr_texs[_m].textures[tex_i]));
+      }
+      if(pbr_info.desc.has_base_color_factor) {
+          // gs_gfxt_material_set_uniform(gs_slot_array_getp(scene->materials, hndl), "u_base_col_fact", &(pbr_descs[_m].base_color_factor));
       }
       material_handles[_m] = hndl;
     }
@@ -482,6 +477,13 @@ gs_gfxt_load_into_scene_from_file(const char* dir, const char* fname, gs_gfxt_sc
     mdesc.meshes = meshes;
     mdesc.size = mesh_count * sizeof(gs_gfxt_mesh_raw_data_t);
     gs_gfxt_mesh_create(&mdesc);
+    // free pbr texture array and descs also
+    for(uint32_t pbr_i = 0; pbr_i < pbr_count; pbr_i++ )
+    {
+        gs_gfxt_pbr_raw_data_t* pbr_textures = &pbr_texs[pbr_i]; // pbr texture array per material
+        // gs_dyn_array_free(pbr_textures->textures); 
+    }
+    memset(pbr_descs, 0, pbr_count * sizeof(gs_gfxt_pbr_desc_t));
 }
 
 gs_inline gs_graphics_texture_desc_t
@@ -1161,6 +1163,45 @@ gs_gfxt_pipeline_destroy(gs_gfxt_pipeline_t* pipeline)
     gs_graphics_pipeline_destroy(pipeline->hndl); 
 }
 
+GS_API_DECL void
+gs_gfxt_pbr_node_destroy(gs_gfxt_pbr_node_t* node)
+{
+    gs_gfxt_mesh_destroy(&node->mesh);
+    memset(node, 0, sizeof(gs_gfxt_pbr_node_t));
+}
+
+GS_API_DECL void 
+gs_gfxt_scene_free(gs_gfxt_scene_t* scene)
+{
+    if( gs_slot_array_size(scene->renderables) != 0 ) {
+         gs_slot_array_free(scene->renderables); 
+    }
+    
+    if( gs_slot_array_size(scene->nodes) != 0 ) {
+        for (
+          gs_slot_array_iter it = 0; 
+          gs_slot_array_iter_valid(scene->materials, it);
+          gs_slot_array_iter_advance(scene->materials, it) 
+        ) {
+            gs_gfxt_pbr_node_t* node = gs_slot_array_iter_getp(scene->nodes, it);
+            gs_gfxt_pbr_node_destroy(node); 
+        }
+        gs_slot_array_free(scene->nodes); 
+    }
+    
+    if( gs_slot_array_size(scene->materials) != 0 ) {
+        for (
+          gs_slot_array_iter it = 0; 
+          gs_slot_array_iter_valid(scene->materials, it);
+          gs_slot_array_iter_advance(scene->materials, it) 
+        ) {
+            gs_gfxt_pbr_node_t* material = gs_slot_array_iter_getp(scene->materials, it);
+            gs_gfxt_material_destroy(material);
+        }
+         gs_slot_array_free(scene->materials); 
+     }
+     gs_println("scene has been freed.");
+}
 //=== Copy API ===//
 
 GS_API_DECL gs_gfxt_material_t gs_gfxt_material_deep_copy(gs_gfxt_material_t* src)
@@ -1625,6 +1666,7 @@ gs_gfxt_load_gltf_data_from_file(const char* dir, const char* fname, gs_gfxt_mes
         } 
         
         if(mr->base_color_factor) { 
+          pbr_desc->has_base_color_factor = true;
           pbr_desc->base_color_factor = (gs_vec4){ .x = mr->base_color_factor[0],
             .y = mr->base_color_factor[1],
             .z = mr->base_color_factor[2],
