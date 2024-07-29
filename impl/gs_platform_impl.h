@@ -906,7 +906,7 @@ gs_platform_library_proc_address_default_impl(void* lib, const char* func)
 #include <sys/mman.h>
 #endif // GS_PLATFORM_WINDOWS
 
-GS_API_DECL void*  gs_platform_reserve_default_impl(uint32_t size)
+GS_API_DECL void*  gs_platform_reserve(uint32_t size)
 {
 #ifdef GS_PLATFORM_WINDOWS
     return VirtualAlloc(0, size, MEM_RESERVE, PAGE_READWRITE);
@@ -914,7 +914,7 @@ GS_API_DECL void*  gs_platform_reserve_default_impl(uint32_t size)
     return mmap(0, size, PROT_NONE, MAP_PRIVATE|MAP_ANONYMOUS, -1, (off_t)0);
 #endif
 }
-GS_API_DECL bool32 gs_platform_commit_default_impl(void* ptr, uint32_t size)
+GS_API_DECL bool32 gs_platform_commit(void* ptr, uint32_t size)
 {
 #ifdef GS_PLATFORM_WINDOWS
     return (VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE) != 0);
@@ -922,7 +922,7 @@ GS_API_DECL bool32 gs_platform_commit_default_impl(void* ptr, uint32_t size)
     return (mprotect(ptr, size, PROT_READ|PROT_WRITE) == 0);
 #endif
 }
-GS_API_DECL void   gs_platform_decommit_default_impl(void* ptr, uint32_t size)
+GS_API_DECL void   gs_platform_decommit(void* ptr, uint32_t size)
 {
 #ifdef GS_PLATFORM_WINDOWS
     VirtualFree(ptr, size, MEM_DECOMMIT);
@@ -931,7 +931,7 @@ GS_API_DECL void   gs_platform_decommit_default_impl(void* ptr, uint32_t size)
     madvise(ptr, size, MADV_DONTNEED);
 #endif
 }
-GS_API_DECL void   gs_platform_release_default_impl(void* ptr, uint32_t size)
+GS_API_DECL void   gs_platform_release(void* ptr, uint32_t size)
 {
 #ifdef GS_PLATFORM_WINDOWS
     VirtualFree(ptr, 0, MEM_RELEASE);
@@ -995,17 +995,21 @@ gs_arena_alloc_size(uint64_t cmt, uint64_t res)
     return result;
 }
 
-GS_API_DECL gs_arena*    gs_arena_alloc(void)
+GS_API_DECL gs_arena*
+gs_arena_alloc(void)
 {
     return gs_arena_alloc_size(GS_DEFAULT_ARENA_CMT_SIZE, GS_DEFAULT_ARENA_RES_SIZE);
 }
-GS_API_DECL void         gs_arena_release(gs_arena* arena)
+
+GS_API_DECL void
+gs_arena_release(gs_arena* arena)
 {
     for (gs_arena *node = arena->current, *prev = 0; node; node = prev) {
         prev = node->prev;
         gs_platform_release(node, node->cap);
     }
 }
+
 static uint64_t
 gs_arena_get_pos(gs_arena* arena)
 {
@@ -1014,7 +1018,8 @@ gs_arena_get_pos(gs_arena* arena)
     return result;
 }
 
-GS_API_DECL void*        _gs_arena_push_nz(gs_arena* arena, uint64_t size_bytes, uint64_t align_bytes)
+GS_API_DECL void*
+_gs_arena_push_nz(gs_arena* arena, uint64_t size_bytes, uint64_t align_bytes)
 {
     // try to be fast!
     gs_arena *current = arena->current;
@@ -1074,7 +1079,9 @@ GS_API_DECL void*        _gs_arena_push_nz(gs_arena* arena, uint64_t size_bytes,
 
     return result;
 }
-GS_API_DECL void*        _gs_arena_push(gs_arena* arena, uint64_t size_bytes, uint64_t align_bytes)
+
+GS_API_DECL void*
+_gs_arena_push(gs_arena* arena, uint64_t size_bytes, uint64_t align_bytes)
 {
     return memset(_gs_arena_push_nz(arena, size_bytes, align_bytes), 0, size_bytes);
 }
@@ -1104,12 +1111,14 @@ gs_arena_pop_to(gs_arena *arena, uint64_t pos)
 }
 
 
-GS_API_DECL void         gs_arena_reset(gs_arena* arena)
+GS_API_DECL void
+gs_arena_reset(gs_arena* arena)
 {
     gs_arena_pop_to(arena, gs_arena_self_size);
 }
 
-GS_API_DECL gs_arena_temp gs_arena_begin_temp(gs_arena* arena)
+GS_API_DECL gs_arena_temp
+gs_arena_begin_temp(gs_arena* arena)
 {
     return (gs_arena_temp){
         .arena = arena,
@@ -1117,7 +1126,8 @@ GS_API_DECL gs_arena_temp gs_arena_begin_temp(gs_arena* arena)
     };
 }
 
-GS_API_DECL void          gs_arena_end_temp(gs_arena_temp temp)
+GS_API_DECL void
+gs_arena_end_temp(gs_arena_temp temp)
 {
     gs_arena_pop_to(temp.arena, temp.pos);
 }
@@ -1136,7 +1146,8 @@ __declspec(thread) gs_arena* _gs_thread_scratch_pool[_gs_scratch_count] = {0, 0}
 __thread gs_arena* _gs_thread_scratch_pool[_gs_scratch_count] = {0, 0};
 #endif
 
-GS_API_DECL gs_arena_temp gs_arena_get_scratch(gs_arena **conflicts, uint64_t count)
+GS_API_DECL gs_arena_temp
+gs_arena_get_scratch(gs_arena **conflicts, uint64_t count)
 {
     gs_arena** scratch_pool = _gs_thread_scratch_pool;
     if (scratch_pool[0] == 0) {
@@ -1164,7 +1175,6 @@ GS_API_DECL gs_arena_temp gs_arena_get_scratch(gs_arena **conflicts, uint64_t co
 
     return gs_arena_begin_temp(result);
 }
-
 
 
 #undef GS_PLATFORM_IMPL_DEFAULT
