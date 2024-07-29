@@ -2732,8 +2732,9 @@ void gs_command_buffer_free(gs_command_buffer_t* cb)
  *  @{
  */
 
-
-// === low level OS memory === //
+/*================================================================================
+// Low Level OS Memory
+================================================================================*/
 
 GS_API_DECL void*  gs_memory_reserve(uint32_t size);
 GS_API_DECL bool32 gs_memory_commit(void* ptr, uint32_t size);
@@ -7518,10 +7519,13 @@ __gs_pqueue_pop_internal(void** pqueue, void* tmp, void** data, int32_t* priorit
 // GS_MEMORY
 ========================*/
 
-// === low level memory === //
+/*================================================================================
+// Low Level OS Memory
+================================================================================*/
+
 #ifndef GS_PLATFORM_WINDOWS
 #include <sys/mman.h>
-#endif // GS_PLATFORM_WINDOWS
+#endif // !GS_PLATFORM_WINDOWS
 
 GS_API_DECL void*  gs_memory_reserve(uint32_t size)
 {
@@ -7557,8 +7561,9 @@ GS_API_DECL void   gs_memory_release(void* ptr, uint32_t size)
 #endif
 }
 
-
-// default arena functions
+/*================================================================================
+// Arena Allocator / Linear Allocator / Stack Allocator / Bump Allocator
+================================================================================*/
 
 
 //////////////////////////////////////////////////
@@ -7793,8 +7798,9 @@ gs_arena_get_scratch(gs_arena **conflicts, uint64_t count)
     return gs_arena_begin_temp(result);
 }
 
-
-
+/*================================================================================
+// Memory Block
+================================================================================*/
 
 // typedef struct gs_memory_block_t {
 //     uint8_t* data;
