@@ -5650,23 +5650,10 @@ GS_API_DECL void*      gs_platform_library_proc_address_default_impl(void* lib, 
 
 // === low level memory === //
 
-GS_API_DECL void*  gs_platform_reserve_default_impl(uint32_t size);
-GS_API_DECL bool32 gs_platform_commit_default_impl(void* ptr, uint32_t size);
-GS_API_DECL void   gs_platform_decommit_default_impl(void* ptr, uint32_t size);
-GS_API_DECL void   gs_platform_release_default_impl(void* ptr, uint32_t size);
-
-#ifndef gs_platform_reserve
-#define gs_platform_reserve gs_platform_reserve_default_impl
-#endif
-#ifndef gs_platform_commit
-#define gs_platform_commit gs_platform_commit_default_impl
-#endif
-#ifndef gs_platform_decommit
-#define gs_platform_decommit gs_platform_decommit_default_impl
-#endif
-#ifndef gs_platform_release
-#define gs_platform_release gs_platform_release_default_impl
-#endif
+GS_API_DECL void*  gs_platform_reserve(uint32_t size);
+GS_API_DECL bool32 gs_platform_commit(void* ptr, uint32_t size);
+GS_API_DECL void   gs_platform_decommit(void* ptr, uint32_t size);
+GS_API_DECL void   gs_platform_release(void* ptr, uint32_t size);
 
 /* == Platform Dependent API == */
 
