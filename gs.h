@@ -736,6 +736,8 @@ typedef bool32_t          bool32;
 ===================================*/
 
 // Operating system function pointer
+// NOTE(Samdal): the name "OS" is misleading,
+// these are just wrappers around libc, not the Operating System
 typedef struct gs_os_api_s
 { 
     void* (* malloc)(size_t sz);
@@ -795,7 +797,73 @@ gs_os_api_new_default();
 
 #ifndef gs_strdup
     #define gs_strdup(__STR) (gs_ctx()->os.strdup(__STR))
-#endif 
+#endif
+
+//=== arena impl ===//
+
+#ifndef GS_DEFAULT_ARENA
+
+typedef struct gs_arena_default gs_arena_default;
+struct gs_arena_default
+{
+    gs_arena_default *prev;
+    gs_arena_default *current;
+    uint64_t base_pos;
+    uint64_t pos;
+    uint64_t cmt;
+    uint64_t cap;
+};
+#define GS_IMPL_ARENA gs_arena_default
+
+#endif // GS_DEFAULT_ARENA
+
+#if !defined(GS_IMPL_ARENA)
+# error Missing implementation for GS_IMPL_ARENA
+#endif
+
+typedef GS_IMPL_ARENA gs_arena;
+
+typedef struct gs_arena_temp gs_arena_temp;
+struct gs_arena_temp
+{
+    gs_arena *arena;
+    uint64_t pos;
+};
+
+// arena functions
+
+GS_API_DECL gs_arena*    gs_arena_alloc(void);
+GS_API_DECL void         gs_arena_release(gs_arena* arena);
+
+GS_API_DECL void*        _gs_arena_push(gs_arena* arena, uint64_t size_bytes, uint64_t align_bytes);
+GS_API_DECL void*        _gs_arena_push_nz(gs_arena* arena, uint64_t size_bytes, uint64_t align_bytes);
+GS_API_DECL void         gs_arena_reset(gs_arena* arena);
+
+#if 1 // _Alignof is C11...
+
+#define gs_arena_push(a,T) (T*)(_gs_arena_push((a), sizeof(T), _Alignof(T)))
+#define gs_arena_push_array(a,T,c) (T*)(_gs_arena_push((a), sizeof(T)*(c), _Alignof(T)))
+#define gs_arena_push_no_zero(a,T) (T*)(_gs_arena_push_nz((a), sizeof(T), _Alignof(T)))
+#define gs_arena_push_array_no_zero(a,T,c) (T*)(_gs_arena_push_nz((a), sizeof(T)*(c), _Alignof(T)))
+
+#else
+
+#define gs_arena_push(a,T) (T*)(_gs_arena_push((a), sizeof(T), 16))
+#define gs_arena_push_array(a,T,c) (T*)(_gs_arena_push((a), sizeof(T)*(c), 16))
+#define gs_arena_push_no_zero(a,T) (T*)(_gs_arena_push_nz((a), sizeof(T), 16))
+#define gs_arena_push_array_no_zero(a,T,c) (T*)(_gs_arena_push_nz((a), sizeof(T)*(c), 16))
+
+#endif
+
+
+GS_API_DECL gs_arena_temp gs_arena_begin_temp(gs_arena* arena);
+GS_API_DECL void          gs_arena_end_temp(gs_arena_temp temp);
+
+// arena scratch pool
+
+GS_API_DECL gs_arena_temp gs_arena_get_scratch(gs_arena **conflicts, uint64_t count);
+#define gs_arena_release_scratch(scratch) gs_arena_end_temp(scratch)
+
 
 // Modified from: https://stackoverflow.com/questions/11815894/how-to-read-write-arbitrary-bits-in-c-c
 #define gs_bit_mask(INDEX, SIZE)\
@@ -5577,6 +5645,26 @@ GS_API_DECL void*      gs_platform_library_proc_address_default_impl(void* lib, 
 #endif
 #ifndef gs_platform_library_proc_addresss
 #define gs_platform_library_proc_address gs_platform_library_proc_address_default_impl
+#endif
+
+// === low level memory === //
+
+GS_API_DECL void*  gs_platform_reserve_default_impl(uint32_t size);
+GS_API_DECL bool32 gs_platform_commit_default_impl(void* ptr, uint32_t size);
+GS_API_DECL void   gs_platform_decommit_default_impl(void* ptr, uint32_t size);
+GS_API_DECL void   gs_platform_release_default_impl(void* ptr, uint32_t size);
+
+#ifndef gs_platform_reserve
+#define gs_platform_reserve gs_platform_reserve_default_impl
+#endif
+#ifndef gs_platform_commit
+#define gs_platform_commit gs_platform_commit_default_impl
+#endif
+#ifndef gs_platform_decommit
+#define gs_platform_decommit gs_platform_decommit_default_impl
+#endif
+#ifndef gs_platform_release
+#define gs_platform_release gs_platform_release_default_impl
 #endif
 
 /* == Platform Dependent API == */
