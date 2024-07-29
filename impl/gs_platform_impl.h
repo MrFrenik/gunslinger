@@ -901,7 +901,6 @@ gs_platform_library_proc_address_default_impl(void* lib, const char* func)
     return NULL;
 }
 
-
 #undef GS_PLATFORM_IMPL_DEFAULT
 #endif // GS_PLATFORM_IMPL_DEFAULT
 
