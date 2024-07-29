@@ -864,6 +864,7 @@ GS_API_DECL void          gs_arena_end_temp(gs_arena_temp temp);
 GS_API_DECL gs_arena_temp gs_arena_get_scratch(gs_arena **conflicts, uint64_t count);
 #define gs_arena_release_scratch(scratch) gs_arena_end_temp(scratch)
 
+/////////////////////////////
 
 // Modified from: https://stackoverflow.com/questions/11815894/how-to-read-write-arbitrary-bits-in-c-c
 #define gs_bit_mask(INDEX, SIZE)\
