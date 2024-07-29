@@ -799,72 +799,6 @@ gs_os_api_new_default();
     #define gs_strdup(__STR) (gs_ctx()->os.strdup(__STR))
 #endif
 
-//=== arena impl ===//
-
-#ifndef GS_DEFAULT_ARENA
-
-typedef struct gs_arena_default gs_arena_default;
-struct gs_arena_default
-{
-    gs_arena_default *prev;
-    gs_arena_default *current;
-    uint64_t base_pos;
-    uint64_t pos;
-    uint64_t cmt;
-    uint64_t cap;
-};
-#define GS_IMPL_ARENA gs_arena_default
-
-#endif // GS_DEFAULT_ARENA
-
-#if !defined(GS_IMPL_ARENA)
-# error Missing implementation for GS_IMPL_ARENA
-#endif
-
-typedef GS_IMPL_ARENA gs_arena;
-
-typedef struct gs_arena_temp gs_arena_temp;
-struct gs_arena_temp
-{
-    gs_arena *arena;
-    uint64_t pos;
-};
-
-// arena functions
-
-GS_API_DECL gs_arena*    gs_arena_alloc(void);
-GS_API_DECL void         gs_arena_release(gs_arena* arena);
-
-GS_API_DECL void*        _gs_arena_push(gs_arena* arena, uint64_t size_bytes, uint64_t align_bytes);
-GS_API_DECL void*        _gs_arena_push_nz(gs_arena* arena, uint64_t size_bytes, uint64_t align_bytes);
-GS_API_DECL void         gs_arena_reset(gs_arena* arena);
-
-#if 1 // _Alignof is C11...
-
-#define gs_arena_push(a,T) (T*)(_gs_arena_push((a), sizeof(T), _Alignof(T)))
-#define gs_arena_push_array(a,T,c) (T*)(_gs_arena_push((a), sizeof(T)*(c), _Alignof(T)))
-#define gs_arena_push_no_zero(a,T) (T*)(_gs_arena_push_nz((a), sizeof(T), _Alignof(T)))
-#define gs_arena_push_array_no_zero(a,T,c) (T*)(_gs_arena_push_nz((a), sizeof(T)*(c), _Alignof(T)))
-
-#else
-
-#define gs_arena_push(a,T) (T*)(_gs_arena_push((a), sizeof(T), 16))
-#define gs_arena_push_array(a,T,c) (T*)(_gs_arena_push((a), sizeof(T)*(c), 16))
-#define gs_arena_push_no_zero(a,T) (T*)(_gs_arena_push_nz((a), sizeof(T), 16))
-#define gs_arena_push_array_no_zero(a,T,c) (T*)(_gs_arena_push_nz((a), sizeof(T)*(c), 16))
-
-#endif
-
-
-GS_API_DECL gs_arena_temp gs_arena_begin_temp(gs_arena* arena);
-GS_API_DECL void          gs_arena_end_temp(gs_arena_temp temp);
-
-// arena scratch pool
-
-GS_API_DECL gs_arena_temp gs_arena_get_scratch(gs_arena **conflicts, uint64_t count);
-#define gs_arena_release_scratch(scratch) gs_arena_end_temp(scratch)
-
-/////////////////////////////
 
 // Modified from: https://stackoverflow.com/questions/11815894/how-to-read-write-arbitrary-bits-in-c-c
 #define gs_bit_mask(INDEX, SIZE)\
@@ -2798,6 +2732,88 @@ void gs_command_buffer_free(gs_command_buffer_t* cb)
  *  @{
  */
 
+
+// === low level OS memory === //
+
+GS_API_DECL void*  gs_memory_reserve(uint32_t size);
+GS_API_DECL bool32 gs_memory_commit(void* ptr, uint32_t size);
+GS_API_DECL void   gs_memory_decommit(void* ptr, uint32_t size);
+GS_API_DECL void   gs_memory_release(void* ptr, uint32_t size);
+
+/*================================================================================
+// Arena Allocator / Linear Allocator / Stack Allocator / Bump Allocator
+================================================================================*/
+
+//=== arena impl ===//
+
+#ifndef GS_DEFAULT_ARENA
+
+typedef struct gs_arena_default gs_arena_default;
+struct gs_arena_default
+{
+    gs_arena_default *prev;
+    gs_arena_default *current;
+    uint64_t base_pos;
+    uint64_t pos;
+    uint64_t cmt;
+    uint64_t cap;
+};
+#define GS_IMPL_ARENA gs_arena_default
+
+#endif // GS_DEFAULT_ARENA
+
+#if !defined(GS_IMPL_ARENA)
+# error Missing implementation for GS_IMPL_ARENA
+#endif
+
+typedef GS_IMPL_ARENA gs_arena;
+
+typedef struct gs_arena_temp gs_arena_temp;
+struct gs_arena_temp
+{
+    gs_arena *arena;
+    uint64_t pos;
+};
+
+// arena functions
+
+GS_API_DECL gs_arena*    gs_arena_alloc(void);
+GS_API_DECL void         gs_arena_release(gs_arena* arena);
+
+GS_API_DECL void*        _gs_arena_push(gs_arena* arena, uint64_t size_bytes, uint64_t align_bytes);
+GS_API_DECL void*        _gs_arena_push_nz(gs_arena* arena, uint64_t size_bytes, uint64_t align_bytes);
+GS_API_DECL void         gs_arena_reset(gs_arena* arena);
+
+#if 1 // _Alignof is C11...
+
+#define gs_arena_push(a,T) (T*)(_gs_arena_push((a), sizeof(T), _Alignof(T)))
+#define gs_arena_push_array(a,T,c) (T*)(_gs_arena_push((a), sizeof(T)*(c), _Alignof(T)))
+#define gs_arena_push_no_zero(a,T) (T*)(_gs_arena_push_nz((a), sizeof(T), _Alignof(T)))
+#define gs_arena_push_array_no_zero(a,T,c) (T*)(_gs_arena_push_nz((a), sizeof(T)*(c), _Alignof(T)))
+
+#else
+
+#define gs_arena_push(a,T) (T*)(_gs_arena_push((a), sizeof(T), 16))
+#define gs_arena_push_array(a,T,c) (T*)(_gs_arena_push((a), sizeof(T)*(c), 16))
+#define gs_arena_push_no_zero(a,T) (T*)(_gs_arena_push_nz((a), sizeof(T), 16))
+#define gs_arena_push_array_no_zero(a,T,c) (T*)(_gs_arena_push_nz((a), sizeof(T)*(c), 16))
+
+#endif
+
+
+GS_API_DECL gs_arena_temp gs_arena_begin_temp(gs_arena* arena);
+GS_API_DECL void          gs_arena_end_temp(gs_arena_temp temp);
+
+// arena scratch pool
+
+GS_API_DECL gs_arena_temp gs_arena_get_scratch(gs_arena **conflicts, uint64_t count);
+#define gs_arena_release_scratch(scratch) gs_arena_end_temp(scratch)
+
+
+/*================================================================================
+// Memory Block
+================================================================================*/
+
 #define gs_ptr_add(P, BYTES) \
     (((uint8_t*)P + (BYTES)))
 
@@ -2815,6 +2831,9 @@ GS_API_DECL size_t gs_memory_calc_padding_w_header(size_t base_address, size_t a
 // Linear Allocator
 ================================================================================*/
 
+// NOTE(Samdal):
+// You may want to use gs_arena instead
+
 typedef struct gs_linear_allocator_t {
     uint8_t* memory;
     size_t total_size;
@@ -2829,6 +2848,9 @@ GS_API_DECL void gs_linear_allocator_clear(gs_linear_allocator_t* la);
 /*================================================================================
 // Stack Allocator
 ================================================================================*/
+
+// NOTE(Samdal):
+// You may want to use gs_arena instead
 
 typedef struct gs_stack_allocator_header_t {
     uint32_t size;
@@ -5648,13 +5670,6 @@ GS_API_DECL void*      gs_platform_library_proc_address_default_impl(void* lib, 
 #define gs_platform_library_proc_address gs_platform_library_proc_address_default_impl
 #endif
 
-// === low level memory === //
-
-GS_API_DECL void*  gs_platform_reserve(uint32_t size);
-GS_API_DECL bool32 gs_platform_commit(void* ptr, uint32_t size);
-GS_API_DECL void   gs_platform_decommit(void* ptr, uint32_t size);
-GS_API_DECL void   gs_platform_release(void* ptr, uint32_t size);
-
 /* == Platform Dependent API == */
 
 GS_API_DECL void            gs_platform_init(gs_platform_t* platform);      // Initialize platform layer
@@ -7502,6 +7517,284 @@ __gs_pqueue_pop_internal(void** pqueue, void* tmp, void** data, int32_t* priorit
 /*========================
 // GS_MEMORY
 ========================*/
+
+// === low level memory === //
+#ifndef GS_PLATFORM_WINDOWS
+#include <sys/mman.h>
+#endif // GS_PLATFORM_WINDOWS
+
+GS_API_DECL void*  gs_memory_reserve(uint32_t size)
+{
+#ifdef GS_PLATFORM_WINDOWS
+    return VirtualAlloc(0, size, MEM_RESERVE, PAGE_READWRITE);
+#else
+    return mmap(0, size, PROT_NONE, MAP_PRIVATE|MAP_ANONYMOUS, -1, (off_t)0);
+#endif
+}
+GS_API_DECL bool32 gs_memory_commit(void* ptr, uint32_t size)
+{
+#ifdef GS_PLATFORM_WINDOWS
+    return (VirtualAlloc(ptr, size, MEM_COMMIT, PAGE_READWRITE) != 0);
+#else
+    return (mprotect(ptr, size, PROT_READ|PROT_WRITE) == 0);
+#endif
+}
+GS_API_DECL void   gs_memory_decommit(void* ptr, uint32_t size)
+{
+#ifdef GS_PLATFORM_WINDOWS
+    VirtualFree(ptr, size, MEM_DECOMMIT);
+#else
+    mprotect(ptr, size, PROT_NONE);
+    madvise(ptr, size, MADV_DONTNEED);
+#endif
+}
+GS_API_DECL void   gs_memory_release(void* ptr, uint32_t size)
+{
+#ifdef GS_PLATFORM_WINDOWS
+    VirtualFree(ptr, 0, MEM_RELEASE);
+#else
+    munmap(ptr, size);
+#endif
+}
+
+
+// default arena functions
+
+
+//////////////////////////////////////////////////
+// TODO(Samdal): allow more customization
+//
+//     typedef U32 ArenaFlags;
+//     enum
+//     {
+//       ArenaFlag_NoChain    = (1<<0),
+//       ArenaFlag_LargePages = (1<<1),
+//     };
+//
+//     typedef struct ArenaParams ArenaParams;
+//     struct ArenaParams
+//     {
+//       ArenaFlags flags;
+//       U64 reserve_size;
+//       U64 commit_size;
+//       void *optional_backing_buffer;
+//     };
+//
+///////////////////////////////////
+
+
+#define gs_arena_self_size (gs_max(sizeof(gs_arena), 64))
+#define GS_DEFAULT_ARENA_CMT_SIZE (64 << 10)
+#define GS_DEFAULT_ARENA_RES_SIZE (64 << 20)
+#define GS_DEFAULT_ARENA_VERY_BIG (GS_DEFAULT_ARENA_RES_SIZE - gs_arena_self_size)/2
+
+#define _gs_align_pow2(x,b) (((x)+((b)-1))&(~((b)-1)))
+
+
+static gs_arena*
+gs_arena_alloc_size(uint64_t cmt, uint64_t res)
+{
+    gs_assert(gs_arena_self_size < cmt && cmt <= res);
+    uint64_t cmt_clamped = gs_min(cmt, res);
+    gs_arena* result = 0;
+    void *mem = gs_memory_reserve(res);
+
+    if (gs_memory_commit(mem, cmt_clamped)) {
+        result = (gs_arena*)mem;
+        result->prev = 0;
+        result->current = result;
+        result->base_pos = 0;
+        result->pos = gs_arena_self_size;
+        result->cmt = cmt_clamped;
+        result->cap = res;
+    }
+
+    return result;
+}
+
+GS_API_DECL gs_arena*
+gs_arena_alloc(void)
+{
+    return gs_arena_alloc_size(GS_DEFAULT_ARENA_CMT_SIZE, GS_DEFAULT_ARENA_RES_SIZE);
+}
+
+GS_API_DECL void
+gs_arena_release(gs_arena* arena)
+{
+    for (gs_arena *node = arena->current, *prev = 0; node; node = prev) {
+        prev = node->prev;
+        gs_memory_release(node, node->cap);
+    }
+}
+
+static uint64_t
+gs_arena_get_pos(gs_arena* arena)
+{
+    gs_arena *current = arena->current;
+    uint64_t result = current->base_pos + current->pos;
+    return result;
+}
+
+GS_API_DECL void*
+_gs_arena_push_nz(gs_arena* arena, uint64_t size_bytes, uint64_t align_bytes)
+{
+    // try to be fast!
+    gs_arena *current = arena->current;
+    uint64_t pos = current->pos;
+    uint64_t pos_aligned = _gs_align_pow2(pos, align_bytes);
+    uint64_t new_pos = pos_aligned + size_bytes;
+    void *result = (uint8_t*)current + pos_aligned;
+    current->pos = new_pos;
+
+    // if it's not going to work do the slow path
+    if (new_pos > current->cmt) {
+        result = 0;
+        current->pos = pos;
+
+        // new chunk if necessary
+        if (new_pos > current->cap) {
+            gs_arena *new_arena = 0;
+            if (size_bytes > GS_DEFAULT_ARENA_VERY_BIG) {
+                uint64_t big_size_unrounded = size_bytes + gs_arena_self_size;
+                uint64_t big_size = _gs_align_pow2(big_size_unrounded, (4 << 10));
+                new_arena = gs_arena_alloc_size(big_size, big_size);
+            } else {
+                new_arena = gs_arena_alloc();
+            }
+
+            // link in new chunk & recompute new_pos
+            if (new_arena != 0) {
+                new_arena->base_pos = current->base_pos + current->cap;
+                new_arena->prev = current;
+                current = new_arena;
+                arena->current = current;
+                pos_aligned = current->pos;
+                new_pos = pos_aligned + size_bytes;
+            }
+        }
+
+        // move ahead if the current chunk has enough reserve
+        if (new_pos <= current->cap) {
+
+            // extend commit if necessary
+            if (new_pos > current->cmt) {
+                uint64_t new_cmt_unclamped = _gs_align_pow2(new_pos, GS_DEFAULT_ARENA_CMT_SIZE);
+                uint64_t new_cmt = gs_min(new_cmt_unclamped, current->cap);
+                uint64_t cmt_size = new_cmt - current->cmt;
+                if (gs_memory_commit((uint8_t*)current + current->cmt, cmt_size)) {
+                    current->cmt = new_cmt;
+                }
+            }
+
+            // move ahead if the current chunk has enough commit
+            if (new_pos <= current->cmt) {
+                result = (uint8_t*)current + current->pos;
+                current->pos = new_pos;
+            }
+        }
+    }
+
+    return result;
+}
+
+GS_API_DECL void*
+_gs_arena_push(gs_arena* arena, uint64_t size_bytes, uint64_t align_bytes)
+{
+    return memset(_gs_arena_push_nz(arena, size_bytes, align_bytes), 0, size_bytes);
+}
+
+static void
+gs_arena_pop_to(gs_arena *arena, uint64_t pos)
+{
+
+    // pop chunks in the chain
+    uint64_t pos_clamped = gs_max(gs_arena_self_size, pos);
+    {
+        gs_arena *node = arena->current;
+        for (gs_arena *prev = 0; node && node->base_pos >= pos; node = prev) {
+            prev = node->prev;
+            gs_memory_release(node, node->cap);
+        }
+        arena->current = node;
+    }
+
+    // reset the pos of the current
+    {
+        gs_arena *current = arena->current;
+        uint64_t local_pos_unclamped = pos - current->base_pos;
+        uint64_t local_pos = gs_max(local_pos_unclamped, gs_arena_self_size);
+        current->pos = local_pos;
+    }
+}
+
+
+GS_API_DECL void
+gs_arena_reset(gs_arena* arena)
+{
+    gs_arena_pop_to(arena, gs_arena_self_size);
+}
+
+GS_API_DECL gs_arena_temp
+gs_arena_begin_temp(gs_arena* arena)
+{
+    return (gs_arena_temp){
+        .arena = arena,
+        .pos = gs_arena_get_pos(arena)
+    };
+}
+
+GS_API_DECL void
+gs_arena_end_temp(gs_arena_temp temp)
+{
+    gs_arena_pop_to(temp.arena, temp.pos);
+}
+
+
+// arena scratch pool
+
+
+#ifndef _gs_scratch_count
+#define _gs_scratch_count 2
+#endif
+
+#ifdef _WIN32
+__declspec(thread) gs_arena* _gs_thread_scratch_pool[_gs_scratch_count] = {0, 0};
+#else
+__thread gs_arena* _gs_thread_scratch_pool[_gs_scratch_count] = {0, 0};
+#endif
+
+GS_API_DECL gs_arena_temp
+gs_arena_get_scratch(gs_arena **conflicts, uint64_t count)
+{
+    gs_arena** scratch_pool = _gs_thread_scratch_pool;
+    if (scratch_pool[0] == 0) {
+        gs_arena **arena_ptr = scratch_pool;
+        for (uint64_t i = 0; i < _gs_scratch_count; i += 1, arena_ptr += 1) {
+            *arena_ptr = gs_arena_alloc();
+        }
+    }
+    gs_arena *result = 0;
+    gs_arena **arena_ptr = scratch_pool;
+    for (uint64_t i = 0; i < _gs_scratch_count; i += 1, arena_ptr += 1) {
+        gs_arena *arena = *arena_ptr;
+        gs_arena **conflict_ptr = conflicts;
+        for (uint32_t j = 0; j < count; j += 1, conflict_ptr += 1) {
+            if (arena == *conflict_ptr) {
+                arena = 0;
+                break;
+            }
+        }
+        if (arena != 0) {
+            result = arena;
+            break;
+        }
+    }
+
+    return gs_arena_begin_temp(result);
+}
+
+
+
 
 // typedef struct gs_memory_block_t {
 //     uint8_t* data;
