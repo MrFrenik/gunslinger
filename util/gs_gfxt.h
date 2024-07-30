@@ -486,54 +486,6 @@ gs_gfxt_load_into_scene_from_file(const char* dir, const char* fname, gs_gfxt_sc
     gs_free(pbr_descs);
 }
 
-gs_inline gs_graphics_texture_desc_t
-gs_tex_desc_from_sampler(cgltf_sampler* sampler)
-{
-  gs_graphics_texture_desc_t desc = gs_default_val();
-  gs_graphics_texture_wrapping_type wrap_s = GS_GRAPHICS_TEXTURE_WRAP_REPEAT;
-  gs_graphics_texture_wrapping_type wrap_t = GS_GRAPHICS_TEXTURE_WRAP_REPEAT;
-  gs_graphics_texture_filtering_type min_f = GS_GRAPHICS_TEXTURE_FILTER_NEAREST;
-  gs_graphics_texture_filtering_type mag_f = GS_GRAPHICS_TEXTURE_FILTER_NEAREST;
-  // https://github.com/KhronosGroup/glTF/blob/main/specification/1.0/schema/sampler.schema.json
-  // some cases not covered in the gs core yet. Love the quake pixelated look of NEAREST, preferring now
-  switch(sampler->min_filter) { 
-    case 9728: min_f = GS_GRAPHICS_TEXTURE_FILTER_NEAREST; break;
-    case 9729: min_f = GS_GRAPHICS_TEXTURE_FILTER_LINEAR; break;
-    case 9984: min_f = GS_GRAPHICS_TEXTURE_FILTER_NEAREST; break; //"NEAREST_MIPMAP_NEAREST"
-    case 9985: min_f = GS_GRAPHICS_TEXTURE_FILTER_NEAREST; break; //"LINEAR_MIPMAP_NEAREST"
-    case 9986: min_f = GS_GRAPHICS_TEXTURE_FILTER_NEAREST; break; //"NEAREST_MIPMAP_LINEAR" (default)
-    case 9987: min_f = GS_GRAPHICS_TEXTURE_FILTER_LINEAR; break; //"LINEAR_MIPMAP_LINEAR"
-    default: gs_println("unknown gltf min_filter enum %zu", sampler->min_filter); break;
-  }
-  switch(sampler->mag_filter) { 
-    case 9728: mag_f = GS_GRAPHICS_TEXTURE_FILTER_NEAREST; break;
-    case 9729: mag_f = GS_GRAPHICS_TEXTURE_FILTER_LINEAR; break;
-    case 9984: mag_f = GS_GRAPHICS_TEXTURE_FILTER_NEAREST; break; //"NEAREST_MIPMAP_NEAREST"
-    case 9985: mag_f = GS_GRAPHICS_TEXTURE_FILTER_NEAREST; break; //"LINEAR_MIPMAP_NEAREST"
-    case 9986: mag_f = GS_GRAPHICS_TEXTURE_FILTER_NEAREST; break; //"NEAREST_MIPMAP_LINEAR" (default)
-    case 9987: mag_f = GS_GRAPHICS_TEXTURE_FILTER_LINEAR; break; //"LINEAR_MIPMAP_LINEAR"
-    default: gs_println("unknown gltf mag_filter enum %zu", sampler->mag_filter); break;
-  }
-  switch(sampler->wrap_s) { 
-    case 33071: wrap_s = GS_GRAPHICS_TEXTURE_WRAP_CLAMP_TO_EDGE; break;
-    case 33648: wrap_s = GS_GRAPHICS_TEXTURE_WRAP_MIRRORED_REPEAT; break;
-    case 10497: wrap_s = GS_GRAPHICS_TEXTURE_WRAP_REPEAT; break;
-    default: gs_println("unknown gltf S/U wrap enum %zu", sampler->wrap_s); break;
-  }
-  switch(sampler->wrap_t) { 
-    case 33071: wrap_t = GS_GRAPHICS_TEXTURE_WRAP_CLAMP_TO_EDGE; break;
-    case 33648: wrap_t = GS_GRAPHICS_TEXTURE_WRAP_MIRRORED_REPEAT; break;
-    case 10497: wrap_t = GS_GRAPHICS_TEXTURE_WRAP_REPEAT; break;
-    default: gs_println("unknown gltf T/V wrap enum %zu", sampler->wrap_t); break;
-  }
-  desc.format = GS_GRAPHICS_TEXTURE_FORMAT_RGBA8;
-  desc.min_filter = min_f; 
-  desc.mag_filter = mag_f;
-  desc.wrap_s = wrap_s;
-  desc.wrap_t = wrap_t;
-  return desc;
-}
-
 // Creation/Destruction
 GS_API_DECL gs_gfxt_pipeline_t 
 gs_gfxt_pipeline_create(const gs_gfxt_pipeline_desc_t* desc)
@@ -1456,7 +1408,7 @@ gs_gfxt_mesh_draw_materials(gs_command_buffer_t* cb, gs_gfxt_mesh_t* mesh, gs_gf
         gs_gfxt_mesh_primitive_t* prim = &mesh->primitives[i]; 
 
         // Get corresponding material, if available
-        uint32_t mat_idx = 0;//prim->mat_i < ct ? prim->mat_i : 0;
+        uint32_t mat_idx = i < ct ? i : ct - 1;
         mat = mats[mat_idx] ? mats[mat_idx] : mat;
 
         // Can't draw without a valid material present
@@ -1508,6 +1460,54 @@ GS_API_DECL void gs_gfxt_mesh_import_options_free(gs_gfxt_mesh_import_options_t*
     {
         gs_dyn_array_free(opt->layout);
     }
+}
+
+gs_inline gs_graphics_texture_desc_t
+gs_tex_desc_from_sampler(cgltf_sampler* sampler)
+{
+  gs_graphics_texture_desc_t desc = gs_default_val();
+  gs_graphics_texture_wrapping_type wrap_s = GS_GRAPHICS_TEXTURE_WRAP_REPEAT;
+  gs_graphics_texture_wrapping_type wrap_t = GS_GRAPHICS_TEXTURE_WRAP_REPEAT;
+  gs_graphics_texture_filtering_type min_f = GS_GRAPHICS_TEXTURE_FILTER_NEAREST;
+  gs_graphics_texture_filtering_type mag_f = GS_GRAPHICS_TEXTURE_FILTER_NEAREST;
+  // https://github.com/KhronosGroup/glTF/blob/main/specification/1.0/schema/sampler.schema.json
+  // some cases not covered in the gs core yet. Love the quake pixelated look of NEAREST, preferring now
+  switch(sampler->min_filter) { 
+    case 9728: min_f = GS_GRAPHICS_TEXTURE_FILTER_NEAREST; break;
+    case 9729: min_f = GS_GRAPHICS_TEXTURE_FILTER_LINEAR; break;
+    case 9984: min_f = GS_GRAPHICS_TEXTURE_FILTER_NEAREST; break; //"NEAREST_MIPMAP_NEAREST"
+    case 9985: min_f = GS_GRAPHICS_TEXTURE_FILTER_NEAREST; break; //"LINEAR_MIPMAP_NEAREST"
+    case 9986: min_f = GS_GRAPHICS_TEXTURE_FILTER_NEAREST; break; //"NEAREST_MIPMAP_LINEAR" (default)
+    case 9987: min_f = GS_GRAPHICS_TEXTURE_FILTER_LINEAR; break; //"LINEAR_MIPMAP_LINEAR"
+    default: gs_println("unknown gltf min_filter enum %zu", sampler->min_filter); break;
+  }
+  switch(sampler->mag_filter) { 
+    case 9728: mag_f = GS_GRAPHICS_TEXTURE_FILTER_NEAREST; break;
+    case 9729: mag_f = GS_GRAPHICS_TEXTURE_FILTER_LINEAR; break;
+    case 9984: mag_f = GS_GRAPHICS_TEXTURE_FILTER_NEAREST; break; //"NEAREST_MIPMAP_NEAREST"
+    case 9985: mag_f = GS_GRAPHICS_TEXTURE_FILTER_NEAREST; break; //"LINEAR_MIPMAP_NEAREST"
+    case 9986: mag_f = GS_GRAPHICS_TEXTURE_FILTER_NEAREST; break; //"NEAREST_MIPMAP_LINEAR" (default)
+    case 9987: mag_f = GS_GRAPHICS_TEXTURE_FILTER_LINEAR; break; //"LINEAR_MIPMAP_LINEAR"
+    default: gs_println("unknown gltf mag_filter enum %zu", sampler->mag_filter); break;
+  }
+  switch(sampler->wrap_s) { 
+    case 33071: wrap_s = GS_GRAPHICS_TEXTURE_WRAP_CLAMP_TO_EDGE; break;
+    case 33648: wrap_s = GS_GRAPHICS_TEXTURE_WRAP_MIRRORED_REPEAT; break;
+    case 10497: wrap_s = GS_GRAPHICS_TEXTURE_WRAP_REPEAT; break;
+    default: gs_println("unknown gltf S/U wrap enum %zu", sampler->wrap_s); break;
+  }
+  switch(sampler->wrap_t) { 
+    case 33071: wrap_t = GS_GRAPHICS_TEXTURE_WRAP_CLAMP_TO_EDGE; break;
+    case 33648: wrap_t = GS_GRAPHICS_TEXTURE_WRAP_MIRRORED_REPEAT; break;
+    case 10497: wrap_t = GS_GRAPHICS_TEXTURE_WRAP_REPEAT; break;
+    default: gs_println("unknown gltf T/V wrap enum %zu", sampler->wrap_t); break;
+  }
+  desc.format = GS_GRAPHICS_TEXTURE_FORMAT_RGBA8;
+  desc.min_filter = min_f; 
+  desc.mag_filter = mag_f;
+  desc.wrap_s = wrap_s;
+  desc.wrap_t = wrap_t;
+  return desc;
 }
 
 GS_API_DECL 
