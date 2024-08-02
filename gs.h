@@ -1620,7 +1620,7 @@ size_t gs_hash_siphash_bytes(void *p, size_t len, size_t seed)
 gs_force_inline
 size_t gs_hash_bytes(void *p, size_t len, size_t seed)
 {
-#if 0
+#if 1
   return gs_hash_siphash_bytes(p,len,seed);
 #else
   unsigned char *d = (unsigned char *) p;

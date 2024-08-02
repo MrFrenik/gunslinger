@@ -222,7 +222,9 @@ GS_API_DECL void gsi_circle_sectorvx(gs_immediate_draw_t* gsi, gs_vec3 c, float 
 GS_API_DECL void gsi_arc(gs_immediate_draw_t* gsi, float cx, float cy, float radius_inner, float radius_outer, float start_angle, float end_angle, int32_t segments, uint8_t r, uint8_t g, uint8_t b, uint8_t a, 
         gs_graphics_primitive_type type);
 GS_API_DECL void gsi_box(gs_immediate_draw_t* gsi, float x0, float y0, float z0, float hx, float hy, float hz, uint8_t r, uint8_t g, uint8_t b, uint8_t a, gs_graphics_primitive_type type);
-GS_API_DECL void gsi_sphere(gs_immediate_draw_t* gsi, float cx, float cy, float cz, float radius, uint8_t r, uint8_t g, uint8_t b, uint8_t a, gs_graphics_primitive_type type);
+GS_API_DECL void gsi_sphere(gs_immediate_draw_t* gsi, float cx, float cy, float cz, float radius, uint8_t r, uint8_t g, uint8_t b, uint8_t a, gs_graphics_primitive_type type); 
+GS_API_DECL void gsi_icosphere(gs_immediate_draw_t* gsi, float cx, float cy, float cz, float radius, uint8_t sdivision, 
+	uint8_t r, uint8_t g, uint8_t b, uint8_t a, gs_graphics_primitive_type type);
 GS_API_DECL void gsi_bezier(gs_immediate_draw_t* gsi, float x0, float y0, float x1, float y1, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 GS_API_DECL void gsi_cylinder(gs_immediate_draw_t* gsi, float x, float y, float z, float r_top, float r_bottom, float height, int32_t sides, uint8_t r, uint8_t g, uint8_t b, uint8_t a, gs_graphics_primitive_type type);
 GS_API_DECL void gsi_cone(gs_immediate_draw_t* gsi, float x, float y, float z, float radius, float height, int32_t sides, uint8_t r, uint8_t g, uint8_t b, uint8_t a, gs_graphics_primitive_type type);
@@ -1616,10 +1618,12 @@ void gsi_box(gs_immediate_draw_t* gsi, float x, float y, float z, float hx, floa
 	}
 }
 
-void gsi_sphere(gs_immediate_draw_t* gsi, float cx, float cy, float cz, float radius, uint8_t r, uint8_t g, uint8_t b, uint8_t a, gs_graphics_primitive_type type)
+GS_API_DECL void 
+gsi_sphere(gs_immediate_draw_t* gsi, float cx, float cy, float cz, 
+	float radius, uint8_t r, uint8_t g, uint8_t b, uint8_t a, gs_graphics_primitive_type type)
 {
 	// Modified from: http://www.songho.ca/opengl/gl_sphere.html
-	const uint32_t stacks = 32;
+	const uint32_t stacks = 64;
 	const uint32_t sectors = 64; 
 	float sector_step = 2.f * (float)GS_PI / (float)sectors;
 	float stack_step = (float)GS_PI / (float)stacks;
@@ -1676,6 +1680,122 @@ void gsi_sphere(gs_immediate_draw_t* gsi, float cx, float cy, float cz, float ra
 	        // Second triangle
 	        gsi_trianglevx(gsi, v0.p, v1.p, v3.p, v0.uv, v1.uv, v3.uv, color, type);
 	    }
+	}
+}
+
+GS_API_DECL void 
+gsi_icosphere(gs_immediate_draw_t* gsi, float cx, float cy, float cz, float radius, uint8_t sdivision, 
+	uint8_t r, uint8_t g, uint8_t b, uint8_t a, gs_graphics_primitive_type type)
+{
+	const float t = (1 + sqrt(5)) / 2.f;	// Golden ratio
+	const float X = 0.525731112119133606f;
+	const float Z = 0.850650808352039932f;
+	const float N = 0.f;
+	const gs_color_t color = gs_color(r, g, b, a);
+	const float s = 1.f;
+	
+	// const gs_vec3 vlist[] = {
+	//     {-X, N, Z}, {X, N, Z}, {-X, N, -Z}, {X, N, -Z}, 
+	// 	{N, Z, X}, {N, Z, -X}, {N, -Z, X}, {N, -Z, -X}, 
+	// 	{Z, X, N}, {-Z, X, N}, {Z, -X, N}, {-Z, -X, N}
+	// };
+
+	const gs_vec3 vlist[] = {
+	    {-s, t * s, 0}, {s, t * s, 0}, {-s, -t * s, 0}, {s, -t * s, 0}, 
+		{0, -s, t * s}, {0, s, t * s}, {0, -s, -t * s}, {0, s, -t * s}, 
+		{t * s, 0, -s}, {t * s, 0, s}, {-t * s, 0, -s}, {-t * s, 0, s}
+	};
+
+	// const gs_vec3 tlist[] = {
+	// 	{0, 4, 1}, {0, 9, 4}, {9, 5, 4}, {4, 5, 8}, {4, 8, 1},
+	// 	{8, 10, 1}, {8, 3, 10}, {5, 3, 8}, {5, 2, 3}, {2, 7, 3},
+	// 	{7, 10, 3}, {7, 6, 10}, {7, 11, 6}, {11, 0, 6}, {0, 1, 6}, 
+	// 	{6, 1, 10}, {9, 0, 11}, {9, 11, 2}, {9, 2, 5}, {7, 2, 11}
+	// };
+
+	const gs_vec3 tlist[] = {
+		{0, 11, 5}, {0, 5, 1},  {0, 1, 7},   {0, 7, 10}, {0, 10, 11},
+		{1, 5, 9},  {5, 11, 4}, {11, 10, 2}, {10, 7, 6}, {7, 1, 8},
+		{3, 9, 4},  {3, 4, 2},  {3, 2, 6},   {3, 6, 8},  {3, 8, 9},
+		{4, 9, 5},  {2, 4, 11}, {6, 2, 10},  {8, 6, 7},  {9, 8, 1}
+	};
+
+	const float w = 5.5f;
+	const float h = 3.f;
+
+	// const gs_vec2 uvlist[] = {
+	// 	{0.5f / w, 0.f}, {1.5f / w, 0.f}, {2.5f / w, 0.f}, {3.5f / w, 0.f}, {4.5f / w, 0.f},
+	// 	{0.f, 1.f / h}, {1.f / w, 1.f / h}, {2.f / w, 1.f / h}, {3.f / w, 1.f / h}, {4.f / w, 1.f / h}, {5.f / w, 1.f / h},
+	// 	{0.5f / w, 2.f / h}, {1.5f / w, 2.f / h}, {2.5f / w, 2.f / h}, {3.5f / w, 2.f / h}, {4.5f / w, 2.f / h},
+	// 	{1.f / w, 1.f}, {2.f / w, 1.f}, {3.f / w, 1.f}, {4.f / w, 1.f}, {5.f / w, 1.f}
+	// };
+
+	const gs_vec2 uvlist[] = {
+		{0.5f / w, 0},
+		{1.5f / w, 0},
+		{2.5f / w, 0},
+		{3.5f / w, 0},
+		{4.5f / w, 0},
+
+		{0, 1 / h},
+		{1.f / w, 1.f / h},
+		{2.f / w, 1.f / h},
+		{3.f / w, 1.f / h},
+		{4.f / w, 1.f / h},
+		{5.f / w, 1.f / h},
+
+		{0.5f / w, 2.f / h},
+		{1.5f / w, 2.f / h},
+		{2.5f / w, 2.f / h},
+		{3.5f / w, 2.f / h},
+		{4.5f / w, 2.f / h},
+		{1.f, 2.f / h},
+
+		{1.f / w, 1.f},
+		{2.f / w, 1.f},
+		{3.f / w, 1.f},
+		{4.f / w, 1.f},
+		{5.f / w, 1.f}
+	};
+
+	const gs_vec3 uvilist[] = {
+		//first row
+		{0, 5, 6}, {1, 6, 7}, {2, 7, 8}, {3, 8, 9}, {4, 9, 10}, 
+		//second row
+		{7, 6, 12}, {6, 5, 11}, {10, 9, 15}, {9, 8, 14}, {8, 7, 13}, 
+		//fourth row
+		{17, 12, 11}, {21, 16, 15}, {20, 15, 14}, {19, 14, 13}, {18, 13, 12}, 
+		//third row
+		{11, 12, 6}, {15, 16, 10}, {14, 15, 9}, {13, 14, 8}, {12, 13, 7}
+	};
+
+	// Matrix to determine UV projection
+
+	// #define UV(V)\
+	// 	gs_v2(atan2((V)->z / GS_TAU, (V)->x / GS_TAU),\
+	// 		  asin((V)->y / GS_PI) + 0.5f)
+	#define UV(V)\
+		gs_v2(\
+			V.x / 2.f + 0.5,\
+			V.y / 2.f + 0.5\
+		)
+
+	const uint32_t cnt = sizeof(tlist) / sizeof(gs_vec3);
+	for (uint32_t i = 0; i < cnt; ++i) {
+		const gs_vec3* v0 = &vlist[(int32_t)tlist[i].x];
+		const gs_vec3* v1 = &vlist[(int32_t)tlist[i].y];
+		const gs_vec3* v2 = &vlist[(int32_t)tlist[i].z];
+		gs_vec3 nv0 = gs_vec3_scale(gs_vec3_norm(*v0), -1);
+		gs_vec3 nv1 = gs_vec3_scale(gs_vec3_norm(*v1), -1);
+		gs_vec3 nv2 = gs_vec3_scale(gs_vec3_norm(*v2), -1);
+		const gs_vec2 uv0 = UV(nv0); 
+		const gs_vec2 uv1 = UV(nv1); 
+		const gs_vec2 uv2 = UV(nv2);
+		// const gs_vec2* uv0 = &uvlist[(int32_t)uvilist[i].x];
+		// const gs_vec2* uv1 = &uvlist[(int32_t)uvilist[i].y];
+		// const gs_vec2* uv2 = &uvlist[(int32_t)uvilist[i].z];
+		gsi_trianglevx(gsi, *v0, *v1, *v2, 
+			uv0, uv1, uv2, color, type);
 	}
 }
 
@@ -1802,12 +1922,16 @@ GS_API_DECL void gsi_cylinder(gs_immediate_draw_t* gsi, float x, float y, float 
     }
 }
 
-GS_API_DECL void gsi_cone(gs_immediate_draw_t* gsi, float x, float y, float z, float radius, float height, int32_t sides, uint8_t r, uint8_t g, uint8_t b, uint8_t a, gs_graphics_primitive_type type)
+GS_API_DECL void 
+gsi_cone(gs_immediate_draw_t* gsi, float x, float y, float z, float radius, 
+	float height, int32_t sides, uint8_t r, uint8_t g, uint8_t b, uint8_t a, gs_graphics_primitive_type type)
 {
 	gsi_cylinder(gsi, x, y, z, 0.f, radius, height, sides, r, g, b, a, type);
 }
 
-void gsi_text(gs_immediate_draw_t* gsi, float x, float y, const char* text, const gs_asset_font_t* fp, bool32_t flip_vertical, uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+GS_API_DECL void 
+gsi_text(gs_immediate_draw_t* gsi, float x, float y, const char* text, 
+	const gs_asset_font_t* fp, bool32_t flip_vertical, uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 {
 	// If no font, set to default
 	if (!fp) {

@@ -2587,6 +2587,17 @@ gs_platform_init(gs_platform_t* platform)
     }
 }
 
+GS_API_DECL void
+gs_platform_window_set_clipboard(uint32_t handle, const char* str)
+{
+}
+
+GS_API_DECL const char* 
+gs_platform_window_get_clipboard(uint32_t handle)
+{
+    return NULL;
+}
+
 GS_API_DECL void                 
 gs_platform_lock_mouse(uint32_t handle, bool32_t lock)
 {
