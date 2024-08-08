@@ -2736,10 +2736,20 @@ void gs_command_buffer_free(gs_command_buffer_t* cb)
 // Low Level OS Memory
 ================================================================================*/
 
+#if defined(GS_PLATFORM_WEB) || defined(GS_MEMORY_NO_LOW_LEVEL_OS_API)
+# ifndef GS_MEMORY_NO_LOW_LEVEL_OS_API
+#  define GS_MEMORY_NO_LOW_LEVEL_OS_API
+# endif
+# define gs_memory_reserve(_1)      _Static_assert(0, "low level memory api is not available for this platform")
+# define gs_memory_commit(_1, _2)   _Static_assert(0, "low level memory api is not available for this platform")
+# define gs_memory_decommit(_1, _2) _Static_assert(0, "low level memory api is not available for this platform")
+# define gs_memory_release(_1, _2)  _Static_assert(0, "low level memory api is not available for this platform")
+#else
 GS_API_DECL void*  gs_memory_reserve(uint32_t size);
 GS_API_DECL bool32 gs_memory_commit(void* ptr, uint32_t size);
 GS_API_DECL void   gs_memory_decommit(void* ptr, uint32_t size);
 GS_API_DECL void   gs_memory_release(void* ptr, uint32_t size);
+#endif
 
 /*================================================================================
 // Arena Allocator / Linear Allocator / Stack Allocator / Bump Allocator
@@ -7523,6 +7533,8 @@ __gs_pqueue_pop_internal(void** pqueue, void* tmp, void** data, int32_t* priorit
 // Low Level OS Memory
 ================================================================================*/
 
+#ifndef GS_MEMORY_NO_LOW_LEVEL_OS_API
+
 #ifndef GS_PLATFORM_WINDOWS
 #include <sys/mman.h>
 #endif // !GS_PLATFORM_WINDOWS
@@ -7560,6 +7572,8 @@ GS_API_DECL void   gs_memory_release(void* ptr, uint32_t size)
     munmap(ptr, size);
 #endif
 }
+
+#endif // !GS_MEMORY_NO_LOW_LEVEL_OS_API
 
 /*================================================================================
 // Arena Allocator / Linear Allocator / Stack Allocator / Bump Allocator
@@ -7602,6 +7616,20 @@ gs_arena_alloc_size(uint64_t cmt, uint64_t res)
     gs_assert(gs_arena_self_size < cmt && cmt <= res);
     uint64_t cmt_clamped = gs_min(cmt, res);
     gs_arena* result = 0;
+
+#ifdef GS_MEMORY_NO_LOW_LEVEL_OS_API
+    void *mem = malloc(res);
+
+    if (mem) {
+        result = (gs_arena*)mem;
+        result->prev = 0;
+        result->current = result;
+        result->base_pos = 0;
+        result->pos = gs_arena_self_size;
+        result->cmt = res;
+        result->cap = res;
+    }
+#else
     void *mem = gs_memory_reserve(res);
 
     if (gs_memory_commit(mem, cmt_clamped)) {
@@ -7613,6 +7641,7 @@ gs_arena_alloc_size(uint64_t cmt, uint64_t res)
         result->cmt = cmt_clamped;
         result->cap = res;
     }
+#endif
 
     return result;
 }
@@ -7628,7 +7657,11 @@ gs_arena_release(gs_arena* arena)
 {
     for (gs_arena *node = arena->current, *prev = 0; node; node = prev) {
         prev = node->prev;
+#ifdef GS_MEMORY_NO_LOW_LEVEL_OS_API
+        free(node);
+#else
         gs_memory_release(node, node->cap);
+#endif
     }
 }
 
@@ -7680,8 +7713,8 @@ _gs_arena_push_nz(gs_arena* arena, uint64_t size_bytes, uint64_t align_bytes)
 
         // move ahead if the current chunk has enough reserve
         if (new_pos <= current->cap) {
-
             // extend commit if necessary
+#ifndef GS_MEMORY_NO_LOW_LEVEL_OS_API
             if (new_pos > current->cmt) {
                 uint64_t new_cmt_unclamped = _gs_align_pow2(new_pos, GS_DEFAULT_ARENA_CMT_SIZE);
                 uint64_t new_cmt = gs_min(new_cmt_unclamped, current->cap);
@@ -7690,6 +7723,7 @@ _gs_arena_push_nz(gs_arena* arena, uint64_t size_bytes, uint64_t align_bytes)
                     current->cmt = new_cmt;
                 }
             }
+#endif
 
             // move ahead if the current chunk has enough commit
             if (new_pos <= current->cmt) {
@@ -7718,7 +7752,11 @@ gs_arena_pop_to(gs_arena *arena, uint64_t pos)
         gs_arena *node = arena->current;
         for (gs_arena *prev = 0; node && node->base_pos >= pos; node = prev) {
             prev = node->prev;
+#ifdef GS_MEMORY_NO_LOW_LEVEL_OS_API
+            free(node);
+#else
             gs_memory_release(node, node->cap);
+#endif
         }
         arena->current = node;
     }
