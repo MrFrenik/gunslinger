@@ -1147,7 +1147,7 @@ gs_gfxt_scene_free(gs_gfxt_scene_t* scene)
           gs_slot_array_iter_valid(scene->materials, it);
           gs_slot_array_iter_advance(scene->materials, it) 
         ) {
-            gs_gfxt_pbr_node_t* material = gs_slot_array_iter_getp(scene->materials, it);
+            gs_gfxt_material_t* material = gs_slot_array_iter_getp(scene->materials, it);
             gs_gfxt_material_destroy(material);
         }
          gs_slot_array_free(scene->materials); 
