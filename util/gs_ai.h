@@ -48,11 +48,11 @@
 //=== Utility AI ===// 
      
     Modeling Curves (examples, all [0, 1]):
-        * Binary:   y = x < m ? 0 : 1;
-        * Linear:   (100 - x) / 100
-        * Cubic:    (100 - x^3) / (100^3)
-        * Logistic: 1/(1 + (2.718 * 0.45) ^ (x + 40))
-        * Logit:    log_e(x/(1-x) + 5) / 10
+        * Binary:               y = x < m ? 0 : 1;
+        * Linear:               (100 - x) / 100
+        * Cubic:                (100 - x^3) / (100^3)
+        * Logistic:             1/(1 + (2.718 * 0.45) ^ (x + 40))
+        * Logit:                log_e(x/(1-x) + 5) / 10
 
     Idea: 
         * Collect current states of independent variables
@@ -128,6 +128,8 @@ GS_API_DECL float gs_ai_curve_sin(float m, float k, float c, float b, float x);
 GS_API_DECL float gs_ai_curve_cos(float m, float k, float c, float b, float x);
 GS_API_DECL float gs_ai_curve_linearquad(float m, float k, float c, float b, float x);
 GS_API_DECL float gs_ai_curve_binary(float m, float k, float c, float b, float x);
+GS_API_DECL float gs_ai_curve_nsigmoid(float m, float k, float c, float b, float x);
+GS_API_DECL float gs_ai_curve_constant(float m, float k, float c, float b, float x);
 
 typedef struct
 {
@@ -140,19 +142,23 @@ typedef struct
 
 //=== Considerations ===//
 
-typedef struct
-{
+typedef struct {
     float data;
     float min;
     float max;
     gs_ai_utility_response_curve_desc_t curve;
 } gs_ai_utility_consideration_desc_t;
 
-typedef struct
-{
+typedef struct {
     gs_ai_utility_consideration_desc_t* considerations;
     size_t size;
 } gs_ai_utility_action_desc_t;
+
+typedef struct {
+    gs_ai_utility_action_desc_t* actions;
+    size_t size;
+    int16_t force_eval;
+} gs_ai_utility_action_list_desc_t;
 
 //=== Evaluation ===//
 float gs_ai_utility_action_evaluate(gs_ai_utility_action_desc_t* desc);
@@ -165,8 +171,8 @@ float gs_ai_utility_action_evaluate(gs_ai_utility_action_desc_t* desc);
 #define GS_AI_BT_STATE_SUCCESS	     0
 #define GS_AI_BT_STATE_RUNNING		 1
 
-typedef struct gs_ai_bt_node_t
-{
+// These nodes are expensive.
+typedef struct gs_ai_bt_node_t {
 	const char* name;
     uint16_t idx;
     int16_t processed_child;
@@ -175,14 +181,14 @@ typedef struct gs_ai_bt_node_t
 	int16_t state;
 } gs_ai_bt_node_t;
 
-typedef struct gs_ai_bt_t
-{
+typedef struct gs_ai_bt_t {
     uint16_t current_idx;
     gs_dyn_array(uint32_t) parent_stack;
     gs_dyn_array(gs_ai_bt_node_t) stack;
     gs_ai_context_t ctx;
 } gs_ai_bt_t; 
 
+typedef void (*gs_ai_bt_func)(struct gs_ai_bt_t* ctx);
 typedef void(*gs_ai_bt_leaf_func)(struct gs_ai_bt_t* ctx, struct gs_ai_bt_node_t* node);
 typedef bool(*gs_ai_bt_condition_func)(struct gs_ai_bt_t* ctx, struct gs_ai_bt_node_t* node);
 
@@ -202,6 +208,8 @@ GS_API_DECL int16_t gs_ai_bt_selector_begin(struct gs_ai_bt_t* ctx);
 GS_API_DECL void gs_ai_bt_selector_end(struct gs_ai_bt_t* ctx);
 GS_API_DECL int16_t gs_ai_bt_sequence_begin(struct gs_ai_bt_t* ctx);
 GS_API_DECL void gs_ai_bt_sequence_end(struct gs_ai_bt_t* ctx);
+GS_API_DECL int16_t gs_ai_bt_utility_selector_begin(struct gs_ai_bt_t* ctx, gs_ai_utility_action_list_desc_t* actions);
+GS_API_DECL void gs_ai_bt_utility_selector_end(struct gs_ai_bt_t* ctx);
 GS_API_DECL int32_t gs_ai_bt_parallel_begin(struct gs_ai_bt_t* ctx);
 GS_API_DECL void gs_ai_bt_parallel_end(struct gs_ai_bt_t* ctx);
 GS_API_DECL void gs_ai_bt_leaf(struct gs_ai_bt_t* ctx, gs_ai_bt_leaf_func func);
@@ -222,6 +230,15 @@ GS_API_DECL void gs_ai_bt_free(struct gs_ai_bt_t* ctx);
         {\
             __VA_ARGS__\
             gs_ai_bt_repeater_end((_CTX));\
+        }\
+    } while (0)
+
+#define gsai_parallel(_CTX, ...)\
+    do {\
+        if (gs_ai_bt_parallel_begin((_CTX)))\
+        {\
+            __VA_ARGS__\
+            gs_ai_bt_parallel_end((_CTX));\
         }\
     } while (0)
 
@@ -261,6 +278,15 @@ GS_API_DECL void gs_ai_bt_free(struct gs_ai_bt_t* ctx);
         }\
     } while (0)
 
+#define gsai_utility_selector(_CTX, _ACTIONS, ...)\
+    do {\
+        if (gs_ai_bt_utility_selector_begin((_CTX), (_ACTIONS))) {\
+            __VA_ARGS__\
+            gs_ai_bt_utility_selector_end((_CTX));\
+        }\
+        \
+    } while (0)
+
 #define gsai_leaf(_CTX, _FUNC)            gs_ai_bt_leaf((_CTX), (_FUNC)) 
 #define gsai_wait(_CTX, _TIME, _DT, _MAX) gs_ai_bt_wait((_CTX), (_TIME), (_DT), (_MAX))
 
@@ -274,72 +300,78 @@ GS_API_DECL void gs_ai_bt_free(struct gs_ai_bt_t* ctx);
 //=====================//
 //=== Behavior Tree ===//
 
-GS_API_DECL void gs_ai_bt_free(struct gs_ai_bt_t* ctx)
+GS_API_DECL void 
+gs_ai_bt_free(struct gs_ai_bt_t* ctx)
 {
     if (ctx->parent_stack) gs_dyn_array_free(ctx->parent_stack);
     if (ctx->stack) gs_dyn_array_free(ctx->stack);
 }
 
-GS_API_DECL void gs_ai_bt_begin(struct gs_ai_bt_t* ctx)
+GS_API_DECL void 
+gs_ai_bt_begin(struct gs_ai_bt_t* ctx)
 {
     ctx->current_idx = 0; 
 }
 
-GS_API_DECL void gs_ai_bt_end(struct gs_ai_bt_t* ctx)
+GS_API_DECL void 
+gs_ai_bt_end(struct gs_ai_bt_t* ctx)
 { 
 	gs_assert(gs_dyn_array_empty(ctx->parent_stack));
 }
 
-GS_API_DECL gs_ai_bt_node_t* gs_ai_bt_parent_node_get(struct gs_ai_bt_t* ctx)
+GS_API_DECL gs_ai_bt_node_t* 
+gs_ai_bt_parent_node_get(struct gs_ai_bt_t* ctx)
 {
     if (gs_dyn_array_empty(ctx->parent_stack)) return NULL;
-
 	uint32_t idx = ctx->parent_stack[gs_dyn_array_size(ctx->parent_stack) - 1];
     return &ctx->stack[idx];
 }
 
-GS_API_DECL void gs_ai_bt_children_begin(struct gs_ai_bt_t* ctx, struct gs_ai_bt_node_t* parent)
+GS_API_DECL void 
+gs_ai_bt_children_begin(struct gs_ai_bt_t* ctx, struct gs_ai_bt_node_t* parent)
 {
 	parent->num_children = 0;
     gs_dyn_array_push(ctx->parent_stack, parent->idx); 
 	ctx->current_idx = parent->idx + 1;
 }
 
-GS_API_DECL void gs_ai_bt_children_end(struct gs_ai_bt_t* ctx)
+GS_API_DECL void 
+gs_ai_bt_children_end(struct gs_ai_bt_t* ctx)
 {
     gs_dyn_array_pop(ctx->parent_stack);
 }
 
-GS_API_DECL gs_ai_bt_node_t* gs_ai_bt_node_child_get(struct gs_ai_bt_t* ctx, struct gs_ai_bt_node_t* parent, uint32_t child_index)
+GS_API_DECL gs_ai_bt_node_t* 
+gs_ai_bt_node_child_get(struct gs_ai_bt_t* ctx, struct gs_ai_bt_node_t* parent, uint32_t child_index)
 {
 	gs_ai_bt_node_t* node = NULL;
 	uint32_t ci = parent->idx + child_index + 1;
 	uint32_t sz = gs_dyn_array_size(ctx->stack);
-	if (ci < sz)
-	{ 
+	if (ci < sz) { 
 		node = &ctx->stack[ci];
 	}
 	return node;
 }
 
-GS_API_DECL gs_ai_bt_node_t* gs_ai_bt_node_next(struct gs_ai_bt_t* ctx)
+#define gs_ai_bt_node_next(CTX)     gs_ai_bt_node_next_ext(ctx, 0)
+
+GS_API_DECL gs_ai_bt_node_t* 
+gs_ai_bt_node_next_ext(struct gs_ai_bt_t* ctx, int16_t processed_child)
 { 
     // Push on new node if doesn't exist
     gs_ai_bt_node_t* np = NULL;
  
 	uint32_t cnt = gs_dyn_array_size( ctx->stack );
-    if (ctx->current_idx >= gs_dyn_array_size(ctx->stack))
-    {
+    if (ctx->current_idx >= gs_dyn_array_size(ctx->stack)) {
         gs_ai_bt_node_t node = gs_default_val();
         node.state = GS_AI_BT_STATE_RUNNING;
         node.idx = ctx->current_idx++;
 		node.num_children = 0;
-        node.processed_child = 0;
+        node.processed_child = processed_child;
         gs_dyn_array_push(ctx->stack, node);
 		np = &ctx->stack[gs_dyn_array_size(ctx->stack) - 1];
     }
-	else
-	{ 
+	else { 
 		// Get pointer to node and increment idx
 		np = &ctx->stack[ctx->current_idx];
 		np->idx = ctx->current_idx++;
@@ -347,14 +379,11 @@ GS_API_DECL gs_ai_bt_node_t* gs_ai_bt_node_next(struct gs_ai_bt_t* ctx)
 
 	// Increment children of current parent, if available 
 	gs_ai_bt_node_t* parent = gs_ai_bt_parent_node_get(ctx);
-	if (parent) 
-	{
+	if (parent) {
 		// Increase number of children
 		parent->num_children++;
-
 		// If we're concerned about max children, make sure we haven't passed it
-		if (parent->max_children && parent->num_children > parent->max_children) 
-		{
+		if (parent->max_children && parent->num_children > parent->max_children) {
 			gs_log_error("Attempting to add more children than max allows.");
 		}
 	} 
@@ -362,7 +391,8 @@ GS_API_DECL gs_ai_bt_node_t* gs_ai_bt_node_next(struct gs_ai_bt_t* ctx)
     return np;
 }
 
-GS_API_DECL int32_t gs_ai_bt_parallel_begin(struct gs_ai_bt_t* ctx)
+GS_API_DECL int32_t 
+gs_ai_bt_parallel_begin(struct gs_ai_bt_t* ctx)
 {
     // Get next node in stack
     gs_ai_bt_node_t* node = gs_ai_bt_node_next(ctx); 
@@ -370,10 +400,10 @@ GS_API_DECL int32_t gs_ai_bt_parallel_begin(struct gs_ai_bt_t* ctx)
 	gs_ai_bt_node_t* parent = gs_ai_bt_parent_node_get(ctx);
 
 	// If not processing this node, return 0x00 to fail if check
-	if (parent && parent->processed_child != -1 && gs_ai_bt_node_child_get(ctx, parent, parent->processed_child)->idx != node->idx) return 0x00;
+    if (parent && parent->processed_child != -1 && 
+        gs_ai_bt_node_child_get(ctx, parent, parent->processed_child)->idx != node->idx) return 0x00;
 
-    if (node->state == GS_AI_BT_STATE_RUNNING)
-    {
+    if (node->state == GS_AI_BT_STATE_RUNNING) {
         // Begin processing new child stack
         gs_ai_bt_children_begin(ctx, node);
     } 
@@ -384,28 +414,26 @@ GS_API_DECL int32_t gs_ai_bt_parallel_begin(struct gs_ai_bt_t* ctx)
     return node->state;
 }
 
-GS_API_DECL void gs_ai_bt_parallel_end(struct gs_ai_bt_t* ctx) 
+GS_API_DECL void 
+gs_ai_bt_parallel_end(struct gs_ai_bt_t* ctx) 
 {
     // Get top of parent stack for node
+    #if 1
     gs_ai_bt_node_t* node = gs_ai_bt_parent_node_get(ctx); 
 
 	// For each child
     bool all_succeed = true;
-    for (uint32_t i = 0; i < node->num_children; ++i)
-    {
+    for (uint32_t i = 0; i < node->num_children; ++i) {
 		gs_ai_bt_node_t* child = gs_ai_bt_node_child_get(ctx, node, i);
         gs_assert(child); 
-
         // If any child fails, this node fails
         if (child->state == GS_AI_BT_STATE_RUNNING) {all_succeed = false;}
 		if (child->state == GS_AI_BT_STATE_FAILURE) {node->state = GS_AI_BT_STATE_FAILURE; all_succeed = false; break;}
     }
 
     // If we've failed, we don't need to process anymore children
-    if (node->state == GS_AI_BT_STATE_FAILURE || !node->num_children)
-    {
-		node->state = GS_AI_BT_STATE_FAILURE;
-
+    if (node->state == GS_AI_BT_STATE_FAILURE || !node->num_children) {
+		node->state = GS_AI_BT_STATE_FAILURE; 
         // Pop all children and their children off stack
 		uint32_t cnt = gs_dyn_array_size(ctx->stack);
         for (uint32_t i = node->idx + 1; i < cnt; ++i) {
@@ -413,12 +441,10 @@ GS_API_DECL void gs_ai_bt_parallel_end(struct gs_ai_bt_t* ctx)
         } 
 		ctx->current_idx = node->idx + 1;
     }
-    else if (!all_succeed)
-    { 
+    else if (!all_succeed) { 
         node->state = GS_AI_BT_STATE_RUNNING;
     }
-	else
-	{
+	else {
         node->state = GS_AI_BT_STATE_SUCCESS;
 
         // Pop all children and their children off stack
@@ -427,13 +453,15 @@ GS_API_DECL void gs_ai_bt_parallel_end(struct gs_ai_bt_t* ctx)
             gs_dyn_array_pop(ctx->stack);
         } 
 		ctx->current_idx = node->idx + 1;
-	}
+    }
+    #endif
 
     // End child stack, pop off transient parent stack
     gs_ai_bt_children_end(ctx);
 }
 
-GS_API_DECL int16_t gs_ai_bt_selector_begin(struct gs_ai_bt_t* ctx)
+GS_API_DECL int16_t 
+gs_ai_bt_selector_begin(struct gs_ai_bt_t* ctx)
 {
     // Get next node in stack
     gs_ai_bt_node_t* node = gs_ai_bt_node_next(ctx); 
@@ -441,10 +469,10 @@ GS_API_DECL int16_t gs_ai_bt_selector_begin(struct gs_ai_bt_t* ctx)
 	gs_ai_bt_node_t* parent = gs_ai_bt_parent_node_get(ctx);
  
 	// If not processing this node, return 0x00 to fail if check
-	if (parent && parent->processed_child != -1 && gs_ai_bt_node_child_get(ctx, parent, parent->processed_child)->idx != node->idx) return 0x00;
+    if (parent && parent->processed_child != -1 
+        && gs_ai_bt_node_child_get(ctx, parent, parent->processed_child)->idx != node->idx) return 0x00;
 
-    if (node->state == GS_AI_BT_STATE_RUNNING)
-    {
+    if (node->state == GS_AI_BT_STATE_RUNNING) {
         // Begin processing new child stack
         gs_ai_bt_children_begin(ctx, node);
     } 
@@ -452,17 +480,16 @@ GS_API_DECL int16_t gs_ai_bt_selector_begin(struct gs_ai_bt_t* ctx)
     return node->state; 
 }
 
-GS_API_DECL void gs_ai_bt_selector_end(struct gs_ai_bt_t* ctx)
+GS_API_DECL void 
+gs_ai_bt_selector_end(struct gs_ai_bt_t* ctx)
 {
     // Get top of parent stack for node
     gs_ai_bt_node_t* node = gs_ai_bt_parent_node_get(ctx); 
 
-    for (uint32_t i = 0; i < node->num_children; ++i)
-    {
+    for (uint32_t i = 0; i < node->num_children; ++i) {
 		node->processed_child = i;
 		gs_ai_bt_node_t* child = gs_ai_bt_node_child_get(ctx, node, i);
-        gs_assert(child); 
-
+        gs_assert(child);
 		if (child->state == GS_AI_BT_STATE_RUNNING) {break;}
 		else if (child->state == GS_AI_BT_STATE_SUCCESS) {node->state = GS_AI_BT_STATE_SUCCESS; break;}
 		else if (child->state == GS_AI_BT_STATE_FAILURE && i == node->num_children - 1) {
@@ -472,8 +499,7 @@ GS_API_DECL void gs_ai_bt_selector_end(struct gs_ai_bt_t* ctx)
     }
 
     // If we're successful, we don't need to process anymore children
-    if (node->state == GS_AI_BT_STATE_SUCCESS || !node->num_children)
-    {
+    if (node->state == GS_AI_BT_STATE_SUCCESS || !node->num_children) {
 		node->state = GS_AI_BT_STATE_SUCCESS;
 
         // Pop all children off stack
@@ -483,12 +509,10 @@ GS_API_DECL void gs_ai_bt_selector_end(struct gs_ai_bt_t* ctx)
 		ctx->current_idx = node->idx + 1;
     }
     // If processed_child < num_children, then we're still processing/running
-    else if ((int32_t)node->processed_child < (int32_t)node->num_children)
-    { 
+    else if ((int32_t)node->processed_child < (int32_t)node->num_children) { 
         node->state = GS_AI_BT_STATE_RUNNING;
     }
-	else
-	{
+	else {
         node->state = GS_AI_BT_STATE_FAILURE;
 
         // Pop off all children off stack
@@ -496,13 +520,14 @@ GS_API_DECL void gs_ai_bt_selector_end(struct gs_ai_bt_t* ctx)
             gs_dyn_array_pop(ctx->stack);
         } 
 		ctx->current_idx = node->idx + 1;
-	}
+    }
 
     // End child stack, pop off transient parent stack
     gs_ai_bt_children_end(ctx);
 }
 
-GS_API_DECL int16_t gs_ai_bt_sequence_begin(struct gs_ai_bt_t* ctx)
+GS_API_DECL int16_t 
+gs_ai_bt_sequence_begin(struct gs_ai_bt_t* ctx)
 {
     // Get next node in stack
     gs_ai_bt_node_t* node = gs_ai_bt_node_next(ctx); 
@@ -510,10 +535,11 @@ GS_API_DECL int16_t gs_ai_bt_sequence_begin(struct gs_ai_bt_t* ctx)
 	node->name = "sequence";
  
 	// If not processing this node, return 0x00 to fail if check
-	if (parent && parent->processed_child != -1 && gs_ai_bt_node_child_get(ctx, parent, parent->processed_child)->idx != node->idx) return 0x00;
+    if (parent && parent->processed_child != -1 &&
+        // && gs_ai_bt_node_child_get(ctx, parent, parent->processed_child)->idx != node->idx) return 0x00;
+        (parent->processed_child + parent->idx + 1) != node->idx) return 0x00;
 
-    if (node->state == GS_AI_BT_STATE_RUNNING)
-    {
+    if (node->state == GS_AI_BT_STATE_RUNNING) {
         // Begin processing new child stack
         gs_ai_bt_children_begin(ctx, node);
     } 
@@ -521,18 +547,17 @@ GS_API_DECL int16_t gs_ai_bt_sequence_begin(struct gs_ai_bt_t* ctx)
     return node->state; 
 }
 
-GS_API_DECL void gs_ai_bt_sequence_end(struct gs_ai_bt_t* ctx)
+GS_API_DECL void 
+gs_ai_bt_sequence_end(struct gs_ai_bt_t* ctx)
 {
     // Get top of parent stack for node
     gs_ai_bt_node_t* node = gs_ai_bt_parent_node_get(ctx); 
 
 	// For each child
-    for (uint32_t i = 0; i < node->num_children; ++i)
-    {
+    for (uint32_t i = 0; i < node->num_children; ++i) {
 		node->processed_child = i;
 		gs_ai_bt_node_t* child = gs_ai_bt_node_child_get(ctx, node, i);
         gs_assert(child); 
-
 		if (child->state == GS_AI_BT_STATE_RUNNING) {break;}
 		else if (child->state == GS_AI_BT_STATE_FAILURE) {node->state = GS_AI_BT_STATE_FAILURE; break;}
 		else if (child->state == GS_AI_BT_STATE_SUCCESS && i == node->num_children - 1) {
@@ -542,10 +567,8 @@ GS_API_DECL void gs_ai_bt_sequence_end(struct gs_ai_bt_t* ctx)
     }
 
     // If we've failed, we don't need to process anymore children
-    if (node->state == GS_AI_BT_STATE_FAILURE || !node->num_children)
-    {
-		node->state = GS_AI_BT_STATE_FAILURE;
-
+    if (node->state == GS_AI_BT_STATE_FAILURE || !node->num_children) {
+		node->state = GS_AI_BT_STATE_FAILURE; 
         // Pop all children off stack, reset current idx?
         for (uint32_t i = 0; i < node->num_children; ++i) {
             gs_dyn_array_pop(ctx->stack);
@@ -553,14 +576,11 @@ GS_API_DECL void gs_ai_bt_sequence_end(struct gs_ai_bt_t* ctx)
 		ctx->current_idx = node->idx + 1;
     }
     // If processed_child < num_children, then we're still processing/running
-    else if ((int32_t)node->processed_child < (int32_t)node->num_children)
-    { 
+    else if ((int32_t)node->processed_child < (int32_t)node->num_children) { 
         node->state = GS_AI_BT_STATE_RUNNING;
     }
-	else
-	{
+	else {
         node->state = GS_AI_BT_STATE_SUCCESS;
-
         // Pop off all children off stack
         for (uint32_t i = 0; i < node->num_children; ++i) {
             gs_dyn_array_pop(ctx->stack);
@@ -572,7 +592,99 @@ GS_API_DECL void gs_ai_bt_sequence_end(struct gs_ai_bt_t* ctx)
     gs_ai_bt_children_end(ctx);
 }
 
-GS_API_DECL int16_t gs_ai_bt_repeater_begin(struct gs_ai_bt_t* ctx, uint32_t* count)
+GS_API_DECL int16_t 
+gs_ai_bt_utility_selector_begin(struct gs_ai_bt_t* ctx, gs_ai_utility_action_list_desc_t* actions)
+{ 
+    // Get next node in stack
+    gs_ai_bt_node_t* node = gs_ai_bt_node_next_ext(ctx, -1);
+	node->name = "utility_selector";
+    gs_ai_bt_node_t* parent = gs_ai_bt_parent_node_get(ctx);
+ 
+	// If not processing this node, return 0x00 to fail if check
+    if (parent && parent->processed_child != -1 
+        && gs_ai_bt_node_child_get(ctx, parent, parent->processed_child)->idx != node->idx) return 0x00;
+    if (!actions) return 0x00;
+
+    // Set to running if we're here
+    node->state = GS_AI_BT_STATE_RUNNING;
+
+    if (node->state == GS_AI_BT_STATE_RUNNING) {
+
+        // Utility eval over actions list to find processed child index
+        if (node->processed_child == -1 || actions->force_eval) {
+            uint32_t ucnt = actions->size / sizeof(gs_ai_utility_action_desc_t);
+            float hscore = FLT_MIN;
+            int16_t ci = 0;
+            for (uint32_t i = 0; i < ucnt; ++i) {
+                float score = gs_ai_utility_action_evaluate(&actions->actions[i]);
+                if (score > hscore) {
+                    hscore = score;
+                    ci = (int16_t)i;
+                }
+            } 
+            node->processed_child = ci;
+        }
+
+        // Begin processing new child stack
+        gs_ai_bt_children_begin(ctx, node);
+    } 
+
+    return node->state; 
+}
+
+GS_API_DECL void 
+gs_ai_bt_utility_selector_end(struct gs_ai_bt_t* ctx)
+{
+    // Get top of parent stack for node
+    gs_ai_bt_node_t* node = gs_ai_bt_parent_node_get(ctx); 
+
+    // for (uint32_t i = 0; i < node->num_children; ++i) {
+	// 	// node->processed_child = i;
+	// 	gs_ai_bt_node_t* child = gs_ai_bt_node_child_get(ctx, node, i);
+    //     gs_assert(child);
+	// 	if (child->state == GS_AI_BT_STATE_RUNNING) {break;}
+	// 	else if (child->state == GS_AI_BT_STATE_SUCCESS) {node->state = GS_AI_BT_STATE_SUCCESS; break;}
+	// 	else if (child->state == GS_AI_BT_STATE_FAILURE && i == node->num_children - 1) {
+	// 		node->processed_child = node->num_children; 
+	// 		break;
+	// 	}
+    // } 
+    if (node->processed_child != -1) {
+        gs_ai_bt_node_t* child = gs_ai_bt_node_child_get(ctx, node, node->processed_child);
+        gs_assert(child);
+        node->state = child->state;
+    }
+
+    // If we're successful, we don't need to process anymore children
+    if (node->state == GS_AI_BT_STATE_SUCCESS || !node->num_children) {
+		node->state = GS_AI_BT_STATE_SUCCESS; 
+        // Pop all children off stack
+        for (uint32_t i = 0; i < node->num_children; ++i) {
+            gs_dyn_array_pop(ctx->stack);
+        } 
+        ctx->current_idx = node->idx + 1;
+        node->processed_child = -1;
+    }
+    // If processed_child < num_children, then we're still processing/running
+    else if ((int32_t)node->processed_child < (int32_t)node->num_children && node->processed_child != -1) { 
+        node->state = GS_AI_BT_STATE_RUNNING;
+    }
+	else {
+        node->state = GS_AI_BT_STATE_FAILURE;
+        // Pop off all children off stack
+        for (uint32_t i = 0; i < node->num_children; ++i) {
+            gs_dyn_array_pop(ctx->stack);
+        } 
+		ctx->current_idx = node->idx + 1;
+        node->processed_child = -1;
+    }
+
+    // End child stack, pop off transient parent stack
+    gs_ai_bt_children_end(ctx);
+}
+
+GS_API_DECL int16_t 
+gs_ai_bt_repeater_begin(struct gs_ai_bt_t* ctx, uint32_t* count)
 {
     // Get next node in stack
     gs_ai_bt_node_t* node = gs_ai_bt_node_next(ctx); 
@@ -607,7 +719,8 @@ GS_API_DECL int16_t gs_ai_bt_repeater_begin(struct gs_ai_bt_t* ctx, uint32_t* co
     return node->state; 
 }
 
-GS_API_DECL void gs_ai_bt_repeater_end(struct gs_ai_bt_t* ctx)
+GS_API_DECL void 
+gs_ai_bt_repeater_end(struct gs_ai_bt_t* ctx)
 {
     // Get top of parent stack for node
     gs_ai_bt_node_t* node = gs_ai_bt_parent_node_get(ctx);
@@ -636,7 +749,8 @@ GS_API_DECL void gs_ai_bt_repeater_end(struct gs_ai_bt_t* ctx)
     gs_ai_bt_children_end(ctx);
 }
 
-GS_API_DECL int16_t gs_ai_bt_inverter_begin(struct gs_ai_bt_t* ctx)
+GS_API_DECL int16_t 
+gs_ai_bt_inverter_begin(struct gs_ai_bt_t* ctx)
 {
     // Get next node in stack
     gs_ai_bt_node_t* node = gs_ai_bt_node_next(ctx); 
@@ -649,8 +763,7 @@ GS_API_DECL int16_t gs_ai_bt_inverter_begin(struct gs_ai_bt_t* ctx)
     // Set max children
     node->max_children = 1;
 
-    if (node->state == GS_AI_BT_STATE_RUNNING)
-    {
+    if (node->state == GS_AI_BT_STATE_RUNNING) {
         // Begin processing new child stack
         gs_ai_bt_children_begin(ctx, node);
     } 
@@ -658,26 +771,24 @@ GS_API_DECL int16_t gs_ai_bt_inverter_begin(struct gs_ai_bt_t* ctx)
     return node->state; 
 }
 
-GS_API_DECL void gs_ai_bt_inverter_end(struct gs_ai_bt_t* ctx)
+GS_API_DECL void 
+gs_ai_bt_inverter_end(struct gs_ai_bt_t* ctx)
 {
     // Get top of parent stack for node
     gs_ai_bt_node_t* node = gs_ai_bt_parent_node_get(ctx);
 
-    for (uint32_t i = 0; i < node->num_children; ++i)
-    {
+    for (uint32_t i = 0; i < node->num_children; ++i) {
 		node->processed_child = i;
 		gs_ai_bt_node_t* child = gs_ai_bt_node_child_get(ctx, node, i);
         gs_assert(child); 
-        switch (child->state)
-        {
+        switch (child->state) {
             case GS_AI_BT_STATE_RUNNING: node->state = GS_AI_BT_STATE_RUNNING; break;
             case GS_AI_BT_STATE_FAILURE: node->state = GS_AI_BT_STATE_SUCCESS; break;
             case GS_AI_BT_STATE_SUCCESS: node->state = GS_AI_BT_STATE_FAILURE; break;
         }
     }
 
-    if (node->state != GS_AI_BT_STATE_RUNNING)
-    { 
+    if (node->state != GS_AI_BT_STATE_RUNNING) { 
         // Pop all children and their children off stack
 		uint32_t cnt = gs_dyn_array_size(ctx->stack);
         for (uint32_t i = node->idx + 1; i < cnt; ++i) {
@@ -690,7 +801,8 @@ GS_API_DECL void gs_ai_bt_inverter_end(struct gs_ai_bt_t* ctx)
     gs_ai_bt_children_end(ctx);
 }
 
-GS_API_DECL int16_t gs_ai_bt_condition_begin(struct gs_ai_bt_t* ctx, bool condition)
+GS_API_DECL int16_t 
+gs_ai_bt_condition_begin(struct gs_ai_bt_t* ctx, bool condition)
 {
     // Get next node in stack
     gs_ai_bt_node_t* node = gs_ai_bt_node_next(ctx); 
@@ -703,15 +815,12 @@ GS_API_DECL int16_t gs_ai_bt_condition_begin(struct gs_ai_bt_t* ctx, bool condit
     // Set max children
     node->max_children = 1;
 
-    if (node->state == GS_AI_BT_STATE_RUNNING)
-    {
-        if (condition) 
-        {
+    if (node->state == GS_AI_BT_STATE_RUNNING) {
+        if (condition) {
             // Begin processing new child stack
             gs_ai_bt_children_begin(ctx, node);
         }
-        else
-        {
+        else {
             node->state = GS_AI_BT_STATE_FAILURE;
         }
     } 
@@ -719,21 +828,20 @@ GS_API_DECL int16_t gs_ai_bt_condition_begin(struct gs_ai_bt_t* ctx, bool condit
     return (node->state != GS_AI_BT_STATE_FAILURE);
 }
 
-GS_API_DECL void gs_ai_bt_condition_end(struct gs_ai_bt_t* ctx)
+GS_API_DECL void 
+gs_ai_bt_condition_end(struct gs_ai_bt_t* ctx)
 {
     // Get top of parent stack for node
     gs_ai_bt_node_t* node = gs_ai_bt_parent_node_get(ctx);
 
-    for (uint32_t i = 0; i < node->num_children; ++i)
-    {
+    for (uint32_t i = 0; i < node->num_children; ++i) {
 		node->processed_child = i;
 		gs_ai_bt_node_t* child = gs_ai_bt_node_child_get(ctx, node, i);
         gs_assert(child); 
         node->state = child->state; // pass through child state
     }
 
-    if (node->state != GS_AI_BT_STATE_RUNNING)
-    { 
+    if (node->state != GS_AI_BT_STATE_RUNNING) { 
         // Pop all children and their children off stack
 		uint32_t cnt = gs_dyn_array_size(ctx->stack);
         for (uint32_t i = node->idx + 1; i < cnt; ++i) {
@@ -746,7 +854,8 @@ GS_API_DECL void gs_ai_bt_condition_end(struct gs_ai_bt_t* ctx)
     gs_ai_bt_children_end(ctx);
 }
 
-GS_API_DECL void gs_ai_bt_leaf(struct gs_ai_bt_t* ctx, gs_ai_bt_leaf_func func)
+GS_API_DECL void 
+gs_ai_bt_leaf(struct gs_ai_bt_t* ctx, gs_ai_bt_leaf_func func)
 {
 	// Next node
 	gs_ai_bt_node_t* node = gs_ai_bt_node_next(ctx);
@@ -754,12 +863,15 @@ GS_API_DECL void gs_ai_bt_leaf(struct gs_ai_bt_t* ctx, gs_ai_bt_leaf_func func)
 	node->name = "leaf";
 
 	// If not processing this node, return 0x00 to fail if check
-	if (parent && parent->processed_child != -1 && gs_ai_bt_node_child_get(ctx, parent, parent->processed_child)->idx != node->idx) return;
+    // if (parent && parent->processed_child != -1 && 
+    //     gs_ai_bt_node_child_get(ctx, parent, parent->processed_child)->idx != node->idx) return;
+    if (parent && parent->processed_child != -1 && (parent->idx + parent->processed_child + 1) != node->idx) return;
 
 	func(ctx, node); 
 }
 
-GS_API_DECL void gs_ai_bt_wait(struct gs_ai_bt_t* ctx, float* time, float dt, float max)
+GS_API_DECL void 
+gs_ai_bt_wait(struct gs_ai_bt_t* ctx, float* time, float dt, float max)
 {
 	// Next node
 	gs_ai_bt_node_t* node = gs_ai_bt_node_next(ctx);
@@ -767,23 +879,19 @@ GS_API_DECL void gs_ai_bt_wait(struct gs_ai_bt_t* ctx, float* time, float dt, fl
 	node->name = "wait";
 
 	// If not processing this node, return 0x00 to fail if check
-	if (parent && parent->processed_child != -1 && gs_ai_bt_node_child_get(ctx, parent, parent->processed_child)->idx != node->idx) return; 
+    if (parent && parent->processed_child != -1 && 
+        gs_ai_bt_node_child_get(ctx, parent, parent->processed_child)->idx != node->idx) return; 
 
-    if (!time) 
-    {
+    if (!time) {
         node->state = GS_AI_BT_STATE_SUCCESS;
     }
-    else if (max == 0.f)
-    {
+    else if (max == 0.f) {
         node->state = GS_AI_BT_STATE_SUCCESS;
     }
-    else
-    { 
-        node->state = GS_AI_BT_STATE_RUNNING;
-
+    else { 
+        node->state = GS_AI_BT_STATE_RUNNING; 
         *time += dt;
-        if (*time >= max)
-        {
+        if (*time >= max) {
             node->state = GS_AI_BT_STATE_SUCCESS;
         }
     } 
@@ -794,44 +902,64 @@ GS_API_DECL void gs_ai_bt_wait(struct gs_ai_bt_t* ctx, float* time, float dt, fl
 
 //=== Response Curves ===// 
 
-GS_API_DECL float gs_ai_curve_logit(float m, float k, float c, float b, float x)
+GS_API_DECL float 
+gs_ai_curve_logit(float m, float k, float c, float b, float x)
 {
     if (k == 0.f) k = 0.0001f;
     float z = (x / k) - c;  
     return 0.5f * (log(z / (1.f - z)) / log(pow(100.f, m))) + b + 0.5f;
 }
 
-GS_API_DECL float gs_ai_curve_logistic(float m, float k, float c, float b, float x)
+GS_API_DECL float 
+gs_ai_curve_logistic(float m, float k, float c, float b, float x)
 {
     float z = 10 * m * (x - c - 0.5f);
     return k * (1.f / (1.f + pow(2.7183f, -z))) + b;
     
 }
 
-GS_API_DECL float gs_ai_curve_sin(float m, float k, float c, float b, float x)
+GS_API_DECL float 
+gs_ai_curve_sin(float m, float k, float c, float b, float x)
 {
     return m * sin(pow((x - c), k)) + b;
 }
 
-GS_API_DECL float gs_ai_curve_cos(float m, float k, float c, float b, float x)
+GS_API_DECL float 
+gs_ai_curve_cos(float m, float k, float c, float b, float x)
 {
     return m * cos(pow((x - c), k)) + b;
 }
 
-GS_API_DECL float gs_ai_curve_linearquad(float m, float k, float c, float b, float x)
+GS_API_DECL float 
+gs_ai_curve_linearquad(float m, float k, float c, float b, float x)
 {
     return m * pow((x - c), k) + b;
 }
 
-GS_API_DECL float gs_ai_curve_binary(float m, float k, float c, float b, float x)
+GS_API_DECL float 
+gs_ai_curve_binary(float m, float k, float c, float b, float x)
 {
     return x < m ? k : c;
 }
 
-float gs_ai_utility_action_evaluate(gs_ai_utility_action_desc_t* desc)
+GS_API_DECL float 
+gs_ai_curve_nsigmoid(float m, float k, float c, float b, float x)
+{
+    return m * (((x - c) - k * (x - c)) / (k - 2 * k * fabsf(x - c) + 1)) + b;
+}
+
+GS_API_DECL float 
+gs_ai_curve_constant(float m, float k, float c, float b, float x)
+{
+    return x;
+}
+
+GS_API_DECL float 
+gs_ai_utility_action_evaluate(gs_ai_utility_action_desc_t* desc)
 {
     float val = 1.f;
     uint32_t cnt = desc->size / sizeof(gs_ai_utility_consideration_desc_t);
+    if (!cnt) return 0.f;
     for (uint32_t i = 0; i < cnt; ++i) 
     {
         gs_ai_utility_consideration_desc_t* cp = &desc->considerations[i];
@@ -843,14 +971,15 @@ float gs_ai_utility_action_evaluate(gs_ai_utility_action_desc_t* desc)
         gs_ai_utility_response_curve_desc_t* c = &cp->curve;
         v = c->func(c->slope, c->exponent, c->shift_x, c->shift_y, v);
 
-        // Calculate compensation factor
-        float mod_factor = 1.f - (1.f / cnt);
-        float makeup = (1.f - v) * mod_factor; 
-        v = v + (makeup * v);
-
         // Final score multiplied to val
         val *= v;
     }
+
+    // Calculate compensation factor
+    float mod_factor = 1.f - (1.f / cnt);
+    float makeup = (1.f - val) * mod_factor; 
+    val = val + (makeup * val);
+
     return val;
 }
 
