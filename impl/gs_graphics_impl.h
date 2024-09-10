@@ -194,8 +194,8 @@ void gsgl_pipeline_state()
     glDisable(GL_BLEND);
     CHECK_GL_CORE(
         glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+        glDisable(GL_MULTISAMPLE);
     );
-    glDisable(GL_MULTISAMPLE);
 
     CHECK_GL_CORE(
         gs_graphics_info_t* info = gs_graphics_info();
@@ -205,15 +205,17 @@ void gsgl_pipeline_state()
     )
 }
 
-void GLAPIENTRY
+void// GLAPIENTRY (error: variable has incomplete type 'void')
 gsgl_message_cb(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, 
     const GLchar* message, void* user_param)
 {
     return;
+    /*
     if (type == GL_DEBUG_TYPE_ERROR) {
         gs_println("GL [DEBUG]: %s type = 0x%x, severity = 0x%x, message = %s", 
             type == GL_DEBUG_TYPE_ERROR ? "GL ERROR" : "", type, severity, message);
     }
+    */
 }
 
 /* GS/OGL Utilities */
@@ -1499,7 +1501,7 @@ gs_grapics_storage_buffer_unlock_impl(gs_handle(gs_graphics_storage_buffer_t) hn
     gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data; 
     if (!gs_slot_array_handle_valid(ogl->storage_buffers, hndl.id)) {
         gs_log_warning("Storage buffer handle invalid: %zu", hndl.id);
-        return NULL;
+        return;
     }
     gsgl_storage_buffer_t* sbo = gs_slot_array_getp(ogl->storage_buffers, hndl.id); 
 
@@ -1515,8 +1517,10 @@ gs_grapics_storage_buffer_unlock_impl(gs_handle(gs_graphics_storage_buffer_t) hn
 
     // Check for persistence here?...
     if (sbo->map) { 
-        glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);    // Do this via DSA instead...
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+        CHECK_GL_CORE(
+            glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);    // Do this via DSA instead...
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+        );
     }
 }
 
@@ -1546,16 +1550,18 @@ gs_grapics_storage_buffer_lock_impl(gs_handle(gs_graphics_storage_buffer_t) hndl
         }
     }
     if (!sbo->map) {
-        // Get buffer size 
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo->buffer);
-        GLint buffer_sz = 0;
-        glGetBufferParameteriv(GL_SHADER_STORAGE_BUFFER, GL_BUFFER_SIZE, &buffer_sz); 
-        gs_println("SZ: %zu, requested: %zu", buffer_sz, sz);
-        sbo->map = glMapBufferRange(GL_SHADER_STORAGE_BUFFER, (GLintptr)offset, (GLsizeiptr)sz, GL_MAP_READ_BIT);
-        GLenum err = glGetError();
-        if (err) {
-            gs_println("GL ERROR: 0x%x: %s", err, glGetString(err));
-        }
+        CHECK_GL_CORE(
+            // Get buffer size 
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo->buffer);
+            GLint buffer_sz = 0;
+            glGetBufferParameteriv(GL_SHADER_STORAGE_BUFFER, GL_BUFFER_SIZE, &buffer_sz); 
+            gs_println("SZ: %zu, requested: %zu", buffer_sz, sz);
+            sbo->map = glMapBufferRange(GL_SHADER_STORAGE_BUFFER, (GLintptr)offset, (GLsizeiptr)sz, GL_MAP_READ_BIT);
+            GLenum err = glGetError();
+            if (err) {
+                gs_println("GL ERROR: 0x%x: %s", err, glGetString(err));
+            }
+        );
     }
     return sbo->map;
 }
@@ -1567,16 +1573,18 @@ gs_storage_buffer_get_data_impl(gs_handle(gs_graphics_storage_buffer_t) hndl, si
     gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data; 
     if (!gs_slot_array_handle_valid(ogl->storage_buffers, hndl.id)) {
         gs_log_warning("Storage buffer handle invalid: %zu", hndl.id);
-        return NULL;
+        return;
     }
     gsgl_storage_buffer_t* sbo = gs_slot_array_getp(ogl->storage_buffers, hndl.id);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo->buffer);
-    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, offset, stride, out);
-        // GLenum err = glGetError();
-        // if (err) {
-            // gs_println("GL ERROR: 0x%x: %s", err, glGetString(err));
-        // }
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    CHECK_GL_CORE(
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo->buffer);
+        glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, offset, stride, out);
+            // GLenum err = glGetError();
+            // if (err) {
+                // gs_println("GL ERROR: 0x%x: %s", err, glGetString(err));
+            // }
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    );
 }
 
 #define __ogl_push_command(CB, OP_CODE, ...)\
@@ -2961,8 +2969,8 @@ gs_graphics_init(gs_graphics_t* graphics)
     graphics->api.command_buffer_submit = gs_graphics_command_buffer_submit_impl; 
 
     // Enable debug output
-    glEnable(GL_DEBUG_OUTPUT);
-    glDebugMessageCallback(gsgl_message_cb, 0);
+    //glEnable(GL_DEBUG_OUTPUT);
+    //glDebugMessageCallback(gsgl_message_cb, 0);
 }
 
 
