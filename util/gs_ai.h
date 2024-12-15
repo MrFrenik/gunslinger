@@ -290,6 +290,9 @@ GS_API_DECL void gs_ai_bt_free(struct gs_ai_bt_t* ctx);
 #define gsai_leaf(_CTX, _FUNC)            gs_ai_bt_leaf((_CTX), (_FUNC)) 
 #define gsai_wait(_CTX, _TIME, _DT, _MAX) gs_ai_bt_wait((_CTX), (_TIME), (_DT), (_MAX))
 
+#define gsai_succeed(_CTX, _NODE)   {_NODE->state = GS_AI_BT_STATE_SUCCESS; return;}
+#define gsai_fail(_CTX, _NODE)      {_NODE->state = GS_AI_BT_STATE_FAILURE; return;}
+
 /** @} */ // end of gs_ai_util
 
 //========================//
@@ -500,7 +503,7 @@ gs_ai_bt_selector_end(struct gs_ai_bt_t* ctx)
 
     // If we're successful, we don't need to process anymore children
     if (node->state == GS_AI_BT_STATE_SUCCESS || !node->num_children) {
-		node->state = GS_AI_BT_STATE_SUCCESS;
+        node->state = GS_AI_BT_STATE_SUCCESS;
 
         // Pop all children off stack
         for (uint32_t i = 0; i < node->num_children; ++i) {
@@ -552,8 +555,17 @@ gs_ai_bt_sequence_end(struct gs_ai_bt_t* ctx)
 {
     // Get top of parent stack for node
     gs_ai_bt_node_t* node = gs_ai_bt_parent_node_get(ctx); 
+ 
+	gs_ai_bt_node_t* child = gs_ai_bt_node_child_get(ctx, node, node->processed_child);
+	gs_assert(child); 
+	if (child->state == GS_AI_BT_STATE_RUNNING) {/* Do nothing */} 
+	else if (child->state == GS_AI_BT_STATE_FAILURE) {node->state = GS_AI_BT_STATE_FAILURE;} 
+	else if (child->state == GS_AI_BT_STATE_SUCCESS) {
+		node->processed_child++;
+	}
 
 	// For each child
+	/*
     for (uint32_t i = 0; i < node->num_children; ++i) {
 		node->processed_child = i;
 		gs_ai_bt_node_t* child = gs_ai_bt_node_child_get(ctx, node, i);
@@ -565,6 +577,7 @@ gs_ai_bt_sequence_end(struct gs_ai_bt_t* ctx)
 			break;
 		}
     }
+	*/
 
     // If we've failed, we don't need to process anymore children
     if (node->state == GS_AI_BT_STATE_FAILURE || !node->num_children) {
@@ -574,6 +587,7 @@ gs_ai_bt_sequence_end(struct gs_ai_bt_t* ctx)
             gs_dyn_array_pop(ctx->stack);
         } 
 		ctx->current_idx = node->idx + 1;
+		node->processed_child = 0;
     }
     // If processed_child < num_children, then we're still processing/running
     else if ((int32_t)node->processed_child < (int32_t)node->num_children) { 
@@ -586,6 +600,7 @@ gs_ai_bt_sequence_end(struct gs_ai_bt_t* ctx)
             gs_dyn_array_pop(ctx->stack);
         } 
 		ctx->current_idx = node->idx + 1;
+		node->processed_child = 0;
 	}
 
     // End child stack, pop off transient parent stack
