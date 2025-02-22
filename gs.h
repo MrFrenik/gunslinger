@@ -1762,6 +1762,81 @@ GS_API_DECL gs_result gs_byte_buffer_write_to_file(gs_byte_buffer_t* buffer, con
 GS_API_DECL gs_result gs_byte_buffer_read_from_file(gs_byte_buffer_t* buffer, const char* file_path);   // Assumes an allocated byte buffer 
 GS_API_DECL void gs_byte_buffer_memset(gs_byte_buffer_t* buffer, uint8_t val);
 
+/*====================//
+//=== Static Array ===//
+======================*/
+
+#define gs_array(__T, __N)\
+    struct {\
+        __T data[__N];\
+        size_t size;\
+    }
+
+#define gs_array_capacity(__Q) (sizeof((__Q).data) / sizeof((__Q).data[0]))
+#define gs_array_push(__Q, __V)\
+    do {\
+        const size_t cap = gs_array_capacity((__Q));\
+        if ((__Q).size < cap) {\
+            (__Q).data[(__Q).size++] = (__V);\
+        }\
+    } while (0)
+
+#define gs_array_pop(__Q)\
+    do {\
+        if ((__Q).size) {\
+            const size_t cap = gs_array_capacity((__Q));\
+            (__Q).size--;\
+        }\
+    } while (0)
+
+#define gs_array_empty(__Q) (__Q).size ? false : true
+#define gs_array_clear(__Q) do {(__Q).size = 0;} while (0)
+
+#define gs_array_back(__Q)\
+    !gs_array_empty(__Q) ? &__Q.data[__Q.size - 1] : NULL
+
+/*=============================//
+//=== Static Circular Queue ===//
+===============================*/
+
+#define gs_cqueue(__T, __N)\
+    struct {\
+        __T data[__N];\
+        size_t size;\
+        size_t head;\
+    }
+
+#define gs_cqueue_size(__Q) ((__Q).size)
+#define gs_cqueue_capacity(__Q) (sizeof((__Q).data) / sizeof((__Q).data[0]))
+#define gs_cqueue_push(__Q, __V)\
+    do {\
+        const size_t cap = gs_cqueue_capacity((__Q));\
+        if ((__Q).size < cap) {\
+            (__Q).data[((__Q).head + (__Q).size++) % cap] = (__V);\
+        }\
+    } while (0)
+
+#define gs_cqueue_pop(__Q)\
+    do {\
+        if ((__Q).size) {\
+            const size_t cap = gs_cqueue_capacity((__Q));\
+            (__Q).size--;\
+            (__Q).head = ((__Q).head + 1) % cap;\
+        }\
+        else {\
+            (__Q).head = 0;\
+        }\
+    } while (0)
+
+#define gs_cqueue_peek(__Q) (__Q).size ? &(__Q).data[(__Q).head] : NULL
+#define gs_cqueue_empty(__Q) (__Q).size ? false : true
+#define gs_cqueue_clear(__Q)\
+    do {\
+        (__Q).size = 0;\
+        (__Q).head = 0;\
+    } while (0)
+
+
 /*===================================
 // Dynamic Array
 ===================================*/
@@ -2738,6 +2813,7 @@ uint32_t gs_slot_array_insert_func(void** indices, void** data, void* val, size_
 
 // Slot array iterator new
 typedef uint32_t gs_slot_array_iter;
+typedef gs_slot_array_iter gs_slot_array_iter_t;
 
 #define gs_slot_array_iter_valid(__SA, __IT)\
     (__SA && gs_slot_array_exists(__SA, __IT))
@@ -5232,10 +5308,18 @@ typedef enum gs_token_type
 	GS_TOKEN_COLON,
 	GS_TOKEN_COMMA, 
 	GS_TOKEN_EQUAL,
+	GS_TOKEN_EEQUAL,
+	GS_TOKEN_NEQUAL,
+	GS_TOKEN_LEQUAL,
+	GS_TOKEN_GEQUAL,
 	GS_TOKEN_NOT, 
 	GS_TOKEN_HASH, 
 	GS_TOKEN_PIPE, 
-	GS_TOKEN_AMPERSAND, 
+    GS_TOKEN_AMPERSAND, 
+    GS_TOKEN_AND,
+    GS_TOKEN_OR,
+    GS_TOKEN_XOR,
+    GS_TOKEN_NEGATE,
 	GS_TOKEN_LBRACE, 
 	GS_TOKEN_RBRACE, 
 	GS_TOKEN_LBRACKET, 
@@ -5259,14 +5343,17 @@ typedef enum gs_token_type
 	GS_TOKEN_DOUBLE_QUOTE,
 	GS_TOKEN_STRING, 
 	GS_TOKEN_PERIOD, 
-	GS_TOKEN_NUMBER
+    GS_TOKEN_NUMBER,
+    GS_TOKEN_KEYWORD,
+    GS_TOKEN_COUNT          // Max tokens accounted for
 } gs_token_type;
 
 typedef struct gs_token_t 
 {
 	const char* text;
 	gs_token_type type;
-	uint32_t len;
+    uint32_t len;
+    uint32_t line;
 } gs_token_t;
 
 GS_API_DECL gs_token_t gs_token_invalid_token();
@@ -8597,6 +8684,10 @@ gs_camera_offset_orientation(gs_camera_t* cam, f32 yaw, f32 pitch)
 // GS_UTIL
 =============================*/
 
+#define STBI_MALLOC(sz)           gs_malloc(sz)
+#define STBI_REALLOC(p,newsz)     gs_realloc(p,newsz)
+#define STBI_FREE(p)              gs_free(p)
+
 #ifndef GS_NO_STB_RECT_PACK
     #define STB_RECT_PACK_IMPLEMENTATION
 #endif
@@ -9365,7 +9456,9 @@ GS_API_DECL const char* gs_token_type_to_str(gs_token_type type)
 		case GS_TOKEN_SINGLE_LINE_COMMENT: return gs_to_str(GS_TOKEN_SINGLE_LINE_COMMENT); break;
 		case GS_TOKEN_MULTI_LINE_COMMENT: return gs_to_str(GS_TOKEN_MULTI_LINE_COMMENT); break;
 		case GS_TOKEN_IDENTIFIER: return gs_to_str(GS_TOKEN_IDENTIFIER); break;
-		case GS_TOKEN_NUMBER: return gs_to_str(GS_TOKEN_NUMBER); break;
+        case GS_TOKEN_NUMBER: return gs_to_str(GS_TOKEN_NUMBER); break;
+        case GS_TOKEN_PERIOD: return gs_to_str(GS_TOKEN_PERIOD); break;
+        case GS_TOKEN_STRING: return gs_to_str(GS_TOKEN_STRING); break;
 	}
 }
 

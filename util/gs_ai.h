@@ -127,17 +127,21 @@ GS_API_DECL float gs_ai_curve_logistic(float m, float k, float c, float b, float
 GS_API_DECL float gs_ai_curve_sin(float m, float k, float c, float b, float x);
 GS_API_DECL float gs_ai_curve_cos(float m, float k, float c, float b, float x);
 GS_API_DECL float gs_ai_curve_linearquad(float m, float k, float c, float b, float x);
-GS_API_DECL float gs_ai_curve_binary(float m, float k, float c, float b, float x);
+GS_API_DECL float gs_ai_curve_binary_lt(float m, float k, float c, float b, float x);
+GS_API_DECL float gs_ai_curve_binary_gt(float m, float k, float c, float b, float x);
+GS_API_DECL float gs_ai_curve_binary_lte(float m, float k, float c, float b, float x);
+GS_API_DECL float gs_ai_curve_binary_gte(float m, float k, float c, float b, float x);
+GS_API_DECL float gs_ai_curve_binary_eq(float m, float k, float c, float b, float x);
 GS_API_DECL float gs_ai_curve_nsigmoid(float m, float k, float c, float b, float x);
 GS_API_DECL float gs_ai_curve_constant(float m, float k, float c, float b, float x);
 
 typedef struct
 {
     gs_ai_curve_func func;
-    float slope;      // Slope of curve 
-    float exponent;   // Order or curve
-    float shift_x;    // Shift curve along x-axis
-    float shift_y;    // Shift curve along y-axis
+    float slope;      // Slope of curve             (m)
+    float exponent;   // Order or curve             (k)
+    float shift_x;    // Shift curve along x-axis   (c)
+    float shift_y;    // Shift curve along y-axis   (b)
 } gs_ai_utility_response_curve_desc_t;
 
 //=== Considerations ===//
@@ -292,6 +296,7 @@ GS_API_DECL void gs_ai_bt_free(struct gs_ai_bt_t* ctx);
 
 #define gsai_succeed(_CTX, _NODE)   {_NODE->state = GS_AI_BT_STATE_SUCCESS; return;}
 #define gsai_fail(_CTX, _NODE)      {_NODE->state = GS_AI_BT_STATE_FAILURE; return;}
+#define gsai_running(_CTX, _NODE)   {_NODE->state = GS_AI_BT_STATE_RUNNING; return;}
 
 /** @} */ // end of gs_ai_util
 
@@ -952,9 +957,33 @@ gs_ai_curve_linearquad(float m, float k, float c, float b, float x)
 }
 
 GS_API_DECL float 
-gs_ai_curve_binary(float m, float k, float c, float b, float x)
+gs_ai_curve_binary_lt(float m, float k, float c, float b, float x)
 {
     return x < m ? k : c;
+}
+
+GS_API_DECL float 
+gs_ai_curve_binary_lte(float m, float k, float c, float b, float x)
+{
+    return x <= m ? k : c;
+}
+
+GS_API_DECL float 
+gs_ai_curve_binary_gt(float m, float k, float c, float b, float x)
+{
+    return x > m ? k : c;
+}
+
+GS_API_DECL float 
+gs_ai_curve_binary_gte(float m, float k, float c, float b, float x)
+{
+    return x >= m ? k : c;
+}
+
+GS_API_DECL float 
+gs_ai_curve_binary_eq(float m, float k, float c, float b, float x)
+{
+    return x >= m ? k : c;
 }
 
 GS_API_DECL float 

@@ -4985,9 +4985,11 @@ static void *stbi__do_png(stbi__png *p, int *x, int *y, int *n, int req_comp, st
       *y = p->s->img_y;
       if (n) *n = p->s->img_n;
    }
-   STBI_FREE(p->out);      p->out      = NULL;
-   STBI_FREE(p->expanded); p->expanded = NULL;
-   STBI_FREE(p->idata);    p->idata    = NULL;
+//#GS_BEGIN_NULL_CHECK
+   if (p->out)		{STBI_FREE(p->out);      p->out = NULL;}
+   if (p->expanded) {STBI_FREE(p->expanded); p->expanded = NULL;}
+   if (p->idata)	{STBI_FREE(p->idata);    p->idata = NULL;}
+//#GS_END_NULL_CHECK
 
    return result;
 }
