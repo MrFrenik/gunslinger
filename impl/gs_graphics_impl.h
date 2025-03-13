@@ -968,10 +968,11 @@ gs_graphics_storage_buffer_create_impl(const gs_graphics_storage_buffer_desc_t* 
 
         // Store mapping
         if (flags & GL_MAP_PERSISTENT_BIT) {
+            int32_t err;
             sbo.map = glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, desc->size, flags);
-            // while ((err = glGetError()) != GL_NO_ERROR) {
-            //     gs_println("GL ERROR: 0x%x: %s", err, glGetString(err));
-            // }
+            while ((err = glGetError()) != GL_NO_ERROR) {
+                gs_println("GL ERROR: 0x%x: %s", err, glGetString(err));
+            }
         }
 
         GLenum err = glGetError();
@@ -1436,12 +1437,11 @@ gs_graphics_storage_buffer_update_impl(gs_handle(gs_graphics_storage_buffer_t) h
 
     CHECK_GL_CORE(
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo->buffer); 
-        switch (desc->update.type) 
-        {
+        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+        switch (desc->update.type) {
             case GS_GRAPHICS_BUFFER_UPDATE_SUBDATA: glBufferSubData(GL_SHADER_STORAGE_BUFFER, desc->update.offset, desc->size, desc->data); break;
             default:                                glBufferData(GL_SHADER_STORAGE_BUFFER, desc->size, desc->data, gsgl_buffer_usage_to_gl_enum(desc->usage));
         }
-        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
     );
 } 
@@ -2900,8 +2900,7 @@ gs_graphics_init(gs_graphics_t* graphics)
     // Compute shader info
     CHECK_GL_CORE(
         info->compute.available = info->major_version >= 4 && info->minor_version >= 3;
-        if (info->compute.available)
-        {
+        if (info->compute.available) {
             // Work group counts
             glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, (int32_t*)&info->compute.max_work_group_count[0]);
             glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1, (int32_t*)&info->compute.max_work_group_count[1]);
@@ -2913,6 +2912,7 @@ gs_graphics_init(gs_graphics_t* graphics)
             // Work group invocations
             glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, (int32_t*)&info->compute.max_work_group_invocations);
         }
+        glGetIntegerv(GL_MAX_SHADER_STORAGE_BLOCK_SIZE, &info->max_ssbo_block_size);
     ) 
 
     const GLubyte* glslv = glGetString(GL_SHADING_LANGUAGE_VERSION);

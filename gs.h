@@ -6894,6 +6894,7 @@ typedef struct gs_graphics_info_t
     uint32_t major_version;
     uint32_t minor_version;
     uint32_t max_texture_units;
+    uint32_t max_ssbo_block_size;
     struct {
         bool32 available;
         uint32_t max_work_group_count[3];
@@ -7493,7 +7494,7 @@ gs_graphics_storage_buffer_map_get(gs_handle(gs_graphics_storage_buffer_t) hndl)
 } 
 
 GS_API_DECL void
-gs_grapics_storage_buffer_unlock(gs_handle(gs_graphics_storage_buffer_t) hndl)
+gs_graphics_storage_buffer_unlock(gs_handle(gs_graphics_storage_buffer_t) hndl)
 {
     return gs_graphics()->api.storage_buffer_unlock(hndl);
 }
