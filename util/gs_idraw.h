@@ -205,6 +205,7 @@ GS_API_DECL void gsi_line(gs_immediate_draw_t* gsi, float x0, float y0, float x1
 GS_API_DECL void gsi_linev(gs_immediate_draw_t* gsi, gs_vec2 v0, gs_vec2 v1, gs_color_t c);
 GS_API_DECL void gsi_line3D(gs_immediate_draw_t* gsi, float x0, float y0, float z0, float x1, float y1, float z1, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 GS_API_DECL void gsi_line3Dv(gs_immediate_draw_t* gsi, gs_vec3 s, gs_vec3 e, gs_color_t color); 
+GS_API_DECL void gsi_line3Ddir(gs_immediate_draw_t* gsi, gs_vec3 s, gs_vec3 dir, gs_color_t color);
 GS_API_DECL void gsi_line3Dmc(gs_immediate_draw_t* gsi, float x0, float y0, float z0, float x1, float y1, float z1, uint8_t r0, uint8_t g0, uint8_t b0, uint8_t a0, uint8_t r1, uint8_t g1, uint8_t b1, uint8_t a1);
 
 // Shape Drawing Util
@@ -1245,9 +1246,16 @@ void gsi_line3D(gs_immediate_draw_t* gsi, float x0, float y0, float z0, float x1
 	gsi_end(gsi);
 }
 
-void gsi_line3Dv(gs_immediate_draw_t* gsi, gs_vec3 s, gs_vec3 e, gs_color_t color)
+void 
+gsi_line3Dv(gs_immediate_draw_t* gsi, gs_vec3 s, gs_vec3 e, gs_color_t color)
 {
 	gsi_line3D(gsi, s.x, s.y, s.z, e.x, e.y, e.z, color.r, color.g, color.b, color.a);
+}
+
+GS_API_DECL void 
+gsi_line3Ddir(gs_immediate_draw_t* gsi, gs_vec3 s, gs_vec3 d, gs_color_t color)
+{
+	gsi_line3D(gsi, s.x, s.y, s.z, s.x + d.x, s.y + d.y, s.z + d.z, color.r, color.g, color.b, color.a);
 }
 
 void gsi_line(gs_immediate_draw_t* gsi, float x0, float y0, float x1, float y1, uint8_t r, uint8_t g, uint8_t b, uint8_t a)

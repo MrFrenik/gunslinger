@@ -94,6 +94,22 @@
     #define GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX "U_VIEW_PROJECTION_MTX"
 #endif
 
+#ifndef GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX_0
+    #define GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX_0 "U_VIEW_PROJECTION_MTX_0"
+#endif
+
+#ifndef GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX_1
+    #define GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX_1 "U_VIEW_PROJECTION_MTX_1"
+#endif
+
+#ifndef GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX_2
+    #define GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX_2 "U_VIEW_PROJECTION_MTX_2"
+#endif
+
+#ifndef GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX_3
+    #define GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX_3 "U_VIEW_PROJECTION_MTX_3"
+#endif
+
 #ifndef GS_GFXT_UNIFORM_MODEL_MATRIX
     #define GS_GFXT_UNIFORM_MODEL_MATRIX "U_MODEL_MTX"
 #endif
@@ -108,6 +124,14 @@
 
 #ifndef GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX
     #define GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX "U_MVP_MTX"
+#endif
+
+#ifndef GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX_0
+    #define GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX_0 "U_MVP_MTX_0"
+#endif
+
+#ifndef GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX_1
+    #define GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX_1 "U_MVP_MTX_1"
 #endif
 
 #ifndef GS_GFXT_UNIFORM_TIME
@@ -2101,6 +2125,7 @@ gs_graphics_uniform_type gs_uniform_type_from_token(const gs_token_t* t)
     else if (gs_token_compare_text(t, "vec4"))           return GS_GRAPHICS_UNIFORM_VEC4; 
     else if (gs_token_compare_text(t, "mat4"))           return GS_GRAPHICS_UNIFORM_MAT4; 
     else if (gs_token_compare_text(t, "sampler2D"))      return GS_GRAPHICS_UNIFORM_SAMPLER2D; 
+    else if (gs_token_compare_text(t, "sampler2DShadow"))return GS_GRAPHICS_UNIFORM_SAMPLER2DSHADOW; 
     else if (gs_token_compare_text(t, "usampler2D"))     return GS_GRAPHICS_UNIFORM_USAMPLER2D; 
     else if (gs_token_compare_text(t, "samplerCube"))    return GS_GRAPHICS_UNIFORM_SAMPLERCUBE; 
     else if (gs_token_compare_text(t, "img2D_rgba32f"))  return GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F; 
@@ -2118,6 +2143,7 @@ const char* gs_uniform_string_from_type(gs_graphics_uniform_type type)
         case GS_GRAPHICS_UNIFORM_VEC4:            return "vec4"; break; 
         case GS_GRAPHICS_UNIFORM_MAT4:            return "mat4"; break;
         case GS_GRAPHICS_UNIFORM_SAMPLER2D:       return "sampler2D"; break; 
+        case GS_GRAPHICS_UNIFORM_SAMPLER2DSHADOW: return "sampler2DShadow"; break; 
         case GS_GRAPHICS_UNIFORM_USAMPLER2D:      return "usampler2D"; break; 
         case GS_GRAPHICS_UNIFORM_SAMPLERCUBE:     return "samplerCube"; break; 
         case GS_GRAPHICS_UNIFORM_IMAGE2D_RGBA32F: return "image2D"; break; 
@@ -2132,44 +2158,67 @@ bool gs_parse_uniform_special_keyword(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* 
     gs_token_t token = lex->current_token;
 
     // Determine if uniform is one of special key defines
-    if (gs_token_compare_text(&token, "GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX"))
-    {
+    if (gs_token_compare_text(&token, "GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX")) {
         uniform->type = GS_GRAPHICS_UNIFORM_MAT4; 
         memcpy(uniform->name, GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX, sizeof(GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX));
         return true;
     }
-    else if (gs_token_compare_text(&token, "GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX"))
-    {
+    else if (gs_token_compare_text(&token, "GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX_0")) {
+        uniform->type = GS_GRAPHICS_UNIFORM_MAT4; 
+        memcpy(uniform->name, GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX_0, sizeof(GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX_0));
+        return true;
+    }
+    else if (gs_token_compare_text(&token, "GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX_1")) {
+        uniform->type = GS_GRAPHICS_UNIFORM_MAT4; 
+        memcpy(uniform->name, GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX_1, sizeof(GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX_1));
+        return true;
+    }
+    else if (gs_token_compare_text(&token, "GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX")) {
         uniform->type = GS_GRAPHICS_UNIFORM_MAT4; 
         memcpy(uniform->name, GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX, sizeof(GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX));
         return true;
     }
-    else if (gs_token_compare_text(&token, "GS_GFXT_UNIFORM_MODEL_MATRIX"))
-    {
+    else if (gs_token_compare_text(&token, "GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX_0")) {
+        uniform->type = GS_GRAPHICS_UNIFORM_MAT4; 
+        memcpy(uniform->name, GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX_0, sizeof(GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX_0));
+        return true;
+    }
+    else if (gs_token_compare_text(&token, "GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX_1")) {
+        uniform->type = GS_GRAPHICS_UNIFORM_MAT4; 
+        memcpy(uniform->name, GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX_1, sizeof(GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX_1));
+        return true;
+    }
+    else if (gs_token_compare_text(&token, "GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX_2")) {
+        uniform->type = GS_GRAPHICS_UNIFORM_MAT4; 
+        memcpy(uniform->name, GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX_2, sizeof(GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX_2));
+        return true;
+    }
+    else if (gs_token_compare_text(&token, "GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX_3")) {
+        uniform->type = GS_GRAPHICS_UNIFORM_MAT4; 
+        memcpy(uniform->name, GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX_3, sizeof(GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX_3));
+        return true;
+    }
+    else if (gs_token_compare_text(&token, "GS_GFXT_UNIFORM_MODEL_MATRIX")) {
         uniform->type = GS_GRAPHICS_UNIFORM_MAT4; 
         memcpy(uniform->name, GS_GFXT_UNIFORM_MODEL_MATRIX, sizeof(GS_GFXT_UNIFORM_MODEL_MATRIX));
         return true;
     }
-    else if (gs_token_compare_text(&token, "GS_GFXT_UNIFORM_INVERSE_MODEL_MATRIX"))
-    {
+    else if (gs_token_compare_text(&token, "GS_GFXT_UNIFORM_INVERSE_MODEL_MATRIX")) {
         uniform->type = GS_GRAPHICS_UNIFORM_MAT4; 
         memcpy(uniform->name, GS_GFXT_UNIFORM_INVERSE_MODEL_MATRIX, sizeof(GS_GFXT_UNIFORM_INVERSE_MODEL_MATRIX));
         return true;
     }
-    else if (gs_token_compare_text(&token, "GS_GFXT_UNIFORM_PROJECTION_MATRIX"))
-    {
+    else if (gs_token_compare_text(&token, "GS_GFXT_UNIFORM_PROJECTION_MATRIX")) {
         uniform->type = GS_GRAPHICS_UNIFORM_MAT4; 
         memcpy(uniform->name, GS_GFXT_UNIFORM_PROJECTION_MATRIX, sizeof(GS_GFXT_UNIFORM_PROJECTION_MATRIX));
         return true;
     }
-    else if (gs_token_compare_text(&token, "GS_GFXT_UNIFORM_VIEW_MATRIX"))
-    {
+    else if (gs_token_compare_text(&token, "GS_GFXT_UNIFORM_VIEW_MATRIX")) {
         uniform->type = GS_GRAPHICS_UNIFORM_MAT4; 
         memcpy(uniform->name, GS_GFXT_UNIFORM_VIEW_MATRIX, sizeof(GS_GFXT_UNIFORM_VIEW_MATRIX));
         return true;
     }
-    else if (gs_token_compare_text(&token, "GS_GFXT_UNIFORM_TIME"))
-    {
+    else if (gs_token_compare_text(&token, "GS_GFXT_UNIFORM_TIME")) {
         uniform->type = GS_GRAPHICS_UNIFORM_FLOAT; 
         memcpy(uniform->name, GS_GFXT_UNIFORM_TIME, sizeof(GS_GFXT_UNIFORM_TIME));
         return true;
@@ -2347,56 +2396,60 @@ bool gs_parse_code(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd
         gs_token_t tkn = clex.next_token(&clex);
         switch (tkn.type)
         {
-            case GS_TOKEN_IDENTIFIER:
-            {
+            case GS_TOKEN_IDENTIFIER: {
                 // evil replace a const char*
-                if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX"))
-                {
+                if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX")) {
                     gs_util_string_replace((char*)tkn.text, tkn.len, GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX, (char)32);
                 }
-                else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX"))
-                {
+                else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX_0")) {
+                    gs_util_string_replace((char*)tkn.text, tkn.len, GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX_0, (char)32);
+                }
+                else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX_1")) {
+                    gs_util_string_replace((char*)tkn.text, tkn.len, GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX_1, (char)32);
+                }
+                else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX")) {
                     gs_util_string_replace((char*)tkn.text, tkn.len, GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX, (char)32);
                 }
-                else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_MODEL_MATRIX"))
-                {
+                else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX_0")) {
+                    gs_util_string_replace((char*)tkn.text, tkn.len, GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX_0, (char)32);
+                }
+                else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX_1")) {
+                    gs_util_string_replace((char*)tkn.text, tkn.len, GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX_1, (char)32);
+                }
+                else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX_2")) {
+                    gs_util_string_replace((char*)tkn.text, tkn.len, GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX_2, (char)32);
+                }
+                else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX_3")) {
+                    gs_util_string_replace((char*)tkn.text, tkn.len, GS_GFXT_UNIFORM_VIEW_PROJECTION_MATRIX_3, (char)32);
+                }
+                else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_MODEL_MATRIX")) {
                     gs_util_string_replace((char*)tkn.text, tkn.len, GS_GFXT_UNIFORM_MODEL_MATRIX, (char)32);
                 }
-                else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_INVERSE_MODEL_MATRIX"))
-                {
+                else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_INVERSE_MODEL_MATRIX")) {
                     gs_util_string_replace((char*)tkn.text, tkn.len, GS_GFXT_UNIFORM_INVERSE_MODEL_MATRIX, (char)32);
                 }
-                else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_VIEW_MATRIX"))
-                {
+                else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_VIEW_MATRIX")) {
                     gs_util_string_replace((char*)tkn.text, tkn.len, GS_GFXT_UNIFORM_VIEW_MATRIX, (char)32);
                 }
-                else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_PROJECTION_MATRIX"))
-                {
+                else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_PROJECTION_MATRIX")) {
                     gs_util_string_replace((char*)tkn.text, tkn.len, GS_GFXT_UNIFORM_PROJECTION_MATRIX, (char)32);
                 }
-                else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_TIME"))
-                {
+                else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_TIME")) {
                     gs_util_string_replace((char*)tkn.text, tkn.len, GS_GFXT_UNIFORM_TIME, (char)32);
                 }
             } break;
 
-            case GS_TOKEN_HASH:
-            { 
+            case GS_TOKEN_HASH: { 
                 // Parse include
                 tkn = clex.next_token(&clex);
-                switch (tkn.type)
-                {
-                    case GS_TOKEN_IDENTIFIER:
-                    { 
-                        if (gs_token_compare_text(&tkn, "include") && iidx < GS_GFXT_INCLUDE_DIR_MAX)
-                        { 
+                switch (tkn.type) {
+                    case GS_TOKEN_IDENTIFIER: { 
+                        if (gs_token_compare_text(&tkn, "include") && iidx < GS_GFXT_INCLUDE_DIR_MAX) { 
                             // Length of include string
-                            size_t ilen = 8;
-
+                            size_t ilen = 8; 
                             // Grab next token, expect string
                             tkn = clex.next_token(&clex);
-                            if (tkn.type == GS_TOKEN_STRING)
-                            {
+                            if (tkn.type == GS_TOKEN_STRING) {
                                 memcpy(includes[iidx], tkn.text + 1, tkn.len - 2);
                                 // evil replace a const char*
                                 gs_util_string_replace((char*)tkn.text - ilen, tkn.len + ilen,
