@@ -2102,6 +2102,7 @@ __gs_hash_table_init_impl(void** ht, size_t sz);
         (__HT)->data[__HSH_IDX].key = (__HMK);\
         (__HT)->data[__HSH_IDX].val = (__HMV);\
         (__HT)->data[__HSH_IDX].state = GS_HASH_TABLE_ENTRY_ACTIVE;\
+        (__HT)->tmp_idx = __HSH_IDX;\
         gs_dyn_array_head((__HT)->data)->size++;\
     } while (0)
 
@@ -2163,8 +2164,8 @@ uint32_t gs_hash_table_get_key_index_func(void** data, void* key, size_t key_len
 
 #define _gs_hash_table_key_exists_internal(__HT, __HTK)\
     ((__HT)->tmp_key = (__HTK),\
-        (gs_hash_table_get_key_index_func((void**)&(__HT->data), (void*)&(__HT->tmp_key), sizeof(__HT->tmp_key),\
-            sizeof(__HT->tmp_val), __HT->stride, __HT->klpvl) != GS_HASH_TABLE_INVALID_INDEX))
+        (__HT)->tmp_idx = gs_hash_table_get_key_index_func((void**)&(__HT->data), (void*)&(__HT->tmp_key), sizeof(__HT->tmp_key),\
+            sizeof(__HT->tmp_val), __HT->stride, __HT->klpvl), ((__HT->tmp_idx) != GS_HASH_TABLE_INVALID_INDEX))
 
 // uint32_t gs_hash_table_get_key_index_func(void** data, void* key, size_t key_len, size_t val_len, size_t stride, size_t klpvl)
 
@@ -2362,8 +2363,6 @@ uint32_t gs_hash_set_get_key_index_func(void** data, void* key, size_t key_len, 
     size_t hash_idx = (hash % capacity);
     size_t c = 0;
     size_t max_probe = GS_HASH_SET_MAX_PROBE;
-    // static size_t pc = 0;
-    // static size_t pm = 0;
 
     // Iterate through data
     for (size_t i = hash_idx; c < max_probe; ++c, i = ((i + c) % capacity)) {
@@ -2377,55 +2376,39 @@ uint32_t gs_hash_set_get_key_index_func(void** data, void* key, size_t key_len, 
             break;
         }
     }
-    // pc++;
-    // pm += c;
-    // float pf = (float)pm / (float)pc;
-    // gs_println("hash: %zu, hash_idx: %zu, found: %zu, c: %d, pf: %.2f", hash, hash_idx, idx, (int32_t)c, pf);
     return (uint32_t)idx;
 }
 
-// TODO(john): Figure out why this is crashing.
 gs_force_inline
 void gs_hash_set_rehash(void** data, void** new_data, size_t new_cap, size_t key_len, size_t stride, size_t klpvl)
 {
     if (!data | !new_data) return; 
     uint32_t capacity = gs_dyn_array_capacity(*data);
     if (new_cap <= capacity) return;
-
     for (uint32_t i = 0; i < capacity; ++i) {
-
         // Get original data
         size_t offset = (i * stride);
-
         // If this entry is inactive, then continue
         if (*((gs_hash_set_entry_state*)((char*)(*data) + offset + (klpvl))) == GS_HASH_SET_ENTRY_INACTIVE) {
             continue;
         }
         void* k = ((char*)(*data) + offset);  
         size_t kh = gs_hash_bytes(k, key_len, GS_HASH_SET_HASH_SEED);
-
         // Hash idx into new data with new capacity
         uint32_t c = 0;
         size_t hash_idx = (kh % new_cap);
-
-        /* Find valid idx and place data */\
+        /* Find valid idx and place data */
         while (
             c < new_cap
             && *((gs_hash_set_entry_state*)((char*)(*new_data) + (hash_idx * stride) + (klpvl))) == GS_HASH_SET_ENTRY_ACTIVE
-        )
-        {
+        ) {
             ++c;
             hash_idx = ((hash_idx + c)) % new_cap;
         }
-
         // Set new data in new array
-        // This crashes
-        // hash_idx = new_cap - 2;
         size_t noff = hash_idx * stride;
         uint32_t tmp = 20;
         memcpy((void*)(((uint8_t*)(*new_data)) + noff), k, key_len);
-        // *(&(char*)(*new_data) + noff) = (char*)k;
-        // memset((void*)((char*)(*new_data) + noff), 0x00, key_len);
         *((gs_hash_set_entry_state*)((char*)(*new_data) + (hash_idx * stride) + klpvl)) = GS_HASH_SET_ENTRY_ACTIVE;
     }
 }
@@ -2450,10 +2433,6 @@ void gs_hash_set_rehash(void** data, void** new_data, size_t new_cap, size_t key
             gs_hash_set_rehash((void**)&(__S)->data, (void**)&new_data, NEW_CAP, sizeof((__S)->tmp_val), (__S)->stride, (__S)->klpvl);\
             gs_dyn_array_reserve((__S)->data, NEW_CAP);\
             memcpy((__S)->data, new_data, NEW_CAP * ENTRY_SZ);\
-            /* Memset here instead */\
-            /*for (uint32_t __I = __CAP; __I < NEW_CAP; ++__I) {*/\
-                /*(__S)->data[__I].state = GS_HASH_SET_ENTRY_INACTIVE;*/\
-            /*}*/\
             __CAP = gs_hash_set_capacity(__S);\
             gs_free(new_data);\
         }\
