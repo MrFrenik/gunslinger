@@ -4800,12 +4800,12 @@ gs_gui_render(gs_gui_context_t* ctx, gs_command_buffer_t* cb)
                 {
                     case GSI_LAYOUT_VATTR:
                     {
-                        gsi_vattr_list(&ctx->gsi, cmd->pipeline.layout, cmd->pipeline.layout_sz);
+                        gsi_vattr_list(&ctx->gsi, (gsi_vattr_type*)cmd->pipeline.layout, cmd->pipeline.layout_sz);
                     } break;
 
                     case GSI_LAYOUT_MESH:
                     {
-                        gsi_vattr_list_mesh(&ctx->gsi, cmd->pipeline.layout, cmd->pipeline.layout_sz);
+                        gsi_vattr_list_mesh(&ctx->gsi, (gs_asset_mesh_layout_t*)cmd->pipeline.layout, cmd->pipeline.layout_sz);
                     } break;
                 }
             } 
@@ -4830,7 +4830,7 @@ gs_gui_render(gs_gui_context_t* ctx, gs_command_buffer_t* cb)
             // Treat as byte buffer, read data
             gs_byte_buffer_t buffer = gs_default_val();
             buffer.capacity = GS_GUI_COMMANDLIST_SIZE;
-			buffer.data = cmd->uniforms.data;
+			buffer.data = (uint8_t*)cmd->uniforms.data;
 
             // Write count
             gs_byte_buffer_readc(&buffer, uint16_t, ct);
@@ -5296,7 +5296,7 @@ gs_gui_bind_uniforms(gs_gui_context_t* ctx,
     // Treat as byte buffer, write into data then set size
     gs_byte_buffer_t buffer = gs_default_val();
     buffer.capacity = GS_GUI_COMMANDLIST_SIZE;
-    buffer.data = cmd->uniforms.data;
+    buffer.data = (uint8_t*)cmd->uniforms.data;
 
     const uint16_t ct = uniforms_sz / sizeof(gs_graphics_bind_uniform_desc_t);
 

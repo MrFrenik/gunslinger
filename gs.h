@@ -8267,7 +8267,7 @@ gs_util_string_concat(char* s1, const char* s2)
     const size_t a = strlen(s1);
     const size_t b = strlen(s2);
     const size_t ab = a + b + 1;
-    s1 = gs_realloc(s1, ab);
+    s1 = (char*)gs_realloc(s1, ab);
     memcpy(s1 + a, s2, b + 1);
     return s1;
 }
