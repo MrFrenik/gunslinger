@@ -693,7 +693,7 @@ GS_API_DECL bool gs_platform_dir_exists_default_impl(const char* dir_path)
 
 GS_API_DECL int32_t gs_platform_mkdir_default_impl(const char* dir_path, int32_t opt)
 { 
-    #ifdef __MINGW32__
+    #if _WIN32
         return mkdir(dir_path);
     #else
         return mkdir(dir_path, opt);
