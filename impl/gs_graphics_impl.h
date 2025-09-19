@@ -266,8 +266,9 @@ uint32_t gsgl_texture_format_to_gl_data_type(gs_graphics_texture_format_type typ
         default:
         case GS_GRAPHICS_TEXTURE_FORMAT_A8:                 format = GL_UNSIGNED_BYTE; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_R8:                 format = GL_UNSIGNED_BYTE; break;
-        case GS_GRAPHICS_TEXTURE_FORMAT_R32:                format = GL_UNSIGNED_INT; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGB8:               format = GL_UNSIGNED_BYTE; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_R32UI:              format = GL_UNSIGNED_INT; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_R16UI:              format = GL_UNSIGNED_SHORT; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGBA8:              format = GL_UNSIGNED_BYTE; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F:            format = GL_FLOAT; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGBA32F:            format = GL_FLOAT; break;
@@ -291,7 +292,8 @@ uint32_t gsgl_texture_format_to_gl_texture_format(gs_graphics_texture_format_typ
         case GS_GRAPHICS_TEXTURE_FORMAT_RGBA8:              dt = GL_RGBA; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_A8:                 dt = GL_ALPHA; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_R8:                 dt = GL_RED; break;
-        case GS_GRAPHICS_TEXTURE_FORMAT_R32:                dt = GL_RED_INTEGER; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_R16UI:              dt = GL_RED_INTEGER; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_R32UI:              dt = GL_RED_INTEGER; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_R32F:               dt = GL_RED; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGB8:               dt = GL_RGB; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F:            dt = GL_RGBA; break;
@@ -313,7 +315,8 @@ uint32_t gsgl_texture_format_to_gl_texture_internal_format(gs_graphics_texture_f
     switch (type) {
         case GS_GRAPHICS_TEXTURE_FORMAT_A8:                 format = GL_ALPHA; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_R8:                 format = GL_RED; break;
-        case GS_GRAPHICS_TEXTURE_FORMAT_R32:                format = GL_R32UI; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_R32UI:              format = GL_R32UI; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_R16UI:              format = GL_R16UI; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_R32F:               format = GL_R32F; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGB8:               format = GL_RGB8; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGBA8:              format = GL_RGBA8; break;
@@ -706,7 +709,8 @@ gsgl_texture_t gl_texture_update_internal(const gs_graphics_texture_desc_t* desc
             {
                 case GS_GRAPHICS_TEXTURE_FORMAT_A8: glTexImage2D(itarget, 0, GL_ALPHA, width, height, 0, GL_ALPHA, GL_UNSIGNED_BYTE, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_R8: glTexImage2D(itarget, 0, GL_RED, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, data); break;
-                case GS_GRAPHICS_TEXTURE_FORMAT_R32: glTexImage2D(itarget, 0, GL_R32UI, width, height, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_R32UI: glTexImage2D(itarget, 0, GL_R32UI, width, height, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_R16UI: glTexImage2D(itarget, 0, GL_R16UI, width, height, 0, GL_RED_INTEGER, GL_UNSIGNED_SHORT, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_RG8: glTexImage2D(itarget, 0, GL_RG8, width, height, 0, GL_RG, GL_UNSIGNED_BYTE, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_RGB8: glTexImage2D(itarget, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_RGBA8: glTexImage2D(itarget, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data); break;
@@ -732,7 +736,8 @@ gsgl_texture_t gl_texture_update_internal(const gs_graphics_texture_desc_t* desc
             {
                 case GS_GRAPHICS_TEXTURE_FORMAT_A8: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_ALPHA, GL_UNSIGNED_BYTE, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_R8: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RED, GL_UNSIGNED_BYTE, data); break;
-                case GS_GRAPHICS_TEXTURE_FORMAT_R32: glTexImage2D(itarget, 0, GL_R32UI, width, height, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_R32UI: glTexImage2D(itarget, 0, GL_R32UI, width, height, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_R16UI: glTexImage2D(itarget, 0, GL_R16UI, width, height, 0, GL_RED_INTEGER, GL_UNSIGNED_SHORT, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_RG8: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RG, GL_UNSIGNED_BYTE, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_RGB8: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RGB, GL_UNSIGNED_BYTE, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_RGBA8: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, data); break;
@@ -1655,7 +1660,8 @@ gs_graphics_texture_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphic
         case GS_GRAPHICS_TEXTURE_FORMAT_RGB8:               num_comps = 3; data_type_size = sizeof(uint8_t); break;
         case GS_GRAPHICS_TEXTURE_FORMAT_A8:                 num_comps = 1; data_type_size = sizeof(uint8_t); break;
         case GS_GRAPHICS_TEXTURE_FORMAT_R8:                 num_comps = 1; data_type_size = sizeof(uint8_t); break;
-        case GS_GRAPHICS_TEXTURE_FORMAT_R32:                num_comps = 1; data_type_size = sizeof(uint32_t); break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_R32UI:              num_comps = 1; data_type_size = sizeof(uint32_t); break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_R16UI:              num_comps = 1; data_type_size = sizeof(uint16_t); break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F:            num_comps = 4; data_type_size = sizeof(float); break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGBA32F:            num_comps = 4; data_type_size = sizeof(float); break;
         case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH8:             num_comps = 1; data_type_size = sizeof(float); break;
