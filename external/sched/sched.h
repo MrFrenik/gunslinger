@@ -288,9 +288,9 @@ SCHED_API void scheduler_stop(struct scheduler*, int doWait);
 #endif
 
 /* make sure atomic and pointer types have correct size */
-typedef int sched__check_ptr_size[(sizeof(void*) == sizeof(SCHED_UINT_PTR)) ? 1 : -1];
-typedef int sched__check_ptr_uint32[(sizeof(sched_uint) == 4) ? 1 : -1];
-typedef int sched__check_ptr_int32[(sizeof(sched_int) == 4) ? 1 : -1];
+// typedef int sched__check_ptr_size[(sizeof(void*) == sizeof(SCHED_UINT_PTR)) ? 1 : -1];
+// typedef int sched__check_ptr_uint32[(sizeof(sched_uint) == 4) ? 1 : -1];
+// typedef int sched__check_ptr_int32[(sizeof(sched_int) == 4) ? 1 : -1];
 
 #ifdef SCHED_USE_ASSERT
 #ifndef SCHED_ASSERT

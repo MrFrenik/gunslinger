@@ -206,7 +206,7 @@ void gsgl_pipeline_state()
 }
 
 void GLAPIENTRY
-gsgl_message_cb(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, 
+gsgl_message_cb(uint32_t source, uint32_t type, uint32_t id, uint32_t severity, int32_t length, 
     const GLchar* message, void* user_param)
 {
     return;
@@ -1504,7 +1504,7 @@ gs_grapics_storage_buffer_unlock_impl(gs_handle(gs_graphics_storage_buffer_t) hn
     gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data; 
     if (!gs_slot_array_handle_valid(ogl->storage_buffers, hndl.id)) {
         gs_log_warning("Storage buffer handle invalid: %zu", hndl.id);
-        return NULL;
+        return;
     }
     gsgl_storage_buffer_t* sbo = gs_slot_array_getp(ogl->storage_buffers, hndl.id); 
 
@@ -1572,7 +1572,7 @@ gs_storage_buffer_get_data_impl(gs_handle(gs_graphics_storage_buffer_t) hndl, si
     gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data; 
     if (!gs_slot_array_handle_valid(ogl->storage_buffers, hndl.id)) {
         gs_log_warning("Storage buffer handle invalid: %zu", hndl.id);
-        return NULL;
+        return;
     }
     gsgl_storage_buffer_t* sbo = gs_slot_array_getp(ogl->storage_buffers, hndl.id);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo->buffer);
@@ -2918,7 +2918,7 @@ gs_graphics_init(gs_graphics_t* graphics)
             // Work group invocations
             glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, (int32_t*)&info->compute.max_work_group_invocations);
         }
-        glGetIntegerv(GL_MAX_SHADER_STORAGE_BLOCK_SIZE, &info->max_ssbo_block_size);
+        glGetIntegerv(GL_MAX_SHADER_STORAGE_BLOCK_SIZE, (int32_t*)&info->max_ssbo_block_size);
     ) 
 
     const GLubyte* glslv = glGetString(GL_SHADING_LANGUAGE_VERSION);
@@ -2968,7 +2968,7 @@ gs_graphics_init(gs_graphics_t* graphics)
 
     // Enable debug output
     glEnable(GL_DEBUG_OUTPUT);
-    glDebugMessageCallback(gsgl_message_cb, 0);
+    // glDebugMessageCallback(gsgl_message_cb, 0);
 }
 
 

@@ -1753,7 +1753,7 @@ gs_platform_window_create_internal(const gs_platform_window_desc_t* desc)
     }
     else { 
         void* mwin = gs_platform_raw_window_handle(gs_platform_main_window());
-        CONSTRUCT_WINDOW(1, 1, desc->title, 0, mwin);
+        CONSTRUCT_WINDOW(1, 1, desc->title, 0, (GLFWwindow*)mwin);
     }
 
     if (window == NULL) {
@@ -1857,7 +1857,7 @@ gs_platform_window_make_current(uint32_t hndl)
 GS_API_DECL void     
 gs_platform_window_make_current_raw(void* win)
 {
-    glfwMakeContextCurrent(win);
+    glfwMakeContextCurrent((GLFWwindow*)win);
 }
 
 GS_API_DECL gs_vec2 
