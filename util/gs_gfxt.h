@@ -2384,18 +2384,29 @@ bool gs_parse_code(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd
     char* code = (char*)gs_malloc(sz);
     memset(code, 0, sz); 
     memcpy(code, cur.text, sz - 1);
+    gs_byte_buffer_t cbuffer = gs_byte_buffer_new();
 
     // List of include directories to gather
     uint32_t iidx = 0;
-    char includes[GS_GFXT_INCLUDE_DIR_MAX][256] = {0};
+    typedef struct {
+        char path[GS_GFXT_INCLUDE_DIR_MAX];
+        char* start;
+        char* end;
+    } include_t;
+    include_t includes[256] = {0};
 
     // Need to parse through code and replace keywords with appropriate mappings
     gs_lexer_t clex = gs_lexer_c_ctor(code);
+    clex.skip_white_space = false;
     while (clex.can_lex(&clex))
     {
         gs_token_t tkn = clex.next_token(&clex);
+        // Push back tkn text + len. Don't skip whitespace in this lexer.
         switch (tkn.type)
         {
+            default: {
+                gs_byte_buffer_write_bulk(&cbuffer, tkn.text, tkn.len);
+            } break;
             case GS_TOKEN_IDENTIFIER: {
                 // evil replace a const char*
                 if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_MODEL_VIEW_PROJECTION_MATRIX")) {
@@ -2437,56 +2448,126 @@ bool gs_parse_code(gs_lexer_t* lex, gs_gfxt_pipeline_desc_t* desc, gs_ppd_t* ppd
                 else if (gs_token_compare_text(&tkn, "GS_GFXT_UNIFORM_TIME")) {
                     gs_util_string_replace((char*)tkn.text, tkn.len, GS_GFXT_UNIFORM_TIME, (char)32);
                 }
+                gs_byte_buffer_write_bulk(&cbuffer, tkn.text, tkn.len);
             } break;
 
             case GS_TOKEN_HASH: { 
-                // Parse include
+                gs_token_t htoken = tkn;
                 tkn = clex.next_token(&clex);
                 switch (tkn.type) {
                     case GS_TOKEN_IDENTIFIER: { 
+                        // Parse include
                         if (gs_token_compare_text(&tkn, "include") && iidx < GS_GFXT_INCLUDE_DIR_MAX) { 
                             // Length of include string
                             size_t ilen = 8; 
                             // Grab next token, expect string
-                            tkn = clex.next_token(&clex);
-                            if (tkn.type == GS_TOKEN_STRING) {
-                                memcpy(includes[iidx], tkn.text + 1, tkn.len - 2);
+                            // Don't grab next token - advance to string
+                            // tkn = clex.next_token(&clex);
+                            if (gs_lexer_find_next_token_type(&clex, GS_TOKEN_STRING)) {
+                            // if (tkn.type == GS_TOKEN_STRING) {
+                                tkn = clex.current_token;
+                                // Just fucking replace it here, on the spot. Then fix up the lexer. Done.
+                                memcpy(includes[iidx].path, tkn.text + 1, tkn.len - 2);
                                 // evil replace a const char*
-                                gs_util_string_replace((char*)tkn.text - ilen, tkn.len + ilen,
+                                // Store token text pointer, use that later for concat
+                                gs_util_string_replace((char*)tkn.text - ilen - 1, tkn.len + ilen + 1,
                                     " ", (char)32);
+
+                                // Need to collect other uniforms from these includes (parse code)
+                                gs_snprintfc(FINAL_PATH, 256, "%s/%s", ppd->dir, includes[iidx].path);
+
+                                // Load include using final path and relative path from include
+                                size_t len = 0;
+                                char* inc_src = gs_platform_read_file_contents(FINAL_PATH, "rb", &len);
+                                gs_byte_buffer_write_bulk(&cbuffer, inc_src, len);
+
+                                // includes[iidx].start = tkn.text;
+                                // includes[iidx].end = tkn.text + ilen + tkn.len;
+
+                                // size_t total_len = len + (start - code);
+
+                                // char* cat0 = gs_util_string_concat(start, inc_src);
+                                // char* cat1 = gs_util_string_concat(cat0, includes[iidx].end);
+
+                                // // Concat, replace text, free include src
+                                // // gs_free(cat0);
+                                // // gs_free(code);
+                                // code = cat1;
+
+                                // start = code;
+                                // end = code + total_len;
+
+                                // // Need to find where to place the token...ehhh...
+                                // clex = gs_lexer_c_ctor(code);
+                                // clex.at = code + total_len;
+
                                 iidx++;
                             }
                         }
-                    }
+                        else {
+                            gs_byte_buffer_write(&cbuffer, char, '#');
+                            clex.current_token = tkn;
+                            clex.at = tkn.text;
+                        }
+                        // else if (gs_token_compare_text(&tkn, "define")) {
+                            // Push back # and identifier into buffer
+                            // gs_println("Writing: %*.s", tkn.len + 1, tkn.text - tkn.len - 1);
+                            // gs_snprintfc(TMP, 8, "#define");
+                            // gs_byte_buffer_write_bulk(&cbuffer, TMP, sizeof(TMP));
+                            // gs_byte_buffer_write_str(&cbuffer, "#define");
+                        // }
+                    } break;
+                    // default: {
+                    //     // Push back # and identifier into buffer
+                    //     gs_println("Writing: %*.s", tkn.len + 1, tkn.text - tkn.len - 1);
+                    //     gs_byte_buffer_write_bulk(&cbuffer, tkn.text - tkn.len - 1, tkn.len + 1);
+                    // } break;
                 }
             } break;
         }
     }
 
-    for (uint32_t i = 0; i < GS_GFXT_INCLUDE_DIR_MAX; ++i)
-    { 
-        if (!includes[i][0]) continue;
+    // Allocate a new buffer as copy of original code. Use original for pointer references to where to cat.
+    // size_t ilen = 0;
+    // for (uint32_t i = 0; i < GS_GFXT_INCLUDE_DIR_MAX; ++i)
+    // { 
+    //     if (!includes[i].path[0]) continue;
 
-        // Need to collect other uniforms from these includes (parse code)
-        gs_snprintfc(FINAL_PATH, 256, "%s/%s", ppd->dir, includes[i]);
-        // gs_println("INC_DIR: %s", FINAL_PATH);
+    //     // Need to collect other uniforms from these includes (parse code)
+    //     gs_snprintfc(FINAL_PATH, 256, "%s/%s", ppd->dir, includes[i].path);
+    //     // gs_println("INC_DIR: %s", FINAL_PATH);
 
-        // Load include using final path and relative path from include
-        size_t len = 0;
-        char* inc_src = gs_platform_read_file_contents(FINAL_PATH, "rb", &len);
-        gs_assert(inc_src);
+    //     // Load include using final path and relative path from include
+    //     size_t len = 0;
+    //     char* inc_src = gs_platform_read_file_contents(FINAL_PATH, "rb", &len);
+    //     gs_assert(inc_src);
 
-        // Realloc previous code to greater size, shift contents around
-        char* cat = gs_util_string_concat(inc_src, code);
-        gs_free(code);
-        code = cat;
-    }
+    //     // Concat, starting at a particular location.
+    //     const char* src_start_slice = includes[i].start + ilen;
+    //     const char* src_end_slice = includes[i].end + ilen;
+    //     char* cat = gs_util_string_concat(src_start_slice, inc_src);
+    //     char* cat2 = gs_util_string_concat(cat, src_end_slice);
+
+    //     // Concat with (cat) src starting at workable range
+
+    //     // Realloc previous code to greater size, shift contents around
+    //     char* cat = gs_util_string_concat(inc_src, code);
+    //     gs_free(code);
+    //     code = cat;
+    // }
+    // Add a final EOF character
+    gs_byte_buffer_write(&cbuffer, char, '\0');
+
+    gs_free(code);
 
     switch (stage)
     {
-        case GS_GRAPHICS_SHADER_STAGE_VERTEX:   ppd->code[0] = code; break; 
-        case GS_GRAPHICS_SHADER_STAGE_FRAGMENT: ppd->code[1] = code; break;
-        case GS_GRAPHICS_SHADER_STAGE_COMPUTE:  ppd->code[2] = code; break;
+        // case GS_GRAPHICS_SHADER_STAGE_VERTEX:   ppd->code[0] = code; break; 
+        // case GS_GRAPHICS_SHADER_STAGE_FRAGMENT: ppd->code[1] = code; break;
+        // case GS_GRAPHICS_SHADER_STAGE_COMPUTE:  ppd->code[2] = code; break;
+        case GS_GRAPHICS_SHADER_STAGE_VERTEX:   ppd->code[0] = cbuffer.data; break; 
+        case GS_GRAPHICS_SHADER_STAGE_FRAGMENT: ppd->code[1] = cbuffer.data; break;
+        case GS_GRAPHICS_SHADER_STAGE_COMPUTE:  ppd->code[2] = cbuffer.data; break;
     }
 
     return true;

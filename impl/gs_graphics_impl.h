@@ -1331,17 +1331,21 @@ gs_graphics_texture_desc_query(gs_handle(gs_graphics_texture_t) hndl, gs_graphic
     gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data; 
     gsgl_texture_t* tex = gs_slot_array_getp(ogl->textures, hndl.id);
 
-    // Read back pixels
+    // Read back pixels 
+    // NOTE(john): This is currently NOT WORKING.
     if (out->read.width && out->read.height)
     {
         uint32_t type =  gsgl_texture_format_to_gl_data_type(tex->desc.format);
         uint32_t format = gsgl_texture_format_to_gl_texture_format(tex->desc.format); 
         CHECK_GL_CORE(
-            glActiveTexture(GL_TEXTURE0);
             glGetTextureSubImage(tex->id, 0, out->read.x, out->read.y, 0, out->read.width, out->read.height, 1, format, type, out->read.size, out->data);
+            // glBindTexture(GL_TEXTURE_2D, tex->id);
+            // glGetTexImage(GL_TEXTURE_2D, 0, format, type, out->data);
+            // glBindTexture(GL_TEXTURE_2D, 0);
         );
     } 
 
+    // Just setting to tex desc for now, since reading texels isn't working correctly.
     *out = tex->desc; 
 }
 
@@ -1480,7 +1484,7 @@ gs_graphics_texture_read_impl(gs_handle(gs_graphics_texture_t) hndl, gs_graphics
         desc->read.height, 
         gl_format, 
         gl_type,
-        *desc->data
+        (void*)desc->data[0]
     );
     glBindTexture(target, 0x00);
 }
@@ -1577,10 +1581,10 @@ gs_storage_buffer_get_data_impl(gs_handle(gs_graphics_storage_buffer_t) hndl, si
     gsgl_storage_buffer_t* sbo = gs_slot_array_getp(ogl->storage_buffers, hndl.id);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, sbo->buffer);
     glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, offset, stride, out);
-        // GLenum err = glGetError();
-        // if (err) {
+        GLenum err = glGetError();
+        if (err) {
             // gs_println("GL ERROR: 0x%x: %s", err, glGetString(err));
-        // }
+        }
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
 
