@@ -1966,6 +1966,7 @@ typedef enum gs_hash_table_entry_state
     {\
         __HMK key;\
         __HMV val;\
+        size_t hash;\
         gs_hash_table_entry_state state;\
     }
 
@@ -2064,7 +2065,7 @@ __gs_hash_table_init_impl(void** ht, size_t sz);
         if (__LF >= 0.5f || !__CAP)\
         {\
             uint32_t NEW_CAP = __CAP ? __CAP * 2 : 2;\
-            size_t ENTRY_SZ = sizeof((__HT)->tmp_key) + sizeof((__HT)->tmp_val) + sizeof(gs_hash_table_entry_state);\
+            size_t ENTRY_SZ = sizeof((__HT)->tmp_key) + sizeof((__HT)->tmp_val) + sizeof(size_t) + sizeof(gs_hash_table_entry_state);\
             gs_dyn_array_reserve((__HT)->data, NEW_CAP);\
             /**((void **)&(__HT->data)) = gs_dyn_array_resize_impl(__HT->data, ENTRY_SZ, NEW_CAP);*/\
             /* Iterate through data and set state to null, from __CAP -> __CAP * 2 */\
@@ -2094,6 +2095,7 @@ __gs_hash_table_init_impl(void** ht, size_t sz);
         }\
         (__HT)->data[__HSH_IDX].key = (__HMK);\
         (__HT)->data[__HSH_IDX].val = (__HMV);\
+        (__HT)->data[__HSH_IDX].hash = __HSH;\
         (__HT)->data[__HSH_IDX].state = GS_HASH_TABLE_ENTRY_ACTIVE;\
         (__HT)->tmp_idx = __HSH_IDX;\
         gs_dyn_array_head((__HT)->data)->size++;\
@@ -2117,14 +2119,17 @@ uint32_t gs_hash_table_get_key_index_func(void** data, void* key, size_t key_len
     size_t hash_idx = (hash % capacity);
 
     // Iterate through data 
-    for (size_t i = hash_idx, c = 0; c < capacity; ++c, i = ((i + 1) % capacity))
-    {
+    for (size_t i = hash_idx, c = 0; c < capacity; ++c, i = ((i + 1) % capacity)) {
         size_t offset = (i * stride);
-        void* k = ((char*)(*data) + (offset));  
-        size_t kh = gs_hash_bytes(k, key_len, GS_HASH_TABLE_HASH_SEED);
-        bool comp = gs_compare_bytes(k, key, key_len);
         gs_hash_table_entry_state state = *(gs_hash_table_entry_state*)((char*)(*data) + offset + (klpvl)); 
-        if (comp && hash == kh && state == GS_HASH_TABLE_ENTRY_ACTIVE) {
+        // Early out inactive slots immediately
+        if (state != GS_HASH_TABLE_ENTRY_ACTIVE) continue;
+        size_t stored_hash = *(size_t*)((char*)(*data) + offset + (klpvl) - sizeof(size_t));
+        // Quick hash comparison first
+        if (hash != stored_hash) continue;
+        // Byte comparison
+        void* k = ((char*)(*data) + (offset));  
+        if (gs_compare_bytes(k, key, key_len)) {
             idx = i;
             break;
         }
@@ -5092,6 +5097,12 @@ typedef mco_result gs_coro_result;
 ================================================================================*/
 
 #include "external/sched/sched.h"
+
+#ifdef GS_PLATFORM_WINDOWS
+    #define gs_thread_local __declspec(thread)
+#else
+    #define gs_thread_local __thread
+#endif
 
 #define GS_SCHED_DEFAULT            SCHED_DEFAULT
 #define gs_sched_fp_t               sched_run
