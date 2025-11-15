@@ -7187,6 +7187,8 @@ typedef struct gs_app_desc_t
     bool32 is_running;
     bool32 debug_gfx;
     void* user_data;
+    int32_t argc;
+    char** argv;
 
     // Platform specific data
     #ifdef GS_PLATFORM_ANDROID
