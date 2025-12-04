@@ -718,6 +718,8 @@ GS_API_DECL int32_t gs_platform_mkdir_default_impl(const char* dir_path, int32_t
 { 
     #ifdef __MINGW32__
         return mkdir(dir_path);
+    #elif (defined GS_PLATFORM_WIN)
+        return _mkdir(dir_path);
     #else
         return mkdir(dir_path, opt);
     #endif
