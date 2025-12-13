@@ -2452,6 +2452,7 @@ void gs_graphics_command_buffer_submit_impl(gs_command_buffer_t* cb)
                             {
                                 // Not sure what this actually does atm... 
                                 CHECK_GL_CORE(
+                                    // TODO(): This should use 'binding' instead of 'sbo->location'
                                     glShaderStorageBlockBinding(shader, sbo->block_idx, sbo->location);
                                 );
                             } 
