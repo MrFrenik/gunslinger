@@ -116,13 +116,23 @@ typedef enum gs_meta_property_type
     GS_META_PROPERTY_TYPE_STR,          // Used for const char*, char*
     GS_META_PROPERTY_TYPE_COLOR,
 	GS_META_PROPERTY_TYPE_OBJ,
+	// Container types
+	GS_META_PROPERTY_TYPE_GS_DYN_ARRAY,
+	GS_META_PROPERTY_TYPE_GS_HASH_TABLE,
+	GS_META_PROPERTY_TYPE_GS_SLOT_ARRAY,
+	GS_META_PROPERTY_TYPE_GS_BYTE_BUFFER,
+	GS_META_PROPERTY_TYPE_GS_ARRAY,
     GS_META_PROPERTY_TYPE_COUNT
 } gs_meta_property_type; 
 
 GS_API_PRIVATE gs_meta_property_type_info_t _gs_meta_property_type_decl_impl(const char* name, uint32_t id);
+GS_API_PRIVATE gs_meta_property_type_info_t _gs_meta_property_type_container_decl_impl(const char* name, uint32_t id, uint32_t key_id, uint32_t val_id);
 
 #define _gs_meta_property_type_decl(T, PROP_TYPE)\
     _gs_meta_property_type_decl_impl(gs_to_str(T), PROP_TYPE)
+
+#define _gs_meta_property_type_container_decl(T, PROP_TYPE, KEY_ID, VAL_ID)\
+    _gs_meta_property_type_container_decl_impl(gs_to_str(T), PROP_TYPE, KEY_ID, VAL_ID)
 
 // Default meta property type info defines
 #define GS_META_PROPERTY_TYPE_INFO_U8       _gs_meta_property_type_decl(uint8_t, GS_META_PROPERTY_TYPE_U8)
@@ -148,6 +158,12 @@ GS_API_PRIVATE gs_meta_property_type_info_t _gs_meta_property_type_decl_impl(con
 #define GS_META_PROPERTY_TYPE_INFO_STR      _gs_meta_property_type_decl(char*, GS_META_PROPERTY_TYPE_STR)
 #define GS_META_PROPERTY_TYPE_INFO_COLOR    _gs_meta_property_type_decl(gs_color_t, GS_META_PROPERTY_TYPE_COLOR)
 #define GS_META_PROPERTY_TYPE_INFO_OBJ      _gs_meta_property_type_decl(object, GS_META_PROPERTY_TYPE_OBJ)
+// Container type info macros
+#define GS_META_PROPERTY_TYPE_INFO_GS_DYN_ARRAY    _gs_meta_property_type_decl(gs_dyn_array, GS_META_PROPERTY_TYPE_GS_DYN_ARRAY)
+#define GS_META_PROPERTY_TYPE_INFO_GS_HASH_TABLE   _gs_meta_property_type_decl(gs_hash_table, GS_META_PROPERTY_TYPE_GS_HASH_TABLE)
+#define GS_META_PROPERTY_TYPE_INFO_GS_SLOT_ARRAY   _gs_meta_property_type_decl(gs_slot_array, GS_META_PROPERTY_TYPE_GS_SLOT_ARRAY)
+#define GS_META_PROPERTY_TYPE_INFO_GS_BYTE_BUFFER  _gs_meta_property_type_decl(gs_byte_buffer_t, GS_META_PROPERTY_TYPE_GS_BYTE_BUFFER)
+#define GS_META_PROPERTY_TYPE_INFO_GS_ARRAY        _gs_meta_property_type_decl(gs_array, GS_META_PROPERTY_TYPE_GS_ARRAY)
 
 typedef struct gs_meta_property_t
 {
@@ -168,6 +184,11 @@ GS_API_PRIVATE gs_meta_property_t _gs_meta_property_impl(const char* field_type_
 #define gs_meta_property(CLS, FIELD_TYPE, FIELD, TYPE)\
     _gs_meta_property_impl(gs_to_str(FIELD_TYPE), gs_to_str(FIELD),\
         sizeof(FIELD_TYPE), gs_offset(CLS, FIELD), TYPE)
+
+// Extended version for arrays - allows explicit size specification
+#define gs_meta_property_ex(CLS, FIELD_TYPE, FIELD, TYPE, ARRAY_COUNT)\
+    _gs_meta_property_impl(gs_to_str(FIELD_TYPE), gs_to_str(FIELD),\
+        sizeof(FIELD_TYPE) * (ARRAY_COUNT), gs_offset(CLS, FIELD), TYPE)
 
 typedef struct gs_meta_vtable_t
 {
@@ -350,6 +371,16 @@ GS_API_PRIVATE gs_meta_property_type_info_t _gs_meta_property_type_decl_impl(con
     gs_meta_property_type_info_t info = gs_default_val();
     info.name = name;
     info.id = id;
+    return info;
+}
+
+GS_API_PRIVATE gs_meta_property_type_info_t _gs_meta_property_type_container_decl_impl(const char* name, uint32_t id, uint32_t key_id, uint32_t val_id)
+{
+    gs_meta_property_type_info_t info = gs_default_val();
+    info.name = name;
+    info.id = id;
+    info.info.container_info.key_id = key_id;
+    info.info.container_info.val_id = val_id;
     return info;
 }
 
