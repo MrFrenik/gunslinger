@@ -1701,6 +1701,7 @@ typedef struct gs_byte_buffer_t
 #define gs_byte_buffer_write(__BB, __T, __VAL)\
 do {\
     gs_byte_buffer_t* __BUFFER = __BB;\
+    if (!__BUFFER || !__BUFFER->data) break;\
     usize __SZ = sizeof(__T);\
     usize __TWS = __BUFFER->position + __SZ;\
     if (__TWS >= (usize)__BUFFER->capacity)\
@@ -1710,8 +1711,18 @@ do {\
         {\
             __CAP *= 2;\
         }\
+        uint8_t* __OLD_DATA = __BUFFER->data;\
+        uint32_t __OLD_POS = __BUFFER->position;\
+        uint32_t __OLD_SIZE = __BUFFER->size;\
         gs_byte_buffer_resize(__BUFFER, __CAP);\
+        if (__BUFFER->data == NULL) {\
+            __BUFFER->data = __OLD_DATA;\
+            __BUFFER->position = __OLD_POS;\
+            __BUFFER->size = __OLD_SIZE;\
+            break;\
+        }\
     }\
+    if (!__BUFFER || !__BUFFER->data || __BUFFER->position + sizeof(__T) > __BUFFER->capacity) break;\
     *(__T*)(__BUFFER->data + __BUFFER->position) = __VAL;\
     __BUFFER->position += (uint32_t)__SZ;\
     __BUFFER->size += (uint32_t)__SZ;\
@@ -7584,9 +7595,12 @@ size_t gs_byte_buffer_size(gs_byte_buffer_t* buffer)
 
 void gs_byte_buffer_resize(gs_byte_buffer_t* buffer, size_t sz)
 {
+    if (!buffer) return;
+    
     uint8_t* data = (uint8_t*)gs_realloc(buffer->data, sz);
 
     if (data == NULL) {
+        gs_log_warning("gs_byte_buffer_resize: realloc failed for size %zu. Keeping old buffer.", sz);
         return;
     }
 
@@ -7618,6 +7632,8 @@ void gs_byte_buffer_advance_position(gs_byte_buffer_t* buffer, size_t sz)
 
 void gs_byte_buffer_write_bulk(gs_byte_buffer_t* buffer, void* src, size_t size)
 {
+    if (!buffer || !src || !size) return;
+    
     // Check for necessary resize
     size_t total_write_size = buffer->position + size;
     if (total_write_size >= (size_t)buffer->capacity)
@@ -7628,11 +7644,19 @@ void gs_byte_buffer_write_bulk(gs_byte_buffer_t* buffer, void* src, size_t size)
             capacity *= 2;
         }
 
+        uint8_t* old_data = buffer->data;
         gs_byte_buffer_resize(buffer, capacity);
+        if (buffer->data == NULL) {
+            buffer->data = old_data;
+            return;
+        }
     } 
 
+    // Safety check before memcpy
+    if (!buffer->data) return;
+    
     // memcpy data
-     memcpy((buffer->data + buffer->position), src, size);
+    memcpy((buffer->data + buffer->position), src, size);
 
     buffer->size += (uint32_t)size;
     buffer->position += (uint32_t)size;
