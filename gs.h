@@ -18,7 +18,7 @@
     * the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, 
     * and to permit persons to whom the Software is furnished to do so, subject to the following conditions: 
 
-    * The above copyright, blessing, biblical verse, notice and this permission notice shall be included in all 
+    * The above copyright notice and this permission notice shall be included in all 
     * copies or substantial portions of the Software.
 
     * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED
@@ -1966,15 +1966,15 @@ void gs_dyn_array_set_data_i(void** arr, void* val, size_t val_len, uint32_t off
 #define GS_HASH_TABLE_HASH_SEED         0x31415296
 #define GS_HASH_TABLE_INVALID_INDEX     UINT32_MAX
 
-typedef enum gs_hash_table_entry_state
-{
+typedef enum gs_hash_table_entry_state {
     GS_HASH_TABLE_ENTRY_INACTIVE = 0x00,
     GS_HASH_TABLE_ENTRY_ACTIVE = 0x01
 } gs_hash_table_entry_state;
 
+typedef size_t (*gs_hash_func_t)(void*, size_t, size_t);
+
 #define __gs_hash_table_entry(__HMK, __HMV)\
-    struct\
-    {\
+    struct {\
         __HMK key;\
         __HMV val;\
         size_t hash;\
@@ -1989,6 +1989,7 @@ typedef enum gs_hash_table_entry_state
         size_t stride;\
         size_t klpvl;\
         size_t tmp_idx;\
+        gs_hash_func_t hash_func;\
     }*
 
 // Need a way to create a temporary key so I can take the address of it
@@ -1999,7 +2000,7 @@ typedef enum gs_hash_table_entry_state
 GS_API_DECL void 
 __gs_hash_table_init_impl(void** ht, size_t sz);
 
-#define gs_hash_table_init(__HT, __K, __V)\
+#define gs_hash_table_init_ex(__HT, __K, __V, __HFUNC)\
     do {\
         size_t entry_sz = sizeof(*__HT->data);\
         size_t ht_sz = sizeof(*__HT);\
@@ -2014,7 +2015,21 @@ __gs_hash_table_init_impl(void** ht, size_t sz);
         ptrdiff_t klpvl = (uintptr_t)&(__HT->data[0].state) - (uintptr_t)(&__HT->data[0]);\
         (__HT)->stride = (size_t)(diff);\
         (__HT)->klpvl = (size_t)(klpvl);\
+        (__HT)->hash_func = (__HFUNC);\
     } while (0)
+
+// Internal helper to compute hash with optional custom function
+gs_force_inline
+size_t __gs_hash_table_compute_hash(gs_hash_func_t hash_func, void* key, size_t key_len, size_t seed)
+{
+    if (hash_func) {
+        return hash_func(key, key_len, seed);
+    }
+    return gs_hash_bytes(key, key_len, seed);
+}
+
+#define gs_hash_table_init(__HT, __K, __V)\
+    gs_hash_table_init_ex(__HT, __K, __V, gs_hash_bytes)
 
 #define gs_hash_table_reserve(_HT, _KT, _VT, _CT)\
     do {\
@@ -2024,7 +2039,6 @@ __gs_hash_table_init_impl(void** ht, size_t sz);
         gs_dyn_array_reserve((_HT)->data, _CT);\
     } while (0)
 
-    // ((__HT) != NULL ? (__HT)->size : 0) // gs_dyn_array_size((__HT)->data) : 0)
 #define gs_hash_table_size(__HT)\
     ((__HT) != NULL ? gs_dyn_array_size((__HT)->data) : 0)
 
@@ -2089,7 +2103,7 @@ __gs_hash_table_init_impl(void** ht, size_t sz);
     \
         /* Get hash of key */\
         (__HT)->tmp_key = (__HMK);\
-        size_t __HSH = gs_hash_bytes((void*)&((__HT)->tmp_key), sizeof((__HT)->tmp_key), GS_HASH_TABLE_HASH_SEED);\
+        size_t __HSH = __gs_hash_table_compute_hash((__HT)->hash_func, (void*)&((__HT)->tmp_key), sizeof((__HT)->tmp_key), GS_HASH_TABLE_HASH_SEED);\
         size_t __HSH_IDX = __HSH % __CAP;\
         (__HT)->tmp_key = (__HT)->data[__HSH_IDX].key;\
         uint32_t c = 0;\
@@ -2097,7 +2111,7 @@ __gs_hash_table_init_impl(void** ht, size_t sz);
         /* Find valid idx and place data */\
         while (\
             c < __CAP\
-            && __HSH != gs_hash_bytes((void*)&(__HT)->tmp_key, sizeof((__HT)->tmp_key), GS_HASH_TABLE_HASH_SEED)\
+            && __HSH != __gs_hash_table_compute_hash((__HT)->hash_func, (void*)&(__HT)->tmp_key, sizeof((__HT)->tmp_key), GS_HASH_TABLE_HASH_SEED)\
             && (__HT)->data[__HSH_IDX].state == GS_HASH_TABLE_ENTRY_ACTIVE)\
         {\
             __HSH_IDX = ((__HSH_IDX + 1) % __CAP);\
@@ -2116,7 +2130,8 @@ __gs_hash_table_init_impl(void** ht, size_t sz);
 // Need size of key + val
 
 gs_force_inline
-uint32_t gs_hash_table_get_key_index_func(void** data, void* key, size_t key_len, size_t val_len, size_t stride, size_t klpvl)
+uint32_t gs_hash_table_get_key_index_func(void** data, void* key, size_t key_len, 
+    size_t val_len, size_t stride, size_t klpvl, gs_hash_func_t hash_func)
 {
     if (!data || !key) return GS_HASH_TABLE_INVALID_INDEX;
 
@@ -2126,7 +2141,8 @@ uint32_t gs_hash_table_get_key_index_func(void** data, void* key, size_t key_len
 	uint32_t size = gs_dyn_array_size(*data);
 	if (!capacity || !size) return (size_t)GS_HASH_TABLE_INVALID_INDEX;
     size_t idx = (size_t)GS_HASH_TABLE_INVALID_INDEX;
-    size_t hash = (size_t)gs_hash_bytes(key, key_len, GS_HASH_TABLE_HASH_SEED);
+    // size_t hash = (size_t)gs_hash_bytes(key, key_len, GS_HASH_TABLE_HASH_SEED);
+    size_t hash = (size_t)hash_func(key, key_len, GS_HASH_TABLE_HASH_SEED);
     size_t hash_idx = (hash % capacity);
 
     // Iterate through data 
@@ -2161,20 +2177,20 @@ uint32_t gs_hash_table_get_key_index_func(void** data, void* key, size_t key_len
     ((__HT)->tmp_key = (__HTK),\
         (gs_hash_table_geti((__HT),\
             gs_hash_table_get_key_index_func((void**)&(__HT)->data, (void*)&((__HT)->tmp_key),\
-                sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), (__HT)->stride, (__HT)->klpvl)))) 
+                sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), (__HT)->stride, (__HT)->klpvl, (__HT)->hash_func)))) 
 
 #define gs_hash_table_getp(__HT, __HTK)\
     (\
         (__HT)->tmp_key = (__HTK),\
         ((__HT)->tmp_idx = (uint32_t)gs_hash_table_get_key_index_func((void**)&(__HT->data), (void*)&(__HT->tmp_key), sizeof(__HT->tmp_key),\
-            sizeof(__HT->tmp_val), __HT->stride, __HT->klpvl)),\
+            sizeof(__HT->tmp_val), __HT->stride, __HT->klpvl, __HT->hash_func)),\
         ((__HT)->tmp_idx != GS_HASH_TABLE_INVALID_INDEX ? &gs_hash_table_geti((__HT), (__HT)->tmp_idx) : NULL)\
     )
 
 #define _gs_hash_table_key_exists_internal(__HT, __HTK)\
     ((__HT)->tmp_key = (__HTK),\
         (__HT)->tmp_idx = gs_hash_table_get_key_index_func((void**)&(__HT->data), (void*)&(__HT->tmp_key), sizeof(__HT->tmp_key),\
-            sizeof(__HT->tmp_val), __HT->stride, __HT->klpvl), ((__HT->tmp_idx) != GS_HASH_TABLE_INVALID_INDEX))
+            sizeof(__HT->tmp_val), __HT->stride, __HT->klpvl, __HT->hash_func), ((__HT->tmp_idx) != GS_HASH_TABLE_INVALID_INDEX))
 
 // uint32_t gs_hash_table_get_key_index_func(void** data, void* key, size_t key_len, size_t val_len, size_t stride, size_t klpvl)
 
@@ -2190,7 +2206,7 @@ uint32_t gs_hash_table_get_key_index_func(void** data, void* key, size_t key_len
         {\
             /* Get idx for key */\
             (__HT)->tmp_key = (__HTK);\
-            uint32_t __IDX = gs_hash_table_get_key_index_func((void**)&(__HT)->data, (void*)&((__HT)->tmp_key), sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), (__HT)->stride, (__HT)->klpvl);\
+            uint32_t __IDX = gs_hash_table_get_key_index_func((void**)&(__HT)->data, (void*)&((__HT)->tmp_key), sizeof((__HT)->tmp_key), sizeof((__HT)->tmp_val), (__HT)->stride, (__HT)->klpvl, (__HT)->hash_func);\
             if (__IDX != GS_HASH_TABLE_INVALID_INDEX) {\
                 (__HT)->data[__IDX].state = GS_HASH_TABLE_ENTRY_INACTIVE;\
                 if (gs_dyn_array_head((__HT)->data)->size) gs_dyn_array_head((__HT)->data)->size--;\
@@ -2289,6 +2305,7 @@ typedef enum gs_hash_set_entry_state
         size_t stride;\
         size_t klpvl;\
         size_t tmp_idx;\
+        gs_hash_func_t hash_func;\
     }*
 
 #define gs_hash_set_new(T)\
@@ -2297,7 +2314,7 @@ typedef enum gs_hash_set_entry_state
 GS_API_DECL void
 __gs_hash_set_init_impl( void** ht, size_t sz );
 
-#define gs_hash_set_init(__S, __T)\
+#define gs_hash_set_init_ex(__S, __T, __HFUNC)\
     do {\
         size_t entry_sz = sizeof(*__S->data);\
         size_t ht_sz = sizeof(*__S);\
@@ -2310,9 +2327,13 @@ __gs_hash_set_init_impl( void** ht, size_t sz );
         uintptr_t d1 = (uintptr_t)&((__S)->data[1]);\
         ptrdiff_t diff = (d1 - d0);\
         ptrdiff_t klpvl = (uintptr_t)&(__S->data[0].state) - (uintptr_t)(&__S->data[0]);\
+        (__S)->hash_func = __HFUNC;\
         (__S)->stride = (size_t)(diff);\
         (__S)->klpvl = (size_t)(klpvl);\
     } while (0)
+
+#define gs_hash_set_init(__S, __T)\
+    gs_hash_set_init_ex(__S, __T, gs_hash_bytes)
 
 #define gs_hash_set_reserve(__S, __T, __CT)\
     do {\
@@ -2360,7 +2381,7 @@ __gs_hash_set_init_impl( void** ht, size_t sz );
     ((_I + _C) % _CAP)
 
 gs_force_inline
-uint32_t gs_hash_set_get_key_index_func(void** data, void* key, size_t key_len, size_t stride, size_t klpvl)
+uint32_t gs_hash_set_get_key_index_func(void** data, void* key, size_t key_len, size_t stride, size_t klpvl, gs_hash_func_t hfunc)
 {
     if (!data || !key) return GS_HASH_SET_INVALID_INDEX;
 
@@ -2368,7 +2389,7 @@ uint32_t gs_hash_set_get_key_index_func(void** data, void* key, size_t key_len, 
 	uint32_t size = gs_dyn_array_size(*data);
 	if (!capacity || !size) return (size_t)GS_HASH_SET_INVALID_INDEX;
     size_t idx = (size_t)GS_HASH_SET_INVALID_INDEX;
-    size_t hash = (size_t)gs_hash_bytes(key, key_len, GS_HASH_SET_HASH_SEED); 
+    size_t hash = (size_t)hfunc(key, key_len, GS_HASH_SET_HASH_SEED); 
     size_t hash_idx = (hash % capacity);
     size_t c = 0;
     size_t max_probe = GS_HASH_SET_MAX_PROBE;
@@ -2377,7 +2398,7 @@ uint32_t gs_hash_set_get_key_index_func(void** data, void* key, size_t key_len, 
     for (size_t i = hash_idx; c < max_probe; ++c, i = ((i + c) % capacity)) {
         size_t offset = (i * stride);
         void* k = ((char*)(*data) + (offset));  
-        size_t kh = gs_hash_bytes(k, key_len, GS_HASH_SET_HASH_SEED);
+        size_t kh = hfunc(k, key_len, GS_HASH_SET_HASH_SEED);
         bool comp = gs_compare_bytes(k, key, key_len);
         gs_hash_set_entry_state state = *(gs_hash_set_entry_state*)((char*)(*data) + offset + (klpvl));
         if (comp && hash == kh && state == GS_HASH_SET_ENTRY_ACTIVE) {
@@ -2389,7 +2410,7 @@ uint32_t gs_hash_set_get_key_index_func(void** data, void* key, size_t key_len, 
 }
 
 gs_force_inline
-void gs_hash_set_rehash(void** data, void** new_data, size_t new_cap, size_t key_len, size_t stride, size_t klpvl)
+void gs_hash_set_rehash(void** data, void** new_data, size_t new_cap, size_t key_len, size_t stride, size_t klpvl, gs_hash_func_t hfunc)
 {
     if (!data | !new_data) return; 
     uint32_t capacity = gs_dyn_array_capacity(*data);
@@ -2402,7 +2423,7 @@ void gs_hash_set_rehash(void** data, void** new_data, size_t new_cap, size_t key
             continue;
         }
         void* k = ((char*)(*data) + offset);  
-        size_t kh = gs_hash_bytes(k, key_len, GS_HASH_SET_HASH_SEED);
+        size_t kh = hfunc(k, key_len, GS_HASH_SET_HASH_SEED);
         // Hash idx into new data with new capacity
         uint32_t c = 0;
         size_t hash_idx = (kh % new_cap);
@@ -2439,7 +2460,7 @@ void gs_hash_set_rehash(void** data, void** new_data, size_t new_cap, size_t key
             size_t ENTRY_SZ = sizeof((__S)->tmp_val) + sizeof(gs_hash_set_entry_state);\
             void* new_data = gs_calloc(NEW_CAP * 2, ENTRY_SZ);\
             /*Rehash data, reserve, copy, free*/\
-            gs_hash_set_rehash((void**)&(__S)->data, (void**)&new_data, NEW_CAP, sizeof((__S)->tmp_val), (__S)->stride, (__S)->klpvl);\
+            gs_hash_set_rehash((void**)&(__S)->data, (void**)&new_data, NEW_CAP, sizeof((__S)->tmp_val), (__S)->stride, (__S)->klpvl, (__S)->hash_func);\
             gs_dyn_array_reserve((__S)->data, NEW_CAP);\
             memcpy((__S)->data, new_data, NEW_CAP * ENTRY_SZ);\
             __CAP = gs_hash_set_capacity(__S);\
@@ -2448,7 +2469,7 @@ void gs_hash_set_rehash(void** data, void** new_data, size_t new_cap, size_t key
     \
         /* Get hash of key */\
         (__S)->tmp_val = (__T);\
-        size_t __HSH = gs_hash_bytes((void*)&((__S)->tmp_val), sizeof((__S)->tmp_val), GS_HASH_SET_HASH_SEED);\
+        size_t __HSH = (__S)->hash_func((void*)&((__S)->tmp_val), sizeof((__S)->tmp_val), GS_HASH_SET_HASH_SEED);\
         size_t __HSH_IDX = __HSH % __CAP;\
         uint32_t c = 0;\
         bool exists = false;\
@@ -2485,20 +2506,20 @@ void gs_hash_set_rehash(void** data, void** new_data, size_t new_cap, size_t key
     ((__S)->tmp_val = (__SK),\
         (gs_hash_set_geti((__S),\
             gs_hash_set_get_key_index_func((void**)&(__S)->data, (void*)&((__S)->tmp_val),\
-                sizeof((__S)->tmp_val), (__S)->stride, (__S)->klpvl)))) 
+                sizeof((__S)->tmp_val), (__S)->stride, (__S)->klpvl, (__S)->hash_func)))) 
 
 #define gs_hash_set_getp(__S, __SK)\
     (\
         (__S)->tmp_val = (__SK),\
         ((__S)->tmp_idx = (uint32_t)gs_hash_set_get_key_index_func((void**)&(__S->data), (void*)&(__S->tmp_val), sizeof(__S->tmp_val),\
-            __S->stride, __S->klpvl)),\
+            __S->stride, __S->klpvl, __S->hash_func)),\
         ((__S)->tmp_idx != GS_HASH_SET_INVALID_INDEX ? &gs_hash_set_geti((__S), (__S)->tmp_idx) : NULL)\
     )
 
 #define _gs_hash_set_key_exists_internal(__S, __SK)\
     ((__S)->tmp_val = (__SK),\
         (gs_hash_set_get_key_index_func((void**)&(__S->data), (void*)&(__S->tmp_val), sizeof(__S->tmp_val),\
-            __S->stride, __S->klpvl) != GS_HASH_SET_INVALID_INDEX))
+            __S->stride, __S->klpvl, __S->hash_func) != GS_HASH_SET_INVALID_INDEX))
 
 #define gs_hash_set_exists(__S, __SK)\
         (__S && _gs_hash_set_key_exists_internal((__S), (__SK)))
@@ -2512,7 +2533,7 @@ void gs_hash_set_rehash(void** data, void** new_data, size_t new_cap, size_t key
         {\
             /* Get idx for key */\
             (__S)->tmp_val = (__SK);\
-            uint32_t __IDX = gs_hash_set_get_key_index_func((void**)&(__S)->data, (void*)&((__S)->tmp_val), sizeof((__S)->tmp_val), (__S)->stride, (__S)->klpvl);\
+            uint32_t __IDX = gs_hash_set_get_key_index_func((void**)&(__S)->data, (void*)&((__S)->tmp_val), sizeof((__S)->tmp_val), (__S)->stride, (__S)->klpvl, (__S)->hash_func);\
             if (__IDX != GS_HASH_SET_INVALID_INDEX) {\
                 (__S)->data[__IDX].state = GS_HASH_SET_ENTRY_INACTIVE;\
                 if (gs_dyn_array_head((__S)->data)->size) gs_dyn_array_head((__S)->data)->size--;\
@@ -2521,7 +2542,7 @@ void gs_hash_set_rehash(void** data, void** new_data, size_t new_cap, size_t key
     } while (0)
 
 gs_force_inline
-bool _gs_hash_set_is_subset_of_internal(void** s0, void** s1, size_t key_len, size_t stride, size_t klpvl)
+bool _gs_hash_set_is_subset_of_internal(void** s0, void** s1, size_t key_len, size_t stride, size_t klpvl, gs_hash_func_t hfunc)
 {
     // If sz0 > sz1, then cannot be subset
     uint32_t sz0 = gs_dyn_array_size(*s0);
@@ -2541,7 +2562,7 @@ bool _gs_hash_set_is_subset_of_internal(void** s0, void** s1, size_t key_len, si
         } 
         // Valid entry, check against s1
         void* k0 = ((char*)(*s0) + (offset));
-        size_t kh = gs_hash_bytes(k0, key_len, GS_HASH_SET_HASH_SEED);
+        size_t kh = hfunc(k0, key_len, GS_HASH_SET_HASH_SEED);
         uint32_t hidx = (kh % c1); // Hash idx into super set
         uint32_t cc = 0;
         bool found = false;
@@ -2574,7 +2595,7 @@ bool _gs_hash_set_is_subset_of_internal(void** s0, void** s1, size_t key_len, si
         (__S0)->stride == (__S1)->stride &&\
         (__S0)->klpvl == (__S1)->klpvl &&\
         _gs_hash_set_is_subset_of_internal((void**)&(__S0)->data, (void**)&(__S1)->data,\
-            sizeof((__S0)->tmp_val), (__S0)->stride, (__S0)->klpvl))
+            sizeof((__S0)->tmp_val), (__S0)->stride, (__S0)->klpvl, (__S0)->hfunc))
 
 /*===== Set Iterator ====*/
 
