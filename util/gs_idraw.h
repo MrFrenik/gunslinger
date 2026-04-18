@@ -94,7 +94,8 @@ gs_enum_decl(gsi_layout_type,
 
 enum {
 	GSI_FLAG_NO_BIND_UNIFORMS 			= (1 << 0),
-	GSI_FLAG_NO_BIND_CACHED_PIPELINES 	= (1 << 1)
+	GSI_FLAG_NO_BIND_CACHED_PIPELINES 	= (1 << 1),
+	GSI_FLAG_SET_VIEW_SCISSOR 			= (1 << 2)
 };
 
 // Hash bytes of state attr struct to get index key for pipeline
@@ -106,6 +107,31 @@ typedef struct gsi_pipeline_state_attr_t
 	uint16_t face_cull_enabled;
 	uint16_t prim_type;
 } gsi_pipeline_state_attr_t;
+
+// Compute a 5-bit direct index from pipeline state flags (0-31)
+gs_force_inline uint32_t gsi_pipeline_key(const gsi_pipeline_state_attr_t* s)
+{
+	uint32_t prim_bit = (s->prim_type == (uint16_t)GS_GRAPHICS_PRIMITIVE_TRIANGLES) ? 1 : 0;
+	return ((s->depth_enabled & 1))
+		 | ((s->stencil_enabled & 1) << 1)
+		 | ((s->blend_enabled & 1) << 2)
+		 | ((s->face_cull_enabled & 1) << 3)
+		 | (prim_bit << 4);
+}
+
+// Deferred draw command - one per batch (recorded in gsi_flush, replayed in gsi_draw)
+typedef struct gsi_draw_cmd_t
+{
+	gs_handle(gs_graphics_pipeline_t) pipeline;
+	gs_handle(gs_graphics_texture_t)  texture;
+	gs_mat4  mvp;
+	uint32_t vert_offset;    // byte offset into vertex buffer
+	uint32_t vert_count;     // vertex count for non-indexed draws
+	uint32_t index_offset;   // byte offset into index buffer
+	uint32_t index_count;    // if >0, this batch draws indexed
+	uint32_t flags;          // copy of gsi->flags at record time
+	gs_vec4  viewscissor;    // x,y,w,h for set_view_scissor
+} gsi_draw_cmd_t;
 
 typedef struct gs_immediate_vert_t
 {
@@ -123,6 +149,7 @@ typedef struct gs_immediate_cache_t
 	gs_vec2 uv;
 	gs_color_t color;
 	gs_handle(gs_graphics_texture_t) texture;
+	gs_handle(gs_graphics_pipeline_t) custom_pipeline;
 	gsi_pipeline_state_attr_t pipeline;
 } gs_immediate_cache_t;
 
@@ -130,7 +157,7 @@ typedef struct gs_immediate_draw_static_data_t
 {
 	gs_handle(gs_graphics_texture_t) tex_default;
 	gs_asset_font_t font_default;
-	gs_hash_table(gsi_pipeline_state_attr_t, gs_handle(gs_graphics_pipeline_t)) pipeline_table;
+	gs_handle(gs_graphics_pipeline_t) pipelines[32];   // Direct 5-bit indexed array
 	gs_handle(gs_graphics_uniform_t) uniform;
 	gs_handle(gs_graphics_uniform_t) sampler; 
 	gs_handle(gs_graphics_vertex_buffer_t) vbo;
@@ -142,6 +169,10 @@ typedef struct gs_immediate_draw_t
 	gs_byte_buffer_t vertices;
 	gs_dyn_array(uint16_t) indices;
     gs_dyn_array(gsi_vattr_type) vattributes;
+	gs_dyn_array(gsi_draw_cmd_t) draw_cmds;   // Deferred command list
+	uint32_t batch_vert_start;                  // Byte offset where current batch started
+	uint32_t batch_index_start;                 // Element offset where current batch started
+	uint8_t  batch_is_indexed;                  // 1 if current batch has indices, 0 otherwise
 	gs_immediate_cache_t cache;
 	gs_command_buffer_t commands;
 	uint32_t window_handle; 
@@ -356,7 +387,11 @@ void gsi_reset(gs_immediate_draw_t* gsi)
 {
 	gs_command_buffer_clear(&gsi->commands);
 	gs_byte_buffer_clear(&gsi->vertices);	
-	gs_dyn_array_clear(gsi->indices);	
+	gs_dyn_array_clear(gsi->indices);
+	gs_dyn_array_clear(gsi->draw_cmds);
+	gsi->batch_vert_start = 0;
+	gsi->batch_index_start = 0;
+	gsi->batch_is_indexed = 0;
 	gs_dyn_array_clear(gsi->cache.modelview);
 	gs_dyn_array_clear(gsi->cache.projection);
 	gs_dyn_array_clear(gsi->cache.pipelines);
@@ -466,7 +501,7 @@ void gs_immediate_draw_static_data_init()
 		pdesc.layout.size = sizeof(gsi_vattrs);
 
 		gs_handle(gs_graphics_pipeline_t) hndl = gs_graphics_pipeline_create(&pdesc);
-		gs_hash_table_insert(GSI()->pipeline_table, attr, hndl);
+		GSI()->pipelines[gsi_pipeline_key(&attr)] = hndl;
 	} 
 
 	// Create default font
@@ -526,6 +561,13 @@ void gs_immediate_draw_static_data_init()
 	vdesc.usage = GS_GRAPHICS_BUFFER_USAGE_STREAM; 
 	GSI()->vbo = gs_graphics_vertex_buffer_create(&vdesc); 
 
+	// Create index buffer
+	gs_graphics_index_buffer_desc_t ibdesc = gs_default_val();
+	ibdesc.data = NULL;
+	ibdesc.size = 0;
+	ibdesc.usage = GS_GRAPHICS_BUFFER_USAGE_STREAM;
+	GSI()->ibo = gs_graphics_index_buffer_create(&ibdesc);
+
     gs_free(compressed_ttf_data);
    	gs_free(buf_decompressed_data);
    	gs_free(alpha_bitmap);
@@ -573,6 +615,7 @@ gs_immediate_draw_free(gs_immediate_draw_t* ctx)
 {
 	gs_byte_buffer_free(&ctx->vertices);
 	gs_dyn_array_free(ctx->indices);
+	gs_dyn_array_free(ctx->draw_cmds);
 	gs_dyn_array_free(ctx->vattributes);
 	gs_command_buffer_free(&ctx->commands); 
 	gs_dyn_array_free(ctx->cache.pipelines); 
@@ -591,9 +634,7 @@ gsi_default_font()
 GS_API_DECL gs_handle(gs_graphics_pipeline_t) 
 gsi_get_pipeline(gs_immediate_draw_t* gsi, gsi_pipeline_state_attr_t state)
 {
-	// Bind pipeline
-	gs_assert(gs_hash_table_key_exists(GSI()->pipeline_table, state));
-	return gs_hash_table_get(GSI()->pipeline_table, state);
+	return GSI()->pipelines[gsi_pipeline_key(&state)];
 }
 
 void gs_immediate_draw_set_pipeline(gs_immediate_draw_t* gsi)
@@ -613,9 +654,8 @@ void gs_immediate_draw_set_pipeline(gs_immediate_draw_t* gsi)
 	gsi->cache.pipeline.face_cull_enabled = gs_clamp(gsi->cache.pipeline.face_cull_enabled, 0, 1);
 	gsi->cache.pipeline.blend_enabled = gs_clamp(gsi->cache.pipeline.blend_enabled, 0, 1);
 
-	// Bind pipeline
-	gs_assert(gs_hash_table_key_exists(GSI()->pipeline_table, gsi->cache.pipeline));
-	gs_graphics_pipeline_bind(&gsi->commands, gs_hash_table_get(GSI()->pipeline_table, gsi->cache.pipeline));
+	// Pipeline is resolved at draw-time from cached state via gsi_pipeline_key.
+	// No command buffer bind here - deferred to gsi_draw().
 }
 
 /* Core Vertex Functions */
@@ -666,75 +706,54 @@ gs_mat4 gsi_get_mvp_matrix(gs_immediate_draw_t* gsi)
 
 void gsi_flush(gs_immediate_draw_t* gsi)
 {
-	// Don't flush if verts empty
-	if (gs_byte_buffer_empty(&gsi->vertices)) {
-		return;
-	}
+	uint32_t current_vsize  = (uint32_t)gsi->vertices.position;
+	uint32_t current_icount = gs_dyn_array_size(gsi->indices);
+	uint32_t batch_vsize    = current_vsize - gsi->batch_vert_start;
 
-	// Set up mvp matrix
-	gs_mat4 mv = gsi->cache.modelview[gs_dyn_array_size(gsi->cache.modelview) - 1];
-	gs_mat4 proj = gsi->cache.projection[gs_dyn_array_size(gsi->cache.projection) - 1];
-	gs_mat4 mvp = gs_mat4_mul(proj, mv);
+	// Nothing to flush
+	if (batch_vsize == 0) return;
 
-	// Update vertex buffer (command buffer version)
-	gs_graphics_vertex_buffer_desc_t vdesc = gs_default_val();
-	vdesc.data = gsi->vertices.data;
-	vdesc.size = gs_byte_buffer_size(&gsi->vertices);
-	vdesc.usage = GS_GRAPHICS_BUFFER_USAGE_STREAM;
-
-	gs_graphics_vertex_buffer_request_update(&gsi->commands, GSI()->vbo, &vdesc);
-
-    // Calculate draw count
-    size_t vsz = sizeof(gs_immediate_vert_t);
-    if (gs_dyn_array_size(gsi->vattributes)) 
+	// Calculate vertex stride
+	size_t vsz = sizeof(gs_immediate_vert_t);
+	if (gs_dyn_array_size(gsi->vattributes))
 	{
-		// Calculate vertex stride
 		size_t stride = 0;
-		for (uint32_t i = 0; i < gs_dyn_array_size( gsi->vattributes ); ++i)
-		{ 
-			gsi_vattr_type type = gsi->vattributes[i];
-			switch (type)
-			{	 
+		for (uint32_t i = 0; i < gs_dyn_array_size(gsi->vattributes); ++i)
+		{
+			switch (gsi->vattributes[i])
+			{
 				default: break;
 				case GSI_VATTR_POSITION: stride += sizeof(gs_vec3); break;
-				case GSI_VATTR_COLOR:	 stride += sizeof(gs_color_t); break;
-				case GSI_VATTR_UV:		 stride += sizeof(gs_vec2); break;
+				case GSI_VATTR_COLOR:    stride += sizeof(gs_color_t); break;
+				case GSI_VATTR_UV:       stride += sizeof(gs_vec2); break;
 			}
 		}
 		vsz = stride;
-    }
+	}
 
-    uint32_t ct = gs_byte_buffer_size(&gsi->vertices) / vsz;
+	// Record deferred draw command
+	gsi_draw_cmd_t cmd = gs_default_val();
+	if (gsi->flags & GSI_FLAG_NO_BIND_CACHED_PIPELINES)
+	{
+		cmd.pipeline = gsi->cache.custom_pipeline;
+	}
+	else
+	{
+		cmd.pipeline = GSI()->pipelines[gsi_pipeline_key(&gsi->cache.pipeline)];
+	}
+	cmd.texture      = gsi->cache.texture;
+	cmd.mvp          = gsi_get_mvp_matrix(gsi);
+	cmd.vert_offset  = gsi->batch_vert_start;
+	cmd.vert_count   = (uint32_t)(batch_vsize / vsz);
+	cmd.index_offset = gsi->batch_index_start * sizeof(uint16_t);  // byte offset for glDrawElements
+	cmd.index_count  = current_icount - gsi->batch_index_start;
+	cmd.flags        = gsi->flags;
+	gs_dyn_array_push(gsi->draw_cmds, cmd);
 
-    // Set up all binding data
-    gs_graphics_bind_vertex_buffer_desc_t vbuffer = gs_default_val();
-    vbuffer.buffer = GSI()->vbo;
-
-    gs_graphics_bind_uniform_desc_t ubinds[2] = gs_default_val();
-    ubinds[0].uniform = GSI()->uniform; ubinds[0].data = &mvp;
-    ubinds[1].uniform = GSI()->sampler; ubinds[1].data = &gsi->cache.texture; ubinds[1].binding = 0;
-
-    // Bindings for all buffers: vertex, uniform, sampler
-    gs_graphics_bind_desc_t binds = gs_default_val();
-    binds.vertex_buffers.desc = &vbuffer; 
-
-    // if (gs_dyn_array_empty(gsi->vattributes))
-    if (~gsi->flags & GSI_FLAG_NO_BIND_UNIFORMS)
-    {
-        binds.uniforms.desc = ubinds;
-        binds.uniforms.size = sizeof(ubinds);
-    }
-
-    // Bind bindings
-    gs_graphics_apply_bindings(&gsi->commands, &binds);
-
-    // Submit draw
-    gs_graphics_draw_desc_t draw = gs_default_val();
-    draw.start = 0; draw.count = ct;
-    gs_graphics_draw(&gsi->commands, &draw);
-
-	// Clear data
-	gs_byte_buffer_clear(&gsi->vertices);
+	// Advance batch cursors - do NOT clear vertex/index buffers
+	gsi->batch_vert_start  = current_vsize;
+	gsi->batch_index_start = current_icount;
+	gsi->batch_is_indexed  = 0;
 }
 
 // Core pipeline functions
@@ -809,8 +828,11 @@ void gsi_face_cull_enabled(gs_immediate_draw_t* gsi, bool enabled)
 
 GS_API_DECL void gsi_texture(gs_immediate_draw_t* gsi, gs_handle(gs_graphics_texture_t) texture)
 {
-	// Push a new pipeline?
-	if (gsi->cache.texture.id == texture.id) {
+	// Resolve null/invalid texture to default before comparing
+	gs_handle(gs_graphics_texture_t) resolved = (texture.id && texture.id != UINT32_MAX) ? texture : GSI()->tex_default;
+
+	// Early-out if no change
+	if (gsi->cache.texture.id == resolved.id) {
 		return;
 	}
 
@@ -818,7 +840,7 @@ GS_API_DECL void gsi_texture(gs_immediate_draw_t* gsi, gs_handle(gs_graphics_tex
 	gsi_flush(gsi);
 
 	// Set texture
-	gsi->cache.texture = texture.id && texture.id != UINT32_MAX ? texture : GSI()->tex_default;
+	gsi->cache.texture = resolved;
 }
 
 GS_API_DECL void 
@@ -829,12 +851,13 @@ gsi_pipeline_set(gs_immediate_draw_t* gsi, gs_handle(gs_graphics_pipeline_t) pip
 	// Bind if valid
 	if (pipeline.id)
 	{
-		gs_graphics_pipeline_bind(&gsi->commands, pipeline);
+		gsi->cache.custom_pipeline = pipeline;
 		gsi->flags |= GSI_FLAG_NO_BIND_CACHED_PIPELINES;
 	}
 	// Otherwise we set back to cache, clear vattributes, clear flag
 	else 
 	{ 
+		memset(&gsi->cache.custom_pipeline, 0, sizeof(gsi->cache.custom_pipeline));
 		gsi->flags &= ~GSI_FLAG_NO_BIND_CACHED_PIPELINES;
 		gs_dyn_array_clear(gsi->vattributes);
 		gs_immediate_draw_set_pipeline(gsi);
@@ -980,6 +1003,25 @@ void gsi_v2fv(gs_immediate_draw_t* gsi, gs_vec2 v)
 	gsi_v3f(gsi, v.x, v.y, 0.f);
 }
 
+// Push 6 indices for a quad (call BEFORE pushing the 4 verts for the quad)
+gs_force_inline void gsi_push_quad_indices(gs_immediate_draw_t* gsi)
+{
+	// If batch has non-indexed verts already, flush before switching to indexed
+	if (!gsi->batch_is_indexed)
+	{
+		uint32_t batch_vsize = (uint32_t)gsi->vertices.position - gsi->batch_vert_start;
+		if (batch_vsize > 0) gsi_flush(gsi);
+		gsi->batch_is_indexed = 1;
+	}
+	uint16_t base = (uint16_t)(gsi->vertices.position / sizeof(gs_immediate_vert_t));
+	gs_dyn_array_push(gsi->indices, (uint16_t)(base + 0));
+	gs_dyn_array_push(gsi->indices, (uint16_t)(base + 1));
+	gs_dyn_array_push(gsi->indices, (uint16_t)(base + 2));
+	gs_dyn_array_push(gsi->indices, (uint16_t)(base + 1));
+	gs_dyn_array_push(gsi->indices, (uint16_t)(base + 3));
+	gs_dyn_array_push(gsi->indices, (uint16_t)(base + 2));
+}
+
 void gsi_push_matrix_ex(gs_immediate_draw_t* gsi, gsi_matrix_type type, bool flush)
 {
 	// Flush
@@ -1064,7 +1106,6 @@ void gsi_load_matrix(gs_immediate_draw_t* gsi, gs_mat4 m)
 
 void gsi_mul_matrix(gs_immediate_draw_t* gsi, gs_mat4 m)
 {
-	static int i = 0;
 	// Multiply current matrix at mode with m
 	switch (gs_dyn_array_back(gsi->cache.modes)) 
 	{
@@ -1313,18 +1354,16 @@ void gsi_rectx(gs_immediate_draw_t* gsi, float l, float b, float r, float t, flo
 		{
 			gsi_begin(gsi, GS_GRAPHICS_PRIMITIVE_TRIANGLES);
 
-				gsi_c4ub(gsi, _r, _g, _b, _a);
+			gs_color_t color = gs_color(_r, _g, _b, _a);
+			gsi_push_quad_indices(gsi);
+			gs_immediate_vert_t verts[4] = {
+				{ {l, b, 0.f}, {u0, v0}, color },
+				{ {r, b, 0.f}, {u1, v0}, color },
+				{ {l, t, 0.f}, {u0, v1}, color },
+				{ {r, t, 0.f}, {u1, v1}, color },
+			};
+			gs_byte_buffer_write_bulk(&gsi->vertices, verts, sizeof(verts));
 
-				// First triangle
-				gsi_tc2f(gsi, u0, v0); gsi_v2f(gsi, l, b);
-				gsi_tc2f(gsi, u1, v0); gsi_v2f(gsi, r, b);
-				gsi_tc2f(gsi, u0, v1); gsi_v2f(gsi, l, t);
-
-				// Second triangle
-				gsi_tc2f(gsi, u1, v0); gsi_v2f(gsi, r, b);
-				gsi_tc2f(gsi, u1, v1); gsi_v2f(gsi, r, t);
-				gsi_tc2f(gsi, u0, v1); gsi_v2f(gsi, l, t);
-				
 			gsi_end(gsi);
 
 		} break;
@@ -1376,24 +1415,19 @@ GS_API_DECL void gsi_rect3Dv(gs_immediate_draw_t* gsi, gs_vec3 min, gs_vec3 max,
 		{
 			gsi_begin(gsi, GS_GRAPHICS_PRIMITIVE_TRIANGLES);
 
-				gsi_c4ub(gsi, c.r, c.g, c.b, c.a);
-
 				const float u0 = uv0.x;
 				const float u1 = uv1.x;
 				const float v0 = uv0.y;
 				const float v1 = uv1.y;
 
-				// First triangle
-				gsi_c4ub(gsi, c.r, c.g, c.b, c.a);
-				gsi_tc2f(gsi, u0, v0); gsi_v3fv(gsi, vt0);
-				gsi_tc2f(gsi, u0, v1); gsi_v3fv(gsi, vt2);
-				gsi_tc2f(gsi, u1, v0); gsi_v3fv(gsi, vt1);
-
-				// Second triangle
-				gsi_c4ub(gsi, c.r, c.g, c.b, c.a);
-				gsi_tc2f(gsi, u0, v1); gsi_v3fv(gsi, vt2);
-				gsi_tc2f(gsi, u1, v1); gsi_v3fv(gsi, vt3);
-				gsi_tc2f(gsi, u1, v0); gsi_v3fv(gsi, vt1);
+				gsi_push_quad_indices(gsi);
+				gs_immediate_vert_t verts[4] = {
+					{ vt0, {u0, v0}, c },
+					{ vt1, {u1, v0}, c },
+					{ vt2, {u0, v1}, c },
+					{ vt3, {u1, v1}, c },
+				};
+				gs_byte_buffer_write_bulk(&gsi->vertices, verts, sizeof(verts));
 				
 			gsi_end(gsi);
 
@@ -1433,13 +1467,59 @@ void gsi_circle_sector(gs_immediate_draw_t* gsi, float cx, float cy, float radiu
 
     float step = (float)(end_angle - start_angle)/(float)segments;
     float angle = (float)start_angle;
-	gs_for_range_i(segments)
+    gs_color_t color = gs_color(r, g, b, a);
+    gs_vec2 uv_zero = gs_v2(0.f, 0.f);
+
+    switch (type)
     {
-        gs_vec2 _a = gs_v2(cx, cy);
-        gs_vec2 _b = gs_v2(cx + sinf(gsi_deg2rad*angle)*radius, cy + cosf(gsi_deg2rad*angle)*radius);
-        gs_vec2 _c = gs_v2(cx + sinf(gsi_deg2rad*(angle + step))*radius, cy + cosf(gsi_deg2rad*(angle + step))*radius);
-		gsi_trianglev(gsi, _a, _b, _c, gs_color(r, g, b, a), type);
-        angle += step;
+        case GS_GRAPHICS_PRIMITIVE_TRIANGLES:
+        {
+            gsi_begin(gsi, GS_GRAPHICS_PRIMITIVE_TRIANGLES);
+            // Flush if current batch is indexed — circles are non-indexed
+            if (gsi->batch_is_indexed) gsi_flush(gsi);
+            // Angle-addition recurrence: avoid sinf/cosf per segment
+            float step_rad = gsi_deg2rad * step;
+            float cs = cosf(step_rad), sn = sinf(step_rad);
+            float cur_s = sinf(gsi_deg2rad * angle);
+            float cur_c = cosf(gsi_deg2rad * angle);
+            gs_for_range_i(segments)
+            {
+                float next_s = cur_s * cs + cur_c * sn;
+                float next_c = cur_c * cs - cur_s * sn;
+                gs_immediate_vert_t verts[3] = {
+                    { {cx, cy, 0.f}, uv_zero, color },
+                    { {cx + cur_s*radius, cy + cur_c*radius, 0.f}, uv_zero, color },
+                    { {cx + next_s*radius, cy + next_c*radius, 0.f}, uv_zero, color },
+                };
+                gs_byte_buffer_write_bulk(&gsi->vertices, verts, sizeof(verts));
+                cur_s = next_s;
+                cur_c = next_c;
+            }
+            gsi_end(gsi);
+        } break;
+
+        case GS_GRAPHICS_PRIMITIVE_LINES:
+        {
+            gsi_begin(gsi, GS_GRAPHICS_PRIMITIVE_LINES);
+            gsi->cache.color = color;
+            gsi->cache.uv = uv_zero;
+            float step_rad = gsi_deg2rad * step;
+            float cs = cosf(step_rad), sn = sinf(step_rad);
+            float cur_s = sinf(gsi_deg2rad * angle);
+            float cur_c = cosf(gsi_deg2rad * angle);
+            gs_for_range_i(segments)
+            {
+                float next_s = cur_s * cs + cur_c * sn;
+                float next_c = cur_c * cs - cur_s * sn;
+                gsi_v3f(gsi, cx + cur_s*radius, cy + cur_c*radius, 0.f);
+                gsi_v3f(gsi, cx + next_s*radius, cy + next_c*radius, 0.f);
+                cur_s = next_s;
+                cur_c = next_c;
+            }
+            gsi_end(gsi);
+        } break;
+
+        default: break;
     }
 }
 
@@ -1578,29 +1658,27 @@ void gsi_box(gs_immediate_draw_t* gsi, float x, float y, float z, float hx, floa
 				gs_vec2 uv2 = gs_v2(0.f, 1.f);
 				gs_vec2 uv3 = gs_v2(1.f, 1.f);
 
-		        // Front Face
-		        gsi_trianglevx(gsi, v0, v1, v2, uv0, uv1, uv2, color, type);
-		        gsi_trianglevx(gsi, v3, v2, v1, uv3, uv2, uv1, color, type);
-		        
-		        // Back face
-		        gsi_trianglevx(gsi, v6, v5, v7, uv0, uv3, uv2, color, type);
-		        gsi_trianglevx(gsi, v6, v4, v5, uv0, uv1, uv3, color, type);
+				// 6 faces, each as an indexed quad (4 verts + 6 indices)
+				struct { gs_vec3 a, b, c, d; gs_vec2 ua, ub, uc, ud; } faces[6] = {
+					{ v0, v1, v2, v3, uv0, uv1, uv2, uv3 },  // front
+					{ v6, v4, v7, v5, uv0, uv1, uv2, uv3 },  // back
+					{ v5, v2, v7, v3, uv0, uv1, uv2, uv3 },  // top
+					{ v4, v6, v0, v1, uv0, uv1, uv2, uv3 },  // bottom
+					{ v1, v6, v3, v7, uv0, uv1, uv2, uv3 },  // right
+					{ v4, v0, v5, v2, uv0, uv1, uv2, uv3 },  // left
+				};
 
-		        // Top face
-		        gsi_trianglevx(gsi, v7, v2, v3, uv0, uv3, uv2, color, type);
-		        gsi_trianglevx(gsi, v7, v5, v2, uv0, uv1, uv3, color, type);
-
-		        // Bottom face
-		        gsi_trianglevx(gsi, v4, v1, v0, uv0, uv3, uv2, color, type);
-		        gsi_trianglevx(gsi, v4, v6, v1, uv0, uv1, uv3, color, type);
-
-		        // Right face
-		        gsi_trianglevx(gsi, v1, v7, v3, uv0, uv3, uv2, color, type);
-		        gsi_trianglevx(gsi, v1, v6, v7, uv0, uv1, uv3, color, type);
-
-		        // Left face
-		        gsi_trianglevx(gsi, v4, v2, v5, uv0, uv3, uv2, color, type);
-		        gsi_trianglevx(gsi, v4, v0, v2, uv0, uv1, uv3, color, type);
+				for (uint32_t fi = 0; fi < 6; ++fi)
+				{
+					gsi_push_quad_indices(gsi);
+					gs_immediate_vert_t verts[4] = {
+						{ faces[fi].a, faces[fi].ua, color },
+						{ faces[fi].b, faces[fi].ub, color },
+						{ faces[fi].c, faces[fi].uc, color },
+						{ faces[fi].d, faces[fi].ud, color },
+					};
+					gs_byte_buffer_write_bulk(&gsi->vertices, verts, sizeof(verts));
+				}
 			}
 			gsi_end(gsi);
 		} break;
@@ -1659,28 +1737,9 @@ gsi_sphere(gs_immediate_draw_t* gsi, float cx, float cy, float cz,
 	const uint32_t sectors = 64; 
 	float sector_step = 2.f * (float)GS_PI / (float)sectors;
 	float stack_step = (float)GS_PI / (float)stacks;
-	struct { 
-		gs_vec3 p;
-		gs_vec2 uv;
-	} v0, v1, v2, v3;
 	gs_color_t color = gs_color(r, g, b, a);
 
-	// TODO(john): Need to get these verts to be positioned correctly (translate then rotate all verts to correct for odd 90 degree rotation)
-	#define make_vert(V, I, J, XZ, SECANGLE)\
-		do {\
-	        /* vertex position (x, y, z) */\
-		    V.p.x = cx + (XZ) * cosf((SECANGLE));\
-		    V.p.z = cz + (XZ) * sinf((SECANGLE));\
-	        /* vertex tex coord (s, t) range between [0, 1] */\
-	        V.uv.x = (float)(J) / sectors;\
-	        V.uv.y = (float)(I) / stacks;\
-		} while (0)
-
-	#define push_vert(V)\
-		do {\
-	        gsi_tc2f(gsi, V.s, V.t);\
-	        gsi_v3f(gsi, V.x, V.y, V.z);\
-		} while (0)
+	gsi_begin(gsi, type);
 
 	for (uint32_t i = 0; i < stacks; ++i)
 	{
@@ -1688,31 +1747,51 @@ gsi_sphere(gs_immediate_draw_t* gsi, float cx, float cy, float cz,
 	    float sa1 = GS_PI / 2.f - (i + 1) * stack_step;
 	    float xz0 = radius * cosf(sa0); 
 	    float xz1 = radius * cosf(sa1); 
-	    float y0 = cy + radius * sinf(sa0);            // r * sin(u)
-	    float y1 = cy + radius * sinf(sa1);            // r * sin(u)
-
-	    v0.p.y = y0;
-	    v1.p.y = y0;
-	    v2.p.y = y1;
-	    v3.p.y = y1;
+	    float y0 = cy + radius * sinf(sa0);
+	    float y1 = cy + radius * sinf(sa1);
 
 	    for(uint32_t j = 0; j < sectors; ++j)
 	    {
-	        float sca0 = j * sector_step;           // starting from 0 to 2pi
+	        float sca0 = j * sector_step;
 	        float sca1 = (j + 1) * sector_step;
 
-	        // Make verts
-	        make_vert(v0, i, j, xz0, sca0);
-	        make_vert(v1, i, j + 1, xz0, sca1);
-	        make_vert(v2, i + 1, j, xz1, sca0);
-	        make_vert(v3, i + 1, j + 1, xz1, sca1);
+	        gs_vec3 p0 = { cx + xz0*cosf(sca0), y0, cz + xz0*sinf(sca0) };
+	        gs_vec3 p1 = { cx + xz0*cosf(sca1), y0, cz + xz0*sinf(sca1) };
+	        gs_vec3 p2 = { cx + xz1*cosf(sca0), y1, cz + xz1*sinf(sca0) };
+	        gs_vec3 p3 = { cx + xz1*cosf(sca1), y1, cz + xz1*sinf(sca1) };
 
-	        // First triangle
-	        gsi_trianglevx(gsi, v0.p, v3.p, v2.p, v0.uv, v3.uv, v2.uv, color, type);
-	        // Second triangle
-	        gsi_trianglevx(gsi, v0.p, v1.p, v3.p, v0.uv, v1.uv, v3.uv, color, type);
+	        gs_vec2 t0 = { (float)j / sectors,       (float)i / stacks };
+	        gs_vec2 t1 = { (float)(j+1) / sectors,   (float)i / stacks };
+	        gs_vec2 t2 = { (float)j / sectors,       (float)(i+1) / stacks };
+	        gs_vec2 t3 = { (float)(j+1) / sectors,   (float)(i+1) / stacks };
+
+	        switch (type)
+	        {
+	            case GS_GRAPHICS_PRIMITIVE_TRIANGLES:
+	            {
+	                gsi_push_quad_indices(gsi);
+	                gs_immediate_vert_t verts[4] = {
+	                    { p0, t0, color },
+	                    { p1, t1, color },
+	                    { p2, t2, color },
+	                    { p3, t3, color },
+	                };
+	                gs_byte_buffer_write_bulk(&gsi->vertices, verts, sizeof(verts));
+	            } break;
+
+	            case GS_GRAPHICS_PRIMITIVE_LINES:
+	            {
+	                gsi->cache.color = color;
+	                gsi->cache.uv = gs_v2(0.f, 0.f);
+	                gsi_v3f(gsi, p0.x, p0.y, p0.z); gsi_v3f(gsi, p1.x, p1.y, p1.z);
+	                gsi_v3f(gsi, p0.x, p0.y, p0.z); gsi_v3f(gsi, p2.x, p2.y, p2.z);
+	            } break;
+
+	            default: break;
+	        }
 	    }
 	}
+	gsi_end(gsi);
 }
 
 GS_API_DECL void 
@@ -1972,20 +2051,13 @@ gsi_text(gs_immediate_draw_t* gsi, float x, float y, const char* text,
 
 	gsi_texture(gsi, fp->texture.hndl);
 
-	gs_mat4 rot = gs_mat4_rotatev(gs_deg2rad(-180.f), GS_XAXIS);
-
-    // Get total dimensions of text
-    gs_vec2 td = gs_asset_font_text_dimensions(fp, text, -1);
     float th = gs_asset_font_max_height(fp);
-    
-    // Move text to accomdate height
-    // y += td.y;
     y += th;
 
 	// Needs to be fixed in here. Not elsewhere.
 	gsi_begin(gsi, GS_GRAPHICS_PRIMITIVE_TRIANGLES);
 	{
-		gsi_c4ub(gsi, r, g, b, a);
+		gs_color_t color = gs_color(r, g, b, a);
 		while (text[0] != '\0')
 		{
 			char c = text[0];
@@ -2000,6 +2072,7 @@ gsi_text(gs_immediate_draw_t* gsi, float x, float y, const char* text,
 				gs_vec3 v3 = gs_v3(q.x1, q.y1, 0.f);	// BR
 
 				if (flip_vertical) {
+					gs_mat4 rot = gs_mat4_rotatev(gs_deg2rad(-180.f), GS_XAXIS);
 					v0 = gs_mat4_mul_vec3(rot, v0);
 					v1 = gs_mat4_mul_vec3(rot, v1);
 					v2 = gs_mat4_mul_vec3(rot, v2);
@@ -2011,23 +2084,15 @@ gsi_text(gs_immediate_draw_t* gsi, float x, float y, const char* text,
 				gs_vec2 uv2 = gs_v2(q.s0, q.t1);	// BL
 				gs_vec2 uv3 = gs_v2(q.s1, q.t1);	// BR
 
-				gsi_tc2fv(gsi, uv0);
-				gsi_v3fv(gsi, v0);
-
-		        gsi_tc2fv(gsi, uv3); 
-				gsi_v3fv(gsi, v3); 
-
-		        gsi_tc2fv(gsi, uv2); 
-				gsi_v3fv(gsi, v2); 
-
-				gsi_tc2fv(gsi, uv0); 
-				gsi_v3fv(gsi, v0);
-
-		        gsi_tc2fv(gsi, uv1); 
-				gsi_v3fv(gsi, v1); 
-
-		        gsi_tc2fv(gsi, uv3); 
-				gsi_v3fv(gsi, v3); 
+				// 4 verts + 6 indices per glyph
+				gsi_push_quad_indices(gsi);
+				gs_immediate_vert_t verts[4] = {
+					{ v0, uv0, color },
+					{ v1, uv1, color },
+					{ v2, uv2, color },
+					{ v3, uv3, color },
+				};
+				gs_byte_buffer_write_bulk(&gsi->vertices, verts, sizeof(verts));
 			}
 			text++;
 		}
@@ -2042,24 +2107,105 @@ gsi_set_view_scissor(gs_immediate_draw_t* gsi, uint32_t x, uint32_t y, uint32_t 
     // Flush previous
     gsi_flush(gsi);
 
-    // Set graphics viewport scissor
-    gs_graphics_set_view_scissor(&gsi->commands, x, y, w, h); 
+    // Inject a zero-draw command that just sets the viewport/scissor
+    gsi_draw_cmd_t cmd = gs_default_val();
+    cmd.flags = GSI_FLAG_SET_VIEW_SCISSOR;
+    cmd.viewscissor = gs_v4((float)x, (float)y, (float)w, (float)h);
+    gs_dyn_array_push(gsi->draw_cmds, cmd);
 }
 
 // Final Submit / Merge
 GS_API_DECL void 
 gsi_draw(gs_immediate_draw_t* gsi, gs_command_buffer_t* cb)
 {
-	// Final flush (if necessary)(this might be a part of gsi_end() instead)
+	// Capture any remaining pending verts as a final batch
 	gsi_flush(gsi);
 
-	// Merge gsi commands to end of cb
-	gs_byte_buffer_write_bulk(&cb->commands, gsi->commands.commands.data, gsi->commands.commands.position);
+	uint32_t cmd_count = gs_dyn_array_size(gsi->draw_cmds);
+	if (cmd_count == 0) { gsi_reset(gsi); return; }
 
-	// Increase number of commands of merged buffer
-	cb->num_commands += gsi->commands.num_commands;
+	// ---- Single VBO upload for entire frame ----
+	gs_graphics_vertex_buffer_desc_t vdesc = gs_default_val();
+	vdesc.data  = gsi->vertices.data;
+	vdesc.size  = (size_t)gsi->vertices.position;
+	vdesc.usage = GS_GRAPHICS_BUFFER_USAGE_STREAM;
+	gs_graphics_vertex_buffer_request_update(cb, GSI()->vbo, &vdesc);
 
-	// Reset cache
+	// ---- Single IBO upload for entire frame (if any indexed batches) ----
+	uint32_t total_indices = gs_dyn_array_size(gsi->indices);
+	if (total_indices > 0)
+	{
+		gs_graphics_index_buffer_desc_t ibdesc = gs_default_val();
+		ibdesc.data  = gsi->indices;
+		ibdesc.size  = total_indices * sizeof(uint16_t);
+		ibdesc.usage = GS_GRAPHICS_BUFFER_USAGE_STREAM;
+		gs_graphics_index_buffer_request_update(cb, GSI()->ibo, &ibdesc);
+	}
+
+	// ---- Replay deferred draw commands ----
+	for (uint32_t i = 0; i < cmd_count; ++i)
+	{
+		gsi_draw_cmd_t* cmd = &gsi->draw_cmds[i];
+
+		// View/scissor-only command
+		if (cmd->flags & GSI_FLAG_SET_VIEW_SCISSOR)
+		{
+			gs_graphics_set_view_scissor(cb, (uint32_t)cmd->viewscissor.x, (uint32_t)cmd->viewscissor.y,
+				(uint32_t)cmd->viewscissor.z, (uint32_t)cmd->viewscissor.w);
+			continue;
+		}
+
+		// Bind pipeline
+		if (cmd->pipeline.id && cmd->pipeline.id != UINT32_MAX)
+		{
+			gs_graphics_pipeline_bind(cb, cmd->pipeline);
+		}
+
+		// Vertex buffer binding
+		gs_graphics_bind_vertex_buffer_desc_t vbuffer = gs_default_val();
+		vbuffer.buffer = GSI()->vbo;
+
+		// Uniform bindings
+		gs_graphics_bind_uniform_desc_t ubinds[2] = gs_default_val();
+		ubinds[0].uniform = GSI()->uniform; ubinds[0].data = &cmd->mvp;
+		ubinds[1].uniform = GSI()->sampler; ubinds[1].data = &cmd->texture; ubinds[1].binding = 0;
+
+		gs_graphics_bind_desc_t binds = gs_default_val();
+		binds.vertex_buffers.desc = &vbuffer;
+
+		if (~cmd->flags & GSI_FLAG_NO_BIND_UNIFORMS)
+		{
+			binds.uniforms.desc = ubinds;
+			binds.uniforms.size = sizeof(ubinds);
+		}
+
+		// Indexed draw path — indices are absolute vertex positions, so no VBO offset needed
+		if (cmd->index_count > 0)
+		{
+			gs_graphics_bind_index_buffer_desc_t ibuffer = gs_default_val();
+			ibuffer.buffer = GSI()->ibo;
+			binds.index_buffers.desc = &ibuffer;
+
+			gs_graphics_apply_bindings(cb, &binds);
+
+			gs_graphics_draw_desc_t draw = gs_default_val();
+			draw.start = cmd->index_offset;   // byte offset into IBO
+			draw.count = cmd->index_count;
+			gs_graphics_draw(cb, &draw);
+		}
+		// Non-indexed draw path — use glDrawArrays start to select batch range
+		else
+		{
+			gs_graphics_apply_bindings(cb, &binds);
+
+			gs_graphics_draw_desc_t draw = gs_default_val();
+			draw.start = cmd->vert_offset / (uint32_t)sizeof(gs_immediate_vert_t);  // vertex index
+			draw.count = cmd->vert_count;
+			gs_graphics_draw(cb, &draw);
+		}
+	}
+
+	// Reset for next frame
 	gsi_reset(gsi);
 }
 

@@ -806,7 +806,7 @@ sched_pipe_write(struct sched_pipe *pipe, const struct sched_subset_task *src)
 #define SCHED_SPIN_BACKOFF_MUL 10
 #endif
 #ifndef SCHED_MAX_NUM_INITIAL_PARTITIONS
-#define SCHED_MAX_NUM_INITIAL_PARTITIONS 8
+#define SCHED_MAX_NUM_INITIAL_PARTITIONS 64
 #endif
 
 struct sched_thread_args {

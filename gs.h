@@ -9546,7 +9546,7 @@ GS_API_DECL void gs_lexer_c_eat_white_space(gs_lexer_t* lex)
 	{
         if (gs_char_is_white_space(*lex->at))
 		{
-            if (gs_char_is_end_of_line(*lex->at)) {lex->line++;}
+            if (*lex->at == '\n') {lex->line++;}
             lex->at++;
 		}
 
@@ -9593,6 +9593,7 @@ gs_lexer_c_next_token(gs_lexer_t* lex)
 	gs_token_t t = gs_token_invalid_token();
 	t.text = lex->at;
 	t.len = 1;
+    t.line = lex->line;
 
 	if (lex->can_lex(lex)) 
     { 
@@ -9797,6 +9798,7 @@ GS_API_DECL gs_token_t gs_lexer_peek(gs_lexer_t* lex)
 {
 	// Store current at and current token
 	const char* at = lex->at;
+	uint32_t line = lex->line;
 	gs_token_t cur_t = gs_lexer_current_token(lex);
 
 	// Get next token
@@ -9805,6 +9807,7 @@ GS_API_DECL gs_token_t gs_lexer_peek(gs_lexer_t* lex)
 	// Reset
 	lex->current_token = cur_t;
 	lex->at = at;
+	lex->line = line;
 
 	// Return
 	return next_t;
@@ -9815,6 +9818,7 @@ GS_API_DECL bool gs_lexer_require_token_text(gs_lexer_t* lex, const char* match)
 {
 	// Store current position and token
 	const char* at = lex->at;
+	uint32_t line = lex->line;
 	gs_token_t cur_t = lex->current_token; 
 
 	// Get next token
@@ -9831,6 +9835,7 @@ GS_API_DECL bool gs_lexer_require_token_text(gs_lexer_t* lex, const char* match)
 
 	// Reset
 	lex->at = at;
+	lex->line = line;
 	lex->current_token = cur_t;
 
 	return false;
@@ -9840,6 +9845,7 @@ GS_API_DECL bool gs_lexer_require_token_type(gs_lexer_t* lex, gs_token_type type
 {
 	// Store current position and token
 	const char* at = lex->at;
+	uint32_t line = lex->line;
 	gs_token_t cur_t = lex->current_token;
 
 	// Get next token
@@ -9856,6 +9862,7 @@ GS_API_DECL bool gs_lexer_require_token_type(gs_lexer_t* lex, gs_token_type type
 
 	// Reset
 	lex->at = at;
+	lex->line = line;
 	lex->current_token = cur_t;
 
 	return false;
