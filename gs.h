@@ -6924,6 +6924,12 @@ typedef struct gs_graphics_info_t
 // Graphics Interface
 ==========================*/
 
+//
+/* #ifndef GS_GRAPHICS_IMPL_CUSTOM */
+	typedef gs_command_buffer_t				gs_graphics_command_buffer_t;
+	#define gs_graphics_command_buffer_new	gs_command_buffer_new
+/* #endif // GS_GRAPHICS_IMPL_CUSTOM */
+
 typedef struct gs_graphics_t
 {
     void* user_data;                // For internal use
@@ -6968,7 +6974,7 @@ typedef struct gs_graphics_t
         void  (* storage_buffer_get_data)(gs_handle(gs_graphics_storage_buffer_t) hndl, size_t offset, size_t stride, void* out);
 
         // Submission (Main Thread)
-        void (* command_buffer_submit)(gs_command_buffer_t* cb);
+        void (* command_buffer_submit)(gs_graphics_command_buffer_t* cb);
 
     } api;                          // Interface for stable access across .dll boundaries
 } gs_graphics_t;
@@ -7032,22 +7038,22 @@ GS_API_DECL void  gs_graphics_storage_buffer_unlock(gs_handle(gs_graphics_storag
 GS_API_DECL void  gs_graphics_storage_buffer_get_data(gs_handle(gs_graphics_storage_buffer_t) hndl, size_t offset, size_t stride, void* out);
 
 // Resource In-Flight Update
-GS_API_DECL void gs_graphics_texture_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);
-GS_API_DECL void gs_graphics_vertex_buffer_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_vertex_buffer_t) hndl, gs_graphics_vertex_buffer_desc_t* desc);
-GS_API_DECL void gs_graphics_index_buffer_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_index_buffer_t) hndl, gs_graphics_index_buffer_desc_t* desc);
-GS_API_DECL void gs_graphics_uniform_buffer_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_uniform_buffer_t) hndl, gs_graphics_uniform_buffer_desc_t* desc);
-GS_API_DECL void gs_graphics_storage_buffer_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphics_storage_buffer_t) hndl, gs_graphics_storage_buffer_desc_t* desc);
+GS_API_DECL void gs_graphics_texture_request_update(gs_graphics_command_buffer_t* cb, gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);
+GS_API_DECL void gs_graphics_vertex_buffer_request_update(gs_graphics_command_buffer_t* cb, gs_handle(gs_graphics_vertex_buffer_t) hndl, gs_graphics_vertex_buffer_desc_t* desc);
+GS_API_DECL void gs_graphics_index_buffer_request_update(gs_graphics_command_buffer_t* cb, gs_handle(gs_graphics_index_buffer_t) hndl, gs_graphics_index_buffer_desc_t* desc);
+GS_API_DECL void gs_graphics_uniform_buffer_request_update(gs_graphics_command_buffer_t* cb, gs_handle(gs_graphics_uniform_buffer_t) hndl, gs_graphics_uniform_buffer_desc_t* desc);
+GS_API_DECL void gs_graphics_storage_buffer_request_update(gs_graphics_command_buffer_t* cb, gs_handle(gs_graphics_storage_buffer_t) hndl, gs_graphics_storage_buffer_desc_t* desc);
 
 // Pipeline / Pass / Bind / Draw
-GS_API_DECL void gs_graphics_renderpass_begin(gs_command_buffer_t* cb, gs_handle(gs_graphics_renderpass_t) hndl);
-GS_API_DECL void gs_graphics_renderpass_end(gs_command_buffer_t* cb);
-GS_API_DECL void gs_graphics_set_viewport(gs_command_buffer_t* cb, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
-GS_API_DECL void gs_graphics_set_view_scissor(gs_command_buffer_t* cb, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
-GS_API_DECL void gs_graphics_clear(gs_command_buffer_t* cb, gs_graphics_clear_desc_t* desc);
-GS_API_DECL void gs_graphics_pipeline_bind(gs_command_buffer_t* cb, gs_handle(gs_graphics_pipeline_t) hndl);
-GS_API_DECL void gs_graphics_apply_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t* binds);
-GS_API_DECL void gs_graphics_draw(gs_command_buffer_t* cb, gs_graphics_draw_desc_t* desc);
-GS_API_DECL void gs_graphics_dispatch_compute(gs_command_buffer_t* cb, uint32_t num_x_groups, uint32_t num_y_groups, uint32_t num_z_groups);
+GS_API_DECL void gs_graphics_renderpass_begin(gs_graphics_command_buffer_t* cb, gs_handle(gs_graphics_renderpass_t) hndl);
+GS_API_DECL void gs_graphics_renderpass_end(gs_graphics_command_buffer_t* cb);
+GS_API_DECL void gs_graphics_set_viewport(gs_graphics_command_buffer_t* cb, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
+GS_API_DECL void gs_graphics_set_view_scissor(gs_graphics_command_buffer_t* cb, uint32_t x, uint32_t y, uint32_t w, uint32_t h);
+GS_API_DECL void gs_graphics_clear(gs_graphics_command_buffer_t* cb, gs_graphics_clear_desc_t* desc);
+GS_API_DECL void gs_graphics_pipeline_bind(gs_graphics_command_buffer_t* cb, gs_handle(gs_graphics_pipeline_t) hndl);
+GS_API_DECL void gs_graphics_apply_bindings(gs_graphics_command_buffer_t* cb, gs_graphics_bind_desc_t* binds);
+GS_API_DECL void gs_graphics_draw(gs_graphics_command_buffer_t* cb, gs_graphics_draw_desc_t* desc);
+GS_API_DECL void gs_graphics_dispatch_compute(gs_graphics_command_buffer_t* cb, uint32_t num_x_groups, uint32_t num_y_groups, uint32_t num_z_groups);
 
 // Submission (Main Thread)
 #define gs_graphics_command_buffer_submit(CB)  gs_graphics()->api.command_buffer_submit((CB))
