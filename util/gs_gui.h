@@ -210,7 +210,19 @@ typedef uint32_t gs_gui_id;
 typedef GS_GUI_REAL gs_gui_real;
 
 // Shapes
-typedef struct {float x, y, w, h;} gs_gui_rect_t;
+typedef union {
+    f32 xywh[4];
+    struct {
+        f32 x, y, w, h;
+    };
+    gs_vec4 vec4;
+
+    struct {
+        gs_vec2 xy;
+        gs_vec2 wh;
+    };
+} gs_gui_rect_t;
+#define gs_gui_rect(...) ((gs_gui_rect_t){__VA_ARGS__})
 typedef struct {float radius; gs_vec2 center;} gs_gui_circle_t;
 typedef struct {gs_vec2 points[3];} gs_gui_triangle_t;
 typedef struct {gs_vec2 start; gs_vec2 end;} gs_gui_line_t;
@@ -970,8 +982,6 @@ typedef struct gs_gui_hints_s
     gs_gui_rect_t viewport;     // Viewport within framebuffer for gui context
     int32_t flags;              // Flags for hints
 } gs_gui_hints_t;
-
-GS_API_DECL gs_gui_rect_t gs_gui_rect(float x, float y, float w, float h);
 
 //=== Context ===//
 
@@ -1854,14 +1864,7 @@ GS_API_DECL void gs_gui_animation_update(gs_gui_context_t* ctx, gs_gui_animation
     anim->frame = ctx->frame;
 }
 
-GS_API_DECL gs_gui_rect_t gs_gui_rect(float x, float y, float w, float h) 
-{
-	gs_gui_rect_t res;
-	res.x = x; res.y = y; res.w = w; res.h = h;
-	return res;
-} 
-
-static gs_gui_rect_t gs_gui_expand_rect(gs_gui_rect_t rect, int16_t v[4]) 
+static gs_gui_rect_t gs_gui_expand_rect(gs_gui_rect_t rect, int16_t v[4])
 {
 	return gs_gui_rect(rect.x - v[0], 
 			   rect.y - v[2], 
