@@ -1482,34 +1482,73 @@ GS_API_DECL void
 gs_graphics_texture_read_impl(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc)
 { 
     gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data; 
-    if (!desc) return;
-    if (!gs_slot_array_handle_valid(ogl->textures, hndl.id))
+    if (!desc || !desc->data[0]) return;
+
+    // Ensure GPU has finished all pending commands before reading
+    glFlush();
+    glFinish();
+
+    uint32_t gl_format = GL_RGBA;
+    uint32_t gl_type = GL_UNSIGNED_BYTE;
+
+    // If a valid texture handle is provided, use its format for the read
+    if (hndl.id && gs_slot_array_handle_valid(ogl->textures, hndl.id))
     {
-        gs_log_warning("Texture handle invalid: %zu", hndl.id);
+        gsgl_texture_t* tex = gs_slot_array_getp(ogl->textures, hndl.id);
+        gl_format = gsgl_texture_format_to_gl_texture_format(tex->desc.format);
+        gl_type = gsgl_texture_format_to_gl_data_type(tex->desc.format);
     }
 
-    gsgl_texture_t* tex = gs_slot_array_getp(ogl->textures, hndl.id);
-    // Bind texture
-    GLenum target = 0x00;
-    switch (tex->desc.type)
-    {
-        default: 
-        case GS_GRAPHICS_TEXTURE_2D:      {target = GL_TEXTURE_2D;} break;
-        case GS_GRAPHICS_TEXTURE_CUBEMAP: {target = GL_TEXTURE_CUBE_MAP;} break;
-    } 
-    uint32_t gl_format = gsgl_texture_format_to_gl_texture_format(tex->desc.format);
-    uint32_t gl_type = gsgl_texture_format_to_gl_data_type(tex->desc.format);
-    glBindTexture(target, tex->id);
+    // glReadPixels reads from the currently bound framebuffer, not from textures
     glReadPixels(
-        desc->read.x, 
-        desc->read.y, 
-        desc->read.width, 
-        desc->read.height, 
+        (GLint)desc->read.x, 
+        (GLint)desc->read.y, 
+        (GLsizei)desc->read.width, 
+        (GLsizei)desc->read.height, 
         gl_format, 
         gl_type,
         (void*)desc->data[0]
     );
-    glBindTexture(target, 0x00);
+}
+
+GS_API_DECL void 
+gs_graphics_framebuffer_read_impl(gs_graphics_framebuffer_read_desc_t* desc)
+{
+    if (!desc || !desc->data) return;
+
+    // Ensure GPU has finished all pending rendering commands
+    glFlush();
+    glFinish();
+
+    uint8_t* out = (uint8_t*)desc->data;
+
+    if (desc->flip_y)
+    {
+        // Read into temp buffer, then flip rows
+        uint8_t* temp = (uint8_t*)gs_malloc(desc->width * desc->height * 4);
+        glReadPixels(
+            (GLint)desc->x, (GLint)desc->y,
+            (GLsizei)desc->width, (GLsizei)desc->height,
+            GL_RGBA, GL_UNSIGNED_BYTE,
+            temp
+        );
+        for (uint32_t y = 0; y < desc->height; y++)
+        {
+            memcpy(out + (desc->height - 1 - y) * desc->width * 4,
+                   temp + y * desc->width * 4,
+                   (size_t)(desc->width * 4));
+        }
+        gs_free(temp);
+    }
+    else
+    {
+        glReadPixels(
+            (GLint)desc->x, (GLint)desc->y,
+            (GLsizei)desc->width, (GLsizei)desc->height,
+            GL_RGBA, GL_UNSIGNED_BYTE,
+            out
+        );
+    }
 }
 
 GS_API_DECL void*
@@ -2984,6 +3023,7 @@ gs_graphics_init(gs_graphics_t* graphics)
     graphics->api.storage_buffer_update = gs_graphics_storage_buffer_update_impl;
     graphics->api.texture_update = gs_graphics_texture_update_impl;
     graphics->api.texture_read = gs_graphics_texture_read_impl;
+    graphics->api.framebuffer_read = gs_graphics_framebuffer_read_impl;
 
     // Util
     graphics->api.storage_buffer_map_get = gs_graphics_storage_buffer_map_get_impl; 

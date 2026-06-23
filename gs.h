@@ -1,4 +1,4 @@
-﻿/*==============================================================================================================
+/*==============================================================================================================
     * Copyright (c) 2020 John Jackson 
     * Gunslinger: A simple, header-only c99 multi-media framework
     * File: gs.h
@@ -32,14 +32,14 @@
 #ifndef GS_H
 #define GS_H
 
-/*═█═════════════════════════════════════════════════════════════════════════════════════█═╗
-████ ██████╗ ██╗   ██╗███╗   ██╗███████╗██╗     ██╗███╗   ██╗ ██████╗ ███████╗██████╗ ██████═█
-█║█ ██╔════╝ ██║   ██║████╗  ██║██╔════╝██║     ██║████╗  ██║██╔════╝ ██╔════╝██╔══██╗ ██═████
-███ ██║  ███╗██║   ██║██╔██╗ ██║███████╗██║     ██║██╔██╗ ██║██║ ███╗█████╗  ██████╔╝ █████═██
-╚██ ██║   ██║██║   ██║██║╚██╗██║╚════██║██║     ██║██║╚██╗██║██║   ██║██╔══╝  ██╔══██╗ ███ █╝█
-█║█ ╚██████╔╝╚██████╔╝██║ ╚████║███████║███████╗██║██║ ╚████║╚██████╔╝███████╗██║  ██║ ██═████
-████ ╚═════╝  ╚═════╝ ╚═╝  ╚═══╝╚══════╝╚══════╝╚═╝╚═╝  ╚═══╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝ █═█═██
-╚═██════════════════════════════════════════════════════════════════════════════════════██═╝*/
+/*-�-------------------------------------------------------------------------------------�-+
+���� ������+ ��+   ��+���+   ��+�������+��+     ��+���+   ��+ ������+ �������+������+ ������-�
+��� ��+----+ ���   �������+  �����+----+���     �������+  �����+----+ ��+----+��+--��+ ��-����
+��� ���  ���+���   �����+��+ ����������+���     �����+��+ ������ ���+�����+  ������++ �����-��
++�� ���   ������   ������+��+���+----������     ������+��+������   �����+--+  ��+--��+ ��� �+�
+��� +������+++������++��� +��������������������+������ +�����+������++�������+���  ��� ��-����
+���� +-----+  +-----+ +-+  +---++------++------++-++-+  +---+ +-----+ +------++-+  +-+ �-�-��
++-��------------------------------------------------------------------------------------��-+*/
 
 /*
     Gunslinger is a header-only, c99 framework for multi-media applications and tools.
@@ -6630,6 +6630,17 @@ typedef struct gs_graphics_texture_desc_t
     uint16_t flip_y;        // Whether or not y is flipped
 } gs_graphics_texture_desc_t;
 
+/* Graphics Framebuffer Read Desc */
+typedef struct gs_graphics_framebuffer_read_desc_t
+{
+    uint32_t x;             // X offset in pixels
+    uint32_t y;             // Y offset in pixels
+    uint32_t width;         // Width in pixels
+    uint32_t height;        // Height in pixels
+    void* data;             // Output pixel buffer (caller-allocated, size = width * height * 4 for RGBA8)
+    uint16_t flip_y;        // Whether to flip Y-axis on read
+} gs_graphics_framebuffer_read_desc_t;
+
 /* Graphics Uniform Layout Desc */
 typedef struct gs_graphics_uniform_layout_desc_t
 {
@@ -6960,7 +6971,7 @@ typedef struct gs_graphics_t
         void (* storage_buffer_update)(gs_handle(gs_graphics_storage_buffer_t) hndl, gs_graphics_storage_buffer_desc_t* desc);
         void (* texture_update)(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);
         void (* texture_read)(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);
-
+        void (* framebuffer_read)(gs_graphics_framebuffer_read_desc_t* desc);
         // Util
         void* (* storage_buffer_map_get)(gs_handle(gs_graphics_storage_buffer_t) hndl); 
         void* (* storage_buffer_lock)(gs_handle(gs_graphics_storage_buffer_t) hndl, size_t offset, size_t sz);
@@ -7020,7 +7031,7 @@ GS_API_DECL void  gs_graphics_storage_buffer_update(gs_handle(gs_graphics_storag
 GS_API_DECL void  gs_graphics_texture_update(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);
 GS_API_DECL void  gs_graphics_texture_read(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc);
 
-// Resource Queries
+GS_API_DECL void  gs_graphics_framebuffer_read(gs_graphics_framebuffer_read_desc_t* desc);
 GS_API_DECL void gs_graphics_pipeline_desc_query(gs_handle(gs_graphics_pipeline_t) hndl, gs_graphics_pipeline_desc_t* out);
 GS_API_DECL void gs_graphics_texture_desc_query(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* out); 
 GS_API_DECL size_t gs_graphics_uniform_size_query(gs_handle(gs_graphics_uniform_t) hndl);
@@ -7505,6 +7516,12 @@ gs_graphics_texture_read(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_text
 {
     return gs_graphics()->api.texture_read(hndl, desc); 
 } 
+
+GS_API_DECL void  
+gs_graphics_framebuffer_read(gs_graphics_framebuffer_read_desc_t* desc)
+{
+    return gs_graphics()->api.framebuffer_read(desc); 
+}
 
 GS_API_DECL void*  
 gs_graphics_storage_buffer_map_get(gs_handle(gs_graphics_storage_buffer_t) hndl)
@@ -10378,3 +10395,5 @@ void gs_quit()
         }
 
 */
+
+
