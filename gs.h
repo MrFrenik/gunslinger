@@ -3343,9 +3343,9 @@ GS_API_DECL void gs_paged_allocator_clear(gs_paged_allocator_t* pa);
 #define GS_TAU      2.0 * GS_PI
 
 // Useful Utility
-#define gs_v2(...)  gs_vec2_ctor(__VA_ARGS__)
-#define gs_v3(...)  gs_vec3_ctor(__VA_ARGS__)
-#define gs_v4(...)  gs_vec4_ctor(__VA_ARGS__)
+#define gs_v2(...)   ((gs_vec2){__VA_ARGS__})
+#define gs_v3(...)   ((gs_vec3){__VA_ARGS__})
+#define gs_v4(...)   ((gs_vec4){__VA_ARGS__})
 #define gs_quat(...) gs_quat_ctor(__VA_ARGS__)
 
 #define gs_v2s(__S)  gs_vec2_ctor((__S), (__S))
@@ -3458,6 +3458,7 @@ typedef struct
 {
     union 
     {
+        // f32
         f32 xy[2];
         struct 
         {
@@ -3592,10 +3593,23 @@ typedef struct
 {
     union 
     {
+        // f32
         f32 xyz[3];
         struct 
         {
             f32 x, y, z;
+        };
+
+        // vec2
+        struct
+        {
+            gs_vec2 xy;
+            f32 __xy_z_padding;
+        };
+        struct
+        {
+            f32 __yz_x_padding;
+            gs_vec2 yz;
         };
     }; 
 
@@ -3788,16 +3802,41 @@ gs_inline gs_vec3 gs_vec3_triple_cross_product(gs_vec3 a, gs_vec3 b, gs_vec3 c)
 
 typedef struct
 {
-    union 
+    union
     {
+        // float
         f32 xyzw[4];
-        struct 
+        struct
         {
             f32 x, y, z, w;
         };
+
+        // vec2
+        struct
+        {
+            gs_vec2 xy;
+            gs_vec2 zw;
+        };
+        struct
+        {
+            float __yz_x_padding;
+            gs_vec2 yz;
+            float __yz_w_padding;
+        };
+
+        // vec3
+        struct
+        {
+            gs_vec3 xyz;
+            float __xyz_w_padding;
+        };
+        struct
+        {
+            float __yzw_x_padding;
+            gs_vec3 yzw;
+        };
     };
 } gs_vec4_t;
-
 typedef gs_vec4_t gs_vec4;
 
 gs_inline gs_vec4 
@@ -4046,14 +4085,14 @@ gs_mat3_inverse(gs_mat3 m)
 
 typedef struct gs_mat4
 {
-	union {
-		gs_vec4 rows[4];
+    union {
+        gs_vec4 rows[4];
         float m[4][4];
-		float elements[16]; 
+        float elements[16];
         struct {
             gs_vec4 right, up, dir, position;
         } v;
-	};
+    };
 } gs_mat4_t;
 
 typedef gs_mat4_t gs_mat4;
